@@ -1,0 +1,5 @@
+The graph where the markdown originally comes from.
+
+The source graph is represented by a combination of the [[site config -- sourceDirectory|source directory]] (like a vault in Obsidian, for example) and then an unconstrained expansion of a graph from the [[site page type -- initial|initial site page]].  The unconstrained "source graph" is pretty impractical, though, so we don't deal with it much... it's like with the idea of [[6 degrees of separation]].  With no constraints almost everything connects to everything else.  It's impractical to deal with.
+
+So In practice the source graph is never directly considered as a whole.  Rather, what the [[publisher]] interacts with is the [[raw working graph]], which starts from the same point but does [[constrained graph expansion]] instead, which often limits its scope significantly.

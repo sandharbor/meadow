@@ -1,0 +1,3 @@
+The [[publisher]] might have [[dim - sensitivity -- high]] to accidentally publishing information they do not intend to.  This is particularly true if we automatically do [[constrained graph expansion]] within [[source graph]]s with material that has both normal and sensitive material.  This can happen because [[source graphs are multi-disciplinary]].
+
+We combat this with [[block casual bulk site page whitelisting for sensitive site pages]] for [[sensitive site page]]s

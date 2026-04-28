@@ -1,0 +1,16 @@
+pages:
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t022 - spaced repetition
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t022
+    title: t022 ---- alpha cards
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t022
+    title: t022 ---- beta cards
+    tracked: true

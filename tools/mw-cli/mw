@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# mw - Meadow developer tooling CLI
+#
+# Can be symlinked into /usr/local/bin:
+#   ln -s /path/to/meadow/tools/mw-cli/mw /usr/local/bin/mw
+#
+set -e
+
+# Resolve symlinks to find the real script location
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [[ -L "$SCRIPT_PATH" ]]; do
+  LINK_DIR="$(dirname "$SCRIPT_PATH")"
+  LINK_TARGET="$(readlink "$SCRIPT_PATH")"
+  [[ "$LINK_TARGET" != /* ]] && LINK_TARGET="$LINK_DIR/$LINK_TARGET"
+  SCRIPT_PATH="$LINK_TARGET"
+done
+TOOLS_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+
+exec "$TOOLS_DIR/mw-cli-node/node_modules/.bin/tsx" "$TOOLS_DIR/mw-cli-node/src/index.ts" "$@"

@@ -1,0 +1,207 @@
+#!/bin/bash
+
+# --- Self-imposed 2-minute timeout ---
+# quickcheck must finish fast. If it takes longer than 2 minutes, something
+# is stuck and we should fail loudly rather than block indefinitely.
+QUICKCHECK_TIMEOUT="${QUICKCHECK_TIMEOUT:-120}"
+if [ -z "$QUICKCHECK_WATCHDOG" ]; then
+    export QUICKCHECK_WATCHDOG=$$
+    (
+        sleep "$QUICKCHECK_TIMEOUT"
+        echo ""
+        echo "❌ quickcheck exceeded ${QUICKCHECK_TIMEOUT}s timeout — killing."
+        kill -TERM -- -$QUICKCHECK_WATCHDOG 2>/dev/null
+    ) &
+    WATCHDOG_PID=$!
+    # Kill the watchdog when we exit (success or failure)
+    trap "kill $WATCHDOG_PID 2>/dev/null" EXIT
+fi
+
+# Parse flags
+export CHECK_E2E=0
+export CHECK_NETWORK=0
+STRESS=0
+STRESS_COUNT=3
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --e2e) export CHECK_E2E=1 ;;
+        --network) export CHECK_NETWORK=1 ;;
+        --stress) STRESS=1 ;;
+        -n) shift; STRESS_COUNT="$1" ;;
+    esac
+    shift
+done
+
+# If --stress, delegate to the stress test tool immediately
+if [ "$STRESS" = "1" ]; then
+    exec tools/stress_test -n "$STRESS_COUNT"
+fi
+
+# Check for required directories and files
+REQUIRED_DIRS=(
+    "app"
+    "obsidian_meadow_plugin"
+    "tools"
+    "_agent"
+)
+REQUIRED_FILES=(
+    ".gitignore"
+    "CLAUDE.md"
+    "LICENSE"
+    "README.md"
+    "quickcheck"
+)
+OK_FILES=(".DS_Store" "prepare" "ui.png")
+OK_DIRS=(".claude" ".github" "_module" "cloud" "docs")
+
+echo_and_exit() {
+    echo "$1"
+    exit 1
+}
+
+# If --network, verify AWS credentials (must happen before background jobs)
+if [ "$CHECK_NETWORK" = "1" ]; then
+    echo "🔑 Verifying AWS credentials for dev environment..."
+    if ! aws sts get-caller-identity --profile meadow-dev-terraform > /dev/null 2>&1; then
+        echo "⏳ AWS credentials expired. Opening SSO login..."
+        aws sso login --profile meadow-dev-terraform
+        if ! aws sts get-caller-identity --profile meadow-dev-terraform > /dev/null 2>&1; then
+            echo_and_exit "❌ AWS authentication failed. Cannot run --network checks."
+        fi
+    fi
+    echo "✅ AWS credentials valid"
+fi
+
+# Check for characters in filenames that are not allowed on Windows
+# Forbidden in path segments: < > : " \ | ? *
+# Uses git ls-files -z (NUL-delimited, no quoting) for speed and correctness
+win_bad_files=$(git ls-files -z | tr '\0' '\n' | grep '[<>:"\\|?*]' || true)
+if [ -n "$win_bad_files" ]; then
+    echo "❌ Files with Windows-incompatible characters in their names:"
+    echo "$win_bad_files"
+    exit 1
+fi
+
+# .git is a directory in normal repos but a file in worktrees
+if [ ! -d ".git" ] && [ ! -f ".git" ]; then
+    echo_and_exit "❌ Required .git is missing."
+fi
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+        echo_and_exit "❌ Required directory '$dir' is missing."
+    fi
+done
+
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        echo_and_exit "❌ Required file '$file' is missing."
+    fi
+done
+
+for entry in * .[^.]*; do
+    # Skip . and ..
+    [ "$entry" = "." ] && continue
+    [ "$entry" = ".." ] && continue
+    # .git is checked separately (can be file or directory)
+    [ "$entry" = ".git" ] && continue
+    is_ok=false
+    for dir in "${REQUIRED_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${REQUIRED_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${OK_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for dir in "${OK_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    if [ "$is_ok" = false ]; then
+        echo_and_exit "❌ Extraneous file or directory found at root: $entry.  Should have been moved or deleted."
+    fi
+done
+
+QUICKCHECK_LOG_DIR=$(mktemp -d "${TMPDIR:-/tmp}/quickcheck.XXXXXX")
+
+function check_dir() {
+    local dir="$1"
+    local log_name="${dir//\//_}"
+    local log_file="$QUICKCHECK_LOG_DIR/${log_name}.log"
+
+    if [ ! -d "$dir" ]; then
+        echo "❌ Required directory '$dir' is missing." > "$log_file"
+        return 1
+    fi
+
+    if [ ! -f "$dir/_module/scripts/quickcheck" ]; then
+        echo "❌ _module/scripts/quickcheck not found at $dir." > "$log_file"
+        return 1
+    fi
+
+    (
+        cd "$dir"
+        ./_module/scripts/quickcheck
+    ) > "$log_file" 2>&1
+}
+
+# Run check_dir calls in parallel for speed
+# Each runs in a subshell to avoid cd interference
+echo "🧪 Running directory checks in parallel..."
+
+CHECK_DIRS=("app" "obsidian_meadow_plugin" "tools" "_agent")
+
+# Capture PIDs explicitly — jobs -p is unreliable because bash can auto-reap
+# completed jobs before we iterate, losing their exit status.
+pids=()
+dir_for_pid=()
+for dir in "${CHECK_DIRS[@]}"; do
+    check_dir "$dir" &
+    pids+=($!)
+    dir_for_pid+=("$dir")
+done
+
+# Wait for all background jobs to complete
+exit_code=0
+failed_dirs=()
+for i in "${!pids[@]}"; do
+    if ! wait "${pids[$i]}"; then
+        exit_code=1
+        failed_dirs+=("${dir_for_pid[$i]}")
+    fi
+done
+
+if [ $exit_code -ne 0 ]; then
+    for dir in "${failed_dirs[@]}"; do
+        log_name="${dir//\//_}"
+        log_file="$QUICKCHECK_LOG_DIR/${log_name}.log"
+        echo ""
+        echo "❌ $dir failed. Log: $log_file"
+        echo "--- last 30 lines ---"
+        tail -30 "$log_file"
+        echo "---"
+    done
+    echo_and_exit "❌ One or more directory checks failed (full logs in $QUICKCHECK_LOG_DIR)"
+fi
+
+# Run e2e tests after parallel checks (they depend on app being installed)
+if [ "$CHECK_E2E" = "1" ]; then
+    echo "🧪 Running e2e tests (slow)..."
+    ./app/e2e-tests/test-runner/_module/scripts/slowcheck
+fi
+
+# If we get here, everything worked!
+echo "✅ All checks passed!"

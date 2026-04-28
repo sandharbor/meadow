@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# Guard against dist directory — this is dev tooling that always runs via Vite
+# dev server + tsx. A dist directory means someone accidentally ran "npm run build"
+# and its presence would cause the Express server to serve stale built files
+# instead of letting Vite handle client-side routing and HMR.
+if [ -d "dist" ]; then
+    echo "FAIL: dist/ directory exists in e2e-tests/report-viewer/."
+    echo "This is dev-only tooling — it must never have a build artifact."
+    echo "The Express server serves stale files from dist/ instead of deferring"
+    echo "to the Vite dev server, which breaks client-side routing and HMR."
+    echo "Remove it with: rm -rf e2e-tests/report-viewer/dist"
+    exit 1
+fi
+
+# Install dependencies
+npm install --force 2>&1
+
+echo "Running report-viewer type checking and linting in parallel..."
+
+# Create temporary files for results
+tsc_result=$(mktemp)
+eslint_result=$(mktemp)
+test_result=$(mktemp)
+
+# Run TypeScript check in background (both src and e2e tsconfigs)
+(
+    echo "Running tsc --noEmit (src)..."
+    npx tsc --noEmit --project tsconfig.json
+    src_status=$?
+    echo "Running tsc --noEmit (e2e)..."
+    npx tsc --noEmit --project tsconfig.e2e.json
+    e2e_status=$?
+    if [ $src_status -ne 0 ] || [ $e2e_status -ne 0 ]; then
+        echo "FAIL TypeScript check failed." > "$tsc_result"
+    else
+        echo "PASS TypeScript check passed." > "$tsc_result"
+    fi
+) &
+tsc_pid=$!
+
+# Run ESLint in background
+(
+    echo "Running ESLint..."
+    npx eslint --max-warnings 0
+    if [ $? -ne 0 ]; then
+        echo "FAIL ESLint check failed." > "$eslint_result"
+    else
+        echo "PASS ESLint check passed." > "$eslint_result"
+    fi
+) &
+eslint_pid=$!
+
+# Run tests in background
+(
+    echo "Running vitest..."
+    npx vitest run --silent
+    if [ $? -ne 0 ]; then
+        echo "FAIL Tests failed." > "$test_result"
+    else
+        echo "PASS Tests passed." > "$test_result"
+    fi
+) &
+test_pid=$!
+
+# Wait for all to complete
+wait $tsc_pid
+wait $eslint_pid
+wait $test_pid
+
+# Check results
+CHECKS_PASSED=true
+cat "$tsc_result"
+if grep -q "FAIL" "$tsc_result"; then
+    CHECKS_PASSED=false
+fi
+cat "$eslint_result"
+if grep -q "FAIL" "$eslint_result"; then
+    CHECKS_PASSED=false
+fi
+cat "$test_result"
+if grep -q "FAIL" "$test_result"; then
+    CHECKS_PASSED=false
+fi
+
+# Clean up
+rm -f "$tsc_result" "$eslint_result" "$test_result"
+
+if [ "$CHECKS_PASSED" = false ]; then
+    echo "Checks failed. Please fix the issues above."
+    exit 1
+fi
+
+echo "All report-viewer checks passed!"

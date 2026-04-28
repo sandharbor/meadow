@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SRS Explicit Example</title>
+</head>
+<body data-meadow-srs-site-guid="explicit1" data-meadow-srs-page-id="examples/explicit.html">
+  <main>
+    <h1>Explicit Example</h1>
+    <h2>Networking</h2>
+    <meadow-srs-card guid="223e4567f9012" kind="multiline-bidirectional">
+      <meadow-srs-prompt><p>State the OSI stack in order.</p><p>Top to bottom.</p></meadow-srs-prompt>
+      <meadow-srs-answer><ol><li>Application</li><li>Presentation</li><li>Session</li><li>Transport</li><li>Network</li><li>Data Link</li><li>Physical</li></ol></meadow-srs-answer>
+    </meadow-srs-card>
+    <meadow-srs-card guid="223e4567f9013:cloze:1" kind="cloze" cloze-type="classic" sibling-group="223e4567f9013">
+      <meadow-srs-prompt>The flag is <span class="meadow-srs-cloze-blank">...</span>, <span class="meadow-srs-cloze-blank">...</span>, and blue.</meadow-srs-prompt>
+      <meadow-srs-answer>The flag is red, white, and blue.</meadow-srs-answer>
+    </meadow-srs-card>
+    <meadow-srs-card guid="223e4567f9013:cloze:2" kind="cloze" cloze-type="classic" sibling-group="223e4567f9013">
+      <meadow-srs-prompt>The flag is red, white, and <span class="meadow-srs-cloze-blank">...</span>.</meadow-srs-prompt>
+      <meadow-srs-answer>The flag is red, white, and blue.</meadow-srs-answer>
+    </meadow-srs-card>
+  </main>
+  <script type="module">
+    import '/srs/ui/publicEntry.ts';
+  </script>
+</body>
+</html>

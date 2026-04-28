@@ -1,0 +1,3 @@
+One [[dim - sensitivity -- high]] could be if the [[site page type -- initial]] is in one subfolder in your [[source graph]], but then [[source page]]s from other source graph subdirectories are pulled into the [[raw working graph]].
+:
+It's not immediately clear that would be a problem, but it might be something interesting to highlight by some default filter that can be removed, since [[filters can be used to highlight or make the site page sensitive]]

@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "types": [],
+    "isolatedModules": true
+  },
+  "include": [
+    "src/**/*",
+    "types/**/*",
+    "models/**/*",
+    "../publishing_providers/*/backend/**/*"
+  ],
+  "exclude": ["node_modules", "test", "../publishing_providers/*/backend/test"]
+} 

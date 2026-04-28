@@ -1,0 +1,51 @@
+#!/bin/bash
+
+echo "🧪 Running electron_app type check..."
+npx tsc --noEmit --project tsconfig.json
+if [ $? -ne 0 ]; then
+    echo "❌ TypeScript check failed for electron_app."
+    exit 1
+fi
+
+# Verify that every directory under backend/src/html/ containing files is covered
+# by an extraResources entry in package.json. This prevents assets from being
+# silently excluded from the distribution build.
+echo "🧪 Checking extraResources covers all backend/src/html/ assets..."
+HTML_DIR="../backend/src/html"
+EXTRA_RESOURCES=$(node -e "
+  const pkg = require('./package.json');
+  const entries = pkg.build.extraResources
+    .map(r => typeof r === 'string' ? r : r.from)
+    .filter(f => f.startsWith('../backend/src/html/'));
+  entries.forEach(e => console.log(e));
+")
+
+# Find all directories under backend/src/html/ that directly contain files
+MISSING=0
+while IFS= read -r dir; do
+    rel="${dir#$HTML_DIR/}"
+    # Check if this relative path (or any ancestor) is covered by an extraResources entry
+    covered=false
+    while [ -n "$rel" ]; do
+        check="../backend/src/html/$rel"
+        if echo "$EXTRA_RESOURCES" | grep -qxF "$check"; then
+            covered=true
+            break
+        fi
+        # Move up one directory level
+        parent="$(dirname "$rel")"
+        [ "$parent" = "$rel" ] && break
+        rel="$parent"
+    done
+    if [ "$covered" = false ]; then
+        echo "❌ Directory '${dir#$HTML_DIR/}' under backend/src/html/ is not covered by any extraResources entry in package.json"
+        MISSING=1
+    fi
+done < <(find "$HTML_DIR" -mindepth 1 -type d -exec sh -c 'ls -1qA "$1"/*.* >/dev/null 2>&1' _ {} \; -print | sort)
+
+if [ "$MISSING" = "1" ]; then
+    echo "❌ Add the missing directories to extraResources in electron_app/package.json"
+    exit 1
+fi
+
+echo "✅ electron_app checks passed"

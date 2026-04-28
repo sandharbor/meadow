@@ -1,0 +1,1 @@
+Has a [[filter page selector scope]] and works in conjunction with [[filter action]]

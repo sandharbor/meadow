@@ -1,0 +1,14 @@
+{
+  "name": "verify-extended-syntax",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Playwright-driven renderer check for t025 - extended syntax. Loads the generated preview HTML in a real browser, screenshots it, and probes the DOM for each extended-syntax feature so we can see what renders and what falls through as raw markdown.",
+  "scripts": {
+    "verify": "node verify.mjs",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}

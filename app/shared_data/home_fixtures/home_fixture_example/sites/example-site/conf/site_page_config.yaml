@@ -1,0 +1,97 @@
+pages:
+  - fileType: md
+    listType: whitelist
+    outlinksDepth: 3
+    sourceGraphSubdirectory: ""
+    title: Notable Mental Models
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: First Principles Thinking
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Inversion
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Circle of Competence
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Second Order Thinking
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Occam's Razor
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Hanlon's Razor
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Probabilistic Thinking
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Margin of Safety
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Mental Models Overview
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Charlie Munger
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Warren Buffett
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Howard Marks
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Razors
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Latticework of Mental Models
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: Man with a Hammer
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    outlinksDepth: 0
+    sourceGraphSubdirectory: ""
+    title: Cognitive Biases
+    tracked: true
+  - fileType: svg
+    listType: whitelist
+    sourceGraphSubdirectory: images
+    title: Mental Models Diagram
+    tracked: true
+  - fileType: md
+    listType: blacklist
+    sourceGraphSubdirectory: ""
+    title: "2026-02-02"

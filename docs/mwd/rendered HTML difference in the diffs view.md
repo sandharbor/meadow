@@ -1,0 +1,1 @@
+If our html is well formed, then we _should_ be able to show a rendered HTML difference in the [[app component - modal -- site preview -- tab changes]] page, by default, and let the person dive into _source_ level differences, if they want to, at a deeper level

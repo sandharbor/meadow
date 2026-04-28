@@ -1,0 +1,28 @@
+pages:
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t018 - tags
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t018
+    title: t018 ---- unique tags
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t018
+    title: t018 ---- shared tags page 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t018
+    title: t018 ---- shared tags page 2
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t018
+    title: t018 ---- code blocks and inline code should not create tag links
+    tracked: true
+
+

@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/../../mw-cli-node"
+./_module/scripts/prepare

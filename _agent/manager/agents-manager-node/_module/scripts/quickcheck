@@ -1,0 +1,58 @@
+#!/bin/bash
+
+echo "📦 Installing dependencies..."
+npm install --silent
+echo "🧪 Running type checking and linting in parallel..."
+
+# Create temporary files for results
+tsc_result=$(mktemp)
+eslint_result=$(mktemp)
+
+# Run TypeScript check in background
+(
+    echo "Running tsc --noEmit..."
+    npx tsc --noEmit --project tsconfig.json
+    if [ $? -ne 0 ]; then
+        echo "❌ TypeScript check (tsc --noEmit) failed." > "$tsc_result"
+    else
+        echo "✅ TypeScript check (tsc --noEmit) passed." > "$tsc_result"
+    fi
+) &
+tsc_pid=$!
+
+# Run ESLint in background
+(
+    echo "Running ESLint..."
+    npx eslint --max-warnings 0
+    if [ $? -ne 0 ]; then
+        echo "❌ ESLint check failed." > "$eslint_result"
+    else
+        echo "✅ ESLint check passed." > "$eslint_result"
+    fi
+) &
+eslint_pid=$!
+
+# Wait for both to complete
+wait $tsc_pid
+wait $eslint_pid
+
+# Check results
+LINT_PASSED=true
+cat "$tsc_result"
+if grep -q "❌" "$tsc_result"; then
+    LINT_PASSED=false
+fi
+cat "$eslint_result"
+if grep -q "❌" "$eslint_result"; then
+    LINT_PASSED=false
+fi
+
+# Clean up
+rm -f "$tsc_result" "$eslint_result"
+
+if [ "$LINT_PASSED" = false ]; then
+    echo "🚫 Linting and type checking failed for agents-manager-node. Please fix the issues above."
+    exit 1
+else
+    echo "✅ Linting and type checking passed for agents-manager-node"
+fi

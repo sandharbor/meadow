@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+# Keep Node's module resolution aligned with symlink paths. Harmless when
+# nothing is symlinked; required when any directories under src/ or tests/
+# are mounted via symlinks so relative imports still resolve.
+export NODE_OPTIONS="${NODE_OPTIONS:-} --preserve-symlinks"
+
+npm install --force 2>&1
+npx playwright install chromium 2>&1
+
+# Build run ID: timestamp + agent name suffix if running inside an agent
+RUN_ID="$(date +"%Y-%m-%d_%H-%M-%S")"
+AGENT_NAME_FILE="../../_agent/agent/.agent_info/name"
+if [ -f "$AGENT_NAME_FILE" ]; then
+    RUN_ID="${RUN_ID}_$(cat "$AGENT_NAME_FILE" | tr -d '[:space:]')"
+fi
+
+npx tsx src/cli.ts --run-id "$RUN_ID" "$@"

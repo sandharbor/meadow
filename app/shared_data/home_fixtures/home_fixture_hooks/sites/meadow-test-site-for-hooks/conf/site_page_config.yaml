@@ -1,0 +1,1000 @@
+pages:
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: a race dynamic
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: activation function
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: active learning
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: AGI definition
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: AI research
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: alias - training loss = entropy
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: aligned by default
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: alternative attention mechanisms
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: architectural breakthrough
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: Artificial general intelligence - AGI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: ASI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: automatic AI researcher
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: automatic domain randomization - ADR
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: b evals in phoenix
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: breakthrough
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: C how transformers work
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: c Statquest - transformer neural networks - ChatGPT's foundation
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: C statquest long short term memory LSTM
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: C the attention mechanism demystified
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: C transformers from scratch
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: capacity
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: certainty
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: certainty, probability, and confidence
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: chat - dot product
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: chat - positional encoding values
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: chat - self-attention
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: chat - SSM architecture
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: chat - training generalization
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: chat – constitutional AI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: China
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: circuit
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: company - Anthropic
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: company - Google
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: company - OpenAI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: Company Goverance
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: compute multiplier - CM
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - AI can speed up AI research
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - AI secret technique proliferation
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - arms-race dynamics
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - asking humans about areas of uncertainty
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - capabilities that you actually care about
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - Geo Hotz somehow knew the GPT4 architecture
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - in most places, AI is about as good as an intern
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - incentives can be so powerful that they override explicit governing
+      structures
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - inference can be cheaper with one bit models
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - maybe we should train smaller models for longer
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - no binding international treaties
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - one million token context window
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - scaling plateaus before reaching human level intelligence
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - self improvement
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - smaller models cost less to run inference on
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - the data advantage is going to drive value creation
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - the KV Cache is only used during inference because it is done
+      serially
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - using bigger models to interpret smaller models
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - we don't need completely new capabilities
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - you should never train for interpretability
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: con - YouTube has a big data advantage
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: constitutional AI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: convergence
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: core metrics
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: cosine similarity
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: create relevance and force curiosity
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: critical model size
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: cross-validation
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: D all in 111 - Microsoft stake in open AI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diff - core metric like training loss vs. a capability that you actually
+      care about
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diff - discovered vs. invented
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diff - empiricist vs. theoretician
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diff - fundamental theory vs. practical issue
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diff - model capacity vs. generalizability
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diff - open vs. closed models
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diff - training vs inference
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diff - vanishing vs. exploding gradient
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - capacity density
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - context window length
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - context window length -- long
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - inference cost
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - inference cost -- lower
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - inference speed -- faster
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - model capacity
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - model size
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - model size -- smaller
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - number of parameters
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - number of parameters -- higher
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - prediction generalizability
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - training time
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: dim - training time -- long
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: diminishing returns
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: discovery fiction
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: domain randomization
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: doomed by default
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: economically valuable
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: empiricist
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: ensemble multiple attempts
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: entropy
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: evals
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: exploding gradient problem
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: exponential progress
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: exponential thinking
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: forward pass
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: frontier models
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: generalization
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: GPT-4
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: gradient descent
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: grokking
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: hold out
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: human
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: human in the loop - HITL
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: hypothesis articulation
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: identity function
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: inference
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: inference might cost more than training
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: information on constructing evals
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: input sequence
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: interpretability research
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: knowledge schema
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: leakage
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: leave one out
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: loss function
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: LSTMs could not be trained in parallel
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: mechanistic interpretability
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: misuse
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: mixture of experts - MoE
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: moc - architectures
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: moc - plateaus
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: moc - scaling
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: model - o3
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: multiple models
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: narrow ASI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: new information
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: next token prediction
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: open model
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: P GPQA - A Graduate-Level Google-Proof Q&A Benchmark
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: performance benchmarks
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Albert Gu
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Alexander Rush
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Andrej Karpathy
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Chamath Palihapitiya
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Dario Amodei
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: person - David Friedberg
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Dwarkesh Patel
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Geo Hotz
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: person - Ilya Sutskever
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Michael Nielsen
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: person - Tri Dao
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: positional encoding
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: practical issue - it was hard to get data for robotics
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: practical issue - running out of data
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: practical issues
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: project - Claude
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: project - mamba
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: race with China
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: reasoning model
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: recurrent neural networks - RNN
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: ref - mamba the easy way
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: ref - mamba the hard way
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: ref - statquest recurrent neural networks
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: ref- podcast-data-skeptic-cross-validation
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: reinforcement learning - RL
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: reinforcement learning with human feedback - RLHF
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: risks
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: robotics
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: scaling problems
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: school - CMU
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: school - Princeton
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: self-attention
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: self-supervised learning - SSL
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: simulation
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: slang - groks
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: State Space Model - SSM architecture
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: synthetic data
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: T ai government race to ASI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: T discovery fiction
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: T Geo Hotz what GPT-4 is
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: T the chinchilla trap
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--consumption-notes
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--flashcards
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--flashcards--transformers
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--podcast
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--podcast-data-skeptic
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--pub-to-machnotes
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--srs--ml
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--visualizations
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: x-tagpages
+    title: tag--well-explained
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: test-time compute
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: the data wall
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: The OpenAI leadership drama and board turnover
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: token
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: trade secrets
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: training
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: training loss
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: training with inference efficiency as the goal
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: transformers
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: true AGI
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    outlinksDepth: 4
+    sourceGraphSubdirectory: ai
+    title: V Dwarkesh and Anthropic CEO in 2023
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: V how a transformer is used at inference time versus training time
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: vanishing gradient problem
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: very hard challenge
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ai
+    title: X single head
+    tracked: true

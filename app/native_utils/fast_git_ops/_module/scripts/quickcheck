@@ -1,0 +1,36 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+echo "🧪 Running fast_git_ops tests..."
+
+# Ensure release binary exists (integration tests call it directly)
+RELEASE_BIN="$SCRIPT_DIR/fast_git_ops_code/target/release/fast_git_ops_bin"
+if [ ! -f "$RELEASE_BIN" ]; then
+    echo "🔧 Release binary missing; building..."
+    (
+        cd "$SCRIPT_DIR/fast_git_ops_code"
+        ./make_release
+    )
+else
+    echo "✅ Release binary already present; skipping build."
+fi
+
+# Install test dependencies
+echo "Installing test dependencies..."
+cd "$SCRIPT_DIR/fast_git_ops_test"
+npm install
+if [ $? -ne 0 ]; then
+    echo "❌ npm install failed."
+    exit 1
+fi
+
+# Run the integration tests
+echo "Running integration tests..."
+npm test
+if [ $? -ne 0 ]; then
+    echo "❌ Integration tests failed."
+    exit 1
+fi
+
+echo "✅ All fast_git_ops tests passed!"

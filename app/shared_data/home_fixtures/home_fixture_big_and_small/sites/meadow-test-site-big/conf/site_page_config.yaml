@@ -1,0 +1,529 @@
+pages:
+  - fileType: md
+    inlinksDepth: 100
+    listType: whitelist
+    outlinksDepth: 4
+    sourceGraphSubdirectory: ""
+    title: main page
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t001 - deeply nested
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t001
+    title: t001 ---- child 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t001/deeper
+    title: t001 ---- child 2
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t001
+    title: t001 ---- child 3 in same dir as child 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t002 - dup pages and images
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t002 ---- dup
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t002 ---- dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- dup
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- dup
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- dup 2
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t002/extra nested
+    title: t002 ---- dup 2
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to extra nested dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to nested dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to nested png dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002/extra nested
+    title: t002 ---- points to png dup 2 with no path from extra nested
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t002 ---- points to png dup 2 with no path from root
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002 - second directory
+    title: t002 ---- points to png dup 2 with no path from second directory
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to png dup 2 with no path from t002
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to root dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to root png dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t003 - link to section
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t003 ---- page with section to link to
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t005 - in and out links
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t005 ---- has in link and points back to same page
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t006 - embedded media
+    tracked: true
+  - fileType: gif
+    listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: t006 --- meadow-flower-petals-ani
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: t006 --- meadow
+    tracked: true
+  - fileType: svg
+    listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: t006 --- meadow-flower
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t007 - blacklisted
+    tracked: true
+  - fileType: png
+    listType: blacklist
+    sourceGraphSubdirectory: ""
+    title: t007 ---- blacklisted image
+    tracked: true
+  - fileType: md
+    listType: blacklist
+    sourceGraphSubdirectory: ""
+    title: t007 ---- blacklisted page
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t007 ---- child of blacklisted page
+    tracked: true
+  - fileType: md
+    inlinksDepth: 0
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t008 - page conf do not include inlinks
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t008 ---- has in link to page conf test
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    outlinksDepth: 0
+    sourceGraphSubdirectory: ""
+    title: t009 - page conf graph depth
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t009 ---- page conf graph depth 2
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t009 ---- page conf graph depth 3
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t010 - linking in same depth
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t010
+    title: t010 ---- same depth 1 - 2 out 0 in
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t010
+    title: t010 ---- same depth 2 - 1 out 2 in
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t010
+    title: t010 ---- same depth 3 - 1 out 3 in
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t010
+    title: t010 ---- same depth 4 - no connection
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t010
+    title: t010 ---- same depth 5 - 1 out 0 in
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t011 - special links
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t011
+    title: t011 ---- page name with special characters -- before dot . and after dot
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t011
+    title: test.io which looks like a filename suffix
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t011
+    title: "t011 ---- page name with special characters -- single quote ' in name"
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t011
+    title: t011 --- pointed to by an escaped alias outside a table
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t011
+    title: t011 --- table test row 1 column 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t011
+    title: t011 --- table test row 1 column 3
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t011
+    title: t011 --- table test row 2 column 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t011
+    title: t011 --- table test row 2 column 3
+    tracked: true
+  - fileType: md
+    inlinksDepth: 1
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t013 - inlinks_depth
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t013 ---- inlinks_depth - branch 1 - depth 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t013 ---- inlinks_depth - branch 1 - depth 2
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t013 ---- inlinks_depth - branch 1 - depth 3
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t013 ---- inlinks_depth - branch 2 - depth 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t013 ---- inlinks_depth - branch 2 - depth 2 from outlink
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t014
+    title: t014 ---- in-link in nested folder to main page
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t015 - block anchors
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t015 ---- page 1 with backlinks to block anchors
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t015 ---- page 2 with backlinks to block anchors
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t017 - transclusion
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017
+    title: t017 ---- block source
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017
+    title: t017 ---- block transclusion
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017
+    title: t017 ---- deep transclusion
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017/deep transclusion levels 3 and 4
+    title: t017 ---- deep transclusion - level 3
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017/deep transclusion levels 3 and 4
+    title: t017 ---- deep transclusion - level 4
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017
+    title: t017 ---- full page source
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017
+    title: t017 ---- full page transclusion
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    outlinksDepth: 1
+    sourceGraphSubdirectory: t017 - second directory
+    title: t017 ---- linked from deep transclusion level 3
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017 - second directory
+    title: t017 ---- linked from within this second directory
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017
+    title: t017 ---- section source
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t017
+    title: t017 ---- section transclusion
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t018 - tags
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t018
+    title: t018 ---- code blocks and inline code should not create tag links
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t018
+    title: t018 ---- shared tags page 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t018
+    title: t018 ---- shared tags page 2
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t018
+    title: t018 ---- unique tags
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t019 - embeds
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t019
+    title: t019 ---- mermaid
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t019
+    title: t019 ---- typescript
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t020 - code blocks
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t020
+    title: t020 ---- tags in code blocks should not become tag links
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t020
+    title: t020 ---- page links in code blocks should not become links
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t020
+    title: t020 ---- code blocks should end properly
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t021 - link gaps
+    tracked: true
+  - fileType: md
+    inlinksDepth: 0
+    listType: whitelist
+    sourceGraphSubdirectory: t021
+    title: t021 ---- inlink gap
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    outlinksDepth: 0
+    sourceGraphSubdirectory: t021
+    title: t021 ---- outlink gap
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t022 - spaced repetition
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t022
+    title: t022 ---- alpha cards
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t022
+    title: t022 ---- beta cards
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t023 - backlinks
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t023/multiple_links
+    title: t023 ---- page a
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t023/multiple_links
+    title: t023 ---- page b
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t023/table
+    title: t023 ---- table row 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t023/table
+    title: t023 ---- table row 2
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ''
+    title: t024 - markdown links
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t024
+    title: t024 ---- linked page
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t024/deeper
+    title: t024 ---- deep page
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t024
+    title: t024 ---- inlink only
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t024
+    title: t024 ---- test image
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ''
+    title: t025 - extended syntax
+    tracked: true

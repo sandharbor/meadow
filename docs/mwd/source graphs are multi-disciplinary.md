@@ -1,0 +1,3 @@
+[[source graph]]s are _link not tracked_.
+
+In other words, a single source graph can have many different subject areas within it, all linked together.  This is why it can be a challenge to do [[constrained graph expansion]] bounded by some _link not tracked_ that needs to be managed.  It's also why there can be a real [[sensitivity to accidentally publishing]], because some of the subject areas within the [[source graph]] may be [[dim - sensitivity -- high]].

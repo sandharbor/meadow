@@ -1,0 +1,16 @@
+{
+  "name": "working_graph_integration_test",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx integration_test.ts"
+  },
+  "devDependencies": {
+    "tape": "^5.7.2",
+    "@types/tape": "^5.6.4",
+    "tsx": "^4.19.3"
+  }
+}
+
+

@@ -1,0 +1,3 @@
+appUpdateDNSName: dev.meadow-notes.com
+backendPort: 3001
+frontendPort: 3000

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# This will run the Rust unit tests for the link_parser
+echo "Running link_parser tests..."
+
+# Get the directory of the script itself
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+LINK_PARSER_DIR="$SCRIPT_DIR/working_graph_code/link_parser"
+
+if [ -d "$LINK_PARSER_DIR" ]; then
+  echo "Changing to $LINK_PARSER_DIR"
+  cd "$LINK_PARSER_DIR" || exit 1
+  cargo test
+  CARGO_EXIT_CODE=$?
+  exit $CARGO_EXIT_CODE
+else
+  echo "Error: link_parser directory not found at $LINK_PARSER_DIR."
+  echo "Current directory: $(pwd)"
+  exit 1
+fi
+
+

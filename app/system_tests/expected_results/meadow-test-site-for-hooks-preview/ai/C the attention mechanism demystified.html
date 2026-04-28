@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C the attention mechanism demystified</title>
+    <link rel="stylesheet" href="../_mw_assets/style.4cd71df2.css">
+    <script src="../_mw_assets/javascript.38f93469.js"></script>
+</head>
+<body>
+    <header>
+        <div id="new-version-pointer" style="display:none"></div>
+        <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="video%20-%20Dwarkesh%20and%20Anthropic%20CEO%20in%202023.html" class="breadcrumb-link">video - Dwarkesh and Anthropic CEO in 2023</a><span class="breadcrumb-separator">→</span><a href="transformers.html" class="breadcrumb-link">transformers</a><span class="breadcrumb-separator">→</span><span class="breadcrumb-current">C the attention mechanism demystified</span></nav>
+    </header>
+    <main>
+        <h1>C the attention mechanism demystified</h1>
+        <p><a href="https://momath.org/wp-content/uploads/2023/06/Rohan_Mehta_compressed.pdf" rel="noreferrer noopener" target="_blank">https://momath.org/wp-content/uploads/2023/06/Rohan_Mehta_compressed.pdf</a>
+<a id="block-ad24f0a" class="block-anchor"></a></p>
+<p>Was described on Twitter as <a href="../tweet%20-%20discovery%20fiction.html">tweet - discovery fiction</a>
+<a id="block-415ca90" class="block-anchor"></a></p>
+<h3>Key Ideas</h3>
+<p><a id="block-4dfa054" class="block-anchor"></a></p>
+<p>^5a8e26
+<a id="block-2ab1e33" class="block-anchor"></a></p>
+<p>Each word has a context vector.
+<a id="block-e13a43f" class="block-anchor"></a></p>
+<p>There are multiple embedding spaces.  One for semantic embeddings, others for queries and keys.
+<a id="block-4632a31" class="block-anchor"></a></p>
+<p>The attention and betting&#39;s are multi head. For example, one head might be who is doing some action, and another head might be to whom they are doing it.
+<a id="block-4b32ec7" class="block-anchor"></a></p>
+<h3>All</h3>
+<p><a id="block-9dde178" class="block-anchor"></a></p>
+<p>Just like a standard layer of neurons, the <a href="self-attention.html">self-attention</a> operation is some parameterized, differentiable function we can include in our neural nets. Unlike these layers though, it works on sets of vectors (rather than vectors themselves), and learns some function to linearly combine each element with all the others.
+<a id="block-923d9e3" class="block-anchor"></a></p>
+<p>RNNs work on single vectors for context.
+<a id="block-0f5b19a" class="block-anchor"></a></p>
+<p><a href="chat%20-%20dot%20product.html">chat - dot product</a>
+<a id="block-f8852b9" class="block-anchor"></a></p>
+<p>Consider the sentence &lt;He picked up the tennis ball and found it was wet.= We would probably expect &lt;it= to attend highly to ball= (what &lt;it= is referring to) while &lt;ball= would probably attend highly to &lt;tennis= and picked up= (its type and the action performed on it), but much more weakly to &lt;it= (after all, what new information does it gain from this?). x <a href="new%20information.html">new information</a>
+<a id="block-527fa04" class="block-anchor"></a></p>
+<p>Multiple embedding spaces.  A semantic space, a key space and a query space.
+<a id="block-1d7697e" class="block-anchor"></a></p>
+<p>To adopt the transformer&#39;s lingo, we refer to these key- and lock-representations as queries (key-representations) and keys (lock-representations), respectively. Put simply, a word&#39;s key is the information it chooses to expose about itself (the lock), while its query is the information it looks for in other words, when determining how much to attend to them (the key).
+<a id="block-8c74839" class="block-anchor"></a></p>
+<p><a href="X%20single%20head.html">X single head</a>
+<a id="block-1bb3c67" class="block-anchor"></a></p>
+<p>Contrast, two of the heads in multi had attention. One of the heads might be, who is doing some action, and the other head might be to whom are they doing it
+<a id="block-d67e4ba" class="block-anchor"></a></p>
+<p><a href="../x-tagpages/tag--visualizations.html">tag--visualizations</a> <a href="../x-tagpages/tag--well-explained.html">tag--well-explained</a>
+<a id="block-5089d2a" class="block-anchor"></a></p>
+
+    </main>
+    <footer>
+        <h2>Backlinks</h2>
+<ul>
+<li class="backlink"><a href="transformers.html">transformers</a>
+              <div class="backlink-context-container">
+                <div class="backlink-context">
+                  <p><span class="highlight-do-not-link">C the attention mechanism demystified</span></p>
+
+                </div>
+                <a class="backlink-see-in-context" href="transformers.html#block-599512e"><i>see in context</i></a>
+              </div>
+            
+              <div class="backlink-context-container">
+                <div class="backlink-context">
+                  <div class="transcluded"><a class="transcluded-see-in-context" href="C%20the%20attention%20mechanism%20demystified.html" title="See in context">⤢</a><div class="transcluded-content"><h3>Key Ideas</h3>
+<p>^5a8e26</p>
+<p>Each word has a context vector.</p>
+<p>There are multiple embedding spaces.  One for semantic embeddings, others for queries and keys.</p>
+<p>The attention and betting&#39;s are multi head. For example, one head might be who is doing some action, and another head might be to whom they are doing it.</p>
+</div></div>
+                </div>
+                <a class="backlink-see-in-context" href="transformers.html#block-f1375a8"><i>see in context</i></a>
+              </div>
+            </li>
+</ul>
+
+    </footer>
+</body>
+</html>

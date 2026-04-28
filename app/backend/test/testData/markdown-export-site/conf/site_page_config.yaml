@@ -1,0 +1,17 @@
+pages:
+  - inlinksDepth: 0
+    listType: whitelist
+    outlinksDepth: 2
+    title: main page
+  - inlinksDepth: 0
+    listType: whitelist
+    outlinksDepth: 1
+    title: connected page
+  - inlinksDepth: 0
+    listType: whitelist
+    outlinksDepth: 1
+    title: orphaned page
+  - inlinksDepth: 0
+    listType: blacklist
+    outlinksDepth: 0
+    title: blacklisted page

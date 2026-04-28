@@ -1,0 +1,108 @@
+#!/usr/bin/env node
+/*
+Apply (or refresh) the standard Apache-2.0 copyright header on every tracked
+.ts / .tsx file in the repo.
+
+- Uses `git ls-files` so gitignored trees (cloud/, extension fixtures, etc.)
+  are skipped automatically.
+- The header is the first thing in the file, followed by exactly one blank
+  line, then the existing code.
+- If the file already starts with a Sand Harbor / Apache-2.0 block, that
+  block is replaced (idempotent — re-running doesn't stack headers).
+- A leading `#!shebang` line, if present, stays on line 1; the header sits
+  immediately below it.
+*/
+import { execSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, "..");
+
+const HEADER = `/*
+Copyright 2026 Sand Harbor Software, LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/`;
+
+function listFiles() {
+  const out = execSync(
+    "git ls-files --cached --others --exclude-standard -- '*.ts' '*.tsx'",
+    { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
+  );
+  return out
+    .split("\n")
+    .filter(Boolean)
+    .map((rel) => path.join(REPO_ROOT, rel));
+}
+
+// Returns the index just past `*/` if `text` starts with a Sand-Harbor /
+// Apache-2.0 block-comment header, else null. JSDoc and unrelated leading
+// `/* ... */` blocks are left alone.
+function existingHeaderEnd(text) {
+  if (!text.startsWith("/*")) return null;
+  const close = text.indexOf("*/");
+  if (close === -1) return null;
+  const block = text.slice(0, close + 2);
+  const looksLikeOurs =
+    /Sand Harbor Software/i.test(block) ||
+    /Licensed under the Apache License/i.test(block);
+  return looksLikeOurs ? close + 2 : null;
+}
+
+function rewrite(original) {
+  let shebang = "";
+  let body = original;
+  if (body.startsWith("#!")) {
+    const nl = body.indexOf("\n");
+    if (nl === -1) {
+      shebang = body + "\n";
+      body = "";
+    } else {
+      shebang = body.slice(0, nl + 1);
+      body = body.slice(nl + 1);
+    }
+  }
+
+  const headerEnd = existingHeaderEnd(body);
+  if (headerEnd !== null) {
+    body = body.slice(headerEnd);
+  }
+  body = body.replace(/^\s+/, "");
+
+  const tail = body.length === 0 ? "\n" : `\n\n${body}`;
+  return `${shebang}${HEADER}${tail}`;
+}
+
+function main() {
+  const files = listFiles();
+  let updated = 0;
+  let unchanged = 0;
+  for (const file of files) {
+    if (!fs.existsSync(file)) continue;
+    const original = fs.readFileSync(file, "utf8");
+    const next = rewrite(original);
+    if (next !== original) {
+      fs.writeFileSync(file, next);
+      updated++;
+    } else {
+      unchanged++;
+    }
+  }
+  console.log(
+    `apply-copyright: ${updated} updated, ${unchanged} unchanged, ${files.length} scanned`,
+  );
+}
+
+main();

@@ -1,0 +1,89 @@
+#!/bin/bash
+
+echo "🧪 Running working_graph tests in parallel..."
+
+# Ensure release binary exists (backend relies on it; we do NOT cargo-run from backend).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+RELEASE_BIN="$SCRIPT_DIR/working_graph_code/target/release/working_graph_bin"
+if [ ! -f "$RELEASE_BIN" ]; then
+    echo "🔧 Release binary missing; building..."
+    (
+        cd "$SCRIPT_DIR/working_graph_code"
+        ./make_release
+    )
+else
+    echo "✅ Release binary already present; skipping build."
+fi
+
+# Create temporary files for results
+link_parser_result=$(mktemp)
+unit_test_result=$(mktemp)
+integration_result=$(mktemp)
+
+# Run link_parser tests in background
+(
+    echo "Running link_parser tests..."
+    ./test_link_parser
+    if [ $? -ne 0 ]; then
+        echo "❌ link_parser tests failed." > "$link_parser_result"
+    else
+        echo "✅ link_parser tests passed." > "$link_parser_result"
+    fi
+) &
+link_parser_pid=$!
+
+# Run working_graph unit tests in background
+(
+    echo "Running working_graph unit tests..."
+    cd "$SCRIPT_DIR/working_graph_code" && cargo test --quiet
+    if [ $? -ne 0 ]; then
+        echo "❌ working_graph unit tests failed." > "$unit_test_result"
+    else
+        echo "✅ working_graph unit tests passed." > "$unit_test_result"
+    fi
+) &
+unit_test_pid=$!
+
+# Run integration tests in background
+(
+    echo "Running integration tests..."
+    ./test
+    if [ $? -ne 0 ]; then
+        echo "❌ integration tests failed." > "$integration_result"
+    else
+        echo "✅ integration tests passed." > "$integration_result"
+    fi
+) &
+integration_pid=$!
+
+# Wait for all to complete
+wait $link_parser_pid
+wait $unit_test_pid
+wait $integration_pid
+
+# Check results
+TESTS_PASSED=true
+cat "$link_parser_result"
+if grep -q "❌" "$link_parser_result"; then
+    TESTS_PASSED=false
+fi
+cat "$unit_test_result"
+if grep -q "❌" "$unit_test_result"; then
+    TESTS_PASSED=false
+fi
+cat "$integration_result"
+if grep -q "❌" "$integration_result"; then
+    TESTS_PASSED=false
+fi
+
+# Clean up
+rm -f "$link_parser_result" "$unit_test_result" "$integration_result"
+
+if [ "$TESTS_PASSED" = false ]; then
+    echo "🚫 Some tests failed."
+    exit 1
+else
+    echo "✅ All working_graph tests passed!"
+fi
+
+

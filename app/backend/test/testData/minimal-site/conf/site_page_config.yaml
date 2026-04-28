@@ -1,0 +1,13 @@
+pages:
+  - inlinksDepth: 0
+    listType: whitelist
+    outlinksDepth: 1
+    title: another page
+  - inlinksDepth: 0
+    listType: whitelist
+    outlinksDepth: 1
+    title: child page
+  - inlinksDepth: 0
+    listType: whitelist
+    outlinksDepth: 2
+    title: main page

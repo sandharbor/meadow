@@ -1,0 +1,3 @@
+[[site page]]s start in the [[raw working graph]].  They must become [[site page tracking state -- tracked]] to become part of the [[tracked working graph]].  As part of tracking a site page, you must decide whether to [[whitelist]] the site page, or [[blacklist]] it.
+
+We have some tooling that allows whitelisting and tracking site pages in bulk, assuming they are not [[sensitive site page]].  If they _are_ sensitive, then we [[block casual bulk site page whitelisting for sensitive site pages]].

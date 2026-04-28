@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "🔧 Running prepare scripts..."
+
+for dir in */; do
+    if [ -f "$dir/_module/scripts/prepare" ]; then
+        "$dir/_module/scripts/prepare"
+    fi
+done
+
+echo "✅ All prepare scripts completed"

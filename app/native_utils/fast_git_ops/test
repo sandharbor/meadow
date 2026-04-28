@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Run the integration tests from the fast_git_ops_test directory
+cd "$(dirname "${BASH_SOURCE[0]}")/fast_git_ops_test"
+npm test

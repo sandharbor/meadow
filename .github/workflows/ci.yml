@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quickcheck:
+    name: prepare + quickcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and target dirs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/native_utils/fast_git_ops/fast_git_ops_code/target
+            app/native_utils/working_graph/working_graph_code/target
+            app/native_utils/source_page_search_by_title/source_page_search_by_title_code/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('app/native_utils/**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-
+
+      - name: Run prepare
+        run: ./prepare
+
+      - name: Run quickcheck
+        env:
+          QUICKCHECK_TIMEOUT: "600"
+          MEADOW_SYSTEM_TESTS_SERVER_STARTUP_TIMEOUT_MS: "60000"
+        run: ./quickcheck
+
+      - name: Dump quickcheck logs on failure
+        if: failure()
+        run: |
+          for d in /tmp/quickcheck.* /tmp/quickcheck-app.*; do
+            [ -d "$d" ] || continue
+            echo "=========================================="
+            echo "Log directory: $d"
+            echo "=========================================="
+            for f in "$d"/*.log; do
+              [ -f "$f" ] || continue
+              echo ""
+              echo "----- $f -----"
+              cat "$f"
+            done
+          done

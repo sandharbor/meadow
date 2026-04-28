@@ -1,0 +1,123 @@
+#!/bin/bash
+
+# Check for required directories and files in e2e-tests/
+REQUIRED_DIRS=(
+    "report-viewer"
+    "test-runner"
+)
+REQUIRED_FILES=(
+)
+OK_FILES=(".DS_Store")
+OK_DIRS=("_module")
+
+echo_and_exit() {
+    echo "$1"
+    exit 1
+}
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+        echo_and_exit "❌ Required directory '$dir' is missing."
+    fi
+done
+
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        echo_and_exit "❌ Required file '$file' is missing."
+    fi
+done
+
+for entry in * .[^.]*; do
+    # Skip . and .. and literal glob pattern when no matches
+    [ "$entry" = "." ] && continue
+    [ "$entry" = ".." ] && continue
+    [ "$entry" = '.[^.]*' ] && continue
+    [ ! -e "$entry" ] && continue
+    is_ok=false
+    for dir in "${REQUIRED_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${REQUIRED_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${OK_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for dir in "${OK_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    if [ "$is_ok" = false ]; then
+        echo_and_exit "❌ Extraneous file or directory found in e2e-tests/: $entry. Should have been moved or deleted."
+    fi
+done
+
+E2E_LOG_DIR=$(mktemp -d "${TMPDIR:-/tmp}/quickcheck-e2e.XXXXXX")
+
+function check_dir() {
+    local dir="$1"
+    local log_file="$E2E_LOG_DIR/${dir}.log"
+
+    if [ ! -d "$dir" ]; then
+        echo "❌ Required directory '$dir' is missing." > "$log_file"
+        return 1
+    fi
+
+    if [ ! -f "$dir/_module/scripts/quickcheck" ]; then
+        echo "❌ _module/scripts/quickcheck not found at $dir." > "$log_file"
+        return 1
+    fi
+
+    (
+        cd "$dir"
+        ./_module/scripts/quickcheck
+    ) > "$log_file" 2>&1
+}
+
+# Run check_dir calls in parallel for speed
+echo "🧪 Running e2e-tests directory checks in parallel..."
+
+E2E_CHECK_DIRS=("report-viewer" "test-runner")
+
+pids=()
+dir_for_pid=()
+for dir in "${E2E_CHECK_DIRS[@]}"; do
+    check_dir "$dir" &
+    pids+=($!)
+    dir_for_pid+=("$dir")
+done
+
+# Wait for all background jobs to complete
+exit_code=0
+failed_dirs=()
+for i in "${!pids[@]}"; do
+    if ! wait "${pids[$i]}"; then
+        exit_code=1
+        failed_dirs+=("${dir_for_pid[$i]}")
+    fi
+done
+
+if [ $exit_code -ne 0 ]; then
+    for dir in "${failed_dirs[@]}"; do
+        log_file="$E2E_LOG_DIR/${dir}.log"
+        echo ""
+        echo "❌ e2e-tests/$dir failed. Log: $log_file"
+        echo "--- last 30 lines ---"
+        tail -30 "$log_file"
+        echo "---"
+    done
+    echo_and_exit "❌ One or more e2e-tests directory checks failed (full logs in $E2E_LOG_DIR)"
+fi
+
+echo "✅ All e2e-tests checks passed!"

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>video - how a transformer is used at inference time versus training time</title>
+    <link rel="stylesheet" href="../_mw_assets/style.4cd71df2.css">
+    <script src="../_mw_assets/javascript.38f93469.js"></script>
+</head>
+<body>
+    <header>
+        <div id="new-version-pointer" style="display:none"></div>
+        <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="video%20-%20Dwarkesh%20and%20Anthropic%20CEO%20in%202023.html" class="breadcrumb-link">video - Dwarkesh and Anthropic CEO in 2023</a><span class="breadcrumb-separator">→</span><a href="concept%20-%20you%20should%20never%20train%20for%20interpretability.html" class="breadcrumb-link">concept - you should never train for interpretability</a><span class="breadcrumb-separator">→</span><a href="training.html" class="breadcrumb-link">training</a><span class="breadcrumb-separator">→</span><a href="diff%20-%20training%20vs%20inference.html" class="breadcrumb-link">diff - training vs inference</a><span class="breadcrumb-separator">→</span><span class="breadcrumb-current">video - how a transformer is used at inference time versus training time</span></nav>
+    </header>
+    <main>
+        <h1>video - how a transformer is used at inference time versus training time</h1>
+        <p><a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd" rel="noreferrer noopener" target="_blank">https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd</a>
+<a id="block-7815388" class="block-anchor"></a></p>
+<p><span class="link-not-tracked">link not tracked</span>
+<a id="block-8a07e24" class="block-anchor"></a></p>
+<p><a href="diff%20-%20training%20vs%20inference.html">diff - training vs inference</a>
+<a id="block-6c4254e" class="block-anchor"></a></p>
+<p>At like one minute, he&#39;s working on the <span class="link-not-tracked">link not tracked</span>
+<a id="block-b14c3ac" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=76s" rel="noreferrer noopener" target="_blank">1:16</a> he points to the <span class="link-not-tracked">link not tracked</span> it goes into more details about <span class="link-not-tracked">link not tracked</span>
+<a id="block-6207a4a" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=330s" rel="noreferrer noopener" target="_blank">5:30</a> the results of tokenization are what is called <span class="link-not-tracked">link not tracked</span>s
+<a id="block-47915bc" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=480s" rel="noreferrer noopener" target="_blank">8:00</a> what does the <span class="link-not-tracked">link not tracked</span> do during <a href="training.html">training</a>?  It takes the input ids and generates the <span class="link-not-tracked">link not tracked</span> in the <span class="link-not-tracked">link not tracked</span>.  Another name for embedding vectors is <span class="link-not-tracked">link not tracked</span>.  He mentioned that they are hidden <span class="link-not-tracked">link not tracked</span>
+<a id="block-7ecf595" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=598s" rel="noreferrer noopener" target="_blank">9:58</a> <span class="link-not-tracked">link not tracked</span> ... The one with 768 is <span class="link-not-tracked">link not tracked</span>
+<a id="block-4e7a5d0" class="block-anchor"></a></p>
+<p><a href="https://www.youtube.com/watch?v=IGu7ivuy1Ag#t=10:50.96" rel="noreferrer noopener" target="_blank">00:10:50</a> during <a href="inference.html">inference</a>, The <span class="link-not-tracked">link not tracked</span> takes in <span class="link-not-tracked">link not tracked</span>
+<a id="block-bff99d0" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=670s" rel="noreferrer noopener" target="_blank">11:10</a> at timestamp 1 we pass the <span class="link-not-tracked">link not tracked</span> which looks like <code class="inline-code">&lt;s&gt;</code>
+<a id="block-25f2639" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=700s" rel="noreferrer noopener" target="_blank">11:40</a>, we <span class="link-not-tracked">link not tracked</span> the <span class="link-not-tracked">link not tracked</span> on the <span class="link-not-tracked">link not tracked</span>
+<a id="block-82bfce4" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=810s" rel="noreferrer noopener" target="_blank">13:30</a> we have a <span class="link-not-tracked">link not tracked</span>, which is a <span class="link-not-tracked">link not tracked</span> or a <span class="link-not-tracked">link not tracked</span> ... &quot;so basically a <span class="link-not-tracked">link not tracked</span>&quot;.  We basically map the <span class="link-not-tracked">link not tracked</span> of the <span class="link-not-tracked">link not tracked</span> through that linear layer to create the <span class="link-not-tracked">link not tracked</span>s, which is a vector of the size of the <span class="link-not-tracked">link not tracked</span> (50,000 in this example).  The logits are basically <span class="link-not-tracked">link not tracked</span>.
+<a id="block-bf89d86" class="block-anchor"></a></p>
+<p>At maybe 15 the next token is simply the <span class="link-not-tracked">link not tracked</span> with the highest value
+<a id="block-4056b14" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=1050s" rel="noreferrer noopener" target="_blank">17:30</a> when you <span class="link-not-tracked">link not tracked</span> the <span class="link-not-tracked">link not tracked</span> for the second token, you condition it with the <span class="link-not-tracked">link not tracked</span> from the <span class="link-not-tracked">link not tracked</span> and both of the <span class="link-not-tracked">link not tracked</span> (the <span class="link-not-tracked">link not tracked</span>&#39;s id and the next new token&#39;s is)
+<a id="block-fd70a56" class="block-anchor"></a></p>
+<p>At 25 he talks about the <span class="link-not-tracked">link not tracked</span> that is generated at the end.
+<a id="block-114e63a" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=1770s" rel="noreferrer noopener" target="_blank">29:30</a> taking the highest score from the <span class="link-not-tracked">link not tracked</span> is known as <span class="link-not-tracked">link not tracked</span>, but there are other approaches as well such as <span class="link-not-tracked">link not tracked</span> x <span class="link-not-tracked">link not tracked</span>
+<a id="block-c048808" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=2070s" rel="noreferrer noopener" target="_blank">34:30</a> when training something like ChatGPT the <span class="link-not-tracked">link not tracked</span> are actually the <span class="link-not-tracked">link not tracked</span>s, shifted one to the right with the <span class="link-not-tracked">link not tracked</span> prepended.
+<a id="block-9a5cdd2" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=2385s" rel="noreferrer noopener" target="_blank">39:45</a> the <span class="link-not-tracked">link not tracked</span> is a <span class="link-not-tracked">link not tracked</span>... in other words, the values in the 768 x 50,000 ( <span class="link-not-tracked">link not tracked</span>) matrix were learned by <span class="link-not-tracked">link not tracked</span>.
+<a id="block-49fcec2" class="block-anchor"></a></p>
+<p>At 41 it calculates the <span class="link-not-tracked">link not tracked</span> <a href="training%20loss.html">training loss</a> between the <span class="link-not-tracked">link not tracked</span> and the model&#39;s <span class="link-not-tracked">link not tracked</span> (<span class="link-not-tracked">link not tracked</span>).  The final loss is the average, or mean, of the cross-entropy loss between all of the labels and all of the predictions.
+<a id="block-306dbf9" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=2550s" rel="noreferrer noopener" target="_blank">42:30</a> we do things in <span class="link-not-tracked">link not tracked</span>, so to get <span class="link-not-tracked">link not tracked</span> we will use <span class="link-not-tracked">link not tracked</span>, and specifically a <span class="link-not-tracked">link not tracked</span>.  512 seems to be a common fixed-size sequence length X <span class="link-not-tracked">link not tracked</span> <span class="link-not-tracked">link not tracked</span> <span class="link-not-tracked">link not tracked</span>
+<a id="block-a1f0f36" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/IGu7ivuy1Ag?si=ff2QkHNfYfXp2eFd&t=2620s" rel="noreferrer noopener" target="_blank">43:40</a> to avoid calculating <span class="link-not-tracked">link not tracked</span> loss for <span class="link-not-tracked">link not tracked</span>s, we use the value -100 for the <span class="link-not-tracked">link not tracked</span>s
+<a id="block-7f6f8dc" class="block-anchor"></a></p>
+<p>At 4420 if the labels contained the -100 value value, then for each of those the <span class="link-not-tracked">link not tracked</span> Will be added to the <span class="link-not-tracked">link not tracked</span>
+<a id="block-b0c7afe" class="block-anchor"></a></p>
+<p>At 47 The idea of providing the label data as a target sequence for <a href="training.html">training</a> Is called <span class="link-not-tracked">link not tracked</span>
+<a id="block-0e577be" class="block-anchor"></a></p>
+<p>At 47 since all of the <span class="link-not-tracked">link not tracked</span> are provided together in one long sequence during training, you need to ensure that the <span class="link-not-tracked">link not tracked</span> is not able to cheat and look beyond the token it is trying to calculate.  To do that you use a <span class="link-not-tracked">link not tracked</span> x <span class="link-not-tracked">link not tracked</span>
+<a id="block-10f13ee" class="block-anchor"></a></p>
+<h3>Prompts</h3>
+<p><a id="block-bb2af00" class="block-anchor"></a></p>
+<p><a href="../x-tagpages/tag--flashcards--transformers.html">tag--flashcards--transformers</a> 
+<a id="block-da78d9e" class="block-anchor"></a></p>
+<p> From 29
+<a id="block-405c62d" class="block-anchor"></a></p>
+<p> During <a href="inference.html">inference</a>, what is the name of the thing that comes after you do the <span class="link-not-tracked">link not tracked</span> on the <span class="link-not-tracked">link not tracked</span> of the <span class="link-not-tracked">link not tracked</span>?::: the <span class="link-not-tracked">link not tracked</span>
+<a id="block-d7698b1" class="block-anchor"></a></p>
+<p>From 29
+<a id="block-96e5c7a" class="block-anchor"></a></p>
+<p>What is the <span class="link-not-tracked">link not tracked</span> in the <span class="link-not-tracked">link not tracked</span> the result of?::: applying a <span class="link-not-tracked">link not tracked</span> to the <span class="link-not-tracked">link not tracked</span> of the the <span class="link-not-tracked">link not tracked</span>
+<a id="block-379cfd0" class="block-anchor"></a></p>
+<p>From 41
+<a id="block-d24f177" class="block-anchor"></a></p>
+<p>During the training of something like ChatGPT, what is done with the <span class="link-not-tracked">link not tracked</span> value that is output by the <span class="link-not-tracked">link not tracked</span>?::: it runs the <span class="link-not-tracked">link not tracked</span> <a href="loss%20function.html">loss function</a> against the <span class="link-not-tracked">link not tracked</span> and the label
+<a id="block-ece17c0" class="block-anchor"></a></p>
+<p>From 45
+<a id="block-2896195" class="block-anchor"></a></p>
+<p>For <a href="training.html">training</a>, explain how the <span class="link-not-tracked">link not tracked</span> is <span class="link-not-tracked">link not tracked</span>ed to allow for determining the <a href="training%20loss.html">training loss</a> on sequence to sequence prediction using only a single <a href="forward%20pass.html">forward pass</a> X <span class="link-not-tracked">link not tracked</span>?::: you have a set of target <span class="link-not-tracked">link not tracked</span>s that describe the entire sequence, from which the <span class="link-not-tracked">link not tracked</span> (which are tokens for the entire target sequence).  The conditioning consists of combining the <span class="link-not-tracked">link not tracked</span> of the <span class="link-not-tracked">link not tracked</span> (the <span class="link-not-tracked">link not tracked</span>),
+<a id="block-9d23d50" class="block-anchor"></a></p>
+
+    </main>
+    <footer>
+        <h2>Backlinks</h2>
+<ul>
+<li class="backlink"><a href="diff%20-%20training%20vs%20inference.html">diff - training vs inference</a>
+              <div class="backlink-context-container">
+                <div class="backlink-context">
+                  <p>from <span class="highlight-do-not-link">video - how a transformer is used at inference time versus training time</span>... you need only a single <a href="forward%20pass.html">forward pass</a> for <a href="training.html">training</a> on a sequence to sequence comparison.  During <a href="inference.html">inference</a>, however, you need a forward pass per <a href="token.html">token</a></p>
+
+                </div>
+                <a class="backlink-see-in-context" href="diff%20-%20training%20vs%20inference.html#block-328c1da"><i>see in context</i></a>
+              </div>
+            </li>
+</ul>
+
+    </footer>
+</body>
+</html>

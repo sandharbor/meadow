@@ -1,0 +1,1 @@
+To support [[being useful outside the happy path]], we want to make it easy to access the [[site config content -- directory -- tracked_page_content]] and _link not tracked_ so that [[meadow persona - ICP -- Adam the advanced user]] can generate their own fully custom HTML sites if he wants to.

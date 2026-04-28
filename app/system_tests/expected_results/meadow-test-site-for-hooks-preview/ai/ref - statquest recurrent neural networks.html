@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ref - statquest recurrent neural networks</title>
+    <link rel="stylesheet" href="../_mw_assets/style.4cd71df2.css">
+    <script src="../_mw_assets/javascript.38f93469.js"></script>
+</head>
+<body>
+    <header>
+        <div id="new-version-pointer" style="display:none"></div>
+        <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="video%20-%20Dwarkesh%20and%20Anthropic%20CEO%20in%202023.html" class="breadcrumb-link">video - Dwarkesh and Anthropic CEO in 2023</a><span class="breadcrumb-separator">→</span><a href="transformers.html" class="breadcrumb-link">transformers</a><span class="breadcrumb-separator">→</span><a href="C%20statquest%20long%20short%20term%20memory%20LSTM.html" class="breadcrumb-link">C statquest long short term memory LSTM</a><span class="breadcrumb-separator">→</span><span class="breadcrumb-current">ref - statquest recurrent neural networks</span></nav>
+    </header>
+    <main>
+        <h1>ref - statquest recurrent neural networks</h1>
+        <p><a href="https://youtu.be/AsNTP8Kwu80" rel="noreferrer noopener" target="_blank">https://youtu.be/AsNTP8Kwu80</a>
+<a id="block-5203255" class="block-anchor"></a></p>
+<p>In the recurrent neural networks video, what was different about the inputs as compared to other neural networks videos?::: The inputs have different amounts of data. They were timeseries and the historical data they had was for different amounts of time because the companies had existed for a different amount of time.</p>
+<!--SR:!2022-12-02,9,250-->
+<p><a id="block-4ef07fe" class="block-anchor"></a></p>
+<p>At seven minutes in a recurrent neural network, what does the feedback loop feed back into?::: a summation</p>
+<!--SR:!2024-04-29,27,270-->
+<p><a id="block-c337de2" class="block-anchor"></a></p>
+<p>At <a href="https://youtu.be/AsNTP8Kwu80&t=660s" rel="noreferrer noopener" target="_blank">11:00</a> <a href="diff%20-%20vanishing%20vs.%20exploding%20gradient.html">diff - vanishing vs. exploding gradient</a>
+<a id="block-90a1998" class="block-anchor"></a></p>
+<p>At maybe 12, describe the weights and biases associated with the unrolled recurrent neural network.:: They are the same for every iteration, so you only need to train a single set of weights and biases</p>
+<!--SR:!2022-12-01,11,270-->
+<p><a id="block-33da795" class="block-anchor"></a></p>
+<p>At 14 why do recurrent neural networks have <a href="diff%20-%20vanishing%20vs.%20exploding%20gradient.html">diff - vanishing vs. exploding gradient</a>?::: because each iteration&#39;s output has a weight associated with it, and if you have some thing like 50 iterations, if the weight is greater than one it gets huge, and if it&#39;s less than one it gets close to zero.</p>
+<!--SR:!2022-12-10,19,290-->
+<p><a id="block-9624889" class="block-anchor"></a></p>
+<p>at 14 if we set some hyperparameter wrong, then during <a href="gradient%20descent.html">gradient descent</a> the <a href="exploding%20gradient%20problem.html">exploding gradient problem</a> can show up.  How does that happen?::: if you set the learning rate too high, then instead of taking small steps, when the gradient is very large, we will take large steps, and instead of trending towards the optimal value ( <a href="convergence.html">convergence</a> ) we will just bounce all over the place</p>
+<!--SR:!2024-05-23,51,290-->
+<p><a id="block-1f09ff1" class="block-anchor"></a></p>
+<p>At 15 why is a <a href="vanishing%20gradient%20problem.html">vanishing gradient problem</a> a problem when doing gradient descent?::: Because gradient descent makes such a small change each time that we exceed the maximum number of steps we can take before we find the optimal value.</p>
+<!--SR:!2024-05-20,48,290-->
+<p><a id="block-25eadc2" class="block-anchor"></a></p>
+<p><a href="../x-tagpages/tag--flashcards.html">tag--flashcards</a>
+<a id="block-8ad227b" class="block-anchor"></a></p>
+
+    </main>
+    <footer>
+        <h2>Backlinks</h2>
+<ul>
+<li class="backlink"><a href="C%20statquest%20long%20short%20term%20memory%20LSTM.html">C statquest long short term memory LSTM</a>
+              <div class="backlink-context-container">
+                <div class="backlink-context">
+                  <p>Prerequisite is <span class="highlight-do-not-link">ref - statquest recurrent neural networks</span></p>
+
+                </div>
+                <a class="backlink-see-in-context" href="C%20statquest%20long%20short%20term%20memory%20LSTM.html#block-d8ffd21"><i>see in context</i></a>
+              </div>
+            </li>
+</ul>
+
+    </footer>
+</body>
+</html>

@@ -1,0 +1,56 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+# Check for required directories
+REQUIRED_DIRS=(
+    "agent"
+    "manager"
+)
+OK_DIRS=("_module")
+OK_FILES=("Readme.md")
+
+echo_and_exit() {
+    echo "$1"
+    exit 1
+}
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+        echo_and_exit "❌ Required directory '$dir' is missing."
+    fi
+done
+
+for entry in * .[^.]*; do
+    [ "$entry" = "." ] && continue
+    [ "$entry" = ".." ] && continue
+    [ "$entry" = '.[^.]*' ] && continue
+    [ ! -e "$entry" ] && continue
+    is_ok=false
+    for dir in "${REQUIRED_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for dir in "${OK_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${OK_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    if [ "$is_ok" = false ]; then
+        echo_and_exit "❌ Extraneous file or directory found in _agent/: $entry. Should have been moved or deleted."
+    fi
+done
+
+# Run manager checks
+cd manager
+./_module/scripts/quickcheck

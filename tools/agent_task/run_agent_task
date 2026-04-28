@@ -1,0 +1,210 @@
+#!/bin/bash
+
+set -e
+
+COMPLETE_MARKER=$(mktemp)
+rm -f "$COMPLETE_MARKER"
+trap 'rm -f "$COMPLETE_MARKER"; kill 0; exit 130' INT
+
+N=1
+PAUSE=10
+VERBOSE=0
+
+while getopts "n:p:v" opt; do
+  case $opt in
+    n) N=$OPTARG ;;
+    p) PAUSE=$OPTARG ;;
+    v) VERBOSE=1 ;;
+    *) echo "Usage: $0 [-n times] [-p pause_seconds] [-v] <task_file>"; exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+TASK_FILE=$1
+
+if [ -z "$TASK_FILE" ]; then
+  echo "Usage: $0 [-n times] [-p pause_seconds] [-v] <task_file>"
+  echo "  -n  number of times to run (default: 1)"
+  echo "  -p  pause between runs in seconds (default: 10)"
+  echo "  -v  verbose: show streaming tool calls"
+  exit 1
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+  echo "Error: not inside a git repository"
+  exit 1
+}
+
+# Resolve task file path relative to repo root
+if [ ! -f "$TASK_FILE" ] && [ -f "$REPO_ROOT/$TASK_FILE" ]; then
+  TASK_FILE="$REPO_ROOT/$TASK_FILE"
+fi
+
+if [ ! -f "$TASK_FILE" ]; then
+  echo "Error: task file not found: $TASK_FILE"
+  exit 1
+fi
+LOGFILE="$(dirname "$0")/run_agent_task.log"
+
+unset CLAUDECODE
+cd "$REPO_ROOT"
+
+echo "" > "$LOGFILE"
+if [ "$N" -gt 1 ]; then
+  echo "Logging to $LOGFILE (use 'tail -f $LOGFILE' to watch in real-time)"
+fi
+
+# Per-run stats file for the summary (one line per run, written by python)
+STATS_FILE=$(mktemp)
+ACTUAL_RUNS=0
+
+for i in $(seq 1 "$N"); do
+  if [ "$N" -gt 1 ]; then
+    {
+      echo "=========================================="
+      echo "Run $i of $N"
+      echo "Started at: $(date)"
+      echo "=========================================="
+    } | tee -a "$LOGFILE"
+  fi
+
+  # Snapshot git HEAD before this run
+  HEAD_BEFORE=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+
+  claude --print --dangerously-skip-permissions --verbose --output-format stream-json \
+    "$(cat "$TASK_FILE")" 2>&1 \
+    | VERBOSE="$VERBOSE" COMPLETE_MARKER="$COMPLETE_MARKER" STATS_FILE="$STATS_FILE" RUN_NUM="$i" python3 -u -c "
+import sys, json, os
+verbose = os.environ.get('VERBOSE', '0') == '1'
+stats_file = os.environ.get('STATS_FILE', '')
+run_num = os.environ.get('RUN_NUM', '?')
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        obj = json.loads(line)
+        t = obj.get('type', '')
+        if t == 'assistant':
+            msg = obj.get('message', {})
+            for block in msg.get('content', []):
+                bt = block.get('type', '')
+                if bt == 'text':
+                    print(block['text'], flush=True)
+                elif bt == 'tool_use' and verbose:
+                    name = block.get('name', '?')
+                    inp = block.get('input', {})
+                    summary = ''
+                    if name == 'Bash':
+                        summary = inp.get('command', '')[:120]
+                    elif name == 'Read':
+                        summary = inp.get('file_path', '')
+                    elif name == 'Edit':
+                        summary = inp.get('file_path', '')
+                    elif name == 'Grep':
+                        summary = inp.get('pattern', '')
+                    elif name == 'Glob':
+                        summary = inp.get('pattern', '')
+                    else:
+                        summary = str(inp)[:120]
+                    print(f'[TOOL: {name}] {summary}', flush=True)
+        elif t == 'tool_result' and verbose:
+            content = obj.get('content', '')
+            if isinstance(content, str):
+                preview = content[:200]
+            else:
+                preview = str(content)[:200]
+            print(f'[RESULT] {preview}', flush=True)
+        elif t == 'result':
+            result_text = obj.get('result', '')
+            print('--- FINAL RESULT ---', flush=True)
+            print(result_text, flush=True)
+            cost = obj.get('total_cost_usd', 0)
+            dur = obj.get('duration_ms', 0)
+            turns = obj.get('num_turns', 0)
+            print(f'[cost=\${cost:.4f} duration={dur/1000:.0f}s turns={turns}]', flush=True)
+            # Write stats line for summary
+            if stats_file:
+                with open(stats_file, 'a') as f:
+                    f.write(f'{run_num}\t{cost:.4f}\t{dur/1000:.0f}\t{turns}\n')
+            if '<promise>COMPLETE</promise>' in result_text:
+                marker = os.environ.get('COMPLETE_MARKER', '')
+                if marker:
+                    with open(marker, 'w') as f:
+                        f.write('done')
+    except json.JSONDecodeError:
+        print(line, flush=True)
+" | tee -a "$LOGFILE"
+
+  # Snapshot git HEAD after this run to detect commits
+  HEAD_AFTER=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+  COMMITS_MADE=0
+  if [ "$HEAD_BEFORE" != "$HEAD_AFTER" ] && [ "$HEAD_BEFORE" != "unknown" ] && [ "$HEAD_AFTER" != "unknown" ]; then
+    COMMITS_MADE=$(git rev-list --count "$HEAD_BEFORE".."$HEAD_AFTER" 2>/dev/null || echo "?")
+    echo "  >> $COMMITS_MADE commit(s) made during this run" | tee -a "$LOGFILE"
+  fi
+  # Append commit count (tab-separated) to the last stats line
+  if [ -f "$STATS_FILE" ]; then
+    sed -i '' "\$s/\$/\t$COMMITS_MADE/" "$STATS_FILE" 2>/dev/null || true
+  fi
+
+  ACTUAL_RUNS=$i
+
+  if [ -f "$COMPLETE_MARKER" ]; then
+    echo "Task complete after $i run(s) (found <promise>COMPLETE</promise>)." | tee -a "$LOGFILE"
+    rm -f "$COMPLETE_MARKER"
+    break
+  fi
+
+  if [ "$N" -gt 1 ]; then
+    {
+      echo ""
+      echo "Run $i completed at: $(date)"
+      echo ""
+    } | tee -a "$LOGFILE"
+  fi
+
+  if [ "$i" -lt "$N" ]; then
+    echo "Pausing $PAUSE seconds before next run..." | tee -a "$LOGFILE"
+    sleep "$PAUSE"
+  fi
+done
+
+# Print summary when running multiple times
+if [ "$N" -gt 1 ]; then
+  {
+    echo ""
+    echo "=========================================="
+    echo "SUMMARY — $ACTUAL_RUNS runs"
+    echo "=========================================="
+    echo ""
+
+    TOTAL_COST=0
+    TOTAL_DURATION=0
+    TOTAL_COMMITS=0
+
+    if [ -f "$STATS_FILE" ] && [ -s "$STATS_FILE" ]; then
+      while IFS=$'\t' read -r run_num cost dur turns commits; do
+        # Strip whitespace from commits field
+        commits=$(echo "$commits" | tr -d ' ')
+        TOTAL_COST=$(echo "$TOTAL_COST + $cost" | bc)
+        TOTAL_DURATION=$(echo "$TOTAL_DURATION + $dur" | bc)
+        TOTAL_COMMITS=$(echo "$TOTAL_COMMITS + $commits" | bc 2>/dev/null || echo "$TOTAL_COMMITS")
+
+        COMMIT_NOTE=""
+        if [ "$commits" -gt 0 ] 2>/dev/null; then
+          COMMIT_NOTE="  << $commits commit(s) made"
+        fi
+        printf "  Run %s: \$%-8s %4ss  %2s turns%s\n" "$run_num" "$cost" "$dur" "$turns" "$COMMIT_NOTE"
+      done < "$STATS_FILE"
+    else
+      echo "  (no run stats captured)"
+    fi
+
+    echo ""
+    echo "  Total: \$$TOTAL_COST  ${TOTAL_DURATION}s  $TOTAL_COMMITS commit(s)"
+    echo "=========================================="
+  } | tee -a "$LOGFILE"
+fi
+
+rm -f "$STATS_FILE"

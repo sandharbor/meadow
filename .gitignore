@@ -1,0 +1,16 @@
+.DS_Store
+node_modules
+temporary_specs
+resources.local.yaml
+_agent/agent/.agent_info
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+
+# Local integration artifacts — not part of this repo.
+/cloud
+/app/publishing_providers/MeadowPublishingProvider
+/app/e2e-tests/test-runner/tests/meadow-extension
+/app/e2e-tests/test-runner/src/run/meadow-extension
+/app/e2e-tests/test-runner/src/scenario-docs/meadow-extension
+/app/e2e-tests/test-runner/fixtures/pre-migration/meadow-extension

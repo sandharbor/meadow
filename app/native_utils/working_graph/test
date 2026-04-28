@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Run the integration tests from the working_graph_integration_test directory
+cd "$(dirname "${BASH_SOURCE[0]}")/working_graph_integration_test"
+npm install --silent
+npm test
+
+

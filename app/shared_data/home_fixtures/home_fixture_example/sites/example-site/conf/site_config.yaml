@@ -1,0 +1,16 @@
+archivedAt: null
+siteGuid: placeholder
+defaultTraversalSitePageTitle: Notable Mental Models
+defaultTraversalSitePageDirectory: ""
+sourceDirectory: ./source_graphs/example-site-data
+initialSitePageTitle: Notable Mental Models
+initialSitePageDirectory: ""
+siteCreatedAt: 2026-03-20T00:00:00.000Z
+siteLastPublishedAt: null
+siteNotes: ""
+siteUpdatedAt: 2026-03-20T00:00:00.000Z
+generationSpacedRepetitionEnabled: true
+generationSpacedRepetitionTags:
+  - "#flashcards/mental-models"
+generationMarkdownZipEnabled: true
+generatedSiteVersions: []

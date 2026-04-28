@@ -1,0 +1,7 @@
+#!/bin/bash
+set -euo pipefail
+
+TOOLS_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+
+cd "$TOOLS_DIR/mw-cli"
+./_module/scripts/prepare

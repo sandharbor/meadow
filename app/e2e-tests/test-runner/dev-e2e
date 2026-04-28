@@ -1,0 +1,57 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+# Clean up stale marker files from any previous failed run so that
+# playwright.config.ts re-creates the config dir and starts fresh containers.
+rm -f .config-dir .minio-endpoint .minio-container
+
+npm install --force 2>&1
+npx playwright install chromium 2>&1
+
+# Generate E2E_RUN_ID for artifact partitioning
+E2E_RUN_ID="$(date +"%Y-%m-%d_%H-%M-%S")"
+AGENT_NAME_FILE="../_agent/agent/.agent_info/name"
+if [ -f "$AGENT_NAME_FILE" ]; then
+    E2E_RUN_ID="${E2E_RUN_ID}_$(cat "$AGENT_NAME_FILE" | tr -d '[:space:]')"
+fi
+export E2E_RUN_ID
+
+# Run the test; capture exit code so we can still assemble artifacts on failure
+TEST_EXIT=0
+npx playwright test tests/publish-flow.spec.ts || TEST_EXIT=$?
+
+# Assemble artifacts (videos are always recorded)
+npx tsx src/artifacts/assemble.ts
+
+ARTIFACTS_DIR="$HOME/meadow-e2e-artifacts/current/$E2E_RUN_ID"
+if [ -d "$ARTIFACTS_DIR" ]; then
+    FIRST_TEST_DIR=$(find "$ARTIFACTS_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
+    if [ -n "$FIRST_TEST_DIR" ]; then
+        FIRST_TEST_SLUG=$(basename "$FIRST_TEST_DIR")
+        # Launch report viewer if not already running
+        if lsof -ti:5175 > /dev/null 2>&1; then
+            echo ""
+            echo "📺 Report viewer already running at http://localhost:5175"
+        else
+            echo ""
+            echo "🚀 Launching report viewer..."
+            npm start --prefix report-viewer &
+            sleep 2
+        fi
+        open "http://localhost:5175/${E2E_RUN_ID}/${FIRST_TEST_SLUG}"
+    fi
+fi
+
+# Clean up CONFIG_DIR and marker file that were preserved for assembly
+CONFIG_DIR_FILE=".config-dir"
+if [ -f "$CONFIG_DIR_FILE" ]; then
+    CONFIG_DIR=$(cat "$CONFIG_DIR_FILE")
+    if [ -d "$CONFIG_DIR" ]; then
+        rm -rf "$CONFIG_DIR"
+    fi
+    rm -f "$CONFIG_DIR_FILE"
+fi
+
+exit $TEST_EXIT

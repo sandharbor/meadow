@@ -1,0 +1,1 @@
+This is an [[outlink]] where the [[link target]] exists in the original [[source graph]] but is not a [[site page]] in the [[raw working graph]] and will not be published in the [[published site type -- local html]].

@@ -1,0 +1,37 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+echo "🧪 Running type checking and linting in parallel..."
+
+tsc_result=$(mktemp)
+eslint_result=$(mktemp)
+
+(
+  npx tsc --noEmit --project tsconfig.json > "$tsc_result" 2>&1 || echo "❌ TypeScript check failed" >> "$tsc_result"
+) &
+tsc_pid=$!
+
+(
+  npx eslint . --ext .ts --config eslint.config.js --max-warnings 0 > "$eslint_result" 2>&1 || echo "❌ ESLint check failed" >> "$eslint_result"
+) &
+eslint_pid=$!
+
+wait $tsc_pid
+wait $eslint_pid
+
+cat "$tsc_result"
+cat "$eslint_result"
+
+if grep -q "❌" "$tsc_result" || grep -q "❌" "$eslint_result"; then
+  rm -f "$tsc_result" "$eslint_result"
+  exit 1
+fi
+
+rm -f "$tsc_result" "$eslint_result"
+
+npm test
+npm run test:e2e
+npm run build
+npm run sync:backend

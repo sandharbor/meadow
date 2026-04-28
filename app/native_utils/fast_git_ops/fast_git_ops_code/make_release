@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Build fast_git_ops for release
+echo "Building release version..."
+cargo build --release
+
+if [ "$1" = "test" ]; then
+    if [ -f conf_test_directory ]; then
+        conf_test_directory=$(cat conf_test_directory)
+    else
+        echo "conf_test_directory file not found... please create it and put the path to the directory you want to test in it"
+        exit 1
+    fi
+
+    if [ "$2" = "time" ]; then
+        echo "
+        Running compiled release binary and showing time taken"
+        time ./target/release/fast_git_ops_bin status $conf_test_directory
+    else
+        echo "
+        Running compiled release binary and showing results"
+        ./target/release/fast_git_ops_bin status $conf_test_directory
+    fi
+fi

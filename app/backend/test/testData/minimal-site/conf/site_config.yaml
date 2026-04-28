@@ -1,0 +1,14 @@
+defaultTraversalSitePageTitle: main page
+defaultTraversalSitePageDirectory: ""
+siteGuid: x3d9p0k
+sourceDirectory: ./source_graphs/minimal-site-data
+initialSitePageTitle: main page
+initialSitePageDirectory: ""
+publishPrefix: test123
+publishSlug: minimal-test-site
+siteCreatedAt: 2025-01-01T00:00:00.000Z
+siteLastPublishedAt: null
+siteNotes: "Minimal test site for backend unit tests"
+siteUpdatedAt: 2025-01-01T00:00:00.000Z
+generatedSiteVersions: []
+archivedAt: null

@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# Enforce that only allowed directories exist in published_site_utils/
+REQUIRED_DIRS=(
+    "srs"
+)
+REQUIRED_FILES=(
+)
+OK_FILES=(".DS_Store")
+OK_DIRS=("_module")
+
+echo_and_exit() {
+    echo "$1"
+    exit 1
+}
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+        echo_and_exit "❌ Required directory '$dir' is missing."
+    fi
+done
+
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        echo_and_exit "❌ Required file '$file' is missing."
+    fi
+done
+
+for entry in * .[^.]*; do
+    # Skip . and .. and literal glob pattern when no matches
+    [ "$entry" = "." ] && continue
+    [ "$entry" = ".." ] && continue
+    [ "$entry" = '.[^.]*' ] && continue
+    [ ! -e "$entry" ] && continue
+    is_ok=false
+    for dir in "${REQUIRED_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${REQUIRED_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${OK_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for dir in "${OK_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    if [ "$is_ok" = false ]; then
+        echo_and_exit "❌ Extraneous file or directory found in published_site_utils/: $entry. Only the srs/ subdirectory should be here."
+    fi
+done
+
+function check_dir() {
+    local dir="$1"
+    if [ ! -d "$dir" ]; then
+        echo_and_exit "❌ Required directory '$dir' is missing."
+    fi
+
+    if [ ! -f "$dir/_module/scripts/quickcheck" ]; then
+        echo_and_exit "❌ _module/scripts/quickcheck not found at $dir."
+    fi
+
+    (
+        cd "$dir"
+        echo "🔍 Checking $dir..."
+        ./_module/scripts/quickcheck
+        if [ $? -ne 0 ]; then
+            echo "❌ check failed for $dir"
+            exit 1
+        else
+            echo "✅ $dir checks passed"
+        fi
+    )
+}
+
+check_dir "srs"

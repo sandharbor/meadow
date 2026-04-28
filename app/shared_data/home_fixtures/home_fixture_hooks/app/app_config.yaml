@@ -1,0 +1,5 @@
+generationBreadcrumbsEnabled: true
+generationBacklinksEnabled: true
+generationTagsEnabled: true
+version: 1.0.0
+manageGitAutomatically: true

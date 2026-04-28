@@ -1,0 +1,59 @@
+pages:
+  - listType: blacklist
+    title: blacklisted page
+  - listType: whitelist
+    title: child 1
+  - listType: whitelist
+    title: child 2
+  - listType: whitelist
+    title: dup page
+  - listType: whitelist
+    title: has in link and points back to same page
+  - listType: whitelist
+    title: in-link to main page
+  - inlinksDepth: 100
+    listType: whitelist
+    outlinksDepth: 4
+    title: main page
+  - listType: whitelist
+    title: meadow
+  - listType: whitelist
+    title: page with section to link to
+  - listType: whitelist
+    title: points to nested dup page
+  - listType: whitelist
+    title: points to root dup page
+  - listType: whitelist
+    title: same depth 1 - 2 out 0 in
+  - listType: whitelist
+    title: same depth 2 - 1 out 2 in
+  - listType: whitelist
+    title: same depth 3 - 1 out 3 in
+  - listType: whitelist
+    title: same depth 4 - no connection
+  - listType: whitelist
+    title: same depth 5 - 1 out 0 in
+  - listType: whitelist
+    title: test blacklisted
+  - listType: whitelist
+    title: test deeply nested
+  - listType: whitelist
+    title: test dup page
+  - listType: whitelist
+    title: test in and out links
+  - listType: whitelist
+    title: test link to section
+  - listType: whitelist
+    title: test linking in same depth
+  - inlinksDepth: 0
+    listType: whitelist
+    title: test page conf do not include inlinks
+  - listType: whitelist
+    outlinksDepth: 0
+    title: test page conf graph depth
+  - listType: whitelist
+    title: test of png
+  - listType: whitelist
+    title: test special lines
+  - listType: whitelist
+    title: test video timestamps

@@ -1,0 +1,15 @@
+defaultTraversalSitePageTitle: main page
+defaultTraversalSitePageDirectory: ""
+siteGuid: mdexport1
+sourceDirectory: ./source_graphs/markdown-export-data
+initialSitePageTitle: main page
+initialSitePageDirectory: ""
+publishPrefix: test456
+publishSlug: markdown-export-test
+siteCreatedAt: 2025-01-01T00:00:00.000Z
+siteLastPublishedAt: null
+siteNotes: "Test site for markdown export filtering"
+siteUpdatedAt: 2025-01-01T00:00:00.000Z
+generatedSiteVersions: []
+archivedAt: null
+generationMarkdownZipEnabled: true

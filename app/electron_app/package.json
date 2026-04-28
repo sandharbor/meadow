@@ -1,0 +1,187 @@
+{
+  "name": "meadow-electron",
+  "version": "0.5.29",
+  "description": "Meadow Desktop Application",
+  "productName": "Meadow",
+  "main": "dist/electron_app/src/main.js",
+  "author": "Your Name",
+  "license": "MIT",
+  "homepage": "./",
+  "scripts": {
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run build:dev\" \"wait-on dist/electron_app/src/main.js && electron .\"",
+    "electron-dev-args": "./electron-dev.sh",
+    "build": "npm run build:all && npm run build:electron",
+    "build:dev": "npm run build:main -- --watch",
+    "build:all": "npm run build:rust && npm run build:backend && npm run build:frontend && npm run build:main",
+    "build:rust": "cd ../native_utils/source_page_search_by_title/source_page_search_by_title_code && cargo build --release && cd ../../fast_git_ops/fast_git_ops_code && cargo build --release && cd ../../working_graph/working_graph_code && cargo build --release",
+    "build:backend": "cd ../backend && npm run build",
+    "build:frontend": "cd ../frontend && npm run build && npm run build:server",
+    "build:main": "tsc",
+    "build:electron": "electron-builder",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "fix-backend": "mkdir -p build/mac/Meadow.app/Contents/Resources/backend && cp -r ../backend/dist/backend/* build/mac/Meadow.app/Contents/Resources/backend/ && cp ../backend/package.json build/mac/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/node_modules build/mac/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/dist/shared_code build/mac/Meadow.app/Contents/Resources/shared_code && cp -r ../backend/src/html/templates build/mac/Meadow.app/Contents/Resources/backend/src/html/templates && cp -r ../backend/src/html/shared build/mac/Meadow.app/Contents/Resources/backend/src/html/shared && cp -r ../backend/src/html/presets build/mac/Meadow.app/Contents/Resources/backend/src/html/presets && cp node-wrapper.sh build/mac/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac/Meadow.app/Contents/Resources/node && mkdir -p build/mac-arm64/Meadow.app/Contents/Resources/backend && cp -r ../backend/dist/backend/* build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp ../backend/package.json build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/node_modules build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/dist/shared_code build/mac-arm64/Meadow.app/Contents/Resources/shared_code && cp -r ../backend/src/html/templates build/mac-arm64/Meadow.app/Contents/Resources/backend/src/html/templates && cp -r ../backend/src/html/shared build/mac-arm64/Meadow.app/Contents/Resources/backend/src/html/shared && cp -r ../backend/src/html/presets build/mac-arm64/Meadow.app/Contents/Resources/backend/src/html/presets && cp node-wrapper.sh build/mac-arm64/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac-arm64/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac-arm64/Meadow.app/Contents/Resources/node",
+    "postinstall": "electron-builder install-app-deps",
+    "clean": "rimraf dist build",
+    "generate-icons": "./generate-icons.sh"
+  },
+  "build": {
+    "appId": "com.meadow.desktop",
+    "productName": "Meadow",
+    "directories": {
+      "output": "build"
+    },
+    "afterPack": "./afterPack.js",
+    "afterSign": "./afterSign.js",
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/dist",
+        "to": "frontend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../frontend/package.json",
+        "to": "frontend/package.json"
+      },
+      {
+        "from": "../frontend/node_modules",
+        "to": "frontend/node_modules",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/dist/backend",
+        "to": "backend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/dist/shared_code",
+        "to": "shared_code",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../shared_code/package.json",
+        "to": "shared_code/package.json"
+      },
+      {
+        "from": "../shared_code/node_modules",
+        "to": "shared_code/node_modules",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/package.json",
+        "to": "backend/package.json",
+        "filter": ["package.json"]
+      },
+      {
+        "from": "../backend/node_modules",
+        "to": "backend/node_modules",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/src/html/templates",
+        "to": "backend/src/html/templates",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/src/html/shared",
+        "to": "backend/src/html/shared",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/src/html/presets",
+        "to": "backend/src/html/presets",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/src/html/published_site_utils/srs",
+        "to": "backend/src/html/published_site_utils/srs",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../native_utils/source_page_search_by_title/source_page_search_by_title_code/target/release",
+        "to": "source_page_search_by_title",
+        "filter": ["source_page_search_by_title_bin*", "*.exe"]
+      },
+      {
+        "from": "../native_utils/fast_git_ops/fast_git_ops_code/target/release",
+        "to": "fast_git_ops",
+        "filter": ["fast_git_ops_bin*", "*.exe"]
+      },
+      {
+        "from": "../native_utils/working_graph/working_graph_code/target/release",
+        "to": "working_graph",
+        "filter": ["working_graph_bin*", "*.exe"]
+      },
+      {
+        "from": "./vendor/node",
+        "to": "node",
+        "filter": ["node"]
+      },
+      {
+        "from": "./node-wrapper.sh",
+        "to": "node-wrapper.sh",
+        "filter": ["node-wrapper.sh"]
+      },
+      {
+        "from": "../shared_data/home_fixtures/home_fixture_example",
+        "to": "example_site/home_fixture",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../shared_data/source_graphs/example-site-data",
+        "to": "example_site/source_graph",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.inherit.plist",
+      "identity": "Sand Harbor Software, LLC (3Y93X67X8P)",
+      "notarize": true
+    },
+    "dmg": {
+      "title": "Install Meadow",
+      "icon": "assets/icon.icns"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "concurrently": "^8.2.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.0.0",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.0",
+    "yaml": "^2.7.1"
+  }
+} 

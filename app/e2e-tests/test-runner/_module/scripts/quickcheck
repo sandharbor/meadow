@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+stamp="node_modules/.quickcheck_install_stamp"
+if [ ! -f "$stamp" ] || [ ! -d "node_modules" ] || [ "package-lock.json" -nt "$stamp" ]; then
+    npm install --force 2>&1
+    touch "$stamp"
+fi
+
+echo "Running test-runner type checking..."
+npx tsc --noEmit --project tsconfig.json
+echo "Type checking passed."

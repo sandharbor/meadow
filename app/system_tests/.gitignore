@@ -1,0 +1,6 @@
+node_modules
+scratch_config_folder
+
+# Markdown export zips are non-deterministic (archiver produces different bytes
+# for identical input), so exclude them from expected results tracking
+expected_results/**/md-export/

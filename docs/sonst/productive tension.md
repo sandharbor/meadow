@@ -1,0 +1,1 @@
+A productive tension is like [[lens -- similarities and differences]].  It's generative and helps you see the problem more clearly.

@@ -1,0 +1,11 @@
+{
+	"id": "obsidian-meadow-plugin",
+	"name": "Meadow",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Open Meadow with current file information for site management",
+	"author": "Meadow Team",
+	"authorUrl": "https://meadow.example.com",
+	"fundingUrl": "https://meadow.example.com",
+	"isDesktopOnly": false
+}

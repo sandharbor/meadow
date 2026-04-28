@@ -1,0 +1,17 @@
+[package]
+name = "source_page_search_by_title"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "source_page_search_by_title_bin"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+walkdir = "2"
+
+

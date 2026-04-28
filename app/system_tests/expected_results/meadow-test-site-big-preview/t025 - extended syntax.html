@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>t025 - extended syntax</title>
+    <link rel="stylesheet" href="_mw_assets/style.4cd71df2.css">
+    <link rel="stylesheet" href="_mw_assets/callouts.20872662.css">
+    <script src="_mw_assets/mermaid.min.0d2b6f23.js"></script>
+    <script src="_mw_assets/javascript.38f93469.js"></script>
+</head>
+<body>
+    <header>
+        <div id="new-version-pointer" style="display:none"></div>
+        <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="main%20page.html" class="breadcrumb-link">main page</a><span class="breadcrumb-separator">→</span><span class="breadcrumb-current">t025 - extended syntax</span></nav>
+    </header>
+    <main>
+        <h1>t025 - extended syntax</h1>
+        <p>This page is a comprehensive enumeration of every extended markdown syntax variation from <a href="https://www.markdownguide.org/extended-syntax/" rel="noreferrer noopener" target="_blank">https://www.markdownguide.org/extended-syntax/</a>. Some features (tables, fenced code blocks) are duplicated in other tests; this page is the single source of truth for the complete extended-syntax set.
+<a id="block-7a0da80" class="block-anchor"></a></p>
+<h2>Tables</h2>
+<p><a id="block-71aa6e7" class="block-anchor"></a></p>
+<table>
+<thead>
+<tr>
+<th>Syntax</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Header</td>
+<td>Title</td>
+</tr>
+<tr>
+<td>Paragraph</td>
+<td>Text</td>
+</tr>
+<tr>
+<td><a id="block-cc4deb9" class="block-anchor"></a></td>
+<td></td>
+</tr>
+</tbody></table>
+<h2>Table Alignment</h2>
+<p><a id="block-dc2539d" class="block-anchor"></a></p>
+<table>
+<thead>
+<tr>
+<th align="left">Syntax</th>
+<th align="center">Description</th>
+<th align="right">Test Text</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Header</td>
+<td align="center">Title</td>
+<td align="right">Here&#39;s this</td>
+</tr>
+<tr>
+<td align="left">Paragraph</td>
+<td align="center">Text</td>
+<td align="right">And more</td>
+</tr>
+<tr>
+<td align="left"><a id="block-765eefe" class="block-anchor"></a></td>
+<td align="center"></td>
+<td align="right"></td>
+</tr>
+</tbody></table>
+<h2>Fenced Code Blocks</h2>
+<p><a id="block-0a90dac" class="block-anchor"></a></p>
+<pre><code class="fenced-code">{
+  &quot;firstName&quot;: &quot;John&quot;,
+  &quot;lastName&quot;: &quot;Smith&quot;,
+  &quot;age&quot;: 25
+}
+</code></pre>
+<p><a id="block-a6739f5" class="block-anchor"></a></p>
+<h2>Syntax Highlighting</h2>
+<p><a id="block-00c36ee" class="block-anchor"></a></p>
+<pre><code class="hljs language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">&quot;firstName&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;John&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;lastName&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;Smith&quot;</span><span class="hljs-punctuation">,</span>
+  <span class="hljs-attr">&quot;age&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-number">25</span>
+<span class="hljs-punctuation">}</span>
+</code></pre>
+<p><a id="block-9328913" class="block-anchor"></a></p>
+<h2>Footnotes</h2>
+<p><a id="block-119295b" class="block-anchor"></a></p>
+<p>Here&#39;s a simple footnote,<sup><a id="footnote-ref-1" href="#footnote-1" data-footnote-ref aria-describedby="footnote-label">1</a></sup> and here&#39;s a longer one.<sup><a id="footnote-ref-bignote" href="#footnote-bignote" data-footnote-ref aria-describedby="footnote-label">2</a></sup>
+<a id="block-388e405" class="block-anchor"></a></p>
+<p><a id="block-f70f86c" class="block-anchor"></a></p>
+<p><a id="block-f8b61b9" class="block-anchor"></a></p>
+<h2>Heading IDs</h2>
+<p><a id="block-14b887b" class="block-anchor"></a></p>
+<h3 id="custom-id">My Great Heading</h3>
+<p><a id="block-b3a7bfd" class="block-anchor"></a></p>
+<h2>Definition Lists</h2>
+<p><a id="block-6a6abfb" class="block-anchor"></a></p>
+<dl><dt>First Term</dt><dd>This is the definition of the first term.</dd></dl><p><a id="block-ca5319c" class="block-anchor"></a></p>
+<dl><dt>Second Term</dt><dd>This is one definition of the second term.</dd><dd>This is another definition of the second term.</dd></dl><p><a id="block-bfccbae" class="block-anchor"></a></p>
+<h2>Strikethrough</h2>
+<p><a id="block-778436b" class="block-anchor"></a></p>
+<p><del>The world is flat.</del> We now know that the world is round.
+<a id="block-bccf1f5" class="block-anchor"></a></p>
+<h2>Task Lists</h2>
+<p><a id="block-f558419" class="block-anchor"></a></p>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> Write the press release</li>
+<li><input disabled="" type="checkbox"> Update the website</li>
+<li><input disabled="" type="checkbox"> Contact the media</li>
+</ul>
+<p><a id="block-569a346" class="block-anchor"></a></p>
+<h2>Emoji (Copy and Paste)</h2>
+<p><a id="block-145c010" class="block-anchor"></a></p>
+<p>Gone camping! ⛺ Be back soon.
+<a id="block-86644de" class="block-anchor"></a></p>
+<p>That is so funny! 😂
+<a id="block-672b80c" class="block-anchor"></a></p>
+<h2>Emoji Shortcodes</h2>
+<p><a id="block-3a809aa" class="block-anchor"></a></p>
+<p>Gone camping! ⛺ Be back soon.
+<a id="block-63c8aa4" class="block-anchor"></a></p>
+<p>That is so funny! 😂
+<a id="block-0b7d5c7" class="block-anchor"></a></p>
+<h2>Highlight</h2>
+<p><a id="block-0523513" class="block-anchor"></a></p>
+<p>I need to highlight these <mark>very important words</mark>.
+<a id="block-7152f2e" class="block-anchor"></a></p>
+<h2>Subscript</h2>
+<p><a id="block-22f4021" class="block-anchor"></a></p>
+<p>H<sub>2</sub>O
+<a id="block-248601a" class="block-anchor"></a></p>
+<h2>Superscript</h2>
+<p><a id="block-fbe9b57" class="block-anchor"></a></p>
+<p>X<sup>2</sup>
+<a id="block-b232779" class="block-anchor"></a></p>
+<h2>Automatic URL Linking</h2>
+<p><a id="block-027ea68" class="block-anchor"></a></p>
+<p>Visit <a href="http://www.example.com" rel="noreferrer noopener" target="_blank">http://www.example.com</a> or <a href="https://www.markdownguide.org" rel="noreferrer noopener" target="_blank">https://www.markdownguide.org</a> for more.
+<a id="block-1b55c60" class="block-anchor"></a></p>
+<h2>Disabling Automatic URL Linking</h2>
+<p><a id="block-08cbb1f" class="block-anchor"></a></p>
+<p><code class="inline-code">http://www.example.com</code>
+<a id="block-4dd530b" class="block-anchor"></a></p>
+<h2>Obsidian-Flavored Markdown</h2>
+<p><a id="block-1edfe16" class="block-anchor"></a></p>
+<h3>Callouts</h3>
+<p><a id="block-6cc8ce1" class="block-anchor"></a></p>
+<div class="callout callout-note">
+<div class="callout-title">Note</div>
+<div class="callout-content">
+<p>This is a note callout.</p>
+</div>
+</div>
+<p><a id="block-ec5d878" class="block-anchor"></a></p>
+<div class="callout callout-abstract">
+<div class="callout-title">Abstract</div>
+<div class="callout-content">
+<p>This is an abstract/summary callout.</p>
+</div>
+</div>
+<p><a id="block-e5e68e4" class="block-anchor"></a></p>
+<div class="callout callout-info">
+<div class="callout-title">Info</div>
+<div class="callout-content">
+<p>This is an info callout.</p>
+</div>
+</div>
+<p><a id="block-c317881" class="block-anchor"></a></p>
+<div class="callout callout-todo">
+<div class="callout-title">Todo</div>
+<div class="callout-content">
+<p>This is a todo callout.</p>
+</div>
+</div>
+<p><a id="block-36bc172" class="block-anchor"></a></p>
+<div class="callout callout-tip">
+<div class="callout-title">Tip</div>
+<div class="callout-content">
+<p>This is a tip callout.</p>
+</div>
+</div>
+<p><a id="block-c35e551" class="block-anchor"></a></p>
+<div class="callout callout-success">
+<div class="callout-title">Success</div>
+<div class="callout-content">
+<p>This is a success callout.</p>
+</div>
+</div>
+<p><a id="block-757df39" class="block-anchor"></a></p>
+<div class="callout callout-question">
+<div class="callout-title">Question</div>
+<div class="callout-content">
+<p>This is a question callout.</p>
+</div>
+</div>
+<p><a id="block-98cbf00" class="block-anchor"></a></p>
+<div class="callout callout-warning">
+<div class="callout-title">Warning</div>
+<div class="callout-content">
+<p>This is a warning callout.</p>
+</div>
+</div>
+<p><a id="block-9345b50" class="block-anchor"></a></p>
+<div class="callout callout-failure">
+<div class="callout-title">Failure</div>
+<div class="callout-content">
+<p>This is a failure callout.</p>
+</div>
+</div>
+<p><a id="block-41d8ba3" class="block-anchor"></a></p>
+<div class="callout callout-danger">
+<div class="callout-title">Danger</div>
+<div class="callout-content">
+<p>This is a danger callout.</p>
+</div>
+</div>
+<p><a id="block-f66168b" class="block-anchor"></a></p>
+<div class="callout callout-bug">
+<div class="callout-title">Bug</div>
+<div class="callout-content">
+<p>This is a bug callout.</p>
+</div>
+</div>
+<p><a id="block-f807360" class="block-anchor"></a></p>
+<div class="callout callout-example">
+<div class="callout-title">Example</div>
+<div class="callout-content">
+<p>This is an example callout.</p>
+</div>
+</div>
+<p><a id="block-a0cabb2" class="block-anchor"></a></p>
+<div class="callout callout-quote">
+<div class="callout-title">Quote</div>
+<div class="callout-content">
+<p>This is a quote callout.</p>
+</div>
+</div>
+<p><a id="block-6abbdd9" class="block-anchor"></a></p>
+<h3>Callout with Custom Title</h3>
+<p><a id="block-b08957c" class="block-anchor"></a></p>
+<div class="callout callout-tip">
+<div class="callout-title">My Custom Title</div>
+<div class="callout-content">
+<p>Callouts can have custom titles.</p>
+</div>
+</div>
+<p><a id="block-acf415a" class="block-anchor"></a></p>
+<h3>Foldable Callout</h3>
+<p><a id="block-e8fdda5" class="block-anchor"></a></p>
+<div class="callout callout-note callout-foldable">
+<details open>
+<summary class="callout-title">Open by Default</summary>
+<div class="callout-content">
+<p>This foldable callout starts open.</p>
+</div>
+</details>
+</div>
+<p><a id="block-46a9eaf" class="block-anchor"></a></p>
+<div class="callout callout-note callout-foldable">
+<details>
+<summary class="callout-title">Collapsed by Default</summary>
+<div class="callout-content">
+<p>This foldable callout starts collapsed.</p>
+</div>
+</details>
+</div>
+<p><a id="block-7c6cba8" class="block-anchor"></a></p>
+<h3>Comments</h3>
+<p><a id="block-0c11618" class="block-anchor"></a></p>
+<p>There is a comment below this line that you will not see in the rendered output.
+<a id="block-66b04b5" class="block-anchor"></a></p>
+<p>And here is a block comment that spans multiple lines:
+<a id="block-48d413f" class="block-anchor"></a></p>
+<p>Text continues after the comment.
+<a id="block-b1fa13b" class="block-anchor"></a></p>
+<p>Comments inside code blocks should be preserved:
+<a id="block-3819939" class="block-anchor"></a></p>
+<pre><code class="fenced-code">%%This should not be stripped%%
+</code></pre>
+<p><a id="block-517f237" class="block-anchor"></a></p>
+<p>Inline code too: <code class="inline-code">%%also preserved%%</code>
+<a id="block-33a4dda" class="block-anchor"></a></p>
+<h3>LaTeX Math</h3>
+<p><a id="block-c712302" class="block-anchor"></a></p>
+<p>Inline math: <span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi><mo>=</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">E = mc^2</annotation></semantics></math></span>
+<a id="block-45b8c59" class="block-anchor"></a></p>
+<p>Block math:
+<a id="block-4f8633e" class="block-anchor"></a></p>
+<span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mrow><mo>−</mo><mi>b</mi><mo>±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo>−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}</annotation></semantics></math></span><p><a id="block-6a5676a" class="block-anchor"></a></p>
+<p>LaTeX inside code blocks should not be transformed:
+<a id="block-6ab7208" class="block-anchor"></a></p>
+<pre><code class="hljs language-latex"><span class="hljs-built_in">$</span>E = mc<span class="hljs-built_in">^</span>2<span class="hljs-built_in">$</span> and <span class="hljs-built_in">$</span><span class="hljs-built_in">$</span><span class="hljs-keyword">\frac</span>{1}{2}<span class="hljs-built_in">$</span><span class="hljs-built_in">$</span>
+</code></pre>
+<p><a id="block-00a8faa" class="block-anchor"></a></p>
+<p>Inline code too: <code class="inline-code">$E = mc^2$</code>
+<a id="block-1579d11" class="block-anchor"></a></p>
+<h3>Mermaid Diagram</h3>
+<p><a id="block-4004c5f" class="block-anchor"></a></p>
+<div class="mermaid">graph TD
+    A[Start] --&gt; B{Decision}
+    B --&gt;|Yes| C[OK]
+    B --&gt;|No| D[Cancel]
+</div>
+<p><a id="block-bfb68e0" class="block-anchor"></a></p>
+<section class="footnotes" data-footnotes>
+<h2 id="footnote-label" class="sr-only">Footnotes</h2>
+<ol>
+<li id="footnote-1">
+<p>This is the first footnote. <a href="#footnote-ref-1" data-footnote-backref aria-label="Back to reference 1">↩</a></p>
+</li>
+<li id="footnote-bignote">
+<p>Here&#39;s one with multiple paragraphs and code.</p>
+<p>Indent paragraphs to include them in the footnote.</p>
+<p><code class="inline-code">{ my code }</code></p>
+<p>Add as many paragraphs as you like. <a href="#footnote-ref-bignote" data-footnote-backref aria-label="Back to reference bignote">↩</a></p>
+</li>
+</ol>
+</section>
+
+    </main>
+    <footer>
+        <h2>Backlinks</h2>
+<ul>
+<li class="backlink"><a href="main%20page.html">main page</a>
+              <div class="backlink-context-container">
+                <div class="backlink-context">
+                  <p><span class="highlight-do-not-link">t025 - extended syntax</span></p>
+
+                </div>
+                <a class="backlink-see-in-context" href="main%20page.html#block-818bf5e"><i>see in context</i></a>
+              </div>
+            </li>
+</ul>
+
+    </footer>
+</body>
+</html>

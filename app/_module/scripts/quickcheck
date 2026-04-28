@@ -1,0 +1,154 @@
+#!/bin/bash
+
+# Check for required directories and files in app/
+REQUIRED_DIRS=(
+    "backend"
+    "dev_tools_app"
+    "e2e-tests"
+    "electron_app"
+    "frontend"
+    "native_utils"
+    "publishing_providers"
+    "published_site_utils"
+    "shared_code"
+    "shared_components"
+    "shared_data"
+    "system_tests"
+)
+REQUIRED_FILES=(
+)
+OK_FILES=(".DS_Store")
+OK_DIRS=("_module")
+
+echo_and_exit() {
+    echo "$1"
+    exit 1
+}
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+        echo_and_exit "❌ Required directory '$dir' is missing."
+    fi
+done
+
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        echo_and_exit "❌ Required file '$file' is missing."
+    fi
+done
+
+for entry in * .[^.]*; do
+    # Skip . and .. and literal glob pattern when no matches
+    [ "$entry" = "." ] && continue
+    [ "$entry" = ".." ] && continue
+    [ "$entry" = '.[^.]*' ] && continue
+    [ ! -e "$entry" ] && continue
+    is_ok=false
+    for dir in "${REQUIRED_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${REQUIRED_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for file in "${OK_FILES[@]}"; do
+        if [ "$entry" = "$file" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    for dir in "${OK_DIRS[@]}"; do
+        if [ "$entry" = "$dir" ]; then
+            is_ok=true
+            break
+        fi
+    done
+    if [ "$is_ok" = false ]; then
+        echo_and_exit "❌ Extraneous file or directory found in app/: $entry. Should have been moved or deleted."
+    fi
+done
+
+APP_LOG_DIR=$(mktemp -d "${TMPDIR:-/tmp}/quickcheck-app.XXXXXX")
+
+function check_dir() {
+    local dir="$1"
+    local log_file="$APP_LOG_DIR/${dir}.log"
+
+    if [ ! -d "$dir" ]; then
+        echo "❌ Required directory '$dir' is missing." > "$log_file"
+        return 1
+    fi
+
+    if [ ! -f "$dir/_module/scripts/quickcheck" ]; then
+        echo "❌ _module/scripts/quickcheck not found at $dir." > "$log_file"
+        return 1
+    fi
+
+    (
+        cd "$dir"
+        ./_module/scripts/quickcheck
+    ) > "$log_file" 2>&1
+}
+
+# Install dependencies in parallel, but only when lockfile is newer than stamp
+echo "📦 Installing dependencies..."
+install_pids=()
+for dir in "shared_code" "shared_components" "backend" "frontend" "electron_app" "system_tests" "native_utils/source_page_search_by_title/source_page_search_by_title_integration_test" "native_utils/fast_git_ops/fast_git_ops_test" "dev_tools_app" "published_site_utils/srs"; do
+    if [ -f "$dir/package.json" ]; then
+        stamp="$dir/node_modules/.quickcheck_install_stamp"
+        lock="$dir/package-lock.json"
+        # Install if: no stamp, no node_modules, or lockfile newer than stamp
+        if [ ! -f "$stamp" ] || [ ! -d "$dir/node_modules" ] || [ "$lock" -nt "$stamp" ]; then
+            (cd "$dir" && npm install --force && touch "node_modules/.quickcheck_install_stamp") &
+            install_pids+=($!)
+        fi
+    fi
+done
+
+if [ ${#install_pids[@]} -gt 0 ]; then
+    for pid in "${install_pids[@]}"; do
+        wait $pid || echo_and_exit "❌ One or more npm installs failed"
+    done
+fi
+
+# Run check_dir calls in parallel for speed
+echo "🧪 Running app directory checks in parallel..."
+
+APP_CHECK_DIRS=("shared_code" "shared_components" "backend" "frontend" "electron_app" "native_utils" "published_site_utils" "system_tests" "dev_tools_app" "e2e-tests")
+
+pids=()
+dir_for_pid=()
+for dir in "${APP_CHECK_DIRS[@]}"; do
+    check_dir "$dir" &
+    pids+=($!)
+    dir_for_pid+=("$dir")
+done
+
+# Wait for all background jobs to complete
+exit_code=0
+failed_dirs=()
+for i in "${!pids[@]}"; do
+    if ! wait "${pids[$i]}"; then
+        exit_code=1
+        failed_dirs+=("${dir_for_pid[$i]}")
+    fi
+done
+
+if [ $exit_code -ne 0 ]; then
+    for dir in "${failed_dirs[@]}"; do
+        log_file="$APP_LOG_DIR/${dir}.log"
+        echo ""
+        echo "❌ app/$dir failed. Log: $log_file"
+        echo "--- last 30 lines ---"
+        tail -30 "$log_file"
+        echo "---"
+    done
+    echo_and_exit "❌ One or more app directory checks failed (full logs in $APP_LOG_DIR)"
+fi
+
+echo "✅ All app checks passed!"

@@ -1,0 +1,25 @@
+#!/bin/bash
+set -euo pipefail
+
+# Each provider's frontend and backend code lives outside `app/frontend/`
+# and `app/backend/`, so they don't share their installed node_modules by
+# default. Symlink so that bundler-style module resolution (Vite at runtime
+# for frontend; tsc + tsx for backend) can find react, express, etc.
+
+PROVIDERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+link_node_modules() {
+    local provider_dir="$1"
+    local subdir="$2"          # frontend or backend
+    [ -d "$provider_dir/$subdir" ] || return 0
+    local link="$provider_dir/$subdir/node_modules"
+    if [ ! -e "$link" ]; then
+        ln -s "../../../$subdir/node_modules" "$link"
+        echo "🔗 Linked $(basename "$provider_dir")/$subdir/node_modules"
+    fi
+}
+
+for provider_dir in "$PROVIDERS_DIR"/*/; do
+    link_node_modules "$provider_dir" frontend
+    link_node_modules "$provider_dir" backend
+done

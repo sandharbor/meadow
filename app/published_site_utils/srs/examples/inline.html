@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SRS Mixed Example</title>
+</head>
+<body data-meadow-srs-site-guid="inline1" data-meadow-srs-page-id="examples/inline.html">
+  <main>
+    <h1>Mixed Example</h1>
+    <meadow-srs-card guid="123e4567f9012" kind="basic">
+      <meadow-srs-prompt>Capital of France</meadow-srs-prompt>
+      <meadow-srs-answer>Paris</meadow-srs-answer>
+    </meadow-srs-card>
+    <meadow-srs-card guid="123e4567f9013" kind="bidirectional">
+      <meadow-srs-prompt>Ruby creator</meadow-srs-prompt>
+      <meadow-srs-answer>Yukihiro Matsumoto</meadow-srs-answer>
+    </meadow-srs-card>
+    <meadow-srs-card guid="123e4567f9014:cloze:1" kind="cloze" cloze-type="simplified" sibling-group="123e4567f9014">
+      <meadow-srs-prompt>Brazilians speak <span class="meadow-srs-cloze-blank">...</span> and Argentinians speak Spanish.</meadow-srs-prompt>
+      <meadow-srs-answer>Brazilians speak Portuguese and Argentinians speak Spanish.</meadow-srs-answer>
+    </meadow-srs-card>
+    <meadow-srs-card guid="123e4567f9015" kind="multiline-basic">
+      <meadow-srs-prompt><p>What is Meadow?</p><p>Describe it in one sentence.</p></meadow-srs-prompt>
+      <meadow-srs-answer><p>A publishing tool for markdown notes.</p><p>It can add client-side spaced repetition widgets to published pages.</p></meadow-srs-answer>
+    </meadow-srs-card>
+  </main>
+  <script type="module">
+    import '/srs/ui/publicEntry.ts';
+  </script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+The sites we create are microsites, but that is too "in the details", so we just call them sites in the documentation and code.

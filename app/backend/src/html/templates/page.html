@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    {{#if style_css}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ style_css }}">
+    {{/if}}
+    {{#if global_style_css}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ global_style_css }}">
+    {{/if}}
+    {{#if site_style_css}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ site_style_css }}">
+    {{/if}}
+    {{#if include_callouts}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ callouts_css }}">
+    {{/if}}
+    {{#if srs_enabled}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ srs_css }}">
+    {{/if}}
+    {{#if include_mermaid}}
+    <script src="{{ assets_prefix }}{{ mermaid_min_js }}"></script>
+    {{/if}}
+    {{#if javascript_js}}
+    <script src="{{ assets_prefix }}{{ javascript_js }}"></script>
+    {{/if}}
+    {{#if global_javascript_js}}
+    <script src="{{ assets_prefix }}{{ global_javascript_js }}"></script>
+    {{/if}}
+    {{#if site_javascript_js}}
+    <script src="{{ assets_prefix }}{{ site_javascript_js }}"></script>
+    {{/if}}
+    {{#if srs_enabled}}
+    <script type="module" src="{{ assets_prefix }}{{ srs_js }}"></script>
+    {{/if}}
+    {{#if include_hover_preview}}
+    <script>
+    // Hover preview: fetch and display a preview popup when hovering over internal links
+    document.addEventListener('DOMContentLoaded', function() {
+        var previewEl = null;
+        var hideTimeout = null;
+        var cache = {};
+
+        function createPreview() {
+            var el = document.createElement('div');
+            el.className = 'hover-preview';
+            el.style.cssText = 'position:absolute;z-index:1000;max-width:400px;max-height:300px;overflow:auto;' +
+                'background:' + getComputedStyle(document.body).backgroundColor + ';border:1px solid #ccc;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.15);' +
+                'padding:16px;font-size:0.9em;line-height:1.5;display:none;pointer-events:auto;';
+            document.body.appendChild(el);
+            el.addEventListener('mouseenter', function() { clearTimeout(hideTimeout); });
+            el.addEventListener('mouseleave', function() { hide(); });
+            return el;
+        }
+
+        function hide() {
+            if (previewEl) previewEl.style.display = 'none';
+        }
+
+        function show(anchor) {
+            if (!previewEl) previewEl = createPreview();
+            clearTimeout(hideTimeout);
+
+            var href = anchor.getAttribute('href');
+            if (!href || !href.endsWith('.html') || href.startsWith('http://') || href.startsWith('https://')) return;
+
+            function position() {
+                var rect = anchor.getBoundingClientRect();
+                var top = rect.bottom + window.scrollY + 6;
+                var left = rect.left + window.scrollX;
+                // Keep within viewport horizontally
+                var maxLeft = window.innerWidth - 420;
+                if (left > maxLeft) left = maxLeft > 0 ? maxLeft : 0;
+                previewEl.style.top = top + 'px';
+                previewEl.style.left = left + 'px';
+            }
+
+            if (cache[href]) {
+                previewEl.innerHTML = cache[href];
+                position();
+                previewEl.style.display = 'block';
+                return;
+            }
+
+            previewEl.innerHTML = '<em style="color:#999">Loading...</em>';
+            position();
+            previewEl.style.display = 'block';
+
+            fetch(href)
+                .then(function(r) { return r.ok ? r.text() : null; })
+                .then(function(html) {
+                    if (!html) { hide(); return; }
+                    var doc = new DOMParser().parseFromString(html, 'text/html');
+                    var main = doc.querySelector('main');
+                    if (!main) { hide(); return; }
+                    // Take the h1 + first few content elements
+                    var preview = '';
+                    var children = main.children;
+                    var count = 0;
+                    for (var i = 0; i < children.length && count < 4; i++) {
+                        preview += children[i].outerHTML;
+                        count++;
+                    }
+                    cache[href] = preview;
+                    previewEl.innerHTML = preview;
+                    // Disable links inside preview
+                    var links = previewEl.querySelectorAll('a');
+                    for (var j = 0; j < links.length; j++) {
+                        links[j].style.pointerEvents = 'none';
+                        links[j].style.color = 'inherit';
+                        links[j].style.textDecoration = 'underline dotted';
+                    }
+                    position();
+                })
+                .catch(function() { hide(); });
+        }
+
+        // Attach to all internal links in main content and footer (backlinks)
+        var links = document.querySelectorAll('main a[href$=".html"], footer a[href$=".html"]');
+        for (var i = 0; i < links.length; i++) {
+            (function(link) {
+                var href = link.getAttribute('href');
+                if (href && (href.startsWith('http://') || href.startsWith('https://'))) return;
+                link.addEventListener('mouseenter', function() { show(link); });
+                link.addEventListener('mouseleave', function() {
+                    hideTimeout = setTimeout(hide, 200);
+                });
+            })(links[i]);
+        }
+    });
+    </script>
+    {{/if}}
+</head>
+<body{{#if markdown_zip_enabled}} style="position:relative"{{/if}}{{#if srs_enabled}} data-meadow-srs-site-guid="{{ srs_site_guid }}" data-meadow-srs-page-id="{{ srs_page_id }}"{{/if}}>
+    <header{{#if markdown_zip_enabled}} style="position:relative"{{/if}}>
+        <div id="new-version-pointer" style="display:none"></div>
+        {{#if markdown_zip_enabled}}
+        <a href="#" data-markdown-zip-manifest-url="{{ markdown_zip_manifest_url }}" download class="markdown-zip-download" title="Download all markdown and images as ZIP" style="position:absolute;top:12px;right:16px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;font-size:0.8em;color:#666;text-decoration:none;border:1px solid #ddd;border-radius:4px;background:#fafafa;cursor:pointer;z-index:10;" onmouseover="this.style.background='#f0f0f0';this.style.borderColor='#bbb';this.style.color='#333'" onmouseout="this.style.background='#fafafa';this.style.borderColor='#ddd';this.style.color='#666'">&#8681; Markdown</a>
+        {{/if}}
+        {{{ breadcrumbs }}}
+    </header>
+    <main>
+        <h1>{{ page_title }}</h1>
+        {{{ content }}}
+    </main>
+    <footer>
+        {{{ backlinks }}}
+    </footer>
+</body>
+</html>

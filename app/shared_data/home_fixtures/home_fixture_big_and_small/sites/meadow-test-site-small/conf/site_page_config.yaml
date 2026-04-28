@@ -1,0 +1,16 @@
+pages:
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t001 - deeply nested
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t001
+    title: t001 ---- child 1
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t001/deeper
+    title: t001 ---- child 2
+    tracked: true

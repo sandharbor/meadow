@@ -1,0 +1,25 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "🔧 Preparing native_utils..."
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Build all Rust release binaries in parallel
+(cd "$SCRIPT_DIR/fast_git_ops/fast_git_ops_code" && ./make_release) &
+(cd "$SCRIPT_DIR/working_graph/working_graph_code" && ./make_release) &
+(cd "$SCRIPT_DIR/source_page_search_by_title/source_page_search_by_title_code" && ./make_release) &
+
+exit_code=0
+for job in $(jobs -p); do
+    if ! wait $job; then
+        exit_code=1
+    fi
+done
+
+if [ $exit_code -ne 0 ]; then
+    echo "❌ native_utils prepare failed"
+    exit 1
+fi
+
+echo "✅ native_utils prepared"

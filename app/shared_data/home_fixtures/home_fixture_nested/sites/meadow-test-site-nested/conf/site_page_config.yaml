@@ -1,0 +1,88 @@
+pages:
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t002 - dup pages and images
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t002 ---- dup
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t002 ---- dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- dup
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002/extra nested
+    title: t002 ---- dup
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- dup 2
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t002/extra nested
+    title: t002 ---- dup 2
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to extra nested dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to nested dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to nested png dup
+    tracked: true
+  - fileType: md
+    inlinksDepth: 1
+    listType: whitelist
+    outlinksDepth: 4
+    sourceGraphSubdirectory: t002/extra nested
+    title: t002 ---- points to png dup 2 with no path from extra nested
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: ""
+    title: t002 ---- points to png dup 2 with no path from root
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002 - second directory
+    title: t002 ---- points to png dup 2 with no path from second directory
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to png dup 2 with no path from t002
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to root dup
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t002
+    title: t002 ---- points to root png dup
+    tracked: true

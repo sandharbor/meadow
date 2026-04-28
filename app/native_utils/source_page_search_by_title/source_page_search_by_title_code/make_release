@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "Building source_page_search_by_title_bin release..."
+cargo build --release --bin source_page_search_by_title_bin
+echo "✅ Built target/release/source_page_search_by_title_bin"
+
+

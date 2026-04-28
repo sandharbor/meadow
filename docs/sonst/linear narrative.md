@@ -1,0 +1,3 @@
+Good for getting everyone on the same page within a given timeframe, thus it is important to call out what needs to be considered, and what doesn't. If you like to things you need to provide your explicit takeaways from those documents so that people can know what you meant by linking to them without needing to read them.
+
+Maybe not the best way to push forward a shared understanding of a broad problem space, because iterating on portions of the ideas within the document is a less obvious process.

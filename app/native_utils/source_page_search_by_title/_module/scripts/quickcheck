@@ -1,0 +1,36 @@
+#!/bin/bash
+
+echo "🧪 Running source_page_search_by_title tests..."
+
+# Ensure release binary exists (backend/Electron will rely on it; we do NOT cargo-run from backend).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+RELEASE_BIN="$SCRIPT_DIR/source_page_search_by_title_code/target/release/source_page_search_by_title_bin"
+if [ ! -f "$RELEASE_BIN" ]; then
+    echo "🔧 Release binary missing; building..."
+    (
+        cd "$SCRIPT_DIR/source_page_search_by_title_code"
+        ./make_release
+    )
+else
+    echo "✅ Release binary already present; skipping build."
+fi
+
+# Install test dependencies + run integration tests
+echo "Installing integration test dependencies..."
+cd "$SCRIPT_DIR/source_page_search_by_title_integration_test"
+npm install
+if [ $? -ne 0 ]; then
+    echo "❌ npm install failed."
+    exit 1
+fi
+
+echo "Running integration tests..."
+npm test
+if [ $? -ne 0 ]; then
+    echo "❌ Integration tests failed."
+    exit 1
+fi
+
+echo "✅ All source_page_search_by_title tests passed!"
+
+

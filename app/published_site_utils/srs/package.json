@@ -1,0 +1,25 @@
+{
+  "name": "published-site-utils",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "sync:backend": "node ./scripts/syncSrsAssets.mjs",
+    "test": "vitest run --config vitest.config.ts --dir src/core_logic",
+    "test:e2e": "vitest run --config vitest.config.ts --dir src/e2e",
+    "lint": "eslint . --ext .ts --config eslint.config.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@types/node": "^20.11.24",
+    "@typescript-eslint/eslint-plugin": "^8.29.1",
+    "@typescript-eslint/parser": "^8.29.1",
+    "eslint": "^9.24.0",
+    "jsdom": "^27.0.1",
+    "typescript": "^5.8.3",
+    "vite": "^7.1.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,3 @@
+That modified version of the markdown simply removes the [[obsidian plugin -- spaced repetition -- SR comment|SR comment]], since the [[publisher]]'s personal progress on the prompt in their [[source graph]] is not applicable to [[reader]]s (in the final section here we talk about how we track [[reader]] SRS progress).
+
+The [[meadow markdown export type -- published to site as zip file]] is impacted by this change

@@ -1,0 +1,17 @@
+node_modules
+dist
+
+# Compiled TypeScript artifacts (should not be generated due to noEmit, but ignore just in case)
+# These patterns only apply to types/, models/, utils/, and interfaces/ directories
+types/**/*.js
+types/**/*.d.ts
+types/**/*.map
+models/**/*.js
+models/**/*.d.ts
+models/**/*.map
+utils/**/*.js
+utils/**/*.d.ts
+utils/**/*.map
+interfaces/**/*.js
+interfaces/**/*.d.ts
+interfaces/**/*.map

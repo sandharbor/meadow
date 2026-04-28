@@ -1,0 +1,34 @@
+{
+  "filters": [
+    {
+      "id": "filter-1750826014295-r7b2079ch",
+      "name": "titles with six numbers",
+      "scope": "site",
+      "selectors": [
+        {
+          "field": "title",
+          "matchType": "regex",
+          "value": "\\d{6}",
+          "caseSensitive": false
+        }
+      ],
+      "selectorApplicationCriteria": "union",
+      "actions": [
+        {
+          "type": "highlight",
+          "color": "#00ffd5",
+          "isDashed": false
+        },
+        {
+          "type": "mark_sensitive",
+          "color": "#FFD700",
+          "isDashed": false
+        }
+      ],
+      "enabled": true,
+      "createdAt": "2025-06-25T04:33:34.295Z",
+      "updatedAt": "2025-06-25T04:33:56.065Z"
+    }
+  ],
+  "version": "1.0.0"
+}
