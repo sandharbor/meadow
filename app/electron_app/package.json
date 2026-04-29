@@ -1,6 +1,6 @@
 {
   "name": "meadow-electron",
-  "version": "0.5.29",
+  "version": "0.5.30",
   "description": "Meadow Desktop Application",
   "productName": "Meadow",
   "main": "dist/electron_app/src/main.js",
