@@ -350,7 +350,7 @@ function extractSnapshots(stateRepo: string): Snapshot[] {
 
 /**
  * Discover any extension-contributed state-repo directories in a test
- * artifact dir. Open-core state repos (`meadowHome-state-repo`,
+ * artifact dir. The two built-in state repos (`meadowHome-state-repo`,
  * `minio-state-repo`) are excluded — extensions add others (e.g. for
  * structured backing stores) that this function picks up generically.
  */

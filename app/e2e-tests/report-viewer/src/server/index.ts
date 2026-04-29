@@ -770,10 +770,10 @@ app.get("/api/:runId/:testSlug/snapshot/:hash/file/*", (req, res) => {
 // --- Generic state-repo endpoints ---
 // Discover any *-state-repo/ directories an extension layer dropped into
 // the test artifact dir. Each declares its display name, path prefix,
-// and rendering rules in a _meta.json the extension writes. Open-core
-// repos (meadowHome, minio) have their own dedicated endpoints; the
-// "structured state" tab in the viewer is driven by what's discovered
-// here.
+// and rendering rules in a _meta.json the extension writes. The
+// built-in repos (meadowHome, minio) have their own dedicated endpoints;
+// the "structured state" tab in the viewer is driven by what's
+// discovered here.
 
 interface StateRepoMeta {
   displayName?: string;
