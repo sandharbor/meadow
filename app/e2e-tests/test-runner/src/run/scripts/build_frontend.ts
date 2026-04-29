@@ -31,9 +31,12 @@ limitations under the License.
  * hash next to dist/. Rebuilds only when that hash changes. Typical
  * re-run cost: ~50ms for the walk + zero build time.
  *
- * The e2e build pins VITE_PURCHASE_POLL_INTERVAL_MS=500 because the
- * test fixture used to set it per-run in the dev-mode flow and several
- * tests depend on the sped-up polling.
+ * Provider e2e env: each publishing provider may declare its own
+ * VITE_* build-time overrides for e2e by dropping a JSON object at
+ * `frontend/.e2e-build-env.json`. The script merges every provider's
+ * file into the build env (later providers override earlier ones, but
+ * collisions in practice are unexpected). The merged env is part of
+ * the staleness hash so changes invalidate the cached dist/.
  */
 
 import { execSync } from "child_process";
@@ -45,10 +48,7 @@ const frontendDir = path.resolve(import.meta.dirname, "../../../../../../app/fro
 const providersDir = path.resolve(import.meta.dirname, "../../../../../../app/publishing_providers");
 const distDir = path.join(frontendDir, "dist");
 const stampPath = path.join(distDir, ".e2e-build-stamp");
-
-const E2E_ENV = {
-  VITE_PURCHASE_POLL_INTERVAL_MS: "500",
-};
+const PROVIDER_E2E_BUILD_ENV_FILE = ".e2e-build-env.json";
 
 // Source inputs whose changes should invalidate dist/
 const WATCH_DIRS = ["src"];
@@ -67,10 +67,48 @@ const WATCH_FILES = [
 // invalidate dist/ too.
 const PROVIDER_FRONTEND_SUBDIR = "frontend";
 
+/**
+ * Walk every publishing_providers/<name>/frontend/.e2e-build-env.json file
+ * and merge them into a single env override map. Returns an empty object
+ * if no provider declares any.
+ */
+function loadProviderE2eEnv(): Record<string, string> {
+  const merged: Record<string, string> = {};
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(providersDir);
+  } catch {
+    return merged;
+  }
+  for (const name of entries) {
+    if (name === "_module" || name.startsWith(".") || name === "package.json") continue;
+    const providerPath = path.join(providersDir, name);
+    let isDir = false;
+    try {
+      isDir = fs.statSync(providerPath).isDirectory();
+    } catch {
+      continue;
+    }
+    if (!isDir) continue;
+    const envFile = path.join(providerPath, PROVIDER_FRONTEND_SUBDIR, PROVIDER_E2E_BUILD_ENV_FILE);
+    if (!fs.existsSync(envFile)) continue;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(envFile, "utf8")) as Record<string, unknown>;
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === "string") merged[key] = value;
+      }
+    } catch {
+      // Bad JSON — skip silently rather than blocking the build.
+    }
+  }
+  return merged;
+}
+
 function computeSourceHash(): string {
   const hash = crypto.createHash("sha256");
-  // Include the pinned env so toggling it invalidates the cache
-  hash.update(JSON.stringify(E2E_ENV));
+  // Include the merged provider e2e env so toggling any provider's
+  // .e2e-build-env.json invalidates the cache.
+  hash.update(JSON.stringify(loadProviderE2eEnv()));
 
   const addFile = (absPath: string, relPath: string) => {
     try {
@@ -153,7 +191,7 @@ export function buildFrontendIfStale(): string {
   const start = Date.now();
   execSync("npx vite build", {
     cwd: frontendDir,
-    env: { ...process.env, ...E2E_ENV },
+    env: { ...process.env, ...loadProviderE2eEnv() },
     stdio: ["ignore", "inherit", "inherit"],
   });
   fs.writeFileSync(stampPath, currentHash);

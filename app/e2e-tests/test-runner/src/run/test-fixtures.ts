@@ -363,9 +363,10 @@ export interface TestServer {
   minioBucket: string;
   /**
    * Swap the active publishing provider to S3PublishingProvider and deactivate
-   * the Meadow provider. Writes MinIO connection details to the S3 provider's
-   * pp_resources.local.yaml. Must be called before the frontend fetches
-   * /api/publishing-providers (i.e. before the first page navigation).
+   * every other publishing provider mounted in the source tree. Writes MinIO
+   * connection details to the S3 provider's pp_resources.local.yaml. Must be
+   * called before the frontend fetches /api/publishing-providers (i.e. before
+   * the first page navigation).
    */
   activateS3Provider: () => Promise<void>;
   /** Read the backend's app config. */
@@ -391,6 +392,20 @@ export interface TestServer {
  * minio+uncommitted capture.
  */
 export type SnapshotHandler = (message: string) => Promise<void>;
+
+/**
+ * Extension point invoked after MinIO and the web server have been set up
+ * but before the backend is spawned. Lets a fixture layer seed
+ * provider-specific config (e.g. writing endpoints into a provider's
+ * pp_resources.local.yaml) without the base fixture having to know which
+ * providers are mounted.
+ */
+export type PreSpawnSeed = (deps: {
+  configDir: string;
+  minioEndpoint: string;
+  minioBucket: string;
+  webServerPort: number;
+}) => Promise<void>;
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -426,9 +441,33 @@ export const test = base.extend<{
    * return handlers.
    */
   _additionalSnapshotHandlers: SnapshotHandler[];
+  /**
+   * Internal extension point: extra environment variables merged into the
+   * spawned backend process. Fixture layers override to inject env vars
+   * required by their provider (e.g. stub URLs, polling overrides) without
+   * the base fixture having to name them.
+   */
+  _backendExtraEnv: Record<string, string>;
+  /**
+   * Internal extension point: callback run after MinIO + web server are
+   * allocated but before the backend is spawned. Fixture layers override
+   * to seed provider-specific config (e.g. pp_resources.local.yaml).
+   */
+  _preSpawnSeed: PreSpawnSeed;
 }>({
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   migrationBeforePath: [null, { option: true }],
+  // _backendExtraEnv and _preSpawnSeed are declared as fixtures (rather than
+  // options) because their values are objects/functions that Playwright's
+  // option-form would shadow with TestFixture inference. Factory style
+  // sidesteps that: each fixture yields its current value, and an extension
+  // layer overrides by yielding a different one.
+  _backendExtraEnv: async ({}, use) => {
+    await use({});
+  },
+  _preSpawnSeed: async ({}, use) => {
+    await use(async () => {});
+  },
 
   // Override built-in context so it depends on testServer.  This ensures
   // the browser context (and its video recording) only starts AFTER the
@@ -452,7 +491,7 @@ export const test = base.extend<{
   },
 
   testServer: [
-    async ({ fixtureHome, migrationBeforePath }, use, testInfo) => {
+    async ({ fixtureHome, migrationBeforePath, _backendExtraEnv, _preSpawnSeed }, use, testInfo) => {
       const workerIndex = testInfo.parallelIndex;
       const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
 
@@ -492,30 +531,10 @@ export const test = base.extend<{
       // 5. Allocate web server port
       const webServerPort = await findFreePort();
 
-      // 6. Merge MinIO + web server config into the Meadow provider's
-      //    pp_resources.local.yaml — these are all Meadow-specific infra
-      //    overrides and live with the provider, not core resources.
-      const meadowProviderResLocalPath = path.join(
-        configDir,
-        "app",
-        "publishing_providers",
-        "MeadowPublishingProvider",
-        "pp_resources.local.yaml",
-      );
-      const existingProviderResources = existsSync(meadowProviderResLocalPath)
-        ? YAML.parse(readFileSync(meadowProviderResLocalPath, "utf8")) as Record<string, unknown>
-        : {};
-      const mergedProviderResources = {
-        ...existingProviderResources,
-        meadowS3Endpoint: minioEndpoint,
-        meadowS3ForcePathStyle: true,
-        meadowS3BucketName: minioBucket,
-        meadowS3LocalAccessKeyId: "minioadmin",
-        meadowS3LocalSecretAccessKey: "minioadmin",
-        meadowWebBaseUrl: `http://localhost:${webServerPort}`,
-      };
-      mkdirSync(path.dirname(meadowProviderResLocalPath), { recursive: true });
-      writeFileSync(meadowProviderResLocalPath, YAML.stringify(mergedProviderResources), "utf8");
+      // 6. Pre-spawn provider seeding hook. Base does nothing; fixture layers
+      //    override to write provider-specific pp_resources.local.yaml entries
+      //    (e.g. an S3-backed provider wiring up MinIO endpoints).
+      await _preSpawnSeed({ configDir, minioEndpoint, minioBucket, webServerPort });
 
       // Capture stderr from the backend and static-frontend processes to
       // files in configDir/logs so crashes and proxy errors are
@@ -526,7 +545,8 @@ export const test = base.extend<{
       const backendStderrFd = openSync(path.join(configDir, "logs", "backend-stderr.log"), "a");
       const frontendStderrFd = openSync(path.join(configDir, "logs", "frontend-stderr.log"), "a");
 
-      // 7. Spawn backend
+      // 7. Spawn backend. Fixture layers can supply additional env vars
+      //    via the `_backendExtraEnv` option (e.g. provider-specific stubs).
       const backendProc = spawn(
         "npx",
         ["tsx", "src/index.ts"],
@@ -536,12 +556,7 @@ export const test = base.extend<{
             ...process.env,
             MEADOW_HOME_DIRECTORY_OVERRIDE: configDir,
             MEADOW_IS_DEV: "true",
-            // Stub the Stripe customer-portal session URL. The account lambda
-            // isn't wired up in local mode, and billingPortal.sessions.create()
-            // would otherwise require real Stripe credentials. Tests that
-            // exercise the "Subscription Settings" button verify the UI /
-            // polling flow, not the portal URL itself.
-            MEADOW_STRIPE_PORTAL_STUB_URL: "https://billing.stripe.com/p/session/e2e-stub",
+            ..._backendExtraEnv,
           },
           stdio: ["ignore", "ignore", backendStderrFd],
           shell: true,
@@ -614,7 +629,11 @@ export const test = base.extend<{
         minioEndpoint,
         minioBucket,
         activateS3Provider: async () => {
-          // Disable Meadow, enable S3, wire S3 resources to MinIO.
+          // Deactivate every publishing provider mounted in the source tree
+          // and activate S3 specifically, then wire S3 resources to MinIO.
+          // Discovering providers here keeps the base fixture provider-agnostic
+          // — any extension layer that mounts an additional provider gets it
+          // turned off automatically.
           const writePpConfig = (providerId: string, patch: Record<string, unknown>) => {
             const dir = path.join(configDir, "app", "publishing_providers", providerId);
             const file = path.join(dir, "pp_config.yaml");
@@ -624,7 +643,19 @@ export const test = base.extend<{
             mkdirSync(dir, { recursive: true });
             writeFileSync(file, YAML.stringify({ ...existing, ...patch }), "utf8");
           };
-          writePpConfig("MeadowPublishingProvider", { isActive: false });
+          const providersSourceDir = path.join(REPO_ROOT, "app", "publishing_providers");
+          for (const name of readdirSync(providersSourceDir)) {
+            if (name === "_module" || name.startsWith(".") || name === "package.json") continue;
+            let isDir = false;
+            try {
+              isDir = statSync(path.join(providersSourceDir, name)).isDirectory();
+            } catch {
+              continue;
+            }
+            if (!isDir) continue;
+            if (name === "S3PublishingProvider") continue;
+            writePpConfig(name, { isActive: false });
+          }
           writePpConfig("S3PublishingProvider", { isActive: true });
 
           const s3ProviderDir = path.join(
