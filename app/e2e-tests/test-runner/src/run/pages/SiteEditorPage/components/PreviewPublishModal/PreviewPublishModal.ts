@@ -58,22 +58,6 @@ export class PreviewPublishModal {
     return this.previewIframe.locator("h1").first();
   }
 
-  private get inviteCodeToggle() {
-    return this.page.getByText("I have an invite code");
-  }
-
-  private get inviteCodeInput() {
-    return this.page.getByPlaceholder("12-character code");
-  }
-
-  private get redeemBtn() {
-    return this.page.locator("button", { hasText: "Redeem" });
-  }
-
-  private get publishNewSiteBtn() {
-    return this.page.locator("button", { hasText: "Publish New Site" });
-  }
-
   private get changesTab() {
     return this.page.locator("nav button", { hasText: "Changes" }).first();
   }
@@ -157,41 +141,6 @@ export class PreviewPublishModal {
    */
   async expectPreviewLinkNotVisible(href: string) {
     await this.expect(this.previewIframe.locator(`a[href="${href}"]`)).not.toBeVisible();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Invite code
-  // ---------------------------------------------------------------------------
-
-  /** Expand the "I have an invite code" section. */
-  async expandInviteCodeForm() {
-    await this.inviteCodeToggle.click();
-    await this.expect(this.inviteCodeInput).toBeVisible();
-  }
-
-  /** Fill the invite code input field. */
-  async fillInviteCode(code: string) {
-    await this.inviteCodeInput.fill(code);
-  }
-
-  /** Assert the Redeem button is enabled. */
-  async expectRedeemEnabled() {
-    await this.expect(this.redeemBtn).toBeEnabled();
-  }
-
-  /** Assert the Redeem button is disabled. */
-  async expectRedeemDisabled() {
-    await this.expect(this.redeemBtn).toBeDisabled();
-  }
-
-  /** Click the Redeem button. */
-  async clickRedeem() {
-    await this.redeemBtn.click();
-  }
-
-  /** Assert the "Publish New Site" button is visible (post-redemption). */
-  async expectPublishNewSiteVisible(timeout = 15_000) {
-    await this.expect(this.publishNewSiteBtn).toBeVisible({ timeout });
   }
 
   // ---------------------------------------------------------------------------
