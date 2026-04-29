@@ -80,18 +80,20 @@ Example — a test using workflows and covering multiple areas:
 
 ```typescript
 import { test, expect } from "../src/run/test-fixtures.js";
-import { invites, publishing } from "../src/scenario-docs/index.js";
+import { publishing, s3 } from "../src/scenario-docs/index.js";
 import { Workflows } from "../src/run/workflows.js";
 
-test("Valid invite code grants publish access", async ({
+test("Site publishes to S3", async ({
   page, snapshot, addKeyFrame, testServer,
 }) => {
+  await testServer.activateS3Provider();
+
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSiteShareTab();
   // ... test-specific interactions ...
-  await addKeyFrame(invites);
   await addKeyFrame(publishing);
-  await snapshot("valid invite code - publish access granted");
+  await addKeyFrame(s3);
+  await snapshot("site published to S3");
 });
 ```
 
