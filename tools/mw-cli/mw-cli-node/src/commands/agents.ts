@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { runInteractive } from "../lib/exec.js";
 
 export function agents(): void {
@@ -22,6 +23,11 @@ export function agents(): void {
   const agentsManagerDir = join(import.meta.dirname, "..", "..", "..", "..", "..", "_agent", "manager", "agents-manager-node");
   const tsxBin = join(agentsManagerDir, "node_modules", ".bin", "tsx");
   const entryPoint = join(agentsManagerDir, "src", "agentsManager.ts");
+
+  if (!existsSync(tsxBin)) {
+    console.error(`agents-manager dependencies not installed.\nRun: _agent/manager/_module/scripts/prepare`);
+    process.exit(1);
+  }
 
   const code = runInteractive(tsxBin, [entryPoint]);
   if (code !== 0) {
