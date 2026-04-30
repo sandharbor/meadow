@@ -5,9 +5,14 @@ const path = require('path');
 
 exports.default = async function(context) {
   console.log('Setting executable permissions after pack...');
-  
+
+  // On macOS, electron-builder sets context.appOutDir to the directory
+  // *containing* Meadow.app, not the .app itself, so resourcesPath has to
+  // descend into Meadow.app first.
   const appOutDir = context.appOutDir;
-  const resourcesPath = path.join(appOutDir, 'Contents', 'Resources');
+  const productFilename = context.packager.appInfo.productFilename;
+  const appBundle = path.join(appOutDir, `${productFilename}.app`);
+  const resourcesPath = path.join(appBundle, 'Contents', 'Resources');
   
   const nodeWrapperSh = path.join(resourcesPath, 'node-wrapper.sh');
   const nodeBinary = path.join(resourcesPath, 'node');
@@ -31,5 +36,28 @@ exports.default = async function(context) {
     setExecutable(fastGitOpsBin, 'fast_git_ops_bin');
   } catch (error) {
     console.warn(`Warning: Could not set executable permissions: ${error.message}`);
+  }
+
+  // Publishing providers ship as compiled ES modules (import/export). For Node
+  // to treat them as ESM, it has to find a package.json with "type":"module"
+  // when walking up from a provider file. In dev that walk lands on
+  // meadow/app/backend/package.json (which has "type":"module"); in the bundle
+  // the equivalent walk runs out without finding one. A minimal package.json at
+  // Resources/publishing_providers/ marks the whole tree as ESM. The same
+  // directory also gets a node_modules symlink so providers can resolve npm
+  // imports (express, yaml, @aws-sdk/*, etc.) through the backend's dep tree
+  // without duplicating it.
+  const providersDir = path.join(resourcesPath, 'publishing_providers');
+  if (fs.existsSync(providersDir)) {
+    const providersPkg = path.join(providersDir, 'package.json');
+    if (!fs.existsSync(providersPkg)) {
+      fs.writeFileSync(providersPkg, JSON.stringify({ type: 'module' }, null, 2) + '\n');
+      console.log('Wrote publishing_providers/package.json (type: module)');
+    }
+    const nmLink = path.join(providersDir, 'node_modules');
+    if (!fs.existsSync(nmLink)) {
+      fs.symlinkSync('../backend/node_modules', nmLink);
+      console.log('Linked publishing_providers/node_modules → ../backend/node_modules');
+    }
   }
 };

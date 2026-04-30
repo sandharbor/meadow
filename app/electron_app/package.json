@@ -61,6 +61,11 @@
         "filter": ["**/*"]
       },
       {
+        "from": "../backend/dist/publishing_providers",
+        "to": "publishing_providers",
+        "filter": ["**/*"]
+      },
+      {
         "from": "../backend/dist/shared_code",
         "to": "shared_code",
         "filter": ["**/*"]
