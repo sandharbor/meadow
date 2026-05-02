@@ -18,6 +18,17 @@ import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
 import type { StaticAssetNames } from './types.js';
+import { deterministicGzip, writeCompressionManifest } from '../../../shared_code/utils/compressionManifestUtils.js';
+
+/**
+ * Pre-gzip these shared assets at generation time. The excalidraw vendor
+ * bundle is 7.7 MB raw — over the 4 MB per-file publish ceiling — but ~2.4 MB
+ * gzipped. Pre-compressing once at generation (rather than at preview-serve
+ * or publish time) means the bytes on disk are exactly what the browser
+ * receives in production, so preview is a true preview. The local-export
+ * path re-inflates these so file:// users still get parseable JS.
+ */
+const PRE_GZIPPED_BASENAMES = new Set(['excalidraw-vendor.js']);
 
 function contentHashHex8(filePath: string): string {
   const buf = fs.readFileSync(filePath);
@@ -119,6 +130,17 @@ export function hashAndRenameStaticAssets(outputDir: string): StaticAssetNames {
   const excalidrawCss = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.css')) ?? '';
   const excalidrawVendorJs = renameWithHashIfExists(path.join(outputDir, 'excalidraw-vendor.js')) ?? '';
   const excalidrawJs = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.js')) ?? '';
+
+  // Hash for the URL was computed on the raw bytes (above), so the URL stays
+  // stable across compression form. Now overwrite the on-disk bytes with the
+  // gzipped form and record it in the manifest.
+  const gzipPaths: string[] = [];
+  if (excalidrawVendorJs && PRE_GZIPPED_BASENAMES.has('excalidraw-vendor.js')) {
+    const fullPath = path.join(outputDir, excalidrawVendorJs);
+    const raw = fs.readFileSync(fullPath);
+    fs.writeFileSync(fullPath, deterministicGzip(raw));
+    gzipPaths.push(excalidrawVendorJs);
+  }
   const srsDir = path.join(outputDir, 'srs');
   const srsCssBase = renameWithHashIfExists(path.join(srsDir, 'srs.css'));
   const srsJsBase = renameWithHashIfExists(path.join(srsDir, 'srs.js'));
@@ -163,6 +185,12 @@ export function hashAndRenameStaticAssets(outputDir: string): StaticAssetNames {
   const siteStyleCss = renameWithHashIfExists(siteStylePath);
   const globalJavascriptJs = renameWithHashIfExists(path.join(outputDir, 'global-javascript.js'));
   const siteJavascriptJs = renameWithHashIfExists(path.join(outputDir, 'site-javascript.js'));
+
+  // Only emit the manifest when there's something pre-compressed — consumers
+  // already handle a missing manifest as "nothing special, treat normally."
+  if (gzipPaths.length > 0) {
+    writeCompressionManifest(outputDir, { gzip: gzipPaths });
+  }
 
   return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
 }

@@ -24,6 +24,7 @@ import {
   TEST_BASE_URL
 } from '../helpers/serverManager.js';
 import { SystemTestSiteSetup } from '../helpers/testSetup.js';
+import { readCompressionManifest } from '../../shared_code/utils/compressionManifestUtils.js';
 
 describe('Generated archive determinism', () => {
   beforeAll(async () => {
@@ -86,6 +87,66 @@ describe('Generated archive determinism', () => {
       // legible when this regresses.
       expect(second.filename).toBe(first.filename);
       expect(secondHash).toBe(firstHash);
+    });
+  });
+
+  describe('pre-gzipped shared assets', () => {
+    let testSetup: SystemTestSiteSetup | undefined;
+
+    beforeEach(() => {
+      testSetup = new SystemTestSiteSetup(
+        'home_fixture_big_and_small',
+        'zip-determinism-gzipped-assets',
+        { siteFolderName: 'meadow-test-site-big' }
+      );
+      testSetup.setUp();
+    });
+
+    afterEach(() => {
+      testSetup?.tearDown();
+    });
+
+    it('produces byte-identical gzipped assets and stable URL hashes across two runs', async () => {
+      const siteSlug = testSetup!.getSiteSlug();
+      const assetsDir = testSetup!.getPathInSite('html/preview/_mw_assets');
+
+      async function runPreviewAndReadGzipped(): Promise<Map<string, Buffer>> {
+        const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+          method: 'POST'
+        });
+        expect(response.ok).toBe(true);
+
+        const manifest = readCompressionManifest(assetsDir);
+        expect(manifest).not.toBeNull();
+        // The big fixture has at least one excalidraw page, so the vendor
+        // bundle must be present and gzipped. If this assertion fails, either
+        // the fixture changed or the gzip wiring regressed.
+        expect(manifest!.gzip.length).toBeGreaterThan(0);
+
+        const out = new Map<string, Buffer>();
+        for (const rel of manifest!.gzip) {
+          const fullPath = path.join(assetsDir, rel);
+          expect(fs.existsSync(fullPath)).toBe(true);
+          out.set(rel, fs.readFileSync(fullPath));
+        }
+        return out;
+      }
+
+      const first = await runPreviewAndReadGzipped();
+      await new Promise(r => setTimeout(r, 1500));
+      const second = await runPreviewAndReadGzipped();
+
+      // The set of gzipped paths (with their content-addressed URL hashes)
+      // must match exactly — the filename hash is computed from the *raw* JS
+      // bytes, so any rename here means the source changed or the hashing
+      // is itself non-deterministic.
+      expect([...second.keys()].sort()).toEqual([...first.keys()].sort());
+
+      const sha = (b: Buffer) => createHash('sha256').update(b).digest('hex');
+      for (const [rel, firstBytes] of first.entries()) {
+        const secondBytes = second.get(rel)!;
+        expect(sha(secondBytes)).toBe(sha(firstBytes));
+      }
     });
   });
 });

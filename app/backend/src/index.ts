@@ -22,6 +22,7 @@ import { fileURLToPath } from 'url';
 import { parsePageConfig, stringifyPageConfig } from '../../shared_code/utils/sitePageConfigUtils.js';
 import { onDiskFilename } from '../../shared_code/utils/fileTypeUtils.js';
 import { encodePathForUrl } from '../../shared_code/utils/urlUtils.js';
+import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../shared_code/utils/compressionManifestUtils.js';
 import { SitePageConfig } from '../../shared_code/types/sitePageConfig.js';
 import { SiteConfig, GeneratedSiteVersion } from '../../shared_code/types/siteConfig.js';
 import { FileType, FILE_TYPES } from '../../shared_code/types/FileType.js';
@@ -1632,6 +1633,11 @@ app.get('/api/site/:siteSlug/published/*', (req, res, next) => {
       return res.status(404).json({ error: 'Preview file not found', requestedPath: filePath });
     }
 
+    // Don't expose the internal compression manifest to the browser.
+    if (path.basename(filename) === COMPRESSION_MANIFEST_FILENAME) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+
     // Set appropriate content type based on file extension
     if (filename.endsWith('.html')) {
       res.setHeader('Content-Type', 'text/html');
@@ -1655,6 +1661,20 @@ app.get('/api/site/:siteSlug/published/*', (req, res, next) => {
       res.setHeader('Content-Type', 'font/ttf');
     } else if (filename.endsWith('.eot')) {
       res.setHeader('Content-Type', 'application/vnd.ms-fontobject');
+    }
+
+    // If the file is in the compression manifest, the bytes on disk are
+    // already gzipped. Tell the browser so it decompresses transparently.
+    // Preview must be a true preview of what gets published; the same gzipped
+    // bytes go to S3 with the same Content-Encoding metadata.
+    const ASSETS_PREFIX = '_mw_assets/';
+    if (filename.startsWith(ASSETS_PREFIX)) {
+      const relativeAssetPath = filename.slice(ASSETS_PREFIX.length);
+      const assetsDir = join(getSiteHtmlDirectory(siteSlug), 'preview', '_mw_assets');
+      const gzipped = loadGzipPathSet(assetsDir);
+      if (gzipped?.has(relativeAssetPath)) {
+        res.setHeader('Content-Encoding', 'gzip');
+      }
     }
 
     // Send the file

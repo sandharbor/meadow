@@ -17,12 +17,15 @@ limitations under the License.
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import zlib from 'zlib';
 import { getConfigDirectory, getSiteDirectory } from './siteConfigRoutes.js';
 import { SiteConfigPaths } from '../../../shared_code/paths/siteConfigPaths.js';
 import { AppConfigPaths } from '../../../shared_code/paths/appConfigPaths.js';
 import { createZipFromDirectory } from '../utils/zipUtils.js';
 import { findUniqueName } from '../utils/uniqueNameUtils.js';
 import { buildFilteredMarkdownExportForSite } from '../utils/markdownExportBuilder.js';
+import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../shared_code/utils/compressionManifestUtils.js';
 
 // For 'raw' source: produces (and returns the path to) a filtered markdown
 // export directory that excludes orphaned-tracked and non-whitelisted pages,
@@ -33,6 +36,44 @@ async function resolveSourcePath(siteDir: string, sourceType: 'raw' | 'html'): P
     return await buildFilteredMarkdownExportForSite(siteDir);
   }
   return SiteConfigPaths.getPreviewDir(siteDir);
+}
+
+/**
+ * Local-export equivalent of "decompress and serve with Content-Encoding": we
+ * can't ship pre-gzipped bytes because file:// has no negotiation mechanism,
+ * so a user double-clicking the exported HTML would get unparseable JS.
+ * Stage the source into a temp dir, inflate any gzipped assets back to raw
+ * bytes, and drop the manifest itself before exporting.
+ *
+ * Returns the source path unchanged when there's nothing to inflate (e.g.
+ * raw-markdown exports, sites without the excalidraw vendor).
+ */
+function stageForLocalExport(sourcePath: string): { stagedPath: string; cleanup: () => void } {
+  const assetsDir = path.join(sourcePath, '_mw_assets');
+  const gzipped = fs.existsSync(assetsDir) ? loadGzipPathSet(assetsDir) : null;
+  if (!gzipped || gzipped.size === 0) {
+    return { stagedPath: sourcePath, cleanup: () => { /* nothing to clean */ } };
+  }
+
+  const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-export-'));
+  try {
+    fs.cpSync(sourcePath, stagingDir, { recursive: true });
+    const stagedAssetsDir = path.join(stagingDir, '_mw_assets');
+    for (const relPath of gzipped) {
+      const fullPath = path.join(stagedAssetsDir, relPath);
+      if (!fs.existsSync(fullPath)) continue;
+      fs.writeFileSync(fullPath, zlib.gunzipSync(fs.readFileSync(fullPath)));
+    }
+    const manifestPath = path.join(stagedAssetsDir, COMPRESSION_MANIFEST_FILENAME);
+    if (fs.existsSync(manifestPath)) fs.unlinkSync(manifestPath);
+    return {
+      stagedPath: stagingDir,
+      cleanup: () => { fs.rmSync(stagingDir, { recursive: true, force: true }); }
+    };
+  } catch (err) {
+    fs.rmSync(stagingDir, { recursive: true, force: true });
+    throw err;
+  }
 }
 
 const router = express.Router();
@@ -98,12 +139,15 @@ router.post('/site/:siteSlug/copy-to-directory', async (req, res) => {
     actualDestination = path.join(destinationPath, uniqueName);
   }
 
+  const staged = stageForLocalExport(sourcePath);
   try {
-    fs.cpSync(sourcePath, actualDestination, { recursive: true });
+    fs.cpSync(staged.stagedPath, actualDestination, { recursive: true });
     res.json({ success: true, exportPath: actualDestination });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: `Copy failed: ${errorMessage}` });
+  } finally {
+    staged.cleanup();
   }
 });
 
@@ -133,12 +177,15 @@ router.post('/site/:siteSlug/create-zip', async (req, res) => {
     counter++;
   }
 
+  const staged = stageForLocalExport(sourcePath);
   try {
-    await createZipFromDirectory(sourcePath, finalPath);
+    await createZipFromDirectory(staged.stagedPath, finalPath);
     res.json({ success: true, path: finalPath });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: `Zip creation failed: ${errorMessage}` });
+  } finally {
+    staged.cleanup();
   }
 });
 
