@@ -51,8 +51,22 @@ function walkFilesSorted(dir: string, base?: string): string[] {
 
 /**
  * Creates a ZIP archive of a source directory and writes it to destPath.
- * Uses sorted file listing and fixed timestamps for deterministic output.
- * Returns a promise that resolves when the archive is finalized.
+ * Output is byte-deterministic: same input bytes produce the same zip bytes,
+ * regardless of how many times files have been re-written, what their on-disk
+ * mtimes are, or what their permissions happen to be.
+ *
+ * Three things matter for that:
+ *   - Sorted file listing (walkFilesSorted) — entry order in the archive.
+ *   - FIXED_ZIP_DATE on every entry — DOS timestamp in each header.
+ *   - Explicit mode (0o644) on every entry — external file attributes in
+ *     the central directory otherwise leak the file's actual chmod bits.
+ *
+ * Critically, we use `archive.append(buffer, ...)` rather than
+ * `archive.file(path, ...)`. The path-based form reads files asynchronously
+ * and writes entries in stat-completion order, which means the sorted call
+ * order does NOT translate into a sorted archive — the sequence of entries
+ * within the archive can vary run to run. Pre-reading into a buffer
+ * sidesteps that and forces strict enqueue order.
  */
 export async function createZipFromDirectory(sourceDir: string, destPath: string): Promise<void> {
   if (!fs.existsSync(sourceDir)) {
@@ -73,11 +87,11 @@ export async function createZipFromDirectory(sourceDir: string, destPath: string
 
     archive.pipe(output);
 
-    // Add files in sorted order with fixed dates for deterministic output
     const files = walkFilesSorted(sourceDir);
     for (const relativePath of files) {
       const fullPath = path.join(sourceDir, relativePath);
-      archive.file(fullPath, { name: relativePath, date: FIXED_ZIP_DATE });
+      const fileContent = fs.readFileSync(fullPath);
+      archive.append(fileContent, { name: relativePath, date: FIXED_ZIP_DATE, mode: 0o644 });
     }
 
     void archive.finalize();
