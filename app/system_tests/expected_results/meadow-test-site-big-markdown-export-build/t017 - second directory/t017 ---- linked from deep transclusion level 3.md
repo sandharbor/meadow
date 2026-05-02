@@ -14,7 +14,7 @@ pagespecs:
           isInGraph: true
     htmlRenderedLinks:
       mainSectionLinks:
-        - relativeLinkPath: ../t017 - second directory/t017 ---- linked from within this second directory.html
+        - relativeLinkPath: t017 ---- linked from within this second directory.html
       footerSectionBacklinks:
         - relativeLinkPath: ../t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.html
           backlinkContexts:

@@ -5,7 +5,7 @@ import typescriptParser from '@typescript-eslint/parser';
 export default [
   js.configs.recommended,
   {
-    ignores: ['src/html/**/*', 'dist/**/*', 'test/**/*', 'vitest.config.ts']
+    ignores: ['src/html/**/*', 'dist/**/*', 'test/**/*', 'vitest.config.ts', 'scripts/**/*']
   },
   {
     files: ['**/*.ts'],

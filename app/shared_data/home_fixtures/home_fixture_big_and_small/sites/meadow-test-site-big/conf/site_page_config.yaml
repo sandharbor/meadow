@@ -131,6 +131,31 @@ pages:
     sourceGraphSubdirectory: ""
     title: t006 - embedded media
     tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t006 - second directory
+    title: t006 --- dup-linked-from-excalidraw
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: t006 --- dup-linked-from-excalidraw
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t006/t006 - nested
+    title: t006 --- dup-linked-from-excalidraw
+    tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: t006 --- linked-from-excalidraw
+    tracked: true
+  - fileType: excalidraw
+    listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: t006 --- meadow-flower
+    tracked: true
   - fileType: gif
     listType: whitelist
     sourceGraphSubdirectory: t006

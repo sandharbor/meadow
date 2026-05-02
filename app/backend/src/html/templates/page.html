@@ -16,6 +16,9 @@
     {{#if include_callouts}}
     <link rel="stylesheet" href="{{ assets_prefix }}{{ callouts_css }}">
     {{/if}}
+    {{#if include_excalidraw}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ excalidraw_css }}">
+    {{/if}}
     {{#if srs_enabled}}
     <link rel="stylesheet" href="{{ assets_prefix }}{{ srs_css }}">
     {{/if}}
@@ -30,6 +33,10 @@
     {{/if}}
     {{#if site_javascript_js}}
     <script src="{{ assets_prefix }}{{ site_javascript_js }}"></script>
+    {{/if}}
+    {{#if include_excalidraw}}
+    <script src="{{ assets_prefix }}{{ excalidraw_vendor_js }}" defer></script>
+    <script src="{{ assets_prefix }}{{ excalidraw_js }}" defer></script>
     {{/if}}
     {{#if srs_enabled}}
     <script type="module" src="{{ assets_prefix }}{{ srs_js }}"></script>

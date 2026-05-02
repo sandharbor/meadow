@@ -142,6 +142,32 @@ struct LinkResolvedInfo {
 
 const IMAGE_EXTENSIONS_MAIN: &[&str] = &["jpg", "jpeg", "png", "gif", "svg", "webp", "excalidraw"];
 
+/// Sidecar pagespec files like `foo.svg.pagespec.yaml` or `foo.excalidraw.pagespec.yaml`
+/// carry test metadata for files that cannot embed pagespecs inline. The graph scanner
+/// must not treat them as pages.
+fn is_pagespec_sidecar(path: &std::path::Path) -> bool {
+    path.file_name()
+        .and_then(|s| s.to_str())
+        .map(|s| s.ends_with(".pagespec.yaml"))
+        .unwrap_or(false)
+}
+
+/// Detects whether a markdown file is an Obsidian Excalidraw drawing by content.
+/// Obsidian's Excalidraw plugin writes `excalidraw-plugin: parsed` into the YAML
+/// frontmatter. We only inspect the leading frontmatter region to keep this cheap.
+fn is_excalidraw_markdown(content: &str) -> bool {
+    if !content.starts_with("---") {
+        return false;
+    }
+    let after_open = &content[3..];
+    let close_rel = match after_open.find("\n---") {
+        Some(idx) => idx,
+        None => return false,
+    };
+    let frontmatter = &after_open[..close_rel];
+    frontmatter.contains("excalidraw-plugin: parsed")
+}
+
 fn extract_page_identifier(path: &std::path::Path, base_dir: &std::path::Path) -> PageIdentifier {
     let mut directory = path
         .parent()
@@ -468,18 +494,44 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
         .filter(|e| e.file_type().is_file())
     {
         let path = entry.path();
+        if is_pagespec_sidecar(path) {
+            continue;
+        }
         let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
         let include = ext == "md" || IMAGE_EXTENSIONS_MAIN.contains(&ext.as_str());
         if !include {
             continue;
         }
 
-        let source_page_identifier = extract_page_identifier(path, graph_root);
+        let mut source_page_identifier = extract_page_identifier(path, graph_root);
         let mut outgoing_links: Vec<LinkOut> = Vec::new();
         let mut found_sensitive = false;
 
         if source_page_identifier.file_type == "md" {
             if let Ok(file_content) = fs::read_to_string(path) {
+                if is_excalidraw_markdown(&file_content) {
+                    // Reclassify the page as an excalidraw drawing. Strip a trailing
+                    // `.excalidraw` from the title so links like `[[name.excalidraw]]`
+                    // resolve to title=`name`, file_type=`excalidraw` (mirroring SVG).
+                    source_page_identifier.file_type = "excalidraw".to_string();
+                    if let Some(stripped) = source_page_identifier.title.strip_suffix(".excalidraw") {
+                        source_page_identifier.title = stripped.to_string();
+                    }
+                    let path_str = if source_page_identifier.directory.is_empty() {
+                        format!("{}.{}", source_page_identifier.title, source_page_identifier.file_type)
+                    } else {
+                        format!(
+                            "{}/{}.{}",
+                            source_page_identifier.directory,
+                            source_page_identifier.title,
+                            source_page_identifier.file_type,
+                        )
+                    };
+                    source_page_identifier.path = path_str;
+                }
+                // Wiki/markdown link extraction runs for both regular .md and excalidraw
+                // pages. The Text Elements section of an Excalidraw file is plain markdown
+                // and may contain `[[wiki-links]]` to other pages.
                 for extracted in extract_links(&file_content) {
                     match extracted {
                         ExtractedLink::Wiki(inner) => {

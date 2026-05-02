@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import * as fs from 'fs';
+import he from 'he';
 import { Page } from './page.js';
 import { IMAGE_EXTENSIONS, LINK_PATTERN } from './constants.js';
 import { removeFrontmatter } from './markdown.js';
@@ -98,6 +99,18 @@ export function getMdContent(
 
 export function anchorNameFor(pageName: string): string {
   return pageName.toLowerCase().replace(/ /g, '-');
+}
+
+/**
+ * Escapes a string so it can be used safely as the value of an HTML attribute
+ * (between double quotes). Use this when building attribute values by string
+ * concatenation rather than via Handlebars/marked (which escape on their own).
+ *
+ * Delegates to `he.escape` (Mathias Bynens' library) — the standard
+ * maintained implementation. We don't roll our own.
+ */
+export function escapeHtmlAttribute(value: string): string {
+  return he.escape(value);
 }
 
 export function linkTextToLinkInfo(link: string): LinkInfo {

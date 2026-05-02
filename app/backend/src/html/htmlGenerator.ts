@@ -41,9 +41,10 @@ import {
   anchorNameFor,
   linkTextToLinkInfo,
   markdownContentToPageLinkFilenames,
-  calculateRelativePath
+  calculateRelativePath,
+  escapeHtmlAttribute
 } from './shared.js';
-import { linkOrImageHtml as linkOrImageHtmlService } from './linkModificationService.js';
+import { linkOrImageHtml as linkOrImageHtmlService, buildExcalidrawClientLinkMap, resolveTrackedLinkHref } from './linkModificationService.js';
 import type { LinkResolvedInfo } from '../../../shared_code/types/ISitePage.js';
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../shared_code/utils/urlUtils.js';
@@ -193,7 +194,7 @@ export function renderPageToHtml(
       skipUninterestingLeafPages,
       highlightDoNotLinkPageName,
       currentPageDirectory: overrides?.currentPageDirectoryOverride ?? currentPageDirectory,
-      linkResolutionMap: overrides?.linkResolutionMapOverride ?? linkResolutionMap
+      linkResolutionMap: overrides?.linkResolutionMapOverride ?? linkResolutionMap,
     });
   }
 
@@ -319,7 +320,6 @@ export function renderPageToHtml(
         return '<span class="link-not-tracked">link not tracked</span>';
       }
 
-      const effectiveTargetDir = linkConfig.source_graph_subdirectory ?? targetDir;
       const normalizedTitle = siteConfig && siteSlug
         ? normalizePageTitle(linkConfig.title, siteConfig, siteSlug)
         : linkConfig.title;
@@ -330,10 +330,18 @@ export function renderPageToHtml(
         return `<span class="highlight-do-not-link">${normalizedTitle}</span>`;
       }
 
-      const targetPath = effectiveTargetDir
-        ? encodePathForUrl(`${effectiveTargetDir}/${normalizedTitle}.html`)
-        : encodePathForUrl(`${normalizedTitle}.html`);
-      const relativeUrl = calculateRelativePath(effectivePageDir, targetPath);
+      // Centralised URL build: resolved-target → relative-href, gated by
+      // whitelist. Same helper that drives the wiki-link page branch.
+      const relativeUrl = resolveTrackedLinkHref({
+        resolved: resolvedInfo,
+        hostPageDirectory: effectivePageDir,
+        sitePageConfigs,
+        siteConfig,
+        siteSlug,
+      });
+      if (relativeUrl === null) {
+        return '<span class="link-not-tracked">link not tracked</span>';
+      }
 
       if (processingMode === 'each-page') {
         return `<a href="${relativeUrl}">${text}</a>`;
@@ -625,6 +633,7 @@ export function renderPageToHtml(
   // Render the template with the HTML content
   const includeMermaid = htmlContent.includes('class="mermaid"') || htmlContent.includes('language-mermaid');
   const includeCallouts = htmlContent.includes('class="callout ');
+  const includeExcalidraw = htmlContent.includes('meadow-excalidraw-embed') || htmlContent.includes('meadow-excalidraw-page');
   // Empty string means base was disabled; only pass to template if non-empty
   const styleCssRaw = staticAssetNames?.styleCss ?? 'style.css';
   const styleCss = styleCssRaw || undefined;
@@ -632,6 +641,9 @@ export function renderPageToHtml(
   const javascriptJs = javascriptJsRaw || undefined;
   const mermaidMinJs = staticAssetNames?.mermaidMinJs ?? 'mermaid.min.js';
   const calloutsCss = staticAssetNames?.calloutsCss ?? 'callouts.css';
+  const excalidrawCss = staticAssetNames?.excalidrawCss ?? 'meadow-excalidraw.css';
+  const excalidrawVendorJs = staticAssetNames?.excalidrawVendorJs ?? 'excalidraw-vendor.js';
+  const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
   const srsCss = staticAssetNames?.srsCss ?? 'srs.css';
   const srsJs = staticAssetNames?.srsJs ?? 'srs.js';
   const globalStyleCss = staticAssetNames?.globalStyleCss;
@@ -649,6 +661,7 @@ export function renderPageToHtml(
     backlinks: backlinksHtml,
     include_mermaid: includeMermaid,
     include_callouts: includeCallouts,
+    include_excalidraw: includeExcalidraw,
     style_css: styleCss,
     javascript_js: javascriptJs,
     global_style_css: globalStyleCss,
@@ -657,6 +670,9 @@ export function renderPageToHtml(
     site_javascript_js: siteJavascriptJs,
     mermaid_min_js: mermaidMinJs,
     callouts_css: calloutsCss,
+    excalidraw_css: excalidrawCss,
+    excalidraw_vendor_js: excalidrawVendorJs,
+    excalidraw_js: excalidrawJs,
     srs_css: srsCss,
     srs_js: srsJs,
     srs_enabled: srsEnabled,
@@ -682,6 +698,146 @@ export function renderPageToHtml(
   }
 
   return { htmlPath, htmlContent, srsCards: collectedSrsCards };
+}
+
+/**
+ * Builds the simple backlinks `<h2>Backlinks</h2><ul>...` block used by the
+ * standalone Excalidraw page. Only includes whitelisted sources; no context
+ * blocks or "see in context" links (those add nothing for a drawing target).
+ */
+export function renderSimpleBacklinksHtml(
+  pageTitle: string,
+  currentPageDirectory: string,
+  inverseLinks: InverseLinks,
+  sitePageConfigs: SitePageConfig[],
+  siteConfig: SiteConfig,
+  siteSlug?: string,
+): string {
+  const pathPrefixedKey = currentPageDirectory ? `${currentPageDirectory}/${pageTitle}` : null;
+  const list = (pathPrefixedKey && inverseLinks[pathPrefixedKey])
+    ? inverseLinks[pathPrefixedKey]
+    : (inverseLinks[pageTitle] || []);
+  const sorted = [...new Set(list)].sort();
+  if (sorted.length === 0) return '';
+
+  let html = '<h2>Backlinks</h2>\n<ul>\n';
+  for (const backlink of sorted) {
+    const cfg = sitePageConfigs.find(c => c.title === backlink);
+    if (!cfg || cfg.config.list_type !== 'whitelist') continue;
+    const sourceDir = cfg.source_graph_subdirectory || '';
+    const normName = normalizePageTitle(backlink, siteConfig, siteSlug);
+    const encoded = encodeURIComponent(normName);
+    const targetPath = sourceDir ? `${sourceDir}/${encoded}.html` : `${encoded}.html`;
+    const relUrl = calculateRelativePath(currentPageDirectory || '', targetPath);
+    html += `<li class="backlink"><a href="${relUrl}">${normName}</a></li>\n`;
+  }
+  html += '</ul>\n';
+  return html;
+}
+
+/**
+ * Renders a standalone HTML page for an Excalidraw drawing. The body is a
+ * placeholder container that the client renderer (meadow-excalidraw.js) fills
+ * with the drawing by fetching the source markdown and calling Excalidraw's
+ * own exportToSvg — same renderer the Obsidian editor uses.
+ */
+export function renderExcalidrawPageToHtml(args: {
+  sourceMdPath: string;
+  outputFolder: string;
+  outputFilename: string; // page-title without extension
+  pageTitle: string;
+  currentPageDirectory: string;
+  drawingMdHref: string; // href the client uses to fetch the source `.excalidraw.md`
+  clientLinkMap?: Record<string, string>; // server-resolved wikilinks-inside-drawing
+  breadcrumbHtml: string;
+  backlinksHtml: string;
+  staticAssetNames?: import('./types.js').StaticAssetNames;
+  siteConfig: SiteConfig;
+  siteSlug?: string;
+}): string | null {
+  const {
+    sourceMdPath,
+    outputFolder,
+    outputFilename,
+    pageTitle,
+    currentPageDirectory,
+    drawingMdHref,
+    clientLinkMap,
+    breadcrumbHtml,
+    backlinksHtml,
+    staticAssetNames,
+    siteConfig,
+    siteSlug,
+  } = args;
+
+  if (!fs.existsSync(sourceMdPath)) {
+    logger.warn(`Excalidraw source not found: ${sourceMdPath}`);
+    return null;
+  }
+
+  const linksAttr = clientLinkMap && Object.keys(clientLinkMap).length > 0
+    ? ` data-meadow-excalidraw-links="${escapeHtmlAttribute(JSON.stringify(clientLinkMap))}"`
+    : '';
+  const bodyHtml = `<div class="meadow-excalidraw-page" data-meadow-excalidraw-src="${drawingMdHref}"${linksAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></div>`;
+
+  const depth = currentPageDirectory ? currentPageDirectory.split('/').filter(p => p).length : 0;
+  const assetsPrefix = '../'.repeat(depth) + '_mw_assets/';
+
+  const styleCssRaw = staticAssetNames?.styleCss ?? 'style.css';
+  const styleCss = styleCssRaw || undefined;
+  const javascriptJsRaw = staticAssetNames?.javascriptJs ?? 'javascript.js';
+  const javascriptJs = javascriptJsRaw || undefined;
+  const mermaidMinJs = staticAssetNames?.mermaidMinJs ?? 'mermaid.min.js';
+  const calloutsCss = staticAssetNames?.calloutsCss ?? 'callouts.css';
+  const excalidrawCss = staticAssetNames?.excalidrawCss ?? 'meadow-excalidraw.css';
+  const excalidrawVendorJs = staticAssetNames?.excalidrawVendorJs ?? 'excalidraw-vendor.js';
+  const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
+  const globalStyleCss = staticAssetNames?.globalStyleCss;
+  const siteStyleCss = staticAssetNames?.siteStyleCss;
+  const globalJavascriptJs = staticAssetNames?.globalJavascriptJs;
+  const siteJavascriptJs = staticAssetNames?.siteJavascriptJs;
+
+  const templatePath = path.join(__dirname, 'templates', 'page.html');
+  const templateSource = fs.readFileSync(templatePath, 'utf-8');
+  const template = handlebars.compile(templateSource);
+
+  const fullPageContent = template({
+    content: bodyHtml,
+    page_title: pageTitle,
+    assets_prefix: assetsPrefix,
+    breadcrumbs: breadcrumbHtml,
+    backlinks: backlinksHtml,
+    include_mermaid: false,
+    include_callouts: false,
+    include_excalidraw: true,
+    style_css: styleCss,
+    javascript_js: javascriptJs,
+    global_style_css: globalStyleCss,
+    site_style_css: siteStyleCss,
+    global_javascript_js: globalJavascriptJs,
+    site_javascript_js: siteJavascriptJs,
+    mermaid_min_js: mermaidMinJs,
+    callouts_css: calloutsCss,
+    excalidraw_css: excalidrawCss,
+    excalidraw_vendor_js: excalidrawVendorJs,
+    excalidraw_js: excalidrawJs,
+    srs_enabled: false,
+    include_hover_preview: false,
+  });
+
+  const htmlPath = path.join(outputFolder, `${outputFilename}.html`);
+  let finalContent = fullPageContent;
+  if (siteSlug) {
+    finalContent = HooksLoader.tryExecuteHtmlPostProcessing(siteSlug, fullPageContent, pageTitle);
+  }
+  fs.writeFileSync(htmlPath, finalContent);
+  logger.debug(`Rendered standalone Excalidraw page to HTML: ${pageTitle}`);
+
+  // Suppress unused-import warnings for siteConfig — kept in signature for
+  // consistency with renderPageToHtml and future hook integrations.
+  void siteConfig;
+
+  return htmlPath;
 }
 
 function contentToBlockId(content: string): string {

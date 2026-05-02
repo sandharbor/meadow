@@ -32,11 +32,23 @@
 
 ![[t006/t006 --- meadow-flower.svg]]
 
-![[t006/t006 --- meadow-flower.svg|100]]
+![[t006/t006 --- meadow-flower.svg|78]]
 
-| test |
-|------|
+| test                                      |
+| ----------------------------------------- |
 | ![[t006/t006 --- meadow-flower.svg\|100]] |
+
+## Excalidraw
+
+![[t006 --- meadow-flower.excalidraw]]
+
+![[t006 --- meadow-flower.excalidraw|78]]
+
+| test                                  |
+| ------------------------------------- |
+| ![[t006 --- meadow-flower.excalidraw\|100]] |
+
+
 
 ```yaml
 pagespecs:
@@ -46,6 +58,8 @@ pagespecs:
     links:
       outlinks:
         - linkPath: /t006/t006 --- meadow-flower-petals-ani.gif
+          isInGraph: true
+        - linkPath: /t006/t006 --- meadow-flower.excalidraw
           isInGraph: true
         - linkPath: /t006/t006 --- meadow-flower.svg
           isInGraph: true
@@ -61,6 +75,9 @@ pagespecs:
         - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
         - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
         - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
+        - relativeLinkPath: t006/t006 --- meadow-flower.html
+        - relativeLinkPath: t006/t006 --- meadow-flower.html
+        - relativeLinkPath: t006/t006 --- meadow-flower.html
         - relativeLinkPath: t006/t006 --- meadow-flower.svg
         - relativeLinkPath: t006/t006 --- meadow-flower.svg
         - relativeLinkPath: t006/t006 --- meadow-flower.svg

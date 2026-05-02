@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export const IMAGE_EXTENSIONS = ['.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp'] as const;
+// `.excalidraw` is treated as an image-like media type for embedding (`![[name.excalidraw]]`).
+// On disk the file is `<name>.excalidraw.md` (Obsidian Excalidraw plugin), but the working
+// graph reclassifies it to file_type=excalidraw based on frontmatter.
+export const IMAGE_EXTENSIONS = ['.excalidraw', '.gif', '.jpeg', '.jpg', '.png', '.svg', '.webp'] as const;
 // File types without leading dots, for comparing against file_type fields
 export const IMAGE_FILE_TYPES = IMAGE_EXTENSIONS.map(ext => ext.slice(1));
 export const LINK_PATTERN = /\[\[(.*?)\]\]/g;

@@ -31,6 +31,11 @@ import {
   getReferencedSites,
   extractContentWithoutPagespecs,
   hasPagespecsBlock,
+  getEffectivePagespecBlock,
+  isExcalidrawMarkdown,
+  getSidecarPagespecPath,
+  parsePagespecSidecarContent,
+  sourceFileForSidecarPath,
   validatePagespecsBlock,
   validatePagespecsBlockStructure,
   validatePagespecEntry,
@@ -53,6 +58,7 @@ import { isPagespecNotInWorkingGraph } from '../../shared_code/types/test/index.
 import type { WorkingGraphData } from '../../shared_code/test/index.js';
 import { parsePageConfig } from '../../shared_code/utils/sitePageConfigUtils.js';
 import type { SitePageConfig } from '../../shared_code/types/sitePageConfig.js';
+import { IMAGE_FILE_TYPES } from '../../shared_code/utils/fileTypeUtils.js';
 
 /**
  * Recursively finds all markdown files in a directory.
@@ -66,6 +72,25 @@ function findAllMarkdownFiles(dir: string): string[] {
     if (entry.isDirectory() && !entry.name.startsWith('.')) {
       results.push(...findAllMarkdownFiles(fullPath));
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      results.push(fullPath);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Recursively finds all sidecar pagespec.yaml files in a directory.
+ */
+function findAllSidecarPagespecFiles(dir: string): string[] {
+  const results: string[] = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory() && !entry.name.startsWith('.')) {
+      results.push(...findAllSidecarPagespecFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.pagespec.yaml')) {
       results.push(fullPath);
     }
   }
@@ -99,15 +124,27 @@ function getPageIdFromPath(filePath: string, sourceGraphDir: string): string {
 function isPageTracked(
   pageId: string,
   sitePageConfigs: SitePageConfig[],
-  fileType: 'md' | 'png' = 'md'
+  fileType: string = 'md'
 ): boolean {
-  // pageId is like "t002/extra nested/t002 ---- dup"
-  // We need to extract subdirectory and title
+  // pageId is like "t002/extra nested/t002 ---- dup" for md pages, or
+  // "t006/t006 --- meadow-flower.excalidraw" for non-md typed pages.
   const lastSlashIndex = pageId.lastIndexOf('/');
-  const title = lastSlashIndex >= 0 ? pageId.slice(lastSlashIndex + 1) : pageId;
+  let title = lastSlashIndex >= 0 ? pageId.slice(lastSlashIndex + 1) : pageId;
   const subdirectory = lastSlashIndex >= 0 ? pageId.slice(0, lastSlashIndex) : '';
 
-  // Find a matching config
+  // If the title carries an embedded image-like extension (e.g. `.excalidraw`,
+  // `.svg`), prefer that over the caller's default `fileType` and strip it
+  // from the title — that's how `site_page_config.yaml` stores image entries.
+  let effectiveFileType = fileType;
+  for (const imageType of IMAGE_FILE_TYPES) {
+    const suffix = `.${imageType}`;
+    if (title.endsWith(suffix)) {
+      effectiveFileType = imageType;
+      title = title.slice(0, -suffix.length);
+      break;
+    }
+  }
+
   for (const config of sitePageConfigs) {
     const configSubdir = config.source_graph_subdirectory || '';
     const configFileType = config.file_type || 'md';
@@ -115,7 +152,7 @@ function isPageTracked(
     if (
       config.title === title &&
       configSubdir === subdirectory &&
-      configFileType === fileType
+      configFileType === effectiveFileType
     ) {
       return config.config.tracked === true;
     }
@@ -171,19 +208,18 @@ describe('Pagespecs System Tests', () => {
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          if (!hasPagespecsBlock(content)) {
+          const { block, source, sourcePath } = getEffectivePagespecBlock(mdFile, content);
+          if (source === 'none') {
             continue;
           }
-
-          const block = extractPagespecsBlock(content);
           if (block === null) {
-            errors.push(`Failed to parse pagespecs block in ${mdFile}`);
+            errors.push(`Failed to parse pagespecs in ${sourcePath}`);
             continue;
           }
 
           const structureErrors = validatePagespecsBlockStructure(block, getPageTitle(mdFile));
           for (const err of structureErrors) {
-            errors.push(`${mdFile}: ${err.message}`);
+            errors.push(`${sourcePath}: ${err.message}`);
           }
         }
       }
@@ -202,7 +238,7 @@ describe('Pagespecs System Tests', () => {
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
           const referencedSites = getReferencedSites(block);
@@ -228,7 +264,7 @@ describe('Pagespecs System Tests', () => {
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
           const pageTitle = getPageTitle(mdFile);
@@ -262,7 +298,7 @@ describe('Pagespecs System Tests', () => {
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
           const pageTitle = getPageTitle(mdFile);
@@ -296,7 +332,7 @@ describe('Pagespecs System Tests', () => {
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
           const pageTitle = getPageTitle(mdFile);
@@ -332,7 +368,7 @@ describe('Pagespecs System Tests', () => {
         const allReferencedSites: string[] = [];
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (block) {
             for (const site of getReferencedSites(block)) {
               if (!allReferencedSites.includes(site)) {
@@ -344,7 +380,7 @@ describe('Pagespecs System Tests', () => {
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
           const pageTitle = getPageTitle(mdFile);
@@ -377,7 +413,7 @@ describe('Pagespecs System Tests', () => {
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          if (hasPagespecsBlock(content)) {
+          if (getEffectivePagespecBlock(mdFile, content).source !== 'none') {
             pagesWithSpecs++;
           }
         }
@@ -394,7 +430,7 @@ describe('Pagespecs System Tests', () => {
         const allReferencedSites = new Set<string>();
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (block) {
             for (const site of getReferencedSites(block)) {
               allReferencedSites.add(site);
@@ -415,7 +451,7 @@ describe('Pagespecs System Tests', () => {
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           const relativePath = path.relative(sourceGraphDir, mdFile);
 
           if (!block) {
@@ -541,7 +577,7 @@ pagespecs:
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
           for (const spec of block.pagespecs) {
@@ -565,7 +601,7 @@ pagespecs:
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
           for (const spec of block.pagespecs) {
@@ -592,7 +628,7 @@ pagespecs:
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = extractPagespecsBlock(content);
+          const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
           for (const spec of block.pagespecs) {
@@ -885,6 +921,89 @@ pagespecs:
       expect(result.errors.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Sidecar Pagespec Tests', () => {
+    it('every *.pagespec.yaml sidecar should parse and have a corresponding source file', () => {
+      const errors: string[] = [];
+
+      for (const sourceGraphDir of sourceGraphDirs) {
+        const sidecars = findAllSidecarPagespecFiles(sourceGraphDir);
+
+        for (const sidecarPath of sidecars) {
+          const content = fs.readFileSync(sidecarPath, 'utf-8');
+          const block = parsePagespecSidecarContent(content);
+          if (block === null) {
+            errors.push(`${sidecarPath}: failed to parse as YAML pagespecs block`);
+            continue;
+          }
+
+          const expectedSourcePath = sourceFileForSidecarPath(sidecarPath);
+          if (!expectedSourcePath) {
+            errors.push(`${sidecarPath}: filename does not follow the <basename>.<file_type>.pagespec.yaml convention`);
+            continue;
+          }
+          if (!fs.existsSync(expectedSourcePath)) {
+            errors.push(`${sidecarPath}: orphan sidecar — expected source file ${expectedSourcePath} does not exist`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Sidecar pagespec validation errors:\n${errors.join('\n')}`);
+      }
+    });
+
+    it('every Excalidraw markdown file should have a sidecar pagespec.yaml', () => {
+      const errors: string[] = [];
+
+      for (const sourceGraphDir of sourceGraphDirs) {
+        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+
+        for (const mdFile of mdFiles) {
+          const content = fs.readFileSync(mdFile, 'utf-8');
+          if (!isExcalidrawMarkdown(content)) continue;
+
+          const sidecarPath = getSidecarPagespecPath(mdFile, content);
+          if (!sidecarPath) {
+            errors.push(`${mdFile}: Excalidraw file but could not derive sidecar path`);
+            continue;
+          }
+          if (!fs.existsSync(sidecarPath)) {
+            const relative = path.relative(sourceGraphDir, mdFile);
+            errors.push(`${relative}: Excalidraw drawing is missing sidecar pagespec ${path.basename(sidecarPath)}`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Missing Excalidraw sidecars:\n${errors.join('\n')}`);
+      }
+    });
+
+    it('Excalidraw markdown files should not contain inline pagespecs blocks', () => {
+      // Obsidian rewrites Excalidraw drawing markdown on every edit, so any
+      // inline ```yaml pagespecs:``` block at the end of the file would be
+      // wiped out. Pagespec metadata for these files MUST live in the sidecar.
+      const errors: string[] = [];
+
+      for (const sourceGraphDir of sourceGraphDirs) {
+        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+
+        for (const mdFile of mdFiles) {
+          const content = fs.readFileSync(mdFile, 'utf-8');
+          if (!isExcalidrawMarkdown(content)) continue;
+          if (hasPagespecsBlock(content)) {
+            const relative = path.relative(sourceGraphDir, mdFile);
+            errors.push(`${relative}: Excalidraw drawing has an inline pagespecs block (move it to the sidecar .pagespec.yaml)`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Inline pagespecs in Excalidraw drawings:\n${errors.join('\n')}`);
+      }
+    });
+  });
 });
 
 /**
@@ -937,7 +1056,7 @@ async function validatePagespecLinksForSite(
 
   for (const mdFile of mdFiles) {
     const content = fs.readFileSync(mdFile, 'utf-8');
-    const block = extractPagespecsBlock(content);
+    const block = getEffectivePagespecBlock(mdFile, content).block;
     if (!block) continue;
 
     const relativePath = path.relative(sourceGraphDir, mdFile);
@@ -1078,7 +1197,7 @@ describe('Runtime Pagespec Link Validation', () => {
 
       for (const mdFile of mdFiles) {
         const content = fs.readFileSync(mdFile, 'utf-8');
-        const block = extractPagespecsBlock(content);
+        const block = getEffectivePagespecBlock(mdFile, content).block;
         if (!block) continue;
 
         const pageId = getPageIdFromPath(mdFile, sourceGraphDir);
@@ -1128,7 +1247,7 @@ describe('Runtime Pagespec Link Validation', () => {
 
       for (const mdFile of mdFiles) {
         const content = fs.readFileSync(mdFile, 'utf-8');
-        const block = extractPagespecsBlock(content);
+        const block = getEffectivePagespecBlock(mdFile, content).block;
         if (!block) continue;
 
         const pageId = getPageIdFromPath(mdFile, sourceGraphDir);
@@ -1192,7 +1311,7 @@ describe('Runtime Pagespec Link Validation', () => {
 
       for (const mdFile of mdFiles) {
         const content = fs.readFileSync(mdFile, 'utf-8');
-        const block = extractPagespecsBlock(content);
+        const block = getEffectivePagespecBlock(mdFile, content).block;
         if (!block) continue;
 
         const pageId = getPageIdFromPath(mdFile, sourceGraphDir);
@@ -1266,7 +1385,7 @@ describe('Runtime Pagespec Link Validation', () => {
 
       for (const mdFile of mdFiles) {
         const content = fs.readFileSync(mdFile, 'utf-8');
-        const block = extractPagespecsBlock(content);
+        const block = getEffectivePagespecBlock(mdFile, content).block;
         if (!block) continue;
 
         const siteSpec = getPagespecForSite(block, siteName);

@@ -19,6 +19,7 @@ import { DisplayGraph, DisplayPage, Highlight } from '../types/displayGraph';
 import { API_BASE_URL } from '../utils/apiConfig';
 import { isImageFileType } from '../../../shared_code/utils/fileTypeUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './ImageHoverPreview';
+import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 import SitePageHoverCard from './SitePageHoverCard';
 
 interface ListViewProps {
@@ -254,7 +255,7 @@ const ListView: React.FC<ListViewProps> = ({
   };
 
   const handleImageMouseEnter = (
-    e: React.MouseEvent<HTMLImageElement>,
+    e: React.MouseEvent<HTMLElement>,
     imageUrl: string,
     title: string
   ) => {
@@ -265,6 +266,46 @@ const ListView: React.FC<ListViewProps> = ({
       x: rect.left + rect.width / 2,
       y: rect.top,
     });
+  };
+
+  // Renders the small inline thumbnail beside a page title in the list. Excalidraw
+  // drawings can't be `<img src>`'d (the on-disk file is a `.excalidraw.md` whose
+  // scene has to be decompressed and rendered) — they go through the vendored
+  // renderer instead. Both paths feed the same hover-preview popup.
+  const renderInlineThumbnail = (page: { title: string; file_type: string; sourceGraphSubdirectory: string }) => {
+    if (page.file_type === 'excalidraw') {
+      const mdPath = page.sourceGraphSubdirectory
+        ? `${page.sourceGraphSubdirectory}/${page.title}.excalidraw.md`
+        : `${page.title}.excalidraw.md`;
+      const mdSourceUrl = `${API_BASE_URL}/site/${siteSlug}/source-file/${encodeURIComponent(mdPath)}`;
+      return (
+        <ExcalidrawThumbnail
+          mdSourceUrl={mdSourceUrl}
+          vendorUrl={`${API_BASE_URL}/assets/excalidraw-vendor.js`}
+          alt={page.title}
+          className="w-8 h-8 rounded border border-gray-200 cursor-pointer bg-white"
+          lazy
+          onMouseEnter={(e) => handleImageMouseEnter(e, mdSourceUrl, page.title)}
+          onMouseLeave={() => setHoveredImage(null)}
+        />
+      );
+    }
+    if (isImageFileType(page.file_type)) {
+      const imageUrl = `${API_BASE_URL}/site/${siteSlug}/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.title}.${page.file_type}` : `${page.title}.${page.file_type}`)}`;
+      return (
+        <img
+          src={imageUrl}
+          alt={page.title}
+          className="w-8 h-8 object-cover rounded border border-gray-200 cursor-pointer"
+          onMouseEnter={(e) => handleImageMouseEnter(e, imageUrl, page.title)}
+          onMouseLeave={() => setHoveredImage(null)}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      );
+    }
+    return null;
   };
 
   const handleHighlightMouseEnter = (
@@ -411,21 +452,7 @@ const ListView: React.FC<ListViewProps> = ({
                   <td className="border px-4 py-2">
                     <div className="flex items-center gap-2">
                       {page.title}
-                      {isImageFileType(page.file_type) && (() => {
-                        const imageUrl = `${API_BASE_URL}/site/${siteSlug}/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.title}.${page.file_type}` : `${page.title}.${page.file_type}`)}`;
-                        return (
-                          <img
-                            src={imageUrl}
-                            alt={page.title}
-                            className="w-8 h-8 object-cover rounded border border-gray-200 cursor-pointer"
-                            onMouseEnter={(e) => handleImageMouseEnter(e, imageUrl, page.title)}
-                            onMouseLeave={() => setHoveredImage(null)}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        );
-                      })()}
+                      {renderInlineThumbnail(page)}
                     </div>
                   </td>
                   <td className="border px-4 py-2 text-neutral-500">
@@ -535,21 +562,7 @@ const ListView: React.FC<ListViewProps> = ({
                           <td className="border px-4 py-2 pl-8">
                             <div className="flex items-center gap-2">
                               {page.title}
-                              {isImageFileType(page.file_type) && (() => {
-                                const imageUrl = `${API_BASE_URL}/site/${siteSlug}/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.title}.${page.file_type}` : `${page.title}.${page.file_type}`)}`;
-                                return (
-                                  <img
-                                    src={imageUrl}
-                                    alt={page.title}
-                                    className="w-8 h-8 object-cover rounded border border-gray-200 cursor-pointer"
-                                    onMouseEnter={(e) => handleImageMouseEnter(e, imageUrl, page.title)}
-                                    onMouseLeave={() => setHoveredImage(null)}
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                    }}
-                                  />
-                                );
-                              })()}
+                              {renderInlineThumbnail(page)}
                             </div>
                           </td>
                           <td className="border px-4 py-2 text-neutral-500">
