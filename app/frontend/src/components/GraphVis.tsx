@@ -931,9 +931,17 @@ const GraphVis: React.FC<GraphVisProps> = ({
                   if (ctm) {
                     const screenPt = pt.matrixTransform(ctm);
                     const isImage = isImageFileType(page.file_type);
-                    const filePath = page.sourceGraphSubdirectory
-                      ? `${page.sourceGraphSubdirectory}/${page.title}.${page.file_type}`
+                    // Excalidraw drawings live as `<title>.excalidraw.md` on disk;
+                    // the hover preview component recognises that URL suffix and
+                    // routes it through the vendored Excalidraw renderer instead
+                    // of `<img>`.
+                    const isExcalidraw = page.file_type === 'excalidraw';
+                    const filename = isExcalidraw
+                      ? `${page.title}.excalidraw.md`
                       : `${page.title}.${page.file_type}`;
+                    const filePath = page.sourceGraphSubdirectory
+                      ? `${page.sourceGraphSubdirectory}/${filename}`
+                      : filename;
                     setHoveredPage({
                       id: page.id,
                       x: screenPt.x - containerRect.left,

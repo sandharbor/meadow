@@ -19,7 +19,8 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { setTimeout as delay } from 'timers/promises';
 import { Page } from './page.js';
-import { renderPageToHtml, CollectedSrsCard } from './htmlGenerator.js';
+import { renderPageToHtml, renderExcalidrawPageToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
+import { buildExcalidrawClientLinkMap } from './linkModificationService.js';
 import { markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
 import {
   SitePageConfigs,
@@ -494,6 +495,28 @@ export async function generateHtmlForSite(
     logger.warn(`callouts.css not found at ${calloutsSrc}`);
   }
 
+  // Excalidraw assets — only copied for sites that include at least one Excalidraw drawing.
+  const siteHasExcalidraw = Object.values(sitePageConfs).some(
+    conf => conf.file_type === 'excalidraw' && conf.config.list_type === 'whitelist'
+  );
+  if (siteHasExcalidraw) {
+    const excalidrawAssets = [
+      'meadow-excalidraw.css',
+      'excalidraw-vendor.js', // pre-bundled @excalidraw/excalidraw + lz-string; sets window.MeadowExcalidraw
+      'meadow-excalidraw.js', // small init script that hydrates placeholder containers
+    ];
+    for (const asset of excalidrawAssets) {
+      const src = path.join(sharedDirectory, asset);
+      const dst = path.join(assetsDirectory, asset);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, dst);
+        logger.debug(`Copied ${asset} to ${dst}`);
+      } else {
+        logger.warn(`${asset} not found at ${src}`);
+      }
+    }
+  }
+
   if (generationOptions.spacedRepetitionEnabled) {
     const srsAssetsDirectory = getPublishedSiteSrsAssetsPath();
     const srsOutputDirectory = path.join(assetsDirectory, 'srs');
@@ -641,19 +664,30 @@ export async function generateHtmlForSite(
     }
   }
 
-  // Build the inverse_links mappings by scanning only traversable markdown files (used for backlinks)
-  // This excludes orphaned tracked pages (isTracked: true but isInWorkingGraph: false)
+  // Build the inverse_links mappings by scanning all traversable text-content
+  // pages (markdown and Excalidraw drawings, since the latter store
+  // wikilinks in the Text Elements section of their .md). This excludes
+  // orphaned tracked pages (isTracked: true but isInWorkingGraph: false).
   const inverseLinks: InverseLinks = {};
   const pageNameToPage: PageNameToPage = {};
 
   emitProgress({ stage: 'scanning-links', message: 'Scanning links for backlinks...' });
-  const traversableMdPageKeysForBacklinks = whitelistedMdPageKeys.filter(pageKey => traversablePageKeys.has(pageKey));
-  for (const pageKey of traversableMdPageKeysForBacklinks) {
+  const traversableLinkScanPageKeys = Object.keys(sitePageConfs).filter(pageKey => {
+    const conf = sitePageConfs[pageKey];
+    const ft = conf.file_type;
+    const isScannable = ft === 'md' || ft === undefined || ft === 'excalidraw';
+    return isScannable && conf.config.list_type === 'whitelist' && traversablePageKeys.has(pageKey);
+  });
+  for (const pageKey of traversableLinkScanPageKeys) {
     const conf = sitePageConfs[pageKey];
     const subdir = conf.source_graph_subdirectory || '';
+    // Excalidraw drawings live as `<title>.excalidraw.md` on disk.
+    const filename = conf.file_type === 'excalidraw'
+      ? `${conf.title}.excalidraw.md`
+      : `${conf.title}.md`;
     const pageContentPath = subdir
-      ? path.join(renderContentDirectory, subdir, `${conf.title}.md`)
-      : path.join(renderContentDirectory, `${conf.title}.md`);
+      ? path.join(renderContentDirectory, subdir, filename)
+      : path.join(renderContentDirectory, filename);
 
     if (!fs.existsSync(pageContentPath)) {
       continue;
@@ -664,6 +698,22 @@ export async function generateHtmlForSite(
 
     // Find all wiki-style links [[link name]] and standard markdown links [text](path.md)
     const links = markdownContentToPageLinkFilenames(content);
+
+    // Also capture excalidraw embeds `![[X.excalidraw]]` as inlinks to the
+    // X drawing — the markdown link extractor skips them (image-typed) but we
+    // want backlinks to render on the standalone Excalidraw page.
+    const excalidrawEmbedRe = /!\[\[([^\]]+)\]\]/g;
+    let exMatch;
+    while ((exMatch = excalidrawEmbedRe.exec(content)) !== null) {
+      const inner = exMatch[1].split('|')[0]; // strip size/alias
+      if (!/\.excalidraw$/i.test(inner)) continue;
+      const stripped = inner.replace(/\.excalidraw$/i, '');
+      const lastSlash = stripped.lastIndexOf('/');
+      const title = lastSlash >= 0 ? stripped.slice(lastSlash + 1) : stripped;
+      if (title && !links.includes(title)) {
+        links.push(title);
+      }
+    }
 
     // Also scan for standard markdown file links [text](path.md)
     const mdLinkPattern = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
@@ -888,6 +938,114 @@ export async function generateHtmlForSite(
     // Yield between pages so the server can still respond to preview file requests while rendering continues.
     // Use AFTER_HTML_GENERATION_PAUSE_MS to add an artificial delay for debugging progress visualization.
     await delay(AFTER_HTML_GENERATION_PAUSE_MS);
+  }
+
+  // Standalone Excalidraw HTML pages (so direct navigation works and breadcrumbs
+  // pointing at an Excalidraw drawing resolve to a real page). The body is the
+  // inline-rendered SVG; the standard page shell wraps breadcrumbs and footer.
+  const traversableExcalidrawPageKeys = Object.keys(sitePageConfs).filter(key => {
+    const conf = sitePageConfs[key];
+    return conf.config.list_type === 'whitelist' && conf.file_type === 'excalidraw' && traversablePageKeys.has(key);
+  });
+  for (const pageKey of traversableExcalidrawPageKeys) {
+    const conf = sitePageConfs[pageKey];
+    const subdir = conf.source_graph_subdirectory || '';
+    // Obsidian Excalidraw drawings live on disk as `<title>.excalidraw.md`.
+    const sourceMdPath = subdir
+      ? path.join(renderContentDirectory, subdir, `${conf.title}.excalidraw.md`)
+      : path.join(renderContentDirectory, `${conf.title}.excalidraw.md`);
+
+    const outputSubdir = subdir
+      ? path.join(previewHtmlDirectory, subdir)
+      : previewHtmlDirectory;
+    if (subdir && !fs.existsSync(outputSubdir)) {
+      fs.mkdirSync(outputSubdir, { recursive: true });
+    }
+
+    const normalizedOutputFilename = normalizePageTitle(conf.title, siteConfig, siteSlug || undefined);
+
+    // Build breadcrumb HTML inline using the same lookup as renderPageToHtml.
+    const breadcrumbPath = breadcrumbPaths[pageKey] || [];
+    const isInitialPage = conf.title === initialSitePageTitle &&
+      (conf.source_graph_subdirectory || '') === initialSitePageDirectory;
+    const showBreadcrumbs = breadcrumbsEnabled && !isInitialPage && breadcrumbPath.length > 1;
+    let breadcrumbHtml = '';
+    if (showBreadcrumbs) {
+      const items: string[] = [];
+      for (let i = 0; i < breadcrumbPath.length; i++) {
+        const t = breadcrumbPath[i];
+        const isLast = i === breadcrumbPath.length - 1;
+        const normTitle = normalizePageTitle(t, siteConfig, siteSlug || undefined);
+        if (isLast) {
+          items.push(`<span class="breadcrumb-current">${normTitle}</span>`);
+        } else {
+          const bcConf = sitePageConfigsArrayForLinks.find(c => c.title === t);
+          const bcDir = bcConf?.source_graph_subdirectory || '';
+          const encoded = encodeURIComponent(normTitle);
+          const targetPath = bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`;
+          // Compute a relative href from this excalidraw page's directory.
+          const fromDir = subdir;
+          const fromParts = fromDir ? fromDir.split('/').filter(Boolean) : [];
+          const toParts = targetPath.split('/');
+          let common = 0;
+          while (common < fromParts.length && common < toParts.length - 1 && fromParts[common] === toParts[common]) common++;
+          const up = '../'.repeat(fromParts.length - common);
+          const relative = up + toParts.slice(common).join('/');
+          items.push(`<a href="${relative}" class="breadcrumb-link">${normTitle}</a>`);
+        }
+      }
+      breadcrumbHtml = `<nav class="breadcrumbs" aria-label="Breadcrumb">${items.join('<span class="breadcrumb-separator">→</span>')}</nav>`;
+    }
+
+    const backlinksHtml = generationOptions.backlinksEnabled
+      ? renderSimpleBacklinksHtml(
+          conf.title,
+          subdir,
+          inverseLinks,
+          sitePageConfigsArrayForLinks,
+          siteConfig,
+          siteSlug || undefined,
+        )
+      : '';
+
+    // Copy the source .excalidraw.md alongside the page so the client can
+    // fetch it by relative path. Embeds in other pages already trigger a
+    // copy via linkOrImageHtml, but this loop covers Excalidraw pages that
+    // never get embedded.
+    const sourceMdDest = path.join(outputSubdir, `${conf.title}.excalidraw.md`);
+    if (fs.existsSync(sourceMdPath) && !fs.existsSync(sourceMdDest)) {
+      fs.copyFileSync(sourceMdPath, sourceMdDest);
+    }
+    const drawingMdHref = encodePathForUrl(`${conf.title}.excalidraw.md`);
+
+    // Pre-resolve the wikilinks living inside this Excalidraw drawing using
+    // the working-graph data. The client renderer reads this map to set the
+    // right href on each linked text element, instead of re-implementing
+    // Obsidian's link-resolution rules in JavaScript.
+    const excalidrawIdent = subdir ? `${subdir}/${conf.title}.excalidraw` : `/${conf.title}.excalidraw`;
+    const clientLinkMap = buildExcalidrawClientLinkMap({
+      excalidrawPageIdent: excalidrawIdent,
+      hostPageDirectory: subdir,
+      sitePageConfigs: sitePageConfigsArrayForLinks,
+      allLinkResolutionMaps,
+      siteConfig,
+      siteSlug: siteSlug || undefined,
+    });
+
+    renderExcalidrawPageToHtml({
+      sourceMdPath,
+      outputFolder: outputSubdir,
+      outputFilename: normalizedOutputFilename,
+      pageTitle: normalizedOutputFilename,
+      currentPageDirectory: subdir,
+      drawingMdHref,
+      clientLinkMap,
+      breadcrumbHtml,
+      backlinksHtml,
+      staticAssetNames,
+      siteConfig,
+      siteSlug: siteSlug || undefined,
+    });
   }
 
   if (generationOptions.spacedRepetitionEnabled && allCollectedSrsCards.length > 0) {

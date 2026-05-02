@@ -20,6 +20,11 @@ export {
   getReferencedSites,
   extractContentWithoutPagespecs,
   hasPagespecsBlock,
+  isExcalidrawMarkdown,
+  getSidecarPagespecPath,
+  getEffectivePagespecBlock,
+  parsePagespecSidecarContent,
+  sourceFileForSidecarPath,
 } from './pagespecUtils.js';
 
 export type { BuiltinFilterId, ValidationError, ValidationOptions } from './pagespecValidation.js';

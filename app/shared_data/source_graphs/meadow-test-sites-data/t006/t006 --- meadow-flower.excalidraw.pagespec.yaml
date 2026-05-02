@@ -1,0 +1,27 @@
+pagespecs:
+  - site: meadow-test-site-big
+    isTracked: true
+    isInWorkingGraph: true
+    links:
+      outlinks:
+        - linkPath: /t006 - second directory/t006 --- dup-linked-from-excalidraw.md
+          isInGraph: true
+        - linkPath: /t006/t006 - nested/t006 --- dup-linked-from-excalidraw.md
+          isInGraph: true
+        - linkPath: /t006/t006 --- dup-linked-from-excalidraw.md
+          isInGraph: true
+        - linkPath: /t006/t006 --- linked-from-excalidraw.md
+          isInGraph: true
+      inlinks:
+        - linkPath: /t006 - embedded media.md
+          isInGraph: true
+    htmlRenderedLinks:
+      mainSectionLinks: []
+      footerSectionBacklinks: []
+  - site: meadow-test-site-small
+    isTracked: false
+    isInWorkingGraph: false
+    frontierDepthOrNullForOrphan: null
+    htmlRenderedLinks:
+      mainSectionLinks: []
+      footerSectionBacklinks: []

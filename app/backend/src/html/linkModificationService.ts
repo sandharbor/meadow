@@ -17,7 +17,7 @@ limitations under the License.
 import path from 'path';
 import fs from 'fs';
 import type { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
-import { linkTextToLinkInfo, normalizePageTitle, calculateRelativePath } from './shared.js';
+import { linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute } from './shared.js';
 import type { PageNameToPage } from './types.js';
 import { SiteConfig } from '../../../shared_code/types/siteConfig.js';
 import type { LinkResolvedInfo } from '../../../shared_code/types/ISitePage.js';
@@ -28,6 +28,105 @@ import { logger } from '../utils/logging/backendLoggingUtils.js';
 interface ResolvedTarget {
   directory: string;
   filename: string;
+}
+
+/**
+ * Given a resolved link target (from the Rust working_graph's link resolution
+ * map) and the directory of the page that will host the resulting HTML,
+ * returns the relative `href` value the page should link to. Returns null
+ * when the target isn't resolvable or isn't whitelisted on this site.
+ *
+ * Centralizes the rules — title normalization, md/excalidraw → .html,
+ * keep-extension for images, calculate-relative + URL-encode — that the
+ * site's page links and image embeds all share.
+ *
+ * `targetUrlMode` controls what URL gets built for md/excalidraw targets:
+ *   - 'rendered-page' (default): point at the rendered HTML page
+ *     (`<title>.html` with normalized title). Use when building hyperlinks.
+ *   - 'source-file': point at the source file (`<title>.<file_type>`).
+ *     Use when the consumer needs to fetch the source — e.g. the image
+ *     branch building `<img src>` URLs or `data-meadow-excalidraw-src`.
+ *
+ * For non-md/non-excalidraw types the two modes are equivalent (image
+ * files have no separate "rendered page").
+ */
+export function resolveTrackedLinkHref(args: {
+  resolved: LinkResolvedInfo;
+  hostPageDirectory: string;
+  sitePageConfigs: SitePageConfig[];
+  siteConfig?: SiteConfig;
+  siteSlug?: string;
+  targetUrlMode?: 'rendered-page' | 'source-file';
+}): string | null {
+  const { resolved, hostPageDirectory, sitePageConfigs, siteConfig, siteSlug } = args;
+  const targetUrlMode = args.targetUrlMode ?? 'rendered-page';
+  const targetPath = resolved.link_resolved_target_path;
+  if (!targetPath) return null;
+  const lastSlash = targetPath.lastIndexOf('/');
+  const targetFilename = lastSlash >= 0 ? targetPath.slice(lastSlash + 1) : targetPath;
+  const targetDir = resolved.link_resolved_target_directory ?? '';
+
+  const dotIdx = targetFilename.lastIndexOf('.');
+  if (dotIdx <= 0) return null;
+  const targetTitle = targetFilename.slice(0, dotIdx);
+  const targetExt = targetFilename.slice(dotIdx + 1).toLowerCase();
+
+  const cfg = sitePageConfigs.find(c =>
+    c.title === targetTitle &&
+    (c.source_graph_subdirectory || '') === targetDir &&
+    (c.file_type || 'md') === targetExt
+  );
+  if (!cfg || cfg.config.list_type !== 'whitelist') return null;
+
+  let urlFilename: string;
+  if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'excalidraw')) {
+    const normalizedTitle = siteConfig && siteSlug
+      ? normalizePageTitle(targetTitle, siteConfig, siteSlug)
+      : targetTitle;
+    urlFilename = `${normalizedTitle}.html`;
+  } else {
+    urlFilename = targetFilename;
+  }
+  const targetForUrl = targetDir ? `${targetDir}/${urlFilename}` : urlFilename;
+  return encodePathForUrl(calculateRelativePath(hostPageDirectory, targetForUrl));
+}
+
+/**
+ * For a given Excalidraw drawing's resolution map, computes a JSON-encodable
+ * record of `linkText → relativeHref`, where each href is relative to the
+ * page that hosts the drawing (an embedding page or the standalone Excalidraw
+ * page itself). Untracked / unresolvable targets are dropped from the map —
+ * the client renderer treats absent entries as "leave the text alone".
+ */
+export function buildExcalidrawClientLinkMap(args: {
+  excalidrawPageIdent: string; // `<dir>/<title>.excalidraw` (or `/<title>.excalidraw` for root)
+  hostPageDirectory: string; // directory of the page rendering the drawing's HTML
+  sitePageConfigs: SitePageConfig[];
+  allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
+  siteConfig?: SiteConfig;
+  siteSlug?: string;
+}): Record<string, string> {
+  const { excalidrawPageIdent, hostPageDirectory, sitePageConfigs, allLinkResolutionMaps, siteConfig, siteSlug } = args;
+  const out: Record<string, string> = {};
+  if (!allLinkResolutionMaps) return out;
+  const map = allLinkResolutionMaps.get(excalidrawPageIdent);
+  if (!map) return out;
+
+  // Iterate in a stable order so the JSON serialised onto the page is
+  // deterministic. The upstream working_graph map comes from a Rust HashMap
+  // whose iteration order isn't guaranteed; without sorting, identical input
+  // produces different `data-meadow-excalidraw-links` strings between runs.
+  for (const linkText of Object.keys(map).sort()) {
+    const href = resolveTrackedLinkHref({
+      resolved: map[linkText],
+      hostPageDirectory,
+      sitePageConfigs,
+      siteConfig,
+      siteSlug,
+    });
+    if (href) out[linkText] = href;
+  }
+  return out;
 }
 
 /**
@@ -184,7 +283,7 @@ export function linkOrImageHtml(
     skipUninterestingLeafPages = false,
     highlightDoNotLinkPageName,
     currentPageDirectory = '',
-    linkResolutionMap
+    linkResolutionMap,
   } = options;
 
   const linkInfo = linkTextToLinkInfo(linkText);
@@ -207,6 +306,8 @@ export function linkOrImageHtml(
     const contentDir = baseContentDirectory || directory;
     const outputDir = baseOutputFolder || outputFolder;
 
+    const isExcalidraw = imageName.toLowerCase().endsWith('.excalidraw');
+
     if (contentDir && outputDir) {
       // Find source image from the BASE content directory with subdirectory
       const imageSrc = imageSourceDir
@@ -225,7 +326,21 @@ export function linkOrImageHtml(
 
       const imageDest = path.join(imageOutputDir, imageName);
 
-      if (fs.existsSync(imageSrc)) {
+      if (isExcalidraw) {
+        // Excalidraw drawings live on disk as `<name>.excalidraw.md` (Obsidian
+        // Excalidraw plugin format). Copy the source markdown next to the
+        // embed location so the client renderer can fetch it. The actual
+        // rendering happens in the browser via excalidraw-vendor.js +
+        // meadow-excalidraw.js.
+        const excalidrawMdSrc = `${imageSrc}.md`;
+        const excalidrawMdDest = `${imageDest}.md`;
+        if (fs.existsSync(excalidrawMdSrc)) {
+          fs.copyFileSync(excalidrawMdSrc, excalidrawMdDest);
+          logger.debug(`Copied excalidraw source: ${imageName}.md to ${imageOutputDir}`);
+        } else {
+          logger.warn(`Excalidraw source not found: ${excalidrawMdSrc}`);
+        }
+      } else if (fs.existsSync(imageSrc)) {
         // SVG files are text-based and may contain appended pagespecs blocks — strip before writing
         if (imageName.toLowerCase().endsWith('.svg')) {
           const svgContent = fs.readFileSync(imageSrc, 'utf-8');
@@ -243,12 +358,53 @@ export function linkOrImageHtml(
       }
     }
 
-    // Calculate relative path from current page to image
-    const imageTargetPath = imageSourceDir
-      ? `${imageSourceDir}/${imageName}`
-      : imageName;
-    const relativeImagePath = calculateRelativePath(currentPageDirectory, imageTargetPath);
-    const encodedImagePath = encodePathForUrl(relativeImagePath);
+    // The image branch wants the URL of the source file itself (e.g.,
+    // `meadow.png`, or `<name>.excalidraw` so the Excalidraw branch below
+    // can append `.md` to point at the source markdown). Use the helper in
+    // 'source-file' mode so md/excalidraw don't get rewritten to `.html`.
+    const resolvedImageInfo = linkResolutionMap?.[linkText];
+    let encodedImagePath: string | null = null;
+    if (resolvedImageInfo) {
+      encodedImagePath = resolveTrackedLinkHref({
+        resolved: resolvedImageInfo,
+        hostPageDirectory: currentPageDirectory,
+        sitePageConfigs,
+        siteConfig,
+        siteSlug,
+        targetUrlMode: 'source-file',
+      });
+    }
+    if (encodedImagePath === null) {
+      const imageTargetPath = imageSourceDir
+        ? `${imageSourceDir}/${imageName}`
+        : imageName;
+      encodedImagePath = encodePathForUrl(calculateRelativePath(currentPageDirectory, imageTargetPath));
+    }
+
+    if (isExcalidraw) {
+      // Embed: an anchor link to the standalone HTML page, with a placeholder
+      // container that the client renderer (meadow-excalidraw.js) fills with
+      // the rendered SVG by fetching the source `.excalidraw.md` and handing
+      // its scene to Excalidraw's own exportToSvg.
+      //
+      // Deliberately omit `data-meadow-excalidraw-links` here: when a drawing
+      // is embedded in another page, clicking anywhere on it (including a
+      // pinned wikilink inside the scene) should take the reader to the
+      // standalone page — that's where in-drawing links are interactive. The
+      // outer `<a class="meadow-excalidraw-embed-link">` gets all the clicks
+      // because Excalidraw's exportToSvg only wraps elements in `<a>` when
+      // `element.link` is set, and the init script only sets `link` from
+      // entries in the link map.
+      const styleAttr = sizeConstraint ? ` style="max-width: ${sizeConstraint}px"` : '';
+      const drawingTitle = imageName.replace(/\.excalidraw$/i, '');
+      const pageHref = encodePathForUrl(
+        calculateRelativePath(currentPageDirectory, imageSourceDir
+          ? `${imageSourceDir}/${drawingTitle}.html`
+          : `${drawingTitle}.html`)
+      );
+      const mdSrc = `${encodedImagePath}.md`;
+      return `<a class="meadow-excalidraw-embed-link" href="${pageHref}"${styleAttr} title="Open ${drawingTitle}"><span class="meadow-excalidraw-embed" data-meadow-excalidraw-src="${mdSrc}"><span class="meadow-excalidraw-loading">Loading drawing…</span></span><span class="meadow-excalidraw-open-icon" aria-hidden="true">⤢</span></a>`;
+    }
 
     if (sizeConstraint) {
       return `<img src="${encodedImagePath}" style="max-width: ${sizeConstraint}px" alt="${originalImageFilename}" />`;
@@ -311,19 +467,30 @@ export function linkOrImageHtml(
     }
 
     if (processingMode === 'each-page') {
-      // Calculate relative path from current page directory to target page
-      // Use the found config's directory when available AND the link had no explicit path
-      // (handles fallback case where targetPageDirectory was empty but we found the config 
-      // via title-only lookup). If the link had an explicit path, respect that path even if
-      // no config was found.
-      const effectiveTargetDirectory = (!linkHasExplicitPath && linkConfig?.source_graph_subdirectory !== undefined)
-        ? linkConfig.source_graph_subdirectory
-        : targetPageDirectory;
-      // Encode each path segment separately (directories and filename)
-      const targetPath = effectiveTargetDirectory
-        ? encodePathForUrl(`${effectiveTargetDirectory}/${normalizedLinkFilename}.html`)
-        : encodePathForUrl(`${normalizedLinkFilename}.html`);
-      const relativeUrl = calculateRelativePath(currentPageDirectory, targetPath);
+      // Compute the href via the centralised resolved-target-to-href helper
+      // when the working_graph gave us a resolved entry. Fall back to the
+      // older config-driven path for the rare cases where no map entry
+      // exists (e.g. callers that don't pass a resolution map).
+      const resolvedInfo = linkResolutionMap?.[linkText];
+      let relativeUrl: string | null = null;
+      if (resolvedInfo) {
+        relativeUrl = resolveTrackedLinkHref({
+          resolved: resolvedInfo,
+          hostPageDirectory: currentPageDirectory,
+          sitePageConfigs,
+          siteConfig,
+          siteSlug,
+        });
+      }
+      if (relativeUrl === null) {
+        const effectiveTargetDirectory = (!linkHasExplicitPath && linkConfig?.source_graph_subdirectory !== undefined)
+          ? linkConfig.source_graph_subdirectory
+          : targetPageDirectory;
+        const targetPath = effectiveTargetDirectory
+          ? encodePathForUrl(`${effectiveTargetDirectory}/${normalizedLinkFilename}.html`)
+          : encodePathForUrl(`${normalizedLinkFilename}.html`);
+        relativeUrl = calculateRelativePath(currentPageDirectory, targetPath);
+      }
       return `[${textToDisplayInHyperlink}](${relativeUrl})`;
     } else if (processingMode === 'single-page') {
       return `<a href="#${anchorNameFor(normalizedLinkFilename)}">${textToDisplayInHyperlink}</a>`;

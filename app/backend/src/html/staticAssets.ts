@@ -116,6 +116,9 @@ export function hashAndRenameStaticAssets(outputDir: string): StaticAssetNames {
   const javascriptJs = renameWithHashIfExists(path.join(outputDir, 'javascript.js')) ?? '';
   const { newBasename: mermaidMinJs } = renameWithHash(path.join(outputDir, 'mermaid.min.js'));
   const { newBasename: calloutsCss } = renameWithHash(path.join(outputDir, 'callouts.css'));
+  const excalidrawCss = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.css')) ?? '';
+  const excalidrawVendorJs = renameWithHashIfExists(path.join(outputDir, 'excalidraw-vendor.js')) ?? '';
+  const excalidrawJs = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.js')) ?? '';
   const srsDir = path.join(outputDir, 'srs');
   const srsCssBase = renameWithHashIfExists(path.join(srsDir, 'srs.css'));
   const srsJsBase = renameWithHashIfExists(path.join(srsDir, 'srs.js'));
@@ -161,6 +164,6 @@ export function hashAndRenameStaticAssets(outputDir: string): StaticAssetNames {
   const globalJavascriptJs = renameWithHashIfExists(path.join(outputDir, 'global-javascript.js'));
   const siteJavascriptJs = renameWithHashIfExists(path.join(outputDir, 'site-javascript.js'));
 
-  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, srsCss, srsJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
+  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
 }
 

@@ -20,6 +20,7 @@ import path, { join } from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { parsePageConfig, stringifyPageConfig } from '../../shared_code/utils/sitePageConfigUtils.js';
+import { onDiskFilename } from '../../shared_code/utils/fileTypeUtils.js';
 import { encodePathForUrl } from '../../shared_code/utils/urlUtils.js';
 import { SitePageConfig } from '../../shared_code/types/sitePageConfig.js';
 import { SiteConfig, GeneratedSiteVersion } from '../../shared_code/types/siteConfig.js';
@@ -143,6 +144,21 @@ app.get('/api/publishing-providers', (_req, res) => {
   });
 });
 
+// Serve the vendored Excalidraw renderer bundle so the editor frontend
+// can use the same exportToSvg + lz-string surface that the published site
+// uses. The bundle is the build artifact at
+// `src/html/shared/excalidraw-vendor.js` (refreshed via
+// `node scripts/build-excalidraw-vendor.mjs`).
+app.get('/api/assets/excalidraw-vendor.js', (_req, res) => {
+  const bundlePath = path.join(__dirname, 'html', 'shared', 'excalidraw-vendor.js');
+  if (!fs.existsSync(bundlePath)) {
+    return res.status(404).send('// excalidraw-vendor.js not found');
+  }
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(bundlePath);
+});
+
 
 // Copy tracked pages to site's tracked_page_content directory
 app.post('/api/site/:siteSlug/copy-tracked-pages', (req, res, next) => {
@@ -200,8 +216,9 @@ app.post('/api/site/:siteSlug/copy-tracked-pages', (req, res, next) => {
 
     for (const page of trackedPages) {
       try {
-        const sourceFile = join(notesDir, page.sourceGraphSubdirectory, `${page.title}.${page.file_type}`);
-        const targetFile = join(targetDir, `${page.title}.${page.file_type}`);
+        const filename = onDiskFilename(page.title, page.file_type);
+        const sourceFile = join(notesDir, page.sourceGraphSubdirectory, filename);
+        const targetFile = join(targetDir, filename);
 
         if (fs.existsSync(sourceFile)) {
           fs.copyFileSync(sourceFile, targetFile);

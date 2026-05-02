@@ -17,6 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { parsePageConfig } from '../../../shared_code/utils/sitePageConfigUtils.js';
+import { onDiskFilename } from '../../../shared_code/utils/fileTypeUtils.js';
 import { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
 import { stringifyPageConfig } from '../../../shared_code/utils/sitePageConfigUtils.js';
 import { SiteConfigPaths } from '../../../shared_code/paths/siteConfigPaths.js';
@@ -97,10 +98,8 @@ export async function ensureTrackedPageContent(
   const sourceBackedTrackedPages = trackedPages.filter(c => (c.source_graph_subdirectory || '') !== tagPagesSubdirName);
   for (const sitePageConfig of sourceBackedTrackedPages) {
     const subdir = sitePageConfig.source_graph_subdirectory || '';
-    const fileType = sitePageConfig.file_type || 'md';
-    const relativePath = subdir
-      ? path.join(subdir, `${sitePageConfig.title}.${fileType}`)
-      : `${sitePageConfig.title}.${fileType}`;
+    const filename = onDiskFilename(sitePageConfig.title, sitePageConfig.file_type);
+    const relativePath = subdir ? path.join(subdir, filename) : filename;
     expectedFilePaths.set(relativePath, sitePageConfig);
   }
 
