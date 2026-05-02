@@ -4,3 +4,10 @@ scratch_config_folder
 # Markdown export zips are non-deterministic (archiver produces different bytes
 # for identical input), so exclude them from expected results tracking
 expected_results/**/md-export/
+
+# Pre-gzipped vendor bundles. zlib's deflate output isn't byte-stable across
+# zlib versions (or platforms / Node releases that bundle different zlib),
+# so tracking the compressed bytes as a golden artifact would break CI on
+# every infra bump. The URL filename hash is computed on the *raw* bytes,
+# so a genuine source change still shows up as a renamed file.
+expected_results/**/_mw_assets/excalidraw-vendor.*.js
