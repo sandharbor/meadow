@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { htmlGeneration, customize, changesTab as changesTabDoc } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("Changes tab lifecycle: new files, save, modify via config, verify diff headers", async ({ page, snapshot, addKeyFrame }) => {
   // Navigate to big site preview (starts on step 1 — Review)
@@ -95,4 +96,5 @@ test("Changes tab lifecycle: new files, save, modify via config, verify diff hea
   await changesTab.fileDetails.expectChangesHeader();
   await addKeyFrame(customize);
   await snapshot("changes diff header shown for modified file");
+  void bigSite;
 });

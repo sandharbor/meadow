@@ -58,6 +58,5 @@ test("a publisher should not be able to remove the depth on the initial page", a
   await addKeyFrame(siteConfig);
   await snapshot("non-initial page depth has remove override button");
 
-  // Reference site doc so it's not tree-shaken
   void exampleSite;
 });

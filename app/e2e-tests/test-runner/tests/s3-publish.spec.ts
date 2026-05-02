@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PublishToS3Tab, PublishedSitePage } from "../src/run/pages/index.js";
 import { Workflows, Site } from "../src/run/workflows.js";
 import { publishing, s3, deletion } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("S3 provider publishes and deletes a site via MinIO", async ({
   page,
@@ -73,4 +74,5 @@ test("S3 provider publishes and deletes a site via MinIO", async ({
   await snapshot("S3 published files deleted");
 
   await minioS3.expectEmpty(`${publishSlug}/`);
+  void bigSite;
 });

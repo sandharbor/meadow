@@ -23,6 +23,7 @@ import {
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { search, labels, linkGap, callout, links } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("search for outlink gap page, inspect links, and navigate via inlink", async ({
   page,
@@ -105,4 +106,5 @@ test("search for outlink gap page, inspect links, and navigate via inlink", asyn
   // Keyframe for links scenario doc
   await addKeyFrame(links);
   await snapshot("links modal showing t021 link gaps page");
+  void bigSite;
 });

@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { Workflows } from "../src/run/workflows.js";
 import { SiteEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { excalidraw } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 /**
  * Walks Excalidraw drawing support end-to-end through the UI:
@@ -124,4 +125,5 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   await addKeyFrame(excalidraw);
 
   releaseWorkerWarning();
+  void bigSite;
 });

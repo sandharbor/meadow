@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
 import { frontier, filters } from "../src/scenario-docs/index.js";
+import { exampleSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
 
@@ -51,4 +52,5 @@ test("example site frontier pages show in graph view with frontier filter", asyn
   expect(frontierPageCount).toBeGreaterThan(1);
   await addKeyFrame(filters);
   await snapshot("frontier filter soloed with multiple pages");
+  void exampleSite;
 });

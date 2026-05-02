@@ -18,6 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, CreateAndEditSiteModal } from "../src/run/pages/index.js";
 import { callout } from "../src/scenario-docs/index.js";
+import { customSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: "none" });
 
@@ -58,4 +59,5 @@ test("Callout warns when previewing with only one tracked page", async ({
   // Verify we're back on the graph view (modal closed, not navigated to preview)
   await editor.expectGraphViewButtonVisible();
   await snapshot("back on graph view after dismissing warning");
+  void customSite;
 });

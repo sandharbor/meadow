@@ -20,8 +20,8 @@ import { Fixture } from "../src/run/workflows.js";
 import {
   tracking,
   sensitive,
-  exampleSiteFeature,
 } from "../src/scenario-docs/index.js";
+import { exampleSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
 
@@ -61,6 +61,6 @@ test("Track All on example site untracked pages auto-saves without a save click"
   await editor.clickTrackAll();
   await editor.expectUndoNotVisible();
   await addKeyFrame(tracking);
-  await addKeyFrame(exampleSiteFeature);
   await snapshot("track all applied — no save button");
+  void exampleSite;
 });

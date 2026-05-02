@@ -17,6 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { filters, callout } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("empty solo callout appears when solo filter hides all pages", async ({ page, snapshot, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
@@ -63,4 +64,5 @@ test("empty solo callout appears when solo filter hides all pages", async ({ pag
   const pageCount = await editor.getListViewPageCount();
   expect(pageCount).toBeGreaterThan(0);
   await snapshot("pages visible again");
+  void bigSite;
 });

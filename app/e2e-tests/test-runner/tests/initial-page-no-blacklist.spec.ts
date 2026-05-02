@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { initialPage, exampleSiteFeature } from "../src/scenario-docs/index.js";
+import { initialPage } from "../src/scenario-docs/index.js";
 import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
@@ -47,9 +47,7 @@ test("a publisher should not be able to blacklist the initial page", async ({
   // Right-click a non-initial page — Blacklist SHOULD appear
   await editor.rightClickRow("Cognitive Biases");
   await editor.expectContextMenuItemVisible("Blacklist");
-  await addKeyFrame(exampleSiteFeature);
   await snapshot("non-initial page context menu has blacklist");
 
-  // Reference site doc so it's not tree-shaken
   void exampleSite;
 });

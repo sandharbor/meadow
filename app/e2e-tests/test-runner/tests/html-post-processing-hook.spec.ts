@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { hooks, customize } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("HTML post-processing hook: create, validate, save, and verify diff", async ({ page, snapshot, addKeyFrame }) => {
   // Navigate to big site preview
@@ -64,4 +65,5 @@ test("HTML post-processing hook: create, validate, save, and verify diff", async
   await addKeyFrame(hooks);
   await addKeyFrame(customize);
   await snapshot("diff shows Hello from Meadow");
+  void bigSite;
 });

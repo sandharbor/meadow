@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteEditorPage, SelectedPageDetailComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { siteConfig } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("Undo reverts site page config changes without leaving the site", async ({
   page,
@@ -69,4 +70,5 @@ test("Undo reverts site page config changes without leaving the site", async ({
 
   await addKeyFrame(siteConfig);
   await snapshot("after undo - page count and depth restored");
+  void bigSite;
 });

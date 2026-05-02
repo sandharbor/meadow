@@ -149,6 +149,34 @@ export class SelectedPageDetailComponent {
     await this.expect(this.outlinksDepthInput).toHaveValue(expected);
   }
 
+  // --- Inlinks depth ---
+
+  // Outlink Depth and Inlink Depth sections both render an
+  // `input[type="number"][placeholder="depth"]` and a `Set` button. Outlink
+  // depth is rendered first, so inlink depth is the second occurrence.
+  private get inlinksDepthInput() {
+    return this.root.locator('input[type="number"][placeholder="depth"]').nth(1);
+  }
+
+  private get inlinksDepthSetBtn() {
+    return this.root.locator("button", { hasText: "Set" }).nth(1);
+  }
+
+  async fillInlinksDepth(depth: number) {
+    await this.expect(this.inlinksDepthInput).toBeVisible();
+    await this.inlinksDepthInput.fill(String(depth));
+  }
+
+  async clickSetInlinksDepth() {
+    await this.expect(this.inlinksDepthSetBtn).toBeVisible();
+    await this.inlinksDepthSetBtn.click();
+  }
+
+  async setInlinksDepth(depth: number) {
+    await this.fillInlinksDepth(depth);
+    await this.clickSetInlinksDepth();
+  }
+
   // --- Override edit/remove buttons ---
 
   private get addOutlinksDepthOverrideBtn() {

@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { callout } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("callout for marking source node sensitive the first time", async ({
   page,
@@ -98,4 +99,5 @@ test("callout for marking source node sensitive the first time", async ({
   const selectedTitlesAfter = await editor.getSelectedPageTitles();
   expect(selectedTitlesAfter.length).toBe(1);
   await snapshot("1 sensitive page remaining after unmarking two");
+  void bigSite;
 });

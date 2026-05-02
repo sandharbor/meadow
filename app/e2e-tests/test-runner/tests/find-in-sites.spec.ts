@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
 import { Workflows, Site } from "../src/run/workflows.js";
 import { multiSite, findInSites } from "../src/scenario-docs/index.js";
+import { bigSite, smallSite, exampleSite } from "../src/site-docs/index.js";
 
 test("find in sites navigates from small site to big site with page auto-selected", async ({
   page,
@@ -86,4 +87,7 @@ test("find in sites navigates from small site to big site with page auto-selecte
   const listCount = await editor.getListViewPageCount();
   expect(listCount).toBe(1);
   await snapshot("list view showing only the found page");
+  void bigSite;
+  void smallSite;
+  void exampleSite;
 });

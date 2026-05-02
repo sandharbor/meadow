@@ -17,6 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { filters } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("filter custom inlink title substring selects expected pages", async ({ page, snapshot, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
@@ -55,4 +56,5 @@ test("filter custom inlink title substring selects expected pages", async ({ pag
     expect(title.toLowerCase()).toContain("inlink");
   }
   await snapshot("verified selected page titles");
+  void bigSite;
 });

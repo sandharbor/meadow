@@ -20,6 +20,7 @@ import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/
 import { Workflows, Site } from "../src/run/workflows.js";
 import { MeadowHomeGit } from "../src/run/utils/index.js";
 import { customize, markdown, git } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("Markdown export ZIP: enable, preview, save, and verify MeadowHome is fully committed", async ({
   page, snapshot, addKeyFrame, testServer,
@@ -55,4 +56,5 @@ test("Markdown export ZIP: enable, preview, save, and verify MeadowHome is fully
   await meadowGit.expectDirFullyCommitted(siteDir);
   await addKeyFrame(git);
   await snapshot("site directory fully committed");
+  void bigSite;
 });

@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteEditorPage, SiteListPage, DeleteSiteModal } from "../src/run/pages/index.js";
 import { Workflows, Site } from "../src/run/workflows.js";
 import { deletion, callout } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("Delete unpublished site from within site editor", async ({
   page,
@@ -48,4 +49,5 @@ test("Delete unpublished site from within site editor", async ({
   await siteList.expectHeadingVisible();
   await siteList.expectSiteNotVisible(Site.Big);
   await snapshot("site list after deletion - site gone");
+  void bigSite;
 });

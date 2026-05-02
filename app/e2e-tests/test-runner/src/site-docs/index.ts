@@ -17,8 +17,22 @@ limitations under the License.
 import { SiteDoc } from "./types.js";
 export type { SiteDoc } from "./types.js";
 
+export { bigSite } from "./big-site.js";
+export { smallSite } from "./small-site.js";
+export { hooksSite } from "./hooks-site.js";
+export { customSite } from "./custom-site.js";
 export { exampleSite, exampleSiteInitialPageTitle } from "./example-site.js";
 
+import { bigSite } from "./big-site.js";
+import { smallSite } from "./small-site.js";
+import { hooksSite } from "./hooks-site.js";
+import { customSite } from "./custom-site.js";
 import { exampleSite } from "./example-site.js";
 
-export const allSiteDocs: SiteDoc[] = [exampleSite];
+export const allSiteDocs: SiteDoc[] = [
+  bigSite,
+  smallSite,
+  hooksSite,
+  customSite,
+  exampleSite,
+];

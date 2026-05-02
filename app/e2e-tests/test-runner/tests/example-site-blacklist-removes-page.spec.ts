@@ -24,8 +24,8 @@ import { Fixture } from "../src/run/workflows.js";
 import {
   blacklist,
   siteConfig,
-  exampleSiteFeature,
 } from "../src/scenario-docs/index.js";
+import { exampleSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
 
@@ -82,6 +82,6 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await previewModal.expectPreviewLinkNotVisible("Razors.html");
   await previewModal.expectPreviewLinkVisible("Occam's%20Razor.html");
   await previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html");
-  await addKeyFrame(exampleSiteFeature);
   await snapshot("post-blacklist preview — Razors link removed");
+  void exampleSite;
 });

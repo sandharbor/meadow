@@ -18,7 +18,8 @@ import { execSync } from "child_process";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { exampleSiteFeature, git } from "../src/scenario-docs/index.js";
+import { git } from "../src/scenario-docs/index.js";
+import { exampleSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
 
@@ -79,6 +80,6 @@ test("MeadowHome is a real (non-bare) git repo after creating the example site",
   ).toBe("");
 
   await addKeyFrame(git);
-  await addKeyFrame(exampleSiteFeature);
   await snapshot("MeadowHome clean via real git status");
+  void exampleSite;
 });

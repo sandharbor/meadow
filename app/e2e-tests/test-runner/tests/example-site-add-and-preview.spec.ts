@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { exampleSiteFeature } from "../src/scenario-docs/index.js";
+import { htmlGeneration } from "../src/scenario-docs/index.js";
 import { exampleSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
@@ -47,10 +47,8 @@ test("add example site from empty state and preview it", async ({
 
   // Verify the preview iframe shows the example site content
   await previewModal.expectPreviewIframeHeading("Notable Mental Models");
-  await addKeyFrame(exampleSiteFeature);
+  await addKeyFrame(htmlGeneration);
   await snapshot("example site preview visible");
 
-  // Verify this is tagged with the example site — the import alone handles
-  // artifact extraction, but we reference the constant so it's not tree-shaken
   void exampleSite;
 });

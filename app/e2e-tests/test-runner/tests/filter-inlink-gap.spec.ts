@@ -17,6 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { linkGap } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("inlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
@@ -47,4 +48,5 @@ test("inlink gap filter auto-calculates threshold and selects correct pages", as
   const titles = await editor.getSelectedPageTitles();
   expect(titles.length).toBe(1);
   await snapshot("verified one page selected with inlink gap");
+  void bigSite;
 });

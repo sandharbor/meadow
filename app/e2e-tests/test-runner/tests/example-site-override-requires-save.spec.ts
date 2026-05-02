@@ -25,8 +25,8 @@ import { Fixture } from "../src/run/workflows.js";
 import {
   siteConfig,
   overrides,
-  exampleSiteFeature,
 } from "../src/scenario-docs/index.js";
+import { exampleSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
 
@@ -86,6 +86,6 @@ test("adding a depth override on a child page requires an explicit save", async 
 
   await editor.expectListViewRowByExactNamePresent("First Principles Thinking");
   await addKeyFrame(overrides);
-  await addKeyFrame(exampleSiteFeature);
   await snapshot("override page appears under Depth Override filter");
+  void exampleSite;
 });

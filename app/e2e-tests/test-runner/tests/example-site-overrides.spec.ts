@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { filters, exampleSiteFeature, overrides, initialPage } from "../src/scenario-docs/index.js";
+import { filters, overrides, initialPage } from "../src/scenario-docs/index.js";
 import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
@@ -38,7 +38,6 @@ test("overrides filter on example site does not include the initial page", async
   // Enable the Overrides filter
   await filterPanel.enableFilter("Depth Override");
   await addKeyFrame(filters);
-  await addKeyFrame(exampleSiteFeature);
   await snapshot("overrides filter enabled");
 
   // Solo the Overrides filter so only override pages are visible
@@ -59,6 +58,5 @@ test("overrides filter on example site does not include the initial page", async
   await addKeyFrame(initialPage);
   await snapshot("overrides soloed without initial page");
 
-  // Reference site doc so it's not tree-shaken
   void exampleSite;
 });

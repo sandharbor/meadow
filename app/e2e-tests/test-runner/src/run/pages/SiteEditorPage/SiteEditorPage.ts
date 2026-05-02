@@ -176,6 +176,20 @@ export class SiteEditorPage {
     await this.expect(row).toBeVisible();
   }
 
+  /**
+   * Assert a list-view row exists with the given exact title cell AND the
+   * given file-type cell (e.g. `.png`, `.svg`, `.excalidraw`). Handy when
+   * the same title appears for multiple file types (an image and its
+   * Excalidraw drawing, for instance).
+   */
+  async expectListViewRowByTitleAndFileTypePresent(title: string, fileType: string) {
+    const row = this.listViewRows
+      .filter({ has: this.page.locator(`td >> text="${title}"`) })
+      .filter({ has: this.page.locator(`td:text-is(".${fileType}")`) })
+      .first();
+    await this.expect(row).toBeVisible();
+  }
+
   async clickTrackAll() {
     const btn = this.page.locator("button", { hasText: "Track All" });
     await this.expect(btn).toBeVisible();

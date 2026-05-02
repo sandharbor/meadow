@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { callout, sensitive } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("Callout tooltip shown when hovering sensitive filter question mark", async ({
   page,
@@ -48,4 +49,5 @@ test("Callout tooltip shown when hovering sensitive filter question mark", async
   await addKeyFrame(callout);
   await addKeyFrame(sensitive);
   await snapshot("sensitive filter callout tooltip visible");
+  void bigSite;
 });

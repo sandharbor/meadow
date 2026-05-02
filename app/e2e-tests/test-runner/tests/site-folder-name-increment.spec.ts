@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, CreateAndEditSiteModal } from "../src/run/pages/index.js";
 import { Workflows, Site } from "../src/run/workflows.js";
 import { siteConfig, callout } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("creating a second site from the same source page auto-increments the folder name", async ({
   page,
@@ -90,4 +91,5 @@ test("creating a second site from the same source page auto-increments the folde
   await createModal.clickCreateSite();
   await editor.waitForLoad("t001-deeply-nested-1");
   await snapshot("second site created with incremented folder name");
+  void bigSite;
 });

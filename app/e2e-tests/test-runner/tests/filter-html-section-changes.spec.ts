@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { htmlGeneration, customize, changesTab as changesTabDoc } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("HTML section changes filter correctly reflects changes after save and customization", async ({ page, snapshot, addKeyFrame }) => {
   // Navigate to big site preview (starts on step 1 — Review)
@@ -74,4 +75,5 @@ test("HTML section changes filter correctly reflects changes after save and cust
   await addKeyFrame(customize);
   await addKeyFrame(changesTabDoc);
   await snapshot("only header section has changes");
+  void bigSite;
 });

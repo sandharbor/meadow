@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { ScenarioDoc } from "./types.js";
+import { SiteDoc } from "./types.js";
 
-export const exampleSiteFeature: ScenarioDoc = {
-  id: "example-site",
-  name: "Example Site",
+export const bigSite: SiteDoc = {
+  id: "meadow-test-site-big",
+  name: "Big Site",
   description:
-    "Tests the example site feature: adding the bundled example site from an empty state, " +
-    "navigating into it, and previewing its content. Covers the add-example API endpoint " +
-    "and the empty-state UI flow.",
+    "The pre-configured \"big\" fixture site under home_fixture_big_and_small. " +
+    "Backed by the meadow-test-sites-data source graph, it covers the broadest " +
+    "set of pages (callouts, sensitive flags, blacklist, depth overrides, " +
+    "embedded media) and is the workhorse for most editor and preview tests.",
 };

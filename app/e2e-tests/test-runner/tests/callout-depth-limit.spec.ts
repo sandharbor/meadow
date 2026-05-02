@@ -18,6 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, CreateAndEditSiteModal } from "../src/run/pages/index.js";
 import { callout } from "../src/scenario-docs/index.js";
+import { customSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: "none" });
 
@@ -69,4 +70,5 @@ test("Callout depth limit shown on new site and dismissed permanently", async ({
   // Assert depth callout is NOT visible (dismissal persisted)
   await editor.expectDepthCalloutNotVisible();
   await snapshot("depth callout not visible after dismissal");
+  void customSite;
 });

@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
 import { Workflows, Site } from "../src/run/workflows.js";
 import { findInSites, archived, multiSite } from "../src/scenario-docs/index.js";
+import { bigSite, smallSite, exampleSite } from "../src/site-docs/index.js";
 
 test("find in sites shows archived match indicator and archived tab", async ({
   page,
@@ -79,4 +80,7 @@ test("find in sites shows archived match indicator and archived tab", async ({
   await siteList.expectSiteVisible(Site.Big);
   await addKeyFrame(archived);
   await snapshot("archived tab shows big site match");
+  void bigSite;
+  void smallSite;
+  void exampleSite;
 });

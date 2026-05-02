@@ -18,6 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { linkGap } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("outlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, addKeyFrame }) => {
   const wf = new Workflows(page, expect);
@@ -44,4 +45,5 @@ test("outlink gap filter auto-calculates threshold and selects correct pages", a
   const titles = await editor.getSelectedPageTitles();
   expect(titles.length).toBeGreaterThanOrEqual(1);
   await snapshot("verified pages selected with outlink gap");
+  void bigSite;
 });

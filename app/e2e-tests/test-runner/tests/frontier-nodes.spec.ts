@@ -17,6 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill, ActionButton } from "../src/run/pages/index.js";
 import { frontier } from "../src/scenario-docs/index.js";
+import { bigSite } from "../src/site-docs/index.js";
 
 test("frontier nodes show filtered pages and respond to depth changes", async ({ page, snapshot, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
@@ -77,4 +78,5 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
   await page.waitForTimeout(250);
   await filterPanel.clickSoloOnFilter("Frontier");
   await snapshot("frontier depth 2 with all nodes showing");
+  void bigSite;
 });

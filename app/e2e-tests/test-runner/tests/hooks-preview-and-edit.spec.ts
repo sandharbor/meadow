@@ -17,6 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage, PreviewPublishModal, CustomizeTab } from "../src/run/pages/index.js";
 import { htmlGeneration, hooks } from "../src/scenario-docs/index.js";
+import { hooksSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: "home_fixture_hooks" });
 
@@ -73,4 +74,5 @@ test("Hooks preview shows normalized title and editing hook updates it", async (
   await modal.expectPreviewIframeHeading("vulkan - Dwarkesh and Anthropic CEO in 2023");
   await addKeyFrame(hooks);
   await snapshot("verified updated page title with vulkan hook");
+  void hooksSite;
 });
