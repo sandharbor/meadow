@@ -33,6 +33,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("excalidraw thumbnail in list view, embedded in preview, and standalone page", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
   expectLogErrors,
 }) => {
@@ -126,4 +127,6 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
 
   releaseWorkerWarning();
   void bigSite;
+
+  await assertMeadowHomeState();
 });

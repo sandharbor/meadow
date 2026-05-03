@@ -26,6 +26,7 @@ test("Callout depth limit shown on new site and dismissed permanently", async ({
   page,
   testServer,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
@@ -71,4 +72,6 @@ test("Callout depth limit shown on new site and dismissed permanently", async ({
   await editor.expectDepthCalloutNotVisible();
   await snapshot("depth callout not visible after dismissal");
   void customSite;
+
+  await assertMeadowHomeState();
 });

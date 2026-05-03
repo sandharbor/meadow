@@ -20,7 +20,7 @@ import { Workflows } from "../src/run/workflows.js";
 import { linkGap } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("outlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, addKeyFrame }) => {
+test("outlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSite();
   await snapshot("site editor loaded");
@@ -46,4 +46,6 @@ test("outlink gap filter auto-calculates threshold and selects correct pages", a
   expect(titles.length).toBeGreaterThanOrEqual(1);
   await snapshot("verified pages selected with outlink gap");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

@@ -32,6 +32,7 @@ test.use({ fixtureHome: Fixture.None });
 test("blacklisting a single page removes it from the rendered preview", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
@@ -84,4 +85,6 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html");
   await snapshot("post-blacklist preview — Razors link removed");
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

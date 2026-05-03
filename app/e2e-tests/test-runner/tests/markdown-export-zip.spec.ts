@@ -23,7 +23,7 @@ import { customize, markdown, git } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
 test("Markdown export ZIP: enable, preview, save, and verify MeadowHome is fully committed", async ({
-  page, snapshot, addKeyFrame, testServer,
+  page, snapshot, assertMeadowHomeState, addKeyFrame, testServer,
 }) => {
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSitePreview();
@@ -57,4 +57,6 @@ test("Markdown export ZIP: enable, preview, save, and verify MeadowHome is fully
   await addKeyFrame(git);
   await snapshot("site directory fully committed");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

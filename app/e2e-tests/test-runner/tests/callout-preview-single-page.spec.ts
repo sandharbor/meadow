@@ -26,6 +26,7 @@ test("Callout warns when previewing with only one tracked page", async ({
   page,
   testServer,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
@@ -60,4 +61,6 @@ test("Callout warns when previewing with only one tracked page", async ({
   await editor.expectGraphViewButtonVisible();
   await snapshot("back on graph view after dismissing warning");
   void customSite;
+
+  await assertMeadowHomeState();
 });

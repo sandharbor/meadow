@@ -40,6 +40,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   page,
   testServer,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
   expectLogErrors,
 }) => {
@@ -106,4 +107,6 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   void customSite;
 
   releaseWorkerWarning();
+
+  await assertMeadowHomeState();
 });

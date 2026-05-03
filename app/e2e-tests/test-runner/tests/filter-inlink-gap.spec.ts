@@ -19,7 +19,7 @@ import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/p
 import { linkGap } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("inlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, addKeyFrame }) => {
+test("inlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();
   await snapshot("site list loaded");
@@ -49,4 +49,6 @@ test("inlink gap filter auto-calculates threshold and selects correct pages", as
   expect(titles.length).toBe(1);
   await snapshot("verified one page selected with inlink gap");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

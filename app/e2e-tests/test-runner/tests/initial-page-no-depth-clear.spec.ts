@@ -24,7 +24,7 @@ import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index
 test.use({ fixtureHome: Fixture.None });
 
 test("a publisher should not be able to remove the depth on the initial page", async ({
-  page, snapshot, addKeyFrame,
+  page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
   const editor = new SiteEditorPage(page, expect);
@@ -59,4 +59,6 @@ test("a publisher should not be able to remove the depth on the initial page", a
   await snapshot("non-initial page depth has remove override button");
 
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

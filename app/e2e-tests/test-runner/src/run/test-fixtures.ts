@@ -424,6 +424,19 @@ export const test = base.extend<{
   testServer: TestServer;
   artifactDir: string;
   snapshot: (message: string) => Promise<void>;
+  /**
+   * Assert that the MeadowHome configDir git repo is clean except for the
+   * explicitly allowed paths. Untracked entries (`??`) and modified entries
+   * (anything else: `M`/`A`/`D`/`R`/...) are checked separately. Each
+   * allow-list is matched by exact relative path (no globs).
+   *
+   * Every spec must call this at least once, after its last `snapshot()` call —
+   * the `_module/scripts/lint-final-assertion` linter enforces that.
+   */
+  assertMeadowHomeState: (opts?: {
+    allowedUntracked?: string[];
+    allowedModified?: string[];
+  }) => Promise<void>;
   addKeyFrame: (scenarioDoc: { id: string }) => Promise<void>;
   minioS3: MinioS3;
   /**
@@ -1205,6 +1218,61 @@ export const test = base.extend<{
     };
 
     await use(snapshotFn);
+  },
+
+  assertMeadowHomeState: async ({ testServer }, use) => {
+    const { configDir } = testServer;
+    const fn = async (opts?: { allowedUntracked?: string[]; allowedModified?: string[] }) => {
+      const gitDir = path.join(configDir, ".git");
+      if (!existsSync(gitDir)) {
+        throw new Error(
+          `assertMeadowHomeState: configDir ${configDir} is not a git repo`
+        );
+      }
+      // Use -z so paths are NUL-separated and never quoted/escaped.
+      const out = execSync("git status --porcelain -z", {
+        cwd: configDir,
+        encoding: "utf8",
+      });
+      const records = out.split("\0").filter((r) => r.length > 0);
+      const untracked: string[] = [];
+      const modified: { status: string; path: string }[] = [];
+      for (const rec of records) {
+        const status = rec.slice(0, 2);
+        const filePath = rec.slice(3);
+        if (status === "??") {
+          untracked.push(filePath);
+        } else {
+          modified.push({ status, path: filePath });
+        }
+      }
+      const allowedU = new Set(opts?.allowedUntracked ?? []);
+      const allowedM = new Set(opts?.allowedModified ?? []);
+      const unexpectedU = untracked.filter((p) => !allowedU.has(p));
+      const unexpectedM = modified.filter((m) => !allowedM.has(m.path));
+      if (unexpectedU.length === 0 && unexpectedM.length === 0) return;
+
+      const lines: string[] = [
+        "assertMeadowHomeState: MeadowHome has unexpected uncommitted state.",
+      ];
+      if (unexpectedU.length > 0) {
+        lines.push("  Unexpected untracked:");
+        for (const p of unexpectedU) lines.push(`    ?? ${p}`);
+      }
+      if (unexpectedM.length > 0) {
+        lines.push("  Unexpected modified:");
+        for (const m of unexpectedM) lines.push(`    ${m.status} ${m.path}`);
+      }
+      lines.push("");
+      lines.push("  If this state is intentional, allow it explicitly:");
+      const u = unexpectedU.map((p) => JSON.stringify(p)).join(", ");
+      const m = unexpectedM.map((x) => JSON.stringify(x.path)).join(", ");
+      lines.push(
+        `    await assertMeadowHomeState({ allowedUntracked: [${u}], allowedModified: [${m}] })`
+      );
+      throw new Error(lines.join("\n"));
+    };
+    await use(fn);
   },
 
   addKeyFrame: async ({ page, artifactDir }, use) => {

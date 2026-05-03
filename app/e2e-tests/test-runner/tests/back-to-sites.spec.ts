@@ -19,7 +19,7 @@ import { Workflows } from "../src/run/workflows.js";
 import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("navigate back to sites list from big site view", async ({ page, snapshot }) => {
+test("navigate back to sites list from big site view", async ({ page, snapshot, assertMeadowHomeState }) => {
   const wf = new Workflows(page, expect);
   const siteList = new SiteListPage(page, expect);
   const editor = new SiteEditorPage(page, expect);
@@ -31,4 +31,6 @@ test("navigate back to sites list from big site view", async ({ page, snapshot }
   await siteList.expectHeadingVisible();
   await snapshot("back at sites list");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

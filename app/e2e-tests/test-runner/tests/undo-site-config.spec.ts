@@ -23,6 +23,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("Undo reverts site page config changes without leaving the site", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -71,4 +72,6 @@ test("Undo reverts site page config changes without leaving the site", async ({
   await addKeyFrame(siteConfig);
   await snapshot("after undo - page count and depth restored");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

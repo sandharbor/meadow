@@ -42,6 +42,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   page,
   testServer,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
   expectLogErrors,
 }) => {
@@ -125,4 +126,10 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
     // directory between runs.
     rmSync(wrapperDir, { recursive: true, force: true });
   }
+
+  // The test ends with the inlink-depth change still un-saved, so the draft
+  // site_page_config is expected to be present as an untracked file.
+  await assertMeadowHomeState({
+    allowedUntracked: ["sites/t006-embedded-media/conf/draft_site_page_config.yaml"],
+  });
 });

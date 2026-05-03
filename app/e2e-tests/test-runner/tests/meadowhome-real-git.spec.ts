@@ -24,7 +24,7 @@ import { exampleSite } from "../src/site-docs/index.js";
 test.use({ fixtureHome: Fixture.None });
 
 test("MeadowHome is a real (non-bare) git repo after creating the example site", async ({
-  page, snapshot, addKeyFrame, testServer,
+  page, snapshot, assertMeadowHomeState, addKeyFrame, testServer,
 }) => {
   const siteList = new SiteListPage(page, expect);
   const editor = new SiteEditorPage(page, expect);
@@ -82,4 +82,6 @@ test("MeadowHome is a real (non-bare) git repo after creating the example site",
   await addKeyFrame(git);
   await snapshot("MeadowHome clean via real git status");
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

@@ -23,6 +23,7 @@ import { bigSite, smallSite, exampleSite } from "../src/site-docs/index.js";
 test("find in sites navigates from small site to big site with page auto-selected", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -90,4 +91,6 @@ test("find in sites navigates from small site to big site with page auto-selecte
   void bigSite;
   void smallSite;
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

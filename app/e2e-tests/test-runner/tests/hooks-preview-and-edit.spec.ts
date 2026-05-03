@@ -21,7 +21,7 @@ import { hooksSite } from "../src/site-docs/index.js";
 
 test.use({ fixtureHome: "home_fixture_hooks" });
 
-test("Hooks preview shows normalized title and editing hook updates it", async ({ page, snapshot, addKeyFrame }) => {
+test("Hooks preview shows normalized title and editing hook updates it", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   // Navigate to site list and click the hooks test site
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();
@@ -75,4 +75,6 @@ test("Hooks preview shows normalized title and editing hook updates it", async (
   await addKeyFrame(hooks);
   await snapshot("verified updated page title with vulkan hook");
   void hooksSite;
+
+  await assertMeadowHomeState();
 });

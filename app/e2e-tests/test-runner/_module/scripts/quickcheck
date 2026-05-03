@@ -11,3 +11,6 @@ fi
 echo "Running test-runner type checking..."
 npx tsc --noEmit --project tsconfig.json
 echo "Type checking passed."
+
+echo "Linting final-assertion placement in specs..."
+npx tsx _module/scripts/lint-final-assertion.ts

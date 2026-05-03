@@ -23,7 +23,7 @@ import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index
 test.use({ fixtureHome: Fixture.None });
 
 test("a publisher should not be able to untrack the initial page", async ({
-  page, snapshot, addKeyFrame,
+  page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
   const editor = new SiteEditorPage(page, expect);
@@ -50,4 +50,6 @@ test("a publisher should not be able to untrack the initial page", async ({
   await snapshot("non-initial page untrack is enabled");
 
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

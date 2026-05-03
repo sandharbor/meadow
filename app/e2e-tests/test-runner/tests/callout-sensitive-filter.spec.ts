@@ -23,6 +23,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("Callout tooltip shown when hovering sensitive filter question mark", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -50,4 +51,6 @@ test("Callout tooltip shown when hovering sensitive filter question mark", async
   await addKeyFrame(sensitive);
   await snapshot("sensitive filter callout tooltip visible");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

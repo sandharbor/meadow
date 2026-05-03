@@ -23,7 +23,7 @@ import { exampleSite } from "../src/site-docs/index.js";
 test.use({ fixtureHome: Fixture.None });
 
 test("add example site from empty state and preview it", async ({
-  page, snapshot, addKeyFrame,
+  page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
   const editor = new SiteEditorPage(page, expect);
@@ -51,4 +51,6 @@ test("add example site from empty state and preview it", async ({
   await snapshot("example site preview visible");
 
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

@@ -28,6 +28,7 @@ test.use({ fixtureHome: Fixture.None });
 test("Track All on example site untracked pages auto-saves without a save click", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
@@ -63,4 +64,6 @@ test("Track All on example site untracked pages auto-saves without a save click"
   await addKeyFrame(tracking);
   await snapshot("track all applied — no save button");
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

@@ -23,7 +23,7 @@ import { exampleSite } from "../src/site-docs/index.js";
 test.use({ fixtureHome: Fixture.None });
 
 test("example site frontier pages show in graph view with frontier filter", async ({
-  page, snapshot, addKeyFrame,
+  page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
   const editor = new SiteEditorPage(page, expect);
@@ -53,4 +53,6 @@ test("example site frontier pages show in graph view with frontier filter", asyn
   await addKeyFrame(filters);
   await snapshot("frontier filter soloed with multiple pages");
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

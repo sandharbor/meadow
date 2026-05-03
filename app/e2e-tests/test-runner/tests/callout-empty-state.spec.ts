@@ -20,7 +20,7 @@ import { callout } from "../src/scenario-docs/index.js";
 
 test.use({ fixtureHome: "none" });
 
-test("Callout turn your notes into sites shown on empty state", async ({ page, snapshot, addKeyFrame }) => {
+test("Callout turn your notes into sites shown on empty state", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();
   await snapshot("empty site list loaded");
@@ -28,4 +28,6 @@ test("Callout turn your notes into sites shown on empty state", async ({ page, s
   await siteList.expectCalloutVisible("Turn your notes into sites");
   await addKeyFrame(callout);
   await snapshot("turn your notes into sites callout visible");
+
+  await assertMeadowHomeState();
 });

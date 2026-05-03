@@ -23,7 +23,7 @@ import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index
 test.use({ fixtureHome: Fixture.None });
 
 test("overrides filter on example site does not include the initial page", async ({
-  page, snapshot, addKeyFrame,
+  page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
   const editor = new SiteEditorPage(page, expect);
@@ -59,4 +59,6 @@ test("overrides filter on example site does not include the initial page", async
   await snapshot("overrides soloed without initial page");
 
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

@@ -33,6 +33,7 @@ test.use({ fixtureHome: Fixture.None });
 test("adding a depth override on a child page requires an explicit save", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const siteList = new SiteListPage(page, expect);
@@ -88,4 +89,6 @@ test("adding a depth override on a child page requires an explicit save", async 
   await addKeyFrame(overrides);
   await snapshot("override page appears under Depth Override filter");
   void exampleSite;
+
+  await assertMeadowHomeState();
 });

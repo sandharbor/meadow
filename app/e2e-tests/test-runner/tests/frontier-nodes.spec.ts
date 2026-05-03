@@ -19,7 +19,7 @@ import { SiteListPage, SiteEditorPage, FilterPanelComponent, SelectedPageDetailC
 import { frontier } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("frontier nodes show filtered pages and respond to depth changes", async ({ page, snapshot, addKeyFrame }) => {
+test("frontier nodes show filtered pages and respond to depth changes", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();
   await snapshot("site list loaded");
@@ -79,4 +79,6 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
   await filterPanel.clickSoloOnFilter("Frontier");
   await snapshot("frontier depth 2 with all nodes showing");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

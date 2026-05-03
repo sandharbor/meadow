@@ -20,7 +20,7 @@ import { Workflows } from "../src/run/workflows.js";
 import { labels } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("enabling show titles on untracked filter displays page title labels", async ({ page, snapshot, addKeyFrame }) => {
+test("enabling show titles on untracked filter displays page title labels", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSite();
   await snapshot("site editor loaded");
@@ -50,4 +50,6 @@ test("enabling show titles on untracked filter displays page title labels", asyn
   // Take another keyframe in solo mode
   await addKeyFrame(labels);
   void bigSite;
+
+  await assertMeadowHomeState();
 });

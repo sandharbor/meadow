@@ -28,6 +28,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("search for outlink gap page, inspect links, and navigate via inlink", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -107,4 +108,6 @@ test("search for outlink gap page, inspect links, and navigate via inlink", asyn
   await addKeyFrame(links);
   await snapshot("links modal showing t021 link gaps page");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

@@ -19,7 +19,7 @@ import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/p
 import { filters } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("filter custom inlink title substring selects expected pages", async ({ page, snapshot, addKeyFrame }) => {
+test("filter custom inlink title substring selects expected pages", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();
   await snapshot("site list loaded");
@@ -57,4 +57,6 @@ test("filter custom inlink title substring selects expected pages", async ({ pag
   }
   await snapshot("verified selected page titles");
   void bigSite;
+
+  await assertMeadowHomeState();
 });

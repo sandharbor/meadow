@@ -23,6 +23,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("creating a second site from the same source page auto-increments the folder name", async ({
   page,
   snapshot,
+  assertMeadowHomeState,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -92,4 +93,6 @@ test("creating a second site from the same source page auto-increments the folde
   await editor.waitForLoad("t001-deeply-nested-1");
   await snapshot("second site created with incremented folder name");
   void bigSite;
+
+  await assertMeadowHomeState();
 });
