@@ -73,6 +73,7 @@ export default [
       globals: {
         document: 'readonly',
         window: 'readonly',
+        navigator: 'readonly',
         console: 'readonly',
         fetch: 'readonly',
         setTimeout: 'readonly',

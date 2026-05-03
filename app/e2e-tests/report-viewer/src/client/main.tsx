@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Link, useParams } from 'react-router-dom'
 import RunsList from './components/RunsList.tsx'
@@ -48,6 +48,63 @@ const Breadcrumbs: React.FC = () => {
   )
 }
 
+const ScenarioActionsMenu: React.FC = () => {
+  const { runId, testSlug } = useParams<{ runId: string; testSlug: string }>()
+  const [open, setOpen] = useState(false)
+  const [feedback, setFeedback] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as HTMLElement)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const copyPath = async () => {
+    setOpen(false)
+    try {
+      const res = await fetch(`/api/${runId}/${testSlug}/scenario-path`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const { path } = await res.json()
+      await navigator.clipboard.writeText(path)
+      setFeedback('Path copied')
+    } catch {
+      setFeedback('Copy failed')
+    }
+    window.setTimeout(() => setFeedback(null), 1500)
+  }
+
+  return (
+    <div ref={ref} className="ml-auto relative flex items-center">
+      {feedback && (
+        <span className="text-[11px] text-neutral-500 mr-2">{feedback}</span>
+      )}
+      <button
+        aria-label="More actions"
+        className="text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded px-2 py-0.5 text-base font-bold cursor-pointer leading-none"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        …
+      </button>
+      {open && (
+        <div className="absolute top-full right-0 mt-1 bg-white border border-neutral-200 rounded shadow-lg z-30 py-1 min-w-[140px]">
+          <button
+            className="w-full text-left px-3 py-1 text-xs hover:bg-neutral-50 cursor-pointer"
+            onClick={copyPath}
+          >
+            Copy path
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const AppHeader: React.FC = () => {
   return (
     <header className="bg-white border-b border-neutral-200 px-4 py-2 flex items-center gap-4 flex-shrink-0">
@@ -56,6 +113,9 @@ const AppHeader: React.FC = () => {
         <Route path="/" element={null} />
         <Route path="/:runId" element={<Breadcrumbs />} />
         <Route path="/:runId/:testSlug" element={<Breadcrumbs />} />
+      </Routes>
+      <Routes>
+        <Route path="/:runId/:testSlug" element={<ScenarioActionsMenu />} />
       </Routes>
     </header>
   )

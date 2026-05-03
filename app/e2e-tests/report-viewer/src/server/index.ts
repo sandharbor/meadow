@@ -605,6 +605,13 @@ app.get("/api/:runId/:testSlug/manifest", (req, res) => {
   }
 });
 
+// API: absolute path of the scenario's artifact dir (for "Copy path" action)
+app.get("/api/:runId/:testSlug/scenario-path", (req, res) => {
+  const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
+  if (!dir) return res.status(404).json({ error: "Scenario not found" });
+  res.json({ path: dir });
+});
+
 // API: test source
 app.get("/api/:runId/:testSlug/test-source", (req, res) => {
   const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
