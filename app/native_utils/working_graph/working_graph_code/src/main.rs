@@ -585,7 +585,51 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
                     d
                 }
             } else if !link.link_parsed_directory.is_empty() {
-                calculate_normalized_directory("", Some(&link.link_parsed_directory))
+                let raw_dir = calculate_normalized_directory("", Some(&link.link_parsed_directory));
+                let exact_key = (
+                    raw_dir.clone(),
+                    link.link_parsed_title.clone(),
+                    link.link_parsed_file_type.clone(),
+                );
+                if file_index_map_for_resolution.contains_key(&exact_key) {
+                    raw_dir
+                } else {
+                    // Strict match missed — fall back to suffix-matching. This handles
+                    // graphs where the user pointed `sourceDirectory` at a directory that
+                    // wraps the actual notes one level deeper: a wiki link like
+                    // `[[t006/foo.png]]` should still find `wrapper/.../t006/foo.png`,
+                    // not just a top-level `t006/foo.png`. The shallowest match wins, so
+                    // a true root-rooted hit (when one exists) outranks deeper ones.
+                    let suffix = if raw_dir.is_empty() {
+                        String::new()
+                    } else {
+                        format!("/{}", raw_dir)
+                    };
+                    let mut potential_dirs: Vec<String> = Vec::new();
+                    for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
+                        if key_title != &link.link_parsed_title || key_ft != &link.link_parsed_file_type {
+                            continue;
+                        }
+                        if key_dir == &raw_dir || (!suffix.is_empty() && key_dir.ends_with(&suffix)) {
+                            potential_dirs.push(key_dir.clone());
+                        }
+                    }
+                    if potential_dirs.is_empty() {
+                        raw_dir
+                    } else if potential_dirs.len() == 1 {
+                        potential_dirs[0].clone()
+                    } else {
+                        potential_dirs.sort_by(|a, b| {
+                            let depth_a = if a.is_empty() { 0 } else { a.matches('/').count() + 1 };
+                            let depth_b = if b.is_empty() { 0 } else { b.matches('/').count() + 1 };
+                            match depth_a.cmp(&depth_b) {
+                                std::cmp::Ordering::Equal => a.cmp(b),
+                                other => other,
+                            }
+                        });
+                        potential_dirs[0].clone()
+                    }
+                }
             } else {
                 let root_key = (String::new(), link.link_parsed_title.clone(), link.link_parsed_file_type.clone());
                 if file_index_map_for_resolution.contains_key(&root_key) {
@@ -985,6 +1029,135 @@ mod tests {
             text: "up".to_string(),
             href: "../parent/file.md".to_string(),
         }]);
+    }
+
+    // --- resolve_links: wiki link with directory prefix ---
+    //
+    // Wiki link prefixes (`[[sub/foo.png]]`) match Obsidian's vault-relative
+    // semantics: the prefix is matched as a path *suffix* against any file in
+    // the graph, not strictly rooted at graph_root. The exact-match fast path
+    // covers the simple unwrapped case; the suffix fallback covers the case
+    // where the user pointed `sourceDirectory` one level above the actual data.
+
+    fn make_page(directory: &str, title: &str, file_type: &str) -> PageIdentifier {
+        let path = if directory.is_empty() {
+            format!("{}.{}", title, file_type)
+        } else {
+            format!("{}/{}.{}", directory, title, file_type)
+        };
+        PageIdentifier {
+            directory: directory.to_string(),
+            title: title.to_string(),
+            file_type: file_type.to_string(),
+            path,
+        }
+    }
+
+    fn wiki_link(prefix: &str, title: &str, file_type: &str, source: &PageIdentifier) -> LinkOut {
+        LinkOut {
+            link_original_text: format!("{}{}.{}", prefix, title, file_type),
+            link_source_page_path: source.path.clone(),
+            link_parsed_directory: prefix.to_string(),
+            link_parsed_title: title.to_string(),
+            link_parsed_file_type: file_type.to_string(),
+            link_parsed_anchor: None,
+            link_parsed_anchor_type: None,
+            link_parsed_alias: None,
+            link_parsed_media_size: None,
+            link_resolved_target_directory: String::new(),
+            link_resolved_target_path: String::new(),
+            is_relative_path_link: false,
+        }
+    }
+
+    fn page_only(p: PageIdentifier) -> ScanResult {
+        ScanResult { source_file: p, is_sensitive: false, outgoing_links: vec![] }
+    }
+
+    fn page_with_link(p: PageIdentifier, link: LinkOut) -> ScanResult {
+        ScanResult { source_file: p, is_sensitive: false, outgoing_links: vec![link] }
+    }
+
+    #[test]
+    fn test_resolve_wiki_link_with_prefix_exact_match() {
+        let source = make_page("", "embedded media", "md");
+        let target = make_page("t006", "foo", "png");
+        let link = wiki_link("t006/", "foo", "png", &source);
+        let out = resolve_links(vec![
+            page_with_link(source, link),
+            page_only(target),
+        ]);
+        let resolved = &out[0].outgoing_links[0];
+        assert_eq!(resolved.link_resolved_target_directory, "t006");
+        assert_eq!(resolved.link_resolved_target_path, "t006/foo.png");
+    }
+
+    #[test]
+    fn test_resolve_wiki_link_with_prefix_falls_back_to_suffix_match() {
+        // Wrapper case: graph_root is a directory above the actual notes, so
+        // `[[t006/foo.png]]` from `data/embedded media.md` must still find
+        // `data/t006/foo.png` even though no `t006/foo.png` exists at root.
+        let source = make_page("data", "embedded media", "md");
+        let target = make_page("data/t006", "foo", "png");
+        let link = wiki_link("t006/", "foo", "png", &source);
+        let out = resolve_links(vec![
+            page_with_link(source, link),
+            page_only(target),
+        ]);
+        let resolved = &out[0].outgoing_links[0];
+        assert_eq!(resolved.link_resolved_target_directory, "data/t006");
+        assert_eq!(resolved.link_resolved_target_path, "data/t006/foo.png");
+    }
+
+    #[test]
+    fn test_resolve_wiki_link_with_prefix_suffix_match_prefers_shallowest() {
+        // Two candidates both end with `/sub`: shallowest wins.
+        let source = make_page("", "src", "md");
+        let shallow = make_page("shallow/sub", "foo", "png");
+        let deep = make_page("deep/extra/sub", "foo", "png");
+        let link = wiki_link("sub/", "foo", "png", &source);
+        let out = resolve_links(vec![
+            page_with_link(source, link),
+            page_only(shallow),
+            page_only(deep),
+        ]);
+        let resolved = &out[0].outgoing_links[0];
+        assert_eq!(resolved.link_resolved_target_directory, "shallow/sub");
+    }
+
+    #[test]
+    fn test_resolve_wiki_link_with_prefix_root_match_outranks_deeper_suffix() {
+        // When both a root-rooted match and a deeper suffix match exist,
+        // the exact (root) match wins via the fast path and never enters the
+        // fallback.
+        let source = make_page("", "src", "md");
+        let at_root = make_page("t006", "foo", "png");
+        let nested = make_page("data/t006", "foo", "png");
+        let link = wiki_link("t006/", "foo", "png", &source);
+        let out = resolve_links(vec![
+            page_with_link(source, link),
+            page_only(at_root),
+            page_only(nested),
+        ]);
+        let resolved = &out[0].outgoing_links[0];
+        assert_eq!(resolved.link_resolved_target_directory, "t006");
+    }
+
+    #[test]
+    fn test_resolve_wiki_link_with_prefix_unresolvable_keeps_prefix() {
+        // No file matches by title+file_type at all: leave the resolved
+        // directory as the raw prefix so the link stays unresolvable rather
+        // than collapsing to an unrelated file.
+        let source = make_page("", "src", "md");
+        let unrelated = make_page("other", "different", "png");
+        let link = wiki_link("t006/", "foo", "png", &source);
+        let out = resolve_links(vec![
+            page_with_link(source, link),
+            page_only(unrelated),
+        ]);
+        let resolved = &out[0].outgoing_links[0];
+        assert_eq!(resolved.link_resolved_target_directory, "t006");
+        assert_eq!(resolved.link_resolved_target_path, "t006/foo.png");
     }
 }
 
