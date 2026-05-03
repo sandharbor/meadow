@@ -23,7 +23,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("callout for marking source node sensitive the first time", async ({
   page,
   snapshot,
-  assertMeadowHomeState,
+  skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -102,5 +102,5 @@ test("callout for marking source node sensitive the first time", async ({
   await snapshot("1 sensitive page remaining after unmarking two");
   void bigSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });

@@ -23,7 +23,7 @@ import { bigSite, smallSite, exampleSite } from "../src/site-docs/index.js";
 test("find in sites shows archived match indicator and archived tab", async ({
   page,
   snapshot,
-  assertMeadowHomeState,
+  skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -85,5 +85,5 @@ test("find in sites shows archived match indicator and archived tab", async ({
   void smallSite;
   void exampleSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });

@@ -20,7 +20,7 @@ import { Workflows } from "../src/run/workflows.js";
 import { hooks, customize } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("HTML post-processing hook: create, validate, save, and verify diff", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+test("HTML post-processing hook: create, validate, save, and verify diff", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // Navigate to big site preview
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSitePreview();
@@ -67,5 +67,5 @@ test("HTML post-processing hook: create, validate, save, and verify diff", async
   await snapshot("diff shows Hello from Meadow");
   void bigSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });

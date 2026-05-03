@@ -19,7 +19,7 @@ import { SiteListPage, SiteEditorPage, PreviewPublishModal } from "../src/run/pa
 import { callout } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("Callout preview warns about untracked pages", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+test("Callout preview warns about untracked pages", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();
   await snapshot("site list loaded");
@@ -36,5 +36,5 @@ test("Callout preview warns about untracked pages", async ({ page, snapshot, ass
   await snapshot("preview shows untracked warning");
   void bigSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });

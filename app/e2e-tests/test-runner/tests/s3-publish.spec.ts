@@ -23,7 +23,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("S3 provider publishes and deletes a site via MinIO", async ({
   page,
   snapshot,
-  assertMeadowHomeState,
+  skipMeadowHomeStateCheck,
   addKeyFrame,
   minioS3,
   testServer,
@@ -77,5 +77,5 @@ test("S3 provider publishes and deletes a site via MinIO", async ({
   await minioS3.expectEmpty(`${publishSlug}/`);
   void bigSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });

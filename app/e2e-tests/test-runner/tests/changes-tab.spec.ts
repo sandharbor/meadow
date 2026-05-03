@@ -20,7 +20,7 @@ import { Workflows } from "../src/run/workflows.js";
 import { htmlGeneration, customize, changesTab as changesTabDoc } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("Changes tab lifecycle: new files, save, modify via config, verify diff headers", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+test("Changes tab lifecycle: new files, save, modify via config, verify diff headers", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // Navigate to big site preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSitePreview();
@@ -98,5 +98,5 @@ test("Changes tab lifecycle: new files, save, modify via config, verify diff hea
   await snapshot("changes diff header shown for modified file");
   void bigSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });

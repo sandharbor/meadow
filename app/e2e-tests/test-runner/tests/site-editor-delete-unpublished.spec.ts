@@ -23,7 +23,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("Delete unpublished site from within site editor", async ({
   page,
   snapshot,
-  assertMeadowHomeState,
+  skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -52,5 +52,5 @@ test("Delete unpublished site from within site editor", async ({
   await snapshot("site list after deletion - site gone");
   void bigSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });

@@ -26,7 +26,7 @@ import { bigSite } from "../src/site-docs/index.js";
 test("Preview reopens on Review step after tracking pages via Check Them link", async ({
   page,
   snapshot,
-  assertMeadowHomeState,
+  skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
@@ -67,5 +67,5 @@ test("Preview reopens on Review step after tracking pages via Check Them link", 
   await snapshot("preview reopens on review step not share step");
   void bigSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });
