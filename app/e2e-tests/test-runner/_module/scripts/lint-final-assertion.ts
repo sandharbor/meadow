@@ -1,6 +1,10 @@
-// Linter: every Playwright spec in tests/ must call assertMeadowHomeState()
-// at least once, somewhere after its last snapshot() call. If a spec has no
-// snapshot() call, assertMeadowHomeState() must still appear at least once.
+// Linter: every Playwright spec in tests/ must call either
+// assertMeadowHomeState() or skipMeadowHomeStateCheck() at least once,
+// somewhere after its last snapshot() call. If a spec has no snapshot() call,
+// the call must still appear at least once. Either function is accepted —
+// assertMeadowHomeState performs the real check; skipMeadowHomeStateCheck is
+// a no-op that exists so a spec author can deliberately opt out without
+// silently dropping the check.
 //
 // Run via: npx tsx _module/scripts/lint-final-assertion.ts
 
@@ -13,7 +17,7 @@ const SCRIPT_DIR = path.dirname(url.fileURLToPath(import.meta.url));
 const TEST_RUNNER_DIR = path.resolve(SCRIPT_DIR, "../..");
 const TESTS_DIR = path.join(TEST_RUNNER_DIR, "tests");
 
-const ASSERTION_NAME = "assertMeadowHomeState";
+const FINAL_CALL_NAMES = ["assertMeadowHomeState", "skipMeadowHomeStateCheck"] as const;
 const SNAPSHOT_NAME = "snapshot";
 
 interface Issue {
@@ -22,14 +26,14 @@ interface Issue {
   message: string;
 }
 
-function findCallsByName(node: ts.Node, name: string, out: ts.CallExpression[]): void {
+function findCallsByName(node: ts.Node, names: readonly string[], out: ts.CallExpression[]): void {
   if (ts.isCallExpression(node)) {
     const callee = node.expression;
-    if (ts.isIdentifier(callee) && callee.text === name) {
+    if (ts.isIdentifier(callee) && names.includes(callee.text)) {
       out.push(node);
     }
   }
-  ts.forEachChild(node, (child) => findCallsByName(child, name, out));
+  ts.forEachChild(node, (child) => findCallsByName(child, names, out));
 }
 
 function isTestCall(node: ts.Node): node is ts.CallExpression {
@@ -73,15 +77,16 @@ function checkSpec(filePath: string): Issue[] {
     if (!body) continue;
 
     const snapshotCalls: ts.CallExpression[] = [];
-    findCallsByName(body, SNAPSHOT_NAME, snapshotCalls);
-    const assertionCalls: ts.CallExpression[] = [];
-    findCallsByName(body, ASSERTION_NAME, assertionCalls);
+    findCallsByName(body, [SNAPSHOT_NAME], snapshotCalls);
+    const finalCalls: ts.CallExpression[] = [];
+    findCallsByName(body, FINAL_CALL_NAMES, finalCalls);
 
-    if (assertionCalls.length === 0) {
+    const required = FINAL_CALL_NAMES.map((n) => `${n}()`).join(" or ");
+    if (finalCalls.length === 0) {
       issues.push({
         file: filePath,
         testTitle: title,
-        message: `must call ${ASSERTION_NAME}() at least once (after the last snapshot())`,
+        message: `must call ${required} at least once (after the last snapshot())`,
       });
       continue;
     }
@@ -89,19 +94,55 @@ function checkSpec(filePath: string): Issue[] {
     if (snapshotCalls.length === 0) continue;
 
     const lastSnapshot = snapshotCalls[snapshotCalls.length - 1];
-    const lastAssertion = assertionCalls[assertionCalls.length - 1];
-    if (lastAssertion.getStart() < lastSnapshot.getEnd()) {
+    const lastFinalCall = finalCalls[finalCalls.length - 1];
+    if (lastFinalCall.getStart() < lastSnapshot.getEnd()) {
       const { line } = sourceFile.getLineAndCharacterOfPosition(lastSnapshot.getStart());
       issues.push({
         file: filePath,
         testTitle: title,
-        message: `last ${ASSERTION_NAME}() must appear after the last snapshot() call (last snapshot at line ${line + 1})`,
+        message: `last ${required} must appear after the last snapshot() call (last snapshot at line ${line + 1})`,
       });
     }
   }
 
   return issues;
 }
+
+const HOW_TO_FIX = `
+How to fix
+----------
+
+Every spec must end (somewhere after its last snapshot() call) with one of
+these calls. Pick whichever describes your intent — the linter accepts
+either, and the second one is the deliberate opt-out:
+
+  await assertMeadowHomeState();
+      // Assert: no untracked or modified files remain in the MeadowHome
+      // configDir. Use this for tests that do all their writes via Save
+      // actions and then commit, or that don't write to MeadowHome at all.
+
+  await assertMeadowHomeState({
+    allowedUntracked: ["sites/<slug>/conf/draft_site_page_config.yaml"],
+    allowedModified:  ["sites/<slug>/conf/site_page_config.yaml"],
+  });
+      // Assert: only these specific paths are allowed to be uncommitted.
+      // Match is by exact relative path (no globs). Use this when the test
+      // intentionally leaves a known set of files dirty (e.g. an unsaved
+      // draft, or a Save that intentionally isn't committed).
+
+  await skipMeadowHomeStateCheck();
+      // No-op: explicitly opt out of the check. Use this only when the
+      // test genuinely doesn't care about final MeadowHome state.
+
+Wiring it up:
+  1. Destructure the fixture in the test signature, next to \`snapshot\`:
+       async ({ page, snapshot, assertMeadowHomeState }) => { ... }
+  2. Call it at the end of the test body, AFTER the last \`await snapshot(...)\`.
+
+If you don't know which to use, run the test and read the assertion's error
+message — it lists the unexpected paths and prints the exact allow-list
+literal you can paste into the call.
+`.trimEnd();
 
 function main(): void {
   const specs = readdirSync(TESTS_DIR)
@@ -114,17 +155,19 @@ function main(): void {
     allIssues.push(...checkSpec(spec));
   }
 
+  const required = FINAL_CALL_NAMES.map((n) => `${n}()`).join(" or ");
   if (allIssues.length === 0) {
-    console.log(`✅ ${specs.length} spec(s): all tests call ${ASSERTION_NAME}() after the last snapshot().`);
+    console.log(`✅ ${specs.length} spec(s): all tests call ${required} after the last snapshot().`);
     return;
   }
 
-  console.error(`❌ ${ASSERTION_NAME} linter found ${allIssues.length} issue(s):`);
+  console.error(`❌ final-assertion linter found ${allIssues.length} issue(s):`);
   for (const issue of allIssues) {
     const rel = path.relative(TEST_RUNNER_DIR, issue.file);
     console.error(`  ${rel}: "${issue.testTitle}"`);
     console.error(`    ${issue.message}`);
   }
+  console.error(HOW_TO_FIX);
   process.exit(1);
 }
 

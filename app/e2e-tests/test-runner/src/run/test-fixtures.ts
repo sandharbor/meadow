@@ -431,12 +431,21 @@ export const test = base.extend<{
    * allow-list is matched by exact relative path (no globs).
    *
    * Every spec must call this at least once, after its last `snapshot()` call —
-   * the `_module/scripts/lint-final-assertion` linter enforces that.
+   * the `_module/scripts/lint-final-assertion` linter enforces that. To
+   * deliberately not check the final state, use `skipMeadowHomeStateCheck()`
+   * instead — both satisfy the linter, but only one of them actually asserts.
    */
   assertMeadowHomeState: (opts?: {
     allowedUntracked?: string[];
     allowedModified?: string[];
   }) => Promise<void>;
+  /**
+   * Explicitly opt out of the final MeadowHome state check. No-op at runtime;
+   * exists so a spec author can signal "I deliberately considered this and
+   * chose not to check" — and the linter accepts it in place of
+   * `assertMeadowHomeState()`.
+   */
+  skipMeadowHomeStateCheck: () => Promise<void>;
   addKeyFrame: (scenarioDoc: { id: string }) => Promise<void>;
   minioS3: MinioS3;
   /**
@@ -1273,6 +1282,10 @@ export const test = base.extend<{
       throw new Error(lines.join("\n"));
     };
     await use(fn);
+  },
+
+  skipMeadowHomeStateCheck: async ({}, use) => {
+    await use(async () => {});
   },
 
   addKeyFrame: async ({ page, artifactDir }, use) => {
