@@ -45,6 +45,7 @@ const FRONTEND_DIR = path.join(REPO_ROOT, "app", "frontend");
 const E2E_DIR = path.join(import.meta.dirname, "../..");
 
 const MINIO_BUCKET_PREFIX = "meadow-e2e-test";
+const MAX_TICK_UNCOMMITTED_CONTENT_BYTES = 256 * 1024;
 
 // ---------------------------------------------------------------------------
 // Helpers (also exported for use by extension fixture layers)
@@ -394,6 +395,19 @@ export interface TestServer {
 export type SnapshotHandler = (message: string) => Promise<void>;
 
 /**
+ * Extension point used by fixture layers to attach additional per-tick data
+ * to ticks.jsonl. Handlers run on the tick cadence in a sidecar loop so slow
+ * backing stores do not block the synchronous MeadowHome/git capture.
+ */
+export type TickCaptureHandler = () => Promise<Record<string, unknown>>;
+
+export interface TickCaptureRegistry {
+  handlers: TickCaptureHandler[];
+  latestData: Record<string, unknown>;
+  captureNow: () => Promise<void>;
+}
+
+/**
  * Extension point invoked after MinIO and the web server have been set up
  * but before the backend is spawned. Lets a fixture layer seed
  * provider-specific config (e.g. writing endpoints into a provider's
@@ -463,6 +477,8 @@ export const test = base.extend<{
    * return handlers.
    */
   _additionalSnapshotHandlers: SnapshotHandler[];
+  /** Internal: mutable registry of extension-contributed tick capture hooks. */
+  _tickCaptureRegistry: TickCaptureRegistry;
   /**
    * Internal extension point: extra environment variables merged into the
    * spawned backend process. Fixture layers override to inject env vars
@@ -783,7 +799,7 @@ export const test = base.extend<{
   ],
 
   artifactDir: [
-    async ({ page, testServer, minioS3, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
+    async ({ page, testServer, minioS3, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
       const { configDir } = testServer;
 
       // Create artifact directory
@@ -851,6 +867,7 @@ export const test = base.extend<{
           const files = listFilesRecursive(configDir, ["logs", ".git"]);
 
           let uncommittedFiles: { path: string; status: string }[] = [];
+          let uncommittedFileContents: Record<string, string> = {};
           let gitHeadSha: string | undefined;
 
           // Which files in the working tree does git consider gitignored?
@@ -913,6 +930,24 @@ export const test = base.extend<{
             }
           }
 
+          for (const file of uncommittedFiles) {
+            const normalizedStatus = file.status.includes("?") || file.status.includes("A") || file.status === "new"
+              ? "new"
+              : file.status.includes("D") || file.status === "deleted"
+                ? "deleted"
+                : "modified";
+            if (normalizedStatus === "deleted" || file.path.endsWith("/")) continue;
+            const resolved = path.resolve(configDir, file.path);
+            if (!resolved.startsWith(configDir + path.sep)) continue;
+            try {
+              const stat = statSync(resolved);
+              if (!stat.isFile() || stat.size > MAX_TICK_UNCOMMITTED_CONTENT_BYTES) continue;
+              uncommittedFileContents[file.path] = readFileSync(resolved, "utf8");
+            } catch {
+              // Skip unreadable or transient files; status still captures their presence.
+            }
+          }
+
           // Check for snapshot marker
           let isSnapshot = false;
           let snapshotMessage: string | undefined;
@@ -929,9 +964,11 @@ export const test = base.extend<{
             ...(snapshotMessage !== undefined && { snapshotMessage }),
             files,
             uncommittedFiles,
+            uncommittedFileContents,
             ignoredFiles,
             ...(gitHeadSha !== undefined && { gitHeadSha }),
             s3Keys: latestS3Keys,
+            ..._tickCaptureRegistry.latestData,
           };
           appendFileSync(tickLogPath, JSON.stringify(entry) + "\n");
         } catch (err) {
@@ -954,6 +991,31 @@ export const test = base.extend<{
       captureS3Keys(); // initial capture
       const s3TickTimer = setInterval(captureS3Keys, tickIntervalMs);
 
+      let additionalTickCapturePromise: Promise<void> | null = null;
+      const captureAdditionalTickData = async () => {
+        if (_tickCaptureRegistry.handlers.length === 0) return;
+        if (additionalTickCapturePromise) return additionalTickCapturePromise;
+        additionalTickCapturePromise = (async () => {
+          const fragments = await Promise.all(
+            _tickCaptureRegistry.handlers.map(async (handler) => {
+              try {
+                return await handler();
+              } catch (err) {
+                console.error("tick extension capture error:", err);
+                return {};
+              }
+            })
+          );
+          _tickCaptureRegistry.latestData = Object.assign({}, ...fragments);
+        })().finally(() => {
+          additionalTickCapturePromise = null;
+        });
+        return additionalTickCapturePromise;
+      };
+      _tickCaptureRegistry.captureNow = captureAdditionalTickData;
+      await captureAdditionalTickData(); // establish extension baselines before tick 0
+      const additionalTickTimer = setInterval(captureAdditionalTickData, tickIntervalMs);
+
       captureTickSync(); // tick 0 immediately
       const tickTimer = setInterval(captureTickSync, tickIntervalMs);
 
@@ -975,7 +1037,9 @@ export const test = base.extend<{
       // Stop tick recording and capture final tick
       clearInterval(tickTimer);
       clearInterval(s3TickTimer);
+      clearInterval(additionalTickTimer);
       await captureS3Keys(); // final S3 capture before last tick
+      await captureAdditionalTickData(); // final extension capture before last tick
       captureTickSync();
 
       // Copy the MeadowHome config dir (including its .git history) as-is
@@ -1143,6 +1207,14 @@ export const test = base.extend<{
 
   _additionalSnapshotHandlers: async ({}, use) => {
     await use([]);
+  },
+
+  _tickCaptureRegistry: async ({}, use) => {
+    await use({
+      handlers: [],
+      latestData: {},
+      captureNow: async () => {},
+    });
   },
 
   snapshot: async ({ artifactDir, testServer, minioS3, _additionalSnapshotHandlers }, use) => {

@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { formatTime, escapeHtml, isBinary, diffHighlight, videoTimeToReal, realTimeToVideo, computeHealthData } from './helpers'
+import { formatTime, escapeHtml, isBinary, diffHighlight, videoTimeToReal, realTimeToVideo, computeHealthData, parseStateRepoAsFiles } from './helpers'
 
 describe('formatTime', () => {
   it('formats zero seconds', () => {
@@ -256,5 +256,16 @@ describe('computeHealthData', () => {
     expect(result.points[0].uncommittedTrackedFolders).toBe(0)
     expect(result.points[0].uncommittedUntrackedFiles).toBe(0)
     expect(result.points[0].uncommittedUntrackedFolders).toBe(0)
+  })
+})
+
+describe('parseStateRepoAsFiles', () => {
+  it('keeps file-per-record YAML objects as file-like records', () => {
+    const result = parseStateRepoAsFiles({
+      'users/T5-alice': 'id: alice\nrole: editor\n',
+    })
+
+    expect(result.paths).toEqual(['users/T5-alice'])
+    expect(result.contents['users/T5-alice']).toContain('id: alice')
   })
 })

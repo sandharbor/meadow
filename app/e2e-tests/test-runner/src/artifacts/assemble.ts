@@ -131,9 +131,12 @@ interface RawTickEntry {
   snapshotMessage?: string;
   files: string[];
   uncommittedFiles: { path: string; status: string }[];
+  uncommittedFileContents?: Record<string, string>;
   ignoredFiles?: string[];
   gitHeadSha?: string;
   s3Keys?: string[];
+  s3ObjectContents?: Record<string, string>;
+  stateRecordContents?: Record<string, string>;
 }
 
 interface ProcessedTick {
@@ -144,6 +147,7 @@ interface ProcessedTick {
   fileCount: number;
   uncommittedCount: number;
   uncommittedFiles: { path: string; status: string }[];
+  uncommittedFileContents: Record<string, string>;
   ignoredFiles: string[];
   gitHeadSha?: string;
   addedFiles: string[];
@@ -152,8 +156,16 @@ interface ProcessedTick {
   changedGitHead: boolean;
   s3KeyCount: number;
   s3AddedKeys: string[];
+  s3ModifiedKeys: string[];
   s3RemovedKeys: string[];
   s3Changed: boolean;
+  s3ObjectContents?: Record<string, string>;
+  stateRecordCount: number;
+  stateAddedRecords: string[];
+  stateModifiedRecords: string[];
+  stateRemovedRecords: string[];
+  stateChanged: boolean;
+  stateRecordContents?: Record<string, string>;
 }
 
 interface ConsolidatedTickGroup {
@@ -389,6 +401,7 @@ function extractSnapshotMeta(stateRepo: string, pathPrefix = "home/"): SnapshotM
   if (!existsSync(stateRepo)) return [];
 
   let logOutput: string;
+  const timelineMap = readTimeline(path.join(stateRepo, "timeline.jsonl"));
   try {
     logOutput = execSync('git log --format="%H %aI %s" --reverse', {
       cwd: stateRepo,
@@ -406,8 +419,10 @@ function extractSnapshotMeta(stateRepo: string, pathPrefix = "home/"): SnapshotM
   let prevHash: string | null = null;
 
   for (const line of lines) {
-    const [hash, timestamp, ...msgParts] = line.split(" ");
+    const [hash, gitTimestamp, ...msgParts] = line.split(" ");
     const commitMessage = msgParts.join(" ");
+    const timelineEntry = timelineMap.get(hash);
+    const timestamp = timelineEntry?.timestamp ?? gitTimestamp;
 
     let changedFiles: string[] = [];
     if (prevHash) {
@@ -573,14 +588,24 @@ function processTickLog(testDir: string): TickData {
   const s3KeyListing: Record<number, string[]> = {};
   let prevFiles: Set<string> | null = null;
   let prevS3Keys: Set<string> | null = null;
+  let prevS3ObjectContents: Record<string, string> | null = null;
+  let prevStateRecords: Set<string> | null = null;
+  let prevStateRecordContents: Record<string, string> | null = null;
   let prevUncommittedKey = "";
   let prevGitHead = "";
 
   for (const raw of rawTicks) {
     const currentFiles = new Set(raw.files);
-    const currentS3Keys = new Set(raw.s3Keys || []);
+    const rawS3 = raw.s3Keys || [];
+    const currentS3Keys = new Set(rawS3);
+    const rawStateRecordContents = raw.stateRecordContents;
+    const rawStateRecords = Object.keys(rawStateRecordContents ?? {}).sort();
+    const currentStateRecords = new Set(rawStateRecords);
     const currentUncommittedKey = JSON.stringify(
-      raw.uncommittedFiles.map((f) => `${f.status}:${f.path}`).sort()
+      [
+        ...raw.uncommittedFiles.map((f) => `${f.status}:${f.path}`),
+        ...Object.entries(raw.uncommittedFileContents ?? {}).map(([filePath, content]) => `content:${filePath}:${content}`),
+      ].sort()
     );
     const currentGitHead = raw.gitHeadSha || "";
 
@@ -589,8 +614,13 @@ function processTickLog(testDir: string): TickData {
     let changedUncommitted = false;
     let changedGitHead = false;
     let s3AddedKeys: string[] = [];
+    let s3ModifiedKeys: string[] = [];
     let s3RemovedKeys: string[] = [];
     let s3Changed = false;
+    let stateAddedRecords: string[] = [];
+    let stateModifiedRecords: string[] = [];
+    let stateRemovedRecords: string[] = [];
+    let stateChanged = false;
 
     if (prevFiles === null) {
       // First tick: all files are "added"
@@ -599,11 +629,14 @@ function processTickLog(testDir: string): TickData {
       changedGitHead = currentGitHead !== "";
       tickFileListing[raw.tickIndex] = raw.files;
 
-      s3AddedKeys = raw.s3Keys || [];
+      s3AddedKeys = rawS3;
       s3Changed = s3AddedKeys.length > 0;
       if (s3Changed || s3AddedKeys.length > 0) {
-        s3KeyListing[raw.tickIndex] = raw.s3Keys || [];
+        s3KeyListing[raw.tickIndex] = rawS3;
       }
+
+      stateAddedRecords = rawStateRecords;
+      stateChanged = stateAddedRecords.length > 0;
     } else {
       addedFiles = raw.files.filter((f) => !prevFiles!.has(f));
       removedFiles = [...prevFiles].filter((f) => !currentFiles.has(f));
@@ -616,13 +649,33 @@ function processTickLog(testDir: string): TickData {
       }
 
       // S3 diffs
-      const rawS3 = raw.s3Keys || [];
       s3AddedKeys = rawS3.filter((k) => !prevS3Keys!.has(k));
+      if (raw.s3ObjectContents && prevS3ObjectContents) {
+        s3ModifiedKeys = rawS3.filter((k) =>
+          prevS3Keys!.has(k) &&
+          raw.s3ObjectContents?.[k] !== undefined &&
+          prevS3ObjectContents?.[k] !== undefined &&
+          raw.s3ObjectContents[k] !== prevS3ObjectContents[k]
+        );
+      }
       s3RemovedKeys = [...prevS3Keys!].filter((k) => !currentS3Keys.has(k));
-      s3Changed = s3AddedKeys.length > 0 || s3RemovedKeys.length > 0;
+      s3Changed = s3AddedKeys.length > 0 || s3ModifiedKeys.length > 0 || s3RemovedKeys.length > 0;
 
       if (s3Changed) {
         s3KeyListing[raw.tickIndex] = rawS3;
+      }
+
+      if (rawStateRecordContents && prevStateRecordContents) {
+        const previousContents = prevStateRecordContents;
+        stateAddedRecords = rawStateRecords.filter((record) => !prevStateRecords!.has(record));
+        stateModifiedRecords = rawStateRecords.filter((record) =>
+          prevStateRecords!.has(record) &&
+          rawStateRecordContents[record] !== undefined &&
+          previousContents[record] !== undefined &&
+          rawStateRecordContents[record] !== previousContents[record]
+        );
+        stateRemovedRecords = [...prevStateRecords!].filter((record) => !currentStateRecords.has(record));
+        stateChanged = stateAddedRecords.length > 0 || stateModifiedRecords.length > 0 || stateRemovedRecords.length > 0;
       }
     }
 
@@ -634,6 +687,7 @@ function processTickLog(testDir: string): TickData {
       fileCount: raw.files.length,
       uncommittedCount: raw.uncommittedFiles.length,
       uncommittedFiles: raw.uncommittedFiles,
+      uncommittedFileContents: raw.uncommittedFileContents ?? {},
       ignoredFiles: raw.ignoredFiles ?? [],
       ...(raw.gitHeadSha !== undefined && { gitHeadSha: raw.gitHeadSha }),
       addedFiles,
@@ -642,12 +696,23 @@ function processTickLog(testDir: string): TickData {
       changedGitHead,
       s3KeyCount: currentS3Keys.size,
       s3AddedKeys,
+      s3ModifiedKeys,
       s3RemovedKeys,
       s3Changed,
+      ...(raw.s3ObjectContents !== undefined && { s3ObjectContents: raw.s3ObjectContents }),
+      stateRecordCount: currentStateRecords.size,
+      stateAddedRecords,
+      stateModifiedRecords,
+      stateRemovedRecords,
+      stateChanged,
+      ...(raw.stateRecordContents !== undefined && { stateRecordContents: raw.stateRecordContents }),
     });
 
     prevFiles = currentFiles;
     prevS3Keys = currentS3Keys;
+    prevS3ObjectContents = raw.s3ObjectContents ?? null;
+    prevStateRecords = currentStateRecords;
+    prevStateRecordContents = raw.stateRecordContents ?? null;
     prevUncommittedKey = currentUncommittedKey;
     prevGitHead = currentGitHead;
   }
@@ -664,6 +729,7 @@ function processTickLog(testDir: string): TickData {
       t.changedUncommitted ||
       t.changedGitHead ||
       t.s3Changed ||
+      t.stateChanged ||
       t.isSnapshot;
 
     if (!hasChange) {
@@ -710,49 +776,6 @@ function processTickLog(testDir: string): TickData {
       totalDurationMs,
     },
   };
-}
-
-function findVideo(testSlug: string): string | null {
-  if (!existsSync(TEST_RESULTS_DIR)) return null;
-
-  // Search for .webm files in test-results/
-  function walk(dir: string): string[] {
-    const results: string[] = [];
-    for (const entry of readdirSync(dir)) {
-      const full = path.join(dir, entry);
-      if (statSync(full).isDirectory()) {
-        results.push(...walk(full));
-      } else if (entry.endsWith(".webm")) {
-        results.push(full);
-      }
-    }
-    return results;
-  }
-
-  const videos = walk(TEST_RESULTS_DIR);
-  if (videos.length === 0) return null;
-  if (videos.length === 1) return videos[0];
-
-  // Match by word overlap between test slug and test-results directory name
-  const slugWords = new Set(testSlug.split("-").filter((w) => w.length > 2));
-  let bestVideo = videos[0];
-  let bestScore = 0;
-
-  for (const video of videos) {
-    const dirName = path.basename(path.dirname(video)).toLowerCase();
-    const dirWords = new Set(dirName.split("-").filter((w) => w.length > 2));
-    let matches = 0;
-    for (const word of slugWords) {
-      if (dirWords.has(word)) matches++;
-    }
-    const score = matches / slugWords.size;
-    if (score > bestScore) {
-      bestScore = score;
-      bestVideo = video;
-    }
-  }
-
-  return bestVideo;
 }
 
 /** Walk TEST_RESULTS_DIR once and return all .webm video paths. */

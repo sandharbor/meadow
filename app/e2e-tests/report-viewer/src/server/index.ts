@@ -21,6 +21,11 @@ import os from "os";
 import path from "path";
 import { allDocs } from "../../../test-runner/src/scenario-docs/index.ts";
 import { allSiteDocs } from "../../../test-runner/src/site-docs/index.ts";
+import {
+  generateFixtureScenario,
+  FIXTURE_RUN_ID,
+  FIXTURE_TEST_SLUG,
+} from "./fixture-scenario/index.ts";
 
 // Optionally load an extension scenario-doc layer. When no extension is
 // mounted, this folder is gone and the import no-ops.
@@ -108,6 +113,80 @@ function archiveRun(runId: string): string {
   return path.basename(destDir);
 }
 
+// --- Fixture scenario regeneration ---
+//
+// The fixture scenario at /__fixture/canonical is regenerated from factory
+// scripts on demand so the user can edit a factory file and see the result
+// on the very next page refresh. The middleware below intercepts every API
+// request under /api/__fixture/canonical/, ensuring the artifact is fresh
+// before any handler runs.
+//
+// Cost control: regeneration is cached against the newest mtime of any
+// file under fixture-scenario/. When the user is just navigating around
+// the artifact (no source edits), the middleware is a single statSync per
+// request. When a source file changes, the next request triggers a full
+// regen and all subsequent in-flight requests share the same inflight
+// promise so they see consistent fresh state.
+
+const FIXTURE_SOURCE_DIR = path.join(import.meta.dirname, "fixture-scenario");
+const FIXTURE_ARTIFACT_DIR = path.join(
+  CURRENT_ARTIFACTS_ROOT,
+  FIXTURE_RUN_ID,
+  FIXTURE_TEST_SLUG
+);
+
+let fixtureRegenInflight: Promise<void> | null = null;
+let fixtureLastSourceMtime = -1;
+
+function newestSourceMtimeMs(dir: string): number {
+  let newest = 0;
+  function walk(d: string) {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (entry.isFile()) {
+        const m = statSync(full).mtimeMs;
+        if (m > newest) newest = m;
+      }
+    }
+  }
+  walk(dir);
+  return newest;
+}
+
+async function ensureFreshFixtureScenario(): Promise<void> {
+  if (fixtureRegenInflight) return fixtureRegenInflight;
+
+  const sourceMtime = newestSourceMtimeMs(FIXTURE_SOURCE_DIR);
+  const manifestPath = path.join(FIXTURE_ARTIFACT_DIR, "manifest.json");
+  const upToDate =
+    existsSync(manifestPath) && sourceMtime === fixtureLastSourceMtime;
+  if (upToDate) return;
+
+  fixtureRegenInflight = (async () => {
+    await generateFixtureScenario();
+    fixtureLastSourceMtime = sourceMtime;
+  })().finally(() => {
+    fixtureRegenInflight = null;
+  });
+  return fixtureRegenInflight;
+}
+
+app.use(
+  `/api/${FIXTURE_RUN_ID}/${FIXTURE_TEST_SLUG}`,
+  async (_req, res, next) => {
+    try {
+      await ensureFreshFixtureScenario();
+      next();
+    } catch (e) {
+      res
+        .status(500)
+        .send(`Fixture scenario regen failed: ${(e as Error).message}`);
+    }
+  }
+);
+
 // --- Scenario docs API ---
 
 // GET /api/scenario-docs — return all scenario doc definitions (base plus
@@ -134,6 +213,9 @@ app.get("/api/runs", (_req, res) => {
 
   const entries = readdirSync(CURRENT_ARTIFACTS_ROOT)
     .filter((name) => {
+      // Hide internal scratch dirs (e.g. the regenerable fixture scenario)
+      // from the runs list — they're reachable only by direct URL.
+      if (name.startsWith("__")) return false;
       const full = path.join(CURRENT_ARTIFACTS_ROOT, name);
       return statSync(full).isDirectory();
     })
@@ -574,6 +656,7 @@ app.post("/api/runs/:runId/archive-and-below", (req, res) => {
 
   const allRuns = readdirSync(CURRENT_ARTIFACTS_ROOT)
     .filter((name) => {
+      if (name.startsWith("__")) return false;
       const full = path.join(CURRENT_ARTIFACTS_ROOT, name);
       return statSync(full).isDirectory();
     })
@@ -683,6 +766,7 @@ app.get("/api/:runId/:testSlug/snapshots", (req, res) => {
     return res.json([]);
   }
   try {
+    const timelineMap = readTimeline(path.join(meadowHomeStateRepo, "timeline.jsonl"));
     const logOutput = execSync('git log --format="%H %aI %s" --reverse', {
       cwd: meadowHomeStateRepo,
       encoding: "utf8",
@@ -699,8 +783,10 @@ app.get("/api/:runId/:testSlug/snapshots", (req, res) => {
     let prevHash: string | null = null;
 
     for (const line of lines) {
-      const [hash, timestamp, ...msgParts] = line.split(" ");
+      const [hash, gitTimestamp, ...msgParts] = line.split(" ");
       const commitMessage = msgParts.join(" ");
+      const timelineEntry = timelineMap.get(hash);
+      const timestamp = timelineEntry?.timestamp ?? gitTimestamp;
 
       let changedFiles: string[] = [];
       if (prevHash) {
