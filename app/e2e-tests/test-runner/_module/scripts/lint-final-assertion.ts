@@ -1,4 +1,4 @@
-// Linter: every Playwright spec in tests/ must call either
+// Linter: every Playwright spec under tests/ (recursively) must call either
 // assertMeadowHomeState() or skipMeadowHomeStateCheck() at least once,
 // somewhere after its last snapshot() call. If a spec has no snapshot() call,
 // the call must still appear at least once. Either function is accepted —
@@ -145,8 +145,8 @@ literal you can paste into the call.
 `.trimEnd();
 
 function main(): void {
-  const specs = readdirSync(TESTS_DIR)
-    .filter((f) => f.endsWith(".spec.ts"))
+  const specs = readdirSync(TESTS_DIR, { recursive: true })
+    .filter((f): f is string => typeof f === "string" && f.endsWith(".spec.ts"))
     .map((f) => path.join(TESTS_DIR, f))
     .sort();
 
