@@ -221,7 +221,14 @@ export function parseStateRepoAsFiles(
     } catch {
       continue
     }
-    if (!Array.isArray(records) || records.length === 0) continue
+    if (!Array.isArray(records)) {
+      if (records && typeof records === 'object') {
+        paths.push(tableName)
+        contents[tableName] = YAML.stringify(records)
+      }
+      continue
+    }
+    if (records.length === 0) continue
 
     const suffix = suffixRegex ? tableName.replace(suffixRegex, '') : tableName
 

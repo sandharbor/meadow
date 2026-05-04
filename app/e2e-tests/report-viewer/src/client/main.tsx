@@ -16,11 +16,14 @@ limitations under the License.
 
 import React, { useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Link, useParams } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom'
 import RunsList from './components/RunsList.tsx'
 import RunDetail from './components/RunDetail.tsx'
 import ScenarioViewer from './components/ScenarioViewer.tsx'
 import './index.css'
+
+const FIXTURE_RUN_ID = '__fixture'
+const FIXTURE_TEST_SLUG = 'canonical'
 
 const Breadcrumbs: React.FC = () => {
   const { runId, testSlug } = useParams()
@@ -48,8 +51,14 @@ const Breadcrumbs: React.FC = () => {
   )
 }
 
-const ScenarioActionsMenu: React.FC = () => {
+// AppActionsMenu — single top-right kebab that's always visible. Items are
+// context-aware: "Copy path" shows only on a scenario page, but "Open test
+// scenario artifact" is reachable from anywhere so the user can jump to the
+// regenerable fixture from the runs list, a run detail, or another scenario.
+const AppActionsMenu: React.FC = () => {
   const { runId, testSlug } = useParams<{ runId: string; testSlug: string }>()
+  const onScenario = Boolean(runId && testSlug)
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
@@ -79,6 +88,11 @@ const ScenarioActionsMenu: React.FC = () => {
     window.setTimeout(() => setFeedback(null), 1500)
   }
 
+  const openFixtureScenario = () => {
+    setOpen(false)
+    navigate(`/${FIXTURE_RUN_ID}/${FIXTURE_TEST_SLUG}`)
+  }
+
   return (
     <div ref={ref} className="ml-auto relative flex items-center">
       {feedback && (
@@ -92,12 +106,20 @@ const ScenarioActionsMenu: React.FC = () => {
         …
       </button>
       {open && (
-        <div className="absolute top-full right-0 mt-1 bg-white border border-neutral-200 rounded shadow-lg z-30 py-1 min-w-[140px]">
+        <div className="absolute top-full right-0 mt-1 bg-white border border-neutral-200 rounded shadow-lg z-30 py-1 min-w-[200px]">
+          {onScenario && (
+            <button
+              className="w-full text-left px-3 py-1 text-xs hover:bg-neutral-50 cursor-pointer"
+              onClick={copyPath}
+            >
+              Copy path
+            </button>
+          )}
           <button
             className="w-full text-left px-3 py-1 text-xs hover:bg-neutral-50 cursor-pointer"
-            onClick={copyPath}
+            onClick={openFixtureScenario}
           >
-            Copy path
+            Open test scenario artifact
           </button>
         </div>
       )}
@@ -114,9 +136,7 @@ const AppHeader: React.FC = () => {
         <Route path="/:runId" element={<Breadcrumbs />} />
         <Route path="/:runId/:testSlug" element={<Breadcrumbs />} />
       </Routes>
-      <Routes>
-        <Route path="/:runId/:testSlug" element={<ScenarioActionsMenu />} />
-      </Routes>
+      <AppActionsMenu />
     </header>
   )
 }

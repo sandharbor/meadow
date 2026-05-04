@@ -90,6 +90,7 @@ interface ProcessedTick {
   fileCount: number
   uncommittedCount: number
   uncommittedFiles: { path: string; status: string }[]
+  uncommittedFileContents?: Record<string, string>
   ignoredFiles?: string[]
   gitHeadSha?: string
   addedFiles: string[]
@@ -98,8 +99,183 @@ interface ProcessedTick {
   changedGitHead: boolean
   s3KeyCount: number
   s3AddedKeys: string[]
+  s3ModifiedKeys: string[]
   s3RemovedKeys: string[]
   s3Changed: boolean
+  s3ObjectContents?: Record<string, string>
+  stateRecordCount?: number
+  stateAddedRecords?: string[]
+  stateModifiedRecords?: string[]
+  stateRemovedRecords?: string[]
+  stateChanged?: boolean
+  stateRecordContents?: Record<string, string>
+}
+
+type FileChangeLens = 'tick' | 'git'
+type ChangeView = 'all' | 'custom'
+type ChangeTone = 'added' | 'modified' | 'removed' | 'tick' | 'git' | 'uncommitted' | 'snapshot' | 'neutral' | 'state' | 's3'
+
+interface FileDelta {
+  added: string[]
+  modified: string[]
+  removed: string[]
+}
+
+interface SummaryItem {
+  key: string
+  text: string
+  tone: ChangeTone
+  strong?: boolean
+  italic?: boolean
+  fileModeMarkers?: FileChangeLens[]
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void
+}
+
+interface FileTimelineItem {
+  tickArrayIndex: number
+  items: SummaryItem[]
+  meta?: string
+}
+
+const FILE_CHANGE_LENSES: { key: FileChangeLens; label: string }[] = [
+  { key: 'tick', label: 'Tick' },
+  { key: 'git', label: 'Git' },
+]
+
+function normalizeGitStatus(status: string): 'new' | 'modified' | 'deleted' {
+  const normalized = status.trim().toLowerCase()
+  if (normalized === 'new' || normalized === 'added' || normalized === 'untracked' || status.includes('?') || status.includes('A')) return 'new'
+  if (normalized === 'deleted' || normalized === 'removed' || status.includes('D')) return 'deleted'
+  return 'modified'
+}
+
+function applyStatus(map: Map<string, FileStatus>, path: string, status: FileStatus) {
+  const rank: Record<FileStatus, number> = {
+    committed: 0,
+    'just-committed': 1,
+    'uncommitted-modified': 2,
+    'uncommitted-new': 3,
+    removed: 4,
+  }
+  const current = map.get(path)
+  if (!current || rank[status] > rank[current]) {
+    map.set(path, status)
+  }
+}
+
+function sortedUnion(...lists: string[][]): string[] {
+  return [...new Set(lists.flat().filter(Boolean))].sort()
+}
+
+function activeLenses<T extends string>(view: ChangeView, selected: Set<T>, available: readonly { key: T; label: string }[]): T[] {
+  if (view === 'all') return available.map((l) => l.key)
+  return available.map((l) => l.key).filter((key) => selected.has(key))
+}
+
+function lensLabel(lens: FileChangeLens): string {
+  return lens.charAt(0).toUpperCase() + lens.slice(1)
+}
+
+function countLabel(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
+}
+
+function deltaSummaryItems(delta: FileDelta, keyPrefix: string, noun = 'file'): SummaryItem[] {
+  const items: SummaryItem[] = []
+  if (delta.added.length > 0) items.push({ key: `${keyPrefix}-added`, text: `+${countLabel(delta.added.length, noun)}`, tone: 'added', strong: true })
+  if (delta.modified.length > 0) items.push({ key: `${keyPrefix}-modified`, text: `~${countLabel(delta.modified.length, noun)}`, tone: 'modified', strong: true })
+  if (delta.removed.length > 0) items.push({ key: `${keyPrefix}-removed`, text: `-${countLabel(delta.removed.length, noun)}`, tone: 'removed', strong: true })
+  return items
+}
+
+const SUMMARY_TONE_CLASSES: Record<ChangeTone, string> = {
+  added: 'bg-blue-50 text-blue-700 border-blue-200',
+  modified: 'bg-amber-50 text-amber-700 border-amber-200',
+  removed: 'bg-red-50 text-red-700 border-red-200',
+  tick: 'bg-purple-50 text-purple-700 border-purple-200',
+  git: 'bg-brand-50 text-brand-700 border-brand-300',
+  uncommitted: 'bg-amber-50 text-amber-800 border-amber-200',
+  snapshot: 'bg-orange-50 text-orange-700 border-orange-200',
+  neutral: 'bg-neutral-50 text-neutral-500 border-neutral-200',
+  state: 'bg-amber-50 text-amber-700 border-amber-200',
+  s3: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+}
+
+const FILE_MODE_MARKER_META: Record<FileChangeLens, { label: string; className: string }> = {
+  tick: { label: 'T', className: 'bg-purple-100 text-purple-700 border-purple-200' },
+  git: { label: 'G', className: 'bg-brand-100 text-brand-700 border-brand-200' },
+}
+
+function SummaryChip({ item }: { item: SummaryItem }) {
+  return (
+    <span
+      className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border px-1.5 py-0.5 inline-flex items-center gap-1 ${
+        SUMMARY_TONE_CLASSES[item.tone]
+      } ${item.strong ? 'font-bold' : 'font-medium'} ${item.italic ? 'italic' : ''} ${
+        item.onClick ? 'cursor-pointer hover:brightness-95 transition-[filter]' : ''
+      }`}
+      onClick={item.onClick}
+    >
+      <span>{item.text}</span>
+      {item.fileModeMarkers && item.fileModeMarkers.length > 0 && (
+        <span className="inline-flex items-center gap-0.5">
+          {item.fileModeMarkers.map((mode) => (
+            <span
+              key={mode}
+              className={`rounded-full border px-1 text-[9px] leading-3 font-black ${FILE_MODE_MARKER_META[mode].className}`}
+            >
+              {FILE_MODE_MARKER_META[mode].label}
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  )
+}
+
+function TickSummaryLine({
+  tickNumber,
+  items,
+  isSnapshot = false,
+  snapshotMessage,
+  emptyText = 'no changes',
+}: {
+  tickNumber: number
+  items: SummaryItem[]
+  isSnapshot?: boolean
+  snapshotMessage?: string
+  emptyText?: string
+}) {
+  const visibleItems = items.length > 0
+    ? items
+    : [{ key: 'empty', text: emptyText, tone: 'neutral', italic: true } satisfies SummaryItem]
+  const showSnapshotMarker = isSnapshot || Boolean(snapshotMessage)
+
+  return (
+    <span className="flex items-center gap-1.5 min-w-0 overflow-hidden text-[11px] font-normal">
+      <span className="rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 font-bold text-purple-700 whitespace-nowrap">
+        tick {tickNumber}
+        {showSnapshotMarker && (
+          <span className="ml-1 rounded-full border border-orange-200 bg-orange-100 px-1 text-[9px] leading-3 font-black text-orange-700 align-middle">
+            S
+          </span>
+        )}
+        :
+      </span>
+      {showSnapshotMarker && (
+        <>
+          {snapshotMessage && (
+            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 font-bold text-orange-700">
+              {snapshotMessage}
+            </span>
+          )}
+        </>
+      )}
+      <span className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+        {visibleItems.map((item) => <SummaryChip key={item.key} item={item} />)}
+      </span>
+    </span>
+  )
 }
 
 
@@ -133,7 +309,6 @@ export default function ScenarioViewer() {
   const [logFilter, setLogFilter] = useState<'all' | 'backend' | 'frontend'>('all')
   const [levelFilter, setLevelFilter] = useState<Set<string>>(() => new Set(['DEBUG', 'INFO', 'WARN', 'ERROR', 'LOG']))
   const [levelDropdownOpen, setLevelDropdownOpen] = useState(false)
-  const [currentFile, setCurrentFile] = useState<string | null>(null)
   const [currentS3Key, setCurrentS3Key] = useState<string | null>(null)
   const [commitListOpen, setCommitListOpen] = useState(false)
   const [s3ListOpen, setS3ListOpen] = useState(false)
@@ -143,6 +318,9 @@ export default function ScenarioViewer() {
   const [timeDisplay, setTimeDisplay] = useState('0:00 / 0:00')
   const [timelinePercent, setTimelinePercent] = useState(0)
   const [fileStatusFilter, setFileStatusFilter] = useState<Set<string>>(() => new Set(['added', 'removed', 'changed', 'unchanged', 'just-committed', 'uncommitted-new', 'uncommitted-modified', 'committed']))
+  const [fileChangeView, setFileChangeView] = useState<ChangeView>('custom')
+  const [fileChangeLenses, setFileChangeLenses] = useState<Set<FileChangeLens>>(() => new Set(['tick', 'git']))
+  const [filePaneSelection, setFilePaneSelection] = useState<{ mode: FileChangeLens; filePath: string; nonce: number } | null>(null)
   const [currentTickIndex, setCurrentTickIndex] = useState(-1)
   const [ticks, setTicks] = useState<ProcessedTick[]>([])
   const [tickFileListing, setTickFileListing] = useState<Record<number, string[]>>({})
@@ -150,12 +328,9 @@ export default function ScenarioViewer() {
 
   // Content state
   const [fileList, setFileList] = useState<string[]>([])
-  const [fileContentHtml, setFileContentHtml] = useState<string>('<div class="p-10 text-center text-neutral-400 text-sm">Select a file to view its contents</div>')
-  const [fileFullHtml, setFileFullHtml] = useState<string | null>(null)
-  const [fileDiffHtml, setFileDiffHtml] = useState<string | null>(null)
-  const [fileDiffMode, setFileDiffMode] = useState(true)
   const [stateTables, setStateTables] = useState<Record<string, string>>({})
   const [prevStateTables, setPrevStateTables] = useState<Record<string, string>>({})
+  const [stateSnapshotDeltas, setStateSnapshotDeltas] = useState<Record<number, FileDelta>>({})
   const [currentStateRecordPath, setCurrentStateRecordPath] = useState<string | null>(null)
   const [stateDiffMode, setStateDiffMode] = useState(true)
   const [s3Objects, setS3Objects] = useState<Record<string, string>>({})
@@ -177,6 +352,7 @@ export default function ScenarioViewer() {
   const scrubTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timelineBarRef = useRef<HTMLDivElement>(null)
   const levelDropdownRef = useRef<HTMLDivElement>(null)
+  const explicitTickJumpRef = useRef<{ index: number; videoTime: number } | null>(null)
   const [timelineBarWidth, setTimelineBarWidth] = useState(0)
 
   // Caches
@@ -222,6 +398,7 @@ export default function ScenarioViewer() {
     const cache = snapshotContentCacheRef.current
     if (cache.has(key)) return cache.get(key)!
     const res = await fetch(`${API}/snapshot/${hash}/file/${encodeURIComponent(filePath)}`)
+    if (!res.ok) throw new Error(`File not found at ${hash}: ${filePath}`)
     const content = await res.text()
     cache.set(key, content)
     return content
@@ -261,6 +438,37 @@ export default function ScenarioViewer() {
     if (docIds.length === 0) return []
     return scenarioDocs.filter((doc) => docIds.includes(doc.id))
   }, [scenarioDocs, manifest])
+
+  const parseOptions = useMemo(() => ({
+    recordKeyMap: stateRepoMeta?.recordKeyMap,
+    eventsLikeTables: stateRepoMeta?.eventsLikeTables,
+    tableNameSuffixRegex: stateRepoMeta?.tableNameSuffixRegex,
+  }), [stateRepoMeta])
+
+  const getSnapshotIndexAtOrBefore = useCallback((snapshotsToSearch: Snapshot[], realTime: number): number => {
+    let snapshotIndex = -1
+    for (let i = 0; i < snapshotsToSearch.length; i++) {
+      if (new Date(snapshotsToSearch[i].timestamp).getTime() <= realTime) snapshotIndex = i
+      else break
+    }
+    return snapshotIndex
+  }, [])
+
+  const getS3SnapshotIndexForTick = useCallback((tick: ProcessedTick, fallbackIndex: number): number => {
+    if (!tick.s3Changed || s3Snapshots.length === 0) return fallbackIndex
+
+    const changedKeys = sortedUnion(tick.s3AddedKeys || [], tick.s3ModifiedKeys || [], tick.s3RemovedKeys || [])
+    if (changedKeys.length === 0) return fallbackIndex
+
+    const changedSet = new Set(changedKeys)
+    const tickTime = new Date(tick.timestamp).getTime()
+    const matchingIndex = s3Snapshots.findIndex((snapshot) => (
+      new Date(snapshot.timestamp).getTime() >= tickTime &&
+      snapshot.changedFiles.some((filePath) => changedSet.has(filePath))
+    ))
+
+    return matchingIndex >= 0 ? matchingIndex : fallbackIndex
+  }, [s3Snapshots])
 
   // --- Initialize ---
 
@@ -324,12 +532,16 @@ export default function ScenarioViewer() {
       msgs.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
       setSnapshotMessages(msgs)
 
-      // When tick data is available, let video sync set the indices at the right time.
-      // Only eagerly set indices when there's no tick data (snapshot-only fallback mode).
       const hasTickData = rawManifest.ticks && (rawManifest.ticks as unknown[]).length > 0
-      if (snapshotsData.length > 0) setCurrentSnapshotIndex(0)
+      // When tick data is available, let video sync set the indices at the
+      // right time. Before the first commit, the active commit index must stay
+      // at -1 so the UI can show "no commit yet" instead of leaking commit 0.
+      if (snapshotsData.length > 0 && !hasTickData) setCurrentSnapshotIndex(0)
+      else setCurrentSnapshotIndex(-1)
       if (stateData.length > 0 && !hasTickData) setCurrentStateIndex(0)
+      else setCurrentStateIndex(-1)
       if (s3Data.length > 0 && !hasTickData) setCurrentS3Index(0)
+      else setCurrentS3Index(-1)
     }
 
     init().catch((err) => console.error('Failed to initialize:', err))
@@ -339,7 +551,10 @@ export default function ScenarioViewer() {
   // --- Update file display when snapshot index changes ---
 
   useEffect(() => {
-    if (currentSnapshotIndex < 0 || snapshots.length === 0) return
+    if (currentSnapshotIndex < 0 || snapshots.length === 0) {
+      setFileList([])
+      return
+    }
 
     const snap = snapshots[currentSnapshotIndex]
 
@@ -347,47 +562,6 @@ export default function ScenarioViewer() {
       setFileList(files)
     }).catch(() => setFileList([]))
   }, [currentSnapshotIndex, snapshots, fetchFileList])
-
-  // --- Update file content when file or snapshot changes ---
-
-  useEffect(() => {
-    if (currentSnapshotIndex < 0 || !currentFile || snapshots.length === 0) {
-      setFileContentHtml('<div class="p-10 text-center text-neutral-400 text-sm">Select a file to view its contents</div>')
-      setFileFullHtml(null)
-      setFileDiffHtml(null)
-      return
-    }
-
-    const snap = snapshots[currentSnapshotIndex]
-
-    const loadContent = async () => {
-      try {
-        const content = await fetchFileContent(snap.commitHash, currentFile)
-        const fullHtml = `<pre class="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700">${escapeHtml(content)}</pre>`
-        if (snap.changedFiles.includes(currentFile) && currentSnapshotIndex > 0) {
-          const prevSnap = snapshots[currentSnapshotIndex - 1]
-          let prevContent = ''
-          try {
-            prevContent = await fetchFileContent(prevSnap.commitHash, currentFile)
-          } catch { /* new file */ }
-          const diffHtml = `<pre class="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700">${diffHighlight(prevContent, content)}</pre>`
-          setFileDiffHtml(diffHtml)
-          setFileFullHtml(fullHtml)
-          setFileContentHtml(fileDiffMode ? diffHtml : fullHtml)
-        } else {
-          setFileDiffHtml(null)
-          setFileFullHtml(fullHtml)
-          setFileContentHtml(fullHtml)
-        }
-      } catch {
-        setFileContentHtml('<div class="p-10 text-center text-neutral-400 text-sm">File not found at this commit</div>')
-        setFileFullHtml(null)
-        setFileDiffHtml(null)
-      }
-    }
-
-    loadContent()
-  }, [currentSnapshotIndex, currentFile, snapshots, fetchFileContent, fileDiffMode])
 
   // --- Update state-repo display ---
 
@@ -413,6 +587,39 @@ export default function ScenarioViewer() {
       setPrevStateTables({})
     }
   }, [currentStateIndex, stateSnapshots, fetchStateData])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadStateSnapshotDeltas() {
+      if (!stateRepoName || stateSnapshots.length === 0) {
+        setStateSnapshotDeltas({})
+        return
+      }
+
+      const deltas = await Promise.all(stateSnapshots.map(async (snapshot, index) => {
+        const currentTables = await fetchStateData(snapshot.commitHash)
+        const currentParsed = parseStateRepoAsFiles(currentTables, parseOptions)
+        const previousParsed = index > 0
+          ? parseStateRepoAsFiles(await fetchStateData(stateSnapshots[index - 1].commitHash), parseOptions)
+          : { paths: [], contents: {} }
+        return [index, computeStateRepoRecordDiffs(
+          currentParsed.paths,
+          currentParsed.contents,
+          previousParsed.paths,
+          previousParsed.contents,
+        )] as const
+      }))
+
+      if (!cancelled) setStateSnapshotDeltas(Object.fromEntries(deltas))
+    }
+
+    loadStateSnapshotDeltas().catch(() => {
+      if (!cancelled) setStateSnapshotDeltas({})
+    })
+
+    return () => { cancelled = true }
+  }, [fetchStateData, parseOptions, stateRepoName, stateSnapshots])
 
   // --- Update S3 display ---
 
@@ -442,34 +649,42 @@ export default function ScenarioViewer() {
     }
   }, [currentS3Index, s3Snapshots, fetchS3Data])
 
-  // --- Sync state-repo / S3 snapshot indices when tick changes ---
+  useEffect(() => {
+    setS3DiffMode(true)
+  }, [currentS3Key, currentTickIndex])
+
+  useEffect(() => {
+    setStateDiffMode(true)
+  }, [currentStateRecordPath, currentTickIndex])
+
+  // --- Sync repo snapshot indices when tick changes ---
   // This ensures navigating to a tick (e.g. clicking in the tick list) updates
   // the snapshot-based data even when the video is paused and timeupdate won't fire.
 
   useEffect(() => {
-    if (currentTickIndex < 0 || ticks.length === 0) return
+    if (currentTickIndex < 0 || currentTickIndex >= ticks.length) return
     const tickTime = new Date(ticks[currentTickIndex].timestamp).getTime()
+
+    // Sync MeadowHome file snapshot index
+    if (snapshots.length > 0) {
+      const fileIdx = getSnapshotIndexAtOrBefore(snapshots, tickTime)
+      setCurrentSnapshotIndex((current) => current === fileIdx ? current : fileIdx)
+    }
 
     // Sync state-repo snapshot index
     if (stateSnapshots.length > 0) {
-      let dynIdx = -1
-      for (let i = 0; i < stateSnapshots.length; i++) {
-        if (new Date(stateSnapshots[i].timestamp).getTime() <= tickTime) dynIdx = i
-        else break
-      }
+      const dynIdx = getSnapshotIndexAtOrBefore(stateSnapshots, tickTime)
       if (dynIdx !== currentStateIndex) setCurrentStateIndex(dynIdx)
     }
 
     // Sync S3 snapshot index
     if (s3Snapshots.length > 0) {
-      let s3Idx = -1
-      for (let i = 0; i < s3Snapshots.length; i++) {
-        if (new Date(s3Snapshots[i].timestamp).getTime() <= tickTime) s3Idx = i
-        else break
-      }
+      const tick = ticks[currentTickIndex]
+      let s3Idx = getSnapshotIndexAtOrBefore(s3Snapshots, tickTime)
+      s3Idx = getS3SnapshotIndexForTick(tick, s3Idx)
       if (s3Idx !== currentS3Index) setCurrentS3Index(s3Idx)
     }
-  }, [currentTickIndex, ticks, stateSnapshots, s3Snapshots, currentStateIndex, currentS3Index])
+  }, [currentTickIndex, ticks, snapshots, stateSnapshots, s3Snapshots, currentStateIndex, currentS3Index, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick])
 
   // --- Video sync ---
 
@@ -477,38 +692,41 @@ export default function ScenarioViewer() {
     const video = videoRef.current
     if (!video || !manifest) return
 
+    const explicitTickJump = explicitTickJumpRef.current
+    if (explicitTickJump) {
+      const delta = video.currentTime - explicitTickJump.videoTime
+      if (delta < 0 && Math.abs(delta) < 0.35) return
+      explicitTickJumpRef.current = null
+    }
+
     const realTime = toRealTime(video.currentTime)
+    let tickIdx = -1
+    if (ticks.length > 0) {
+      for (let i = 0; i < ticks.length; i++) {
+        const tickTime = new Date(ticks[i].timestamp).getTime()
+        if (tickTime <= realTime) tickIdx = i
+        else break
+      }
+    }
 
     // Find matching file snapshot
-    let snapIdx = -1
-    for (let i = 0; i < snapshots.length; i++) {
-      const snapTime = new Date(snapshots[i].timestamp).getTime()
-      if (snapTime <= realTime) snapIdx = i
-      else break
-    }
-    if (snapIdx >= 0 && snapIdx !== currentSnapshotIndex) {
+    const snapIdx = getSnapshotIndexAtOrBefore(snapshots, realTime)
+    if (snapIdx !== currentSnapshotIndex) {
       setCurrentSnapshotIndex(snapIdx)
     }
 
     // Find matching state-repo snapshot
-    let stateIdx = -1
-    for (let i = 0; i < stateSnapshots.length; i++) {
-      const snapTime = new Date(stateSnapshots[i].timestamp).getTime()
-      if (snapTime <= realTime) stateIdx = i
-      else break
-    }
-    if (stateIdx >= 0 && stateIdx !== currentStateIndex) {
+    const stateIdx = getSnapshotIndexAtOrBefore(stateSnapshots, realTime)
+    if (stateIdx !== currentStateIndex) {
       setCurrentStateIndex(stateIdx)
     }
 
     // Find matching S3 snapshot
-    let s3Idx = -1
-    for (let i = 0; i < s3Snapshots.length; i++) {
-      const snapTime = new Date(s3Snapshots[i].timestamp).getTime()
-      if (snapTime <= realTime) s3Idx = i
-      else break
+    let s3Idx = getSnapshotIndexAtOrBefore(s3Snapshots, realTime)
+    if (tickIdx >= 0) {
+      s3Idx = getS3SnapshotIndexForTick(ticks[tickIdx], s3Idx)
     }
-    if (s3Idx >= 0 && s3Idx !== currentS3Index) {
+    if (s3Idx !== currentS3Index) {
       setCurrentS3Index(s3Idx)
     }
 
@@ -522,16 +740,8 @@ export default function ScenarioViewer() {
     setCurrentMessageIndex(msgIdx)
 
     // Update tick index
-    if (ticks.length > 0) {
-      let tickIdx = -1
-      for (let i = 0; i < ticks.length; i++) {
-        const tickTime = new Date(ticks[i].timestamp).getTime()
-        if (tickTime <= realTime) tickIdx = i
-        else break
-      }
-      if (tickIdx >= 0 && tickIdx !== currentTickIndex) {
-        setCurrentTickIndex(tickIdx)
-      }
+    if (tickIdx >= 0 && tickIdx !== currentTickIndex) {
+      setCurrentTickIndex(tickIdx)
     }
 
     // Highlight log
@@ -553,7 +763,7 @@ export default function ScenarioViewer() {
       }
       setHighlightedLogIndex(closest)
     }
-  }, [manifest, snapshots, stateSnapshots, s3Snapshots, snapshotMessages, ticks, toRealTime, logFilter, levelFilter, currentSnapshotIndex, currentStateIndex, currentS3Index, currentTickIndex])
+  }, [manifest, snapshots, stateSnapshots, s3Snapshots, snapshotMessages, ticks, toRealTime, logFilter, levelFilter, currentSnapshotIndex, currentStateIndex, currentS3Index, currentTickIndex, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick])
 
   // Video timeupdate handler
   const handleTimeUpdate = useCallback(() => {
@@ -631,6 +841,15 @@ export default function ScenarioViewer() {
   // --- Tick helpers ---
 
   const hasTicks = ticks.length > 0
+  const snapshotIndexByHash = useMemo(() => {
+    const byHash = new Map<string, number>()
+    snapshots.forEach((snap, index) => byHash.set(snap.commitHash, index))
+    return byHash
+  }, [snapshots])
+  const getSnapshotIndexForGitHead = useCallback((gitHeadSha?: string): number => {
+    if (!gitHeadSha) return -1
+    return snapshotIndexByHash.get(gitHeadSha) ?? -1
+  }, [snapshotIndexByHash])
 
   // Compute per-tick changes across all state types (Files, structured state, S3)
   const tickStateChanges = useMemo(() => {
@@ -642,10 +861,12 @@ export default function ScenarioViewer() {
       // Files changed?
       const filesChanged = tick.addedFiles.length > 0 || tick.removedFiles.length > 0 || tick.changedUncommitted || tick.changedGitHead
 
-      // State repo changed? Check if its snapshot index differs from previous tick
-      // AND the new snapshot actually has table file changes (not just timeline.jsonl)
+      // State changed? Prefer tick-level record data when the artifact
+      // captured it; older artifacts fall back to state-repo commits.
       let stateChanged = false
-      if (stateSnapshots.length > 0) {
+      if (tick.stateRecordContents !== undefined) {
+        stateChanged = Boolean(tick.stateChanged)
+      } else if (stateSnapshots.length > 0) {
         const getStateIdx = (ts: number) => {
           let idx = -1
           for (let j = 0; j < stateSnapshots.length; j++) {
@@ -714,6 +935,18 @@ export default function ScenarioViewer() {
     return []
   }, [tickFileListing])
 
+  const getTickWorkingFilesAtIndex = useCallback((idx: number): string[] => {
+    if (idx < 0 || idx >= ticks.length) return []
+    const deleted = new Set((ticks[idx].uncommittedFiles || [])
+      .filter((f) => !f.path.endsWith('/') && normalizeGitStatus(f.status) === 'deleted')
+      .map((f) => f.path))
+    const tracked = getTickFilesAtIndex(idx).filter((filePath) => !deleted.has(filePath))
+    const uncommitted = (ticks[idx].uncommittedFiles || [])
+      .filter((f) => !f.path.endsWith('/') && normalizeGitStatus(f.status) !== 'deleted')
+      .map((f) => f.path)
+    return sortedUnion(tracked, uncommitted)
+  }, [getTickFilesAtIndex, ticks])
+
   const getS3KeysAtIndex = useCallback((idx: number): string[] => {
     for (let i = idx; i >= 0; i--) {
       if (s3KeyListing[i]) return s3KeyListing[i]
@@ -721,13 +954,81 @@ export default function ScenarioViewer() {
     return []
   }, [s3KeyListing])
 
-  // --- State-repo record-level parsing and diffs ---
+  const getS3ObjectContentsAtIndex = useCallback((idx: number): Record<string, string> | null => {
+    for (let i = idx; i >= 0; i--) {
+      const contents = ticks[i]?.s3ObjectContents
+      if (contents) return contents
+    }
+    return null
+  }, [ticks])
 
-  const parseOptions = useMemo(() => ({
-    recordKeyMap: stateRepoMeta?.recordKeyMap,
-    eventsLikeTables: stateRepoMeta?.eventsLikeTables,
-    tableNameSuffixRegex: stateRepoMeta?.tableNameSuffixRegex,
-  }), [stateRepoMeta])
+  const getTickFileDelta = useCallback((idx: number): FileDelta => {
+    if (idx < 0 || idx >= ticks.length) return { added: [], modified: [], removed: [] }
+
+    const currentFiles = new Set(getTickWorkingFilesAtIndex(idx))
+    const previousFiles = idx > 0 ? new Set(getTickWorkingFilesAtIndex(idx - 1)) : new Set<string>()
+    const currentUncommitted = new Map((ticks[idx].uncommittedFiles || []).map((f) => [f.path, f.status]))
+    const previousUncommitted = idx > 0
+      ? new Map((ticks[idx - 1].uncommittedFiles || []).map((f) => [f.path, f.status]))
+      : new Map<string, string>()
+    const currentContents = ticks[idx].uncommittedFileContents || {}
+    const previousContents = idx > 0 ? ticks[idx - 1].uncommittedFileContents || {} : {}
+
+    const added: string[] = []
+    const modified: string[] = []
+    const removed: string[] = []
+
+    for (const filePath of currentFiles) {
+      if (!previousFiles.has(filePath)) {
+        added.push(filePath)
+        continue
+      }
+
+      const currentStatus = currentUncommitted.get(filePath)
+      const previousStatus = previousUncommitted.get(filePath)
+      const normalizedCurrent = currentStatus ? normalizeGitStatus(currentStatus) : null
+      if (normalizedCurrent === 'deleted') {
+        removed.push(filePath)
+      } else if (currentContents[filePath] !== undefined && previousContents[filePath] !== undefined) {
+        if (currentContents[filePath] !== previousContents[filePath]) modified.push(filePath)
+      } else if (normalizedCurrent === 'modified' && currentStatus !== previousStatus) {
+        modified.push(filePath)
+      }
+    }
+
+    for (const filePath of previousFiles) {
+      if (!currentFiles.has(filePath)) removed.push(filePath)
+    }
+
+    return {
+      added: added.sort(),
+      modified: modified.sort(),
+      removed: sortedUnion(removed),
+    }
+  }, [getTickWorkingFilesAtIndex, ticks])
+
+  const getGitUncommittedDelta = useCallback((idx: number): FileDelta => {
+    if (idx < 0 || idx >= ticks.length) return { added: [], modified: [], removed: [] }
+    const added: string[] = []
+    const modified: string[] = []
+    const removed: string[] = []
+
+    for (const file of ticks[idx].uncommittedFiles || []) {
+      if (file.path.endsWith('/')) continue
+      const normalized = normalizeGitStatus(file.status)
+      if (normalized === 'new') added.push(file.path)
+      else if (normalized === 'deleted') removed.push(file.path)
+      else modified.push(file.path)
+    }
+
+    return {
+      added: added.sort(),
+      modified: modified.sort(),
+      removed: removed.sort(),
+    }
+  }, [ticks])
+
+  // --- State-repo record-level parsing and diffs ---
 
   const stateParsed = useMemo(
     () => parseStateRepoAsFiles(stateTables, parseOptions), [stateTables, parseOptions]
@@ -743,18 +1044,148 @@ export default function ScenarioViewer() {
     [stateParsed, prevStateParsed]
   )
 
-  const formatTickLabel = useCallback((tick: ProcessedTick): string => {
-    if (tick.isSnapshot && tick.snapshotMessage) {
-      return `[snapshot] ${tick.snapshotMessage}`
+  const hasTickStateData = useMemo(
+    () => ticks.some((tick) => tick.stateRecordContents !== undefined),
+    [ticks]
+  )
+
+  const getStateSnapshotIndexForTick = useCallback((idx: number): number => {
+    if (idx < 0 || idx >= ticks.length) return -1
+    const tickTime = new Date(ticks[idx].timestamp).getTime()
+    return getSnapshotIndexAtOrBefore(stateSnapshots, tickTime)
+  }, [getSnapshotIndexAtOrBefore, stateSnapshots, ticks])
+
+  const getTickStateRecordContentsAtIndex = useCallback((idx: number): Record<string, string> | null => {
+    for (let i = idx; i >= 0; i--) {
+      const contents = ticks[i]?.stateRecordContents
+      if (contents) return contents
     }
-    const parts: string[] = []
-    if (tick.addedFiles.length > 0) parts.push(`+${tick.addedFiles.length} files`)
-    if (tick.removedFiles.length > 0) parts.push(`-${tick.removedFiles.length} files`)
-    if (tick.changedUncommitted) parts.push(`${tick.uncommittedCount} uncommitted`)
-    if (tick.changedGitHead) parts.push('new commit')
-    if (tick.s3AddedKeys?.length > 0) parts.push(`+${tick.s3AddedKeys.length} S3`)
-    if (tick.s3RemovedKeys?.length > 0) parts.push(`-${tick.s3RemovedKeys.length} S3`)
-    return parts.length > 0 ? parts.join(', ') : 'no changes'
+    return null
+  }, [ticks])
+
+  const getTickStateRecordDelta = useCallback((idx: number): FileDelta => {
+    if (idx < 0 || idx >= ticks.length) return { added: [], modified: [], removed: [] }
+    const tick = ticks[idx]
+    return {
+      added: [...(tick.stateAddedRecords || [])].sort(),
+      modified: [...(tick.stateModifiedRecords || [])].sort(),
+      removed: [...(tick.stateRemovedRecords || [])].sort(),
+    }
+  }, [ticks])
+
+  const getStateSnapshotDeltaForTick = useCallback((idx: number): FileDelta => {
+    const snapshotIndex = getStateSnapshotIndexForTick(idx)
+    return snapshotIndex >= 0
+      ? stateSnapshotDeltas[snapshotIndex] ?? { added: [], modified: [], removed: [] }
+      : { added: [], modified: [], removed: [] }
+  }, [getStateSnapshotIndexForTick, stateSnapshotDeltas])
+
+  const getStateSummaryItems = useCallback((tickArrayIndex: number, keyPrefix = 'state'): SummaryItem[] => {
+    if (hasTickStateData) {
+      return deltaSummaryItems(getTickStateRecordDelta(tickArrayIndex), keyPrefix, 'record')
+    }
+    return deltaSummaryItems(getStateSnapshotDeltaForTick(tickArrayIndex), keyPrefix, 'record')
+  }, [getStateSnapshotDeltaForTick, getTickStateRecordDelta, hasTickStateData])
+
+  const getTickFileSummaryItems = useCallback((tickArrayIndex: number, keyPrefix = 'tick'): SummaryItem[] => (
+    deltaSummaryItems(getTickFileDelta(tickArrayIndex), keyPrefix)
+  ), [getTickFileDelta])
+
+  const getGitSummaryItems = useCallback((tickArrayIndex: number): SummaryItem[] => {
+    if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return []
+    const tick = ticks[tickArrayIndex]
+    if (tick.changedGitHead) {
+      const snapIndex = getSnapshotIndexForGitHead(tick.gitHeadSha)
+      const snap = snapIndex >= 0 ? snapshots[snapIndex] : null
+      return [{
+        key: 'git-commit',
+        text: snap ? `commit ${snap.commitHash.slice(0, 7)} — ${snap.commitMessage || '(no message)'}` : 'new commit',
+        tone: 'git',
+        strong: true,
+      }]
+    }
+    if (tick.changedUncommitted) {
+      if (tick.uncommittedCount === 0) {
+        return [{ key: 'git-clean', text: 'working tree clean', tone: 'neutral', italic: true }]
+      }
+      return [
+        {
+          key: 'git-uncommitted',
+          text: `${tick.uncommittedCount} uncommitted:`,
+          tone: 'uncommitted',
+          strong: true,
+        },
+        ...deltaSummaryItems(getGitUncommittedDelta(tickArrayIndex), 'git-uncommitted'),
+      ]
+    }
+    return []
+  }, [getGitUncommittedDelta, getSnapshotIndexForGitHead, snapshots, ticks])
+
+  const getFileModeSummaryItems = useCallback((mode: FileChangeLens, tickArrayIndex: number, keyPrefix: string = mode): SummaryItem[] => {
+    if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return []
+    if (mode === 'tick') {
+      return getTickFileSummaryItems(tickArrayIndex, keyPrefix)
+    }
+    return getGitSummaryItems(tickArrayIndex)
+  }, [getGitSummaryItems, getTickFileSummaryItems, ticks])
+
+  const getFileModeOverviewItems = useCallback((tickArrayIndex: number, modes: FileChangeLens[]): SummaryItem[] => {
+    if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return []
+    const items: SummaryItem[] = []
+    for (const mode of modes) {
+      if (mode === 'tick' && getTickFileSummaryItems(tickArrayIndex, `overview-tick-${tickArrayIndex}`).length > 0) {
+        items.push({ key: `overview-tick-${tickArrayIndex}`, text: 'Tick', tone: 'tick', strong: true })
+      }
+      if (mode === 'git' && getGitSummaryItems(tickArrayIndex).length > 0) {
+        items.push({ key: `overview-git-${tickArrayIndex}`, text: 'Git', tone: 'git', strong: true })
+      }
+    }
+    return items
+  }, [getGitSummaryItems, getTickFileSummaryItems, ticks])
+
+  const getChangedFileModes = useCallback((tickArrayIndex: number): FileChangeLens[] => {
+    if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return []
+    return FILE_CHANGE_LENSES
+      .map(({ key }) => key)
+      .filter((mode) => getFileModeSummaryItems(mode, tickArrayIndex, `main-files-${mode}-${tickArrayIndex}`).length > 0)
+  }, [getFileModeSummaryItems, ticks])
+
+  const getFileModeTimelineItems = useCallback((mode: FileChangeLens): FileTimelineItem[] => {
+    return ticks.flatMap((tick, tickArrayIndex) => {
+      const items = getFileModeSummaryItems(mode, tickArrayIndex, `${mode}-history-${tickArrayIndex}`)
+      if (items.length === 0 && !tick.isSnapshot) return []
+      return [{
+        tickArrayIndex,
+        items,
+        meta: mode === 'git'
+          ? `${getTickWorkingFilesAtIndex(tickArrayIndex).length} files`
+          : new Date(tick.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      }]
+    })
+  }, [getFileModeSummaryItems, getTickWorkingFilesAtIndex, ticks])
+
+  const selectTickIndex = useCallback((tickArrayIndex: number) => {
+    if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return
+    setCurrentTickIndex(tickArrayIndex)
+    const tickTime = new Date(ticks[tickArrayIndex].timestamp).getTime()
+    const video = videoRef.current
+    const videoTime = Math.max(0, toVideoTime(tickTime))
+    explicitTickJumpRef.current = { index: tickArrayIndex, videoTime }
+    if (video) video.currentTime = videoTime
+  }, [ticks, toVideoTime])
+
+  const showFileInTickView = useCallback((filePath: string) => {
+    setFileChangeView('custom')
+    setFileChangeLenses((current) => {
+      const next = new Set(current)
+      next.add('tick')
+      return next
+    })
+    setFilePaneSelection((current) => ({
+      mode: 'tick',
+      filePath,
+      nonce: (current?.nonce ?? 0) + 1,
+    }))
   }, [])
 
   const navigateTick = useCallback((direction: number) => {
@@ -766,23 +1197,19 @@ export default function ScenarioViewer() {
     if (direction > 0) {
       for (let i = current + 1; i < ticks.length; i++) {
         if (interestingTickIndices.includes(ticks[i].tickIndex) || i === ticks.length - 1) {
-          setCurrentTickIndex(i)
-          const tickTime = new Date(ticks[i].timestamp).getTime()
-          video.currentTime = Math.max(0, toVideoTime(tickTime))
+          selectTickIndex(i)
           return
         }
       }
     } else {
       for (let i = current - 1; i >= 0; i--) {
         if (interestingTickIndices.includes(ticks[i].tickIndex) || i === 0) {
-          setCurrentTickIndex(i)
-          const tickTime = new Date(ticks[i].timestamp).getTime()
-          video.currentTime = Math.max(0, toVideoTime(tickTime))
+          selectTickIndex(i)
           return
         }
       }
     }
-  }, [ticks, currentTickIndex, interestingTickIndices, toVideoTime])
+  }, [ticks, currentTickIndex, interestingTickIndices, selectTickIndex])
 
   // --- Keyboard shortcuts ---
 
@@ -979,21 +1406,11 @@ export default function ScenarioViewer() {
     return `${s.toLocaleTimeString()} - ${e.toLocaleTimeString()} (${dur}s)`
   })()
 
-  const currentSnap = currentSnapshotIndex >= 0 ? snapshots[currentSnapshotIndex] : null
-
-  // Find uncommitted files relevant to the current snapshot timestamp
-  const currentUncommitted = (() => {
-    if (uncommittedEntries.length === 0 || currentSnapshotIndex < 0 || snapshots.length === 0) return []
-    const snapTime = new Date(snapshots[currentSnapshotIndex].timestamp).getTime()
-    // Find the latest uncommitted entry at or before this snapshot time
-    let best: UncommittedEntry | null = null
-    for (const entry of uncommittedEntries) {
-      const entryTime = new Date(entry.timestamp).getTime()
-      if (entryTime <= snapTime) best = entry
-      else break
-    }
-    return best?.uncommittedFiles ?? []
-  })()
+  const currentTick = hasTicks && currentTickIndex >= 0 ? ticks[currentTickIndex] : null
+  const currentTickSnapshotIndex = currentTick ? getSnapshotIndexForGitHead(currentTick.gitHeadSha) : -1
+  const currentFileSnapshotIndex = currentTick ? currentTickSnapshotIndex : currentSnapshotIndex
+  const currentSnap = currentFileSnapshotIndex >= 0 ? snapshots[currentFileSnapshotIndex] : null
+  const activeFileModes = activeLenses(fileChangeView, fileChangeLenses, FILE_CHANGE_LENSES)
 
   return (
     <div className="h-full grid grid-cols-2" style={{ gridTemplateRows: '1fr' }}>
@@ -1188,38 +1605,46 @@ export default function ScenarioViewer() {
           >
             {hasTicks ? (currentTickIndex >= 0 ? (() => {
               const changes = tickStateChanges[currentTickIndex]
-              const hasAnyChange = changes && (changes.files || changes.state || changes.s3 || changes.snapshot)
+              const summaryItems: SummaryItem[] = []
+              if (changes?.files) {
+                const fileModeMarkers = getChangedFileModes(currentTickIndex)
+                summaryItems.push({
+                  key: 'top-files',
+                  text: 'Files',
+                  tone: 'git',
+                  strong: true,
+                  fileModeMarkers,
+                  onClick: (e) => { e.stopPropagation(); setActiveTab('files') },
+                })
+              }
+              if (changes?.state) {
+                summaryItems.push({
+                  key: 'top-state',
+                  text: stateDisplayName,
+                  tone: 'state',
+                  strong: true,
+                  onClick: (e) => { e.stopPropagation(); setActiveTab('state') },
+                })
+              }
+              if (changes?.s3) {
+                summaryItems.push({
+                  key: 'top-s3',
+                  text: 'S3',
+                  tone: 's3',
+                  strong: true,
+                  onClick: (e) => { e.stopPropagation(); setActiveTab('s3') },
+                })
+              }
               return (
                 <>
-                  <span className="text-neutral-400">Tick {currentTickIndex + 1}/{ticks.length}:</span>
-                  {(changes?.files || changes?.state || changes?.s3) && (
-                    <span className="flex items-center gap-1">
-                      {changes.files && (
-                        <span
-                          className="px-1.5 py-0.5 rounded bg-brand-100 text-brand-700 font-medium cursor-pointer hover:bg-brand-200 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); setActiveTab('files') }}
-                        >Files</span>
-                      )}
-                      {changes.state && (
-                        <span
-                          className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium cursor-pointer hover:bg-amber-200 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); setActiveTab('state') }}
-                        >{stateDisplayName}</span>
-                      )}
-                      {changes.s3 && (
-                        <span
-                          className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium cursor-pointer hover:bg-emerald-200 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); setActiveTab('s3') }}
-                        >S3</span>
-                      )}
-                    </span>
-                  )}
-                  {changes?.snapshot && changes.snapshotMessage && (
-                    <span className="text-orange-600 font-bold">[snapshot] {changes.snapshotMessage}</span>
-                  )}
-                  {!hasAnyChange && (
-                    <span className="text-neutral-400 italic">no changes</span>
-                  )}
+                  <TickSummaryLine
+                    tickNumber={currentTickIndex + 1}
+                    items={summaryItems}
+                    isSnapshot={Boolean(changes?.snapshot)}
+                    snapshotMessage={changes?.snapshot ? changes.snapshotMessage : undefined}
+                    emptyText="no changes"
+                  />
+                  <span className="text-neutral-400">of {ticks.length}</span>
                 </>
               )
             })() : (
@@ -1255,22 +1680,40 @@ export default function ScenarioViewer() {
                           idx === currentTickIndex ? 'bg-brand-50 text-brand-600' : 'text-neutral-700'
                         }`}
                         onClick={() => {
-                          setCurrentTickIndex(idx)
-                          const tickTime = new Date(tick.timestamp).getTime()
-                          const video = videoRef.current
-                          if (video) video.currentTime = Math.max(0, toVideoTime(tickTime))
+                          selectTickIndex(idx)
                           setSnapshotDropdownOpen(false)
                         }}
                       >
-                        <span className="text-purple-400 min-w-[40px] text-[10px]">tick {idx + 1}</span>
-                        <span className="flex items-center gap-1">
-                          {changes.files && <span className="px-1 py-0.5 rounded bg-brand-100 text-brand-700 text-[10px] font-medium cursor-pointer hover:bg-brand-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('files'); setCurrentTickIndex(idx); const tickTime = new Date(tick.timestamp).getTime(); const video = videoRef.current; if (video) video.currentTime = Math.max(0, toVideoTime(tickTime)); setSnapshotDropdownOpen(false) }}>Files</span>}
-                          {changes.state && <span className="px-1 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium cursor-pointer hover:bg-amber-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('state'); setCurrentTickIndex(idx); const tickTime = new Date(tick.timestamp).getTime(); const video = videoRef.current; if (video) video.currentTime = Math.max(0, toVideoTime(tickTime)); setSnapshotDropdownOpen(false) }}>{stateDisplayName}</span>}
-                          {changes.s3 && <span className="px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-medium cursor-pointer hover:bg-emerald-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('s3'); setCurrentTickIndex(idx); const tickTime = new Date(tick.timestamp).getTime(); const video = videoRef.current; if (video) video.currentTime = Math.max(0, toVideoTime(tickTime)); setSnapshotDropdownOpen(false) }}>S3</span>}
+                        <span className="rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 whitespace-nowrap">
+                          tick {idx + 1}
+                          {changes.snapshot && (
+                            <span className="ml-1 rounded-full border border-orange-200 bg-orange-100 px-1 text-[9px] leading-3 font-black text-orange-700 align-middle">
+                              S
+                            </span>
+                          )}
+                          :
                         </span>
-                        {changes.snapshot && changes.snapshotMessage ? (
-                          <span className={`text-orange-600 ${idx === currentTickIndex ? 'font-bold' : ''}`}>
-                            [snapshot] {changes.snapshotMessage}
+                        <span className="flex items-center gap-1">
+                          {changes.files && (
+                            <SummaryChip item={{
+                              key: `dropdown-files-${idx}`,
+                              text: 'Files',
+                              tone: 'git',
+                              strong: true,
+                              fileModeMarkers: getChangedFileModes(idx),
+                              onClick: (e) => { e.stopPropagation(); setActiveTab('files'); selectTickIndex(idx); setSnapshotDropdownOpen(false) },
+                            }} />
+                          )}
+                          {changes.state && <span className="px-1 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium cursor-pointer hover:bg-amber-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('state'); selectTickIndex(idx); setSnapshotDropdownOpen(false) }}>{stateDisplayName}</span>}
+                          {changes.s3 && <span className="px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-medium cursor-pointer hover:bg-emerald-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('s3'); selectTickIndex(idx); setSnapshotDropdownOpen(false) }}>S3</span>}
+                        </span>
+                        {changes.snapshot ? (
+                          <span className="flex min-w-0 items-center gap-1">
+                            {changes.snapshotMessage && (
+                              <span className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-700 ${idx === currentTickIndex ? 'font-bold' : 'font-medium'}`}>
+                                {changes.snapshotMessage}
+                              </span>
+                            )}
                           </span>
                         ) : null}
                       </button>
@@ -1514,362 +1957,207 @@ export default function ScenarioViewer() {
           {/* Files tab */}
           {activeTab === 'files' && (
             <>
-              <div
-                className="bg-neutral-100 px-3 py-1.5 text-xs border-b border-neutral-200 flex items-center gap-2 cursor-pointer hover:bg-neutral-200/50"
-                onClick={() => setCommitListOpen(!commitListOpen)}
-              >
-                <span className="font-bold">MeadowHome Files</span>
-                {!commitListOpen && (() => {
-                  // Show current commit and tick in collapsed view
-                  const currentCommit = currentSnapshotIndex >= 0 && snapshots[currentSnapshotIndex]
-                    ? snapshots[currentSnapshotIndex]
-                    : null
-                  const currentTick = hasTicks && currentTickIndex >= 0 ? ticks[currentTickIndex] : null
-                  return (
-                    <span className="flex items-center gap-1.5 text-[11px] font-normal overflow-hidden">
-                      {currentCommit ? (
-                        <span className="text-brand-500 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {currentCommit.commitHash.slice(0, 7)} — {currentCommit.commitMessage || '(no message)'}
-                        </span>
-                      ) : (
-                        <span className="text-neutral-400 italic">no commit yet</span>
-                      )}
-                      {currentTick && (
-                        <>
-                          <span className="text-neutral-300">/</span>
-                          <span className="text-purple-500 overflow-hidden text-ellipsis whitespace-nowrap">
-                            tick {currentTickIndex + 1}: {formatTickLabel(currentTick)}
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  )
-                })()}
-                <svg className={`w-3 h-3 ml-auto flex-shrink-0 text-neutral-400 transition-transform ${commitListOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              {commitListOpen && (
-                <div className="max-h-[300px] overflow-y-auto border-b border-neutral-200">
+              <ChangeModePicker<FileChangeLens>
+                view={fileChangeView}
+                selected={fileChangeLenses}
+                options={FILE_CHANGE_LENSES}
+                onViewChange={setFileChangeView}
+                onSelectedChange={setFileChangeLenses}
+                showAllButton={false}
+              />
+              {activeFileModes.length > 1 && (
+                <div
+                  className="bg-neutral-100 px-3 py-1.5 text-xs border-b border-neutral-200 flex items-center gap-2 cursor-pointer hover:bg-neutral-200/50"
+                  onClick={() => setCommitListOpen(!commitListOpen)}
+                >
+                  <span className="font-bold">MeadowHome Files</span>
+                  {!commitListOpen && hasTicks && currentTickIndex >= 0 && (
+                    <TickSummaryLine
+                      tickNumber={currentTickIndex + 1}
+                      items={getFileModeOverviewItems(currentTickIndex, activeFileModes)}
+                      isSnapshot={Boolean(ticks[currentTickIndex]?.isSnapshot)}
+                      snapshotMessage={ticks[currentTickIndex]?.isSnapshot ? ticks[currentTickIndex].snapshotMessage : undefined}
+                      emptyText="no changes"
+                    />
+                  )}
+                  {!commitListOpen && (!hasTicks || currentTickIndex < 0) && (
+                    <span className="text-neutral-400 italic text-[11px]">no tick data</span>
+                  )}
+                  <svg className={`w-3 h-3 ml-auto flex-shrink-0 text-neutral-400 transition-transform ${commitListOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              )}
+              {activeFileModes.length > 1 && commitListOpen && (
+                <div className="max-h-[240px] overflow-y-auto border-b border-neutral-200">
                   {(() => {
-                    // Group ticks under their parent commit (or "before any commit")
-                    // A tick belongs to the most recent commit at or before its timestamp.
-                    interface TickItem { tickArrayIndex: number; tick: ProcessedTick }
-                    interface CommitGroup {
-                      commit: { hash: string; message: string; timestamp: string; snapshotIndex: number } | null
-                      ticks: TickItem[]
+                    const overviewItems = ticks.flatMap((tick, tickArrayIndex) => {
+                      const items = getFileModeOverviewItems(tickArrayIndex, activeFileModes)
+                      if (items.length === 0 && !tick.isSnapshot) return []
+                      return [{ tick, tickArrayIndex, items }]
+                    })
+                    if (overviewItems.length === 0) {
+                      return <div className="p-3 text-center text-neutral-400 text-xs">No selected-mode file changes.</div>
                     }
-
-                    const groups: CommitGroup[] = []
-
-                    if (hasTicks) {
-                      // Build sorted commit list
-                      const commits = snapshots.map((s, i) => ({
-                        hash: s.commitHash,
-                        message: s.commitMessage,
-                        timestamp: s.timestamp,
-                        snapshotIndex: i,
-                        timeMs: new Date(s.timestamp).getTime(),
-                      })).sort((a, b) => a.timeMs - b.timeMs)
-
-                      // Assign each interesting tick to a commit group
-                      let currentGroup: CommitGroup = { commit: null, ticks: [] }
-                      let commitIdx = 0
-
-                      for (let i = 0; i < ticks.length; i++) {
-                        const t = ticks[i]
-                        const tickMs = new Date(t.timestamp).getTime()
-
-                        // Check if any commits fall before this tick
-                        while (commitIdx < commits.length && commits[commitIdx].timeMs <= tickMs) {
-                          // Flush current group if it has ticks
-                          if (currentGroup.ticks.length > 0 || currentGroup.commit !== null) {
-                            groups.push(currentGroup)
-                          }
-                          currentGroup = { commit: commits[commitIdx], ticks: [] }
-                          commitIdx++
-                        }
-
-                        const hasChange = t.addedFiles.length > 0 || t.removedFiles.length > 0 || t.changedUncommitted || t.changedGitHead || t.isSnapshot
-                        if (hasChange) {
-                          currentGroup.ticks.push({ tickArrayIndex: i, tick: t })
-                        }
-                      }
-
-                      // Flush remaining commit groups
-                      if (currentGroup.ticks.length > 0 || currentGroup.commit !== null) {
-                        groups.push(currentGroup)
-                      }
-                      while (commitIdx < commits.length) {
-                        groups.push({ commit: commits[commitIdx], ticks: [] })
-                        commitIdx++
-                      }
-                    } else {
-                      // No ticks — just show commits
-                      for (let i = 0; i < snapshots.length; i++) {
-                        groups.push({
-                          commit: { hash: snapshots[i].commitHash, message: snapshots[i].commitMessage, timestamp: snapshots[i].timestamp, snapshotIndex: i },
-                          ticks: [],
-                        })
-                      }
-                    }
-
-                    // Also count consecutive no-change ticks that were skipped
-                    // by looking at gaps between interesting ticks within each group
-
-                    return groups.map((group, gi) => (
-                      <div key={gi}>
-                        {/* Commit header (or "before any commit") */}
-                        <div
-                          className={`flex gap-2 px-3 py-1.5 text-[11px] ${
-                            group.commit
-                              ? 'cursor-pointer hover:bg-pink-50 bg-pink-50/50'
-                              : 'bg-neutral-50 text-neutral-400 italic'
-                          } ${group.commit && group.commit.snapshotIndex === currentSnapshotIndex ? 'ring-1 ring-inset ring-brand-300' : ''}`}
-                          onClick={group.commit ? () => {
-                            setCurrentSnapshotIndex(group.commit!.snapshotIndex)
-                            const snapTime = new Date(group.commit!.timestamp).getTime()
-                            const video = videoRef.current
-                            if (video) video.currentTime = Math.max(0, toVideoTime(snapTime))
+                    return overviewItems.map(({ tick, tickArrayIndex, items }) => {
+                      const time = new Date(tick.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                      return (
+                        <button
+                          key={`file-overview-${tick.tickIndex}`}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100 ${
+                            tickArrayIndex === currentTickIndex ? 'bg-purple-50' : ''
+                          }`}
+                          onClick={() => {
+                            selectTickIndex(tickArrayIndex)
                             setCommitListOpen(false)
-                          } : undefined}
+                          }}
                         >
-                          {group.commit ? (
-                            <>
-                              <span className="text-brand-500 font-bold min-w-[52px]">commit</span>
-                              <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-700">
-                                {group.commit.hash.slice(0, 7)} — {group.commit.message || '(no message)'}
-                              </span>
-                              <span className="text-neutral-400 whitespace-nowrap">
-                                {new Date(group.commit.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                              </span>
-                            </>
-                          ) : (
-                            <span>(before any commit)</span>
-                          )}
-                        </div>
-                        {/* Ticks nested under this commit */}
-                        {group.ticks.map((item) => {
-                          const time = new Date(item.tick.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                          return (
-                            <div
-                              key={`tick-${item.tick.tickIndex}`}
-                              className={`flex gap-2 pl-8 pr-3 py-1 text-[11px] cursor-pointer hover:bg-neutral-100 ${
-                                item.tickArrayIndex === currentTickIndex ? 'bg-purple-50' : ''
-                              }`}
-                              onClick={() => {
-                                setCurrentTickIndex(item.tickArrayIndex)
-                                const tickTime = new Date(item.tick.timestamp).getTime()
-                                const video = videoRef.current
-                                if (video) video.currentTime = Math.max(0, toVideoTime(tickTime))
-                                setCommitListOpen(false)
-                              }}
-                            >
-                              <span className="text-purple-400 min-w-[40px]">tick {item.tickArrayIndex + 1}</span>
-                              <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-600">
-                                {formatTickLabel(item.tick)}
-                              </span>
-                              <span className="text-neutral-400 whitespace-nowrap">{item.tick.fileCount} files</span>
-                              <span className="text-neutral-400 whitespace-nowrap">{time}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ))
+                          <TickSummaryLine
+                            tickNumber={tickArrayIndex + 1}
+                            items={items}
+                            isSnapshot={tick.isSnapshot}
+                            snapshotMessage={tick.isSnapshot ? tick.snapshotMessage : undefined}
+                          />
+                          <span className="ml-auto text-neutral-400 text-[11px] whitespace-nowrap">{time}</span>
+                        </button>
+                      )
+                    })
                   })()}
                 </div>
               )}
-              {/* Uncommitted files warning */}
-              {currentUncommitted.length > 0 && (() => {
-                const trackedFiles = currentUncommitted.filter((f) => f.status !== '?' && !f.path.endsWith('/'))
-                const trackedFolders = currentUncommitted.filter((f) => f.status !== '?' && f.path.endsWith('/'))
-                const untrackedFiles = currentUncommitted.filter((f) => f.status === '?' && !f.path.endsWith('/'))
-                const untrackedFolders = currentUncommitted.filter((f) => f.status === '?' && f.path.endsWith('/'))
-                const parts: string[] = []
-                if (untrackedFiles.length > 0) parts.push(`${untrackedFiles.length} untracked file${untrackedFiles.length > 1 ? 's' : ''}`)
-                if (untrackedFolders.length > 0) parts.push(`${untrackedFolders.length} untracked folder${untrackedFolders.length > 1 ? 's' : ''}`)
-                if (trackedFiles.length > 0) parts.push(`${trackedFiles.length} tracked file${trackedFiles.length > 1 ? 's' : ''}`)
-                if (trackedFolders.length > 0) parts.push(`${trackedFolders.length} tracked folder${trackedFolders.length > 1 ? 's' : ''}`)
-                return (
-                <div className="px-3 py-1.5 bg-amber-50 border-b border-amber-200 text-xs">
-                  <div className="font-bold text-amber-700 mb-0.5">
-                    Uncommitted in MeadowHome: {parts.join(', ')}
-                  </div>
-                  <div className="text-amber-600 text-[10px] mb-1">Content shown is from final state, not necessarily this snapshot point.</div>
-                  {currentUncommitted.map((f) => (
-                    <div
-                      key={f.path}
-                      className="flex items-center gap-1.5 py-0.5 cursor-pointer hover:bg-amber-100 rounded px-1 -mx-1"
-                      onClick={async () => {
-                        setFileDiffHtml(null)
-                        setFileFullHtml(null)
-                        try {
-                          const res = await fetch(`${API}/uncommitted-file/${encodeURIComponent(f.path)}`)
-                          if (res.ok) {
-                            const content = await res.text()
-                            setFileContentHtml(`<pre class="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700">${escapeHtml(content)}</pre>`)
-                          } else {
-                            setFileContentHtml('<div class="p-10 text-center text-neutral-400 text-sm">File not found</div>')
-                          }
-                        } catch {
-                          setFileContentHtml('<div class="p-10 text-center text-neutral-400 text-sm">Failed to load file</div>')
-                        }
-                        setCurrentFile(null)
-                      }}
-                    >
-                      <span className="font-mono text-amber-800 text-[10px] min-w-[16px]">{f.status}</span>
-                      <span className="text-amber-700">{f.path}</span>
-                    </div>
-                  ))}
-                </div>
-                )
-              })()}
-              {/* File status filter bar + file browser */}
+              {/* Per-mode file browsers */}
               {(() => {
                 const isTickMode = hasTicks && currentTickIndex >= 0
                 const tick = isTickMode ? ticks[currentTickIndex] : null
-                const prevTick = isTickMode && currentTickIndex > 0 ? ticks[currentTickIndex - 1] : null
-                const allFiles = isTickMode ? getTickFilesAtIndex(currentTickIndex) : fileList
-                const removedSet = new Set(tick?.removedFiles || [])
                 const ignoredSet = new Set(tick?.ignoredFiles || [])
-                const changedSet = new Set(isTickMode ? [] : (currentSnap?.changedFiles || []))
 
-                // Build file status map for tick mode
-                const fileStatuses = new Map<string, FileStatus>()
-                if (isTickMode && tick) {
-                  const uncommittedPaths = new Map<string, string>()
+                const buildFileMode = (mode: FileChangeLens) => {
+                  const trackedFiles = isTickMode ? getTickFilesAtIndex(currentTickIndex) : fileList
+                  const allFiles = isTickMode ? getTickWorkingFilesAtIndex(currentTickIndex) : fileList
+                  const removedSet = new Set<string>()
+                  const fileStatuses = new Map<string, FileStatus>()
+                  const changedFiles = new Set<string>()
+
+                  if (!isTickMode || !tick) {
+                    const changedSet = new Set(currentSnap?.changedFiles || [])
+                    for (const f of allFiles) {
+                      fileStatuses.set(f, mode === 'git' && changedSet.has(f) ? 'just-committed' : 'committed')
+                      if (changedSet.has(f)) changedFiles.add(f)
+                    }
+                    return {
+                      files: allFiles,
+                      changedFiles: [...changedFiles],
+                      addedFiles: [],
+                      removedFiles: [],
+                      fileStatuses,
+                      emptyText: mode === 'git' ? 'No commits captured yet' : 'No tick data captured',
+                    }
+                  }
+
+                  const tickUncommittedPaths = new Map<string, string>()
                   for (const f of tick.uncommittedFiles || []) {
-                    uncommittedPaths.set(f.path, f.status)
+                    tickUncommittedPaths.set(f.path, f.status)
                   }
 
-                  // Determine which files were just committed:
-                  // Files that were uncommitted in the previous tick but are no longer uncommitted
-                  const prevUncommittedPaths = new Set<string>()
-                  if (prevTick) {
-                    for (const f of prevTick.uncommittedFiles || []) {
-                      prevUncommittedPaths.add(f.path)
+                  if (mode === 'tick') {
+                    const delta = getTickFileDelta(currentTickIndex)
+                    for (const f of allFiles) {
+                      applyStatus(fileStatuses, f, 'committed')
+                    }
+                    for (const f of delta.removed) {
+                      removedSet.add(f)
+                      applyStatus(fileStatuses, f, 'removed')
+                      changedFiles.add(f)
+                    }
+                    for (const f of delta.added) {
+                      applyStatus(fileStatuses, f, 'uncommitted-new')
+                      changedFiles.add(f)
+                    }
+                    for (const f of delta.modified) {
+                      applyStatus(fileStatuses, f, 'uncommitted-modified')
+                      changedFiles.add(f)
                     }
                   }
 
-                  for (const f of allFiles) {
-                    const uncommittedStatus = uncommittedPaths.get(f)
-                    if (uncommittedStatus === 'new') {
-                      fileStatuses.set(f, 'uncommitted-new')
-                    } else if (uncommittedStatus === 'modified' || uncommittedStatus === 'deleted') {
-                      fileStatuses.set(f, 'uncommitted-modified')
-                    } else if (prevUncommittedPaths.has(f) && !uncommittedPaths.has(f)) {
-                      // Was uncommitted in previous tick, now committed
-                      fileStatuses.set(f, 'just-committed')
-                    } else {
-                      fileStatuses.set(f, 'committed')
+                  if (mode === 'git') {
+                    const commitChangedThisTick = Boolean(
+                      tick.changedGitHead &&
+                      currentSnap &&
+                      tick.gitHeadSha === currentSnap.commitHash
+                    )
+                    for (const f of trackedFiles) {
+                      applyStatus(fileStatuses, f, 'committed')
+                    }
+                    if (commitChangedThisTick) {
+                      for (const f of currentSnap?.changedFiles || []) {
+                        applyStatus(fileStatuses, f, 'just-committed')
+                        changedFiles.add(f)
+                      }
+                    }
+                    for (const f of tick.uncommittedFiles || []) {
+                      const normalized = normalizeGitStatus(f.status)
+                      if (normalized === 'deleted') removedSet.add(f.path)
+                      applyStatus(
+                        fileStatuses,
+                        f.path,
+                        normalized === 'new' ? 'uncommitted-new' : normalized === 'deleted' ? 'removed' : 'uncommitted-modified',
+                      )
+                      changedFiles.add(f.path)
                     }
                   }
-                  for (const f of removedSet) {
-                    fileStatuses.set(f, 'removed')
+
+                  const displayFiles = sortedUnion(allFiles, [...removedSet])
+                  return {
+                    files: displayFiles,
+                    changedFiles: [...changedFiles],
+                    addedFiles: mode === 'tick' ? tick.addedFiles : [...displayFiles].filter((f) => fileStatuses.get(f) === 'uncommitted-new'),
+                    removedFiles: [...removedSet],
+                    fileStatuses,
+                    emptyText: `No ${lensLabel(mode).toLowerCase()} file changes at this point`,
                   }
                 }
 
-                // Compute counts by status
-                const statusCounts = { 'just-committed': 0, 'uncommitted-new': 0, 'uncommitted-modified': 0, 'committed': 0, 'removed': 0 }
-                for (const s of fileStatuses.values()) {
-                  statusCounts[s]++
-                }
-
-                // Filter categories for tick mode
-                const categories = isTickMode
-                  ? [
-                      { key: 'just-committed', label: `\u2713 ${statusCounts['just-committed']} committed`, color: 'text-green-600', borderColor: 'border-green-500', bgActive: 'bg-green-50', count: statusCounts['just-committed'] },
-                      { key: 'uncommitted-new', label: `+ ${statusCounts['uncommitted-new']} new`, color: 'text-blue-500', borderColor: 'border-blue-500', bgActive: 'bg-blue-50', count: statusCounts['uncommitted-new'] },
-                      { key: 'uncommitted-modified', label: `~ ${statusCounts['uncommitted-modified']} modified`, color: 'text-amber-500', borderColor: 'border-amber-500', bgActive: 'bg-amber-50', count: statusCounts['uncommitted-modified'] },
-                      { key: 'removed', label: `${statusCounts['removed']} removed`, color: 'text-red-500', borderColor: 'border-red-500', bgActive: 'bg-red-50', count: statusCounts['removed'] },
-                      { key: 'committed', label: `${statusCounts['committed']} unchanged`, color: 'text-neutral-500', borderColor: 'border-neutral-400', bgActive: 'bg-neutral-50', count: statusCounts['committed'] },
-                    ]
-                  : [
-                      { key: 'changed', label: `${changedSet.size} changed`, color: 'text-yellow-600', borderColor: 'border-yellow-500', bgActive: 'bg-yellow-50', count: changedSet.size },
-                      { key: 'committed', label: `${allFiles.length - changedSet.size} unchanged`, color: 'text-neutral-500', borderColor: 'border-neutral-400', bgActive: 'bg-neutral-50', count: allFiles.length - changedSet.size },
-                    ]
-
-                // Filter files based on active filters
-                const visibleFiles = allFiles.filter(f => {
-                  if (isTickMode) {
-                    const status = fileStatuses.get(f)
-                    return status ? fileStatusFilter.has(status) : fileStatusFilter.has('committed')
-                  }
-                  if (changedSet.has(f)) return fileStatusFilter.has('changed')
-                  return fileStatusFilter.has('committed')
-                })
-                const visibleRemoved = fileStatusFilter.has('removed') ? [...removedSet] : []
-
-                const toggleFilter = (key: string) => {
-                  setFileStatusFilter(prev => {
-                    const next = new Set(prev)
-                    if (next.has(key)) next.delete(key)
-                    else next.add(key)
-                    return next
-                  })
+                if (activeFileModes.length === 0) {
+                  return <div className="p-10 text-center text-neutral-400 text-sm">Select a change mode.</div>
                 }
 
                 return (
-                  <>
-                    {categories.some(c => c.count > 0 && c.key !== 'committed') && (
-                      <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-neutral-50">
-                        {categories.filter(c => c.count > 0).map(c => (
-                          <button
-                            key={c.key}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium cursor-pointer border transition-colors ${
-                              fileStatusFilter.has(c.key)
-                                ? `${c.bgActive} ${c.color} ${c.borderColor}`
-                                : 'bg-neutral-100 text-neutral-400 border-neutral-200 line-through'
-                            }`}
-                            onClick={() => toggleFilter(c.key)}
-                          >
-                            {c.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex flex-1 min-h-0 overflow-hidden">
-                      <div className="w-60 overflow-y-auto border-r border-neutral-200 py-1 text-xs flex-shrink-0">
-                        {allFiles.length === 0 ? (
-                          <div className="p-10 text-center text-neutral-400">{isTickMode ? 'No files at this tick' : 'No snapshots captured'}</div>
-                        ) : (
-                          <FileTree
-                            files={[...visibleFiles, ...visibleRemoved]}
-                            changedFiles={[...(currentSnap?.changedFiles || []), ...(tick?.addedFiles || []), ...(tick?.removedFiles || [])]}
-                            currentFile={currentFile}
-                            onSelectFile={setCurrentFile}
-                            addedFiles={tick?.addedFiles}
-                            removedFiles={tick?.removedFiles}
-                            fileStatuses={isTickMode ? fileStatuses : undefined}
+                  <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                    {activeFileModes.map((mode) => {
+                      const pane = buildFileMode(mode)
+                      const tickDelta = currentTickIndex >= 0 ? getTickFileDelta(currentTickIndex) : { added: [], modified: [], removed: [] }
+                      return (
+                        <React.Fragment key={mode}>
+                          <MeadowFileModePane
+                            title={`${lensLabel(mode)} file view`}
+                            mode={mode}
+                            files={pane.files}
+                            changedFiles={pane.changedFiles}
+                            addedFiles={pane.addedFiles}
+                            removedFiles={pane.removedFiles}
+                            fileStatuses={pane.fileStatuses}
                             ignoredSet={isTickMode ? ignoredSet : undefined}
+                            emptyText={pane.emptyText}
+                            currentSummaryItems={currentTickIndex >= 0 ? getFileModeSummaryItems(mode, currentTickIndex, `${mode}-current`) : []}
+                            timelineItems={getFileModeTimelineItems(mode)}
+                            timelineEmptyText={`No ${lensLabel(mode).toLowerCase()} file changes.`}
+                            onSelectTimelineTick={selectTickIndex}
+                            statusFilter={fileStatusFilter}
+                            onStatusFilterChange={setFileStatusFilter}
+                            selectedFileRequest={filePaneSelection}
+                            tickChangedFiles={mode === 'git' ? sortedUnion(tickDelta.added, tickDelta.modified, tickDelta.removed) : []}
+                            onTickChangedFileClick={mode === 'git' ? showFileInTickView : undefined}
+                            API={API}
+                            currentTickIndex={currentTickIndex}
+                            ticks={ticks}
+                            currentSnapshotIndex={currentFileSnapshotIndex}
+                            snapshots={snapshots}
+                            fetchFileContent={fetchFileContent}
                           />
-                        )}
-                      </div>
-                      <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
-                        {(fileDiffHtml != null) && (
-                          <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-neutral-50 text-[10px]">
-                            <button
-                              className={`px-1.5 py-0.5 rounded font-medium cursor-pointer border transition-colors ${
-                                !fileDiffMode ? 'bg-white text-neutral-700 border-neutral-300' : 'bg-neutral-100 text-neutral-400 border-neutral-200'
-                              }`}
-                              onClick={() => { setFileDiffMode(false); if (fileFullHtml) setFileContentHtml(fileFullHtml) }}
-                            >
-                              Full
-                            </button>
-                            <button
-                              className={`px-1.5 py-0.5 rounded font-medium cursor-pointer border transition-colors ${
-                                fileDiffMode ? 'bg-white text-neutral-700 border-neutral-300' : 'bg-neutral-100 text-neutral-400 border-neutral-200'
-                              }`}
-                              onClick={() => { setFileDiffMode(true); if (fileDiffHtml) setFileContentHtml(fileDiffHtml) }}
-                            >
-                              Diff
-                            </button>
-                          </div>
-                        )}
-                        <div className="flex-1 min-h-0 overflow-auto" dangerouslySetInnerHTML={{ __html: fileContentHtml }} />
-                      </div>
-                    </div>
-                  </>
+                        </React.Fragment>
+                      )
+                    })}
+                  </div>
                 )
               })()}
             </>
@@ -1904,18 +2192,30 @@ export default function ScenarioViewer() {
                 {!stateListOpen && (() => {
                   const currentTick = hasTicks && currentTickIndex >= 0 ? ticks[currentTickIndex] : null
                   const changes = currentTickIndex >= 0 ? tickStateChanges[currentTickIndex] : null
-                  const tableCount = Object.keys(stateTables).length
-                  const nonEmptyCount = Object.values(stateTables).filter(v => v.trim() !== '[]' && v.trim() !== '').length
+                  const summaryItems: SummaryItem[] = []
+                  if (currentTick) {
+                    if (changes?.state) {
+                      const diffItems = getStateSummaryItems(currentTickIndex, 'state-record')
+                      summaryItems.push(...(
+                        diffItems.length > 0
+                          ? diffItems
+                          : [{ key: 'state-changed', text: `${stateDisplayName} changed`, tone: 'state', strong: true } satisfies SummaryItem]
+                      ))
+                    }
+                  }
                   return (
                     <span className="flex items-center gap-1.5 text-[11px] font-normal overflow-hidden">
                       {currentTick ? (
-                        <span className="text-amber-600 overflow-hidden text-ellipsis whitespace-nowrap">
-                          tick {currentTickIndex + 1}: {tableCount} tables, {nonEmptyCount} with data
-                          {changes?.state && <span className="ml-1 text-amber-700 font-medium">(changed)</span>}
-                        </span>
+                        <TickSummaryLine
+                          tickNumber={currentTickIndex + 1}
+                          items={summaryItems}
+                          isSnapshot={currentTick.isSnapshot}
+                          snapshotMessage={currentTick.isSnapshot ? currentTick.snapshotMessage : undefined}
+                          emptyText="no changes"
+                        />
                       ) : stateSnapshots.length > 0 ? (
                         <span className="text-amber-600 overflow-hidden text-ellipsis whitespace-nowrap">
-                          snapshot {currentStateIndex + 1}/{stateSnapshots.length}: {tableCount} tables, {nonEmptyCount} with data
+                          snapshot {currentStateIndex + 1}/{stateSnapshots.length}
                         </span>
                       ) : (
                         <span className="text-neutral-400 italic">no snapshots</span>
@@ -1934,7 +2234,7 @@ export default function ScenarioViewer() {
                     let i = 0
                     while (i < ticks.length) {
                       const changes = tickStateChanges[i]
-                      const hasStateChange = changes?.state || (ticks[i].isSnapshot && ticks[i].snapshotMessage)
+                      const hasStateChange = changes?.state || ticks[i].isSnapshot
                       if (hasStateChange) {
                         const idx = i
                         const tick = ticks[i]
@@ -1946,27 +2246,43 @@ export default function ScenarioViewer() {
                               idx === currentTickIndex ? 'bg-amber-50' : ''
                             }`}
                             onClick={() => {
-                              setCurrentTickIndex(idx)
-                              const tickTime = new Date(tick.timestamp).getTime()
-                              const video = videoRef.current
-                              if (video) video.currentTime = Math.max(0, toVideoTime(tickTime))
+                              selectTickIndex(idx)
                               setStateListOpen(false)
                             }}
                           >
-                            <span className="text-purple-400 min-w-[40px]">tick {idx + 1}</span>
-                            <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-600">
-                              {changes?.state ? (
-                                <span className="flex items-center gap-1">
-                                  {stateDiffs.added.length > 0 && <span className="text-blue-500">+{stateDiffs.added.length} added</span>}
-                                  {stateDiffs.modified.length > 0 && <span className="text-amber-500">~{stateDiffs.modified.length} modified</span>}
-                                  {stateDiffs.removed.length > 0 && <span className="text-red-500">-{stateDiffs.removed.length} removed</span>}
-                                  {stateDiffs.added.length === 0 && stateDiffs.modified.length === 0 && stateDiffs.removed.length === 0 && (
-                                    <span className="text-amber-600 font-medium">{stateDisplayName} changed</span>
-                                  )}
+                            <span className="rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 whitespace-nowrap">
+                              tick {idx + 1}
+                              {tick.isSnapshot && (
+                                <span className="ml-1 rounded-full border border-orange-200 bg-orange-100 px-1 text-[9px] leading-3 font-black text-orange-700 align-middle">
+                                  S
                                 </span>
-                              ) : tick.isSnapshot && tick.snapshotMessage ? (
-                                <span className="text-orange-600">[snapshot] {tick.snapshotMessage}</span>
-                              ) : null}
+                              )}
+                              :
+                            </span>
+                            <span className="flex flex-1 min-w-0 items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-600">
+                              {tick.isSnapshot && tick.snapshotMessage && (
+                                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 font-medium text-orange-700">
+                                  {tick.snapshotMessage}
+                                </span>
+                              )}
+                              {changes?.state && (() => {
+                                const delta = hasTickStateData
+                                  ? getTickStateRecordDelta(idx)
+                                  : getStateSnapshotDeltaForTick(idx)
+                                return (
+                                  <span className="flex items-center gap-1">
+                                    {delta.added.length > 0 && <span className="text-blue-500">+{delta.added.length} added</span>}
+                                    {delta.modified.length > 0 && <span className="text-amber-500">~{delta.modified.length} modified</span>}
+                                    {delta.removed.length > 0 && <span className="text-red-500">-{delta.removed.length} removed</span>}
+                                    {delta.added.length === 0 && delta.modified.length === 0 && delta.removed.length === 0 && (
+                                      <span className="text-amber-600 font-medium">{stateDisplayName} changed</span>
+                                    )}
+                                  </span>
+                                )
+                              })()}
+                              {tick.isSnapshot && !changes?.state && (
+                                <span className="text-neutral-400 italic">no changes</span>
+                              )}
                             </span>
                             <span className="text-neutral-400 whitespace-nowrap">{time}</span>
                           </div>
@@ -1976,7 +2292,7 @@ export default function ScenarioViewer() {
                         const groupStart = i
                         while (i < ticks.length) {
                           const c = tickStateChanges[i]
-                          if (c?.state || (ticks[i].isSnapshot && ticks[i].snapshotMessage)) break
+                          if (c?.state || ticks[i].isSnapshot) break
                           i++
                         }
                         const count = i - groupStart
@@ -1997,15 +2313,32 @@ export default function ScenarioViewer() {
                 </div>
               )}
               {(() => {
-                const { paths, contents } = stateParsed
-                const { added, removed, modified } = stateDiffs
-                const prevContents = prevStateParsed.contents
-
-                // Build file status map
+                const tickStateContents = currentTickIndex >= 0
+                  ? getTickStateRecordContentsAtIndex(currentTickIndex)
+                  : null
+                const previousTickStateContents = currentTickIndex > 0
+                  ? getTickStateRecordContentsAtIndex(currentTickIndex - 1)
+                  : null
+                const tickStateDelta = currentTickIndex >= 0
+                  ? getTickStateRecordDelta(currentTickIndex)
+                  : { added: [], modified: [], removed: [] }
+                const useTickState = hasTickStateData && tickStateContents !== null
+                const paths = useTickState
+                  ? Object.keys(tickStateContents).sort()
+                  : stateParsed.paths
+                const contents = useTickState
+                  ? tickStateContents
+                  : stateParsed.contents
+                const prevContents = useTickState
+                  ? (previousTickStateContents ?? {})
+                  : prevStateParsed.contents
+                const { added, removed, modified } = useTickState
+                  ? tickStateDelta
+                  : stateDiffs
                 const stateFileStatuses = new Map<string, FileStatus>()
                 const addedSet = new Set(added)
-                const removedSet = new Set(removed)
                 const modifiedSet = new Set(modified)
+
                 for (const p of paths) {
                   if (addedSet.has(p)) stateFileStatuses.set(p, 'uncommitted-new')
                   else if (modifiedSet.has(p)) stateFileStatuses.set(p, 'uncommitted-modified')
@@ -2015,117 +2348,40 @@ export default function ScenarioViewer() {
                   stateFileStatuses.set(p, 'removed')
                 }
 
-                const statusCounts = { 'uncommitted-new': 0, 'uncommitted-modified': 0, 'committed': 0, 'removed': 0 }
-                for (const s of stateFileStatuses.values()) {
-                  if (s in statusCounts) statusCounts[s as keyof typeof statusCounts]++
-                }
-
-                const categories = [
-                  { key: 'uncommitted-new', label: `+ ${statusCounts['uncommitted-new']} added`, color: 'text-blue-500', borderColor: 'border-blue-500', bgActive: 'bg-blue-50', count: statusCounts['uncommitted-new'] },
-                  { key: 'uncommitted-modified', label: `~ ${statusCounts['uncommitted-modified']} modified`, color: 'text-amber-500', borderColor: 'border-amber-500', bgActive: 'bg-amber-50', count: statusCounts['uncommitted-modified'] },
-                  { key: 'removed', label: `${statusCounts['removed']} removed`, color: 'text-red-500', borderColor: 'border-red-500', bgActive: 'bg-red-50', count: statusCounts['removed'] },
-                  { key: 'committed', label: `${statusCounts['committed']} unchanged`, color: 'text-neutral-500', borderColor: 'border-neutral-400', bgActive: 'bg-neutral-50', count: statusCounts['committed'] },
-                ]
-
-                const allDisplayPaths = [...paths, ...removed]
-                const visiblePaths = allDisplayPaths.filter(p => {
-                  const status = stateFileStatuses.get(p)
-                  return status ? fileStatusFilter.has(status) : fileStatusFilter.has('committed')
+                const selectedStatus = currentStateRecordPath
+                  ? stateFileStatuses.get(currentStateRecordPath)
+                  : undefined
+                const selectedContent = currentStateRecordPath ? contents[currentStateRecordPath] : undefined
+                const selectedPrevContent = currentStateRecordPath ? prevContents[currentStateRecordPath] : undefined
+                const contentView = buildResourceContentView({
+                  selectedPath: currentStateRecordPath,
+                  status: selectedStatus,
+                  currentContent: selectedContent,
+                  previousContent: selectedPrevContent,
+                  noun: 'record',
+                  selectMessage: 'Select a record to view its contents',
+                  notFoundMessage: 'Record not found at this tick',
+                  language: 'yaml',
                 })
 
-                const selectedContent = currentStateRecordPath ? contents[currentStateRecordPath] : null
-                const selectedPrevContent = currentStateRecordPath ? prevContents[currentStateRecordPath] : null
-                const isModified = currentStateRecordPath ? modifiedSet.has(currentStateRecordPath) : false
-                const isAdded = currentStateRecordPath ? addedSet.has(currentStateRecordPath) : false
-                const isRemoved = currentStateRecordPath ? removedSet.has(currentStateRecordPath) : false
-
                 return (
-                  <>
-                    {categories.some(c => c.count > 0 && c.key !== 'committed') && (
-                      <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-neutral-50">
-                        {categories.filter(c => c.count > 0).map(c => (
-                          <button
-                            key={c.key}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium cursor-pointer border transition-colors ${
-                              fileStatusFilter.has(c.key)
-                                ? `${c.bgActive} ${c.color} ${c.borderColor}`
-                                : 'bg-neutral-100 text-neutral-400 border-neutral-200 line-through'
-                            }`}
-                            onClick={() => {
-                              setFileStatusFilter(prev => {
-                                const next = new Set(prev)
-                                if (next.has(c.key)) next.delete(c.key)
-                                else next.add(c.key)
-                                return next
-                              })
-                            }}
-                          >
-                            {c.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex flex-1 min-h-0 overflow-hidden">
-                      <div className="w-60 overflow-y-auto border-r border-neutral-200 py-1 text-xs flex-shrink-0">
-                        {allDisplayPaths.length === 0 ? (
-                          <div className="p-10 text-center text-neutral-400">No {stateDisplayName} records at this tick</div>
-                        ) : (
-                          <FileTree
-                            files={visiblePaths}
-                            changedFiles={[...added, ...removed, ...modified]}
-                            currentFile={currentStateRecordPath}
-                            onSelectFile={setCurrentStateRecordPath}
-                            addedFiles={added}
-                            removedFiles={removed}
-                            fileStatuses={stateFileStatuses}
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 min-h-0 min-w-0 overflow-auto">
-                        {!currentStateRecordPath ? (
-                          <div className="p-10 text-center text-neutral-400 text-sm">Select a record to view its contents</div>
-                        ) : isRemoved && selectedPrevContent ? (
-                          <pre className="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-red-600 bg-red-50" dangerouslySetInnerHTML={{ __html: highlight(selectedPrevContent, languages.yaml, 'yaml') }} />
-                        ) : !selectedContent ? (
-                          <div className="p-10 text-center text-neutral-400 text-sm">(empty)</div>
-                        ) : (
-                          <div className="flex flex-col flex-1 min-h-0">
-                            {(isModified || isAdded) && (
-                              <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-neutral-50 text-[10px]">
-                                <button
-                                  className={`px-1.5 py-0.5 rounded font-medium cursor-pointer border transition-colors ${
-                                    !stateDiffMode ? 'bg-white text-neutral-700 border-neutral-300' : 'bg-neutral-100 text-neutral-400 border-neutral-200'
-                                  }`}
-                                  onClick={() => setStateDiffMode(false)}
-                                >
-                                  Full
-                                </button>
-                                {isModified && selectedPrevContent && (
-                                  <button
-                                    className={`px-1.5 py-0.5 rounded font-medium cursor-pointer border transition-colors ${
-                                      stateDiffMode ? 'bg-white text-neutral-700 border-neutral-300' : 'bg-neutral-100 text-neutral-400 border-neutral-200'
-                                    }`}
-                                    onClick={() => setStateDiffMode(true)}
-                                  >
-                                    Diff
-                                  </button>
-                                )}
-                                {isAdded && <span className="text-blue-500 ml-1">new record</span>}
-                              </div>
-                            )}
-                            {stateDiffMode && isModified && selectedPrevContent ? (
-                              <pre
-                                className="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700 flex-1 overflow-auto"
-                                dangerouslySetInnerHTML={{ __html: diffHighlight(selectedPrevContent, selectedContent) }}
-                              />
-                            ) : (
-                              <pre className="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700 flex-1 overflow-auto" dangerouslySetInnerHTML={{ __html: highlight(selectedContent, languages.yaml, 'yaml') }} />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
+                  <ResourceChangePane
+                    title={`Tick ${stateDisplayName} view`}
+                    files={sortedUnion(paths, removed)}
+                    changedFiles={sortedUnion(added, removed, modified)}
+                    selectedFile={currentStateRecordPath}
+                    onSelectFile={setCurrentStateRecordPath}
+                    addedFiles={added}
+                    removedFiles={removed}
+                    fileStatuses={stateFileStatuses}
+                    emptyText={`No ${stateDisplayName} records at this tick`}
+                    filteredEmptyText="No records match the active filters"
+                    statusFilter={fileStatusFilter}
+                    onStatusFilterChange={setFileStatusFilter}
+                    contentView={contentView}
+                    diffMode={stateDiffMode}
+                    onDiffModeChange={setStateDiffMode}
+                  />
                 )
               })()}
             </>
@@ -2141,15 +2397,26 @@ export default function ScenarioViewer() {
                 <span className="font-bold">S3 Objects</span>
                 {!s3ListOpen && (() => {
                   const currentTick = hasTicks && currentTickIndex >= 0 ? ticks[currentTickIndex] : null
+                  const summaryItems: SummaryItem[] = []
+                  if (currentTick) {
+                    if (currentTick.s3Changed) {
+                      summaryItems.push(...deltaSummaryItems({
+                        added: currentTick.s3AddedKeys || [],
+                        modified: currentTick.s3ModifiedKeys || [],
+                        removed: currentTick.s3RemovedKeys || [],
+                      }, 's3-object', 'object'))
+                    }
+                  }
                   return (
                     <span className="flex items-center gap-1.5 text-[11px] font-normal overflow-hidden">
                       {currentTick ? (
-                        <span className="text-emerald-600 overflow-hidden text-ellipsis whitespace-nowrap">
-                          tick {currentTickIndex + 1}: {currentTick.s3KeyCount ?? 0} objects
-                          {(currentTick.s3AddedKeys?.length > 0 || currentTick.s3RemovedKeys?.length > 0) && (
-                            <> ({currentTick.s3AddedKeys?.length > 0 && `+${currentTick.s3AddedKeys.length}`}{currentTick.s3AddedKeys?.length > 0 && currentTick.s3RemovedKeys?.length > 0 && ', '}{currentTick.s3RemovedKeys?.length > 0 && `-${currentTick.s3RemovedKeys.length}`})</>
-                          )}
-                        </span>
+                        <TickSummaryLine
+                          tickNumber={currentTickIndex + 1}
+                          items={summaryItems}
+                          isSnapshot={currentTick.isSnapshot}
+                          snapshotMessage={currentTick.isSnapshot ? currentTick.snapshotMessage : undefined}
+                          emptyText="no changes"
+                        />
                       ) : (
                         <span className="text-neutral-400 italic">no tick data</span>
                       )}
@@ -2167,7 +2434,7 @@ export default function ScenarioViewer() {
                     let i = 0
                     while (i < ticks.length) {
                       const tick = ticks[i]
-                      const hasS3Change = tick.s3Changed || (tick.isSnapshot && tick.snapshotMessage)
+                      const hasS3Change = tick.s3Changed || tick.isSnapshot
                       if (hasS3Change) {
                         const idx = i
                         const time = new Date(tick.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -2178,23 +2445,35 @@ export default function ScenarioViewer() {
                               idx === currentTickIndex ? 'bg-emerald-50' : ''
                             }`}
                             onClick={() => {
-                              setCurrentTickIndex(idx)
-                              const tickTime = new Date(tick.timestamp).getTime()
-                              const video = videoRef.current
-                              if (video) video.currentTime = Math.max(0, toVideoTime(tickTime))
+                              selectTickIndex(idx)
                               setS3ListOpen(false)
                             }}
                           >
-                            <span className="text-purple-400 min-w-[40px]">tick {idx + 1}</span>
-                            <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-600">
-                              {tick.s3Changed ? (
+                            <span className="rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 whitespace-nowrap">
+                              tick {idx + 1}
+                              {tick.isSnapshot && (
+                                <span className="ml-1 rounded-full border border-orange-200 bg-orange-100 px-1 text-[9px] leading-3 font-black text-orange-700 align-middle">
+                                  S
+                                </span>
+                              )}
+                              :
+                            </span>
+                            <span className="flex flex-1 min-w-0 items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-600">
+                              {tick.isSnapshot && tick.snapshotMessage && (
+                                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 font-medium text-orange-700">
+                                  {tick.snapshotMessage}
+                                </span>
+                              )}
+                              {tick.s3Changed && (
                                 <span className="flex items-center gap-1">
                                   {tick.s3AddedKeys?.length > 0 && <span className="text-blue-500">+{tick.s3AddedKeys.length} added</span>}
+                                  {tick.s3ModifiedKeys?.length > 0 && <span className="text-amber-500">~{tick.s3ModifiedKeys.length} modified</span>}
                                   {tick.s3RemovedKeys?.length > 0 && <span className="text-red-500">-{tick.s3RemovedKeys.length} removed</span>}
                                 </span>
-                              ) : tick.isSnapshot && tick.snapshotMessage ? (
-                                <span className="text-orange-600">[snapshot] {tick.snapshotMessage}</span>
-                              ) : null}
+                              )}
+                              {tick.isSnapshot && !tick.s3Changed && (
+                                <span className="text-neutral-400 italic">no changes</span>
+                              )}
                             </span>
                             <span className="text-neutral-400 whitespace-nowrap">{tick.s3KeyCount ?? 0} objects</span>
                             <span className="text-neutral-400 whitespace-nowrap">{time}</span>
@@ -2203,7 +2482,7 @@ export default function ScenarioViewer() {
                         i++
                       } else {
                         const groupStart = i
-                        while (i < ticks.length && !ticks[i].s3Changed && !(ticks[i].isSnapshot && ticks[i].snapshotMessage)) {
+                        while (i < ticks.length && !(ticks[i].s3Changed || ticks[i].isSnapshot)) {
                           i++
                         }
                         const count = i - groupStart
@@ -2231,11 +2510,14 @@ export default function ScenarioViewer() {
                   // Tick-based S3 display — same file tree approach as MeadowHome files
                   const allKeys = getS3KeysAtIndex(currentTickIndex)
                   const s3RemovedSet = new Set(tick.s3RemovedKeys || [])
+                  const currentS3Objects = getS3ObjectContentsAtIndex(currentTickIndex) ?? s3Objects
+                  const previousS3Objects = getS3ObjectContentsAtIndex(currentTickIndex - 1) ?? prevS3Objects
 
-                  // Detect modified keys (exist in both current and previous snapshot with different content)
-                  const s3ModifiedSet = new Set<string>()
+                  // Prefer tick-captured modified keys when present; fall back to
+                  // snapshot content comparison for older artifacts.
+                  const s3ModifiedSet = new Set<string>(tick.s3ModifiedKeys || [])
                   for (const key of allKeys) {
-                    if (key in prevS3Objects && key in s3Objects && prevS3Objects[key] !== s3Objects[key]) {
+                    if (key in previousS3Objects && key in currentS3Objects && previousS3Objects[key] !== currentS3Objects[key]) {
                       s3ModifiedSet.add(key)
                     }
                   }
@@ -2256,123 +2538,38 @@ export default function ScenarioViewer() {
                     s3FileStatuses.set(key, 'removed')
                   }
 
-                  // Compute counts
-                  const s3StatusCounts = { 'uncommitted-new': 0, 'uncommitted-modified': 0, 'committed': 0, 'removed': 0 }
-                  for (const s of s3FileStatuses.values()) {
-                    if (s in s3StatusCounts) s3StatusCounts[s as keyof typeof s3StatusCounts]++
-                  }
-
-                  const s3Categories = [
-                    { key: 'uncommitted-new', label: `+ ${s3StatusCounts['uncommitted-new']} added`, color: 'text-blue-500', borderColor: 'border-blue-500', bgActive: 'bg-blue-50', count: s3StatusCounts['uncommitted-new'] },
-                    { key: 'uncommitted-modified', label: `~ ${s3StatusCounts['uncommitted-modified']} modified`, color: 'text-amber-500', borderColor: 'border-amber-500', bgActive: 'bg-amber-50', count: s3StatusCounts['uncommitted-modified'] },
-                    { key: 'removed', label: `${s3StatusCounts['removed']} removed`, color: 'text-red-500', borderColor: 'border-red-500', bgActive: 'bg-red-50', count: s3StatusCounts['removed'] },
-                    { key: 'committed', label: `${s3StatusCounts['committed']} unchanged`, color: 'text-neutral-500', borderColor: 'border-neutral-400', bgActive: 'bg-neutral-50', count: s3StatusCounts['committed'] },
-                  ]
-
-                  const visibleKeys = allKeys.filter(k => {
-                    const status = s3FileStatuses.get(k)
-                    return status ? fileStatusFilter.has(status) : fileStatusFilter.has('committed')
+                  const selectedStatus = currentS3Key ? s3FileStatuses.get(currentS3Key) : undefined
+                  const currentContent = currentS3Key ? currentS3Objects[currentS3Key] : undefined
+                  const previousContent = currentS3Key ? previousS3Objects[currentS3Key] : undefined
+                  const contentView = buildResourceContentView({
+                    selectedPath: currentS3Key,
+                    status: selectedStatus,
+                    currentContent,
+                    previousContent,
+                    noun: 'object',
+                    selectMessage: 'Select an object to view its contents',
+                    notFoundMessage: 'Object not found at this tick',
+                    binary: currentContent !== undefined && isBinary(currentContent),
                   })
-                  const visibleRemoved = fileStatusFilter.has('removed') ? [...s3RemovedSet] : []
 
                   return (
-                    <>
-                      {s3Categories.some(c => c.count > 0 && c.key !== 'committed') && (
-                        <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-neutral-50">
-                          {s3Categories.filter(c => c.count > 0).map(c => (
-                            <button
-                              key={c.key}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium cursor-pointer border transition-colors ${
-                                fileStatusFilter.has(c.key)
-                                  ? `${c.bgActive} ${c.color} ${c.borderColor}`
-                                  : 'bg-neutral-100 text-neutral-400 border-neutral-200 line-through'
-                              }`}
-                              onClick={() => {
-                                setFileStatusFilter(prev => {
-                                  const next = new Set(prev)
-                                  if (next.has(c.key)) next.delete(c.key)
-                                  else next.add(c.key)
-                                  return next
-                                })
-                              }}
-                            >
-                              {c.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex flex-1 min-h-0 overflow-hidden">
-                        <div className="w-60 overflow-y-auto border-r border-neutral-200 py-1 text-xs flex-shrink-0">
-                          {allKeys.length === 0 && s3RemovedSet.size === 0 ? (
-                            <div className="p-10 text-center text-neutral-400">No S3 objects at this tick</div>
-                          ) : (
-                            <FileTree
-                              files={[...visibleKeys, ...visibleRemoved]}
-                              changedFiles={[...(tick.s3AddedKeys || []), ...(tick.s3RemovedKeys || [])]}
-                              currentFile={currentS3Key}
-                              onSelectFile={setCurrentS3Key}
-                              addedFiles={tick.s3AddedKeys}
-                              removedFiles={tick.s3RemovedKeys}
-                              fileStatuses={s3FileStatuses}
-                            />
-                          )}
-                        </div>
-                        <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
-                          {(() => {
-                            if (!currentS3Key || !(currentS3Key in s3Objects)) {
-                              return <div className="p-10 text-center text-neutral-400 text-sm">Select an object to view its contents</div>
-                            }
-                            if (isBinary(s3Objects[currentS3Key])) {
-                              return <div className="p-10 text-center text-neutral-400 text-sm">Sorry, this is a binary file.</div>
-                            }
-                            if (!s3Objects[currentS3Key]) {
-                              return <div className="p-10 text-center text-neutral-400 text-sm">(empty)</div>
-                            }
-                            const isS3Modified = s3ModifiedSet.has(currentS3Key)
-                            const isS3Added = addedSet.has(currentS3Key)
-                            const s3PrevContent = prevS3Objects[currentS3Key]
-                            const hasDiff = isS3Modified && s3PrevContent != null
-                            return (
-                              <>
-                                {(hasDiff || isS3Added) && (
-                                  <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-neutral-50 text-[10px]">
-                                    <button
-                                      className={`px-1.5 py-0.5 rounded font-medium cursor-pointer border transition-colors ${
-                                        !s3DiffMode ? 'bg-white text-neutral-700 border-neutral-300' : 'bg-neutral-100 text-neutral-400 border-neutral-200'
-                                      }`}
-                                      onClick={() => setS3DiffMode(false)}
-                                    >
-                                      Full
-                                    </button>
-                                    {hasDiff && (
-                                      <button
-                                        className={`px-1.5 py-0.5 rounded font-medium cursor-pointer border transition-colors ${
-                                          s3DiffMode ? 'bg-white text-neutral-700 border-neutral-300' : 'bg-neutral-100 text-neutral-400 border-neutral-200'
-                                        }`}
-                                        onClick={() => setS3DiffMode(true)}
-                                      >
-                                        Diff
-                                      </button>
-                                    )}
-                                    {isS3Added && <span className="text-blue-500 ml-1">new object</span>}
-                                  </div>
-                                )}
-                                {s3DiffMode && hasDiff ? (
-                                  <pre
-                                    className="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700 flex-1 overflow-auto"
-                                    dangerouslySetInnerHTML={{ __html: diffHighlight(s3PrevContent, s3Objects[currentS3Key]) }}
-                                  />
-                                ) : (
-                                  <pre className="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700 flex-1 overflow-auto">
-                                    {s3Objects[currentS3Key]}
-                                  </pre>
-                                )}
-                              </>
-                            )
-                          })()}
-                        </div>
-                      </div>
-                    </>
+                    <ResourceChangePane
+                      title="Tick S3 view"
+                      files={sortedUnion(allKeys, [...s3RemovedSet])}
+                      changedFiles={sortedUnion(tick.s3AddedKeys || [], tick.s3ModifiedKeys || [], tick.s3RemovedKeys || [])}
+                      selectedFile={currentS3Key}
+                      onSelectFile={setCurrentS3Key}
+                      addedFiles={tick.s3AddedKeys}
+                      removedFiles={tick.s3RemovedKeys}
+                      fileStatuses={s3FileStatuses}
+                      emptyText="No S3 objects at this tick"
+                      filteredEmptyText="No objects match the active filters"
+                      statusFilter={fileStatusFilter}
+                      onStatusFilterChange={setFileStatusFilter}
+                      contentView={contentView}
+                      diffMode={s3DiffMode}
+                      onDiffModeChange={setS3DiffMode}
+                    />
                   )
                 }
 
@@ -2429,6 +2626,695 @@ export default function ScenarioViewer() {
 
 // --- File Tree sub-component ---
 
+interface ChangeModePickerProps<T extends string> {
+  view: ChangeView
+  selected: Set<T>
+  options: readonly { key: T; label: string }[]
+  onViewChange: (view: ChangeView) => void
+  onSelectedChange: (selected: Set<T>) => void
+  showAllButton?: boolean
+}
+
+function ChangeModePicker<T extends string>({
+  view,
+  selected,
+  options,
+  onViewChange,
+  onSelectedChange,
+  showAllButton = true,
+}: ChangeModePickerProps<T>) {
+  const toggle = (key: T) => {
+    onViewChange('custom')
+    if (view === 'all') {
+      onSelectedChange(new Set([key]))
+      return
+    }
+    const next = new Set(selected)
+    if (next.has(key) && next.size > 1) next.delete(key)
+    else next.add(key)
+    onSelectedChange(next)
+  }
+
+  return (
+    <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-white text-[10px]">
+      {showAllButton && (
+        <button
+          className={`px-1.5 py-0.5 rounded font-medium border transition-colors ${
+            view === 'all'
+              ? 'bg-neutral-900 text-white border-neutral-900'
+              : 'bg-neutral-100 text-neutral-500 border-neutral-200'
+          }`}
+          onClick={() => {
+            onViewChange('all')
+            onSelectedChange(new Set(options.map((o) => o.key)))
+          }}
+        >
+          All
+        </button>
+      )}
+      {options.map((option) => {
+        const active = view === 'all' || selected.has(option.key)
+        const explicitlySelected = view === 'custom' && selected.has(option.key)
+        return (
+          <button
+            key={option.key}
+            className={`px-1.5 py-0.5 rounded font-medium border transition-colors ${
+              explicitlySelected
+                ? 'bg-brand-50 text-brand-700 border-brand-400'
+                : active
+                ? 'bg-white text-neutral-700 border-neutral-300'
+                : 'bg-neutral-100 text-neutral-400 border-neutral-200 line-through'
+            }`}
+            onClick={() => toggle(option.key)}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+interface ResourceContentNote {
+  text: string
+  className: string
+}
+
+interface ResourceContentView {
+  message?: string
+  fullHtml?: string
+  diffHtml?: string | null
+  note?: ResourceContentNote | null
+}
+
+function resourceMessage(message: string): ResourceContentView {
+  return { message }
+}
+
+function resourcePreHtml(content: string, language?: 'yaml'): string {
+  const html = language === 'yaml'
+    ? highlight(content, languages.yaml, 'yaml')
+    : escapeHtml(content)
+  return `<pre class="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700">${html}</pre>`
+}
+
+function resourceDiffHtml(previousContent: string, currentContent: string): string {
+  return `<pre class="p-3 text-xs leading-relaxed whitespace-pre-wrap break-words text-neutral-700">${diffHighlight(previousContent, currentContent)}</pre>`
+}
+
+function buildResourceContentView({
+  selectedPath,
+  status,
+  currentContent,
+  previousContent,
+  noun,
+  selectMessage,
+  notFoundMessage,
+  language,
+  binary = false,
+  emptyMessage = '(empty)',
+}: {
+  selectedPath: string | null
+  status?: FileStatus
+  currentContent?: string
+  previousContent?: string
+  noun: string
+  selectMessage: string
+  notFoundMessage: string
+  language?: 'yaml'
+  binary?: boolean
+  emptyMessage?: string
+}): ResourceContentView {
+  if (!selectedPath) return resourceMessage(selectMessage)
+  if (binary) return resourceMessage('Sorry, this is a binary file.')
+
+  const isRemoved = status === 'removed'
+  if (currentContent === undefined && !isRemoved) return resourceMessage(notFoundMessage)
+
+  const fullContent = isRemoved ? (previousContent ?? '') : (currentContent ?? '')
+  if (!isRemoved && fullContent === '') return resourceMessage(emptyMessage)
+
+  const hasDiff = previousContent !== undefined && (
+    status === 'uncommitted-modified' ||
+    status === 'removed' ||
+    status === 'just-committed'
+  )
+  const note = status === 'uncommitted-new'
+    ? { text: `new ${noun}`, className: 'text-blue-500' }
+    : status === 'removed'
+      ? { text: `removed ${noun}`, className: 'text-red-500' }
+      : null
+
+  return {
+    fullHtml: resourcePreHtml(fullContent, language),
+    diffHtml: hasDiff ? resourceDiffHtml(previousContent ?? '', isRemoved ? '' : fullContent) : null,
+    note,
+  }
+}
+
+function ResourceContentViewer({
+  view,
+  diffMode,
+  onDiffModeChange,
+}: {
+  view: ResourceContentView
+  diffMode: boolean
+  onDiffModeChange: (diffMode: boolean) => void
+}) {
+  if (view.message) {
+    return <div className="p-10 text-center text-neutral-400 text-sm">{view.message}</div>
+  }
+
+  const hasDiff = view.diffHtml != null
+  const hasToolbar = hasDiff || view.note != null
+  const contentHtml = diffMode && view.diffHtml ? view.diffHtml : (view.fullHtml ?? '')
+
+  return (
+    <>
+      {hasToolbar && (
+        <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-neutral-50 text-[10px]">
+          <button
+            className={`px-1.5 py-0.5 rounded font-medium cursor-pointer border transition-colors ${
+              !hasDiff || !diffMode ? 'bg-white text-neutral-700 border-neutral-300' : 'bg-neutral-100 text-neutral-400 border-neutral-200'
+            }`}
+            onClick={() => onDiffModeChange(false)}
+          >
+            Full
+          </button>
+          {hasDiff && (
+            <button
+              className={`px-1.5 py-0.5 rounded font-medium cursor-pointer border transition-colors ${
+                diffMode ? 'bg-white text-neutral-700 border-neutral-300' : 'bg-neutral-100 text-neutral-400 border-neutral-200'
+              }`}
+              onClick={() => onDiffModeChange(true)}
+            >
+              Diff
+            </button>
+          )}
+          {view.note && <span className={`${view.note.className} ml-1`}>{view.note.text}</span>}
+        </div>
+      )}
+      <div className="flex-1 min-h-0 overflow-auto" dangerouslySetInnerHTML={{ __html: contentHtml }} />
+    </>
+  )
+}
+
+interface ResourceChangePaneProps {
+  title: string
+  files: string[]
+  changedFiles: string[]
+  selectedFile: string | null
+  onSelectFile: (file: string) => void
+  addedFiles?: string[]
+  removedFiles?: string[]
+  fileStatuses: Map<string, FileStatus>
+  ignoredSet?: Set<string>
+  emptyText: string
+  filteredEmptyText?: string
+  statusFilter: Set<string>
+  onStatusFilterChange: React.Dispatch<React.SetStateAction<Set<string>>>
+  currentSummaryItems?: SummaryItem[]
+  summaryEmptyText?: string
+  timelineItems?: FileTimelineItem[]
+  timelineEmptyText?: string
+  onSelectTimelineTick?: (tickArrayIndex: number) => void
+  currentTickIndex?: number
+  ticks?: ProcessedTick[]
+  tickChangedFiles?: string[]
+  onTickChangedFileClick?: (filePath: string) => void
+  contentView: ResourceContentView
+  diffMode: boolean
+  onDiffModeChange: (diffMode: boolean) => void
+}
+
+function ResourceChangePane({
+  title,
+  files,
+  changedFiles,
+  selectedFile,
+  onSelectFile,
+  addedFiles,
+  removedFiles,
+  fileStatuses,
+  ignoredSet,
+  emptyText,
+  filteredEmptyText = 'No items match the active filters',
+  statusFilter,
+  onStatusFilterChange,
+  currentSummaryItems,
+  summaryEmptyText = 'no changes',
+  timelineItems,
+  timelineEmptyText = 'No changes.',
+  onSelectTimelineTick,
+  currentTickIndex = -1,
+  ticks = [],
+  tickChangedFiles,
+  onTickChangedFileClick,
+  contentView,
+  diffMode,
+  onDiffModeChange,
+}: ResourceChangePaneProps) {
+  const [timelineOpen, setTimelineOpen] = useState(false)
+  const hasTimeline = Boolean(timelineItems && onSelectTimelineTick)
+  const statusCounts: Record<FileStatus, number> = {
+    'uncommitted-new': 0,
+    'uncommitted-modified': 0,
+    removed: 0,
+    'just-committed': 0,
+    committed: 0,
+  }
+  for (const status of fileStatuses.values()) {
+    statusCounts[status]++
+  }
+
+  const statusCategories = [
+    { key: 'uncommitted-new' as const, label: `+ ${statusCounts['uncommitted-new']} added`, color: 'text-blue-500', borderColor: 'border-blue-500', bgActive: 'bg-blue-50', count: statusCounts['uncommitted-new'] },
+    { key: 'uncommitted-modified' as const, label: `~ ${statusCounts['uncommitted-modified']} modified`, color: 'text-amber-500', borderColor: 'border-amber-500', bgActive: 'bg-amber-50', count: statusCounts['uncommitted-modified'] },
+    { key: 'removed' as const, label: `- ${statusCounts.removed} removed`, color: 'text-red-500', borderColor: 'border-red-500', bgActive: 'bg-red-50', count: statusCounts.removed },
+    { key: 'just-committed' as const, label: `${statusCounts['just-committed']} committed`, color: 'text-green-600', borderColor: 'border-green-500', bgActive: 'bg-green-50', count: statusCounts['just-committed'] },
+    { key: 'committed' as const, label: `${statusCounts.committed} unchanged`, color: 'text-neutral-500', borderColor: 'border-neutral-400', bgActive: 'bg-neutral-50', count: statusCounts.committed },
+  ]
+  const visibleFiles = files.filter((filePath) => {
+    const status = fileStatuses.get(filePath)
+    return status ? statusFilter.has(status) : statusFilter.has('committed')
+  })
+  const showStatusFilter = statusCategories.some((category) => category.count > 0 && category.key !== 'committed')
+
+  return (
+    <div className="min-h-[220px] flex-1 flex flex-col overflow-hidden border-b border-neutral-200 last:border-b-0">
+      <div
+        className={`px-3 py-1 border-b border-neutral-200 bg-white text-[10px] font-bold text-neutral-600 flex items-center gap-2 ${
+          hasTimeline ? 'cursor-pointer hover:bg-neutral-50' : ''
+        }`}
+        onClick={() => {
+          if (hasTimeline) setTimelineOpen(!timelineOpen)
+        }}
+      >
+        <span className="whitespace-nowrap">{title}</span>
+        {currentSummaryItems && (
+          currentTickIndex >= 0 ? (
+            <TickSummaryLine
+              tickNumber={currentTickIndex + 1}
+              items={currentSummaryItems}
+              isSnapshot={Boolean(ticks[currentTickIndex]?.isSnapshot)}
+              snapshotMessage={ticks[currentTickIndex]?.isSnapshot ? ticks[currentTickIndex].snapshotMessage : undefined}
+              emptyText={summaryEmptyText}
+            />
+          ) : (
+            <span className="text-neutral-400 italic text-[11px] font-normal">no tick data</span>
+          )
+        )}
+        {hasTimeline && (
+          <svg className={`w-3 h-3 ml-auto flex-shrink-0 text-neutral-400 transition-transform ${timelineOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        )}
+      </div>
+      {hasTimeline && timelineOpen && (
+        <div className="max-h-[180px] overflow-y-auto border-b border-neutral-200 bg-white">
+          {timelineItems?.length === 0 ? (
+            <div className="p-3 text-center text-neutral-400 text-xs">{timelineEmptyText}</div>
+          ) : timelineItems?.map((item) => (
+            <button
+              key={`${title}-timeline-${item.tickArrayIndex}`}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100 ${
+                item.tickArrayIndex === currentTickIndex ? 'bg-purple-50' : ''
+              }`}
+              onClick={() => {
+                onSelectTimelineTick?.(item.tickArrayIndex)
+                setTimelineOpen(false)
+              }}
+            >
+              <TickSummaryLine
+                tickNumber={item.tickArrayIndex + 1}
+                items={item.items}
+                isSnapshot={Boolean(ticks[item.tickArrayIndex]?.isSnapshot)}
+                snapshotMessage={ticks[item.tickArrayIndex]?.isSnapshot ? ticks[item.tickArrayIndex].snapshotMessage : undefined}
+              />
+              {item.meta && <span className="ml-auto text-neutral-400 text-[11px] whitespace-nowrap">{item.meta}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {showStatusFilter && (
+        <div className="flex items-center gap-1 px-3 py-1 border-b border-neutral-200 bg-neutral-50">
+          {statusCategories.filter((category) => category.count > 0).map((category) => (
+            <button
+              key={category.key}
+              className={`px-1.5 py-0.5 rounded text-[10px] font-medium cursor-pointer border transition-colors ${
+                statusFilter.has(category.key)
+                  ? `${category.bgActive} ${category.color} ${category.borderColor}`
+                  : 'bg-neutral-100 text-neutral-400 border-neutral-200 line-through'
+              }`}
+              onClick={() => {
+                onStatusFilterChange((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(category.key)) next.delete(category.key)
+                  else next.add(category.key)
+                  return next
+                })
+              }}
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="w-60 overflow-y-auto border-r border-neutral-200 py-1 text-xs flex-shrink-0">
+          {files.length === 0 ? (
+            <div className="p-10 text-center text-neutral-400">{emptyText}</div>
+          ) : visibleFiles.length === 0 ? (
+            <div className="p-10 text-center text-neutral-400">{filteredEmptyText}</div>
+          ) : (
+            <FileTree
+              files={visibleFiles}
+              changedFiles={changedFiles}
+              currentFile={selectedFile}
+              onSelectFile={onSelectFile}
+              addedFiles={addedFiles}
+              removedFiles={removedFiles}
+              fileStatuses={fileStatuses}
+              ignoredSet={ignoredSet}
+              tickChangedFiles={tickChangedFiles}
+              onTickChangedFileClick={onTickChangedFileClick}
+            />
+          )}
+        </div>
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
+          <ResourceContentViewer
+            view={contentView}
+            diffMode={diffMode}
+            onDiffModeChange={onDiffModeChange}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface MeadowFileModePaneProps {
+  title: string
+  mode: FileChangeLens
+  files: string[]
+  changedFiles: string[]
+  addedFiles?: string[]
+  removedFiles?: string[]
+  fileStatuses: Map<string, FileStatus>
+  ignoredSet?: Set<string>
+  emptyText: string
+  currentSummaryItems: SummaryItem[]
+  timelineItems: FileTimelineItem[]
+  timelineEmptyText: string
+  onSelectTimelineTick: (tickArrayIndex: number) => void
+  statusFilter: Set<string>
+  onStatusFilterChange: React.Dispatch<React.SetStateAction<Set<string>>>
+  selectedFileRequest?: { mode: FileChangeLens; filePath: string; nonce: number } | null
+  tickChangedFiles?: string[]
+  onTickChangedFileClick?: (filePath: string) => void
+  API: string
+  currentTickIndex: number
+  ticks: ProcessedTick[]
+  currentSnapshotIndex: number
+  snapshots: Snapshot[]
+  fetchFileContent: (hash: string, filePath: string) => Promise<string>
+}
+
+function MeadowFileModePane({
+  title,
+  mode,
+  files,
+  changedFiles,
+  addedFiles,
+  removedFiles,
+  fileStatuses,
+  ignoredSet,
+  emptyText,
+  currentSummaryItems,
+  timelineItems,
+  timelineEmptyText,
+  onSelectTimelineTick,
+  statusFilter,
+  onStatusFilterChange,
+  selectedFileRequest,
+  tickChangedFiles,
+  onTickChangedFileClick,
+  API,
+  currentTickIndex,
+  ticks,
+  currentSnapshotIndex,
+  snapshots,
+  fetchFileContent,
+}: MeadowFileModePaneProps) {
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [contentView, setContentView] = useState<ResourceContentView>(() => resourceMessage('Select a file to view its contents'))
+  const [diffMode, setDiffMode] = useState(true)
+
+  useEffect(() => {
+    if (selectedFileRequest?.mode === mode) {
+      setSelectedFile(selectedFileRequest.filePath)
+    }
+  }, [mode, selectedFileRequest])
+
+  useEffect(() => {
+    if (selectedFile && !files.includes(selectedFile)) {
+      setSelectedFile(null)
+    }
+  }, [files, selectedFile])
+
+  useEffect(() => {
+    setDiffMode(true)
+  }, [currentSnapshotIndex, currentTickIndex, mode, selectedFile])
+
+  useEffect(() => {
+    const loadTickFileContent = async (tickIndex: number, filePath: string): Promise<string | null> => {
+      if (tickIndex < 0 || tickIndex >= ticks.length) return null
+      const tick = ticks[tickIndex]
+      const tickContent = tick.uncommittedFileContents?.[filePath]
+      if (tickContent !== undefined) {
+        return tickContent
+      }
+      if (tick.gitHeadSha) {
+        try {
+          return await fetchFileContent(tick.gitHeadSha, filePath)
+        } catch {
+          return null
+        }
+      }
+      return null
+    }
+
+    const loadTickContent = async (filePath: string): Promise<boolean> => {
+      const status = fileStatuses.get(filePath)
+      if (mode === 'tick' && status === 'removed') {
+        const prevContent = await loadTickFileContent(currentTickIndex - 1, filePath)
+        if (prevContent === null) return false
+        setContentView(buildResourceContentView({
+          selectedPath: filePath,
+          status,
+          previousContent: prevContent,
+          noun: 'file',
+          selectMessage: 'Select a file to view its contents',
+          notFoundMessage: 'File not found at this tick',
+        }))
+        return true
+      }
+
+      const tickContent = await loadTickFileContent(currentTickIndex, filePath)
+      if (tickContent === null) return false
+
+      if (mode === 'tick' && status === 'uncommitted-modified') {
+        const prevContent = await loadTickFileContent(currentTickIndex - 1, filePath)
+        setContentView(buildResourceContentView({
+          selectedPath: filePath,
+          status,
+          currentContent: tickContent,
+          previousContent: prevContent ?? '',
+          noun: 'file',
+          selectMessage: 'Select a file to view its contents',
+          notFoundMessage: 'File not found at this tick',
+        }))
+        return true
+      }
+
+      setContentView(buildResourceContentView({
+        selectedPath: filePath,
+        status,
+        currentContent: tickContent,
+        noun: 'file',
+        selectMessage: 'Select a file to view its contents',
+        notFoundMessage: 'File not found at this tick',
+      }))
+      return true
+    }
+
+    const loadGitUncommittedContent = async (filePath: string): Promise<boolean> => {
+      const status = fileStatuses.get(filePath)
+      if (mode !== 'git' || (status !== 'uncommitted-new' && status !== 'uncommitted-modified' && status !== 'removed')) return false
+
+      let content = ''
+      if (status !== 'removed') {
+        const capturedContent = ticks[currentTickIndex]?.uncommittedFileContents?.[filePath]
+        if (capturedContent !== undefined) {
+          content = capturedContent
+        } else {
+          try {
+            const res = await fetch(`${API}/uncommitted-file/${encodeURIComponent(filePath)}`)
+            if (!res.ok) return false
+            content = await res.text()
+          } catch {
+            return false
+          }
+        }
+      }
+
+      let committedContent = ''
+      if (currentSnapshotIndex >= 0 && snapshots[currentSnapshotIndex]) {
+        try {
+          committedContent = await fetchFileContent(snapshots[currentSnapshotIndex].commitHash, filePath)
+        } catch {
+          // New uncommitted files have no committed baseline.
+        }
+      }
+
+      setContentView(buildResourceContentView({
+        selectedPath: filePath,
+        status,
+        currentContent: status === 'removed' ? undefined : content,
+        previousContent: committedContent,
+        noun: 'file',
+        selectMessage: 'Select a file to view its contents',
+        notFoundMessage: 'File not found at this point',
+      }))
+      return true
+    }
+
+    const loadCapturedUncommittedContent = async (filePath: string): Promise<boolean> => {
+      if (currentTickIndex < 0 || currentTickIndex >= ticks.length) return false
+      const content = ticks[currentTickIndex].uncommittedFileContents?.[filePath]
+      if (content === undefined) return false
+      setContentView(buildResourceContentView({
+        selectedPath: filePath,
+        status: 'committed',
+        currentContent: content,
+        noun: 'file',
+        selectMessage: 'Select a file to view its contents',
+        notFoundMessage: 'File not found at this tick',
+      }))
+      return true
+    }
+
+    const loadFinalUncommittedContent = async (filePath: string): Promise<boolean> => {
+      try {
+        const res = await fetch(`${API}/uncommitted-file/${encodeURIComponent(filePath)}`)
+        if (!res.ok) return false
+        const content = await res.text()
+        setContentView(buildResourceContentView({
+          selectedPath: filePath,
+          status: 'committed',
+          currentContent: content,
+          noun: 'file',
+          selectMessage: 'Select a file to view its contents',
+          notFoundMessage: 'File not found at this point',
+        }))
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    async function load() {
+      if (!selectedFile) {
+        setContentView(resourceMessage('Select a file to view its contents'))
+        return
+      }
+
+      if (mode === 'tick') {
+        if (await loadTickContent(selectedFile)) return
+        setContentView(resourceMessage('File not found at this tick'))
+        return
+      }
+
+      if (await loadGitUncommittedContent(selectedFile)) return
+
+      if (currentSnapshotIndex >= 0 && snapshots[currentSnapshotIndex]) {
+        try {
+          const snap = snapshots[currentSnapshotIndex]
+          const content = await fetchFileContent(snap.commitHash, selectedFile)
+          const selectedStatus = fileStatuses.get(selectedFile)
+          const shouldShowCommitDiff = mode === 'git' && selectedStatus === 'just-committed'
+          if (shouldShowCommitDiff && currentSnapshotIndex > 0) {
+            const prevSnap = snapshots[currentSnapshotIndex - 1]
+            let prevContent = ''
+            try {
+              prevContent = await fetchFileContent(prevSnap.commitHash, selectedFile)
+            } catch {
+              // New file in this snapshot.
+            }
+            setContentView(buildResourceContentView({
+              selectedPath: selectedFile,
+              status: 'just-committed',
+              currentContent: content,
+              previousContent: prevContent,
+              noun: 'file',
+              selectMessage: 'Select a file to view its contents',
+              notFoundMessage: 'File not found at this point',
+            }))
+          } else {
+            setContentView(buildResourceContentView({
+              selectedPath: selectedFile,
+              status: 'committed',
+              currentContent: content,
+              noun: 'file',
+              selectMessage: 'Select a file to view its contents',
+              notFoundMessage: 'File not found at this point',
+            }))
+          }
+          return
+        } catch {
+          if (await loadCapturedUncommittedContent(selectedFile)) return
+          if (await loadFinalUncommittedContent(selectedFile)) return
+        }
+      } else if (await loadCapturedUncommittedContent(selectedFile) || await loadFinalUncommittedContent(selectedFile)) {
+        return
+      }
+
+      setContentView(resourceMessage('File not found at this point'))
+    }
+
+    load()
+  }, [API, currentSnapshotIndex, currentTickIndex, fetchFileContent, fileStatuses, mode, selectedFile, snapshots, ticks])
+
+  return (
+    <ResourceChangePane
+      title={title}
+      files={files}
+      changedFiles={changedFiles}
+      selectedFile={selectedFile}
+      onSelectFile={setSelectedFile}
+      addedFiles={addedFiles}
+      removedFiles={removedFiles}
+      fileStatuses={fileStatuses}
+      ignoredSet={ignoredSet}
+      emptyText={emptyText}
+      filteredEmptyText="No files match the active filters"
+      statusFilter={statusFilter}
+      onStatusFilterChange={onStatusFilterChange}
+      currentSummaryItems={currentSummaryItems}
+      timelineItems={timelineItems}
+      timelineEmptyText={timelineEmptyText}
+      onSelectTimelineTick={onSelectTimelineTick}
+      currentTickIndex={currentTickIndex}
+      ticks={ticks}
+      tickChangedFiles={tickChangedFiles}
+      onTickChangedFileClick={onTickChangedFileClick}
+      contentView={contentView}
+      diffMode={diffMode}
+      onDiffModeChange={setDiffMode}
+    />
+  )
+}
+
 // File status for the tree: committed, uncommitted-new, uncommitted-modified, just-committed, removed
 type FileStatus = 'committed' | 'uncommitted-new' | 'uncommitted-modified' | 'just-committed' | 'removed'
 
@@ -2441,13 +3327,15 @@ interface FileTreeProps {
   removedFiles?: string[]
   fileStatuses?: Map<string, FileStatus>
   ignoredSet?: Set<string>
+  tickChangedFiles?: string[]
+  onTickChangedFileClick?: (filePath: string) => void
 }
 
 interface TreeNode {
   [key: string]: TreeNode | null
 }
 
-function FileTree({ files, changedFiles, currentFile, onSelectFile, addedFiles, removedFiles, fileStatuses, ignoredSet }: FileTreeProps) {
+function FileTree({ files, changedFiles, currentFile, onSelectFile, addedFiles, removedFiles, fileStatuses, ignoredSet, tickChangedFiles, onTickChangedFileClick }: FileTreeProps) {
   const tree: TreeNode = {}
   for (const filePath of files) {
     const parts = filePath.split('/')
@@ -2462,8 +3350,9 @@ function FileTree({ files, changedFiles, currentFile, onSelectFile, addedFiles, 
   const changedSet = new Set(changedFiles)
   const addedSet = addedFiles ? new Set(addedFiles) : undefined
   const removedSet = removedFiles ? new Set(removedFiles) : undefined
+  const tickChangedSet = tickChangedFiles ? new Set(tickChangedFiles) : undefined
 
-  return <TreeNodeView node={tree} prefix="" depth={0} changedSet={changedSet} addedSet={addedSet} removedSet={removedSet} fileStatuses={fileStatuses} ignoredSet={ignoredSet} currentFile={currentFile} onSelectFile={onSelectFile} />
+  return <TreeNodeView node={tree} prefix="" depth={0} changedSet={changedSet} addedSet={addedSet} removedSet={removedSet} fileStatuses={fileStatuses} ignoredSet={ignoredSet} tickChangedSet={tickChangedSet} onTickChangedFileClick={onTickChangedFileClick} currentFile={currentFile} onSelectFile={onSelectFile} />
 }
 
 interface TreeNodeViewProps {
@@ -2475,11 +3364,13 @@ interface TreeNodeViewProps {
   removedSet?: Set<string>
   fileStatuses?: Map<string, FileStatus>
   ignoredSet?: Set<string>
+  tickChangedSet?: Set<string>
+  onTickChangedFileClick?: (filePath: string) => void
   currentFile: string | null
   onSelectFile: (file: string) => void
 }
 
-function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, fileStatuses, ignoredSet, currentFile, onSelectFile }: TreeNodeViewProps) {
+function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, fileStatuses, ignoredSet, tickChangedSet, onTickChangedFileClick, currentFile, onSelectFile }: TreeNodeViewProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
 
   const entries = Object.keys(node).sort((a, b) => {
@@ -2517,6 +3408,8 @@ function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, f
                   removedSet={removedSet}
                   fileStatuses={fileStatuses}
                   ignoredSet={ignoredSet}
+                  tickChangedSet={tickChangedSet}
+                  onTickChangedFileClick={onTickChangedFileClick}
                   currentFile={currentFile}
                   onSelectFile={onSelectFile}
                 />
@@ -2530,15 +3423,28 @@ function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, f
           const isRemoved = removedSet?.has(fullPath) ?? false
           const isSelected = currentFile === fullPath
           const isIgnored = ignoredSet?.has(fullPath) ?? false
+          const changedInTick = tickChangedSet?.has(fullPath) ?? false
+          const tickMarker = changedInTick && onTickChangedFileClick ? (
+            <span
+              className="ml-1 rounded-full border border-purple-200 bg-purple-50 px-1 text-[9px] leading-3 font-black text-purple-700 align-middle"
+              title="Changed in this tick. Open in Tick view."
+              onClick={(event) => {
+                event.stopPropagation()
+                onTickChangedFileClick(fullPath)
+              }}
+            >
+              T
+            </span>
+          ) : null
 
           // When we have fileStatuses (tick mode), use rich status display
           if (status) {
             const statusConfig = {
               'just-committed': { icon: '\u2713', color: 'text-green-600', label: 'committed' },
-              'uncommitted-new': { icon: '+', color: 'text-blue-500', label: 'new (uncommitted)' },
-              'uncommitted-modified': { icon: '~', color: 'text-amber-500', label: 'modified (uncommitted)' },
+              'uncommitted-new': { icon: '+', color: 'text-blue-500', label: 'new' },
+              'uncommitted-modified': { icon: '~', color: 'text-amber-500', label: 'modified' },
               'removed': { icon: '\u2212', color: 'text-red-500', label: 'removed' },
-              'committed': { icon: null, color: '', label: 'committed' },
+              'committed': { icon: null, color: '', label: 'unchanged' },
             }[status]
             // Gitignored files (e.g. app/secret_app_config.yaml, app/resources.local.yaml)
             // exist on disk but are intentionally not tracked. Render them
@@ -2562,6 +3468,7 @@ function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, f
               >
                 {statusConfig.icon && !isIgnored && <span className={`${statusConfig.color} mr-1`}>{statusConfig.icon}</span>}
                 {key}
+                {tickMarker}
               </div>
             )
           }
@@ -2581,6 +3488,7 @@ function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, f
                 : isChanged ? <span className="text-yellow-600 mr-1">&bull;</span>
                 : null}
               {key}
+              {tickMarker}
             </div>
           )
         }
