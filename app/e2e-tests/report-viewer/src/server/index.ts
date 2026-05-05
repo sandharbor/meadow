@@ -346,6 +346,17 @@ app.get("/api/runs/:runId", (req, res) => {
     return res.status(404).json({ error: "Run not found" });
   }
 
+  let runMeta: Record<string, { hasIssues: boolean }> | null = null;
+  const runMetaPath = path.join(runDir, "run-report-meta.json");
+  if (existsSync(runMetaPath)) {
+    try {
+      const parsed = JSON.parse(readFileSync(runMetaPath, "utf8"));
+      if (parsed.version === 1) runMeta = parsed.scenarios;
+    } catch {
+      // fall through to per-scenario report-meta
+    }
+  }
+
   const scenarios = readdirSync(runDir)
     .filter((name) => {
       const full = path.join(runDir, name);
@@ -361,6 +372,7 @@ app.get("/api/runs/:runId", (req, res) => {
       let siteDocIds: string[] = [];
       let keyFrames: { docId: string; filename: string }[] = [];
       let failureReason: string | undefined;
+      let hasIssues = runMeta?.[slug]?.hasIssues ?? false;
 
       if (existsSync(statusFile)) {
         status = readFileSync(statusFile, "utf8").trim();
@@ -379,6 +391,7 @@ app.get("/api/runs/:runId", (req, res) => {
             siteDocIds = meta.scenarioInfo.siteDocIds || [];
             keyFrames = meta.scenarioInfo.keyFrames || [];
             failureReason = meta.scenarioInfo.failureReason;
+            hasIssues = runMeta?.[slug]?.hasIssues ?? meta.summary?.hasIssues ?? false;
             resolved = true;
           }
         } catch {
@@ -430,7 +443,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, testBasename, status, duration, scenarioDocIds, siteDocIds, keyFrames, failureReason };
+      return { slug, testName, testBasename, status, duration, scenarioDocIds, siteDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read targeted-scenarios metadata (written when --scenarios flag was used)

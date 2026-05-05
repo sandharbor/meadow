@@ -1250,7 +1250,16 @@ export const test = base.extend<{
           mkdirSync(objectsDir, { recursive: true });
 
           for (const key of keys) {
-            const content = await minioS3.getObjectContent(key);
+            let content: string;
+            try {
+              content = await minioS3.getObjectContent(key);
+            } catch (err) {
+              const code = typeof err === "object" && err !== null && "Code" in err
+                ? (err as { Code?: string }).Code
+                : undefined;
+              if (code === "NoSuchKey") continue;
+              throw err;
+            }
             const filePath = path.join(objectsDir, key);
             mkdirSync(path.dirname(filePath), { recursive: true });
             writeFileSync(filePath, content);
@@ -1265,16 +1274,15 @@ export const test = base.extend<{
       const gitDir = path.join(configDir, ".git");
       if (existsSync(gitDir)) {
         try {
-          const statusOutput = execSync("git status --porcelain", {
+          const statusOutput = execSync("git status --porcelain -z", {
             cwd: configDir,
             encoding: "utf8",
-          }).trim();
-          const uncommittedFiles = statusOutput
-            ? statusOutput.split("\n").map((line) => ({
-                status: line.slice(0, 2).trim(),
-                path: line.slice(3),
-              }))
-            : [];
+          });
+          const records = statusOutput.split("\0").filter((r) => r.length > 0);
+          const uncommittedFiles = records.map((record) => ({
+            status: record.slice(0, 2).trim(),
+            path: record.slice(3),
+          }));
           appendFileSync(
             uncommittedLogPath,
             JSON.stringify({
@@ -1301,7 +1309,7 @@ export const test = base.extend<{
     await use(snapshotFn);
   },
 
-  assertMeadowHomeState: async ({ testServer }, use) => {
+  assertMeadowHomeState: async ({ testServer, artifactDir }, use) => {
     const { configDir } = testServer;
     const fn = async (opts?: { allowedUntracked?: string[]; allowedModified?: string[] }) => {
       const gitDir = path.join(configDir, ".git");
@@ -1331,7 +1339,21 @@ export const test = base.extend<{
       const allowedM = new Set(opts?.allowedModified ?? []);
       const unexpectedU = untracked.filter((p) => !allowedU.has(p));
       const unexpectedM = modified.filter((m) => !allowedM.has(m.path));
-      if (unexpectedU.length === 0 && unexpectedM.length === 0) return;
+      if (unexpectedU.length === 0 && unexpectedM.length === 0) {
+        writeFileSync(
+          path.join(artifactDir, "final-meadowhome-state-check.json"),
+          JSON.stringify({
+            mode: "asserted",
+            accepted: true,
+            timestamp: new Date().toISOString(),
+            allowedUntracked: opts?.allowedUntracked ?? [],
+            allowedModified: opts?.allowedModified ?? [],
+            observedUntracked: untracked,
+            observedModified: modified,
+          }, null, 2)
+        );
+        return;
+      }
 
       const lines: string[] = [
         "assertMeadowHomeState: MeadowHome has unexpected uncommitted state.",
@@ -1356,8 +1378,17 @@ export const test = base.extend<{
     await use(fn);
   },
 
-  skipMeadowHomeStateCheck: async ({}, use) => {
-    await use(async () => {});
+  skipMeadowHomeStateCheck: async ({ artifactDir }, use) => {
+    await use(async () => {
+      writeFileSync(
+        path.join(artifactDir, "final-meadowhome-state-check.json"),
+        JSON.stringify({
+          mode: "skipped",
+          accepted: true,
+          timestamp: new Date().toISOString(),
+        }, null, 2)
+      );
+    });
   },
 
   addKeyFrame: async ({ page, artifactDir }, use) => {

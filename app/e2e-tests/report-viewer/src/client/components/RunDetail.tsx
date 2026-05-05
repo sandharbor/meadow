@@ -48,6 +48,7 @@ interface Scenario {
   siteDocIds: string[]
   failureReason?: string
   keyFrames: KeyFrame[]
+  hasIssues: boolean
 }
 
 interface RunData {
@@ -191,10 +192,7 @@ export default function RunDetail() {
   const sections = categorizeScenarios(
     filteredScenarios,
     (s) => s.status === 'failed',
-    (s) => {
-      const h = healthMap[s.slug]
-      return !!(h && (h.hasAnyData || h.hasUncommittedAtEnd))
-    },
+    (s) => s.hasIssues,
     (s) => !!(s.testBasename && highlightedBasenames.has(s.testBasename)),
   )
 
@@ -428,7 +426,7 @@ export default function RunDetail() {
                         className="block bg-white border border-neutral-200 rounded-lg overflow-hidden hover:border-brand-300 hover:bg-brand-50 transition-colors p-3"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <StatusBadge status={scenario.status} />
+                          <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                           <span className="text-sm font-medium text-neutral-800 truncate">
                             {scenario.testName}
                           </span>
@@ -484,7 +482,7 @@ export default function RunDetail() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3 min-w-0">
-                            <StatusBadge status={scenario.status} />
+                            <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                             <div className="min-w-0">
                               <span className="text-sm font-medium text-neutral-800">
                                 {scenario.testName}
@@ -574,7 +572,7 @@ export default function RunDetail() {
                           />
                           <div className="px-3 py-2 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
-                              <StatusBadge status={scenario.status} />
+                              <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                               <span className="text-sm font-medium text-neutral-800 truncate">
                                 {scenario.testName}
                               </span>
@@ -616,7 +614,7 @@ export default function RunDetail() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
-                    <StatusBadge status={scenario.status} />
+                    <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                     <div className="min-w-0">
                       <span className="text-sm font-medium text-neutral-800">
                         {scenario.testName}
@@ -643,4 +641,3 @@ export default function RunDetail() {
     </div>
   )
 }
-

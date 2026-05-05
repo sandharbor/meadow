@@ -124,6 +124,16 @@ interface UncommittedEntry {
   uncommittedFiles: { status: string; path: string }[];
 }
 
+interface FinalMeadowHomeStateCheck {
+  mode: "asserted" | "skipped";
+  accepted: boolean;
+  timestamp: string;
+  allowedUntracked?: string[];
+  allowedModified?: string[];
+  observedUntracked?: string[];
+  observedModified?: { status: string; path: string }[];
+}
+
 interface RawTickEntry {
   timestamp: string;
   tickIndex: number;
@@ -496,6 +506,16 @@ function isBenignLogEntry(log: LogEntry, expectedWindows?: ExpectedErrorWindow[]
     );
   }
   return false;
+}
+
+function readFinalMeadowHomeStateCheck(testDir: string): FinalMeadowHomeStateCheck | null {
+  const checkPath = path.join(testDir, "final-meadowhome-state-check.json");
+  if (!existsSync(checkPath)) return null;
+  try {
+    return JSON.parse(readFileSync(checkPath, "utf8")) as FinalMeadowHomeStateCheck;
+  } catch {
+    return null;
+  }
 }
 
 function parseFrontendLog(logPath: string): LogEntry[] {
@@ -892,7 +912,10 @@ function computeScenarioReportMeta(
     uncommittedEntries.length > 0
       ? uncommittedEntries[uncommittedEntries.length - 1].uncommittedFiles.length
       : 0;
-  const hasIssues = totalErrorCount > 0 || totalWarnCount > 0 || hasUncommittedAtEnd;
+  const finalMeadowHomeStateCheck = readFinalMeadowHomeStateCheck(testDir);
+  const hasUnacceptedUncommittedAtEnd =
+    hasUncommittedAtEnd && finalMeadowHomeStateCheck?.accepted !== true;
+  const hasIssues = totalErrorCount > 0 || totalWarnCount > 0 || hasUnacceptedUncommittedAtEnd;
 
   // Build snapshot timestamps from minio + any extension state repos'
   // timeline.jsonl (same as server health endpoint).
@@ -934,8 +957,8 @@ function computeScenarioReportMeta(
     return {
       version: 1,
       scenarioInfo,
-      summary: { totalErrorCount, totalWarnCount, hasUncommittedAtEnd, uncommittedFileCountAtEnd, hasIssues },
-      health: { points: [], hasUncommittedAtEnd, hasAnyData: false },
+      summary: { totalErrorCount, totalWarnCount, hasUncommittedAtEnd: hasUnacceptedUncommittedAtEnd, uncommittedFileCountAtEnd, hasIssues },
+      health: { points: [], hasUncommittedAtEnd: hasUnacceptedUncommittedAtEnd, hasAnyData: false },
     };
   }
 
@@ -998,8 +1021,8 @@ function computeScenarioReportMeta(
   return {
     version: 1,
     scenarioInfo,
-    summary: { totalErrorCount, totalWarnCount, hasUncommittedAtEnd, uncommittedFileCountAtEnd, hasIssues },
-    health: { points, hasUncommittedAtEnd, hasAnyData: healthHasAnyData },
+    summary: { totalErrorCount, totalWarnCount, hasUncommittedAtEnd: hasUnacceptedUncommittedAtEnd, uncommittedFileCountAtEnd, hasIssues },
+    health: { points, hasUncommittedAtEnd: hasUnacceptedUncommittedAtEnd, hasAnyData: healthHasAnyData },
   };
 }
 
