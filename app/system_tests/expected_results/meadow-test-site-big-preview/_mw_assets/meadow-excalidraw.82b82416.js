@@ -16,24 +16,166 @@
 
   var FULLSCREEN_CLASS = 'is-fullscreen';
   var BODY_CLASS = 'meadow-excalidraw-fullscreen-active';
+  var MIN_ZOOM = 0.25;
+  var MAX_ZOOM = 6;
+  var ZOOM_STEP = 1.2;
 
-  function makeFullscreenButton(container) {
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function makeButton(className, label, title, onClick) {
     var btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'meadow-excalidraw-fullscreen-btn';
-    btn.textContent = '⛶';
-    btn.title = 'Fullscreen';
-    btn.setAttribute('aria-label', 'Fullscreen');
+    btn.className = className;
+    btn.textContent = label;
+    btn.title = title;
+    btn.setAttribute('aria-label', title);
     btn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
+      onClick(btn);
+    });
+    return btn;
+  }
+
+  function closestSvgLink(target) {
+    return target && target.closest ? target.closest('a') : null;
+  }
+
+  function readSvgLinkHref(link) {
+    if (!link) return '';
+    var href = link.getAttribute('href') || link.getAttribute('xlink:href');
+    if (href) return href;
+    if (typeof link.href === 'string') return link.href;
+    return link.href && link.href.baseVal ? link.href.baseVal : '';
+  }
+
+  function openSvgLinkInNewTab(link) {
+    var href = readSvgLinkHref(link);
+    if (!href) return;
+    var opened = window.open(href, '_blank', 'noopener');
+    if (opened) {
+      opened.opener = null;
+    }
+  }
+
+  function setupStandaloneViewer(container, svg) {
+    var state = {
+      zoom: 1,
+      x: 0,
+      y: 0,
+      dragging: false,
+      dragStartX: 0,
+      dragStartY: 0,
+      startX: 0,
+      startY: 0,
+    };
+
+    var viewer = document.createElement('div');
+    viewer.className = 'meadow-excalidraw-viewer';
+
+    var surface = document.createElement('div');
+    surface.className = 'meadow-excalidraw-surface';
+    surface.appendChild(svg);
+
+    var zoomLabel = document.createElement('span');
+    zoomLabel.className = 'meadow-excalidraw-zoom-label';
+    zoomLabel.setAttribute('aria-live', 'polite');
+
+    function applyTransform() {
+      surface.style.transform = 'translate(' + state.x + 'px, ' + state.y + 'px) scale(' + state.zoom + ')';
+      zoomLabel.textContent = Math.round(state.zoom * 100) + '%';
+    }
+
+    function setZoom(nextZoom) {
+      state.zoom = clamp(nextZoom, MIN_ZOOM, MAX_ZOOM);
+      applyTransform();
+    }
+
+    function resetView() {
+      state.zoom = 1;
+      state.x = 0;
+      state.y = 0;
+      applyTransform();
+    }
+
+    var fullscreenBtn = makeButton('meadow-excalidraw-control meadow-excalidraw-fullscreen-btn', '⛶', 'Fill browser window', function (btn) {
       var on = container.classList.toggle(FULLSCREEN_CLASS);
       document.body.classList.toggle(BODY_CLASS, on);
       btn.textContent = on ? '×' : '⛶';
-      btn.title = on ? 'Exit fullscreen' : 'Fullscreen';
+      btn.title = on ? 'Exit window fill' : 'Fill browser window';
       btn.setAttribute('aria-label', btn.title);
     });
-    return btn;
+
+    var toolbar = document.createElement('div');
+    toolbar.className = 'meadow-excalidraw-controls';
+    toolbar.append(
+      fullscreenBtn,
+      makeButton('meadow-excalidraw-control', '−', 'Zoom out', function () { setZoom(state.zoom / ZOOM_STEP); }),
+      zoomLabel,
+      makeButton('meadow-excalidraw-control', '+', 'Zoom in', function () { setZoom(state.zoom * ZOOM_STEP); }),
+      makeButton('meadow-excalidraw-control', 'Fit', 'Fit drawing', resetView)
+    );
+
+    viewer.append(surface, toolbar);
+    container.replaceChildren(viewer);
+    applyTransform();
+
+    viewer.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      setZoom(state.zoom * (e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP));
+    }, { passive: false });
+
+    viewer.addEventListener('click', function (e) {
+      var link = closestSvgLink(e.target);
+      if (!link) return;
+      if (!e.metaKey && !e.ctrlKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openSvgLinkInNewTab(link);
+    });
+
+    viewer.addEventListener('auxclick', function (e) {
+      if (e.button !== 1) return;
+      var link = closestSvgLink(e.target);
+      if (!link) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openSvgLinkInNewTab(link);
+    });
+
+    viewer.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      if (e.target.closest && e.target.closest('.meadow-excalidraw-controls')) return;
+      if (closestSvgLink(e.target)) return;
+      state.dragging = true;
+      state.dragStartX = e.clientX;
+      state.dragStartY = e.clientY;
+      state.startX = state.x;
+      state.startY = state.y;
+      viewer.classList.add('is-panning');
+      viewer.setPointerCapture(e.pointerId);
+    });
+
+    viewer.addEventListener('pointermove', function (e) {
+      if (!state.dragging) return;
+      state.x = state.startX + e.clientX - state.dragStartX;
+      state.y = state.startY + e.clientY - state.dragStartY;
+      applyTransform();
+    });
+
+    function stopPanning(e) {
+      if (!state.dragging) return;
+      state.dragging = false;
+      viewer.classList.remove('is-panning');
+      if (viewer.hasPointerCapture(e.pointerId)) {
+        viewer.releasePointerCapture(e.pointerId);
+      }
+    }
+
+    viewer.addEventListener('pointerup', stopPanning);
+    viewer.addEventListener('pointercancel', stopPanning);
   }
 
   function extractCompressedScene(md) {
@@ -139,11 +281,12 @@
       // Keep the intrinsic width/height attributes so the SVG has a real size
       // even when its container is `inline-block` (the embed-link case). CSS
       // (`max-width: 100%; height: auto`) handles responsive shrinking.
-      container.replaceChildren(svg);
       // Standalone pages get a fullscreen toggle. Inline embeds (rendered as
       // anchors elsewhere) don't go through this path.
       if (container.classList.contains('meadow-excalidraw-page')) {
-        container.appendChild(makeFullscreenButton(container));
+        setupStandaloneViewer(container, svg);
+      } else {
+        container.replaceChildren(svg);
       }
     } catch (err) {
       console.warn('[meadow-excalidraw] render failed', err);

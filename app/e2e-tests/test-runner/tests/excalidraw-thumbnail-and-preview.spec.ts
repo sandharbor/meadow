@@ -125,6 +125,32 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   await snapshot("standalone excalidraw page with full drawing");
   await addKeyFrame(excalidraw);
 
+  const standaloneDrawingLink = previewFrame.locator(
+    '.meadow-excalidraw-page svg a[href="t006%20---%20linked-from-excalidraw.html"]',
+  );
+  await expect(standaloneDrawingLink).toHaveCount(1);
+
+  const [linkedTab] = await Promise.all([
+    page.context().waitForEvent("page"),
+    standaloneDrawingLink.click({ modifiers: ["Meta"] }),
+  ]);
+  await linkedTab.waitForLoadState("domcontentloaded");
+  await expect(linkedTab.locator("h1").first()).toContainText(
+    "t006 --- linked-from-excalidraw",
+    { timeout: 15_000 },
+  );
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "t006 --- meadow-flower",
+    { timeout: 15_000 },
+  );
+  await linkedTab.close();
+
+  await standaloneDrawingLink.click();
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "t006 --- linked-from-excalidraw",
+    { timeout: 15_000 },
+  );
+
   releaseWorkerWarning();
   void bigSite;
 
