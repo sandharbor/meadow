@@ -13,10 +13,10 @@ systematically verifies each skill's factual claims and updates them.
 
 ## Step 1: Enumerate all skills
 
-List every skill directory under `.claude/skills/` (excluding this one):
+List every skill directory under `.agents/skills/` (excluding this one):
 
 ```bash
-ls -d .claude/skills/*/
+ls -d .agents/skills/*/
 ```
 
 Read each `SKILL.md` file to build the full list.

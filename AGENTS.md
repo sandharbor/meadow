@@ -1,4 +1,4 @@
-# Claude Code Instructions
+# Agent Instructions
 
 ## Docs
 

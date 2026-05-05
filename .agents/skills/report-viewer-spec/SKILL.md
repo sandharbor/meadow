@@ -190,7 +190,7 @@ ever changes, update `PUBLISH_FLOW_TEST_SLUG` in
 ## After adding a spec
 
 1. Run `npm run e2e` in `app/e2e-tests/report-viewer/` and confirm it passes.
-2. Run `./quickcheck` from the repo root (per project CLAUDE.md). If
+2. Run `./quickcheck` from the repo root (per project AGENTS.md). If
    changes are limited to `app/e2e-tests/`, the scoped check is faster:
    ```bash
    cd app/e2e-tests && _module/scripts/quickcheck
@@ -253,7 +253,7 @@ valuable because it proves the tripwire works.
 
 ## Flakiness policy
 
-Per project CLAUDE.md: flaky tests are never acceptable. If a spec fails
+Per project AGENTS.md: flaky tests are never acceptable. If a spec fails
 sometimes and passes sometimes, fix the root cause — don't retry it away.
 An **intentionally failing** regression spec (tripwire for an unfixed
 bug) is NOT flakiness — it's a controlled, deterministic failure that
