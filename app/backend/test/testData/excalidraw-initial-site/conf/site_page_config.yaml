@@ -1,0 +1,11 @@
+pages:
+  - fileType: md
+    inlinksDepth: 0
+    listType: whitelist
+    outlinksDepth: 1
+    title: embedded media
+  - fileType: excalidraw
+    inlinksDepth: 0
+    listType: whitelist
+    outlinksDepth: 1
+    title: meadow flower

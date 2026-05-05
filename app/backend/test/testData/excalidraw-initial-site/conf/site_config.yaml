@@ -1,0 +1,14 @@
+defaultTraversalSitePageTitle: meadow flower
+defaultTraversalSitePageDirectory: ""
+siteGuid: excalidraw-initial
+sourceDirectory: ./source_graphs/excalidraw-initial-data
+initialSitePageTitle: meadow flower
+initialSitePageDirectory: ""
+publishPrefix: test123
+publishSlug: excalidraw-initial-site
+siteCreatedAt: 2025-01-01T00:00:00.000Z
+siteLastPublishedAt: null
+siteNotes: "Excalidraw initial page test site"
+siteUpdatedAt: 2025-01-01T00:00:00.000Z
+generatedSiteVersions: []
+archivedAt: null

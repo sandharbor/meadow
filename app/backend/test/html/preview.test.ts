@@ -23,6 +23,7 @@ import { SiteConfigPaths } from '../../../shared_code/paths/siteConfigPaths.js';
 
 describe('html preview', () => {
   const testSetup = new TestSiteSetup('minimal-site', 'minimal-test-site');
+  const excalidrawInitialSetup = new TestSiteSetup('excalidraw-initial-site', 'excalidraw-initial-test-site');
   let sitePath: string;
 
   beforeEach(() => {
@@ -90,5 +91,33 @@ describe('html preview', () => {
     // Verify specific expected HTML files based on the test data
     // (the 'main page' should be generated since it's the defaultTraversalSitePageTitle)
     expect(htmlFiles).toContain('main page.html');
+  });
+
+  it('emits an Excalidraw initial page as the first rendered preview page', async () => {
+    testSetup.tearDown();
+    excalidrawInitialSetup.setUp();
+
+    try {
+      const startPages: Array<{ title: string; directory: string; relativeHtmlPath: string }> = [];
+
+      await generateHtmlForSite(excalidrawInitialSetup.getSitePath(), {
+        preview: true,
+        onStartPageRendered: info => startPages.push(info),
+      });
+
+      expect(startPages).toEqual([
+        {
+          title: 'meadow flower',
+          directory: '',
+          relativeHtmlPath: 'meadow flower.html',
+        },
+      ]);
+
+      const previewFolderPath = SiteConfigPaths.getPreviewDir(excalidrawInitialSetup.getSitePath());
+      expect(fs.existsSync(path.join(previewFolderPath, 'meadow flower.html'))).toBe(true);
+      expect(fs.existsSync(path.join(previewFolderPath, 'embedded media.html'))).toBe(true);
+    } finally {
+      excalidrawInitialSetup.tearDown();
+    }
   });
 });

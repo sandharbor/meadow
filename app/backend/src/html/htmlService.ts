@@ -749,6 +749,11 @@ export async function generateHtmlForSite(
   // Second pass: generate HTML for each traversable page to preview directory with subdirectories
   // Only pages reachable via the working graph traversal will have HTML generated
   const traversableMdPageKeys = whitelistedMdPageKeys.filter(pageKey => traversablePageKeys.has(pageKey));
+  const traversableExcalidrawPageKeys = Object.keys(sitePageConfs).filter(key => {
+    const conf = sitePageConfs[key];
+    return conf.config.list_type === 'whitelist' && conf.file_type === 'excalidraw' && traversablePageKeys.has(key);
+  });
+  const traversableRenderablePageKeys = [...traversableMdPageKeys, ...traversableExcalidrawPageKeys];
 
   // Determine which page to render first (for fast preview UX)
   const requestedStartTitle = options.startPage?.title;
@@ -763,7 +768,7 @@ export async function generateHtmlForSite(
   let startPageKey: string | undefined;
   if (options.startPagePath) {
     const targetPath = decodeURIComponent(options.startPagePath);
-    startPageKey = traversableMdPageKeys.find(k => {
+    startPageKey = traversableRenderablePageKeys.find(k => {
       const c = sitePageConfs[k];
       const normalizedName = normalizePageTitle(c.title, siteConfig, siteSlug || undefined);
       const subdir = c.source_graph_subdirectory || '';
@@ -773,18 +778,21 @@ export async function generateHtmlForSite(
   }
 
   if (!startPageKey && startTitle) {
-    startPageKey = traversableMdPageKeys.find(k => {
+    startPageKey = traversableRenderablePageKeys.find(k => {
       const c = sitePageConfs[k];
       return c.title === startTitle && (c.source_graph_subdirectory || '') === (startDir || '');
     });
   }
 
   // Render start page first, then the rest deterministically.
-  const renderOrder: string[] = startPageKey
+  const mdRenderOrder: string[] = startPageKey && traversableMdPageKeys.includes(startPageKey)
     ? [startPageKey, ...traversableMdPageKeys.filter(k => k !== startPageKey)]
     : [...traversableMdPageKeys];
+  const excalidrawRenderOrder: string[] = startPageKey && traversableExcalidrawPageKeys.includes(startPageKey)
+    ? [startPageKey, ...traversableExcalidrawPageKeys.filter(k => k !== startPageKey)]
+    : [...traversableExcalidrawPageKeys];
 
-  const totalToRender = renderOrder.length;
+  const totalToRender = mdRenderOrder.length + excalidrawRenderOrder.length;
   let renderedOrSkipped = 0;
   let lastPercent = -1;
   emitProgress({ stage: 'rendering-pages', message: `Rendering HTML pages...`, current: 0, total: totalToRender, percent: 0 });
@@ -792,7 +800,154 @@ export async function generateHtmlForSite(
   const allCollectedSrsCards: Array<CollectedSrsCard & { pageId: string; pageTitle: string }> = [];
 
   let startPageRenderedEmitted = false;
-  for (const pageKey of renderOrder) {
+
+  const emitRenderProgressIfChanged = () => {
+    const percent = totalToRender > 0 ? Math.floor((renderedOrSkipped / totalToRender) * 100) : 100;
+    if (percent !== lastPercent) {
+      lastPercent = percent;
+      emitProgress({
+        stage: 'rendering-pages',
+        message: `Rendering HTML pages...`,
+        current: renderedOrSkipped,
+        total: totalToRender,
+        percent
+      });
+    }
+  };
+
+  const renderStandaloneExcalidrawPage = async (pageKey: string) => {
+    const conf = sitePageConfs[pageKey];
+    const subdir = conf.source_graph_subdirectory || '';
+    // Obsidian Excalidraw drawings live on disk as `<title>.excalidraw.md`.
+    const sourceMdPath = subdir
+      ? path.join(renderContentDirectory, subdir, `${conf.title}.excalidraw.md`)
+      : path.join(renderContentDirectory, `${conf.title}.excalidraw.md`);
+
+    const outputSubdir = subdir
+      ? path.join(previewHtmlDirectory, subdir)
+      : previewHtmlDirectory;
+    if (subdir && !fs.existsSync(outputSubdir)) {
+      fs.mkdirSync(outputSubdir, { recursive: true });
+    }
+
+    const normalizedOutputFilename = normalizePageTitle(conf.title, siteConfig, siteSlug || undefined);
+
+    // Build breadcrumb HTML inline using the same lookup as renderPageToHtml.
+    const breadcrumbPath = breadcrumbPaths[pageKey] || [];
+    const isInitialPage = conf.title === initialSitePageTitle &&
+      (conf.source_graph_subdirectory || '') === initialSitePageDirectory;
+    const showBreadcrumbs = breadcrumbsEnabled && !isInitialPage && breadcrumbPath.length > 1;
+    let breadcrumbHtml = '';
+    if (showBreadcrumbs) {
+      const items: string[] = [];
+      for (let i = 0; i < breadcrumbPath.length; i++) {
+        const t = breadcrumbPath[i];
+        const isLast = i === breadcrumbPath.length - 1;
+        const normTitle = normalizePageTitle(t, siteConfig, siteSlug || undefined);
+        if (isLast) {
+          items.push(`<span class="breadcrumb-current">${normTitle}</span>`);
+        } else {
+          const bcConf = sitePageConfigsArrayForLinks.find(c => c.title === t);
+          const bcDir = bcConf?.source_graph_subdirectory || '';
+          const encoded = encodeURIComponent(normTitle);
+          const targetPath = bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`;
+          // Compute a relative href from this excalidraw page's directory.
+          const fromDir = subdir;
+          const fromParts = fromDir ? fromDir.split('/').filter(Boolean) : [];
+          const toParts = targetPath.split('/');
+          let common = 0;
+          while (common < fromParts.length && common < toParts.length - 1 && fromParts[common] === toParts[common]) common++;
+          const up = '../'.repeat(fromParts.length - common);
+          const relative = up + toParts.slice(common).join('/');
+          items.push(`<a href="${relative}" class="breadcrumb-link">${normTitle}</a>`);
+        }
+      }
+      breadcrumbHtml = `<nav class="breadcrumbs" aria-label="Breadcrumb">${items.join('<span class="breadcrumb-separator">→</span>')}</nav>`;
+    }
+
+    const backlinksHtml = generationOptions.backlinksEnabled
+      ? renderSimpleBacklinksHtml(
+          conf.title,
+          subdir,
+          inverseLinks,
+          sitePageConfigsArrayForLinks,
+          siteConfig,
+          siteSlug || undefined,
+        )
+      : '';
+
+    // Copy the source .excalidraw.md alongside the page so the client can
+    // fetch it by relative path. Embeds in other pages already trigger a
+    // copy via linkOrImageHtml, but this loop covers Excalidraw pages that
+    // never get embedded.
+    const sourceMdDest = path.join(outputSubdir, `${conf.title}.excalidraw.md`);
+    if (fs.existsSync(sourceMdPath) && !fs.existsSync(sourceMdDest)) {
+      fs.copyFileSync(sourceMdPath, sourceMdDest);
+    }
+    const drawingMdHref = encodePathForUrl(`${conf.title}.excalidraw.md`);
+
+    // Pre-resolve the wikilinks living inside this Excalidraw drawing using
+    // the working-graph data. The client renderer reads this map to set the
+    // right href on each linked text element, instead of re-implementing
+    // Obsidian's link-resolution rules in JavaScript.
+    const excalidrawIdent = subdir ? `${subdir}/${conf.title}.excalidraw` : `/${conf.title}.excalidraw`;
+    const clientLinkMap = buildExcalidrawClientLinkMap({
+      excalidrawPageIdent: excalidrawIdent,
+      hostPageDirectory: subdir,
+      sitePageConfigs: sitePageConfigsArrayForLinks,
+      allLinkResolutionMaps,
+      siteConfig,
+      siteSlug: siteSlug || undefined,
+    });
+
+    const htmlPath = renderExcalidrawPageToHtml({
+      sourceMdPath,
+      outputFolder: outputSubdir,
+      outputFilename: normalizedOutputFilename,
+      pageTitle: normalizedOutputFilename,
+      currentPageDirectory: subdir,
+      drawingMdHref,
+      clientLinkMap,
+      breadcrumbHtml,
+      backlinksHtml,
+      staticAssetNames,
+      siteConfig,
+      siteSlug: siteSlug || undefined,
+    });
+
+    if (!startPageRenderedEmitted) {
+      const isStart = startPageKey ? pageKey === startPageKey : renderedOrSkipped === 0;
+      if (isStart && htmlPath) {
+        const fileExists = await waitForFileExists(htmlPath);
+        if (fileExists) {
+          startPageRenderedEmitted = true;
+          const relativeHtmlPath = subdir ? `${subdir}/${normalizedOutputFilename}.html` : `${normalizedOutputFilename}.html`;
+          try {
+            options.onStartPageRendered?.({ title: conf.title, directory: subdir, relativeHtmlPath });
+          } catch (err) {
+            logger.warn(`[generateHtmlForSite] onStartPageRendered callback threw (ignored): ${err instanceof Error ? err.message : String(err)}`);
+          }
+        } else {
+          logger.warn(`[generateHtmlForSite] Timed out waiting for start page file to exist: ${htmlPath}`);
+        }
+      }
+    }
+
+    renderedOrSkipped += 1;
+    emitRenderProgressIfChanged();
+
+    await delay(AFTER_HTML_GENERATION_PAUSE_MS);
+  };
+
+  if (startPageKey && traversableExcalidrawPageKeys.includes(startPageKey)) {
+    if (options.shouldCancel?.()) {
+      logger.warn('[generateHtmlForSite] Cancel requested; stopping render loop early');
+    } else {
+      await renderStandaloneExcalidrawPage(startPageKey);
+    }
+  }
+
+  for (const pageKey of mdRenderOrder) {
     if (options.shouldCancel?.()) {
       logger.warn('[generateHtmlForSite] Cancel requested; stopping render loop early');
       break;
@@ -807,17 +962,7 @@ export async function generateHtmlForSite(
     if (!fs.existsSync(pageContentPath)) {
       logger.warn(`Page content file not found for ${conf.title} at ${pageContentPath}`);
       renderedOrSkipped += 1;
-      const percent = totalToRender > 0 ? Math.floor((renderedOrSkipped / totalToRender) * 100) : 100;
-      if (percent !== lastPercent) {
-        lastPercent = percent;
-        emitProgress({
-          stage: 'rendering-pages',
-          message: `Rendering HTML pages...`,
-          current: renderedOrSkipped,
-          total: totalToRender,
-          percent
-        });
-      }
+      emitRenderProgressIfChanged();
       continue;
     }
     
@@ -923,17 +1068,7 @@ export async function generateHtmlForSite(
     }
 
     renderedOrSkipped += 1;
-    const percent = totalToRender > 0 ? Math.floor((renderedOrSkipped / totalToRender) * 100) : 100;
-    if (percent !== lastPercent) {
-      lastPercent = percent;
-      emitProgress({
-        stage: 'rendering-pages',
-        message: `Rendering HTML pages...`,
-        current: renderedOrSkipped,
-        total: totalToRender,
-        percent
-      });
-    }
+    emitRenderProgressIfChanged();
 
     // Yield between pages so the server can still respond to preview file requests while rendering continues.
     // Use AFTER_HTML_GENERATION_PAUSE_MS to add an artificial delay for debugging progress visualization.
@@ -943,109 +1078,15 @@ export async function generateHtmlForSite(
   // Standalone Excalidraw HTML pages (so direct navigation works and breadcrumbs
   // pointing at an Excalidraw drawing resolve to a real page). The body is the
   // inline-rendered SVG; the standard page shell wraps breadcrumbs and footer.
-  const traversableExcalidrawPageKeys = Object.keys(sitePageConfs).filter(key => {
-    const conf = sitePageConfs[key];
-    return conf.config.list_type === 'whitelist' && conf.file_type === 'excalidraw' && traversablePageKeys.has(key);
-  });
-  for (const pageKey of traversableExcalidrawPageKeys) {
-    const conf = sitePageConfs[pageKey];
-    const subdir = conf.source_graph_subdirectory || '';
-    // Obsidian Excalidraw drawings live on disk as `<title>.excalidraw.md`.
-    const sourceMdPath = subdir
-      ? path.join(renderContentDirectory, subdir, `${conf.title}.excalidraw.md`)
-      : path.join(renderContentDirectory, `${conf.title}.excalidraw.md`);
-
-    const outputSubdir = subdir
-      ? path.join(previewHtmlDirectory, subdir)
-      : previewHtmlDirectory;
-    if (subdir && !fs.existsSync(outputSubdir)) {
-      fs.mkdirSync(outputSubdir, { recursive: true });
+  for (const pageKey of excalidrawRenderOrder) {
+    if (pageKey === startPageKey && startPageRenderedEmitted) {
+      continue;
     }
-
-    const normalizedOutputFilename = normalizePageTitle(conf.title, siteConfig, siteSlug || undefined);
-
-    // Build breadcrumb HTML inline using the same lookup as renderPageToHtml.
-    const breadcrumbPath = breadcrumbPaths[pageKey] || [];
-    const isInitialPage = conf.title === initialSitePageTitle &&
-      (conf.source_graph_subdirectory || '') === initialSitePageDirectory;
-    const showBreadcrumbs = breadcrumbsEnabled && !isInitialPage && breadcrumbPath.length > 1;
-    let breadcrumbHtml = '';
-    if (showBreadcrumbs) {
-      const items: string[] = [];
-      for (let i = 0; i < breadcrumbPath.length; i++) {
-        const t = breadcrumbPath[i];
-        const isLast = i === breadcrumbPath.length - 1;
-        const normTitle = normalizePageTitle(t, siteConfig, siteSlug || undefined);
-        if (isLast) {
-          items.push(`<span class="breadcrumb-current">${normTitle}</span>`);
-        } else {
-          const bcConf = sitePageConfigsArrayForLinks.find(c => c.title === t);
-          const bcDir = bcConf?.source_graph_subdirectory || '';
-          const encoded = encodeURIComponent(normTitle);
-          const targetPath = bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`;
-          // Compute a relative href from this excalidraw page's directory.
-          const fromDir = subdir;
-          const fromParts = fromDir ? fromDir.split('/').filter(Boolean) : [];
-          const toParts = targetPath.split('/');
-          let common = 0;
-          while (common < fromParts.length && common < toParts.length - 1 && fromParts[common] === toParts[common]) common++;
-          const up = '../'.repeat(fromParts.length - common);
-          const relative = up + toParts.slice(common).join('/');
-          items.push(`<a href="${relative}" class="breadcrumb-link">${normTitle}</a>`);
-        }
-      }
-      breadcrumbHtml = `<nav class="breadcrumbs" aria-label="Breadcrumb">${items.join('<span class="breadcrumb-separator">→</span>')}</nav>`;
+    if (options.shouldCancel?.()) {
+      logger.warn('[generateHtmlForSite] Cancel requested; stopping render loop early');
+      break;
     }
-
-    const backlinksHtml = generationOptions.backlinksEnabled
-      ? renderSimpleBacklinksHtml(
-          conf.title,
-          subdir,
-          inverseLinks,
-          sitePageConfigsArrayForLinks,
-          siteConfig,
-          siteSlug || undefined,
-        )
-      : '';
-
-    // Copy the source .excalidraw.md alongside the page so the client can
-    // fetch it by relative path. Embeds in other pages already trigger a
-    // copy via linkOrImageHtml, but this loop covers Excalidraw pages that
-    // never get embedded.
-    const sourceMdDest = path.join(outputSubdir, `${conf.title}.excalidraw.md`);
-    if (fs.existsSync(sourceMdPath) && !fs.existsSync(sourceMdDest)) {
-      fs.copyFileSync(sourceMdPath, sourceMdDest);
-    }
-    const drawingMdHref = encodePathForUrl(`${conf.title}.excalidraw.md`);
-
-    // Pre-resolve the wikilinks living inside this Excalidraw drawing using
-    // the working-graph data. The client renderer reads this map to set the
-    // right href on each linked text element, instead of re-implementing
-    // Obsidian's link-resolution rules in JavaScript.
-    const excalidrawIdent = subdir ? `${subdir}/${conf.title}.excalidraw` : `/${conf.title}.excalidraw`;
-    const clientLinkMap = buildExcalidrawClientLinkMap({
-      excalidrawPageIdent: excalidrawIdent,
-      hostPageDirectory: subdir,
-      sitePageConfigs: sitePageConfigsArrayForLinks,
-      allLinkResolutionMaps,
-      siteConfig,
-      siteSlug: siteSlug || undefined,
-    });
-
-    renderExcalidrawPageToHtml({
-      sourceMdPath,
-      outputFolder: outputSubdir,
-      outputFilename: normalizedOutputFilename,
-      pageTitle: normalizedOutputFilename,
-      currentPageDirectory: subdir,
-      drawingMdHref,
-      clientLinkMap,
-      breadcrumbHtml,
-      backlinksHtml,
-      staticAssetNames,
-      siteConfig,
-      siteSlug: siteSlug || undefined,
-    });
+    await renderStandaloneExcalidrawPage(pageKey);
   }
 
   if (generationOptions.spacedRepetitionEnabled && allCollectedSrsCards.length > 0) {
@@ -1067,7 +1108,7 @@ export async function generateHtmlForSite(
     );
   }
 
-  emitProgress({ stage: 'complete', message: 'HTML render complete', current: totalToRender, total: totalToRender, percent: 100 });
+  emitProgress({ stage: 'complete', message: 'HTML render complete', current: renderedOrSkipped, total: totalToRender, percent: 100 });
   
   // If publish flag is set, also create versioned directory
   if (options.publish) {
