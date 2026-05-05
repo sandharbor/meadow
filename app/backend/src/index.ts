@@ -2038,6 +2038,13 @@ function checkIfSiteTracksPage(siteDirectory: string, pageName: string, config: 
   }
 }
 
+function cleanSourcePageSearchText(value: string): string {
+  return value
+    .replace(/\.excalidraw\.md$/i, '')
+    .replace(/\.excalidraw$/i, '')
+    .replace(/\.md$/i, '');
+}
+
 // Search for pages in a source directory by name
 // Returns all matching pages with their full paths (for handling duplicates)
 app.get('/api/search-pages-in-source', (req, res, next) => {
@@ -2052,8 +2059,8 @@ app.get('/api/search-pages-in-source', (req, res, next) => {
       return res.status(400).json({ error: 'pageName is required' });
     }
 
-    // Strip .md extension if present (users sometimes include it by mistake)
-    const cleanPageName = pageName.replace(/\.md$/i, '');
+    // Strip known source-file suffixes if present (users sometimes include them by mistake).
+    const cleanPageName = cleanSourcePageSearchText(pageName);
 
     try {
       // Check if directory exists
@@ -2120,8 +2127,8 @@ app.get('/api/search-source-pages', (req, res, next) => {
     }
 
     const rawQuery = typeof query === 'string' ? query : '';
-    // Strip .md extension if present (users sometimes include it by mistake).
-    const cleanQuery = rawQuery.replace(/\.md$/i, '');
+    // Strip known source-file suffixes if present (users sometimes include them by mistake).
+    const cleanQuery = cleanSourcePageSearchText(rawQuery);
 
     const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : NaN;
     const finalLimit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 25;

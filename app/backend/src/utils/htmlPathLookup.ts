@@ -44,11 +44,13 @@ export function getHtmlPathForPage(
     const content = fs.readFileSync(sitePageConfPath, 'utf8');
     const sitePageConfigs = parsePageConfig(content);
 
-    const sitePageConfig = sitePageConfigs.find(sitePageConfig =>
+    const matchingPageConfigs = sitePageConfigs.filter(sitePageConfig =>
       sitePageConfig.title === title &&
-      (sitePageConfig.file_type === 'md' || !sitePageConfig.file_type) &&
       (pageDirectory === undefined || (sitePageConfig.source_graph_subdirectory || '') === (pageDirectory || ''))
     );
+    const sitePageConfig =
+      matchingPageConfigs.find(sitePageConfig => sitePageConfig.file_type === 'md' || !sitePageConfig.file_type)
+      ?? matchingPageConfigs[0];
 
     if (!sitePageConfig) {
       return null;

@@ -49,6 +49,13 @@ interface MatchingPage {
   modifiedTimeMs?: number;
 }
 
+const sourcePageFallbackPath = (page: { title: string; directory: string; file_type: string }): string => {
+  const filename = page.file_type === 'excalidraw'
+    ? `${page.title}.excalidraw.md`
+    : `${page.title}.${page.file_type || 'md'}`;
+  return page.directory ? `${page.directory}/${filename}` : filename;
+};
+
 interface CreateOrEditSiteModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -409,8 +416,8 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     setSelectedInitialPage({
       title: page.title,
       directory: page.directory,
-      file_type: 'md',
-      fullPath: page.fullPath || (page.directory ? `${page.directory}/${page.title}.md` : `${page.title}.md`),
+      file_type: page.file_type as SourcePageFileInfo['file_type'],
+      fullPath: page.fullPath || sourcePageFallbackPath(page),
       modifiedTimeMs: page.modifiedTimeMs ?? 0
     });
     setIsEditingInitialPage(false);
@@ -683,8 +690,8 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       setSelectedInitialPage({
         title: foundPage.title,
         directory: foundPage.directory,
-        file_type: 'md',
-        fullPath: foundPage.fullPath || (foundPage.directory ? `${foundPage.directory}/${foundPage.title}.md` : `${foundPage.title}.md`),
+        file_type: foundPage.file_type as SourcePageFileInfo['file_type'],
+        fullPath: foundPage.fullPath || sourcePageFallbackPath(foundPage),
         modifiedTimeMs: foundPage.modifiedTimeMs ?? 0
       });
       setIsEditingInitialPage(false);
@@ -985,4 +992,3 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
 };
 
 export default CreateOrEditSiteModal;
-

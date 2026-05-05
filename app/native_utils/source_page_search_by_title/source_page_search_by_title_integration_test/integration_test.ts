@@ -46,7 +46,7 @@ test('source_page_search_by_title integration', (t) => {
     const e = all[0];
     st.ok(typeof e.title === 'string', 'title is string');
     st.ok(typeof e.directory === 'string', 'directory is string');
-    st.equal(e.file_type, 'md', 'file_type is md');
+    st.ok(typeof e.file_type === 'string', 'file_type is string');
     st.ok(typeof e.fullPath === 'string', 'fullPath is string');
     st.ok(typeof e.modifiedTimeMs === 'number', 'modifiedTimeMs is number');
     st.end();
@@ -57,10 +57,27 @@ test('source_page_search_by_title integration', (t) => {
     st.ok(main, 'should contain "main page"');
     const t009 = all.find(x => x.title.toLowerCase() === 't009 - page conf graph depth');
     st.ok(t009, 'should contain "t009 - page conf graph depth"');
+    st.equal(t009?.file_type, 'md', 'regular markdown page is file_type md');
+    st.end();
+  });
+
+  t.test('classifies Obsidian Excalidraw markdown as excalidraw', (st) => {
+    const flower = all.find(x =>
+      x.title === 't006 --- meadow-flower' &&
+      x.directory === 't006' &&
+      x.file_type === 'excalidraw'
+    );
+    st.ok(flower, 'should contain the meadow flower drawing as an excalidraw page');
+    st.equal(flower?.fullPath, 't006/t006 --- meadow-flower.excalidraw.md');
+    const staleMdShape = all.find(x =>
+      x.title === 't006 --- meadow-flower.excalidraw' &&
+      x.directory === 't006' &&
+      x.file_type === 'md'
+    );
+    st.notOk(staleMdShape, 'should not expose the drawing as a markdown page with .excalidraw in the title');
     st.end();
   });
 
   t.end();
 });
-
 

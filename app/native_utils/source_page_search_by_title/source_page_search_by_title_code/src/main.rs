@@ -22,7 +22,8 @@ struct SourcePageFileInfo {
     title: String,
     /// Subdirectory (relative to root). Empty string means root.
     directory: String,
-    /// Always "md" for this utility.
+    /// Logical file type. Excalidraw drawings are stored as `.excalidraw.md`
+    /// files, but exposed as file_type "excalidraw".
     file_type: String,
     /// Path relative to root, using forward slashes.
     #[serde(rename = "fullPath")]
@@ -44,6 +45,19 @@ fn is_markdown_file(path: &Path) -> bool {
         Some(ext) => ext.eq_ignore_ascii_case("md"),
         None => false,
     }
+}
+
+fn is_excalidraw_markdown(content: &str) -> bool {
+    if !content.starts_with("---") {
+        return false;
+    }
+    let after_open = &content[3..];
+    let close_rel = match after_open.find("\n---") {
+        Some(idx) => idx,
+        None => return false,
+    };
+    let frontmatter = &after_open[..close_rel];
+    frontmatter.contains("excalidraw-plugin: parsed")
 }
 
 fn strip_block_id_suffix(title: &str) -> &str {
@@ -102,7 +116,17 @@ fn main() -> Result<()> {
             Some(s) => os_str_to_string_lossy(s),
             None => continue,
         };
-        let title = strip_block_id_suffix(&file_stem).to_string();
+        let mut title = strip_block_id_suffix(&file_stem).to_string();
+        let mut file_type = "md".to_string();
+
+        if let Ok(content) = std::fs::read_to_string(path) {
+            if is_excalidraw_markdown(&content) {
+                file_type = "excalidraw".to_string();
+                if let Some(stripped) = title.strip_suffix(".excalidraw") {
+                    title = stripped.to_string();
+                }
+            }
+        }
 
         let directory = rel
             .parent()
@@ -114,7 +138,7 @@ fn main() -> Result<()> {
         results.push(SourcePageFileInfo {
             title,
             directory,
-            file_type: "md".to_string(),
+            file_type,
             full_path: full_path,
             modified_time_ms: modified_time_ms(path),
         });
@@ -132,5 +156,3 @@ fn main() -> Result<()> {
     print!("{}", out);
     Ok(())
 }
-
-
