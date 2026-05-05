@@ -66,10 +66,18 @@
       x: 0,
       y: 0,
       dragging: false,
+      pinching: false,
       dragStartX: 0,
       dragStartY: 0,
       startX: 0,
       startY: 0,
+      activePointers: new Map(),
+      pinchStartDistance: 0,
+      pinchStartZoom: 1,
+      pinchStartMidX: 0,
+      pinchStartMidY: 0,
+      pinchStartX: 0,
+      pinchStartY: 0,
     };
 
     var viewer = document.createElement('div');
@@ -100,29 +108,88 @@
       applyTransform();
     }
 
+    function isFullscreen() {
+      return container.classList.contains(FULLSCREEN_CLASS);
+    }
+
+    function getActivePointerList() {
+      return Array.from(state.activePointers.values());
+    }
+
+    function pointerDistance(a, b) {
+      var dx = b.x - a.x;
+      var dy = b.y - a.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function pointerMidpoint(a, b) {
+      return {
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+      };
+    }
+
+    function beginPan(pointer) {
+      state.dragging = true;
+      state.pinching = false;
+      state.dragStartX = pointer.x;
+      state.dragStartY = pointer.y;
+      state.startX = state.x;
+      state.startY = state.y;
+      viewer.classList.add('is-panning');
+    }
+
+    function beginPinch() {
+      var pointers = getActivePointerList();
+      if (pointers.length < 2) return;
+      var midpoint = pointerMidpoint(pointers[0], pointers[1]);
+      state.dragging = false;
+      state.pinching = true;
+      state.pinchStartDistance = pointerDistance(pointers[0], pointers[1]) || 1;
+      state.pinchStartZoom = state.zoom;
+      state.pinchStartMidX = midpoint.x;
+      state.pinchStartMidY = midpoint.y;
+      state.pinchStartX = state.x;
+      state.pinchStartY = state.y;
+      viewer.classList.add('is-panning');
+    }
+
+    function stopGestureIfIdle() {
+      if (state.activePointers.size > 0) return;
+      state.dragging = false;
+      state.pinching = false;
+      viewer.classList.remove('is-panning');
+    }
+
     var fullscreenBtn = makeButton('meadow-excalidraw-control meadow-excalidraw-fullscreen-btn', '⛶', 'Fill browser window', function (btn) {
       var on = container.classList.toggle(FULLSCREEN_CLASS);
       document.body.classList.toggle(BODY_CLASS, on);
       btn.textContent = on ? '×' : '⛶';
       btn.title = on ? 'Exit window fill' : 'Fill browser window';
       btn.setAttribute('aria-label', btn.title);
+      state.activePointers.clear();
+      stopGestureIfIdle();
+      resetView();
     });
 
     var toolbar = document.createElement('div');
     toolbar.className = 'meadow-excalidraw-controls';
-    toolbar.append(
-      fullscreenBtn,
+    var zoomControls = document.createElement('div');
+    zoomControls.className = 'meadow-excalidraw-zoom-controls';
+    zoomControls.append(
       makeButton('meadow-excalidraw-control', '−', 'Zoom out', function () { setZoom(state.zoom / ZOOM_STEP); }),
       zoomLabel,
       makeButton('meadow-excalidraw-control', '+', 'Zoom in', function () { setZoom(state.zoom * ZOOM_STEP); }),
       makeButton('meadow-excalidraw-control', 'Fit', 'Fit drawing', resetView)
     );
+    toolbar.append(fullscreenBtn, zoomControls);
 
     viewer.append(surface, toolbar);
     container.replaceChildren(viewer);
     applyTransform();
 
     viewer.addEventListener('wheel', function (e) {
+      if (!isFullscreen()) return;
       e.preventDefault();
       setZoom(state.zoom * (e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP));
     }, { passive: false });
@@ -146,31 +213,51 @@
     });
 
     viewer.addEventListener('pointerdown', function (e) {
+      if (!isFullscreen()) return;
       if (e.button !== 0) return;
       if (e.target.closest && e.target.closest('.meadow-excalidraw-controls')) return;
       if (closestSvgLink(e.target)) return;
-      state.dragging = true;
-      state.dragStartX = e.clientX;
-      state.dragStartY = e.clientY;
-      state.startX = state.x;
-      state.startY = state.y;
-      viewer.classList.add('is-panning');
+      e.preventDefault();
+      state.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       viewer.setPointerCapture(e.pointerId);
+      if (state.activePointers.size === 1) {
+        beginPan({ x: e.clientX, y: e.clientY });
+      } else if (state.activePointers.size === 2) {
+        beginPinch();
+      }
     });
 
     viewer.addEventListener('pointermove', function (e) {
-      if (!state.dragging) return;
-      state.x = state.startX + e.clientX - state.dragStartX;
-      state.y = state.startY + e.clientY - state.dragStartY;
-      applyTransform();
+      if (!state.activePointers.has(e.pointerId)) return;
+      e.preventDefault();
+      state.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (state.pinching && state.activePointers.size >= 2) {
+        var pointers = getActivePointerList();
+        var distance = pointerDistance(pointers[0], pointers[1]) || 1;
+        var midpoint = pointerMidpoint(pointers[0], pointers[1]);
+        state.zoom = clamp(state.pinchStartZoom * (distance / state.pinchStartDistance), MIN_ZOOM, MAX_ZOOM);
+        state.x = state.pinchStartX + midpoint.x - state.pinchStartMidX;
+        state.y = state.pinchStartY + midpoint.y - state.pinchStartMidY;
+        applyTransform();
+      } else if (state.dragging) {
+        state.x = state.startX + e.clientX - state.dragStartX;
+        state.y = state.startY + e.clientY - state.dragStartY;
+        applyTransform();
+      }
     });
 
     function stopPanning(e) {
-      if (!state.dragging) return;
-      state.dragging = false;
-      viewer.classList.remove('is-panning');
+      var hadPointer = state.activePointers.delete(e.pointerId);
       if (viewer.hasPointerCapture(e.pointerId)) {
         viewer.releasePointerCapture(e.pointerId);
+      }
+      if (!hadPointer) return;
+      if (state.activePointers.size >= 2) {
+        beginPinch();
+      } else if (state.activePointers.size === 1) {
+        beginPan(getActivePointerList()[0]);
+      } else {
+        stopGestureIfIdle();
       }
     }
 

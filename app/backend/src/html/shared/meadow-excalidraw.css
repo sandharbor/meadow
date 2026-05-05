@@ -95,11 +95,15 @@
   width: 100%;
   min-height: min(72vh, 860px);
   overflow: hidden;
+  touch-action: auto;
+}
+
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-viewer {
   touch-action: none;
   cursor: grab;
 }
 
-.meadow-excalidraw-viewer.is-panning {
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-viewer.is-panning {
   cursor: grabbing;
 }
 
@@ -128,6 +132,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  max-width: calc(100% - 16px);
   padding: 4px;
   border: 1px solid #d0d0d0;
   border-radius: 5px;
@@ -138,6 +143,16 @@
   transform: translateY(-4px);
   transition: opacity 0.15s ease, transform 0.15s ease;
   z-index: 1;
+}
+
+.meadow-excalidraw-zoom-controls {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-zoom-controls {
+  display: inline-flex;
 }
 
 .meadow-excalidraw-page:hover .meadow-excalidraw-controls,
@@ -218,13 +233,22 @@
 
 .meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-controls {
   background: rgba(255, 255, 255, 0.95);
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
 }
 
 @media (max-width: 680px) {
   .meadow-excalidraw-controls {
-    left: 8px;
-    right: 8px;
     flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-controls {
+    left: auto;
+    right: 8px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
   }
 }
 
