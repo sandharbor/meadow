@@ -110,6 +110,12 @@ export interface ExcalidrawTrackedLink {
   normalizedText?: string;
 }
 
+export interface ExcalidrawEmbedOptions {
+  enableEmbeddedLinks?: boolean;
+  enableFullscreenButton?: boolean;
+  enableOpenDedicatedPage?: boolean;
+}
+
 export function buildExcalidrawClientLinkData(args: {
   excalidrawPageIdent: string; // `<dir>/<title>.excalidraw` (or `/<title>.excalidraw` for root)
   hostPageDirectory: string; // directory of the page rendering the drawing's HTML
@@ -303,6 +309,8 @@ export interface LinkOrImageHtmlOptions {
   highlightDoNotLinkPageName?: string;
   currentPageDirectory?: string;  // The directory of the current page being rendered
   linkResolutionMap?: Record<string, LinkResolvedInfo>;  // Pre-computed link resolution map
+  allLinkResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>;
+  excalidrawEmbedOptions?: ExcalidrawEmbedOptions;
 }
 
 export function linkOrImageHtml(
@@ -323,6 +331,8 @@ export function linkOrImageHtml(
     highlightDoNotLinkPageName,
     currentPageDirectory = '',
     linkResolutionMap,
+    allLinkResolutionMaps,
+    excalidrawEmbedOptions,
   } = options;
 
   const linkInfo = linkTextToLinkInfo(linkText);
@@ -434,6 +444,12 @@ export function linkOrImageHtml(
       // because Excalidraw's exportToSvg only wraps elements in `<a>` when
       // `element.link` is set, and the init script only sets `link` from
       // entries in the link map.
+      const embedOptions = {
+        enableEmbeddedLinks: false,
+        enableFullscreenButton: false,
+        enableOpenDedicatedPage: true,
+        ...excalidrawEmbedOptions,
+      };
       const styleAttr = sizeConstraint ? ` style="max-width: ${sizeConstraint}px"` : '';
       const drawingTitle = imageName.replace(/\.excalidraw$/i, '');
       // The standalone Excalidraw HTML lives at the *normalized* title (the
@@ -448,7 +464,43 @@ export function linkOrImageHtml(
           : `${drawingHtmlName}.html`)
       );
       const mdSrc = `${encodedImagePath}.md`;
-      return `<a class="meadow-excalidraw-embed-link" href="${pageHref}"${styleAttr} title="Open ${drawingHtmlName}"><span class="meadow-excalidraw-embed" data-meadow-excalidraw-src="${mdSrc}"><span class="meadow-excalidraw-loading">Loading drawing…</span></span><span class="meadow-excalidraw-open-icon" aria-hidden="true">⤢</span></a>`;
+      const titleAttr = escapeHtmlAttribute(`Open ${drawingHtmlName}`);
+
+      if (!embedOptions.enableEmbeddedLinks &&
+          !embedOptions.enableFullscreenButton &&
+          embedOptions.enableOpenDedicatedPage) {
+        return `<a class="meadow-excalidraw-embed-link" href="${pageHref}"${styleAttr} title="${titleAttr}"><span class="meadow-excalidraw-embed" data-meadow-excalidraw-src="${mdSrc}"><span class="meadow-excalidraw-loading">Loading drawing…</span></span><span class="meadow-excalidraw-open-icon" aria-hidden="true">⤢</span></a>`;
+      }
+
+      let linksAttr = '';
+      let untrackedAttr = '';
+      if (embedOptions.enableEmbeddedLinks) {
+        const excalidrawPageIdent = imageSourceDir
+          ? `${imageSourceDir}/${drawingTitle}.excalidraw`
+          : `/${drawingTitle}.excalidraw`;
+        const { tracked, untracked } = buildExcalidrawClientLinkData({
+          excalidrawPageIdent,
+          hostPageDirectory: currentPageDirectory,
+          sitePageConfigs,
+          allLinkResolutionMaps,
+          siteConfig,
+          siteSlug,
+        });
+        if (Object.keys(tracked).length > 0) {
+          linksAttr = ` data-meadow-excalidraw-links="${escapeHtmlAttribute(JSON.stringify(tracked))}"`;
+        }
+        if (untracked.length > 0) {
+          untrackedAttr = ` data-meadow-excalidraw-untracked-links="${escapeHtmlAttribute(JSON.stringify(untracked))}"`;
+        }
+      }
+
+      const fullscreenClass = embedOptions.enableFullscreenButton ? ' meadow-excalidraw-can-fullscreen' : '';
+      const fullscreenAttr = embedOptions.enableFullscreenButton ? ' data-meadow-excalidraw-fullscreen="true"' : '';
+      const embedHtml = `<span class="meadow-excalidraw-embed${fullscreenClass}" data-meadow-excalidraw-src="${mdSrc}"${linksAttr}${untrackedAttr}${fullscreenAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></span>`;
+      const openHtml = embedOptions.enableOpenDedicatedPage
+        ? `<a class="meadow-excalidraw-open-icon meadow-excalidraw-open-link" href="${pageHref}" title="${titleAttr}" aria-label="${titleAttr}">⤢</a>`
+        : '';
+      return `<span class="meadow-excalidraw-embed-frame"${styleAttr}>${embedHtml}${openHtml}</span>`;
     }
 
     if (sizeConstraint) {

@@ -21,6 +21,7 @@ import { parsePageConfig } from '../../../shared_code/utils/sitePageConfigUtils.
 import { normalizePageTitle } from '../html/shared.js';
 import { loadSiteConfig } from './siteConfigUtils.js';
 import { logger } from './logging/backendLoggingUtils.js';
+import { getSiteDirectory } from '../routes/siteConfigRoutes.js';
 
 /**
  * Get the HTML file path for a page by looking up its subdirectory from
@@ -57,7 +58,10 @@ export function getHtmlPathForPage(
     }
 
     const siteConfig = loadSiteConfig(siteDirectory);
-    const siteSlug = path.basename(siteDirectory);
+    const inferredSiteSlug = path.basename(siteDirectory);
+    const siteSlug = path.resolve(getSiteDirectory(inferredSiteSlug)) === path.resolve(siteDirectory)
+      ? inferredSiteSlug
+      : undefined;
 
     const normalizedTitle = normalizePageTitle(title, siteConfig, siteSlug);
 

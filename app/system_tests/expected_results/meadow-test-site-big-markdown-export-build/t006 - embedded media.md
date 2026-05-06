@@ -42,7 +42,15 @@
 
 ![[t006 --- meadow-flower.excalidraw]]
 
-![[t006 --- meadow-flower.excalidraw|78]]
+with a **container directive** that causes the links to be functional
+
+:::meadow
+![[t006 --- meadow-flower.excalidraw|300]]
+
+enableEmbeddedLinks: true
+enableFullscreenButton: true
+enableOpenDedicatedPage: false
+:::
 
 | test                                  |
 | ------------------------------------- |
@@ -75,7 +83,6 @@ pagespecs:
         - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
         - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
         - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
-        - relativeLinkPath: t006/t006 --- meadow-flower.html
         - relativeLinkPath: t006/t006 --- meadow-flower.html
         - relativeLinkPath: t006/t006 --- meadow-flower.html
         - relativeLinkPath: t006/t006 --- meadow-flower.svg

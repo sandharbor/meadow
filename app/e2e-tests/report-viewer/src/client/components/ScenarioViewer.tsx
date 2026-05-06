@@ -454,6 +454,26 @@ export default function ScenarioViewer() {
     return snapshotIndex
   }, [])
 
+  const getSnapshotMessageIndexAtOrBefore = useCallback((messages: SnapshotMessage[], realTime: number): number => {
+    let messageIndex = -1
+    for (let i = 0; i < messages.length; i++) {
+      if (new Date(messages[i].timestamp).getTime() <= realTime) messageIndex = i
+      else break
+    }
+    return messageIndex
+  }, [])
+
+  const timelineSnapshotMessages = useMemo(() => {
+    const tickSnapshots = ticks
+      .filter((tick) => tick.isSnapshot && tick.snapshotMessage)
+      .map((tick) => ({
+        timestamp: tick.timestamp,
+        message: tick.snapshotMessage!,
+      }))
+
+    return tickSnapshots.length > 0 ? tickSnapshots : snapshotMessages
+  }, [snapshotMessages, ticks])
+
   const getS3SnapshotIndexForTick = useCallback((tick: ProcessedTick, fallbackIndex: number): number => {
     if (!tick.s3Changed || s3Snapshots.length === 0) return fallbackIndex
 
@@ -684,7 +704,10 @@ export default function ScenarioViewer() {
       s3Idx = getS3SnapshotIndexForTick(tick, s3Idx)
       if (s3Idx !== currentS3Index) setCurrentS3Index(s3Idx)
     }
-  }, [currentTickIndex, ticks, snapshots, stateSnapshots, s3Snapshots, currentStateIndex, currentS3Index, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick])
+
+    const messageIdx = getSnapshotMessageIndexAtOrBefore(timelineSnapshotMessages, tickTime)
+    setCurrentMessageIndex((current) => current === messageIdx ? current : messageIdx)
+  }, [currentTickIndex, ticks, snapshots, stateSnapshots, s3Snapshots, currentStateIndex, currentS3Index, timelineSnapshotMessages, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick, getSnapshotMessageIndexAtOrBefore])
 
   // --- Video sync ---
 
@@ -731,12 +754,7 @@ export default function ScenarioViewer() {
     }
 
     // Update snapshot indicator
-    let msgIdx = -1
-    for (let i = 0; i < snapshotMessages.length; i++) {
-      const snapTime = new Date(snapshotMessages[i].timestamp).getTime()
-      if (snapTime <= realTime) msgIdx = i
-      else break
-    }
+    const msgIdx = getSnapshotMessageIndexAtOrBefore(timelineSnapshotMessages, realTime)
     setCurrentMessageIndex(msgIdx)
 
     // Update tick index
@@ -763,7 +781,7 @@ export default function ScenarioViewer() {
       }
       setHighlightedLogIndex(closest)
     }
-  }, [manifest, snapshots, stateSnapshots, s3Snapshots, snapshotMessages, ticks, toRealTime, logFilter, levelFilter, currentSnapshotIndex, currentStateIndex, currentS3Index, currentTickIndex, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick])
+  }, [manifest, snapshots, stateSnapshots, s3Snapshots, timelineSnapshotMessages, ticks, toRealTime, logFilter, levelFilter, currentSnapshotIndex, currentStateIndex, currentS3Index, currentTickIndex, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick, getSnapshotMessageIndexAtOrBefore])
 
   // Video timeupdate handler
   const handleTimeUpdate = useCallback(() => {
@@ -789,8 +807,8 @@ export default function ScenarioViewer() {
     let searchText: string
     if (nearEnd) {
       searchText = '__END__'
-    } else if (currentMessageIndex >= 0 && snapshotMessages[currentMessageIndex]) {
-      searchText = snapshotMessages[currentMessageIndex].message
+    } else if (currentMessageIndex >= 0 && timelineSnapshotMessages[currentMessageIndex]) {
+      searchText = timelineSnapshotMessages[currentMessageIndex].message
     } else {
       searchText = '__START__'
     }
@@ -826,7 +844,7 @@ export default function ScenarioViewer() {
         }
       }
     }
-  }, [currentMessageIndex, snapshotMessages, testSource])
+  }, [currentMessageIndex, timelineSnapshotMessages, testSource])
 
   // --- Auto-scroll highlighted log ---
 
@@ -1219,7 +1237,7 @@ export default function ScenarioViewer() {
       if (!video || !video.duration) return
 
       const navPoints = [0]
-      for (const snap of snapshotMessages) {
+      for (const snap of timelineSnapshotMessages) {
         const videoSec = toVideoTime(new Date(snap.timestamp).getTime())
         if (videoSec > 0 && videoSec < video.duration) {
           navPoints.push(videoSec)
@@ -1263,7 +1281,7 @@ export default function ScenarioViewer() {
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [snapshotMessages, toVideoTime, hasTicks, navigateTick])
+  }, [timelineSnapshotMessages, toVideoTime, hasTicks, navigateTick])
 
   // --- Close level dropdown on outside click ---
 
@@ -1295,19 +1313,19 @@ export default function ScenarioViewer() {
   // --- Health data ---
 
   const healthData = useMemo(() => {
-    if (!manifest?.startTime || !manifest?.endTime || snapshotMessages.length === 0) {
+    if (!manifest?.startTime || !manifest?.endTime || timelineSnapshotMessages.length === 0) {
       return computeHealthData([], [], [], 0, 0)
     }
     const startMs = new Date(manifest.startTime).getTime()
     const endMs = new Date(manifest.endTime).getTime()
     return computeHealthData(
-      snapshotMessages.map(s => s.timestamp),
+      timelineSnapshotMessages.map(s => s.timestamp),
       manifest.logs,
       uncommittedEntries,
       startMs,
       endMs - startMs
     )
-  }, [manifest, snapshotMessages, uncommittedEntries])
+  }, [manifest, timelineSnapshotMessages, uncommittedEntries])
 
   const handleHealthClick = useCallback((pct: number) => {
     const video = videoRef.current
@@ -1366,8 +1384,8 @@ export default function ScenarioViewer() {
     }
 
     // Snapshot markers (larger, darker)
-    for (let i = 0; i < snapshotMessages.length; i++) {
-      const snapTime = new Date(snapshotMessages[i].timestamp).getTime()
+    for (let i = 0; i < timelineSnapshotMessages.length; i++) {
+      const snapTime = new Date(timelineSnapshotMessages[i].timestamp).getTime()
       const videoSec = toVideoTime(snapTime)
       const pct = (videoSec / video.duration) * 100
       if (pct >= 0 && pct <= 100) {
@@ -1425,8 +1443,19 @@ export default function ScenarioViewer() {
             onTimeUpdate={handleTimeUpdate}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
-            onSeeked={() => { autoFollowRef.current = true }}
-            onLoadedMetadata={() => { if (videoRef.current) videoRef.current.playbackRate = playSpeed / 100 }}
+            onSeeked={() => {
+              autoFollowRef.current = true
+              syncToVideoTime()
+            }}
+            onLoadedMetadata={() => {
+              const video = videoRef.current
+              if (!video) return
+              video.playbackRate = playSpeed / 100
+              if (video.duration) {
+                setTimelinePercent((video.currentTime / video.duration) * 100)
+                setTimeDisplay(`${formatTime(video.currentTime)} / ${formatTime(video.duration)}`)
+              }
+            }}
           >
             <source src={`${API}/video.webm`} type="video/webm" />
           </video>
@@ -1653,7 +1682,9 @@ export default function ScenarioViewer() {
               <>
                 <span className="text-neutral-400">Snapshot:</span>
                 <span className="text-brand-500 font-bold">
-                  {currentMessageIndex >= 0 ? snapshotMessages[currentMessageIndex].message : '--'}
+                  {currentMessageIndex >= 0 && timelineSnapshotMessages[currentMessageIndex]
+                    ? timelineSnapshotMessages[currentMessageIndex].message
+                    : '--'}
                 </span>
               </>
             )}
@@ -1743,9 +1774,9 @@ export default function ScenarioViewer() {
               })()}
             </div>
           )}
-          {snapshotDropdownOpen && !hasTicks && snapshotMessages.length > 0 && (
+          {snapshotDropdownOpen && !hasTicks && timelineSnapshotMessages.length > 0 && (
             <div className="absolute top-full left-0 right-0 z-20 bg-white border border-neutral-200 shadow-lg rounded-b overflow-hidden">
-              {snapshotMessages.map((snap, i) => (
+              {timelineSnapshotMessages.map((snap, i) => (
                 <button
                   key={i}
                   className={`w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-brand-50 transition-colors cursor-pointer ${

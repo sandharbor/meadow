@@ -61,6 +61,8 @@
   }
 
   function setupStandaloneViewer(container, svg) {
+    var blockViewer = container.classList.contains('meadow-excalidraw-page');
+    var wrapperTag = blockViewer ? 'div' : 'span';
     var state = {
       zoom: 1,
       x: 0,
@@ -80,10 +82,10 @@
       pinchStartY: 0,
     };
 
-    var viewer = document.createElement('div');
+    var viewer = document.createElement(wrapperTag);
     viewer.className = 'meadow-excalidraw-viewer';
 
-    var surface = document.createElement('div');
+    var surface = document.createElement(wrapperTag);
     surface.className = 'meadow-excalidraw-surface';
     surface.appendChild(svg);
 
@@ -172,9 +174,9 @@
       resetView();
     });
 
-    var toolbar = document.createElement('div');
+    var toolbar = document.createElement(wrapperTag);
     toolbar.className = 'meadow-excalidraw-controls';
-    var zoomControls = document.createElement('div');
+    var zoomControls = document.createElement(wrapperTag);
     zoomControls.className = 'meadow-excalidraw-zoom-controls';
     zoomControls.append(
       makeButton('meadow-excalidraw-control', '−', 'Zoom out', function () { setZoom(state.zoom / ZOOM_STEP); }),
@@ -279,22 +281,51 @@
     }
   }
 
+  function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function extractMarkdownSection(md, title) {
+    var match = md.match(new RegExp('##\\s+' + escapeRegExp(title) + '\\s*\\n([\\s\\S]*?)(?=\\n##\\s|\\n%%|$)'));
+    return match ? match[1] : '';
+  }
+
+  function parseMarkdownSectionMap(md, title, parseLine) {
+    var map = new Map();
+    var section = extractMarkdownSection(md, title);
+    if (!section) return map;
+    var lines = section.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var entry = parseLine(lines[i]);
+      if (!entry) continue;
+      map.set(entry.id, entry.value);
+    }
+    return map;
+  }
+
   // Parses the `## Text Elements` block of an Obsidian-Excalidraw .md and
   // returns a Map from element-id (the `^xxxx` block id) to its rendered
   // text (which may contain `[[wikilinks]]`). Obsidian uses this section as
   // the editable representation of the in-drawing text — scene elements with
   // `hasTextLink: true` get their link target from here.
   function parseTextElementsSection(md) {
-    var map = new Map();
-    var match = md.match(/##\s+Text Elements\s*\n([\s\S]*?)(?=\n##\s|\n%%|$)/);
-    if (!match) return map;
-    var lines = match[1].split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      var m = lines[i].match(/^(.+?)\s+\^([A-Za-z0-9_-]+)\s*$/);
-      if (!m) continue;
-      map.set(m[2], m[1].trim());
-    }
-    return map;
+    return parseMarkdownSectionMap(md, 'Text Elements', function (line) {
+      var m = line.match(/^(.+?)\s+\^([A-Za-z0-9_-]+)\s*$/);
+      if (!m) return null;
+      return { id: m[2], value: m[1].trim() };
+    });
+  }
+
+  // Parses the `## Element Links` block of an Obsidian-Excalidraw .md and
+  // returns a Map from element-id to its raw Obsidian-side link value. Text
+  // links usually get represented in `## Text Elements`; non-text element
+  // links live here and in the compressed scene's `element.link` field.
+  function parseElementLinksSection(md) {
+    return parseMarkdownSectionMap(md, 'Element Links', function (line) {
+      var m = line.match(/^([A-Za-z0-9_-]+):\s*(.+?)\s*$/);
+      if (!m) return null;
+      return { id: m[1], value: m[2].trim() };
+    });
   }
 
   // Extracts the inner-link text from an Obsidian-side wikilink like
@@ -307,39 +338,54 @@
     return m[1].trim();
   }
 
-  // Stamps `link` onto text elements whose Obsidian-side form is a wikilink,
-  // using a server-resolved `linkMap` from the placeholder container. The
-  // map keys are the original wikilink-inner-text strings produced by
-  // Meadow's working graph; values are `{ href, normalizedText? }`. When
-  // `normalizedText` is present the page-title hook renamed the target, so
-  // we update the rendered label to match (aliased wikilinks keep the alias).
-  // Targets that resolve but aren't whitelisted are listed in `untrackedSet`
-  // — we replace their text with "link not tracked" so readers see the same
-  // affordance regular pages use.
-  function applyTextElementLinks(scene, md, linkMap, untrackedSet) {
+  function applyResolvedWikilinkToElement(el, src, linkMap, untrackedSet) {
+    var inner = extractWikilinkInner(src);
+    if (!inner) return;
+
+    var entry = linkMap[inner];
+    if (entry && entry.href) {
+      el.link = entry.href;
+      if (el.type === 'text' && entry.normalizedText) {
+        el.text = entry.normalizedText;
+        el.originalText = entry.normalizedText;
+      }
+      return;
+    }
+
+    // If a wikilink couldn't become a safe published-site href, do not leave
+    // Excalidraw's raw `[[Target]]` string on the SVG anchor. That matters for
+    // untracked links and for inline embeds, where the link map is
+    // intentionally absent so the outer embed link owns the click.
+    el.link = null;
+    if (el.type === 'text' && untrackedSet[inner]) {
+      el.text = 'link not tracked';
+      el.originalText = 'link not tracked';
+    }
+  }
+
+  // Stamps resolved `link` values onto drawing elements whose Obsidian-side
+  // form is a wikilink, using a server-resolved `linkMap` from the placeholder
+  // container. Text elements get their source from `## Text Elements`;
+  // non-text elements get theirs from `## Element Links` or the compressed
+  // scene's raw `element.link` field.
+  function applyDrawingLinks(scene, md, linkMap, untrackedSet) {
     if (!scene || !scene.elements) return;
     var textMap = parseTextElementsSection(md);
+    var elementLinkMap = parseElementLinksSection(md);
     for (var i = 0; i < scene.elements.length; i++) {
       var el = scene.elements[i];
-      if (el.type !== 'text') continue;
-      if (!el.hasTextLink) continue;
-      var src = textMap.get(el.id);
+      var src = null;
+      if (el.type === 'text' && el.hasTextLink) {
+        src = textMap.get(el.id);
+      }
+      if (!src) {
+        src = elementLinkMap.get(el.id);
+      }
+      if (!src && el.link) {
+        src = el.link;
+      }
       if (!src) continue;
-      var inner = extractWikilinkInner(src);
-      if (!inner) continue;
-      var entry = linkMap[inner];
-      if (entry && entry.href) {
-        if (!el.link) el.link = entry.href;
-        if (entry.normalizedText) {
-          el.text = entry.normalizedText;
-          el.originalText = entry.normalizedText;
-        }
-        continue;
-      }
-      if (untrackedSet[inner]) {
-        el.text = 'link not tracked';
-        el.originalText = 'link not tracked';
-      }
+      applyResolvedWikilinkToElement(el, src, linkMap, untrackedSet);
     }
   }
 
@@ -386,7 +432,7 @@
         container.textContent = 'Excalidraw drawing data is missing or unreadable.';
         return;
       }
-      applyTextElementLinks(scene, md, readLinkMap(container), readUntrackedSet(container));
+      applyDrawingLinks(scene, md, readLinkMap(container), readUntrackedSet(container));
       var svg = await window.MeadowExcalidraw.exportToSvg({
         elements: scene.elements || [],
         appState: Object.assign({ exportBackground: true, exportWithDarkMode: false }, scene.appState || {}),
@@ -396,9 +442,10 @@
       // Keep the intrinsic width/height attributes so the SVG has a real size
       // even when its container is `inline-block` (the embed-link case). CSS
       // (`max-width: 100%; height: auto`) handles responsive shrinking.
-      // Standalone pages get a fullscreen toggle. Inline embeds (rendered as
-      // anchors elsewhere) don't go through this path.
-      if (container.classList.contains('meadow-excalidraw-page')) {
+      // Standalone pages always get a fullscreen toggle; embeds opt in via
+      // a Meadow container directive.
+      if (container.classList.contains('meadow-excalidraw-page') ||
+          container.getAttribute('data-meadow-excalidraw-fullscreen') === 'true') {
         setupStandaloneViewer(container, svg);
       } else {
         container.replaceChildren(svg);
@@ -415,7 +462,10 @@
 
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
-      var fs = document.querySelector('.meadow-excalidraw-page.' + FULLSCREEN_CLASS);
+      var fs = document.querySelector(
+        '.meadow-excalidraw-page.' + FULLSCREEN_CLASS +
+        ', .meadow-excalidraw-can-fullscreen.' + FULLSCREEN_CLASS
+      );
       if (!fs) return;
       var btn = fs.querySelector('.meadow-excalidraw-fullscreen-btn');
       if (btn) btn.click();

@@ -16,9 +16,10 @@
   height: auto;
 }
 
-/* ---------- Embedded thumbnail (links to the standalone page) ---------- */
+/* ---------- Embedded drawings ---------- */
 
-.meadow-excalidraw-embed-link {
+.meadow-excalidraw-embed-link,
+.meadow-excalidraw-embed-frame {
   position: relative;
   display: inline-block;
   border: 1px solid #e0e0e0;
@@ -28,22 +29,33 @@
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+.meadow-excalidraw-embed-link {
+  cursor: pointer;
+}
+
+.meadow-excalidraw-embed-frame {
+  color: inherit;
+}
+
 .meadow-excalidraw-embed-link:hover,
-.meadow-excalidraw-embed-link:focus {
+.meadow-excalidraw-embed-link:focus,
+.meadow-excalidraw-embed-frame:hover,
+.meadow-excalidraw-embed-frame:focus-within {
   border-color: #888;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   outline: none;
 }
 
-.meadow-excalidraw-embed-link .meadow-excalidraw-embed {
+.meadow-excalidraw-embed-link .meadow-excalidraw-embed,
+.meadow-excalidraw-embed-frame .meadow-excalidraw-embed {
   display: block;
 }
 
-.meadow-excalidraw-embed-link .meadow-excalidraw-embed > svg {
+.meadow-excalidraw-embed-link .meadow-excalidraw-embed > svg,
+.meadow-excalidraw-embed-frame .meadow-excalidraw-embed > svg {
   display: block;
   max-width: 100%;
   height: auto;
@@ -65,11 +77,14 @@
   font-size: 14px;
   line-height: 1;
   opacity: 0;
+  text-decoration: none;
   transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .meadow-excalidraw-embed-link:hover .meadow-excalidraw-open-icon,
-.meadow-excalidraw-embed-link:focus .meadow-excalidraw-open-icon {
+.meadow-excalidraw-embed-link:focus .meadow-excalidraw-open-icon,
+.meadow-excalidraw-embed-frame:hover .meadow-excalidraw-open-icon,
+.meadow-excalidraw-embed-frame:focus-within .meadow-excalidraw-open-icon {
   opacity: 1;
   color: #222;
   border-color: #888;
@@ -93,17 +108,22 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: min(72vh, 860px);
   overflow: hidden;
   touch-action: auto;
 }
 
-.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-viewer {
+.meadow-excalidraw-page .meadow-excalidraw-viewer {
+  min-height: min(72vh, 860px);
+}
+
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-viewer,
+.meadow-excalidraw-can-fullscreen.is-fullscreen .meadow-excalidraw-viewer {
   touch-action: none;
   cursor: grab;
 }
 
-.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-viewer.is-panning {
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-viewer.is-panning,
+.meadow-excalidraw-can-fullscreen.is-fullscreen .meadow-excalidraw-viewer.is-panning {
   cursor: grabbing;
 }
 
@@ -117,7 +137,8 @@
   will-change: transform;
 }
 
-.meadow-excalidraw-page svg {
+.meadow-excalidraw-page svg,
+.meadow-excalidraw-can-fullscreen svg {
   display: block;
   max-width: 100%;
   height: auto;
@@ -151,12 +172,15 @@
   gap: 4px;
 }
 
-.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-zoom-controls {
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-zoom-controls,
+.meadow-excalidraw-can-fullscreen.is-fullscreen .meadow-excalidraw-zoom-controls {
   display: inline-flex;
 }
 
 .meadow-excalidraw-page:hover .meadow-excalidraw-controls,
-.meadow-excalidraw-page:focus-within .meadow-excalidraw-controls {
+.meadow-excalidraw-page:focus-within .meadow-excalidraw-controls,
+.meadow-excalidraw-can-fullscreen:hover .meadow-excalidraw-controls,
+.meadow-excalidraw-can-fullscreen:focus-within .meadow-excalidraw-controls {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
@@ -199,8 +223,9 @@
   font-size: 16px;
 }
 
-/* Browser-window fullscreen on the standalone page only. */
-.meadow-excalidraw-page.is-fullscreen {
+/* Browser-window fullscreen for standalone pages and opted-in embeds. */
+.meadow-excalidraw-page.is-fullscreen,
+.meadow-excalidraw-can-fullscreen.is-fullscreen {
   position: fixed;
   inset: 0;
   margin: 0;
@@ -210,18 +235,21 @@
   background: rgba(0, 0, 0, 0.85);
 }
 
-.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-viewer {
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-viewer,
+.meadow-excalidraw-can-fullscreen.is-fullscreen .meadow-excalidraw-viewer {
   width: 100vw;
   height: 100vh;
   min-height: 100vh;
 }
 
-.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-surface {
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-surface,
+.meadow-excalidraw-can-fullscreen.is-fullscreen .meadow-excalidraw-surface {
   width: 100%;
   height: 100%;
 }
 
-.meadow-excalidraw-page.is-fullscreen svg {
+.meadow-excalidraw-page.is-fullscreen svg,
+.meadow-excalidraw-can-fullscreen.is-fullscreen svg {
   width: 100%;
   height: 100%;
   max-width: 100%;
@@ -231,7 +259,8 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
-.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-controls {
+.meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-controls,
+.meadow-excalidraw-can-fullscreen.is-fullscreen .meadow-excalidraw-controls {
   background: rgba(255, 255, 255, 0.95);
   opacity: 1;
   pointer-events: auto;
@@ -244,7 +273,8 @@
     justify-content: flex-end;
   }
 
-  .meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-controls {
+  .meadow-excalidraw-page.is-fullscreen .meadow-excalidraw-controls,
+  .meadow-excalidraw-can-fullscreen.is-fullscreen .meadow-excalidraw-controls {
     left: auto;
     right: 8px;
     flex-wrap: nowrap;

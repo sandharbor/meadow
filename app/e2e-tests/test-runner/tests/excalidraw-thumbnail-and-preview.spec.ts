@@ -110,6 +110,60 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   await snapshot("excalidraw drawing rendered inline in preview page");
   await addKeyFrame(excalidraw);
 
+  const directedEmbedFrame = previewFrame
+    .locator(".meadow-excalidraw-embed-frame")
+    .first();
+  await directedEmbedFrame.scrollIntoViewIfNeeded();
+  const directedEmbed = directedEmbedFrame
+    .locator(".meadow-excalidraw-can-fullscreen")
+    .first();
+  await expect(directedEmbed.locator("svg").first()).toBeVisible({
+    timeout: 30_000,
+  });
+  const directedDrawingLink = directedEmbed.locator(
+    'svg a[href="t006/t006%20---%20linked-from-excalidraw.html"]',
+  );
+  await expect(directedDrawingLink).toHaveCount(1);
+  await expect(
+    directedEmbed.locator(
+      'svg a[href="t006/page%20linked%20from%20Excalidraw%20from%20a%20non-text%20element.html"]',
+    ),
+  ).toHaveCount(1);
+  await expect(
+    directedEmbedFrame.locator(".meadow-excalidraw-open-link"),
+  ).toHaveCount(0);
+  await snapshot("directed excalidraw embed rendered with live links");
+  await addKeyFrame(excalidraw);
+
+  const directedFullscreenButton = directedEmbed
+    .locator(".meadow-excalidraw-fullscreen-btn")
+    .first();
+  await expect(directedFullscreenButton).toBeVisible();
+  await directedFullscreenButton.click();
+  await expect(directedEmbed).toHaveClass(/is-fullscreen/);
+  await page.waitForTimeout(750);
+  await snapshot("directed excalidraw embed fullscreen open");
+  await addKeyFrame(excalidraw);
+  await directedFullscreenButton.press("Escape");
+  await expect(directedEmbed).not.toHaveClass(/is-fullscreen/);
+
+  await directedDrawingLink.click();
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "t006 --- linked-from-excalidraw",
+    { timeout: 15_000 },
+  );
+  await snapshot("directed excalidraw embed link opened target");
+  await addKeyFrame(excalidraw);
+
+  await previewFrame
+    .getByRole("link", { name: "t006 - embedded media" })
+    .first()
+    .click();
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "t006 - embedded media",
+    { timeout: 15_000 },
+  );
+
   // Click the embed thumbnail — it's an `<a>` link to the standalone page.
   await embedLink.click();
   await expect(previewFrame.locator("h1").first()).toContainText(
@@ -129,6 +183,26 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
     '.meadow-excalidraw-page svg a[href="t006%20---%20linked-from-excalidraw.html"]',
   );
   await expect(standaloneDrawingLink).toHaveCount(1);
+
+  const nonTextElementDrawingLink = previewFrame.locator(
+    '.meadow-excalidraw-page svg a[href="page%20linked%20from%20Excalidraw%20from%20a%20non-text%20element.html"]',
+  );
+  await expect(nonTextElementDrawingLink).toHaveCount(1);
+
+  const [nonTextLinkedTab] = await Promise.all([
+    page.context().waitForEvent("page"),
+    nonTextElementDrawingLink.click({ modifiers: ["Meta"] }),
+  ]);
+  await nonTextLinkedTab.waitForLoadState("domcontentloaded");
+  await expect(nonTextLinkedTab.locator("h1").first()).toContainText(
+    "page linked from Excalidraw from a non-text element",
+    { timeout: 15_000 },
+  );
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "t006 --- meadow-flower",
+    { timeout: 15_000 },
+  );
+  await nonTextLinkedTab.close();
 
   const [linkedTab] = await Promise.all([
     page.context().waitForEvent("page"),

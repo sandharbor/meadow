@@ -44,7 +44,11 @@ import {
   calculateRelativePath,
   escapeHtmlAttribute
 } from './shared.js';
-import { linkOrImageHtml as linkOrImageHtmlService, resolveTrackedLinkHref } from './linkModificationService.js';
+import {
+  linkOrImageHtml as linkOrImageHtmlService,
+  resolveTrackedLinkHref,
+  type ExcalidrawEmbedOptions,
+} from './linkModificationService.js';
 import type { LinkResolvedInfo } from '../../../shared_code/types/ISitePage.js';
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../shared_code/utils/urlUtils.js';
@@ -179,6 +183,7 @@ export function renderPageToHtml(
   interface WikiLinkOverrides {
     linkResolutionMapOverride?: Record<string, LinkResolvedInfo>;
     currentPageDirectoryOverride?: string;
+    excalidrawEmbedOptions?: ExcalidrawEmbedOptions;
   }
 
   function linkOrImageHtml(linkText: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
@@ -195,10 +200,57 @@ export function renderPageToHtml(
       highlightDoNotLinkPageName,
       currentPageDirectory: overrides?.currentPageDirectoryOverride ?? currentPageDirectory,
       linkResolutionMap: overrides?.linkResolutionMapOverride ?? linkResolutionMap,
+      allLinkResolutionMaps,
+      excalidrawEmbedOptions: overrides?.excalidrawEmbedOptions,
+    });
+  }
+
+  function parseDirectiveBoolean(value: string): boolean | undefined {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+    return undefined;
+  }
+
+  function parseMeadowDirectiveOptions(body: string): ExcalidrawEmbedOptions {
+    const options: ExcalidrawEmbedOptions = {};
+    for (const line of body.split('\n')) {
+      const match = line.match(/^\s*(enableEmbeddedLinks|enableFullscreenButton|enableOpenDedicatedPage)\s*:\s*(.+?)\s*$/);
+      if (!match) continue;
+      const value = parseDirectiveBoolean(match[2]);
+      if (value === undefined) continue;
+      options[match[1] as keyof ExcalidrawEmbedOptions] = value;
+    }
+    return options;
+  }
+
+  function renderMeadowContainerDirective(body: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
+    const embedMatch = body.match(/!\[\[([^\]]+)\]\]/);
+    if (!embedMatch) {
+      return body.trim();
+    }
+    const linkText = embedMatch[1];
+    const linkInfo = linkTextToLinkInfo(linkText);
+    if (linkInfo.type !== 'image' || !linkInfo.filename.toLowerCase().endsWith('.excalidraw')) {
+      return body.trim();
+    }
+    return linkOrImageHtml(linkText, highlightDoNotLinkPageName, {
+      ...overrides,
+      excalidrawEmbedOptions: {
+        ...parseMeadowDirectiveOptions(body),
+        ...overrides?.excalidrawEmbedOptions,
+      },
     });
   }
 
   function convertWikiLinks(mdContent: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
+    mdContent = replaceOutsideCode(
+      mdContent,
+      /(^|\n):::\s*meadow\s*\n([\s\S]*?)\n:::(?=\n|$)/g,
+      (_match: string, prefix: string, body: string) =>
+        `${prefix}${renderMeadowContainerDirective(body, highlightDoNotLinkPageName, overrides)}`
+    );
+
     // First, handle image links with exclamation marks
     mdContent = replaceOutsideCode(mdContent, /!\[\[(.*?)\]\]/g, (_match: string, linkText: string) => {
       // Obsidian-style embeds: images stay images; otherwise treat as transclusion.

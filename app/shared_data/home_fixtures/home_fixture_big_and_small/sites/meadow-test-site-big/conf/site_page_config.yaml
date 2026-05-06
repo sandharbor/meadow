@@ -151,6 +151,11 @@ pages:
     sourceGraphSubdirectory: t006
     title: t006 --- linked-from-excalidraw
     tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: page linked from Excalidraw from a non-text element
+    tracked: true
   - fileType: excalidraw
     listType: whitelist
     sourceGraphSubdirectory: t006

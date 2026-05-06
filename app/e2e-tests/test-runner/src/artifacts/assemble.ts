@@ -523,19 +523,24 @@ function parseFrontendLog(logPath: string): LogEntry[] {
   const content = readFileSync(logPath, "utf8").trim();
   if (!content) return [];
 
-  return content.split("\n").map((line) => {
+  const entries: LogEntry[] = [];
+  for (const line of content.split("\n")) {
     // Format: 2026-02-26T12:00:00.000Z [level] message
     const match = line.match(/^(\S+)\s+\[(\w+)]\s+(.*)$/);
     if (match) {
-      return {
+      entries.push({
         timestamp: match[1],
         source: "frontend",
         level: normalizeFrontendLevel(match[2]),
         message: match[3],
-      };
+      });
+    } else if (entries.length > 0) {
+      entries[entries.length - 1].message += `\n${line}`;
+    } else {
+      entries.push({ timestamp: "", source: "frontend", level: "INFO", message: line });
     }
-    return { timestamp: "", source: "frontend", level: "INFO", message: line };
-  });
+  }
+  return entries;
 }
 
 function parseBackendLog(logPath: string): LogEntry[] {
@@ -798,15 +803,27 @@ function processTickLog(testDir: string): TickData {
   };
 }
 
-/** Walk TEST_RESULTS_DIR once and return all .webm video paths. */
-function collectAllVideos(): string[] {
+interface VideoInfo {
+  path: string;
+  dirName: string;
+  size: number;
+}
+
+/** Walk TEST_RESULTS_DIR once and return all .webm videos. */
+function collectAllVideos(): VideoInfo[] {
   if (!existsSync(TEST_RESULTS_DIR)) return [];
-  const videos: string[] = [];
+  const videos: VideoInfo[] = [];
   function walk(dir: string) {
     for (const entry of readdirSync(dir)) {
       const full = path.join(dir, entry);
       if (statSync(full).isDirectory()) walk(full);
-      else if (entry.endsWith(".webm")) videos.push(full);
+      else if (entry.endsWith(".webm")) {
+        videos.push({
+          path: full,
+          dirName: path.basename(path.dirname(full)).toLowerCase(),
+          size: statSync(full).size,
+        });
+      }
     }
   }
   walk(TEST_RESULTS_DIR);
@@ -814,29 +831,34 @@ function collectAllVideos(): string[] {
 }
 
 /** Match a test slug to a video from a pre-collected list (same logic as findVideo). */
-function findVideoFromList(videos: string[], testSlug: string): string | null {
+function findVideoFromList(videos: VideoInfo[], testSlug: string): string | null {
   if (videos.length === 0) return null;
-  if (videos.length === 1) return videos[0];
+  if (videos.length === 1) return videos[0].path;
+
+  const exactDirName = `${testSlug}-context`;
+  const exactMatches = videos.filter((video) => video.dirName === exactDirName);
+  if (exactMatches.length > 0) {
+    return exactMatches.sort((a, b) => b.size - a.size)[0].path;
+  }
 
   const slugWords = new Set(testSlug.split("-").filter((w) => w.length > 2));
-  let bestVideo = videos[0];
+  let bestVideo: VideoInfo | null = null;
   let bestScore = 0;
 
   for (const video of videos) {
-    const dirName = path.basename(path.dirname(video)).toLowerCase();
-    const dirWords = new Set(dirName.split("-").filter((w) => w.length > 2));
+    const dirWords = new Set(video.dirName.split("-").filter((w) => w.length > 2));
     let matches = 0;
     for (const word of slugWords) {
       if (dirWords.has(word)) matches++;
     }
     const score = matches / slugWords.size;
-    if (score > bestScore) {
+    if (score > bestScore || (score === bestScore && bestVideo && video.size > bestVideo.size)) {
       bestScore = score;
       bestVideo = video;
     }
   }
 
-  return bestVideo;
+  return bestVideo?.path ?? null;
 }
 
 /** Run async tasks with bounded concurrency. */

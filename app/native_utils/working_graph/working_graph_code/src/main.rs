@@ -1012,6 +1012,24 @@ mod tests {
     }
 
     #[test]
+    fn test_extract_links_excalidraw_element_links_section() {
+        let content = [
+            "## Element Links",
+            "iWVOgeeI: [[page linked from a non-text element]]",
+            "",
+            "%%",
+            "## Drawing",
+            "```compressed-json",
+            "[[hidden inside compressed scene text]]",
+            "```",
+        ].join("\n");
+        let links = extract_links(&content);
+        assert_eq!(links, vec![
+            ExtractedLink::Wiki("page linked from a non-text element".to_string()),
+        ]);
+    }
+
+    #[test]
     fn test_extract_links_markdown_with_anchor() {
         let content = "See [section](./file.md#heading)";
         let links = extract_links(content);
@@ -1160,4 +1178,3 @@ mod tests {
         assert_eq!(resolved.link_resolved_target_path, "t006/foo.png");
     }
 }
-
