@@ -79,6 +79,12 @@ class Hook {
     await this.textarea.fill(content.replace(oldText, newText));
   }
 
+  /** Replace the entire hook editor textarea content. */
+  async setContent(newContent: string) {
+    await this.expect(this.textarea).toBeVisible();
+    await this.textarea.fill(newContent);
+  }
+
   /** Save the hook. */
   async save() {
     await this.expect(this.saveBtn).toBeEnabled();

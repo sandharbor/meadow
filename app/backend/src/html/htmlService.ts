@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 import { setTimeout as delay } from 'timers/promises';
 import { Page } from './page.js';
 import { renderPageToHtml, renderExcalidrawPageToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
-import { buildExcalidrawClientLinkMap } from './linkModificationService.js';
+import { buildExcalidrawClientLinkData } from './linkModificationService.js';
 import { markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
 import {
   SitePageConfigs,
@@ -891,7 +891,7 @@ export async function generateHtmlForSite(
     // right href on each linked text element, instead of re-implementing
     // Obsidian's link-resolution rules in JavaScript.
     const excalidrawIdent = subdir ? `${subdir}/${conf.title}.excalidraw` : `/${conf.title}.excalidraw`;
-    const clientLinkMap = buildExcalidrawClientLinkMap({
+    const { tracked: clientLinkMap, untracked: clientUntrackedLinks } = buildExcalidrawClientLinkData({
       excalidrawPageIdent: excalidrawIdent,
       hostPageDirectory: subdir,
       sitePageConfigs: sitePageConfigsArrayForLinks,
@@ -908,6 +908,7 @@ export async function generateHtmlForSite(
       currentPageDirectory: subdir,
       drawingMdHref,
       clientLinkMap,
+      clientUntrackedLinks,
       breadcrumbHtml,
       backlinksHtml,
       staticAssetNames,

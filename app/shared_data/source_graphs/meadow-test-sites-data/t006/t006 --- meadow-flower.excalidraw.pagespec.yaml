@@ -6,6 +6,8 @@ pagespecs:
       outlinks:
         - linkPath: /t006 - second directory/t006 --- dup-linked-from-excalidraw.md
           isInGraph: true
+        - linkPath: /t006/page linked from Excalidraw that is not tracked.md
+          isInGraph: true
         - linkPath: /t006/t006 - nested/t006 --- dup-linked-from-excalidraw.md
           isInGraph: true
         - linkPath: /t006/t006 --- dup-linked-from-excalidraw.md

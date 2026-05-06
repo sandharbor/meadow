@@ -310,23 +310,36 @@
   // Stamps `link` onto text elements whose Obsidian-side form is a wikilink,
   // using a server-resolved `linkMap` from the placeholder container. The
   // map keys are the original wikilink-inner-text strings produced by
-  // Meadow's working graph; values are pre-computed hrefs relative to the
-  // page hosting this drawing. Untracked targets are simply absent from the
-  // map → we leave the text non-clickable.
-  function applyTextElementLinks(scene, md, linkMap) {
+  // Meadow's working graph; values are `{ href, normalizedText? }`. When
+  // `normalizedText` is present the page-title hook renamed the target, so
+  // we update the rendered label to match (aliased wikilinks keep the alias).
+  // Targets that resolve but aren't whitelisted are listed in `untrackedSet`
+  // — we replace their text with "link not tracked" so readers see the same
+  // affordance regular pages use.
+  function applyTextElementLinks(scene, md, linkMap, untrackedSet) {
     if (!scene || !scene.elements) return;
     var textMap = parseTextElementsSection(md);
     for (var i = 0; i < scene.elements.length; i++) {
       var el = scene.elements[i];
       if (el.type !== 'text') continue;
-      if (el.link) continue;
       if (!el.hasTextLink) continue;
       var src = textMap.get(el.id);
       if (!src) continue;
       var inner = extractWikilinkInner(src);
       if (!inner) continue;
-      var href = linkMap[inner];
-      if (href) el.link = href;
+      var entry = linkMap[inner];
+      if (entry && entry.href) {
+        if (!el.link) el.link = entry.href;
+        if (entry.normalizedText) {
+          el.text = entry.normalizedText;
+          el.originalText = entry.normalizedText;
+        }
+        continue;
+      }
+      if (untrackedSet[inner]) {
+        el.text = 'link not tracked';
+        el.originalText = 'link not tracked';
+      }
     }
   }
 
@@ -338,6 +351,21 @@
       return parsed && typeof parsed === 'object' ? parsed : {};
     } catch (err) {
       console.warn('[meadow-excalidraw] could not parse data-meadow-excalidraw-links', err);
+      return {};
+    }
+  }
+
+  function readUntrackedSet(container) {
+    var raw = container.getAttribute('data-meadow-excalidraw-untracked-links');
+    if (!raw) return {};
+    try {
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return {};
+      var set = {};
+      for (var i = 0; i < parsed.length; i++) set[parsed[i]] = true;
+      return set;
+    } catch (err) {
+      console.warn('[meadow-excalidraw] could not parse data-meadow-excalidraw-untracked-links', err);
       return {};
     }
   }
@@ -358,7 +386,7 @@
         container.textContent = 'Excalidraw drawing data is missing or unreadable.';
         return;
       }
-      applyTextElementLinks(scene, md, readLinkMap(container));
+      applyTextElementLinks(scene, md, readLinkMap(container), readUntrackedSet(container));
       var svg = await window.MeadowExcalidraw.exportToSvg({
         elements: scene.elements || [],
         appState: Object.assign({ exportBackground: true, exportWithDarkMode: false }, scene.appState || {}),

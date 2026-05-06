@@ -92,41 +92,80 @@ export function resolveTrackedLinkHref(args: {
 }
 
 /**
- * For a given Excalidraw drawing's resolution map, computes a JSON-encodable
- * record of `linkText → relativeHref`, where each href is relative to the
- * page that hosts the drawing (an embedding page or the standalone Excalidraw
- * page itself). Untracked / unresolvable targets are dropped from the map —
- * the client renderer treats absent entries as "leave the text alone".
+ * For a given Excalidraw drawing's resolution map, computes:
+ *   - `tracked`: a `linkText → { href, normalizedText }` record. `href` is
+ *     relative to the page that hosts the drawing (an embedding page or the
+ *     standalone Excalidraw page itself); `normalizedText` is the resolved
+ *     target's title after the page-title hook runs, so the client can update
+ *     the in-drawing label to match the rendered page name. `normalizedText`
+ *     is omitted when the wikilink uses an alias (the alias should win) or
+ *     when the title hasn't changed.
+ *   - `untracked`: link texts whose target resolves but isn't whitelisted on
+ *     this site. The client renderer replaces the rendered text of these
+ *     elements with "link not tracked" so readers see the same affordance
+ *     they get on regular pages.
  */
-export function buildExcalidrawClientLinkMap(args: {
+export interface ExcalidrawTrackedLink {
+  href: string;
+  normalizedText?: string;
+}
+
+export function buildExcalidrawClientLinkData(args: {
   excalidrawPageIdent: string; // `<dir>/<title>.excalidraw` (or `/<title>.excalidraw` for root)
   hostPageDirectory: string; // directory of the page rendering the drawing's HTML
   sitePageConfigs: SitePageConfig[];
   allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
   siteConfig?: SiteConfig;
   siteSlug?: string;
-}): Record<string, string> {
+}): { tracked: Record<string, ExcalidrawTrackedLink>; untracked: string[] } {
   const { excalidrawPageIdent, hostPageDirectory, sitePageConfigs, allLinkResolutionMaps, siteConfig, siteSlug } = args;
-  const out: Record<string, string> = {};
-  if (!allLinkResolutionMaps) return out;
+  const tracked: Record<string, ExcalidrawTrackedLink> = {};
+  const untracked: string[] = [];
+  if (!allLinkResolutionMaps) return { tracked, untracked };
   const map = allLinkResolutionMaps.get(excalidrawPageIdent);
-  if (!map) return out;
+  if (!map) return { tracked, untracked };
 
   // Iterate in a stable order so the JSON serialised onto the page is
   // deterministic. The upstream working_graph map comes from a Rust HashMap
   // whose iteration order isn't guaranteed; without sorting, identical input
   // produces different `data-meadow-excalidraw-links` strings between runs.
   for (const linkText of Object.keys(map).sort()) {
+    const resolved = map[linkText];
     const href = resolveTrackedLinkHref({
-      resolved: map[linkText],
+      resolved,
       hostPageDirectory,
       sitePageConfigs,
       siteConfig,
       siteSlug,
     });
-    if (href) out[linkText] = href;
+    if (href) {
+      const entry: ExcalidrawTrackedLink = { href };
+      // Aliased wikilinks (`[[Page|alias]]`) keep the alias as the rendered
+      // text — only rewrite the label when there's no alias and the hook
+      // actually changed the page title.
+      const hasAlias = linkText.includes('|');
+      if (!hasAlias && siteConfig && siteSlug && resolved.link_resolved_target_path) {
+        const targetPath = resolved.link_resolved_target_path;
+        const lastSlash = targetPath.lastIndexOf('/');
+        const targetFilename = lastSlash >= 0 ? targetPath.slice(lastSlash + 1) : targetPath;
+        const dotIdx = targetFilename.lastIndexOf('.');
+        if (dotIdx > 0) {
+          const targetTitle = targetFilename.slice(0, dotIdx);
+          const normalizedTitle = normalizePageTitle(targetTitle, siteConfig, siteSlug);
+          if (normalizedTitle !== targetTitle) {
+            entry.normalizedText = normalizedTitle;
+          }
+        }
+      }
+      tracked[linkText] = entry;
+    } else if (resolved.link_resolved_target_path) {
+      // The link resolved to a real source file but it isn't whitelisted on
+      // this site — surface that to the reader instead of rendering the
+      // page's title as plain text.
+      untracked.push(linkText);
+    }
   }
-  return out;
+  return { tracked, untracked };
 }
 
 /**
@@ -397,13 +436,19 @@ export function linkOrImageHtml(
       // entries in the link map.
       const styleAttr = sizeConstraint ? ` style="max-width: ${sizeConstraint}px"` : '';
       const drawingTitle = imageName.replace(/\.excalidraw$/i, '');
+      // The standalone Excalidraw HTML lives at the *normalized* title (the
+      // pageTitleNormalization hook can rename it), so the embed must point at
+      // the normalized filename or the link 404s when the hook is active.
+      const drawingHtmlName = siteConfig && siteSlug
+        ? normalizePageTitle(drawingTitle, siteConfig, siteSlug)
+        : drawingTitle;
       const pageHref = encodePathForUrl(
         calculateRelativePath(currentPageDirectory, imageSourceDir
-          ? `${imageSourceDir}/${drawingTitle}.html`
-          : `${drawingTitle}.html`)
+          ? `${imageSourceDir}/${drawingHtmlName}.html`
+          : `${drawingHtmlName}.html`)
       );
       const mdSrc = `${encodedImagePath}.md`;
-      return `<a class="meadow-excalidraw-embed-link" href="${pageHref}"${styleAttr} title="Open ${drawingTitle}"><span class="meadow-excalidraw-embed" data-meadow-excalidraw-src="${mdSrc}"><span class="meadow-excalidraw-loading">Loading drawing…</span></span><span class="meadow-excalidraw-open-icon" aria-hidden="true">⤢</span></a>`;
+      return `<a class="meadow-excalidraw-embed-link" href="${pageHref}"${styleAttr} title="Open ${drawingHtmlName}"><span class="meadow-excalidraw-embed" data-meadow-excalidraw-src="${mdSrc}"><span class="meadow-excalidraw-loading">Loading drawing…</span></span><span class="meadow-excalidraw-open-icon" aria-hidden="true">⤢</span></a>`;
     }
 
     if (sizeConstraint) {

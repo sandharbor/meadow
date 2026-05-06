@@ -44,7 +44,7 @@ import {
   calculateRelativePath,
   escapeHtmlAttribute
 } from './shared.js';
-import { linkOrImageHtml as linkOrImageHtmlService, buildExcalidrawClientLinkMap, resolveTrackedLinkHref } from './linkModificationService.js';
+import { linkOrImageHtml as linkOrImageHtmlService, resolveTrackedLinkHref } from './linkModificationService.js';
 import type { LinkResolvedInfo } from '../../../shared_code/types/ISitePage.js';
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../shared_code/utils/urlUtils.js';
@@ -748,7 +748,8 @@ export function renderExcalidrawPageToHtml(args: {
   pageTitle: string;
   currentPageDirectory: string;
   drawingMdHref: string; // href the client uses to fetch the source `.excalidraw.md`
-  clientLinkMap?: Record<string, string>; // server-resolved wikilinks-inside-drawing
+  clientLinkMap?: Record<string, import('./linkModificationService.js').ExcalidrawTrackedLink>; // server-resolved wikilinks-inside-drawing
+  clientUntrackedLinks?: string[]; // wikilinks-inside-drawing whose target isn't whitelisted
   breadcrumbHtml: string;
   backlinksHtml: string;
   staticAssetNames?: import('./types.js').StaticAssetNames;
@@ -763,6 +764,7 @@ export function renderExcalidrawPageToHtml(args: {
     currentPageDirectory,
     drawingMdHref,
     clientLinkMap,
+    clientUntrackedLinks,
     breadcrumbHtml,
     backlinksHtml,
     staticAssetNames,
@@ -778,7 +780,10 @@ export function renderExcalidrawPageToHtml(args: {
   const linksAttr = clientLinkMap && Object.keys(clientLinkMap).length > 0
     ? ` data-meadow-excalidraw-links="${escapeHtmlAttribute(JSON.stringify(clientLinkMap))}"`
     : '';
-  const bodyHtml = `<div class="meadow-excalidraw-page" data-meadow-excalidraw-src="${drawingMdHref}"${linksAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></div>`;
+  const untrackedAttr = clientUntrackedLinks && clientUntrackedLinks.length > 0
+    ? ` data-meadow-excalidraw-untracked-links="${escapeHtmlAttribute(JSON.stringify(clientUntrackedLinks))}"`
+    : '';
+  const bodyHtml = `<div class="meadow-excalidraw-page" data-meadow-excalidraw-src="${drawingMdHref}"${linksAttr}${untrackedAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></div>`;
 
   const depth = currentPageDirectory ? currentPageDirectory.split('/').filter(p => p).length : 0;
   const assetsPrefix = '../'.repeat(depth) + '_mw_assets/';
