@@ -56,7 +56,8 @@ const HLJS_THEME_CSS: string = (() => {
 })();
 import { createMarkdownExportZip, writeMarkdownExportManifest } from '../utils/zipUtils.js';
 import { prepareModifiedSrsMarkdownDirectory } from '../utils/srsMarkdownUtils.js';
-import { prepareMarkdownExportDirectory } from '../utils/markdownExportUtils.js';
+import { prepareMarkdownExportFromScrubbedSourceDirectory } from '../utils/markdownExportUtils.js';
+import { prepareScrubbedSourceDirectory } from '../utils/sourceScrubbingUtils.js';
 import type { StaticAssetNames } from './types.js';
 import { encodePathForUrl } from '../../../shared_code/utils/urlUtils.js';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
@@ -278,6 +279,81 @@ export function parseSitePageConfig(sitePageConfFile: string): SitePageConfigs {
   return pageConfigs;
 }
 
+type RustLinkResolvedInfo = { link_resolved_target_directory: string; link_resolved_target_path: string | null };
+type RustPage = { title: string; sourceGraphSubdirectory: string; file_type: FileType; path?: string[] };
+type RustOutput = { pages: RustPage[]; allLinkResolutionMaps?: Record<string, Record<string, RustLinkResolvedInfo>> };
+
+async function loadWorkingGraphData(options: {
+  graphRoot: string;
+  sitePageConfigPath: string;
+  sitePageConfigsArray: Array<SitePageConfigs[string]>;
+  initialSitePageTitle: string;
+  initialSitePageDirectory: string;
+  breadcrumbsEnabled: boolean;
+}): Promise<{
+  breadcrumbPaths: { [pageKey: string]: string[] };
+  allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>>;
+  traversablePageKeys: Set<string>;
+}> {
+  const {
+    graphRoot,
+    sitePageConfigPath,
+    sitePageConfigsArray,
+    initialSitePageTitle,
+    initialSitePageDirectory,
+    breadcrumbsEnabled,
+  } = options;
+
+  const breadcrumbPaths: { [pageKey: string]: string[] } = {};
+  let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
+  const traversablePageKeys: Set<string> = new Set();
+
+  if (!initialSitePageTitle) {
+    return { breadcrumbPaths, allLinkResolutionMaps, traversablePageKeys };
+  }
+
+  const initialConf = sitePageConfigsArray.find(c =>
+    c.title === initialSitePageTitle && (c.source_graph_subdirectory || '') === (initialSitePageDirectory || '')
+  );
+  const initialFileType = initialConf?.file_type || 'md';
+
+  const raw = await runWorkingGraphRaw({
+    graphRoot,
+    sitePageConfigPath,
+    initial: { title: initialSitePageTitle, directory: initialSitePageDirectory || '', file_type: initialFileType },
+    traversal: { title: initialSitePageTitle, directory: initialSitePageDirectory || '', file_type: initialFileType },
+    frontierDepth: 0,
+    allowImagesToExtendToFrontier: true,
+    allowLowerDepths: false,
+  });
+  const output = JSON.parse(raw) as RustOutput;
+
+  allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
+
+  for (const graphPage of output.pages) {
+    const pageKey = pageConfigToKey({
+      title: graphPage.title,
+      source_graph_subdirectory: graphPage.sourceGraphSubdirectory,
+      file_type: graphPage.file_type,
+      config: { list_type: 'whitelist' }
+    });
+
+    traversablePageKeys.add(pageKey);
+
+    if (breadcrumbsEnabled && graphPage.path) {
+      const titlePath = graphPage.path.map(ident => {
+        const lastSlash = ident.lastIndexOf('/');
+        const titleWithExt = lastSlash >= 0 ? ident.substring(lastSlash + 1) : ident;
+        const lastDot = titleWithExt.lastIndexOf('.');
+        return lastDot >= 0 ? titleWithExt.substring(0, lastDot) : titleWithExt;
+      });
+      breadcrumbPaths[pageKey] = titlePath;
+    }
+  }
+
+  return { breadcrumbPaths, allLinkResolutionMaps, traversablePageKeys };
+}
+
 export async function generateHtmlForSite(
   siteDirectory: string,
   options: {
@@ -322,13 +398,15 @@ export async function generateHtmlForSite(
   
   const trackedPageContentDirectory = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const modifiedPageContentDirectory = SiteConfigPaths.getModifiedPageContentDir(siteDirectory);
-  let renderContentDirectory = trackedPageContentDirectory;
+  const scrubbedSourceContentDirectory = SiteConfigPaths.getScrubbedSourceContentDir(siteDirectory);
+  let sourceContentDirectory = trackedPageContentDirectory;
   
   // Use new directory structure: html/preview for preview, html/generated_site_versions/<version> for published
   const previewHtmlDirectory = SiteConfigPaths.getPreviewDir(siteDirectory);
   
   const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
   const sitePageConfs = parseSitePageConfig(sitePageConfPath);
+  const sitePageConfigsArray = Object.values(sitePageConfs);
   const appConfig = loadAppConfig(getConfigDirectory());
   const generationOptions = resolveEffectiveGenerationOptions(appConfig, siteConfig);
 
@@ -340,11 +418,11 @@ export async function generateHtmlForSite(
         generationOptions.spacedRepetitionTags
       );
       if (fs.existsSync(modifiedPageContentDirectory)) {
-        renderContentDirectory = modifiedPageContentDirectory;
+        sourceContentDirectory = modifiedPageContentDirectory;
       }
     } catch (error) {
       logger.error(`Error preparing modified SRS markdown: ${String(error)}`);
-      renderContentDirectory = trackedPageContentDirectory;
+      sourceContentDirectory = trackedPageContentDirectory;
     }
   } else if (fs.existsSync(modifiedPageContentDirectory)) {
     fs.rmSync(modifiedPageContentDirectory, { recursive: true, force: true });
@@ -355,6 +433,56 @@ export async function generateHtmlForSite(
     const conf = sitePageConfs[key];
     return conf.config.list_type === 'whitelist' && (conf.file_type === 'md' || !conf.file_type);
   });
+
+  const initialSitePageTitle = siteConfig.initialSitePageTitle || '';
+  const initialSitePageDirectory = siteConfig.initialSitePageDirectory || '';
+  const breadcrumbsEnabled = generationOptions.breadcrumbsEnabled;
+
+  // Meadow processing stage -- site files generation -- source scrubbing.
+  // Everything downstream of this point reads from scrubbed_source_content,
+  // which contains only publishable traversable files with unsafe links removed.
+  let scrubbedTraversablePageKeys: Set<string> = new Set();
+  let scrubbedAllLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
+  try {
+    emitProgress({ stage: 'preparing', message: 'Preparing scrubbed source content...' });
+    const sourceGraphData = await loadWorkingGraphData({
+      graphRoot: sourceContentDirectory,
+      sitePageConfigPath: sitePageConfPath,
+      sitePageConfigsArray,
+      initialSitePageTitle,
+      initialSitePageDirectory,
+      breadcrumbsEnabled: false,
+    });
+    scrubbedTraversablePageKeys = sourceGraphData.traversablePageKeys;
+    scrubbedAllLinkResolutionMaps = sourceGraphData.allLinkResolutionMaps;
+
+    const sitePageConfigsArrayForScrubbing = sitePageConfigsArray.filter(conf => {
+      const key = pageConfigToKey(conf);
+      return scrubbedTraversablePageKeys.has(key);
+    });
+
+    prepareScrubbedSourceDirectory(
+      sourceContentDirectory,
+      scrubbedSourceContentDirectory,
+      scrubbedTraversablePageKeys,
+      sitePageConfs,
+      sitePageConfigsArrayForScrubbing,
+      scrubbedAllLinkResolutionMaps
+    );
+    logger.debug(`Prepared scrubbed source content at ${scrubbedSourceContentDirectory}`);
+  } catch (err) {
+    logger.warn(`Could not prepare scrubbed source content (will render an empty publishable set): ${err instanceof Error ? err.message : String(err)}`);
+    prepareScrubbedSourceDirectory(
+      sourceContentDirectory,
+      scrubbedSourceContentDirectory,
+      new Set(),
+      sitePageConfs,
+      [],
+      new Map()
+    );
+  }
+
+  const renderContentDirectory = scrubbedSourceContentDirectory;
   
 
   // Create and clean the preview directory
@@ -545,76 +673,37 @@ export async function generateHtmlForSite(
     staticAssetNames = undefined;
   }
   
-  // Convert site page configs to array format for passing to renderPageToHtml and getWorkingGraph
-  const sitePageConfigsArray = Object.values(sitePageConfs);
-
-  // Compute breadcrumb paths using the same traversal logic as the main graph (now via Rust working_graph)
-  const initialSitePageTitle = siteConfig.initialSitePageTitle || '';
-  const initialSitePageDirectory = siteConfig.initialSitePageDirectory || '';
   // Key breadcrumbPaths by pageKey (title|directory|file_type) to handle duplicate titles correctly
   let breadcrumbPaths: { [pageKey: string]: string[] } = {};
   let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
   // Track which pages are reachable via traversal - only these should have HTML generated
-  const traversablePageKeys: Set<string> = new Set();
-  const breadcrumbsEnabled = generationOptions.breadcrumbsEnabled;
+  let traversablePageKeys: Set<string> = new Set();
 
-  // Compute working graph traversal BEFORE creating the markdown export ZIP,
-  // so we know which pages are reachable and can exclude orphaned pages.
+  // Generation only reads the scrubbed source directory from here on.
+  // Re-run traversal after scrubbing so breadcrumbs, rendering, and exports
+  // agree with the publishable content boundary.
   try {
     emitProgress({
       stage: 'computing-breadcrumbs',
       message: breadcrumbsEnabled ? 'Creating traversal and breadcrumbs...' : 'Creating traversal...'
     });
-    if (initialSitePageTitle) {
-      const initialConf = sitePageConfigsArray.find(c =>
-        c.title === initialSitePageTitle && (c.source_graph_subdirectory || '') === (initialSitePageDirectory || '')
-      );
-      const initialFileType = initialConf?.file_type || 'md';
+    const renderGraphData = await loadWorkingGraphData({
+      graphRoot: renderContentDirectory,
+      sitePageConfigPath: sitePageConfPath,
+      sitePageConfigsArray,
+      initialSitePageTitle,
+      initialSitePageDirectory,
+      breadcrumbsEnabled,
+    });
+    breadcrumbPaths = renderGraphData.breadcrumbPaths;
+    allLinkResolutionMaps = renderGraphData.allLinkResolutionMaps;
+    traversablePageKeys = renderGraphData.traversablePageKeys;
 
-      type RustLinkResolvedInfo = { link_resolved_target_directory: string; link_resolved_target_path: string | null };
-      type RustPage = { title: string; sourceGraphSubdirectory: string; file_type: FileType; path?: string[] };
-      type RustOutput = { pages: RustPage[]; allLinkResolutionMaps?: Record<string, Record<string, RustLinkResolvedInfo>> };
-
-      const raw = await runWorkingGraphRaw({
-        graphRoot: renderContentDirectory,
-        sitePageConfigPath: sitePageConfPath,
-        initial: { title: initialSitePageTitle, directory: initialSitePageDirectory || '', file_type: initialFileType },
-        traversal: { title: initialSitePageTitle, directory: initialSitePageDirectory || '', file_type: initialFileType },
-        frontierDepth: 0,
-        allowImagesToExtendToFrontier: true,
-        allowLowerDepths: false,
-      });
-      const output = JSON.parse(raw) as RustOutput;
-
-      allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
-      logger.debug(`Loaded link resolution maps for ${allLinkResolutionMaps.size} pages from working_graph`);
-
-      for (const graphPage of output.pages) {
-        const pageKey = pageConfigToKey({
-          title: graphPage.title,
-          source_graph_subdirectory: graphPage.sourceGraphSubdirectory,
-          file_type: graphPage.file_type,
-          config: { list_type: 'whitelist' } // dummy config for key generation
-        });
-
-        traversablePageKeys.add(pageKey);
-
-        if (breadcrumbsEnabled && graphPage.path) {
-          const titlePath = graphPage.path.map(ident => {
-            const lastSlash = ident.lastIndexOf('/');
-            const titleWithExt = lastSlash >= 0 ? ident.substring(lastSlash + 1) : ident;
-            const lastDot = titleWithExt.lastIndexOf('.');
-            return lastDot >= 0 ? titleWithExt.substring(0, lastDot) : titleWithExt;
-          });
-          breadcrumbPaths[pageKey] = titlePath;
-        }
-      }
-
-      if (breadcrumbsEnabled) {
-        logger.debug(`Computed breadcrumb paths for ${Object.keys(breadcrumbPaths).length} pages using working graph`);
-      }
-      logger.debug(`Found ${traversablePageKeys.size} traversable pages (only these will have HTML generated)`);
+    logger.debug(`Loaded link resolution maps for ${allLinkResolutionMaps.size} pages from working_graph`);
+    if (breadcrumbsEnabled) {
+      logger.debug(`Computed breadcrumb paths for ${Object.keys(breadcrumbPaths).length} pages using working graph`);
     }
+    logger.debug(`Found ${traversablePageKeys.size} traversable pages (only these will have HTML generated)`);
   } catch (err) {
     logger.warn(`Could not load working_graph data for link resolution and breadcrumbs (will proceed without it): ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -626,21 +715,18 @@ export async function generateHtmlForSite(
     return traversablePageKeys.has(key);
   });
 
-  // Generate markdown export ZIP if enabled.
-  // Now that traversal is complete, we can filter orphaned pages and sanitize links.
+  // Generate markdown export ZIP if enabled. The ZIP is a copy of
+  // scrubbed_source_content so Obsidian-compatible downloads and rendered HTML
+  // share the same privacy boundary.
   let markdownZipEnabled = false;
   if (generationOptions.markdownZipEnabled) {
     try {
       const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
-      prepareMarkdownExportDirectory(
-        trackedPageContentDirectory,
-        siteConfig.sourceDirectory || undefined,
-        markdownExportDir,
-        traversablePageKeys,
-        sitePageConfs,
-        sitePageConfigsArrayForLinks,
-        { srsEnabled: generationOptions.spacedRepetitionEnabled }
-      );
+      if (fs.existsSync(markdownExportDir)) {
+        fs.rmSync(markdownExportDir, { recursive: true, force: true });
+      }
+      prepareMarkdownExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, markdownExportDir);
+
       const mdExportOutputDir = path.join(assetsDirectory, 'md-export');
       fs.mkdirSync(mdExportOutputDir, { recursive: true });
       const zipResult = await createMarkdownExportZip(markdownExportDir, mdExportOutputDir);

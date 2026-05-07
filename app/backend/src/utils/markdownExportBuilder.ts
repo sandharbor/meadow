@@ -21,7 +21,9 @@ import { parsePageConfig } from '../../../shared_code/utils/sitePageConfigUtils.
 import { pageConfigToKey, SitePageConfigs } from '../html/types.js';
 import { runWorkingGraphRaw } from './workingGraphUtils.js';
 import { loadSiteConfig } from './siteConfigUtils.js';
-import { prepareMarkdownExportDirectory } from './markdownExportUtils.js';
+import { prepareModifiedSrsMarkdownDirectory } from './srsMarkdownUtils.js';
+import { prepareScrubbedSourceDirectory } from './sourceScrubbingUtils.js';
+import { prepareMarkdownExportFromScrubbedSourceDirectory } from './markdownExportUtils.js';
 import { logger } from './logging/backendLoggingUtils.js';
 import fs from 'fs';
 
@@ -31,7 +33,13 @@ type WorkingGraphPage = {
   file_type: FileType;
 };
 
-type WorkingGraphOutput = { pages: WorkingGraphPage[] };
+type WorkingGraphOutput = {
+  pages: WorkingGraphPage[];
+  allLinkResolutionMaps?: Record<string, Record<string, {
+    link_resolved_target_directory: string;
+    link_resolved_target_path: string | null;
+  }>>;
+};
 
 function readSitePageConfigs(sitePageConfPath: string): SitePageConfigs {
   const result: SitePageConfigs = {};
@@ -45,9 +53,9 @@ function readSitePageConfigs(sitePageConfPath: string): SitePageConfigs {
 }
 
 /**
- * Builds the same filtered markdown export directory that the site-publish
- * path produces, so the Advanced-tab "tracked raw markdown" download agrees
- * with the site-publish output on which pages are "tracked & in graph".
+ * Builds the same scrubbed source directory that the site-publish path uses,
+ * so the Advanced-tab "tracked raw markdown" download agrees with the
+ * generated site on which pages/assets are safe to emit.
  *
  * Returns the absolute path to the built directory.
  */
@@ -56,9 +64,34 @@ export async function buildFilteredMarkdownExportForSite(siteDirectory: string):
   const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
   const sitePageConfs = readSitePageConfigs(sitePageConfPath);
   const trackedContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
-  const exportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
+  const modifiedContentDir = SiteConfigPaths.getModifiedPageContentDir(siteDirectory);
+  const scrubbedSourceDir = SiteConfigPaths.getScrubbedSourceContentDir(siteDirectory);
+  const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
+
+  let sourceContentDir = trackedContentDir;
+  if (siteConfig.generationSpacedRepetitionEnabled) {
+    try {
+      prepareModifiedSrsMarkdownDirectory(
+        trackedContentDir,
+        modifiedContentDir,
+        siteConfig.generationSpacedRepetitionTags || []
+      );
+      if (fs.existsSync(modifiedContentDir)) {
+        sourceContentDir = modifiedContentDir;
+      }
+    } catch (err) {
+      logger.warn(
+        `buildFilteredMarkdownExportForSite: SRS modified markdown failed (will use tracked content): ${err instanceof Error ? err.message : String(err)}`
+      );
+      sourceContentDir = trackedContentDir;
+    }
+  }
 
   const traversablePageKeys = new Set<string>();
+  let allLinkResolutionMaps: Map<string, Record<string, {
+    link_resolved_target_directory: string;
+    link_resolved_target_path: string | null;
+  }>> = new Map();
   const initialTitle = siteConfig.initialSitePageTitle || '';
   const initialDirectory = siteConfig.initialSitePageDirectory || '';
 
@@ -70,7 +103,7 @@ export async function buildFilteredMarkdownExportForSite(siteDirectory: string):
 
     try {
       const raw = await runWorkingGraphRaw({
-        graphRoot: trackedContentDir,
+        graphRoot: sourceContentDir,
         sitePageConfigPath: sitePageConfPath,
         initial: { title: initialTitle, directory: initialDirectory, file_type: initialFileType },
         traversal: { title: initialTitle, directory: initialDirectory, file_type: initialFileType },
@@ -79,6 +112,7 @@ export async function buildFilteredMarkdownExportForSite(siteDirectory: string):
         allowLowerDepths: false,
       });
       const output = JSON.parse(raw) as WorkingGraphOutput;
+      allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
       for (const page of output.pages) {
         const key = pageConfigToKey({
           title: page.title,
@@ -99,14 +133,16 @@ export async function buildFilteredMarkdownExportForSite(siteDirectory: string):
     conf => traversablePageKeys.has(pageConfigToKey(conf))
   );
 
-  prepareMarkdownExportDirectory(
-    trackedContentDir,
-    siteConfig.sourceDirectory || undefined,
-    exportDir,
+  prepareScrubbedSourceDirectory(
+    sourceContentDir,
+    scrubbedSourceDir,
     traversablePageKeys,
     sitePageConfs,
-    sitePageConfigsArrayForLinks
+    sitePageConfigsArrayForLinks,
+    allLinkResolutionMaps
   );
 
-  return exportDir;
+  prepareMarkdownExportFromScrubbedSourceDirectory(scrubbedSourceDir, markdownExportDir);
+
+  return markdownExportDir;
 }

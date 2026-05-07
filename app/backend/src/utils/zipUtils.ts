@@ -24,12 +24,12 @@ export const MARKDOWN_EXPORT_MANIFEST_FILENAME = 'markdown-export-manifest.json'
 // Yes, it looks weird that we're hardcoding a static date here. The reason:
 // we need the zip to be byte-identical when the content hasn't changed (so the
 // content-addressed hash stays stable and we don't re-upload unnecessarily).
-// The export directory is rebuilt fresh each run by prepareMarkdownExportDirectory,
-// which transforms and re-writes every file — so the files always get "right now"
-// as their mtime, even when nothing changed. We can't just preserve the original
-// source file timestamps either, because those can shift without content changes
-// (git checkout, Obsidian re-saving, rsync, etc.). A fixed date removes timestamps
-// as a variable entirely: same content in, same zip bytes out.
+// The export directory is rebuilt fresh each run from scrubbed source content,
+// so the files always get "right now" as their mtime, even when nothing changed.
+// We can't just preserve the original source file timestamps either, because
+// those can shift without content changes (git checkout, Obsidian re-saving,
+// rsync, etc.). A fixed date removes timestamps as a variable entirely: same
+// content in, same zip bytes out.
 const FIXED_ZIP_DATE = new Date('2024-01-01T00:00:00Z');
 
 function walkFilesSorted(dir: string, base?: string): string[] {

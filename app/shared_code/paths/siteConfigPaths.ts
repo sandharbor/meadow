@@ -21,7 +21,9 @@ limitations under the License.
  * This file defines the structure of:
  *   SITE_DIR/
  *     build/
+ *       modified_page_content/
  *       markdown_export/
+ *       scrubbed_source_content/
  *     conf/
  *       site_config.yaml
  *       site_page_config.yaml
@@ -31,7 +33,6 @@ limitations under the License.
  *       published/
  *     raw/
  *       tracked_page_content/
- *       modified_page_content/
  *     hooks/
  *       pageTitleNormalization.ts
  *       markdownProcessing.ts
@@ -58,6 +59,7 @@ const PREVIEW_DIR = 'preview';
 const GENERATED_SITE_VERSIONS_DIR = 'generated_site_versions';
 const TRACKED_PAGE_CONTENT_DIR = 'tracked_page_content';
 const MODIFIED_PAGE_CONTENT_DIR = 'modified_page_content';
+const SCRUBBED_SOURCE_CONTENT_DIR = 'scrubbed_source_content';
 const FONTS_DIR = 'fonts';
 const TAGPAGES_DIR = 'x-tagpages';
 
@@ -115,9 +117,14 @@ export const SiteConfigPaths = {
       return join(RAW_DIR, TRACKED_PAGE_CONTENT_DIR);
     },
 
-    /** raw/modified_page_content/ */
+    /** build/modified_page_content/ */
     modifiedPageContentDir(): string {
-      return join(RAW_DIR, MODIFIED_PAGE_CONTENT_DIR);
+      return join(BUILD_DIR, MODIFIED_PAGE_CONTENT_DIR);
+    },
+
+    /** build/scrubbed_source_content/ */
+    scrubbedSourceContentDir(): string {
+      return join(BUILD_DIR, SCRUBBED_SOURCE_CONTENT_DIR);
     },
 
     /** build/markdown_export/ */
@@ -237,10 +244,17 @@ export const SiteConfigPaths = {
   },
 
   /**
-   * Get the modified page content directory: SITE_DIR/raw/modified_page_content/
+   * Get the modified page content directory: SITE_DIR/build/modified_page_content/
    */
   getModifiedPageContentDir(siteDir: string): string {
     return join(siteDir, this.relative.modifiedPageContentDir());
+  },
+
+  /**
+   * Get the scrubbed source content directory: SITE_DIR/build/scrubbed_source_content/
+   */
+  getScrubbedSourceContentDir(siteDir: string): string {
+    return join(siteDir, this.relative.scrubbedSourceContentDir());
   },
 
   /**
@@ -355,6 +369,12 @@ export const SiteConfigPaths = {
 
   /** The tracked_page_content subdirectory name: 'tracked_page_content' */
   TRACKED_PAGE_CONTENT_DIR,
+
+  /** The modified_page_content subdirectory name: 'modified_page_content' */
+  MODIFIED_PAGE_CONTENT_DIR,
+
+  /** The scrubbed_source_content subdirectory name: 'scrubbed_source_content' */
+  SCRUBBED_SOURCE_CONTENT_DIR,
 
   /** The tagpages subdirectory name: 'x-tagpages' */
   TAGPAGES_DIR,

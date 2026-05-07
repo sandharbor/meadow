@@ -20,13 +20,13 @@
 
 ## Too Big PNG
 
-!_link not tracked_
+_link not tracked_
 
-!_link not tracked_
+_link not tracked_
 
 | test |
 |------|
-| !_link not tracked_ |
+| _link not tracked_ |
 
 ## SVG
 
