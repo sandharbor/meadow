@@ -130,6 +130,11 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
     ),
   ).toHaveCount(1);
   await expect(
+    directedEmbed.locator(
+      'svg a[href="t006/page%20linked%20from%20tracked%20sunflower%20image%20in%20Excalidraw.html"]',
+    ),
+  ).toHaveCount(1);
+  await expect(
     directedEmbedFrame.locator(".meadow-excalidraw-open-link"),
   ).toHaveCount(0);
   await snapshot("directed excalidraw embed rendered with live links");
@@ -188,6 +193,29 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
     '.meadow-excalidraw-page svg a[href="page%20linked%20from%20Excalidraw%20from%20a%20non-text%20element.html"]',
   );
   await expect(nonTextElementDrawingLink).toHaveCount(1);
+
+  const sunflowerImageDrawingLink = previewFrame.locator(
+    '.meadow-excalidraw-page svg a[href="page%20linked%20from%20tracked%20sunflower%20image%20in%20Excalidraw.html"]',
+  );
+  await expect(sunflowerImageDrawingLink).toHaveCount(1);
+  await expect(sunflowerImageDrawingLink).toBeVisible({ timeout: 30_000 });
+  await sunflowerImageDrawingLink.click();
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "page linked from tracked sunflower image in Excalidraw",
+    { timeout: 15_000 },
+  );
+  await snapshot("standalone excalidraw tracked image link opened target");
+  await addKeyFrame(excalidraw);
+
+  await previewFrame
+    .getByRole("link", { name: "t006 --- meadow-flower" })
+    .first()
+    .click();
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "t006 --- meadow-flower",
+    { timeout: 15_000 },
+  );
+  await expect(standaloneSvg).toBeVisible({ timeout: 30_000 });
 
   const [nonTextLinkedTab] = await Promise.all([
     page.context().waitForEvent("page"),

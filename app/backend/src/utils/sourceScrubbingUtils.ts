@@ -206,9 +206,11 @@ function sanitizeExcalidrawMarkdownSections(
   content: string;
   unsafeTextElementIds: Set<string>;
   unsafeLinkedElementIds: Set<string>;
+  unsafeEmbeddedFileIds: Set<string>;
 } {
   const unsafeTextElementIds = new Set<string>();
   const unsafeLinkedElementIds = new Set<string>();
+  const unsafeEmbeddedFileIds = new Set<string>();
 
   let nextContent = replaceMarkdownSection(content, 'Text Elements', (line) => {
     const match = line.match(/^(.*?)(\s+\^([A-Za-z0-9_-]+)\s*)$/);
@@ -236,7 +238,20 @@ function sanitizeExcalidrawMarkdownSections(
     return null;
   });
 
-  return { content: nextContent, unsafeTextElementIds, unsafeLinkedElementIds };
+  nextContent = replaceMarkdownSection(nextContent, 'Embedded Files', (line) => {
+    const match = line.match(/^([A-Za-z0-9_-]+):\s*(.+?)\s*$/);
+    if (!match) return line;
+
+    const [, fileId, linkText] = match;
+    if (!hasUnsafeWikiLink(linkText, sitePageConfigsForLinks, linkResolutionMap)) {
+      return line;
+    }
+
+    unsafeEmbeddedFileIds.add(fileId);
+    return null;
+  });
+
+  return { content: nextContent, unsafeTextElementIds, unsafeLinkedElementIds, unsafeEmbeddedFileIds };
 }
 
 function wikilinkInner(text: string): string | null {
@@ -248,6 +263,7 @@ function sanitizeExcalidrawScene(
   scene: unknown,
   unsafeTextElementIds: Set<string>,
   unsafeLinkedElementIds: Set<string>,
+  unsafeEmbeddedFileIds: Set<string>,
   sitePageConfigsForLinks: SitePageConfig[],
   linkResolutionMap: LinkResolutionMap | undefined
 ): { scene: unknown; changed: boolean } {
@@ -255,16 +271,21 @@ function sanitizeExcalidrawScene(
     return { scene, changed: false };
   }
 
-  const maybeScene = scene as { elements?: unknown[] };
+  const maybeScene = scene as { elements?: unknown[]; files?: Record<string, unknown> };
   if (!Array.isArray(maybeScene.elements)) {
     return { scene, changed: false };
   }
 
   let changed = false;
+  const filteredElements: unknown[] = [];
   for (const element of maybeScene.elements) {
-    if (!element || typeof element !== 'object') continue;
+    if (!element || typeof element !== 'object') {
+      filteredElements.push(element);
+      continue;
+    }
     const mutableElement = element as {
       id?: string;
+      fileId?: string;
       type?: string;
       text?: string;
       originalText?: string;
@@ -272,6 +293,13 @@ function sanitizeExcalidrawScene(
       hasTextLink?: boolean;
     };
     const elementId = mutableElement.id;
+
+    if (mutableElement.type === 'image' && mutableElement.fileId && unsafeEmbeddedFileIds.has(mutableElement.fileId)) {
+      changed = true;
+      continue;
+    }
+
+    filteredElements.push(element);
     if (!elementId) continue;
 
     if (unsafeTextElementIds.has(elementId)) {
@@ -300,6 +328,19 @@ function sanitizeExcalidrawScene(
     }
   }
 
+  if (filteredElements.length !== maybeScene.elements.length) {
+    maybeScene.elements = filteredElements;
+    changed = true;
+  }
+  if (maybeScene.files && typeof maybeScene.files === 'object') {
+    for (const fileId of unsafeEmbeddedFileIds) {
+      if (Object.prototype.hasOwnProperty.call(maybeScene.files, fileId)) {
+        delete maybeScene.files[fileId];
+        changed = true;
+      }
+    }
+  }
+
   return { scene, changed };
 }
 
@@ -307,6 +348,7 @@ function scrubCompressedExcalidrawBlocks(
   content: string,
   unsafeTextElementIds: Set<string>,
   unsafeLinkedElementIds: Set<string>,
+  unsafeEmbeddedFileIds: Set<string>,
   sitePageConfigsForLinks: SitePageConfig[],
   linkResolutionMap: LinkResolutionMap | undefined
 ): string {
@@ -321,6 +363,7 @@ function scrubCompressedExcalidrawBlocks(
         parsed,
         unsafeTextElementIds,
         unsafeLinkedElementIds,
+        unsafeEmbeddedFileIds,
         sitePageConfigsForLinks,
         linkResolutionMap
       );
@@ -337,6 +380,7 @@ function scrubJsonExcalidrawBlocks(
   content: string,
   unsafeTextElementIds: Set<string>,
   unsafeLinkedElementIds: Set<string>,
+  unsafeEmbeddedFileIds: Set<string>,
   sitePageConfigsForLinks: SitePageConfig[],
   linkResolutionMap: LinkResolutionMap | undefined
 ): string {
@@ -348,6 +392,7 @@ function scrubJsonExcalidrawBlocks(
         parsed,
         unsafeTextElementIds,
         unsafeLinkedElementIds,
+        unsafeEmbeddedFileIds,
         sitePageConfigsForLinks,
         linkResolutionMap
       );
@@ -369,12 +414,14 @@ export function sanitizeExcalidrawSource(
     content: contentWithSanitizedSections,
     unsafeTextElementIds,
     unsafeLinkedElementIds,
+    unsafeEmbeddedFileIds,
   } = sanitizeExcalidrawMarkdownSections(content, sitePageConfigsForLinks, linkResolutionMap);
 
   const contentWithSanitizedCompressedScene = scrubCompressedExcalidrawBlocks(
     contentWithSanitizedSections,
     unsafeTextElementIds,
     unsafeLinkedElementIds,
+    unsafeEmbeddedFileIds,
     sitePageConfigsForLinks,
     linkResolutionMap
   );
@@ -383,6 +430,7 @@ export function sanitizeExcalidrawSource(
     contentWithSanitizedCompressedScene,
     unsafeTextElementIds,
     unsafeLinkedElementIds,
+    unsafeEmbeddedFileIds,
     sitePageConfigsForLinks,
     linkResolutionMap
   );

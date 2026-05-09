@@ -110,10 +110,31 @@ export interface ExcalidrawTrackedLink {
   normalizedText?: string;
 }
 
+export interface ExcalidrawEmbeddedFileData {
+  tracked: Record<string, string>;
+  untracked: string[];
+}
+
 export interface ExcalidrawEmbedOptions {
   enableEmbeddedLinks?: boolean;
   enableFullscreenButton?: boolean;
   enableOpenDedicatedPage?: boolean;
+}
+
+const EXCALIDRAW_EMBEDDED_FILE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']);
+
+function resolvedTargetExtension(resolved: LinkResolvedInfo): string | null {
+  const targetPath = resolved.link_resolved_target_path;
+  if (!targetPath) return null;
+  const lastSlash = targetPath.lastIndexOf('/');
+  const targetFilename = lastSlash >= 0 ? targetPath.slice(lastSlash + 1) : targetPath;
+  const dotIdx = targetFilename.lastIndexOf('.');
+  return dotIdx > 0 ? targetFilename.slice(dotIdx + 1).toLowerCase() : null;
+}
+
+function isEmbeddedExcalidrawFileTarget(resolved: LinkResolvedInfo): boolean {
+  const ext = resolvedTargetExtension(resolved);
+  return !!ext && EXCALIDRAW_EMBEDDED_FILE_EXTENSIONS.has(ext);
 }
 
 export function buildExcalidrawClientLinkData(args: {
@@ -172,6 +193,83 @@ export function buildExcalidrawClientLinkData(args: {
     }
   }
   return { tracked, untracked };
+}
+
+export function buildExcalidrawClientEmbeddedFileData(args: {
+  excalidrawPageIdent: string; // `<dir>/<title>.excalidraw` (or `/<title>.excalidraw` for root)
+  hostPageDirectory: string; // directory of the page rendering the drawing's HTML
+  sitePageConfigs: SitePageConfig[];
+  allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
+}): ExcalidrawEmbeddedFileData {
+  const { excalidrawPageIdent, hostPageDirectory, sitePageConfigs, allLinkResolutionMaps } = args;
+  const tracked: Record<string, string> = {};
+  const untracked: string[] = [];
+  if (!allLinkResolutionMaps) return { tracked, untracked };
+  const map = allLinkResolutionMaps.get(excalidrawPageIdent);
+  if (!map) return { tracked, untracked };
+
+  for (const linkText of Object.keys(map).sort()) {
+    const resolved = map[linkText];
+    if (!isEmbeddedExcalidrawFileTarget(resolved)) continue;
+
+    const href = resolveTrackedLinkHref({
+      resolved,
+      hostPageDirectory,
+      sitePageConfigs,
+      targetUrlMode: 'source-file',
+    });
+    if (href) {
+      tracked[linkText] = href;
+    } else if (resolved.link_resolved_target_path) {
+      untracked.push(linkText);
+    }
+  }
+  return { tracked, untracked };
+}
+
+export function copyExcalidrawEmbeddedFiles(args: {
+  excalidrawPageIdent: string;
+  contentDir: string;
+  outputDir: string;
+  sitePageConfigs: SitePageConfig[];
+  allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
+}): void {
+  const { excalidrawPageIdent, contentDir, outputDir, sitePageConfigs, allLinkResolutionMaps } = args;
+  if (!allLinkResolutionMaps) return;
+  const map = allLinkResolutionMaps.get(excalidrawPageIdent);
+  if (!map) return;
+
+  for (const linkText of Object.keys(map).sort()) {
+    const resolved = map[linkText];
+    if (!isEmbeddedExcalidrawFileTarget(resolved)) continue;
+    const href = resolveTrackedLinkHref({
+      resolved,
+      hostPageDirectory: '',
+      sitePageConfigs,
+      targetUrlMode: 'source-file',
+    });
+    if (!href || !resolved.link_resolved_target_path) continue;
+
+    const sourcePath = path.join(contentDir, resolved.link_resolved_target_path);
+    const targetPath = path.join(outputDir, resolved.link_resolved_target_path);
+    if (!fs.existsSync(sourcePath)) {
+      logger.warn(`Excalidraw embedded file not found: ${sourcePath}`);
+      continue;
+    }
+
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.copyFileSync(sourcePath, targetPath);
+  }
+}
+
+function embeddedFileAttrs(data: ExcalidrawEmbeddedFileData): string {
+  const filesAttr = Object.keys(data.tracked).length > 0
+    ? ` data-meadow-excalidraw-files="${escapeHtmlAttribute(JSON.stringify(data.tracked))}"`
+    : '';
+  const untrackedFilesAttr = data.untracked.length > 0
+    ? ` data-meadow-excalidraw-untracked-files="${escapeHtmlAttribute(JSON.stringify(data.untracked))}"`
+    : '';
+  return filesAttr + untrackedFilesAttr;
 }
 
 /**
@@ -465,19 +563,34 @@ export function linkOrImageHtml(
       );
       const mdSrc = `${encodedImagePath}.md`;
       const titleAttr = escapeHtmlAttribute(`Open ${drawingHtmlName}`);
+      const excalidrawPageIdent = imageSourceDir
+        ? `${imageSourceDir}/${drawingTitle}.excalidraw`
+        : `/${drawingTitle}.excalidraw`;
+      const fileAttrs = embeddedFileAttrs(buildExcalidrawClientEmbeddedFileData({
+        excalidrawPageIdent,
+        hostPageDirectory: currentPageDirectory,
+        sitePageConfigs,
+        allLinkResolutionMaps,
+      }));
+      if (contentDir && outputDir) {
+        copyExcalidrawEmbeddedFiles({
+          excalidrawPageIdent,
+          contentDir,
+          outputDir,
+          sitePageConfigs,
+          allLinkResolutionMaps,
+        });
+      }
 
       if (!embedOptions.enableEmbeddedLinks &&
           !embedOptions.enableFullscreenButton &&
           embedOptions.enableOpenDedicatedPage) {
-        return `<a class="meadow-excalidraw-embed-link" href="${pageHref}"${styleAttr} title="${titleAttr}"><span class="meadow-excalidraw-embed" data-meadow-excalidraw-src="${mdSrc}"><span class="meadow-excalidraw-loading">Loading drawing…</span></span><span class="meadow-excalidraw-open-icon" aria-hidden="true">⤢</span></a>`;
+        return `<a class="meadow-excalidraw-embed-link" href="${pageHref}"${styleAttr} title="${titleAttr}"><span class="meadow-excalidraw-embed" data-meadow-excalidraw-src="${mdSrc}"${fileAttrs}><span class="meadow-excalidraw-loading">Loading drawing…</span></span><span class="meadow-excalidraw-open-icon" aria-hidden="true">⤢</span></a>`;
       }
 
       let linksAttr = '';
       let untrackedAttr = '';
       if (embedOptions.enableEmbeddedLinks) {
-        const excalidrawPageIdent = imageSourceDir
-          ? `${imageSourceDir}/${drawingTitle}.excalidraw`
-          : `/${drawingTitle}.excalidraw`;
         const { tracked, untracked } = buildExcalidrawClientLinkData({
           excalidrawPageIdent,
           hostPageDirectory: currentPageDirectory,
@@ -496,7 +609,7 @@ export function linkOrImageHtml(
 
       const fullscreenClass = embedOptions.enableFullscreenButton ? ' meadow-excalidraw-can-fullscreen' : '';
       const fullscreenAttr = embedOptions.enableFullscreenButton ? ' data-meadow-excalidraw-fullscreen="true"' : '';
-      const embedHtml = `<span class="meadow-excalidraw-embed${fullscreenClass}" data-meadow-excalidraw-src="${mdSrc}"${linksAttr}${untrackedAttr}${fullscreenAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></span>`;
+      const embedHtml = `<span class="meadow-excalidraw-embed${fullscreenClass}" data-meadow-excalidraw-src="${mdSrc}"${linksAttr}${untrackedAttr}${fileAttrs}${fullscreenAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></span>`;
       const openHtml = embedOptions.enableOpenDedicatedPage
         ? `<a class="meadow-excalidraw-open-icon meadow-excalidraw-open-link" href="${pageHref}" title="${titleAttr}" aria-label="${titleAttr}">⤢</a>`
         : '';

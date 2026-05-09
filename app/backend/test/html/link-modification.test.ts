@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { linkOrImageHtml } from '../../src/html/linkModificationService.js';
+import { buildExcalidrawClientEmbeddedFileData, linkOrImageHtml } from '../../src/html/linkModificationService.js';
 import { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
 
 describe('html link modification', () => {
@@ -191,5 +191,46 @@ describe('html link modification', () => {
     // Link has no explicit path - should fall back to title-only search
     const result = linkOrImageHtml('some page', confs);
     expect(result).toBe('[some page](ai/some%20page.html)');
+  });
+
+  it('should resolve Excalidraw embedded file hrefs separately from page links', () => {
+    const confs: SitePageConfig[] = [
+      {
+        title: 'tracked-sunflower',
+        file_type: 'png',
+        source_graph_subdirectory: 't006/images-used-in-excalidraw',
+        config: {
+          list_type: 'whitelist',
+        },
+      },
+    ];
+    const maps = new Map([
+      ['t006/drawing.excalidraw', {
+        'tracked-sunflower.png': {
+          link_resolved_target_directory: 't006/images-used-in-excalidraw',
+          link_resolved_target_path: 't006/images-used-in-excalidraw/tracked-sunflower.png',
+        },
+        'untracked-pink-flower.png': {
+          link_resolved_target_directory: 't006/images-used-in-excalidraw',
+          link_resolved_target_path: 't006/images-used-in-excalidraw/untracked-pink-flower.png',
+        },
+        'linked page': {
+          link_resolved_target_directory: 't006',
+          link_resolved_target_path: 't006/linked page.md',
+        },
+      }],
+    ]);
+
+    const result = buildExcalidrawClientEmbeddedFileData({
+      excalidrawPageIdent: 't006/drawing.excalidraw',
+      hostPageDirectory: 't006',
+      sitePageConfigs: confs,
+      allLinkResolutionMaps: maps,
+    });
+
+    expect(result.tracked).toEqual({
+      'tracked-sunflower.png': 'images-used-in-excalidraw/tracked-sunflower.png',
+    });
+    expect(result.untracked).toEqual(['untracked-pink-flower.png']);
   });
 });

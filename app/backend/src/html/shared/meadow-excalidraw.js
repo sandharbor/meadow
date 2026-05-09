@@ -328,6 +328,20 @@
     });
   }
 
+  // Parses Obsidian Excalidraw's `## Embedded Files` block. Those entries map
+  // an Excalidraw fileId to a wikilink such as `[[flower.png]]`; Meadow resolves
+  // the wikilink on the server and writes the publishable href onto the
+  // placeholder container.
+  function parseEmbeddedFilesSection(md) {
+    return parseMarkdownSectionMap(md, 'Embedded Files', function (line) {
+      var m = line.match(/^([A-Za-z0-9_-]+):\s*(.+?)\s*$/);
+      if (!m) return null;
+      var inner = extractWikilinkInner(m[2]);
+      if (!inner) return null;
+      return { id: m[1], value: inner };
+    });
+  }
+
   // Extracts the inner-link text from an Obsidian-side wikilink like
   // `[[Target|alias]]` or `[[folder/Target]]`. Returns null when the input
   // isn't a wikilink. The returned string matches what Meadow's link layer
@@ -416,6 +430,100 @@
     }
   }
 
+  function readEmbeddedFileMap(container) {
+    var raw = container.getAttribute('data-meadow-excalidraw-files');
+    if (!raw) return {};
+    try {
+      var parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (err) {
+      console.warn('[meadow-excalidraw] could not parse data-meadow-excalidraw-files', err);
+      return {};
+    }
+  }
+
+  function readUntrackedEmbeddedFileSet(container) {
+    var raw = container.getAttribute('data-meadow-excalidraw-untracked-files');
+    if (!raw) return {};
+    try {
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return {};
+      var set = {};
+      for (var i = 0; i < parsed.length; i++) set[parsed[i]] = true;
+      return set;
+    } catch (err) {
+      console.warn('[meadow-excalidraw] could not parse data-meadow-excalidraw-untracked-files', err);
+      return {};
+    }
+  }
+
+  function blobToDataURL(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(reader.error || new Error('file read failed')); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function fetchEmbeddedFile(fileId, href) {
+    var resp = await fetch(href);
+    if (!resp.ok) return null;
+    var blob = await resp.blob();
+    var dataURL = await blobToDataURL(blob);
+    if (typeof dataURL !== 'string') return null;
+    var now = Date.now();
+    return {
+      id: fileId,
+      dataURL: dataURL,
+      mimeType: blob.type || (dataURL.match(/^data:([^;,]+)/) || [])[1] || 'application/octet-stream',
+      created: now,
+      lastRetrieved: now,
+    };
+  }
+
+  async function hydrateEmbeddedFiles(scene, md, fileMap, untrackedFileSet) {
+    if (!scene || !Array.isArray(scene.elements)) return;
+    if (!scene.files || typeof scene.files !== 'object') scene.files = {};
+
+    var embeddedMap = parseEmbeddedFilesSection(md);
+    if (embeddedMap.size === 0) return;
+
+    var removedFileIds = {};
+    var fetchJobs = [];
+    for (var i = 0; i < scene.elements.length; i++) {
+      var el = scene.elements[i];
+      if (!el || el.type !== 'image' || !el.fileId) continue;
+      if (scene.files[el.fileId] && scene.files[el.fileId].dataURL) continue;
+
+      var linkText = embeddedMap.get(el.fileId);
+      if (!linkText) continue;
+      if (untrackedFileSet[linkText]) {
+        removedFileIds[el.fileId] = true;
+        continue;
+      }
+
+      var href = fileMap[linkText];
+      if (!href) continue;
+      fetchJobs.push(fetchEmbeddedFile(el.fileId, href).then(function (file) {
+        if (file) scene.files[file.id] = file;
+      }));
+    }
+
+    if (fetchJobs.length > 0) {
+      await Promise.all(fetchJobs);
+    }
+
+    if (Object.keys(removedFileIds).length > 0) {
+      scene.elements = scene.elements.filter(function (el) {
+        return !(el && el.type === 'image' && removedFileIds[el.fileId]);
+      });
+      Object.keys(removedFileIds).forEach(function (fileId) {
+        delete scene.files[fileId];
+      });
+    }
+  }
+
   async function renderContainer(container) {
     var src = container.getAttribute('data-meadow-excalidraw-src');
     if (!src) return;
@@ -433,6 +541,12 @@
         return;
       }
       applyDrawingLinks(scene, md, readLinkMap(container), readUntrackedSet(container));
+      await hydrateEmbeddedFiles(
+        scene,
+        md,
+        readEmbeddedFileMap(container),
+        readUntrackedEmbeddedFileSet(container)
+      );
       var svg = await window.MeadowExcalidraw.exportToSvg({
         elements: scene.elements || [],
         appState: Object.assign({ exportBackground: true, exportWithDarkMode: false }, scene.appState || {}),

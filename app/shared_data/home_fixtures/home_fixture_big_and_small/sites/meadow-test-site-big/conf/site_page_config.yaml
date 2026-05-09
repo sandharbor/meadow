@@ -156,10 +156,20 @@ pages:
     sourceGraphSubdirectory: t006
     title: page linked from Excalidraw from a non-text element
     tracked: true
+  - fileType: md
+    listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: page linked from tracked sunflower image in Excalidraw
+    tracked: true
   - fileType: excalidraw
     listType: whitelist
     sourceGraphSubdirectory: t006
     title: t006 --- meadow-flower
+    tracked: true
+  - fileType: png
+    listType: whitelist
+    sourceGraphSubdirectory: t006/images-used-in-excalidraw
+    title: tracked-sunflower
     tracked: true
   - fileType: gif
     listType: whitelist

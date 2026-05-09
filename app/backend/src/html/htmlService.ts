@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 import { setTimeout as delay } from 'timers/promises';
 import { Page } from './page.js';
 import { renderPageToHtml, renderExcalidrawPageToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
-import { buildExcalidrawClientLinkData } from './linkModificationService.js';
+import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
 import { markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
 import {
   SitePageConfigs,
@@ -985,6 +985,19 @@ export async function generateHtmlForSite(
       siteConfig,
       siteSlug: siteSlug || undefined,
     });
+    const { tracked: clientEmbeddedFileMap, untracked: clientUntrackedEmbeddedFiles } = buildExcalidrawClientEmbeddedFileData({
+      excalidrawPageIdent: excalidrawIdent,
+      hostPageDirectory: subdir,
+      sitePageConfigs: sitePageConfigsArrayForLinks,
+      allLinkResolutionMaps,
+    });
+    copyExcalidrawEmbeddedFiles({
+      excalidrawPageIdent: excalidrawIdent,
+      contentDir: renderContentDirectory,
+      outputDir: previewHtmlDirectory,
+      sitePageConfigs: sitePageConfigsArrayForLinks,
+      allLinkResolutionMaps,
+    });
 
     const htmlPath = renderExcalidrawPageToHtml({
       sourceMdPath,
@@ -995,6 +1008,8 @@ export async function generateHtmlForSite(
       drawingMdHref,
       clientLinkMap,
       clientUntrackedLinks,
+      clientEmbeddedFileMap,
+      clientUntrackedEmbeddedFiles,
       breadcrumbHtml,
       backlinksHtml,
       staticAssetNames,

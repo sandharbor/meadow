@@ -802,6 +802,8 @@ export function renderExcalidrawPageToHtml(args: {
   drawingMdHref: string; // href the client uses to fetch the source `.excalidraw.md`
   clientLinkMap?: Record<string, import('./linkModificationService.js').ExcalidrawTrackedLink>; // server-resolved wikilinks-inside-drawing
   clientUntrackedLinks?: string[]; // wikilinks-inside-drawing whose target isn't whitelisted
+  clientEmbeddedFileMap?: Record<string, string>; // embedded-file wikilinks whose source files are publishable
+  clientUntrackedEmbeddedFiles?: string[]; // embedded-file wikilinks whose source files are not publishable
   breadcrumbHtml: string;
   backlinksHtml: string;
   staticAssetNames?: import('./types.js').StaticAssetNames;
@@ -817,6 +819,8 @@ export function renderExcalidrawPageToHtml(args: {
     drawingMdHref,
     clientLinkMap,
     clientUntrackedLinks,
+    clientEmbeddedFileMap,
+    clientUntrackedEmbeddedFiles,
     breadcrumbHtml,
     backlinksHtml,
     staticAssetNames,
@@ -835,7 +839,13 @@ export function renderExcalidrawPageToHtml(args: {
   const untrackedAttr = clientUntrackedLinks && clientUntrackedLinks.length > 0
     ? ` data-meadow-excalidraw-untracked-links="${escapeHtmlAttribute(JSON.stringify(clientUntrackedLinks))}"`
     : '';
-  const bodyHtml = `<div class="meadow-excalidraw-page" data-meadow-excalidraw-src="${drawingMdHref}"${linksAttr}${untrackedAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></div>`;
+  const embeddedFilesAttr = clientEmbeddedFileMap && Object.keys(clientEmbeddedFileMap).length > 0
+    ? ` data-meadow-excalidraw-files="${escapeHtmlAttribute(JSON.stringify(clientEmbeddedFileMap))}"`
+    : '';
+  const untrackedEmbeddedFilesAttr = clientUntrackedEmbeddedFiles && clientUntrackedEmbeddedFiles.length > 0
+    ? ` data-meadow-excalidraw-untracked-files="${escapeHtmlAttribute(JSON.stringify(clientUntrackedEmbeddedFiles))}"`
+    : '';
+  const bodyHtml = `<div class="meadow-excalidraw-page" data-meadow-excalidraw-src="${drawingMdHref}"${linksAttr}${untrackedAttr}${embeddedFilesAttr}${untrackedEmbeddedFilesAttr}><span class="meadow-excalidraw-loading">Loading drawing…</span></div>`;
 
   const depth = currentPageDirectory ? currentPageDirectory.split('/').filter(p => p).length : 0;
   const assetsPrefix = '../'.repeat(depth) + '_mw_assets/';

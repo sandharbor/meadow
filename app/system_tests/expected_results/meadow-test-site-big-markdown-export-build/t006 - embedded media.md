@@ -4,8 +4,8 @@
 
 ![[t006/t006 --- meadow.png|100]]
 
-| test |
-|------|
+| test embed in table                |
+| ---------------------------------- |
 | ![[t006/t006 --- meadow.png\|100]] |
 
 ## Animated GIF
@@ -14,8 +14,8 @@
 
 ![[t006/t006 --- meadow-flower-petals-ani.gif|100]]
 
-| test |
-|------|
+| test embed in table                                  |
+| ---------------------------------------------------- |
 | ![[t006/t006 --- meadow-flower-petals-ani.gif\|100]] |
 
 ## Too Big PNG
@@ -24,8 +24,8 @@ _link not tracked_
 
 _link not tracked_
 
-| test |
-|------|
+| test embed in table                 |
+| ----------------------------------- |
 | _link not tracked_ |
 
 ## SVG
@@ -34,7 +34,7 @@ _link not tracked_
 
 ![[t006/t006 --- meadow-flower.svg|78]]
 
-| test                                      |
+| test embed in table                       |
 | ----------------------------------------- |
 | ![[t006/t006 --- meadow-flower.svg\|100]] |
 
@@ -52,8 +52,8 @@ enableFullscreenButton: true
 enableOpenDedicatedPage: false
 :::
 
-| test                                  |
-| ------------------------------------- |
+| test embed in table                         |
+| ------------------------------------------- |
 | ![[t006 --- meadow-flower.excalidraw\|100]] |
 
 
