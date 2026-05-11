@@ -233,4 +233,31 @@ describe('html link modification', () => {
     });
     expect(result.untracked).toEqual(['untracked-pink-flower.png']);
   });
+
+  it('should render an extensionless embed resolved to an Excalidraw drawing', () => {
+    const confs: SitePageConfig[] = [
+      {
+        title: 'embedded drawing',
+        file_type: 'excalidraw',
+        source_graph_subdirectory: 'drawings',
+        config: {
+          list_type: 'whitelist',
+        },
+      },
+    ];
+
+    const result = linkOrImageHtml('embedded drawing|500', confs, {
+      linkResolutionMap: {
+        'embedded drawing|500': {
+          link_resolved_target_directory: 'drawings',
+          link_resolved_target_path: 'drawings/embedded drawing.excalidraw',
+        },
+      },
+    });
+
+    expect(result).toContain('class="meadow-excalidraw-embed-link"');
+    expect(result).toContain('href="drawings/embedded%20drawing.html"');
+    expect(result).toContain('data-meadow-excalidraw-src="drawings/embedded%20drawing.excalidraw.md"');
+    expect(result).toContain('style="max-width: 500px"');
+  });
 });

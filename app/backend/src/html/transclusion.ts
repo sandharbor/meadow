@@ -20,7 +20,10 @@ import type { SitePageConfig } from '../../../shared_code/types/sitePageConfig.j
 import type { SiteConfig } from '../../../shared_code/types/siteConfig.js';
 import type { LinkResolvedInfo } from '../../../shared_code/types/ISitePage.js';
 import { encodePathForUrl } from '../../../shared_code/utils/urlUtils.js';
-import { linkOrImageHtml as linkOrImageHtmlService } from './linkModificationService.js';
+import {
+  isImageLikeWikiLink,
+  linkOrImageHtml as linkOrImageHtmlService,
+} from './linkModificationService.js';
 import {
   calculateRelativePath,
   getMdContent,
@@ -345,6 +348,9 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
 
   // First, recursively expand nested transclusions inside the extracted markdown.
   const expandedMd = extractedMd.replace(/!\[\[(.*?)\]\]/g, (_m: string, inner: string) => {
+    if (isImageLikeWikiLink(inner, linkResolutionMapForSourcePage)) {
+      return `![[${inner}]]`;
+    }
     return renderTransclusionToHtml(inner, {
       ...options,
       // The page containing this nested embed is the transcluded page, so resolve target from that page's context.
@@ -381,4 +387,3 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
 
   return wrapTransclusionHtml(innerHtml, seeInContextHref, isNested);
 }
-

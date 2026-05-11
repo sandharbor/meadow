@@ -45,6 +45,7 @@ import {
   escapeHtmlAttribute
 } from './shared.js';
 import {
+  isImageLikeWikiLink,
   linkOrImageHtml as linkOrImageHtmlService,
   resolveTrackedLinkHref,
   type ExcalidrawEmbedOptions,
@@ -230,8 +231,11 @@ export function renderPageToHtml(
       return body.trim();
     }
     const linkText = embedMatch[1];
+    const effectiveLinkResolutionMap = overrides?.linkResolutionMapOverride ?? linkResolutionMap;
+    const resolvedTargetPath = effectiveLinkResolutionMap?.[linkText]?.link_resolved_target_path ?? '';
     const linkInfo = linkTextToLinkInfo(linkText);
-    if (linkInfo.type !== 'image' || !linkInfo.filename.toLowerCase().endsWith('.excalidraw')) {
+    if (!isImageLikeWikiLink(linkText, effectiveLinkResolutionMap) ||
+        !(linkInfo.filename.toLowerCase().endsWith('.excalidraw') || resolvedTargetPath.toLowerCase().endsWith('.excalidraw'))) {
       return body.trim();
     }
     return linkOrImageHtml(linkText, highlightDoNotLinkPageName, {
@@ -254,8 +258,8 @@ export function renderPageToHtml(
     // First, handle image links with exclamation marks
     mdContent = replaceOutsideCode(mdContent, /!\[\[(.*?)\]\]/g, (_match: string, linkText: string) => {
       // Obsidian-style embeds: images stay images; otherwise treat as transclusion.
-      const linkInfo = linkTextToLinkInfo(linkText);
-      if (linkInfo.type === 'image') {
+      const effectiveLinkResolutionMap = overrides?.linkResolutionMapOverride ?? linkResolutionMap;
+      if (isImageLikeWikiLink(linkText, effectiveLinkResolutionMap)) {
         return linkOrImageHtml(linkText, highlightDoNotLinkPageName, overrides);
       }
 

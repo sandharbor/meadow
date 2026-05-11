@@ -109,11 +109,15 @@ function getPageTitle(filePath: string): string {
  * Gets page ID from file path relative to source graph directory.
  * This includes the directory path for disambiguation.
  */
-function getPageIdFromPath(filePath: string, sourceGraphDir: string): string {
+function getPageIdFromPath(filePath: string, sourceGraphDir: string, content?: string): string {
   const relativePath = path.relative(sourceGraphDir, filePath);
-  return relativePath.endsWith('.md')
+  let pageId = relativePath.endsWith('.md')
     ? relativePath.slice(0, -3)
     : relativePath;
+  if (content !== undefined && isExcalidrawMarkdown(content) && !pageId.endsWith('.excalidraw')) {
+    pageId = `${pageId}.excalidraw`;
+  }
+  return pageId;
 }
 
 /**
@@ -1059,10 +1063,7 @@ async function validatePagespecLinksForSite(
     const block = getEffectivePagespecBlock(mdFile, content).block;
     if (!block) continue;
 
-    const relativePath = path.relative(sourceGraphDir, mdFile);
-    const pageTitle = relativePath.endsWith('.md')
-      ? relativePath.slice(0, -3)
-      : relativePath;
+    const pageTitle = getPageIdFromPath(mdFile, sourceGraphDir, content);
     const siteSpec = getPagespecForSite(block, siteName);
 
     if (!siteSpec || !siteSpec.isInWorkingGraph) continue;
@@ -1200,7 +1201,7 @@ describe('Runtime Pagespec Link Validation', () => {
         const block = getEffectivePagespecBlock(mdFile, content).block;
         if (!block) continue;
 
-        const pageId = getPageIdFromPath(mdFile, sourceGraphDir);
+        const pageId = getPageIdFromPath(mdFile, sourceGraphDir, content);
         const siteSpec = getPagespecForSite(block, siteName);
         if (!siteSpec) continue;
 
@@ -1250,7 +1251,7 @@ describe('Runtime Pagespec Link Validation', () => {
         const block = getEffectivePagespecBlock(mdFile, content).block;
         if (!block) continue;
 
-        const pageId = getPageIdFromPath(mdFile, sourceGraphDir);
+        const pageId = getPageIdFromPath(mdFile, sourceGraphDir, content);
         const siteSpec = getPagespecForSite(block, siteName);
         if (!siteSpec) continue;
 

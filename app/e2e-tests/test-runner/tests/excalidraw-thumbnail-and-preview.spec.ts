@@ -100,6 +100,46 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
     { timeout: 15_000 },
   );
 
+  const implicitExcalidrawEmbedPageLink = previewFrame
+    .getByRole("link", {
+      name: "t006 --- page that embeds Excalidraw in another directory",
+    })
+    .first();
+  await implicitExcalidrawEmbedPageLink.scrollIntoViewIfNeeded();
+  await implicitExcalidrawEmbedPageLink.click();
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "t006 --- page that embeds Excalidraw in another directory",
+    { timeout: 15_000 },
+  );
+
+  const implicitExcalidrawEmbedLink = previewFrame
+    .locator(
+      'a.meadow-excalidraw-embed-link[href*="embedded%20in%20page%20in%20other%20t006%20directory.html"]',
+    )
+    .first();
+  await implicitExcalidrawEmbedLink.scrollIntoViewIfNeeded();
+  await expect(
+    implicitExcalidrawEmbedLink.locator("svg").first(),
+  ).toBeVisible({ timeout: 30_000 });
+
+  await implicitExcalidrawEmbedLink.click();
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "embedded in page in other t006 directory",
+    { timeout: 15_000 },
+  );
+  await expect(
+    previewFrame.locator(".meadow-excalidraw-page svg").first(),
+  ).toBeVisible({ timeout: 30_000 });
+
+  await previewFrame
+    .getByRole("link", { name: "t006 - embedded media" })
+    .first()
+    .click();
+  await expect(previewFrame.locator("h1").first()).toContainText(
+    "t006 - embedded media",
+    { timeout: 15_000 },
+  );
+
   // Scroll the embed into view (it's near the bottom of the page) so the
   // client renderer kicks in if it hadn't already.
   const embedLink = previewFrame.locator("a.meadow-excalidraw-embed-link").first();
@@ -144,7 +184,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
     .locator(".meadow-excalidraw-fullscreen-btn")
     .first();
   await expect(directedFullscreenButton).toBeVisible();
-  await directedFullscreenButton.click();
+  await directedFullscreenButton.click({ force: true });
   await expect(directedEmbed).toHaveClass(/is-fullscreen/);
   await page.waitForTimeout(750);
   await snapshot("directed excalidraw embed fullscreen open");

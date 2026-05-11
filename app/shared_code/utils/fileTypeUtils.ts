@@ -25,16 +25,49 @@ export const isImageFileType = (fileType: string): fileType is ImageFileType => 
 };
 
 /**
- * Given a page's title and logical file_type, returns the actual on-disk
- * filename. Most types map straight to `<title>.<file_type>`, but Obsidian
- * Excalidraw drawings live as `<title>.excalidraw.md` even though their
- * logical type is `excalidraw`. Use this anywhere the backend or tooling
- * needs to find / read / write the source file from a SitePageConfig.
+ * Returns the canonical filename Meadow writes for a logical page/file.
+ * Most types map straight to `<title>.<file_type>`, but generated/tracked
+ * Excalidraw markdown uses the Obsidian plugin's conventional
+ * `<title>.excalidraw.md` marker even though the logical file type is
+ * `excalidraw`.
  */
-export function onDiskFilename(title: string, fileType: string | undefined): string {
+export function canonicalPageFilename(title: string, fileType: string | undefined): string {
   const ft = fileType || 'md';
   if (ft === 'excalidraw') {
     return `${title}.excalidraw.md`;
   }
   return `${title}.${ft}`;
+}
+
+/**
+ * Returns the physical source filenames that may back a logical page/file in a
+ * user's source graph. Obsidian Excalidraw commonly creates
+ * `<title>.excalidraw.md`, but the marker is optional; the content can also be
+ * stored as `<title>.md`.
+ */
+export function sourceFileCandidateFilenames(title: string, fileType: string | undefined): string[] {
+  const ft = fileType || 'md';
+  const primary = canonicalPageFilename(title, ft);
+  if (ft === 'excalidraw') {
+    return [primary, `${title}.md`];
+  }
+  return [primary];
+}
+
+/**
+ * Returns source-file request paths to try for a generated/canonical source
+ * reference. This lets thumbnail/source fetchers request `foo.excalidraw.md`
+ * while still serving source graphs where that Excalidraw drawing is stored as
+ * bare `foo.md`.
+ */
+export function sourceFileRequestPathCandidates(relativePath: string): string[] {
+  const excalidrawMarkdownSuffix = '.excalidraw.md';
+  if (!relativePath.toLowerCase().endsWith(excalidrawMarkdownSuffix)) {
+    return [relativePath];
+  }
+
+  return [
+    relativePath,
+    `${relativePath.slice(0, -excalidrawMarkdownSuffix.length)}.md`,
+  ];
 }

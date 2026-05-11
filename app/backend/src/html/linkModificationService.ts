@@ -18,12 +18,13 @@ import path from 'path';
 import fs from 'fs';
 import type { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
 import { linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute } from './shared.js';
-import type { PageNameToPage } from './types.js';
+import type { LinkInfo, PageNameToPage } from './types.js';
 import { SiteConfig } from '../../../shared_code/types/siteConfig.js';
 import type { LinkResolvedInfo } from '../../../shared_code/types/ISitePage.js';
 import { encodePathForUrl } from '../../../shared_code/utils/urlUtils.js';
 import { extractContentWithoutPagespecs, hasPagespecsBlock } from '../../../shared_code/test/pagespecUtils.js';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
+import { IMAGE_FILE_TYPES } from './constants.js';
 
 interface ResolvedTarget {
   directory: string;
@@ -135,6 +136,36 @@ function resolvedTargetExtension(resolved: LinkResolvedInfo): string | null {
 function isEmbeddedExcalidrawFileTarget(resolved: LinkResolvedInfo): boolean {
   const ext = resolvedTargetExtension(resolved);
   return !!ext && EXCALIDRAW_EMBEDDED_FILE_EXTENSIONS.has(ext);
+}
+
+function isResolvedImageLikeTarget(resolved: LinkResolvedInfo | undefined): boolean {
+  const ext = resolved ? resolvedTargetExtension(resolved) : null;
+  return !!ext && (IMAGE_FILE_TYPES as readonly string[]).includes(ext);
+}
+
+export function isImageLikeWikiLink(
+  linkText: string,
+  linkResolutionMap?: Record<string, LinkResolvedInfo>
+): boolean {
+  const linkInfo = linkTextToLinkInfo(linkText);
+  return linkInfo.type === 'image' || isResolvedImageLikeTarget(linkResolutionMap?.[linkText]);
+}
+
+function linkInfoWithResolvedTargetType(
+  linkText: string,
+  linkResolutionMap?: Record<string, LinkResolvedInfo>
+): LinkInfo {
+  const linkInfo = linkTextToLinkInfo(linkText);
+  if (linkInfo.type === 'page' && isResolvedImageLikeTarget(linkResolutionMap?.[linkText])) {
+    return {
+      type: 'image',
+      filename: linkInfo.filename,
+      size: linkInfo.alternative_name && /^\d+$/.test(linkInfo.alternative_name)
+        ? linkInfo.alternative_name
+        : undefined,
+    };
+  }
+  return linkInfo;
 }
 
 export function buildExcalidrawClientLinkData(args: {
@@ -311,7 +342,7 @@ export function isLinkTracked(
   sitePageConfigs: SitePageConfig[],
   linkResolutionMap?: Record<string, LinkResolvedInfo>
 ): boolean {
-  const linkInfo = linkTextToLinkInfo(linkText);
+  const linkInfo = linkInfoWithResolvedTargetType(linkText, linkResolutionMap);
 
   if (linkInfo.type === 'image') {
     const originalImageFilename = linkInfo.filename;
@@ -433,7 +464,7 @@ export function linkOrImageHtml(
     excalidrawEmbedOptions,
   } = options;
 
-  const linkInfo = linkTextToLinkInfo(linkText);
+  const linkInfo = linkInfoWithResolvedTargetType(linkText, linkResolutionMap);
 
   if (linkInfo.type === 'image') {
     const originalImageFilename = linkInfo.filename;

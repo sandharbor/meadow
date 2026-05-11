@@ -170,7 +170,8 @@ export function parsePagespecSidecarContent(content: string): PagespecsBlock | n
  * doesn't follow the convention.
  *
  * - `<dir>/foo.excalidraw.pagespec.yaml` → `<dir>/foo.excalidraw.md`
- *   (Obsidian Excalidraw drawings live as `<title>.excalidraw.md`).
+ *   or `<dir>/foo.md` for Obsidian Excalidraw drawings whose filenames omit
+ *   the `.excalidraw` marker.
  * - `<dir>/foo.svg.pagespec.yaml`        → `<dir>/foo.svg`
  *   (general image case — kept for future migration of inline-stripped SVG
  *   pagespecs onto sidecars).
@@ -188,7 +189,12 @@ export function sourceFileForSidecarPath(sidecarPath: string): string | null {
   if (dot <= 0) return null;
   const fileType = stem.slice(dot + 1).toLowerCase();
   if (fileType === 'excalidraw') {
-    return path.join(dir, `${stem}.md`);
+    const excalidrawMarkedPath = path.join(dir, `${stem}.md`);
+    if (fs.existsSync(excalidrawMarkedPath)) {
+      return excalidrawMarkedPath;
+    }
+    const bareStem = stem.slice(0, -'.excalidraw'.length);
+    return path.join(dir, `${bareStem}.md`);
   }
   return path.join(dir, stem);
 }

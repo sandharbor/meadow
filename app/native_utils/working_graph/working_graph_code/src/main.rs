@@ -3,7 +3,7 @@ use link_parser_lib::{parse_link_text, parse_markdown_link_href, AnchorType as L
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 use working_graph::site_page_config::{parse_site_page_config_yaml, SitePageConfig};
@@ -485,6 +485,96 @@ fn parse_out_markdown_link(display_text: &str, href: &str, source_page: &PageIde
     }
 }
 
+fn target_text_without_alias_or_size(link_text: &str) -> String {
+    let mut last_unescaped_pipe = None;
+    let mut escaped = false;
+    for (idx, ch) in link_text.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if ch == '\\' {
+            escaped = true;
+            continue;
+        }
+        if ch == '|' {
+            last_unescaped_pipe = Some(idx);
+        }
+    }
+    let target = last_unescaped_pipe
+        .map(|idx| &link_text[..idx])
+        .unwrap_or(link_text);
+    target.replace("\\|", "|")
+}
+
+fn strip_anchor_markers_for_extension_check(name: &str) -> &str {
+    if let Some(pos) = name.rfind("#^") {
+        &name[..pos]
+    } else if let Some(pos) = name.rfind('^') {
+        &name[..pos]
+    } else if let Some(pos) = name.rfind('#') {
+        &name[..pos]
+    } else {
+        name
+    }
+}
+
+fn wiki_link_has_explicit_file_type(link: &LinkOut) -> bool {
+    if link.is_relative_path_link {
+        return true;
+    }
+    if link.link_parsed_file_type != "md" {
+        return true;
+    }
+
+    let target_text = target_text_without_alias_or_size(&link.link_original_text);
+    let filename = target_text.rsplit('/').next().unwrap_or(target_text.as_str());
+    let filename_without_anchor = strip_anchor_markers_for_extension_check(filename);
+    Path::new(filename_without_anchor)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.eq_ignore_ascii_case("md"))
+        .unwrap_or(false)
+}
+
+fn file_type_sort_rank(file_type: &str) -> usize {
+    match file_type {
+        "md" => 0,
+        "excalidraw" => 1,
+        "png" | "jpg" | "jpeg" | "gif" | "svg" | "webp" => 2,
+        "pdf" | "txt" => 3,
+        _ => 4,
+    }
+}
+
+fn sort_resolution_candidates(candidates: &mut Vec<(String, String)>) {
+    candidates.sort_by(|(dir_a, ft_a), (dir_b, ft_b)| {
+        let depth_a = if dir_a.is_empty() { 0 } else { dir_a.matches('/').count() + 1 };
+        let depth_b = if dir_b.is_empty() { 0 } else { dir_b.matches('/').count() + 1 };
+        match depth_a.cmp(&depth_b) {
+            std::cmp::Ordering::Equal => match dir_a.cmp(dir_b) {
+                std::cmp::Ordering::Equal => match file_type_sort_rank(ft_a).cmp(&file_type_sort_rank(ft_b)) {
+                    std::cmp::Ordering::Equal => ft_a.cmp(ft_b),
+                    other => other,
+                },
+                other => other,
+            },
+            other => other,
+        }
+    });
+}
+
+fn exact_any_file_type_candidate(file_index_map: &HashMap<(String, String, String), usize>, directory: &str, title: &str) -> Option<(String, String)> {
+    let mut candidates: Vec<(String, String)> = Vec::new();
+    for (key_dir, key_title, key_ft) in file_index_map.keys() {
+        if key_dir == directory && key_title == title {
+            candidates.push((key_dir.clone(), key_ft.clone()));
+        }
+    }
+    sort_resolution_candidates(&mut candidates);
+    candidates.into_iter().next()
+}
+
 fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
     let mut results: Vec<ScanResult> = Vec::new();
 
@@ -572,18 +662,20 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
 
     for scan in scans.iter_mut() {
         for link in scan.outgoing_links.iter_mut() {
-            let dir = if link.is_relative_path_link {
+            let implicit_wiki_file_type = !wiki_link_has_explicit_file_type(link);
+            let (dir, file_type) = if link.is_relative_path_link {
                 // Markdown links: directory was already resolved in parse_out_markdown_link.
                 // The link_parsed_directory is already normalized (combined with source dir).
                 // Strip any trailing slash for consistency with wiki-link resolution.
                 let d = link.link_parsed_directory.trim_end_matches('/').to_string();
                 // If the normalized path still contains `..` it means the link escapes the
                 // source graph root. Treat it as unresolvable by clearing the directory.
-                if d.contains("..") {
+                let dir = if d.contains("..") {
                     String::new()
                 } else {
                     d
-                }
+                };
+                (dir, link.link_parsed_file_type.clone())
             } else if !link.link_parsed_directory.is_empty() {
                 let raw_dir = calculate_normalized_directory("", Some(&link.link_parsed_directory));
                 let exact_key = (
@@ -592,7 +684,7 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
                     link.link_parsed_file_type.clone(),
                 );
                 if file_index_map_for_resolution.contains_key(&exact_key) {
-                    raw_dir
+                    (raw_dir, link.link_parsed_file_type.clone())
                 } else {
                     // Strict match missed — fall back to suffix-matching. This handles
                     // graphs where the user pointed `sourceDirectory` at a directory that
@@ -614,11 +706,7 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
                             potential_dirs.push(key_dir.clone());
                         }
                     }
-                    if potential_dirs.is_empty() {
-                        raw_dir
-                    } else if potential_dirs.len() == 1 {
-                        potential_dirs[0].clone()
-                    } else {
+                    if !potential_dirs.is_empty() {
                         potential_dirs.sort_by(|a, b| {
                             let depth_a = if a.is_empty() { 0 } else { a.matches('/').count() + 1 };
                             let depth_b = if b.is_empty() { 0 } else { b.matches('/').count() + 1 };
@@ -627,18 +715,32 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
                                 other => other,
                             }
                         });
-                        potential_dirs[0].clone()
+                        (potential_dirs[0].clone(), link.link_parsed_file_type.clone())
+                    } else if implicit_wiki_file_type {
+                        let mut candidates: Vec<(String, String)> = Vec::new();
+                        for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
+                            if key_title != &link.link_parsed_title {
+                                continue;
+                            }
+                            if key_dir == &raw_dir || (!suffix.is_empty() && key_dir.ends_with(&suffix)) {
+                                candidates.push((key_dir.clone(), key_ft.clone()));
+                            }
+                        }
+                        sort_resolution_candidates(&mut candidates);
+                        candidates.into_iter().next().unwrap_or((raw_dir, link.link_parsed_file_type.clone()))
+                    } else {
+                        (raw_dir, link.link_parsed_file_type.clone())
                     }
                 }
             } else {
                 let root_key = (String::new(), link.link_parsed_title.clone(), link.link_parsed_file_type.clone());
                 if file_index_map_for_resolution.contains_key(&root_key) {
-                    String::new()
+                    (String::new(), link.link_parsed_file_type.clone())
                 } else {
                     let source_dir = &scan.source_file.directory;
                     let same_dir_key = (source_dir.clone(), link.link_parsed_title.clone(), link.link_parsed_file_type.clone());
                     if file_index_map_for_resolution.contains_key(&same_dir_key) {
-                        source_dir.clone()
+                        (source_dir.clone(), link.link_parsed_file_type.clone())
                     } else {
                         let mut potential_dirs: Vec<String> = Vec::new();
                         for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
@@ -646,11 +748,7 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
                                 potential_dirs.push(key_dir.clone());
                             }
                         }
-                        if potential_dirs.is_empty() {
-                            String::new()
-                        } else if potential_dirs.len() == 1 {
-                            potential_dirs[0].clone()
-                        } else {
+                        if !potential_dirs.is_empty() {
                             potential_dirs.sort_by(|a, b| {
                                 let depth_a = if a.is_empty() { 0 } else { a.matches('/').count() + 1 };
                                 let depth_b = if b.is_empty() { 0 } else { b.matches('/').count() + 1 };
@@ -659,17 +757,35 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
                                     other => other,
                                 }
                             });
-                            potential_dirs[0].clone()
+                            (potential_dirs[0].clone(), link.link_parsed_file_type.clone())
+                        } else if implicit_wiki_file_type {
+                            if let Some(root_candidate) = exact_any_file_type_candidate(&file_index_map_for_resolution, "", &link.link_parsed_title) {
+                                root_candidate
+                            } else if let Some(same_dir_candidate) = exact_any_file_type_candidate(&file_index_map_for_resolution, source_dir, &link.link_parsed_title) {
+                                same_dir_candidate
+                            } else {
+                                let mut candidates: Vec<(String, String)> = Vec::new();
+                                for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
+                                    if key_title == &link.link_parsed_title {
+                                        candidates.push((key_dir.clone(), key_ft.clone()));
+                                    }
+                                }
+                                sort_resolution_candidates(&mut candidates);
+                                candidates.into_iter().next().unwrap_or((String::new(), link.link_parsed_file_type.clone()))
+                            }
+                        } else {
+                            (String::new(), link.link_parsed_file_type.clone())
                         }
                     }
                 }
             };
 
+            link.link_parsed_file_type = file_type.clone();
             link.link_resolved_target_directory = dir.clone();
             link.link_resolved_target_path = if dir.is_empty() {
-                format!("{}.{}", link.link_parsed_title, link.link_parsed_file_type)
+                format!("{}.{}", link.link_parsed_title, file_type)
             } else {
-                format!("{}/{}.{}", dir, link.link_parsed_title, link.link_parsed_file_type)
+                format!("{}/{}.{}", dir, link.link_parsed_title, file_type)
             };
         }
     }
@@ -1088,6 +1204,23 @@ mod tests {
         }
     }
 
+    fn extensionless_wiki_link(prefix: &str, title: &str, source: &PageIdentifier) -> LinkOut {
+        LinkOut {
+            link_original_text: format!("{}{}", prefix, title),
+            link_source_page_path: source.path.clone(),
+            link_parsed_directory: prefix.to_string(),
+            link_parsed_title: title.to_string(),
+            link_parsed_file_type: "md".to_string(),
+            link_parsed_anchor: None,
+            link_parsed_anchor_type: None,
+            link_parsed_alias: None,
+            link_parsed_media_size: None,
+            link_resolved_target_directory: String::new(),
+            link_resolved_target_path: String::new(),
+            is_relative_path_link: false,
+        }
+    }
+
     fn page_only(p: PageIdentifier) -> ScanResult {
         ScanResult { source_file: p, is_sensitive: false, outgoing_links: vec![] }
     }
@@ -1176,5 +1309,35 @@ mod tests {
         let resolved = &out[0].outgoing_links[0];
         assert_eq!(resolved.link_resolved_target_directory, "t006");
         assert_eq!(resolved.link_resolved_target_path, "t006/foo.png");
+    }
+
+    #[test]
+    fn test_resolve_extensionless_wiki_link_can_target_excalidraw() {
+        let source = make_page("t006", "embedding page", "md");
+        let target = make_page("t006 - second directory", "embedded drawing", "excalidraw");
+        let link = extensionless_wiki_link("", "embedded drawing", &source);
+        let out = resolve_links(vec![
+            page_with_link(source, link),
+            page_only(target),
+        ]);
+        let resolved = &out[0].outgoing_links[0];
+        assert_eq!(resolved.link_parsed_file_type, "excalidraw");
+        assert_eq!(resolved.link_resolved_target_directory, "t006 - second directory");
+        assert_eq!(resolved.link_resolved_target_path, "t006 - second directory/embedded drawing.excalidraw");
+    }
+
+    #[test]
+    fn test_resolve_explicit_md_wiki_link_does_not_target_excalidraw() {
+        let source = make_page("t006", "embedding page", "md");
+        let target = make_page("t006 - second directory", "embedded drawing", "excalidraw");
+        let link = wiki_link("", "embedded drawing", "md", &source);
+        let out = resolve_links(vec![
+            page_with_link(source, link),
+            page_only(target),
+        ]);
+        let resolved = &out[0].outgoing_links[0];
+        assert_eq!(resolved.link_parsed_file_type, "md");
+        assert_eq!(resolved.link_resolved_target_directory, "");
+        assert_eq!(resolved.link_resolved_target_path, "embedded drawing.md");
     }
 }

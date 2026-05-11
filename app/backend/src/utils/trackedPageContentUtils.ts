@@ -17,7 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { parsePageConfig } from '../../../shared_code/utils/sitePageConfigUtils.js';
-import { onDiskFilename } from '../../../shared_code/utils/fileTypeUtils.js';
+import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../shared_code/utils/fileTypeUtils.js';
 import { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
 import { stringifyPageConfig } from '../../../shared_code/utils/sitePageConfigUtils.js';
 import { SiteConfigPaths } from '../../../shared_code/paths/siteConfigPaths.js';
@@ -98,7 +98,7 @@ export async function ensureTrackedPageContent(
   const sourceBackedTrackedPages = trackedPages.filter(c => (c.source_graph_subdirectory || '') !== tagPagesSubdirName);
   for (const sitePageConfig of sourceBackedTrackedPages) {
     const subdir = sitePageConfig.source_graph_subdirectory || '';
-    const filename = onDiskFilename(sitePageConfig.title, sitePageConfig.file_type);
+    const filename = canonicalPageFilename(sitePageConfig.title, sitePageConfig.file_type);
     const relativePath = subdir ? path.join(subdir, filename) : filename;
     expectedFilePaths.set(relativePath, sitePageConfig);
   }
@@ -161,8 +161,10 @@ export async function ensureTrackedPageContent(
   for (const [relativePath, conf] of expectedFilePaths) {
     const fileType = conf.file_type || 'md';
 
-    // Compute the expected path directly from the config (no directory scan needed).
-    const sourcePath = path.join(sourceDirectory, relativePath);
+    const subdir = conf.source_graph_subdirectory || '';
+    const sourcePath = sourceFileCandidateFilenames(conf.title, fileType)
+      .map(filename => subdir ? path.join(sourceDirectory, subdir, filename) : path.join(sourceDirectory, filename))
+      .find(candidatePath => fs.existsSync(candidatePath));
 
     const targetPath = path.join(targetDir, relativePath);
     const targetSubdir = path.dirname(targetPath);
@@ -173,7 +175,7 @@ export async function ensureTrackedPageContent(
     }
 
     // Only copy if source exists
-    if (fs.existsSync(sourcePath)) {
+    if (sourcePath) {
       try {
         fs.copyFileSync(sourcePath, targetPath);
         copiedCount++;
@@ -181,7 +183,7 @@ export async function ensureTrackedPageContent(
         logger.error(`Failed to copy "${conf.title}": ${err instanceof Error ? err.message : String(err)}`);
       }
     } else {
-      logger.warn(`Tracked page "${conf.title}" (${fileType}) not found at: ${sourcePath}`);
+      logger.warn(`Tracked page "${conf.title}" (${fileType}) not found at: ${path.join(sourceDirectory, relativePath)}`);
     }
   }
 

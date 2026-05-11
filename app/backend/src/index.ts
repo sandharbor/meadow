@@ -20,7 +20,11 @@ import path, { join } from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { parsePageConfig, stringifyPageConfig } from '../../shared_code/utils/sitePageConfigUtils.js';
-import { onDiskFilename } from '../../shared_code/utils/fileTypeUtils.js';
+import {
+  canonicalPageFilename,
+  sourceFileCandidateFilenames,
+  sourceFileRequestPathCandidates,
+} from '../../shared_code/utils/fileTypeUtils.js';
 import { encodePathForUrl } from '../../shared_code/utils/urlUtils.js';
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../shared_code/utils/compressionManifestUtils.js';
 import { SitePageConfig } from '../../shared_code/types/sitePageConfig.js';
@@ -217,15 +221,17 @@ app.post('/api/site/:siteSlug/copy-tracked-pages', (req, res, next) => {
 
     for (const page of trackedPages) {
       try {
-        const filename = onDiskFilename(page.title, page.file_type);
-        const sourceFile = join(notesDir, page.sourceGraphSubdirectory, filename);
+        const filename = canonicalPageFilename(page.title, page.file_type);
+        const sourceFile = sourceFileCandidateFilenames(page.title, page.file_type)
+          .map(candidateFilename => join(notesDir, page.sourceGraphSubdirectory, candidateFilename))
+          .find(candidatePath => fs.existsSync(candidatePath));
         const targetFile = join(targetDir, filename);
 
-        if (fs.existsSync(sourceFile)) {
+        if (sourceFile) {
           fs.copyFileSync(sourceFile, targetFile);
           copiedFiles.push(page.title);
         } else {
-          errors.push(`Source file not found: ${sourceFile}`);
+          errors.push(`Source file not found: ${join(notesDir, page.sourceGraphSubdirectory, filename)}`);
         }
       } catch (err) {
         errors.push(`Failed to copy ${page.title}: ${err instanceof Error ? err.message : String(err)}`);
@@ -1530,9 +1536,11 @@ app.get('/api/site/:siteSlug/source-file/*', (req, res, next) => {
       return res.status(500).json({ error: `Could not determine the source directory for site ${siteSlug}` });
     }
 
-    const filePath = join(sourceDirectory, filename);
+    const filePath = sourceFileRequestPathCandidates(filename)
+      .map(candidateFilename => join(sourceDirectory, candidateFilename))
+      .find(candidatePath => fs.existsSync(candidatePath));
     
-    if (!fs.existsSync(filePath)) {
+    if (!filePath) {
       return res.status(404).json({ error: 'Source file not found' });
     }
 

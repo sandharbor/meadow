@@ -55,7 +55,7 @@ enableOpenDedicatedPage: false
 | test embed in table                         |
 | ------------------------------------------- |
 | ![[t006 --- meadow-flower.excalidraw\|100]] |
-
+[[t006 --- page that embeds Excalidraw in another directory]]
 
 
 ```yaml
@@ -65,6 +65,8 @@ pagespecs:
     isInWorkingGraph: true
     links:
       outlinks:
+        - linkPath: /t006/t006 --- page that embeds Excalidraw in another directory.md
+          isInGraph: true
         - linkPath: /t006/t006 --- meadow-flower-petals-ani.gif
           isInGraph: true
         - linkPath: /t006/t006 --- meadow-flower.excalidraw
@@ -91,6 +93,7 @@ pagespecs:
         - relativeLinkPath: t006/t006 --- meadow.png
         - relativeLinkPath: t006/t006 --- meadow.png
         - relativeLinkPath: t006/t006 --- meadow.png
+        - relativeLinkPath: t006/t006 --- page that embeds Excalidraw in another directory.html
       footerSectionBacklinks:
         - relativeLinkPath: main page.html
           backlinkContexts:

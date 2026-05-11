@@ -133,6 +133,16 @@ pages:
     tracked: true
   - fileType: md
     listType: whitelist
+    sourceGraphSubdirectory: t006
+    title: t006 --- page that embeds Excalidraw in another directory
+    tracked: true
+  - fileType: excalidraw
+    listType: whitelist
+    sourceGraphSubdirectory: t006 - second directory
+    title: embedded in page in other t006 directory
+    tracked: true
+  - fileType: md
+    listType: whitelist
     sourceGraphSubdirectory: t006 - second directory
     title: t006 --- dup-linked-from-excalidraw
     tracked: true
