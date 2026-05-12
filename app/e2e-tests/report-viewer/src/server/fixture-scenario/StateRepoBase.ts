@@ -179,6 +179,49 @@ export class StateRepoBase {
     }
   }
 
+  // List every file in the working tree that git considers ignored
+  // (matched by a .gitignore rule or .git/info/exclude). timeline.jsonl
+  // is excluded via .git/info/exclude as part of the fixture's internal
+  // bookkeeping — strip it here so it doesn't leak into tick rows.
+  ignoredFiles(): string[] {
+    try {
+      const out = execSync(
+        "git ls-files --others --ignored --exclude-standard",
+        {
+          cwd: this.repoDir,
+          encoding: "utf8",
+          stdio: ["pipe", "pipe", "ignore"],
+        }
+      );
+      return out
+        .split("\n")
+        .filter((p) => p.length > 0 && p !== TIMELINE_FILENAME)
+        .sort();
+    } catch {
+      return [];
+    }
+  }
+
+  // Read the on-disk content of every ignored file. Mirrors
+  // uncommittedFileContents so the viewer can show diffs across ticks
+  // for files git deliberately doesn't track (e.g. resources.local.yaml).
+  ignoredFileContents(): Record<string, string> {
+    const contents: Record<string, string> = {};
+    for (const relPath of this.ignoredFiles()) {
+      const resolved = path.resolve(this.repoDir, relPath);
+      if (!resolved.startsWith(this.repoDir + path.sep)) continue;
+      if (!existsSync(resolved)) continue;
+      try {
+        const stat = statSync(resolved);
+        if (!stat.isFile() || stat.size > MAX_TICK_FILE_CONTENT_BYTES) continue;
+        contents[relPath] = readFileSync(resolved, "utf8");
+      } catch {
+        // Skip unreadable or transient files.
+      }
+    }
+    return contents;
+  }
+
   private listRepoFiles(repoRelDir: string): string[] {
     const repoRoot = path.resolve(this.repoDir);
     const start = path.resolve(this.repoDir, repoRelDir);

@@ -92,6 +92,7 @@ interface ProcessedTick {
   uncommittedFiles: { path: string; status: string }[]
   uncommittedFileContents?: Record<string, string>
   ignoredFiles?: string[]
+  ignoredFileContents?: Record<string, string>
   gitHeadSha?: string
   addedFiles: string[]
   removedFiles: string[]
@@ -989,8 +990,20 @@ export default function ScenarioViewer() {
     const previousUncommitted = idx > 0
       ? new Map((ticks[idx - 1].uncommittedFiles || []).map((f) => [f.path, f.status]))
       : new Map<string, string>()
-    const currentContents = ticks[idx].uncommittedFileContents || {}
-    const previousContents = idx > 0 ? ticks[idx - 1].uncommittedFileContents || {} : {}
+    // Merge uncommitted + ignored content maps so the diff detector
+    // catches edits to gitignored files (resources.local.yaml etc.),
+    // which never appear in git status and thus never show up in
+    // uncommittedFiles.
+    const currentContents = {
+      ...(ticks[idx].uncommittedFileContents || {}),
+      ...(ticks[idx].ignoredFileContents || {}),
+    }
+    const previousContents = idx > 0
+      ? {
+          ...(ticks[idx - 1].uncommittedFileContents || {}),
+          ...(ticks[idx - 1].ignoredFileContents || {}),
+        }
+      : {}
 
     const added: string[] = []
     const modified: string[] = []
@@ -2061,6 +2074,20 @@ export default function ScenarioViewer() {
                 const isTickMode = hasTicks && currentTickIndex >= 0
                 const tick = isTickMode ? ticks[currentTickIndex] : null
                 const ignoredSet = new Set(tick?.ignoredFiles || [])
+                // A file deleted this tick is no longer on disk, so it
+                // can't appear in the current tick's ignoredFiles list.
+                // To keep the "ignored lifecycle" visually coherent
+                // (light-red strikethrough instead of the normal
+                // red-removed), carry the ignored flag forward from the
+                // previous tick for anything in delta.removed that was
+                // ignored last tick.
+                if (isTickMode && currentTickIndex > 0) {
+                  const prevIgnored = new Set(ticks[currentTickIndex - 1].ignoredFiles || [])
+                  const removedThisTick = getTickFileDelta(currentTickIndex).removed
+                  for (const removedPath of removedThisTick) {
+                    if (prevIgnored.has(removedPath)) ignoredSet.add(removedPath)
+                  }
+                }
 
                 const buildFileMode = (mode: FileChangeLens) => {
                   const trackedFiles = isTickMode ? getTickFilesAtIndex(currentTickIndex) : fileList
@@ -3125,6 +3152,13 @@ function MeadowFileModePane({
       if (tickContent !== undefined) {
         return tickContent
       }
+      // Gitignored files never make it into git, so fetchFileContent
+      // can't recover them — but the tick capture snapshots their
+      // working-tree bytes alongside uncommittedFileContents.
+      const ignoredContent = tick.ignoredFileContents?.[filePath]
+      if (ignoredContent !== undefined) {
+        return ignoredContent
+      }
       if (tick.gitHeadSha) {
         try {
           return await fetchFileContent(tick.gitHeadSha, filePath)
@@ -3478,11 +3512,36 @@ function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, f
               'committed': { icon: null, color: '', label: 'unchanged' },
             }[status]
             // Gitignored files (e.g. app/secret_app_config.yaml, app/resources.local.yaml)
-            // exist on disk but are intentionally not tracked. Render them
-            // greyed out via a lighter text color + reduced opacity, and
-            // expose data-file-ignored="true" so e2e specs can assert the
-            // visual contract without depending on exact CSS classes.
-            const ignoredClass = isIgnored ? 'text-neutral-400 opacity-60 italic' : ''
+            // exist on disk but are intentionally not tracked. The default
+            // treatment is light grey italic + reduced opacity, but when
+            // the file's working-tree bytes changed *this tick* we lift it
+            // toward the normal new/modified palette (lighter shade,
+            // italic kept) so the change is visible without losing the
+            // "ignored" cue. data-file-ignored="true" is set either way so
+            // e2e specs can assert the contract independent of CSS.
+            const ignoredAddedClass = 'text-blue-300 italic'
+            const ignoredModifiedClass = 'text-amber-300 italic'
+            const ignoredRemovedClass = 'text-red-300 italic'
+            const ignoredDefaultClass = 'text-neutral-400 opacity-60 italic'
+            const ignoredClass = isIgnored
+              ? status === 'uncommitted-new'
+                ? ignoredAddedClass
+                : status === 'uncommitted-modified'
+                  ? ignoredModifiedClass
+                  : status === 'removed'
+                    ? ignoredRemovedClass
+                    : ignoredDefaultClass
+              : ''
+            const iconColorClass = isIgnored
+              ? status === 'uncommitted-new'
+                ? 'text-blue-300'
+                : status === 'uncommitted-modified'
+                  ? 'text-amber-300'
+                  : status === 'removed'
+                    ? 'text-red-300'
+                    : statusConfig.color
+              : statusConfig.color
+            const showIcon = Boolean(statusConfig.icon) && (!isIgnored || status === 'uncommitted-new' || status === 'uncommitted-modified' || status === 'removed')
             const title = isIgnored ? `${statusConfig.label} (gitignored)` : statusConfig.label
             return (
               <div
@@ -3497,7 +3556,7 @@ function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, f
                 title={title}
                 onClick={() => onSelectFile(fullPath)}
               >
-                {statusConfig.icon && !isIgnored && <span className={`${statusConfig.color} mr-1`}>{statusConfig.icon}</span>}
+                {showIcon && <span className={`${iconColorClass} mr-1`}>{statusConfig.icon}</span>}
                 {key}
                 {tickMarker}
               </div>

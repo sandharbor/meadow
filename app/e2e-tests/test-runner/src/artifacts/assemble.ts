@@ -143,6 +143,7 @@ interface RawTickEntry {
   uncommittedFiles: { path: string; status: string }[];
   uncommittedFileContents?: Record<string, string>;
   ignoredFiles?: string[];
+  ignoredFileContents?: Record<string, string>;
   gitHeadSha?: string;
   s3Keys?: string[];
   s3ObjectContents?: Record<string, string>;
@@ -159,6 +160,7 @@ interface ProcessedTick {
   uncommittedFiles: { path: string; status: string }[];
   uncommittedFileContents: Record<string, string>;
   ignoredFiles: string[];
+  ignoredFileContents?: Record<string, string>;
   gitHeadSha?: string;
   addedFiles: string[];
   removedFiles: string[];
@@ -714,6 +716,7 @@ function processTickLog(testDir: string): TickData {
       uncommittedFiles: raw.uncommittedFiles,
       uncommittedFileContents: raw.uncommittedFileContents ?? {},
       ignoredFiles: raw.ignoredFiles ?? [],
+      ...(raw.ignoredFileContents !== undefined && { ignoredFileContents: raw.ignoredFileContents }),
       ...(raw.gitHeadSha !== undefined && { gitHeadSha: raw.gitHeadSha }),
       addedFiles,
       removedFiles,

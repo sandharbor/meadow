@@ -105,6 +105,19 @@ export class CanonicalScenarioBuilder {
     return this.meadowHome.commit(tick, `C${tick.tickIndex}: ${message}`);
   }
 
+  // Write the MeadowHome repo's tracked .gitignore. Anything matching the
+  // patterns becomes a gitignored working-tree file from this tick on.
+  setMeadowGitignore(body: string): void {
+    this.meadowHome.setGitignore(this.current(), body);
+  }
+
+  // Write a file at a stable repo-relative path (no T<n> prefix). Pair
+  // this with setMeadowGitignore to populate ignored working-tree files
+  // whose contents the viewer can still diff per tick.
+  addIgnoredMeadowFile(repoRelPath: string, body: string): string {
+    return this.meadowHome.writeIgnoredFile(this.current(), repoRelPath, body);
+  }
+
   // ---- MinIO convenience wrappers ----
 
   putObject(baseKey: string, body: string): string {
@@ -198,14 +211,22 @@ export class CanonicalScenarioBuilder {
     isSnapshot: boolean,
     snapshotMessage?: string
   ): void {
+    const tracked = this.meadowHome.trackedFiles();
+    const ignoredFiles = this.meadowHome.ignoredFiles();
+    // Working-tree listing for the tree UI: tracked + ignored. The viewer
+    // layers uncommitted-new entries on top via uncommittedFiles. Mirrors
+    // the production tick-capture invariant that `files` contains every
+    // working-tree file regardless of git tracking status.
+    const files = Array.from(new Set([...tracked, ...ignoredFiles])).sort();
     const row: Record<string, unknown> = {
       timestamp: tick.atIso,
       tickIndex: tick.tickIndex,
       isSnapshot,
-      files: this.meadowHome.trackedFiles(),
+      files,
       uncommittedFiles: this.meadowHome.uncommittedFiles(),
       uncommittedFileContents: this.meadowHome.uncommittedFileContents(),
-      ignoredFiles: [],
+      ignoredFiles,
+      ignoredFileContents: this.meadowHome.ignoredFileContents(),
       gitHeadSha: this.meadowHome.headSha() ?? "",
       s3Keys: this.minio.listObjectKeys(),
       s3ObjectContents: this.minio.objectContents(),

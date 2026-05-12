@@ -50,4 +50,23 @@ export class MeadowHomeFs extends StateRepoBase {
     }
     rmSync(full, { force: true });
   }
+
+  // Write the tracked .gitignore. Filename is fixed (it has to be exactly
+  // ".gitignore" for git to honour it), so the tick stamp is encoded in a
+  // comment header rather than the basename.
+  setGitignore(tick: TickStamp, body: string): void {
+    const header = `# created at T${tick.tickIndex} (${tick.atIso})\n`;
+    this.writeRepoFile(".gitignore", header + body);
+  }
+
+  // Write a file at a stable repo-relative path. Unlike addFile, the path
+  // is NOT prefixed with T<n> — the caller chooses the path so a .gitignore
+  // pattern can match it deterministically across ticks. Use this for
+  // gitignored files: the .gitignore matches by path, so the path must
+  // stay constant even as appendLine edits the body.
+  writeIgnoredFile(tick: TickStamp, repoRelPath: string, body: string): string {
+    const header = `# created at T${tick.tickIndex} (${tick.atIso})\n`;
+    this.writeRepoFile(repoRelPath, header + body);
+    return repoRelPath;
+  }
 }

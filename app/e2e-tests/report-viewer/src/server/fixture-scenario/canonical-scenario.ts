@@ -38,6 +38,12 @@ export function buildCanonicalScenario(b: CanonicalScenarioBuilder): void {
 
   b.advance(200); // begin T2
   b.addMeadowFile("bookmarks.json", '{ "items": [] }\n');
+  // Tracked .gitignore: anything under notes/private/ is gitignored from
+  // this tick on. The ignored file is written at T7 and edited at T22 so
+  // the viewer's Files tab has a clear arc to exercise: it should appear
+  // greyed-out at T7 (visible-but-ignored) and the diff at T22 should be
+  // readable on click, even though the file never enters git history.
+  b.setMeadowGitignore("notes/private/\n");
 
   b.advance(150); // begin T3
   b.frontendLog("info", "Bookmarks file detected, loading");
@@ -60,6 +66,13 @@ export function buildCanonicalScenario(b: CanonicalScenarioBuilder): void {
 
   b.advance(300); // begin T7
   b.frontendLog("info", "User clicked New Site");
+  // Ignored working-tree file: matches the .gitignore from T2, so it
+  // exists on disk but git never tracks it. The viewer should still
+  // surface it (greyed-out) and the click-to-view content should work.
+  b.addIgnoredMeadowFile(
+    "notes/private/scratchpad.md",
+    "# scratchpad\nfirst draft of release notes\n"
+  );
 
   b.advance(200); // begin T8 — append a line to the existing bookmarks file
   b.appendMeadowLine(
@@ -91,6 +104,13 @@ export function buildCanonicalScenario(b: CanonicalScenarioBuilder): void {
   const stylesObjectKey = b.putObject(
     "sites/my-new-site/styles.css",
     "/* T13 styles */\nbody { font-family: sans-serif; }\n"
+  );
+  // Edit the gitignored scratchpad in a tick that is otherwise quiet for
+  // MeadowHome — gives the Files tab a clean "ignored + modified" beat to
+  // demonstrate the lighter-amber treatment.
+  b.appendMeadowLine(
+    "notes/private/scratchpad.md",
+    "ship copy locked in"
   );
 
   b.advance(150); // begin T14
@@ -151,6 +171,11 @@ export function buildCanonicalScenario(b: CanonicalScenarioBuilder): void {
     "type: publish\nsite: my-new-site\noutcome: ok\n"
   );
   b.addMeadowFile("site/pages/contact.md", "# Contact\nhello@example\n");
+  // Close out the ignored-file lifecycle: scratchpad is deleted off
+  // disk. The viewer should render it strikethrough + light-red italic
+  // at T24, and clicking the entry should still show the T23 content
+  // as the diff baseline (the previous tick's ignoredFileContents).
+  b.deleteMeadowFile("notes/private/scratchpad.md");
 
   b.advance(150); // begin T25
   b.commitMeadowHome("subtitle edit");
