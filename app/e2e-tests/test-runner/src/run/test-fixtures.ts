@@ -948,6 +948,27 @@ export const test = base.extend<{
             }
           }
 
+          // Snapshot the working-tree bytes of every gitignored file so
+          // the report viewer can render their contents (and diffs) at
+          // each tick, even though git never tracks them. Mirrors what
+          // the canonical fixture does. logs/ is in the standard
+          // gitignore — its files churn rapidly during a run and aren't
+          // useful as tick-stamped content, so skip them here just like
+          // the `files` listing above does.
+          const ignoredFileContents: Record<string, string> = {};
+          for (const relPath of ignoredFiles) {
+            if (relPath.startsWith("logs/") || relPath.endsWith("/")) continue;
+            const resolved = path.resolve(configDir, relPath);
+            if (!resolved.startsWith(configDir + path.sep)) continue;
+            try {
+              const stat = statSync(resolved);
+              if (!stat.isFile() || stat.size > MAX_TICK_UNCOMMITTED_CONTENT_BYTES) continue;
+              ignoredFileContents[relPath] = readFileSync(resolved, "utf8");
+            } catch {
+              // Skip unreadable or transient files; path still appears in ignoredFiles.
+            }
+          }
+
           // Check for snapshot marker
           let isSnapshot = false;
           let snapshotMessage: string | undefined;
@@ -966,6 +987,7 @@ export const test = base.extend<{
             uncommittedFiles,
             uncommittedFileContents,
             ignoredFiles,
+            ignoredFileContents,
             ...(gitHeadSha !== undefined && { gitHeadSha }),
             s3Keys: latestS3Keys,
             ..._tickCaptureRegistry.latestData,
