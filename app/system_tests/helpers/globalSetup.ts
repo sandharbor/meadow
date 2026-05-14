@@ -16,7 +16,7 @@ limitations under the License.
 
 import { execSync } from 'child_process';
 
-const TEST_PORT = 3099;
+const TEST_PORT = parseInt(process.env.MEADOW_SYSTEM_TEST_PORT ?? '3099', 10);
 
 /**
  * Global setup that runs once before all tests.
@@ -46,4 +46,3 @@ export default async function globalSetup(): Promise<void> {
     // lsof returns non-zero if no process is on the port, which is fine
   }
 }
-

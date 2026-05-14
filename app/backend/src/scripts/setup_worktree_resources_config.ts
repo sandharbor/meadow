@@ -26,7 +26,10 @@ import {
 
 async function main() {
   const uniqueId = crypto.randomBytes(8).toString("hex");
-  const baseDir = path.join(os.tmpdir(), "meadow_parallel", uniqueId);
+  const runId = process.env.E2E_RUN_ID || "default";
+  const safeRunId =
+    runId.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "default";
+  const baseDir = path.join(os.tmpdir(), "meadow_parallel", safeRunId, uniqueId);
   const logsDir = path.join(baseDir, "logs");
 
   fs.mkdirSync(logsDir, { recursive: true });

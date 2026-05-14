@@ -13,10 +13,12 @@ BACKEND_DIR="$REPO_ROOT/app/backend"
 FRONTEND_DIR="$REPO_ROOT/app/frontend"
 DEV_TOOLS_DIR="$REPO_ROOT/app/dev_tools_app"
 
-# --- 1. Derive worktree name from directory basename ---
+# --- 1. Derive instance name from environment or directory basename ---
 BASENAME="$(basename "$REPO_ROOT")"
 IS_MAIN_REPO=false
-if [[ "$BASENAME" =~ ^meadow_wt_(.+)$ ]]; then
+if [ -n "${MEADOW_DEV_INSTANCE_NAME:-}" ]; then
+  WORKTREE_NAME="$MEADOW_DEV_INSTANCE_NAME"
+elif [[ "$BASENAME" =~ ^meadow_wt_(.+)$ ]]; then
   WORKTREE_NAME="${BASH_REMATCH[1]}"
 elif [[ "$BASENAME" =~ ^meadow_work_(.+)$ ]]; then
   WORKTREE_NAME="${BASH_REMATCH[1]}"
@@ -25,6 +27,10 @@ elif [[ "$BASENAME" == "meadow" ]]; then
   IS_MAIN_REPO=true
 else
   WORKTREE_NAME="$BASENAME"
+fi
+
+if [ "${MEADOW_DEV_ISOLATED:-}" = "1" ]; then
+  IS_MAIN_REPO=false
 fi
 
 SESSION="meadow_dev_${WORKTREE_NAME}"
@@ -87,12 +93,20 @@ echo "Waiting for frontend (http://localhost:$FRONTEND_PORT)..."
 for i in $(seq 1 60); do
   if curl -s -o /dev/null -w '' "http://localhost:$FRONTEND_PORT" 2>/dev/null; then
     echo "Frontend is ready."
-    open "http://localhost:$DEV_TOOLS_PORT"
+    if [ "${MEADOW_DEV_NO_OPEN:-}" = "1" ]; then
+      echo "Skipping browser open because MEADOW_DEV_NO_OPEN=1."
+    else
+      open "http://localhost:$DEV_TOOLS_PORT"
+    fi
     break
   fi
   if [ "$i" -eq 60 ]; then
     echo "Warning: Frontend did not respond within 30s. Opening anyway..."
-    open "http://localhost:$DEV_TOOLS_PORT"
+    if [ "${MEADOW_DEV_NO_OPEN:-}" = "1" ]; then
+      echo "Skipping browser open because MEADOW_DEV_NO_OPEN=1."
+    else
+      open "http://localhost:$DEV_TOOLS_PORT"
+    fi
   fi
   sleep 0.5
 done

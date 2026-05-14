@@ -1122,10 +1122,12 @@ export const test = base.extend<{
       // and assemble artifacts BEFORE re-throwing.
       const guardrailErrors: Error[] = [];
 
-      // Guardrail: fail test if it took longer than 30 seconds
+      // Guardrail: fail tests whose body time drifts well past the expected
+      // envelope. Stress runs may relax this without changing normal defaults.
       const startTimeStr = readFileSync(path.join(artifactDir, "start-time.txt"), "utf8").trim();
       const durationMs = endTime.getTime() - new Date(startTimeStr).getTime();
-      const MAX_TEST_DURATION_MS = 45_000;
+      const MAX_TEST_DURATION_MS =
+        parseInt(process.env.E2E_MAX_TEST_BODY_DURATION_MS || "", 10) || 45_000;
       if (durationMs > MAX_TEST_DURATION_MS) {
         guardrailErrors.push(
           new Error(`Test body took ${(durationMs / 1000).toFixed(1)}s — exceeds the ${MAX_TEST_DURATION_MS / 1000}s limit`)

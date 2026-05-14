@@ -1195,7 +1195,8 @@ export async function assembleRun(runId: string): Promise<void> {
     return;
   }
 
-  const CONCURRENCY = os.cpus().length;
+  const CONCURRENCY =
+    parseInt(process.env.E2E_ASSEMBLE_WORKERS || "", 10) || os.cpus().length;
   const workerScript = path.join(import.meta.dirname, "assemble-worker.ts");
 
   // Pre-collect all videos (single directory walk instead of one per test)

@@ -361,7 +361,14 @@ console.log(`  Artifact assembly:  ${(assembleMs / 1000).toFixed(1)}s`);
 console.log(`  Total wall-clock:   ${(totalMs / 1000).toFixed(1)}s`);
 
 // Step 6: Clean up temp files
-try { rmSync("/tmp/meadow_parallel", { recursive: true, force: true }); } catch { /* ignore */ }
+const safeRunId =
+  runId.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "default";
+try {
+  rmSync(path.join(os.tmpdir(), "meadow_parallel", safeRunId), {
+    recursive: true,
+    force: true,
+  });
+} catch { /* ignore */ }
 for (const f of [".minio-container", ".minio-endpoint"]) {
   try { unlinkSync(path.join(E2E_DIR, f)); } catch { /* ignore */ }
 }

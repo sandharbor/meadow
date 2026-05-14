@@ -25,7 +25,7 @@ const SYSTEM_TESTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url
 const WORKSPACE_ROOT = path.resolve(SYSTEM_TESTS_DIR, '..');
 const BACKEND_DIR = path.join(WORKSPACE_ROOT, 'backend');
 
-export const TEST_PORT = 3099;
+export const TEST_PORT = parseInt(process.env.MEADOW_SYSTEM_TEST_PORT ?? '3099', 10);
 export const TEST_BASE_URL = `http://localhost:${TEST_PORT}`;
 /**
  * IMPORTANT: This must live OUTSIDE the Meadow repo.
