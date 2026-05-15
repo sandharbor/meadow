@@ -439,6 +439,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
       // mode instead and let the Save button continue to cover both changes.
       if (!hasDraftChanges && onAutoSave) {
         await onAutoSave();
+        onRefresh();
         graph.notifyChange();
       } else {
         await persistAllConfigs();
