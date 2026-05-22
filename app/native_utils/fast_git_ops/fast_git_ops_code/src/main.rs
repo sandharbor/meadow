@@ -1,6 +1,6 @@
 #![deny(warnings)]
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -206,12 +206,12 @@ fn compute_blob_hash(path: &std::path::Path) -> Result<gix::ObjectId, Box<dyn st
     let mut file = std::fs::File::open(path)?;
     let metadata = file.metadata()?;
     let size = metadata.len();
-    
+
     let mut hasher = Sha1::new();
-    
+
     // Write git blob header: "blob {size}\0"
     hasher.update(format!("blob {}\0", size).as_bytes());
-    
+
     // Stream the file content through the hasher
     let mut buffer = [0u8; 8192];
     loop {
@@ -221,27 +221,42 @@ fn compute_blob_hash(path: &std::path::Path) -> Result<gix::ObjectId, Box<dyn st
         }
         hasher.update(&buffer[..bytes_read]);
     }
-    
+
     let hash: [u8; 20] = hasher.finalize().into();
     Ok(gix::ObjectId::from(hash))
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    
+
     match cli.command {
         Commands::Status { directory } => run_status(directory)?,
         Commands::DirLog { directory, limit } => run_dir_log(directory, limit)?,
         Commands::CommitFiles { directory, sha } => run_commit_files(directory, sha)?,
-        Commands::CatFile { directory, sha, path } => run_cat_file(directory, sha, path)?,
-        Commands::FileLog { directory, path, limit } => run_file_log(directory, path, limit)?,
-        Commands::CommitChanges { directories, message, author_name, author_email, allow_empty } => {
-            run_commit_changes(directories, message, author_name, author_email, allow_empty)?
-        }
-        Commands::Init { directory, default_branch } => run_init(directory, default_branch)?,
+        Commands::CatFile {
+            directory,
+            sha,
+            path,
+        } => run_cat_file(directory, sha, path)?,
+        Commands::FileLog {
+            directory,
+            path,
+            limit,
+        } => run_file_log(directory, path, limit)?,
+        Commands::CommitChanges {
+            directories,
+            message,
+            author_name,
+            author_email,
+            allow_empty,
+        } => run_commit_changes(directories, message, author_name, author_email, allow_empty)?,
+        Commands::Init {
+            directory,
+            default_branch,
+        } => run_init(directory, default_branch)?,
         Commands::HtmlSectionDiff { directory, sha } => run_html_section_diff(directory, sha)?,
     }
-    
+
     Ok(())
 }
 
@@ -253,7 +268,10 @@ fn is_html_path(repo_rel: &str) -> bool {
     repo_rel.to_lowercase().ends_with(".html")
 }
 
-fn read_blob_by_oid(repo: &gix::Repository, oid: gix::ObjectId) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn read_blob_by_oid(
+    repo: &gix::Repository,
+    oid: gix::ObjectId,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let obj = repo.find_object(oid)?;
     Ok(obj.data.to_vec())
 }
@@ -311,7 +329,12 @@ fn compute_section_changes(old_html: Option<&str>, new_html: Option<&str>) -> Ht
             }
         }
         // Added or deleted file: treat everything as changed so it shows up under any active section.
-        _ => HtmlSectionChanges { head: true, header: true, main: true, footer: true },
+        _ => HtmlSectionChanges {
+            head: true,
+            header: true,
+            main: true,
+            footer: true,
+        },
     }
 }
 
@@ -414,7 +437,10 @@ fn list_changed_files_worktree_vs_index(
     Ok(results)
 }
 
-fn run_html_section_diff(directory: PathBuf, sha: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+fn run_html_section_diff(
+    directory: PathBuf,
+    sha: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let original_dir = directory;
     let target_dir = original_dir.canonicalize()?;
     let repo = gix::discover(&target_dir)?;
@@ -552,14 +578,21 @@ fn run_html_section_diff(directory: PathBuf, sha: Option<String>) -> Result<(), 
     if canonical_prefix != original_prefix {
         for file in &mut files {
             if file.path.starts_with(canonical_prefix.as_ref()) {
-                file.path = format!("{}{}", original_prefix, &file.path[canonical_prefix.len()..]);
+                file.path = format!(
+                    "{}{}",
+                    original_prefix,
+                    &file.path[canonical_prefix.len()..]
+                );
             }
         }
     }
 
     // Sort stable output by path for easier debugging.
     files.sort_by(|a, b| a.path.cmp(&b.path));
-    println!("{}", serde_json::to_string(&HtmlSectionDiffResult { files })?);
+    println!(
+        "{}",
+        serde_json::to_string(&HtmlSectionDiffResult { files })?
+    );
     Ok(())
 }
 
@@ -588,27 +621,27 @@ fn run_status(directory: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     };
-    
+
     let mut results: Vec<FileStatus> = Vec::new();
-    
+
     // Get the index
     let index = repo.index()?;
-    
+
     // Track which paths we've seen in the index (relative to git root)
     let mut indexed_paths: HashSet<String> = HashSet::new();
-    
+
     // Check each entry in the index against the worktree
     for entry in index.entries() {
         let entry_path_str = entry.path(&index).to_string();
         let full_path = git_root.join(&entry_path_str);
-        
+
         // Only process files within our target directory
         if !full_path.starts_with(&target_dir) {
             continue;
         }
-        
+
         indexed_paths.insert(entry_path_str.clone());
-        
+
         if !full_path.exists() {
             // File was deleted
             results.push(FileStatus {
@@ -620,20 +653,20 @@ fn run_status(directory: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
             let metadata = std::fs::metadata(&full_path)?;
             let mtime = metadata.modified()?;
             let file_size = metadata.len();
-            
+
             // Compare with index entry
             let index_mtime = entry.stat.mtime.secs as u64;
             let index_size = entry.stat.size as u64;
-            
+
             // Check modification time and size as quick indicators
             let mtime_secs = mtime.duration_since(std::time::UNIX_EPOCH)?.as_secs();
-            
+
             if mtime_secs != index_mtime || file_size != index_size {
                 // mtime/size don't match - need to verify by comparing content hash
                 // This handles cases where files were touched but content is unchanged
                 let current_hash = compute_blob_hash(&full_path)?;
                 let index_hash = entry.id;
-                
+
                 if current_hash != index_hash {
                     results.push(FileStatus {
                         path: full_path.to_string_lossy().to_string(),
@@ -643,34 +676,34 @@ fn run_status(directory: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     // Use the `ignore` crate to walk the directory respecting .gitignore
     // This handles all gitignore patterns correctly
     let walker = WalkBuilder::new(&target_dir)
-        .hidden(false)        // Don't skip hidden files (git tracks them)
-        .git_ignore(true)     // Respect .gitignore
-        .git_global(true)     // Respect global gitignore
-        .git_exclude(true)    // Respect .git/info/exclude
+        .hidden(false) // Don't skip hidden files (git tracks them)
+        .git_ignore(true) // Respect .gitignore
+        .git_global(true) // Respect global gitignore
+        .git_exclude(true) // Respect .git/info/exclude
         .filter_entry(|entry| {
             // Skip .git directories entirely
             entry.file_name() != ".git"
         })
         .build();
-    
+
     for result in walker {
         match result {
             Ok(entry) => {
                 let path = entry.path();
-                
+
                 // Skip directories
                 if path.is_dir() {
                     continue;
                 }
-                
+
                 // Get relative path from git root
                 if let Ok(relative_path) = path.strip_prefix(&git_root) {
                     let relative_str = relative_path.to_string_lossy().to_string();
-                    
+
                     // Check if this file is in the index
                     if !indexed_paths.contains(&relative_str) {
                         results.push(FileStatus {
@@ -683,7 +716,7 @@ fn run_status(directory: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
             Err(_) => continue,
         }
     }
-    
+
     // Remap paths from canonical prefix back to original input prefix so
     // callers get paths matching what they passed in (e.g. /var/... not /private/var/...).
     let canonical_prefix = target_dir.to_string_lossy();
@@ -691,7 +724,11 @@ fn run_status(directory: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     if canonical_prefix != original_prefix {
         for entry in &mut results {
             if entry.path.starts_with(canonical_prefix.as_ref()) {
-                entry.path = format!("{}{}", original_prefix, &entry.path[canonical_prefix.len()..]);
+                entry.path = format!(
+                    "{}{}",
+                    original_prefix,
+                    &entry.path[canonical_prefix.len()..]
+                );
             }
         }
     }
@@ -721,7 +758,10 @@ fn read_file_at_tree(
     let comps: Vec<&str> = repo_rel_path.split('/').filter(|c| !c.is_empty()).collect();
     for (i, comp) in comps.iter().enumerate() {
         let tree_ref = current_tree.decode()?;
-        let found = tree_ref.entries.iter().find(|e| e.filename.to_string() == *comp);
+        let found = tree_ref
+            .entries
+            .iter()
+            .find(|e| e.filename.to_string() == *comp);
         let Some(e) = found else {
             return Ok(None);
         };
@@ -738,8 +778,12 @@ fn read_file_at_tree(
         current_tree = repo.find_object(oid)?.into_tree();
     }
 
-    let Some(kind) = entry_kind else { return Ok(None); };
-    let Some(oid) = entry_oid else { return Ok(None); };
+    let Some(kind) = entry_kind else {
+        return Ok(None);
+    };
+    let Some(oid) = entry_oid else {
+        return Ok(None);
+    };
     if kind == gix_object::tree::EntryKind::Tree {
         return Ok(None);
     }
@@ -817,11 +861,20 @@ fn diff_trees_paths(
     let mut out = Vec::new();
     for path in paths {
         match (parent_map.get(&path), current_map.get(&path)) {
-            (None, Some(_)) => out.push(CommitFileEntry { path, status: "A".to_string() }),
-            (Some(_), None) => out.push(CommitFileEntry { path, status: "D".to_string() }),
+            (None, Some(_)) => out.push(CommitFileEntry {
+                path,
+                status: "A".to_string(),
+            }),
+            (Some(_), None) => out.push(CommitFileEntry {
+                path,
+                status: "D".to_string(),
+            }),
             (Some((k1, o1)), Some((k2, o2))) => {
                 if k1 != k2 || o1 != o2 {
-                    out.push(CommitFileEntry { path, status: "M".to_string() });
+                    out.push(CommitFileEntry {
+                        path,
+                        status: "M".to_string(),
+                    });
                 }
             }
             (None, None) => {}
@@ -850,7 +903,9 @@ fn run_dir_log(directory: PathBuf, limit: usize) -> Result<(), Box<dyn std::erro
     let mut commits = Vec::new();
     let walk = repo
         .rev_walk([head_id])
-        .sorting(gix::revision::walk::Sorting::ByCommitTime(gix_traverse::commit::simple::CommitTimeOrder::NewestFirst))
+        .sorting(gix::revision::walk::Sorting::ByCommitTime(
+            gix_traverse::commit::simple::CommitTimeOrder::NewestFirst,
+        ))
         .all()?;
 
     for info in walk {
@@ -920,7 +975,11 @@ fn run_commit_files(directory: PathBuf, sha: String) -> Result<(), Box<dyn std::
     Ok(())
 }
 
-fn run_cat_file(directory: PathBuf, sha: String, path: String) -> Result<(), Box<dyn std::error::Error>> {
+fn run_cat_file(
+    directory: PathBuf,
+    sha: String,
+    path: String,
+) -> Result<(), Box<dyn std::error::Error>> {
     let target_dir = directory.canonicalize()?;
     let repo = gix::discover(&target_dir)?;
     // Support symbolic references like "HEAD" in addition to hex SHAs.
@@ -944,7 +1003,14 @@ fn run_cat_file(directory: PathBuf, sha: String, path: String) -> Result<(), Box
             .iter()
             .find(|e| e.filename.to_string() == *comp);
         let Some(e) = found else {
-            println!("{}", serde_json::to_string(&CatFileResult { found: false, kind: None, data_base64: None })?);
+            println!(
+                "{}",
+                serde_json::to_string(&CatFileResult {
+                    found: false,
+                    kind: None,
+                    data_base64: None
+                })?
+            );
             return Ok(());
         };
         let kind = e.mode.kind();
@@ -955,23 +1021,51 @@ fn run_cat_file(directory: PathBuf, sha: String, path: String) -> Result<(), Box
             break;
         }
         if kind != gix_object::tree::EntryKind::Tree {
-            println!("{}", serde_json::to_string(&CatFileResult { found: false, kind: None, data_base64: None })?);
+            println!(
+                "{}",
+                serde_json::to_string(&CatFileResult {
+                    found: false,
+                    kind: None,
+                    data_base64: None
+                })?
+            );
             return Ok(());
         }
         current_tree = repo.find_object(oid)?.into_tree();
     }
 
     let Some(kind) = entry_kind else {
-        println!("{}", serde_json::to_string(&CatFileResult { found: false, kind: None, data_base64: None })?);
+        println!(
+            "{}",
+            serde_json::to_string(&CatFileResult {
+                found: false,
+                kind: None,
+                data_base64: None
+            })?
+        );
         return Ok(());
     };
     let Some(oid) = entry_oid else {
-        println!("{}", serde_json::to_string(&CatFileResult { found: false, kind: None, data_base64: None })?);
+        println!(
+            "{}",
+            serde_json::to_string(&CatFileResult {
+                found: false,
+                kind: None,
+                data_base64: None
+            })?
+        );
         return Ok(());
     };
 
     if kind == gix_object::tree::EntryKind::Tree {
-        println!("{}", serde_json::to_string(&CatFileResult { found: true, kind: Some("tree".to_string()), data_base64: None })?);
+        println!(
+            "{}",
+            serde_json::to_string(&CatFileResult {
+                found: true,
+                kind: Some("tree".to_string()),
+                data_base64: None
+            })?
+        );
         return Ok(());
     }
 
@@ -999,7 +1093,11 @@ fn run_cat_file(directory: PathBuf, sha: String, path: String) -> Result<(), Box
     Ok(())
 }
 
-fn run_file_log(directory: PathBuf, path: String, limit: usize) -> Result<(), Box<dyn std::error::Error>> {
+fn run_file_log(
+    directory: PathBuf,
+    path: String,
+    limit: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
     let target_dir = directory.canonicalize()?;
     let repo = gix::discover(&target_dir)?;
     let head_id = repo.head()?.id().ok_or("Unborn HEAD")?.detach();
@@ -1007,7 +1105,9 @@ fn run_file_log(directory: PathBuf, path: String, limit: usize) -> Result<(), Bo
     let mut commits = Vec::new();
     let walk = repo
         .rev_walk([head_id])
-        .sorting(gix::revision::walk::Sorting::ByCommitTime(gix_traverse::commit::simple::CommitTimeOrder::NewestFirst))
+        .sorting(gix::revision::walk::Sorting::ByCommitTime(
+            gix_traverse::commit::simple::CommitTimeOrder::NewestFirst,
+        ))
         .all()?;
 
     for info in walk {
@@ -1083,10 +1183,166 @@ fn run_init(directory: PathBuf, default_branch: String) -> Result<(), Box<dyn st
     let result = InitResult {
         success: true,
         already_existed: false,
-        message: Some(format!("Initialized git repository with default branch '{}'", default_branch)),
+        message: Some(format!(
+            "Initialized git repository with default branch '{}'",
+            default_branch
+        )),
     };
     println!("{}", serde_json::to_string(&result)?);
     Ok(())
+}
+
+#[derive(Clone)]
+struct TreeBuildLeaf {
+    mode: gix_object::tree::EntryMode,
+    oid: gix_hash::ObjectId,
+}
+
+enum TreeBuildEntry {
+    Tree(TreeBuildNode),
+    Leaf(TreeBuildLeaf),
+}
+
+#[derive(Default)]
+struct TreeBuildNode {
+    entries: BTreeMap<String, TreeBuildEntry>,
+}
+
+fn insert_tree_build_path(
+    node: &mut TreeBuildNode,
+    components: &[&str],
+    mode: gix_object::tree::EntryMode,
+    oid: gix_hash::ObjectId,
+    full_path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let Some((component, rest)) = components.split_first() else {
+        return Err(format!("Invalid empty index path: {}", full_path).into());
+    };
+
+    if component.is_empty() {
+        return Err(format!("Invalid empty path component in index path: {}", full_path).into());
+    }
+
+    if rest.is_empty() {
+        match node.entries.entry((*component).to_string()) {
+            std::collections::btree_map::Entry::Vacant(slot) => {
+                slot.insert(TreeBuildEntry::Leaf(TreeBuildLeaf { mode, oid }));
+            }
+            std::collections::btree_map::Entry::Occupied(mut slot) => match slot.get_mut() {
+                TreeBuildEntry::Leaf(leaf) => {
+                    leaf.mode = mode;
+                    leaf.oid = oid;
+                }
+                TreeBuildEntry::Tree(_) => {
+                    return Err(
+                        format!("Index has a file/directory conflict at {}", full_path).into(),
+                    );
+                }
+            },
+        }
+        return Ok(());
+    }
+
+    match node.entries.entry((*component).to_string()) {
+        std::collections::btree_map::Entry::Vacant(slot) => {
+            let mut child = TreeBuildNode::default();
+            insert_tree_build_path(&mut child, rest, mode, oid, full_path)?;
+            slot.insert(TreeBuildEntry::Tree(child));
+        }
+        std::collections::btree_map::Entry::Occupied(mut slot) => match slot.get_mut() {
+            TreeBuildEntry::Tree(child) => {
+                insert_tree_build_path(child, rest, mode, oid, full_path)?;
+            }
+            TreeBuildEntry::Leaf(_) => {
+                return Err(format!("Index has a file/directory conflict at {}", full_path).into());
+            }
+        },
+    }
+
+    Ok(())
+}
+
+fn write_tree_build_node(
+    repo: &gix::Repository,
+    node: &TreeBuildNode,
+) -> Result<gix_hash::ObjectId, Box<dyn std::error::Error>> {
+    let mut entries: Vec<gix_object::tree::Entry> = Vec::new();
+
+    for (name, entry) in &node.entries {
+        match entry {
+            TreeBuildEntry::Leaf(leaf) => {
+                if !repo.has_object(leaf.oid) {
+                    return Err(
+                        format!("Missing object {} for tree entry {}", leaf.oid, name).into(),
+                    );
+                }
+                entries.push(gix_object::tree::Entry {
+                    mode: leaf.mode,
+                    filename: name.as_str().into(),
+                    oid: leaf.oid,
+                });
+            }
+            TreeBuildEntry::Tree(child) => {
+                if child.entries.is_empty() {
+                    continue;
+                }
+                let oid = write_tree_build_node(repo, child)?;
+                entries.push(gix_object::tree::Entry {
+                    mode: gix_object::tree::EntryKind::Tree.into(),
+                    filename: name.as_str().into(),
+                    oid,
+                });
+            }
+        }
+    }
+
+    entries.sort();
+    for pair in entries.windows(2) {
+        if pair[0].filename == pair[1].filename {
+            return Err(format!(
+                "Refusing to write duplicate tree entry {}",
+                pair[0].filename
+            )
+            .into());
+        }
+    }
+
+    Ok(repo.write_object(gix_object::Tree { entries })?.detach())
+}
+
+fn write_tree_from_index_state(
+    repo: &gix::Repository,
+    index_state: &gix_index::State,
+) -> Result<gix_hash::ObjectId, Box<dyn std::error::Error>> {
+    let mut root = TreeBuildNode::default();
+    let mut seen_paths: HashSet<String> = HashSet::new();
+
+    for entry in index_state.entries() {
+        if entry.flags.contains(gix_index::entry::Flags::REMOVE) {
+            continue;
+        }
+        if entry.stage() != gix_index::entry::Stage::Unconflicted {
+            continue;
+        }
+
+        let path = entry.path(index_state).to_string();
+        if !seen_paths.insert(path.clone()) {
+            continue;
+        }
+
+        let mode = entry
+            .mode
+            .to_tree_entry_mode()
+            .ok_or("Invalid entry mode")?;
+        if !repo.has_object(entry.id) {
+            return Err(format!("Missing object {} for index path {}", entry.id, path).into());
+        }
+
+        let components: Vec<&str> = path.split('/').filter(|c| !c.is_empty()).collect();
+        insert_tree_build_path(&mut root, &components, mode, entry.id, &path)?;
+    }
+
+    write_tree_build_node(repo, &root)
 }
 
 fn run_commit_changes(
@@ -1106,7 +1362,7 @@ fn run_commit_changes(
         println!("{}", serde_json::to_string(&result)?);
         return Ok(());
     }
-    
+
     // Canonicalize all directories
     let mut canonical_dirs: Vec<PathBuf> = Vec::new();
     for dir in &directories {
@@ -1115,7 +1371,18 @@ fn run_commit_changes(
         }
         canonical_dirs.push(dir.canonicalize()?);
     }
-    
+    canonical_dirs.sort();
+    canonical_dirs.dedup();
+
+    let mut minimal_dirs: Vec<PathBuf> = Vec::new();
+    for dir in canonical_dirs {
+        if minimal_dirs.iter().any(|parent| dir.starts_with(parent)) {
+            continue;
+        }
+        minimal_dirs.push(dir);
+    }
+    let canonical_dirs = minimal_dirs;
+
     if canonical_dirs.is_empty() {
         let result = CommitResult {
             success: false,
@@ -1149,24 +1416,32 @@ fn run_commit_changes(
         let config_content = std::fs::read_to_string(&config_path).unwrap_or_default();
         if !config_content.contains("[user]") {
             // Append user section with the author info we're using
-            let user_section = format!("\n[user]\n\tname = {}\n\temail = {}\n", author_name, author_email);
+            let user_section = format!(
+                "\n[user]\n\tname = {}\n\temail = {}\n",
+                author_name, author_email
+            );
             std::fs::write(&config_path, config_content + &user_section)?;
         }
     }
 
     // Now open the repository (it will read the updated config)
     let repo = gix::discover(&canonical_dirs[0])?;
-    
+
     // Verify all directories are within the same git root
     for dir in &canonical_dirs {
         if !dir.starts_with(&git_root) {
-            return Err(format!("Directory {} is not within git root {}", 
-                dir.display(), git_root.display()).into());
+            return Err(format!(
+                "Directory {} is not within git root {}",
+                dir.display(),
+                git_root.display()
+            )
+            .into());
         }
     }
-    
+
     // Collect all files from all directories
     let mut all_files: Vec<PathBuf> = Vec::new();
+    let mut all_file_rel_paths: HashSet<String> = HashSet::new();
     for target_dir in &canonical_dirs {
         let walker = WalkBuilder::new(target_dir)
             .hidden(false)
@@ -1175,17 +1450,21 @@ fn run_commit_changes(
             .git_exclude(true)
             .filter_entry(|entry| entry.file_name() != ".git")
             .build();
-        
+
         for result in walker {
             if let Ok(entry) = result {
                 let path = entry.path();
                 if path.is_file() {
-                    all_files.push(path.to_path_buf());
+                    let relative_path = path.strip_prefix(&git_root)?;
+                    let relative_str = normalize_repo_path(relative_path);
+                    if all_file_rel_paths.insert(relative_str) {
+                        all_files.push(path.to_path_buf());
+                    }
                 }
             }
         }
     }
-    
+
     // Check if HEAD exists (i.e., there's at least one commit)
     // If HEAD is unborn, all files should be treated as new
     let head_exists = repo.head().ok().and_then(|h| h.id()).is_some();
@@ -1196,7 +1475,8 @@ fn run_commit_changes(
     let mut files_with_changes: Vec<(PathBuf, String)> = Vec::new(); // (full_path, relative_path)
 
     // Build a set of indexed paths for quick lookup
-    let mut indexed_entries: std::collections::HashMap<String, gix::ObjectId> = std::collections::HashMap::new();
+    let mut indexed_entries: std::collections::HashMap<String, gix::ObjectId> =
+        std::collections::HashMap::new();
     if let Some(ref index) = index_opt {
         for entry in index.entries() {
             let path_str = entry.path(index).to_string();
@@ -1207,7 +1487,7 @@ fn run_commit_changes(
     // Check each file for changes
     for file_path in &all_files {
         let relative_path = file_path.strip_prefix(&git_root)?;
-        let relative_str = relative_path.to_string_lossy().to_string();
+        let relative_str = normalize_repo_path(relative_path);
 
         if !head_exists {
             // No commits yet - all files are new and need to be committed
@@ -1227,7 +1507,8 @@ fn run_commit_changes(
     // Build a set of actual filesystem relative paths for ghost entry detection.
     // On case-insensitive filesystems (macOS/APFS), the WalkBuilder returns the
     // actual stored casing, which may differ from stale index entries.
-    let fs_relative_set: std::collections::HashSet<String> = all_files.iter()
+    let fs_relative_set: std::collections::HashSet<String> = all_files
+        .iter()
         .filter_map(|p| p.strip_prefix(&git_root).ok())
         .map(|p| p.to_string_lossy().to_string())
         .collect();
@@ -1242,7 +1523,8 @@ fn run_commit_changes(
 
             if in_target_dir && !full_path.exists() {
                 files_with_changes.push((full_path, indexed_path.clone()));
-            } else if in_target_dir && !fs_relative_set.contains(indexed_path) && full_path.exists() {
+            } else if in_target_dir && !fs_relative_set.contains(indexed_path) && full_path.exists()
+            {
                 // Ghost case-variant: the index path (e.g. "Hello World.html") isn't
                 // in the filesystem walk results (which has "hello world.html"), but
                 // full_path.exists() returns true on case-insensitive FS. This is a
@@ -1251,7 +1533,11 @@ fn run_commit_changes(
             }
         }
     }
-    
+
+    let mut seen_changed_paths: HashSet<String> = HashSet::new();
+    files_with_changes
+        .retain(|(_, relative_path)| seen_changed_paths.insert(relative_path.clone()));
+
     if files_with_changes.is_empty() {
         if !allow_empty {
             let result = CommitResult {
@@ -1315,7 +1601,10 @@ fn run_commit_changes(
     // ===== Stage changes into the index (no git CLI) =====
     let mut index_file = match repo.open_index() {
         Ok(index) => index,
-        Err(_) => gix_index::File::from_state(gix_index::State::new(repo.object_hash()), repo.index_path()),
+        Err(_) => gix_index::File::from_state(
+            gix_index::State::new(repo.object_hash()),
+            repo.index_path(),
+        ),
     };
     let (mut index_state, index_path) = index_file.into_parts();
 
@@ -1438,9 +1727,13 @@ fn run_commit_changes(
         }
         let rel_bstr: &gix::bstr::BStr = relative_path.as_str().into();
         // Write blob to ODB
-        let oid = if std::fs::symlink_metadata(full_path)?.file_type().is_symlink() {
+        let oid = if std::fs::symlink_metadata(full_path)?
+            .file_type()
+            .is_symlink()
+        {
             let target = std::fs::read_link(full_path)?;
-            repo.write_blob(target.to_string_lossy().as_bytes())?.detach()
+            repo.write_blob(target.to_string_lossy().as_bytes())?
+                .detach()
         } else {
             let mut f = std::fs::File::open(full_path)?;
             repo.write_blob_stream(&mut f)?.detach()
@@ -1449,15 +1742,26 @@ fn run_commit_changes(
         let mode = mode_from_path(full_path)?;
 
         // Pass 1: update entries already in the index (binary search is valid).
-        if let Some(entry) = index_state.entry_mut_by_path_and_stage(rel_bstr, gix_index::entry::Stage::Unconflicted) {
+        if let Some(entry) =
+            index_state.entry_mut_by_path_and_stage(rel_bstr, gix_index::entry::Stage::Unconflicted)
+        {
             entry.id = oid;
             entry.stat = stat;
             entry.mode = mode;
-            entry.flags.remove(gix_index::entry::Flags::REMOVE | gix_index::entry::Flags::UPDATE);
-            entry.flags.insert(gix_index::entry::Flags::HASHED | gix_index::entry::Flags::UPTODATE);
+            entry
+                .flags
+                .remove(gix_index::entry::Flags::REMOVE | gix_index::entry::Flags::UPDATE);
+            entry
+                .flags
+                .insert(gix_index::entry::Flags::HASHED | gix_index::entry::Flags::UPTODATE);
         } else {
             // Defer new entries to pass 2.
-            new_entries.push(NewEntry { stat, oid, mode, path: relative_path.clone() });
+            new_entries.push(NewEntry {
+                stat,
+                oid,
+                mode,
+                path: relative_path.clone(),
+            });
         }
     }
 
@@ -1474,7 +1778,9 @@ fn run_commit_changes(
 
     for rel_path in &deleted_paths {
         let rel_bstr: &gix::bstr::BStr = (*rel_path).into();
-        if let Some(entry) = index_state.entry_mut_by_path_and_stage(rel_bstr, gix_index::entry::Stage::Unconflicted) {
+        if let Some(entry) =
+            index_state.entry_mut_by_path_and_stage(rel_bstr, gix_index::entry::Stage::Unconflicted)
+        {
             entry.flags.insert(gix_index::entry::Flags::REMOVE);
         }
     }
@@ -1484,7 +1790,9 @@ fn run_commit_changes(
     // true for both cases. Detect and remove these ghost entries by comparing index
     // paths against the actual filesystem paths returned by the directory walker.
     // (fs_relative_set was built earlier during change detection.)
-    let stale_paths: Vec<String> = index_state.entries().iter()
+    let stale_paths: Vec<String> = index_state
+        .entries()
+        .iter()
         .filter_map(|entry| {
             if entry.flags.contains(gix_index::entry::Flags::REMOVE) {
                 return None;
@@ -1504,14 +1812,25 @@ fn run_commit_changes(
 
     for stale_path in &stale_paths {
         let rel_bstr: &gix::bstr::BStr = stale_path.as_str().into();
-        if let Some(entry) = index_state.entry_mut_by_path_and_stage(
-            rel_bstr, gix_index::entry::Stage::Unconflicted
-        ) {
+        if let Some(entry) =
+            index_state.entry_mut_by_path_and_stage(rel_bstr, gix_index::entry::Stage::Unconflicted)
+        {
             entry.flags.insert(gix_index::entry::Flags::REMOVE);
         }
     }
 
     // Ensure index invariants for path lookup/writing.
+    index_state.sort_entries();
+    let mut seen_index_paths: HashSet<String> = HashSet::new();
+    index_state.remove_entries(|_, path, entry| {
+        if entry.flags.contains(gix_index::entry::Flags::REMOVE) {
+            return false;
+        }
+        if entry.stage() != gix_index::entry::Stage::Unconflicted {
+            return false;
+        }
+        !seen_index_paths.insert(path.to_string())
+    });
     index_state.sort_entries();
 
     // Persist index to disk.
@@ -1519,20 +1838,7 @@ fn run_commit_changes(
     index_file.write(gix_index::write::Options::default())?;
 
     // ===== Build a tree from the index and create commit (no git CLI) =====
-    let mut editor = repo.empty_tree().edit()?;
-    for entry in index_state.entries() {
-        if entry.flags.contains(gix_index::entry::Flags::REMOVE) {
-            continue;
-        }
-        if entry.stage() != gix_index::entry::Stage::Unconflicted {
-            continue;
-        }
-        let path = entry.path(&index_state).to_string();
-        let entry_mode = entry.mode.to_tree_entry_mode().ok_or("Invalid entry mode")?;
-        let kind: gix_object::tree::EntryKind = entry_mode.kind();
-        editor.upsert(path, kind, entry.id)?;
-    }
-    let tree_id = editor.write()?.detach();
+    let tree_id = write_tree_from_index_state(&repo, &index_state)?;
 
     let parent_ids: Vec<gix_hash::ObjectId> = match repo.head()?.id() {
         Some(id) => vec![id.detach()],
@@ -1575,6 +1881,14 @@ fn run_commit_changes(
     // Clean up the index: remove entries flagged REMOVE so that subsequent
     // status queries don't report stale "deleted" files.
     index_state.remove_entries(|_, _, entry| entry.flags.contains(gix_index::entry::Flags::REMOVE));
+    index_state.sort_entries();
+    let mut seen_cleaned_index_paths: HashSet<String> = HashSet::new();
+    index_state.remove_entries(|_, path, entry| {
+        if entry.stage() != gix_index::entry::Stage::Unconflicted {
+            return false;
+        }
+        !seen_cleaned_index_paths.insert(path.to_string())
+    });
     index_state.sort_entries();
     let mut cleaned_index = gix_index::File::from_state(index_state, index_path);
     cleaned_index.write(gix_index::write::Options::default())?;
