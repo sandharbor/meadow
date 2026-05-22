@@ -16,8 +16,10 @@ limitations under the License.
 
 import test from 'tape';
 import { execSync } from 'child_process';
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as zlib from 'zlib';
 import git from 'isomorphic-git';
 import { resolveNativeRustBinaryPath } from '../../../shared_code/utils/nativeRustBinaryPath.js';
 
@@ -106,6 +108,48 @@ function runFileLog(directory: string, repoRelPath: string, limit = 50): FileLog
 function runHtmlSectionDiff(directory: string): HtmlSectionDiffResult {
   const result = execSync(`"${FAST_GIT_OPS_BINARY}" html-section-diff "${directory}"`, { encoding: 'utf8' });
   return JSON.parse(result) as HtmlSectionDiffResult;
+}
+
+function runGitFsck(directory: string): string {
+  try {
+    return execSync('git fsck --strict --no-progress 2>&1', {
+      cwd: directory,
+      encoding: 'utf8',
+      shell: '/bin/bash',
+    });
+  } catch (err) {
+    const e = err as { stdout?: string; stderr?: string };
+    return `${e.stdout || ''}${e.stderr || ''}`;
+  }
+}
+
+function isIgnoredGitFsckLine(line: string): boolean {
+  return (
+    line.startsWith('notice: HEAD points to an unborn branch') ||
+    /^warning: refs\/heads\/[^:]+: refMissingNewline: misses LF at the end$/.test(line)
+  );
+}
+
+function assertGitFsckClean(t: test.Test, directory: string, message: string): void {
+  const output = runGitFsck(directory).trim();
+  const relevant = output
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0 && !isIgnoredGitFsckLine(line));
+  t.deepEqual(relevant, [], `${message}${relevant.length ? `: ${relevant.join('; ')}` : ''}`);
+}
+
+function writeLooseGitObject(repoDir: string, type: 'blob' | 'tree' | 'commit', body: Buffer): string {
+  const objectData = Buffer.concat([Buffer.from(`${type} ${body.length}\0`), body]);
+  const oid = crypto.createHash('sha1').update(objectData).digest('hex');
+  const objectDir = path.join(repoDir, '.git', 'objects', oid.slice(0, 2));
+  fs.mkdirSync(objectDir, { recursive: true });
+  fs.writeFileSync(path.join(objectDir, oid.slice(2)), zlib.deflateSync(objectData));
+  return oid;
+}
+
+function gitTreeEntry(mode: string, name: string, oid: string): Buffer {
+  return Buffer.concat([Buffer.from(`${mode} ${name}\0`), Buffer.from(oid, 'hex')]);
 }
 
 // Helper to create a file with content
@@ -383,6 +427,47 @@ test('fast_git_ops file-log: returns at least one commit for a tracked file', as
   t.end();
 });
 
+test('git fsck reports duplicate tree entries', async (t) => {
+  const repoDir = path.join(import.meta.dirname, 'duplicate_tree_fsck_repo');
+
+  try {
+    fs.rmSync(repoDir, { recursive: true, force: true });
+    fs.mkdirSync(path.join(repoDir, '.git', 'objects'), { recursive: true });
+    fs.mkdirSync(path.join(repoDir, '.git', 'refs', 'heads'), { recursive: true });
+    fs.writeFileSync(path.join(repoDir, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+
+    const blobOid = writeLooseGitObject(repoDir, 'blob', Buffer.from('x'));
+    const childTreeOid = writeLooseGitObject(repoDir, 'tree', gitTreeEntry('100644', 'file.txt', blobOid));
+    const duplicateRootTreeOid = writeLooseGitObject(
+      repoDir,
+      'tree',
+      Buffer.concat([
+        gitTreeEntry('40000', 'app', childTreeOid),
+        gitTreeEntry('40000', 'app', childTreeOid),
+      ])
+    );
+    const badCommitOid = writeLooseGitObject(
+      repoDir,
+      'commit',
+      Buffer.from(
+        `tree ${duplicateRootTreeOid}\n` +
+        'author Test <test@example.com> 0 +0000\n' +
+        'committer Test <test@example.com> 0 +0000\n' +
+        '\n' +
+        'bad tree\n'
+      )
+    );
+    fs.writeFileSync(path.join(repoDir, '.git', 'refs', 'heads', 'main'), `${badCommitOid}\n`);
+
+    const localFsck = runGitFsck(repoDir);
+    t.ok(localFsck.includes('duplicateEntries'), `Local fsck reports duplicateEntries: ${localFsck}`);
+  } finally {
+    fs.rmSync(repoDir, { recursive: true, force: true });
+  }
+
+  t.end();
+});
+
 // ============================================
 // COMMIT_CHANGES TESTS
 // ============================================
@@ -509,6 +594,46 @@ test('fast_git_ops commit_changes: commits multiple directories', async (t) => {
   // subdir_b: 1 new = 1
   t.equal(result.files_committed, 3, 'Should commit 3 files from both directories');
   
+  t.end();
+});
+
+test('fast_git_ops commit_changes: overlapping directories are deduplicated and fsck-clean', async (t) => {
+  const repoDir = path.join(import.meta.dirname, 'overlapping_dirs_repo');
+  fs.rmSync(repoDir, { recursive: true, force: true });
+  fs.mkdirSync(path.join(repoDir, 'app', 'publishing_providers', 'Provider'), { recursive: true });
+  fs.mkdirSync(path.join(repoDir, 'sites', 'example-site'), { recursive: true });
+  await git.init({ fs, dir: repoDir });
+
+  function commitOverlap(dirs: string[], msg: string): CommitResult {
+    const args = ['commit-changes', ...dirs, '-m', msg, '-n', 'Test', '-e', 'test@test.com'];
+    const result = execSync(`"${FAST_GIT_OPS_BINARY}" ${args.map(a => `"${a}"`).join(' ')}`, {
+      encoding: 'utf8',
+      cwd: repoDir,
+    });
+    return JSON.parse(result) as CommitResult;
+  }
+
+  try {
+    createFile(path.join(repoDir, 'app', 'publishing_providers', 'Provider', 'pp_config.yaml'), 'provider: test\n');
+    createFile(path.join(repoDir, 'app', 'publishing_providers', 'Provider', 'pp_resources.yaml'), 'bucket: test\n');
+    createFile(path.join(repoDir, 'sites', 'example-site', 'site_config.yaml'), 'slug: example-site\n');
+
+    const result = commitOverlap(
+      [repoDir, path.join(repoDir, 'app'), path.join(repoDir, 'app', 'publishing_providers')],
+      'Commit overlapping directories'
+    );
+
+    t.ok(result.success, 'Commit should succeed');
+    t.ok(result.sha, 'Commit should produce a SHA');
+    t.equal(result.files_committed, 3, 'Overlapping walks should still commit 3 unique files');
+    assertGitFsckClean(t, repoDir, 'Repo remains fsck-clean after overlapping commit');
+
+    const status = runGitStatus(repoDir);
+    t.equal(status.length, 0, `Status should be clean, got ${status.length} file(s): ${status.map(s => `${s.status} ${s.path}`).join(', ')}`);
+  } finally {
+    fs.rmSync(repoDir, { recursive: true, force: true });
+  }
+
   t.end();
 });
 
