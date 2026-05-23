@@ -42,6 +42,7 @@ export { git } from "./git.js";
 export { findInSites } from "./find-in-sites.js";
 export { archived } from "./archived.js";
 export { blacklist } from "./blacklist.js";
+export { orphan } from "./orphan.js";
 export { tracking } from "./tracking.js";
 export { migration } from "./migration.js";
 export { excalidraw } from "./excalidraw.js";
@@ -71,8 +72,9 @@ import { git } from "./git.js";
 import { findInSites } from "./find-in-sites.js";
 import { archived } from "./archived.js";
 import { blacklist } from "./blacklist.js";
+import { orphan } from "./orphan.js";
 import { tracking } from "./tracking.js";
 import { migration } from "./migration.js";
 import { excalidraw } from "./excalidraw.js";
 
-export const allDocs: ScenarioDoc[] = [publishing, filters, frontier, callout, htmlGeneration, hooks, s3, deletion, linkGap, labels, sensitive, search, links, customize, changesTab, multiSite, siteConfig, overrides, initialPage, images, markdown, git, findInSites, archived, blacklist, tracking, migration, excalidraw];
+export const allDocs: ScenarioDoc[] = [publishing, filters, frontier, callout, htmlGeneration, hooks, s3, deletion, linkGap, labels, sensitive, search, links, customize, changesTab, multiSite, siteConfig, overrides, initialPage, images, markdown, git, findInSites, archived, blacklist, orphan, tracking, migration, excalidraw];

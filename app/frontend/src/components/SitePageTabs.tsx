@@ -20,6 +20,8 @@ import { IFilter, IPageSelector, calculateOptimalGapThreshold, createOutlinkDisc
 import { DisplayGraph } from '../types/displayGraph';
 import GraphVis from './GraphVis';
 import ListView from './ListView';
+import OrphansView from './OrphansView';
+import { OrphansBanner } from './OrphansBanner';
 import FilterPanel from './FilterPanel';
 import SitePageSelectionSidebar from './SitePageSelectionSidebar';
 import SitePageTabsDropdown from './SitePageTabsDropdown';
@@ -28,7 +30,7 @@ import EmptySoloCallout from './EmptySoloCallout';
 import SitePagesToggle from './SitePagesToggle';
 import { SitePageConfig } from '../../../shared_code/types/sitePageConfig';
 import { API_BASE_URL } from '../utils/apiConfig';
-import { buildPageConfigs } from '../../../shared_code/utils/sitePageConfigUtils';
+import { buildPageConfigs, getOrphanPageConfigs } from '../../../shared_code/utils/sitePageConfigUtils';
 import Modal from './Modal';
 import { AppConfig } from '../../../shared_code/types/appConfig';
 import { logger } from '../utils/logger';
@@ -52,6 +54,9 @@ interface SitePageTabsProps {
   onRefresh: () => void;
   untrackedPagesCount: number;
   graphUpdateTrigger: number;
+  sitePageConfigs: SitePageConfig[] | null;
+  onRemoveOrphanConfig: (config: SitePageConfig) => Promise<void>;
+  onRemoveAllOrphanConfigs: () => Promise<void>;
 }
 
 type ViewType = 'graph' | 'list';
@@ -83,10 +88,34 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   onRefresh,
   untrackedPagesCount,
   graphUpdateTrigger,
+  sitePageConfigs,
+  onRemoveOrphanConfig,
+  onRemoveAllOrphanConfigs,
 }) => {
   const [activeView, setActiveView] = useState<ViewType>(() => {
-    return (sessionStorage.getItem('graphActiveView') as ViewType) || 'graph';
+    const stored = sessionStorage.getItem('graphActiveView');
+    if (stored === 'graph' || stored === 'list') {
+      return stored;
+    }
+    return 'graph';
   });
+  const [isOrphansModalOpen, setIsOrphansModalOpen] = useState(false);
+
+  useEffect(() => {
+    sessionStorage.setItem('graphActiveView', activeView);
+  }, [activeView]);
+
+  const orphanConfigs = useMemo(() => {
+    if (!sitePageConfigs) return [];
+    return getOrphanPageConfigs(sitePageConfigs, graph.getAllPages());
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- graphUpdateTrigger forces recompute when graph is mutated in-place
+  }, [sitePageConfigs, graph, graphUpdateTrigger]);
+
+  useEffect(() => {
+    if (orphanConfigs.length === 0) {
+      setIsOrphansModalOpen(false);
+    }
+  }, [orphanConfigs.length]);
 
   // State for selection solo and hide features
   const [hiddenPages, setHiddenPages] = useState<Set<string>>(new Set());
@@ -646,6 +675,10 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col">
+        <OrphansBanner
+          orphanCount={orphanConfigs.length}
+          onReview={() => setIsOrphansModalOpen(true)}
+        />
         {/* View selection tabs in the right area */}
         <div className="border-b bg-white">
           <nav className="flex items-center justify-between">
@@ -674,7 +707,6 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
               </button>
             </div>
             <div className="flex items-center gap-2 pr-3">
-              {/* Selection filter controls - shown when pages are selected */}
               {selectedPages.size > 0 && (
                 <div className="flex items-center space-x-1 mr-2 pr-2 border-r border-gray-200">
                   <span className="text-sm text-gray-700 mr-1">Selection</span>
@@ -868,6 +900,20 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
           />
         );
       })()}
+
+      {/* Orphaned pages modal */}
+      <Modal
+        isOpen={isOrphansModalOpen}
+        onClose={() => setIsOrphansModalOpen(false)}
+        title="Orphaned Pages"
+        className="max-w-4xl w-full"
+      >
+        <OrphansView
+          orphanConfigs={orphanConfigs}
+          onRemoveConfig={onRemoveOrphanConfig}
+          onRemoveAllConfigs={onRemoveAllOrphanConfigs}
+        />
+      </Modal>
 
       {/* Consent Modal for meadow-sensitive property */}
       <Modal

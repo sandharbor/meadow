@@ -258,6 +258,36 @@ export class SiteEditorPage {
   }
 
   // ---------------------------------------------------------------------------
+  // Orphaned pages callout
+  // ---------------------------------------------------------------------------
+
+  private get orphansBanner() {
+    return this.page.getByTestId("orphans-banner");
+  }
+
+  private get orphansBannerCount() {
+    return this.page.getByTestId("orphans-banner-count");
+  }
+
+  private get reviewOrphanedPagesBtn() {
+    return this.page.getByTestId("review-orphans-button");
+  }
+
+  async expectOrphansBannerCount(count: number) {
+    await this.expect(this.orphansBanner).toBeVisible();
+    await this.expect(this.orphansBannerCount).toContainText(String(count));
+  }
+
+  async clickReviewOrphanedPages() {
+    await this.expect(this.reviewOrphanedPagesBtn).toBeVisible();
+    await this.reviewOrphanedPagesBtn.click();
+  }
+
+  async expectOrphansBannerNotVisible() {
+    await this.expect(this.orphansBanner).not.toBeVisible();
+  }
+
+  // ---------------------------------------------------------------------------
   // Labels
   // ---------------------------------------------------------------------------
 

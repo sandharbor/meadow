@@ -26,7 +26,7 @@ import CreateOrEditSiteModal from './CreateOrEditSiteModal';
 import PreviewPublishModal from './PreviewPublishModal';
 import { useFilterState, createUntrackedPageSelector } from '../types/filters';
 import type { SitePageConfig } from '../../../shared_code/types/sitePageConfig';
-import { configMatchesPage } from '../../../shared_code/utils/sitePageConfigUtils';
+import { configMatchesPage, getPageKey, getOrphanPageConfigs } from '../../../shared_code/utils/sitePageConfigUtils';
 import { applySensitiveFromApiData, applyPageConfigsToPages, buildPageConfigs } from '../../../shared_code/utils/sitePageConfigUtils';
 import { API_BASE_URL } from '../utils/apiConfig';
 import { getActiveFrontendProvider } from '../publishing/providerRegistry';
@@ -516,6 +516,74 @@ const SiteEditor: React.FC = () => {
 
     return [...currentConfigs, ...preservedConfigs].sort((a, b) => a.title.localeCompare(b.title));
   }, [graph, sitePageConfigs]);
+
+  const buildMergedPageConfigsFrom = useCallback((configs: SitePageConfig[]): SitePageConfig[] => {
+    if (!graph) return configs;
+
+    const allPages = graph.getAllPages();
+    const currentConfigs = buildPageConfigs(allPages);
+    const pagesWithConfig = allPages.filter(page => page.conf);
+    const preservedConfigs = configs.filter(cfg => {
+      const hasMatchingPageInCurrentGraph = pagesWithConfig.some(page =>
+        configMatchesPage(cfg, page.title, page.sourceGraphSubdirectory, page.file_type)
+      );
+      return !hasMatchingPageInCurrentGraph;
+    });
+
+    return [...currentConfigs, ...preservedConfigs].sort((a, b) => a.title.localeCompare(b.title));
+  }, [graph]);
+
+  const persistUpdatedSitePageConfigs = useCallback(async (updatedSitePageConfigs: SitePageConfig[]) => {
+    setSitePageConfigs(updatedSitePageConfigs);
+
+    const pageConfigs = buildMergedPageConfigsFrom(updatedSitePageConfigs);
+    try {
+      if (!hasDraftChanges) {
+        const response = await fetch(`${API_BASE_URL}/site/${slug || ''}/site-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ configs: pageConfigs, isDraft: false })
+        });
+        if (!response.ok) throw new Error('Failed to save configuration');
+        checkDraftStatus();
+      } else {
+        await fetch(`${API_BASE_URL}/site/${slug || ''}/site-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ configs: pageConfigs, isDraft: true })
+        });
+        checkDraftStatus();
+      }
+    } catch (error) {
+      logger.error('Error saving site page configuration:', error);
+    }
+  }, [buildMergedPageConfigsFrom, hasDraftChanges, slug, checkDraftStatus]);
+
+  const handleRemoveOrphanConfig = useCallback(async (config: SitePageConfig) => {
+    if (!graph || !sitePageConfigs) return;
+
+    const keyToRemove = getPageKey(config.title, config.source_graph_subdirectory, config.file_type);
+    const updatedSitePageConfigs = sitePageConfigs.filter(cfg =>
+      getPageKey(cfg.title, cfg.source_graph_subdirectory, cfg.file_type) !== keyToRemove
+    );
+    await persistUpdatedSitePageConfigs(updatedSitePageConfigs);
+  }, [graph, sitePageConfigs, persistUpdatedSitePageConfigs]);
+
+  const handleRemoveAllOrphanConfigs = useCallback(async () => {
+    if (!graph || !sitePageConfigs) return;
+
+    const orphanKeys = new Set(
+      getOrphanPageConfigs(sitePageConfigs, graph.getAllPages()).map(cfg =>
+        getPageKey(cfg.title, cfg.source_graph_subdirectory, cfg.file_type)
+      )
+    );
+    if (orphanKeys.size === 0) return;
+
+    const updatedSitePageConfigs = sitePageConfigs.filter(cfg =>
+      !orphanKeys.has(getPageKey(cfg.title, cfg.source_graph_subdirectory, cfg.file_type))
+    );
+    await persistUpdatedSitePageConfigs(updatedSitePageConfigs);
+  }, [graph, sitePageConfigs, persistUpdatedSitePageConfigs]);
 
   // Save current configuration to draft
   const saveToDraft = useCallback(async () => {
@@ -1134,6 +1202,9 @@ const SiteEditor: React.FC = () => {
           siteSlug={slug || ''}
           onRefresh={() => setConfigChangeTrigger(prev => prev + 1)}
           untrackedPagesCount={getUntrackedPagesCount()}
+          sitePageConfigs={sitePageConfigs}
+          onRemoveOrphanConfig={handleRemoveOrphanConfig}
+          onRemoveAllOrphanConfigs={handleRemoveAllOrphanConfigs}
         />
       </div>
     </div>

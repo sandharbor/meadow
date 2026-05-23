@@ -24,5 +24,6 @@ export { FilterPanelComponent } from "./SiteEditorPage/components/FilterPanelCom
 export { CreateAndEditSiteModal } from "./shared/CreateAndEditSiteModal.js";
 export { SelectedPageDetailComponent, Pill, ActionButton } from "./SiteEditorPage/components/SelectedPageDetailComponent.js";
 export { LinksModal } from "./SiteEditorPage/components/LinksModal.js";
+export { OrphansModal } from "./SiteEditorPage/components/OrphansModal.js";
 export { PublishedSitePage } from "./shared/PublishedSitePage.js";
 export { DeleteSiteModal } from "./shared/DeleteSiteModal.js";

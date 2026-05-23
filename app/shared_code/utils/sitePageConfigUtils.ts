@@ -233,3 +233,22 @@ export function preparePagesForFiltering(
   applyPageConfigsToPages(pages, sitePageConfigs);
   return pages;
 }
+
+/**
+ * Returns site page configs that are no longer reachable in the working graph.
+ * Blacklisted entries are excluded — they are intentionally outside traversal.
+ */
+export function getOrphanPageConfigs(
+  sitePageConfigs: SitePageConfig[],
+  pages: ISitePage[]
+): SitePageConfig[] {
+  return sitePageConfigs.filter(cfg => {
+    if (cfg.config.list_type === 'blacklist') {
+      return false;
+    }
+    const hasMatchingPageInGraph = pages.some(page =>
+      configMatchesPage(cfg, page.title, page.sourceGraphSubdirectory, page.file_type)
+    );
+    return !hasMatchingPageInGraph;
+  });
+}
