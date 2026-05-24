@@ -18,7 +18,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import HtmlGenerationProgress from '../../../areas/site/generation/components/HtmlGenerationProgress';
 import { SaveLocallyTab } from '../../../areas/site/sharing/components/SaveLocallyTab';
 import { AdvancedTab } from '../../../areas/site/sharing/components/AdvancedTab';
-import { useActivePublishingProvider } from '../../publishing/useActivePublishingProvider';
+import { useActivePublishingProvider } from '../../publishing-provider-host/useActivePublishingProvider';
 import CustomizeSidebar from '../../../areas/site/generation/components/CustomizeSidebar';
 import { UntrackedPagesButton } from '../../../areas/site/review/components/UntrackedPagesButton';
 import PreviewChangesTab from '../../../areas/site/review/components/PreviewChangesTab';

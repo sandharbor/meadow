@@ -19,10 +19,10 @@ limitations under the License.
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { Graph } from '../../../../../../shared_code/types/graph';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage';
-import { SitePageConfig, SitePageConfigConfig } from '../../../../../../shared_code/types/sitePageConfig';
-import { FileType } from '../../../../../../shared_code/types/FileType';
+import { Graph } from '../../../../../../../shared_code/types/graph';
+import { ISitePage } from '../../../../../../../shared_code/types/ISitePage';
+import { SitePageConfig, SitePageConfigConfig } from '../../../../../../../shared_code/types/sitePageConfig';
+import { FileType } from '../../../../../../../shared_code/types/FileType';
 
 // Path to the fixture directory - use process.cwd() which is the frontend directory when running Jest
 // The cwd is app/frontend, so we go up to app then into shared_data/home_fixtures

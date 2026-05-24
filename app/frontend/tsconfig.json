@@ -17,6 +17,6 @@
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true
   },
-  "include": ["src", "../publishing_providers/*/frontend/**/*"],
+  "include": ["src", "test", "../publishing_providers/*/frontend/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 } 

@@ -17,9 +17,9 @@ limitations under the License.
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import PreviewChangesTab from '../PreviewChangesTab';
+import PreviewChangesTab from '../../../../../src/areas/site/review/components/PreviewChangesTab';
 
-vi.mock('../../../../../../../shared_components/ConfigFileExplorer/index', async () => {
+vi.mock('../../../../../../shared_components/ConfigFileExplorer/index', async () => {
   const ReactModule = await import('react');
 
   return {

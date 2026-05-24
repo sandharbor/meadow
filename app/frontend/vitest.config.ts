@@ -22,8 +22,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/shared/testing/setupTests.ts'],
-    include: ['**/__tests__/**/*.test.(ts|tsx)', '**/__integration_tests__/**/*.test.(ts|tsx)'],
+    setupFiles: ['./test/shared/setupTests.ts'],
+    include: ['test/**/*.test.(ts|tsx)'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
   },
   resolve: {

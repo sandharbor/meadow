@@ -17,7 +17,7 @@ limitations under the License.
 import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
 import { API_BASE_URL } from '../utils/apiConfig';
-import { getActiveFrontendProvider } from '../publishing/providerRegistry';
+import { getActiveFrontendProvider } from '../publishing-provider-host/providerRegistry';
 import { logger } from '../utils/logger';
 
 interface DeleteSiteModalProps {

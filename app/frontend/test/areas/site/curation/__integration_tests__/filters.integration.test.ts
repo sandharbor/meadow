@@ -19,7 +19,7 @@ limitations under the License.
  * These tests load fixture configs directly and build a graph from them.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Graph } from '../../../../../shared_code/types/graph';
+import { Graph } from '../../../../../../shared_code/types/graph';
 import { loadFixtureGraph, FixtureLoadResult } from './helpers/fixtureLoader';
 import {
   createTrackedPageSelector,
@@ -28,8 +28,8 @@ import {
   createSensitivePageSelector,
   createSearchByTitleSelector,
   createCustomPageSelector
-} from '../../../areas/site/curation/utils/filterSelectors';
-import type { CustomPageSelectorConfig } from '../../../../../shared_code/types/customFilters';
+} from '../../../../../src/areas/site/curation/utils/filterSelectors';
+import type { CustomPageSelectorConfig } from '../../../../../../shared_code/types/customFilters';
 
 describe('Filter Integration Tests', () => {
   let graph: Graph;

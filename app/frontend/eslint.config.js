@@ -102,7 +102,62 @@ export default [
     }
   },
   {
-    files: ['**/__tests__/**/*.{ts,tsx}', '**/*.test.{ts,tsx}'],
+    files: ['test/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true
+        }
+      },
+      globals: {
+        document: 'readonly',
+        window: 'readonly',
+        console: 'readonly',
+        performance: 'readonly',
+        requestAnimationFrame: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLInputElement: 'readonly',
+        sessionStorage: 'readonly',
+        EventSource: 'readonly',
+        localStorage: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        fetch: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        jest: 'readonly',
+        vi: 'readonly'
+      }
+    },
+    plugins: {
+      '@typescript-eslint': typescript,
+      'react': react,
+      'react-hooks': reactHooks
+    },
+    settings: {
+      react: {
+        version: 'detect'
+      }
+    },
+    rules: {
+      ...typescript.configs.recommended.rules,
+      ...react.configs.recommended.rules,
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      'react/react-in-jsx-scope': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }]
+    }
+  },
+  {
+    files: ['**/*.test.{ts,tsx}'],
     languageOptions: {
       globals: {
         describe: 'readonly',
@@ -111,7 +166,8 @@ export default [
         expect: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
-        jest: 'readonly'
+        jest: 'readonly',
+        vi: 'readonly'
       }
     }
   }

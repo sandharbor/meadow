@@ -17,7 +17,7 @@ limitations under the License.
 /* global alert, confirm */
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../utils/apiConfig';
-import { getActiveFrontendProvider } from '../publishing/providerRegistry';
+import { getActiveFrontendProvider } from '../publishing-provider-host/providerRegistry';
 import Modal from '../components/Modal';
 import { logger } from '../utils/logger';
 import { openExternal } from '../utils/openExternal';

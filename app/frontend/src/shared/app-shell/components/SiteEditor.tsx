@@ -29,7 +29,7 @@ import type { SitePageConfig } from '../../../../../shared_code/types/sitePageCo
 import { configMatchesPage, getPageKey, getOrphanPageConfigs } from '../../../../../shared_code/utils/sitePageConfigUtils';
 import { applySensitiveFromApiData, applyPageConfigsToPages, buildPageConfigs } from '../../../../../shared_code/utils/sitePageConfigUtils';
 import { API_BASE_URL } from '../../utils/apiConfig';
-import { getActiveFrontendProvider } from '../../publishing/providerRegistry';
+import { getActiveFrontendProvider } from '../../publishing-provider-host/providerRegistry';
 import { fetchSiteEditData, SiteEditData } from '../../utils/siteApi';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { logger } from '../../utils/logger';

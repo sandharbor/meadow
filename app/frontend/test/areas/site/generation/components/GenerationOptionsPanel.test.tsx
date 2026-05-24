@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import GenerationOptionsPanel from '../GenerationOptionsPanel';
+import GenerationOptionsPanel from '../../../../../src/areas/site/generation/components/GenerationOptionsPanel';
 
 describe('GenerationOptionsPanel', () => {
   const buildProps = () => ({

@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Graph, IPage } from '../../../../../../../shared_code/types/graph';
-import { createTrackedPageSelector, createUntrackedPageSelector, createBlacklistedPageSelector, createSearchByTitleSelector, createSensitivePageSelector } from '../filters';
+import { Graph, IPage } from '../../../../../../shared_code/types/graph';
+import { createTrackedPageSelector, createUntrackedPageSelector, createBlacklistedPageSelector, createSearchByTitleSelector, createSensitivePageSelector } from '../../../../../src/areas/site/curation/types/filters';
 
 describe('Page Selectors', () => {
   let graph: Graph;

@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { splitTitleBySearch, computeLabelPlacements } from '../graphSearchLabels';
+import { splitTitleBySearch, computeLabelPlacements } from '../../../../../src/areas/site/curation/utils/graphSearchLabels';
 
 describe('splitTitleBySearch', () => {
   it('returns full title when search text is empty', () => {

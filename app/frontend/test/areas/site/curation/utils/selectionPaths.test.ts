@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { Graph, IPage } from '../../../../../../../shared_code/types/graph';
-import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../selectionPaths';
+import { Graph, IPage } from '../../../../../../shared_code/types/graph';
+import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../../../../../src/areas/site/curation/utils/selectionPaths';
 
 function makePage(id: string, overrides: Partial<IPage> = {}): IPage {
   return {

@@ -18,7 +18,7 @@ limitations under the License.
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { API_BASE_URL } from '../../../shared/utils/apiConfig';
-import { getActiveFrontendProvider } from '../../../shared/publishing/providerRegistry';
+import { getActiveFrontendProvider } from '../../../shared/publishing-provider-host/providerRegistry';
 import { fetchSites, fetchDirectories, SiteConfigWithSlug } from '../../../shared/utils/siteApi';
 import { FindInSitesOptions } from '../../../../../shared_code/types/findInSitesOptions';
 import Modal from '../../../shared/components/Modal';

@@ -16,8 +16,8 @@ limitations under the License.
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, screen, waitFor } from '@testing-library/react';
-import FilterPanel from '../FilterPanel';
-import { IFilter } from '../../types/filters';
+import FilterPanel from '../../../../../src/areas/site/curation/components/FilterPanel';
+import { IFilter } from '../../../../../src/areas/site/curation/types/filters';
 
 describe('FilterPanel', () => {
   const mockFilters: IFilter[] = [
