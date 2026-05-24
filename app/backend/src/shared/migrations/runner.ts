@@ -22,7 +22,7 @@ import { logger } from '../utils/logging/backendLoggingUtils.js';
 import { commitChangesNative } from '../utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../site-config/siteConfigPaths.js';
 import { PublishingProviderPaths } from '../../../../shared_code/paths/publishingProviderPaths.js';
-import { getAllBackendProviders } from '../publishing/providerRegistry.js';
+import { getAllBackendProviders } from '../publishing-provider-host/providerRegistry.js';
 import type { MigrationsYaml } from '../../../../shared_code/types/migrations.js';
 
 /**

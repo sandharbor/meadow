@@ -15,26 +15,10 @@ limitations under the License.
 */
 
 import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+export { makePageKey, pageConfigToKey } from '../../../../shared/site-page/pageKeys.js';
 
 export interface SitePageConfigs {
   [pageKey: string]: SitePageConfig;
-}
-
-/**
- * Creates a unique key for a page based on title, file_type, and directory.
- * This handles the case where the same title exists in multiple directories.
- * Format: "directory:title.file_type" or "title.file_type" if no directory
- */
-export function makePageKey(title: string, fileType: string = 'md', directory: string = ''): string {
-  const normalizedDir = directory.replace(/\/+$/, '');
-  return normalizedDir ? `${normalizedDir}:${title}.${fileType}` : `${title}.${fileType}`;
-}
-
-/**
- * Creates a unique key from a SitePageConfig object.
- */
-export function pageConfigToKey(conf: SitePageConfig): string {
-  return makePageKey(conf.title, conf.file_type || 'md', conf.source_graph_subdirectory || '');
 }
 
 export interface LinkInfo {

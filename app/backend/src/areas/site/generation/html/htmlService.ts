@@ -34,7 +34,7 @@ import { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
 import { FileType } from '../../../../../../shared_code/types/FileType.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 import { loadSiteConfig, getLatestGeneratedSiteVersionWithFallback } from '../../../../shared/utils/siteConfigUtils.js';
-import { generateVersionId, recordGeneratedSiteVersion } from '../../../../shared/services/publishService.js';
+import { generateVersionId, recordGeneratedSiteVersion } from '../services/generatedSiteVersions.js';
 import { loadAppConfig } from '../../../../../../shared_code/utils/appConfigUtils.js';
 import { resolveEffectiveGenerationOptions } from '../../../../../../shared_code/utils/generationOptionsUtils.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
@@ -91,7 +91,7 @@ function extractSiteSlugFromDirectory(siteDirectory: string): string | null {
 }
 
 // Re-export for backward compatibility
-export { generateVersionId, createOrUpdateGeneratedSiteVersions } from '../../../../shared/services/publishService.js';
+export { generateVersionId, createOrUpdateGeneratedSiteVersions } from '../services/generatedSiteVersions.js';
 
 /**
  * Wait for a file to exist on disk with polling.

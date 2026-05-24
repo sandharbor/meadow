@@ -31,7 +31,7 @@ import siteGenerationRoutes from '../../areas/site/generation/routes/siteGenerat
 import stylePresetsRoutes from '../../areas/site/generation/routes/stylePresetsRoutes.js';
 import logRoutes from '../routes/logRoutes.js';
 import appConfigFileRoutes from '../routes/appConfigFileRoutes.js';
-import providerDiscoveryRoutes from '../routes/providerDiscoveryRoutes.js';
+import providerDiscoveryRoutes from '../../areas/site/sharing/routes/providerDiscoveryRoutes.js';
 import { createHealthRoutes } from '../routes/healthRoutes.js';
 import reviewRoutes from '../../areas/site/review/routes/reviewRoutes.js';
 import { getConfigDirectory } from '../site-config/siteConfigPaths.js';
@@ -39,7 +39,7 @@ import { ResourcesConfig } from '../../../../shared_code/types/resourcesConfig.j
 import {
   ensureAllProviderResourcesInitialized,
   registerAllProviderRoutes,
-} from '../publishing/providerRegistry.js';
+} from '../publishing-provider-host/providerRegistry.js';
 import { ensureAppConfigInitialized, loadAppConfig as loadAppConfigFromDisk, appConfigFileExists } from '../../../../shared_code/utils/appConfigUtils.js';
 import { ensureDefaultGlobalFiltersInitialized } from '../../../../shared_code/utils/defaultGlobalFiltersUtils.js';
 import { getGlobalCustomFiltersPath } from '../../../../shared_code/utils/globalCustomFiltersUtils.js';

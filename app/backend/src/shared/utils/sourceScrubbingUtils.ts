@@ -23,7 +23,7 @@ import type { LinkResolvedInfo } from '../../../../shared_code/types/ISitePage.j
 import { replaceOutsideCode } from '../../areas/site/generation/html/markdown.js';
 import { LINK_PATTERN } from '../../areas/site/generation/html/constants.js';
 import { isLinkTracked } from '../../areas/site/generation/html/linkModificationService.js';
-import { pageConfigToKey } from '../../areas/site/generation/html/types.js';
+import { pageConfigToKey } from '../site-page/pageKeys.js';
 import { logger } from './logging/backendLoggingUtils.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;

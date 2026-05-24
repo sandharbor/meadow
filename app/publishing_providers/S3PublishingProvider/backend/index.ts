@@ -20,7 +20,7 @@ import type {
   CleanupPublishedSiteOptions,
   CleanupPublishedSiteResult,
   IPublishingProviderBackend,
-} from '../../../backend/src/shared/publishing/IPublishingProviderBackend.js';
+} from '../../../backend/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
 import { getSiteDirectory } from '../../../backend/src/shared/site-config/siteConfigPaths.js';
 import { loadSiteConfig } from '../../../backend/src/shared/utils/siteConfigUtils.js';
 import { registerS3Routes } from './internal/routes/registerS3Routes.js';

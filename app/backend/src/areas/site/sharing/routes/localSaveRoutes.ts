@@ -24,7 +24,7 @@ import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigP
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
 import { createZipFromDirectory } from '../../../../shared/utils/zipUtils.js';
 import { findUniqueName } from '../../../../shared/utils/uniqueNameUtils.js';
-import { buildFilteredMarkdownExportForSite } from '../../../../shared/utils/markdownExportBuilder.js';
+import { buildFilteredMarkdownExportForSite } from '../services/filteredMarkdownExport.js';
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../../shared_code/utils/compressionManifestUtils.js';
 
 // For 'raw' source: produces (and returns the path to) a filtered markdown
