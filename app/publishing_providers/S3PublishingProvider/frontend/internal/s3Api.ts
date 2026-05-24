@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { API_BASE_URL } from '../../../../frontend/src/utils/apiConfig';
+import { API_BASE_URL } from '../../../../frontend/src/shared/utils/apiConfig';
 
 export const S3_API_PREFIX = 's3-api';
 

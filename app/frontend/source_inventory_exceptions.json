@@ -1,0 +1,20 @@
+{
+  "temporaryLineLimitExceptions": {
+    "shared/app-shell/components/PreviewPublishModal.tsx": {
+      "reason": "Legacy orchestration component still spans review, generation, and sharing flows.",
+      "followUp": "Split modal shell, review tabs, generation progress, and sharing controls into area-owned modules."
+    },
+    "shared/app-shell/components/SiteEditor.tsx": {
+      "reason": "Legacy editor shell still coordinates site curation, preview, navigation, and app-level state.",
+      "followUp": "Move area-specific behavior behind curation/review/shared modules and leave only app-shell orchestration."
+    },
+    "areas/site/curation/components/SitePageSelectionSidebar.tsx": {
+      "reason": "Large site curation sidebar preserved during area move to avoid changing selection behavior.",
+      "followUp": "Split selected-page details, page actions, and filter/metadata panels within the site/curation area."
+    },
+    "areas/sites/components/SiteList.tsx": {
+      "reason": "Large multi-site listing component preserved during area move to avoid changing list, search, archive, and modal behavior.",
+      "followUp": "Split list data loading, archive/search controls, repeated site rows, and modal coordination within the sites area."
+    }
+  }
+}

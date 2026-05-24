@@ -18,7 +18,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { HooksLoader } from '../../src/utils/hooksLoader.js';
+import { HooksLoader } from '../../src/areas/site/generation/utils/hooksLoader.js';
 import { AppConfigPaths } from '../../../shared_code/paths/appConfigPaths.js';
 import { HookType } from '../../../shared_code/types/hooks.js';
 

@@ -22,7 +22,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/setupTests.ts'],
+    setupFiles: ['./src/shared/testing/setupTests.ts'],
     include: ['**/__tests__/**/*.test.(ts|tsx)', '**/__integration_tests__/**/*.test.(ts|tsx)'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
   },

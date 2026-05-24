@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { PublishTabProps } from '../../../../frontend/src/publishing/IPublishingProviderFrontend';
-import { logger } from '../../../../frontend/src/utils/logger';
-import { openExternal } from '../../../../frontend/src/utils/openExternal';
+import type { PublishTabProps } from '../../../../frontend/src/shared/publishing/IPublishingProviderFrontend';
+import { logger } from '../../../../frontend/src/shared/utils/logger';
+import { openExternal } from '../../../../frontend/src/shared/utils/openExternal';
 import { s3Api } from './s3Api';
 import { S3ConfigurationSection } from './S3ConfigurationSection';
 

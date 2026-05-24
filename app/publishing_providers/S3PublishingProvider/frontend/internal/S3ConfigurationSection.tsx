@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { logger } from '../../../../frontend/src/utils/logger';
+import { logger } from '../../../../frontend/src/shared/utils/logger';
 import { s3Api } from './s3Api';
 
 interface S3Configuration {

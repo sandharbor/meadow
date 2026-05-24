@@ -17,10 +17,10 @@ limitations under the License.
 import type { Router } from 'express';
 import fs from 'fs';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils.js';
-import { getSiteDirectory } from '../../../../../backend/src/routes/siteConfigRoutes.js';
-import { loadSiteConfig } from '../../../../../backend/src/utils/siteConfigUtils.js';
-import { getHtmlPathForPage } from '../../../../../backend/src/utils/htmlPathLookup.js';
-import { logger } from '../../../../../backend/src/utils/logging/backendLoggingUtils.js';
+import { getSiteDirectory } from '../../../../../backend/src/shared/site-config/siteConfigPaths.js';
+import { loadSiteConfig } from '../../../../../backend/src/shared/utils/siteConfigUtils.js';
+import { getHtmlPathForPage } from '../../../../../backend/src/shared/utils/htmlPathLookup.js';
+import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
 import { createS3Client, requireBucket } from '../s3Client.js';
 import { countPrefix } from '../s3Operations.js';
 import { loadS3ConfigForSite, loadS3Resources, loadS3Secrets, normalizeWebBaseUrl } from '../s3Config.js';

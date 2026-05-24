@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { buildExcalidrawClientEmbeddedFileData, linkOrImageHtml } from '../../src/html/linkModificationService.js';
+import { buildExcalidrawClientEmbeddedFileData, linkOrImageHtml } from '../../src/areas/site/generation/html/linkModificationService.js';
 import { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
 
 describe('html link modification', () => {

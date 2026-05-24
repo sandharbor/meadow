@@ -22,10 +22,10 @@ import path from 'path';
 import LZString from 'lz-string';
 import express from 'express';
 import request from 'supertest';
-import { generateHtmlForSite } from '../../src/html/htmlService.js';
+import { generateHtmlForSite } from '../../src/areas/site/generation/html/htmlService.js';
 import { TestSiteSetup } from './testSetup.js';
 import { SiteConfigPaths } from '../../../shared_code/paths/siteConfigPaths.js';
-import localSaveRoutes from '../../src/routes/localSaveRoutes.js';
+import localSaveRoutes from '../../src/areas/site/sharing/routes/localSaveRoutes.js';
 
 describe('markdown export filtering', () => {
   const testSetup = new TestSiteSetup('markdown-export-site', 'markdown-export-test');

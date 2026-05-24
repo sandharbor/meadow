@@ -20,9 +20,9 @@ import type {
   CleanupPublishedSiteOptions,
   CleanupPublishedSiteResult,
   IPublishingProviderBackend,
-} from '../../../backend/src/publishing/IPublishingProviderBackend.js';
-import { getSiteDirectory } from '../../../backend/src/routes/siteConfigRoutes.js';
-import { loadSiteConfig } from '../../../backend/src/utils/siteConfigUtils.js';
+} from '../../../backend/src/shared/publishing/IPublishingProviderBackend.js';
+import { getSiteDirectory } from '../../../backend/src/shared/site-config/siteConfigPaths.js';
+import { loadSiteConfig } from '../../../backend/src/shared/utils/siteConfigUtils.js';
 import { registerS3Routes } from './internal/routes/registerS3Routes.js';
 import { cleanupS3PublishedFiles } from './internal/cleanupPublishedSite.js';
 import { loadS3ConfigForSite, loadS3Resources, S3_PROVIDER_ID } from './internal/s3Config.js';

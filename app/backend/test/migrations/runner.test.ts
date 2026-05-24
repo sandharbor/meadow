@@ -22,7 +22,7 @@ import YAML from 'yaml';
 import {
   runMigrationsForScopes,
   type MigrationScope,
-} from '../../src/migrations/runner.js';
+} from '../../src/shared/migrations/runner.js';
 
 function makeMigrationFile(dir: string, filename: string, body: string): void {
   fs.mkdirSync(dir, { recursive: true });

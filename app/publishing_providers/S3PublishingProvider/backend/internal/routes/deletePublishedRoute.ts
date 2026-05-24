@@ -16,9 +16,9 @@ limitations under the License.
 
 import type { Router } from 'express';
 import fs from 'fs';
-import { getSiteDirectory } from '../../../../../backend/src/routes/siteConfigRoutes.js';
-import { updateSiteConfig } from '../../../../../backend/src/utils/siteConfigUtils.js';
-import { logger } from '../../../../../backend/src/utils/logging/backendLoggingUtils.js';
+import { getSiteDirectory } from '../../../../../backend/src/shared/site-config/siteConfigPaths.js';
+import { updateSiteConfig } from '../../../../../backend/src/shared/utils/siteConfigUtils.js';
+import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
 import { createS3Client, describeS3Error, requireBucket } from '../s3Client.js';
 import { deletePrefix } from '../s3Operations.js';
 import { loadS3ConfigForSite, loadS3Resources, loadS3Secrets } from '../s3Config.js';

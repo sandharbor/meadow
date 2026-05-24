@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, test, expect } from 'vitest';
-import { findUniqueName } from '../../src/utils/uniqueNameUtils.js';
+import { findUniqueName } from '../../src/shared/utils/uniqueNameUtils.js';
 
 describe('findUniqueName', () => {
   test('returns base name when it does not exist', () => {

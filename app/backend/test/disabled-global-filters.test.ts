@@ -18,7 +18,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { loadSiteConfig, saveSiteConfig } from '../src/utils/siteConfigUtils.js';
+import { loadSiteConfig, saveSiteConfig } from '../src/shared/utils/siteConfigUtils.js';
 import { CustomFilterConfig, GlobalCustomFiltersConfig } from '../../shared_code/types/customFilters.js';
 
 describe('Disabled Global Filters', () => {

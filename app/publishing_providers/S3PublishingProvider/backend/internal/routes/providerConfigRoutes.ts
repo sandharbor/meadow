@@ -21,7 +21,7 @@ import { PublishingProviderPaths } from '../../../../../shared_code/paths/publis
 import {
   getConfigDirectory,
   getSiteDirectory,
-} from '../../../../../backend/src/routes/siteConfigRoutes.js';
+} from '../../../../../backend/src/shared/site-config/siteConfigPaths.js';
 import {
   loadS3ConfigForSite,
   PUBLISH_SLUG_PATTERN,

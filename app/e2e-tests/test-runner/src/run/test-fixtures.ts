@@ -534,7 +534,7 @@ export const test = base.extend<{
       const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
 
       // 1. Create fresh CONFIG_DIR
-      const configDir = execSync("npx tsx src/scripts/setup_worktree_resources_config.ts", {
+      const configDir = execSync("npx tsx src/shared/scripts/setup_worktree_resources_config.ts", {
         cwd: BACKEND_DIR,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
@@ -587,7 +587,7 @@ export const test = base.extend<{
       //    via the `_backendExtraEnv` option (e.g. provider-specific stubs).
       const backendProc = spawn(
         "npx",
-        ["tsx", "src/index.ts"],
+        ["tsx", "src/shared/app-shell/index.ts"],
         {
           cwd: BACKEND_DIR,
           env: {

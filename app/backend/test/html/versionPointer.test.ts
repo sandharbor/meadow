@@ -17,8 +17,8 @@ limitations under the License.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { generateHtmlForSite, publishToNewVersion, updateOlderVersionsWithPointer } from '../../src/html/htmlService.js';
-import { loadSiteConfig } from '../../src/utils/siteConfigUtils.js';
+import { generateHtmlForSite, publishToNewVersion, updateOlderVersionsWithPointer } from '../../src/areas/site/generation/html/htmlService.js';
+import { loadSiteConfig } from '../../src/shared/utils/siteConfigUtils.js';
 import { TestSiteSetup } from './testSetup.js';
 
 function writeYaml(filePath: string, content: string): void {

@@ -18,7 +18,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getHtmlPathForPage } from '../../src/utils/htmlPathLookup.js';
+import { getHtmlPathForPage } from '../../src/shared/utils/htmlPathLookup.js';
 import { SiteConfigPaths } from '../../../shared_code/paths/siteConfigPaths.js';
 
 describe('getHtmlPathForPage', () => {

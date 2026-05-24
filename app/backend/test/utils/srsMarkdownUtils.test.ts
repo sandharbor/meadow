@@ -20,7 +20,7 @@ import {
   pageMatchesConfiguredSrsTags,
   removeSrsCommentsFromMarkdown,
   replaceSrsCardsWithCustomElements,
-} from '../../src/utils/srsMarkdownUtils.js';
+} from '../../src/shared/utils/srsMarkdownUtils.js';
 
 describe('srsMarkdownUtils', () => {
   it('matches configured tags from raw tags, nested tags, and rewritten tag links', () => {

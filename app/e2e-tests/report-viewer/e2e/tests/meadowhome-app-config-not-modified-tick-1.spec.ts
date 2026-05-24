@@ -27,7 +27,7 @@ import { MeadowHomeFilesComponent } from "../pages/MeadowHomeFilesComponent.js";
 // files tree at the first post-startup tick, because
 // ensureAppConfigInitialized would patch the file with new defaults
 // but startServer never committed the patch. Fixed in
-// app/backend/src/index.ts startServer() by committing after
+// app/backend/src/shared/app-shell/index.ts startServer() by committing after
 // ensureAppConfigInitialized reports wasPatched=true. This spec pins
 // that fix in place.
 //

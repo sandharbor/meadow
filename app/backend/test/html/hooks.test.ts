@@ -17,9 +17,9 @@ limitations under the License.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { generateHtmlForSite } from '../../src/html/htmlService.js';
+import { generateHtmlForSite } from '../../src/areas/site/generation/html/htmlService.js';
 import { TestSiteSetup } from './testSetup.js';
-import { HooksLoader } from '../../src/utils/hooksLoader.js';
+import { HooksLoader } from '../../src/areas/site/generation/utils/hooksLoader.js';
 import { SiteConfigPaths } from '../../../shared_code/paths/siteConfigPaths.js';
 
 describe('html preview', () => {

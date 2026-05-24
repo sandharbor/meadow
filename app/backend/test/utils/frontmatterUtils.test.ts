@@ -18,7 +18,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { FrontmatterUtils } from '../../src/utils/frontmatterUtils.js';
+import { FrontmatterUtils } from '../../src/shared/utils/frontmatterUtils.js';
 
 describe('FrontmatterUtils', () => {
   let tempDir: string;

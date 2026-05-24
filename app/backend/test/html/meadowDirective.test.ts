@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { renderPageToHtml } from '../../src/html/htmlGenerator.js';
+import { renderPageToHtml } from '../../src/areas/site/generation/html/htmlGenerator.js';
 import type { SiteConfig } from '../../../shared_code/types/siteConfig.js';
 import type { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
 

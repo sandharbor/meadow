@@ -1,5 +1,5 @@
 // One-off build of the Excalidraw vendor bundle. Output is checked into
-// src/html/shared/excalidraw-vendor.js. Re-run when bumping the
+// src/areas/site/generation/html/shared/excalidraw-vendor.js. Re-run when bumping the
 // @excalidraw/excalidraw version.
 
 import * as esbuild from 'esbuild';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const entry = path.join(__dirname, 'excalidraw-vendor-entry.js');
-const outfile = path.join(__dirname, '..', 'src', 'html', 'shared', 'excalidraw-vendor.js');
+const outfile = path.join(__dirname, '..', 'src', 'phases', 'site-generation', 'html', 'shared', 'excalidraw-vendor.js');
 
 await esbuild.build({
   entryPoints: [entry],

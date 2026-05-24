@@ -123,7 +123,7 @@ export async function startServer(): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log(`Starting server on port ${TEST_PORT}...`);
 
-    serverProcess = spawn('npx', ['tsx', 'src/index.ts'], {
+    serverProcess = spawn('npx', ['tsx', 'src/shared/app-shell/index.ts'], {
       cwd: BACKEND_DIR,
       env: {
         ...process.env,

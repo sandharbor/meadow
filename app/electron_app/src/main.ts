@@ -576,7 +576,7 @@ class MeadowApp {
         // Development: run the backend from source
         // In dev mode, __dirname is electron_app/dist/electron_app/src
         // We need to go up to the project root and then into backend
-        backendScript = 'src/index.ts';
+        backendScript = 'src/shared/app-shell/index.ts';
         cwd = path.join(__dirname, '../../../../backend');
         const tsxPath = path.join(cwd, 'node_modules', '.bin', 'tsx');
         log('INFO', 'Starting backend in development mode', { backendScript, cwd, tsxPath });
@@ -593,7 +593,7 @@ class MeadowApp {
         });
       } else {
         // Production: run the built backend with embedded Node.js
-        backendScript = 'src/index.js';
+        backendScript = 'src/shared/app-shell/index.js';
         cwd = path.join((process as any).resourcesPath, 'backend');
         log('INFO', 'Starting backend in production mode', { backendScript, cwd, nodePath: this.nodePath });
         

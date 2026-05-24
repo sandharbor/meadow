@@ -18,9 +18,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { generateHtmlForSite, publishToVersionedDirectory, publishToNewVersion } from '../../src/html/htmlService.js';
-import { ensureTrackedPageContent } from '../../src/utils/trackedPageContentUtils.js';
-import { loadSiteConfig } from '../../src/utils/siteConfigUtils.js';
+import { generateHtmlForSite, publishToVersionedDirectory, publishToNewVersion } from '../../src/areas/site/generation/html/htmlService.js';
+import { ensureTrackedPageContent } from '../../src/shared/utils/trackedPageContentUtils.js';
+import { loadSiteConfig } from '../../src/shared/utils/siteConfigUtils.js';
 import { TestSiteSetup } from './testSetup.js';
 import { SiteConfigPaths } from '../../../shared_code/paths/siteConfigPaths.js';
 

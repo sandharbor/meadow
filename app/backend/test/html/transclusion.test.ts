@@ -20,7 +20,7 @@ import os from 'os';
 import path from 'path';
 import type { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
 import type { SiteConfig } from '../../../shared_code/types/siteConfig.js';
-import { renderTransclusionToHtml } from '../../src/html/transclusion.js';
+import { renderTransclusionToHtml } from '../../src/areas/site/generation/html/transclusion.js';
 
 function writeMd(root: string, subdir: string, title: string, content: string): void {
   const dir = subdir ? path.join(root, subdir) : root;

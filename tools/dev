@@ -44,10 +44,10 @@ fi
 # --- 3. Resolve config dir & ports ---
 if [ "$IS_MAIN_REPO" = true ]; then
   echo "Main repo detected: using the real Meadow home; not allocating random ports."
-  CONFIG_DIR=$(cd "$BACKEND_DIR" && npx tsx src/scripts/resolve_main_repo_config_dir.ts)
+  CONFIG_DIR=$(cd "$BACKEND_DIR" && npx tsx src/shared/scripts/resolve_main_repo_config_dir.ts)
 else
   echo "Setting up worktree resources config..."
-  CONFIG_DIR=$(cd "$BACKEND_DIR" && npx tsx src/scripts/setup_worktree_resources_config.ts)
+  CONFIG_DIR=$(cd "$BACKEND_DIR" && npx tsx src/shared/scripts/setup_worktree_resources_config.ts)
 fi
 echo "Config directory: $CONFIG_DIR"
 
@@ -80,7 +80,7 @@ fi
 
 # --- 5. Create tmux session with 3 windows ---
 tmux new-session -d -s "$SESSION" -n backend -c "$BACKEND_DIR" \
-  "MEADOW_IS_DEV='true' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' npx tsx src/index.ts; read"
+  "MEADOW_IS_DEV='true' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' npx tsx src/shared/app-shell/index.ts; read"
 
 tmux new-window -t "$SESSION" -n frontend -c "$FRONTEND_DIR" \
   "VITE_FRONTEND_PORT='$FRONTEND_PORT' VITE_BACKEND_PORT='$BACKEND_PORT' npx vite; read"
