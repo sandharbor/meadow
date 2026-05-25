@@ -1025,7 +1025,7 @@ async function validatePagespecLinksForSite(
   initialPageTitle: string
 ): Promise<{ errors: string[]; pagesValidated: number }> {
   const response = await fetch(
-    `${TEST_BASE_URL}/api/site/${siteSlug}/working-graph?initialPageTitle=${encodeURIComponent(initialPageTitle)}`
+    `${TEST_BASE_URL}/api/sites/${siteSlug}/curation/working-graph?initialPageTitle=${encodeURIComponent(initialPageTitle)}`
   );
 
   expect(response.ok).toBe(true);
@@ -1181,7 +1181,7 @@ describe('Runtime Pagespec Link Validation', () => {
       const siteSlug = siteSetup.getSiteSlug();
 
       const response = await fetch(
-        `${TEST_BASE_URL}/api/site/${siteSlug}/working-graph?initialPageTitle=${encodeURIComponent(initialPage)}`
+        `${TEST_BASE_URL}/api/sites/${siteSlug}/curation/working-graph?initialPageTitle=${encodeURIComponent(initialPage)}`
       );
 
       expect(response.ok).toBe(true);
@@ -1292,7 +1292,7 @@ describe('Runtime Pagespec Link Validation', () => {
       // Fetch working graph with a large frontier depth to include frontier pages
       // Use frontierDepth=10 to capture several layers of frontier pages
       const response = await fetch(
-        `${TEST_BASE_URL}/api/site/${siteSlug}/working-graph?initialPageTitle=${encodeURIComponent(initialPage)}&frontierDepth=10`
+        `${TEST_BASE_URL}/api/sites/${siteSlug}/curation/working-graph?initialPageTitle=${encodeURIComponent(initialPage)}&frontierDepth=10`
       );
 
       expect(response.ok).toBe(true);
@@ -1370,7 +1370,7 @@ describe('Runtime Pagespec Link Validation', () => {
     await Promise.all(
       sitesToCheck.map(async ({ setup }) => {
         const siteSlug = setup.getSiteSlug();
-        const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+        const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);

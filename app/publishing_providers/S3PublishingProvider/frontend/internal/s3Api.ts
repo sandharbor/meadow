@@ -20,5 +20,5 @@ export const S3_API_PREFIX = 's3-api';
 
 export function s3Api(path: string): string {
   const trimmed = path.startsWith('/') ? path.slice(1) : path;
-  return `${API_BASE_URL}/publishing-providers/S3PublishingProvider/${trimmed}`;
+  return `${API_BASE_URL}/sharing/publishing-providers/S3PublishingProvider/${trimmed}`;
 }

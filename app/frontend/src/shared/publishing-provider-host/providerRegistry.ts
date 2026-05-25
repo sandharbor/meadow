@@ -22,7 +22,7 @@ limitations under the License.
  * to export a default `IPublishingProviderFrontend` instance.
  *
  * Active-provider selection is owned by the backend: `GET
- * /api/publishing-providers` returns each provider's manifest plus an
+ * /api/sharing/publishing-providers` returns each provider's manifest plus an
  * `isActive` flag (driven by `pp_config.yaml.isActive`). Callers reach the
  * currently-active provider via `getActiveFrontendProvider()` (async; caches
  * the fetch). Specific-id lookups are still available for providers that
@@ -92,7 +92,7 @@ export async function fetchActiveProviderId(): Promise<PublishingProviderId | nu
   if (!activePromise) {
     activePromise = (async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/publishing-providers`);
+        const res = await fetch(`${API_BASE_URL}/sharing/publishing-providers`);
         if (!res.ok) return null;
         const body = await res.json() as { providers?: BackendProviderEntry[] };
         const firstActive = (body.providers ?? []).find((p) => p.isActive);

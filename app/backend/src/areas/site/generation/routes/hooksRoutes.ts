@@ -97,7 +97,7 @@ function markdownProcessingBacklinks(siteSlug: string, mdContent: string): strin
 };
 
 // Get global hooks folder path (creates it if needed)
-router.get('/global/folder-path', (_req, res) => {
+router.get('/generation/hooks/global/folder-path', (_req, res) => {
   const dir = getGlobalHooksDirectory();
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
@@ -106,7 +106,7 @@ router.get('/global/folder-path', (_req, res) => {
 });
 
 // Get all global hooks
-router.get('/global', (req, res) => {
+router.get('/generation/hooks/global', (req, res) => {
   const hookTypes: HookType[] = ['pageTitleNormalization', 'markdownProcessing', 'htmlPostProcessing'];
   const hooks: HookMetadata[] = hookTypes.map(hookType => 
     HooksLoader.getHookMetadata('global', hookType)
@@ -116,7 +116,7 @@ router.get('/global', (req, res) => {
 });
 
 // Get specific global hook
-router.get('/global/:hookType', validateHookType, (req, res) => {
+router.get('/generation/hooks/global/:hookType', validateHookType, (req, res) => {
   const { hookType } = req.params;
   
   const metadata = HooksLoader.getHookMetadata('global', hookType as HookType);
@@ -124,7 +124,7 @@ router.get('/global/:hookType', validateHookType, (req, res) => {
 });
 
 // Create or update global hook
-router.put('/global/:hookType', validateHookType, (req, res) => {
+router.put('/generation/hooks/global/:hookType', validateHookType, (req, res) => {
   (async () => {
     const { hookType } = req.params;
     const { content } = req.body as { content: string };
@@ -165,13 +165,13 @@ router.put('/global/:hookType', validateHookType, (req, res) => {
     res.json({ success: true, filePath: hookPath });
   })().catch((err: unknown) => {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in PUT /global/:hookType: ${errMsg}`);
+    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in PUT /generation/hooks/global/:hookType: ${errMsg}`);
     res.status(500).json({ error: 'Internal server error' });
   });
 });
 
 // Delete global hook
-router.delete('/global/:hookType', validateHookType, (req, res) => {
+router.delete('/generation/hooks/global/:hookType', validateHookType, (req, res) => {
   (async () => {
     const { hookType } = req.params;
 
@@ -201,13 +201,13 @@ router.delete('/global/:hookType', validateHookType, (req, res) => {
     res.json({ success: true });
   })().catch((err: unknown) => {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in DELETE /global/:hookType: ${errMsg}`);
+    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in DELETE /generation/hooks/global/:hookType: ${errMsg}`);
     res.status(500).json({ error: 'Internal server error' });
   });
 });
 
 // Get site hooks folder path (creates it if needed)
-router.get('/site/:siteSlug/hooks/folder-path', validateSiteSlug, (req, res) => {
+router.get('/sites/:siteSlug/generation/hooks/folder-path', validateSiteSlug, (req, res) => {
   const { siteSlug } = req.params;
   const dir = getSiteHooksDirectory(siteSlug);
   if (!existsSync(dir)) {
@@ -217,7 +217,7 @@ router.get('/site/:siteSlug/hooks/folder-path', validateSiteSlug, (req, res) => 
 });
 
 // Get all hooks for a site (includes global hooks with disabled state)
-router.get('/site/:siteSlug/hooks', validateSiteSlug, (req, res) => {
+router.get('/sites/:siteSlug/generation/hooks', validateSiteSlug, (req, res) => {
   const { siteSlug } = req.params;
 
   const hookTypes: HookType[] = ['pageTitleNormalization', 'markdownProcessing', 'htmlPostProcessing'];
@@ -253,7 +253,7 @@ router.get('/site/:siteSlug/hooks', validateSiteSlug, (req, res) => {
 // Get load status for hooks (for error indicator)
 // NOTE: This must be defined BEFORE the :hookType route below,
 // otherwise Express matches "load-status" as a :hookType parameter.
-router.get('/site/:siteSlug/hooks/load-status', validateSiteSlug, (req, res) => {
+router.get('/sites/:siteSlug/generation/hooks/load-status', validateSiteSlug, (req, res) => {
   const { siteSlug } = req.params;
 
   const loadStatus = HooksLoader.getLoadStatus(siteSlug);
@@ -261,7 +261,7 @@ router.get('/site/:siteSlug/hooks/load-status', validateSiteSlug, (req, res) => 
 });
 
 // Get specific site hook
-router.get('/site/:siteSlug/hooks/:hookType', validateSiteSlug, validateHookType, (req, res) => {
+router.get('/sites/:siteSlug/generation/hooks/:hookType', validateSiteSlug, validateHookType, (req, res) => {
   const { siteSlug, hookType } = req.params;
   
   const metadata = HooksLoader.getHookMetadata('site', hookType as HookType, siteSlug);
@@ -269,7 +269,7 @@ router.get('/site/:siteSlug/hooks/:hookType', validateSiteSlug, validateHookType
 });
 
 // Create or update site hook
-router.put('/site/:siteSlug/hooks/:hookType', validateSiteSlug, validateHookType, (req, res) => {
+router.put('/sites/:siteSlug/generation/hooks/:hookType', validateSiteSlug, validateHookType, (req, res) => {
   (async () => {
     const { siteSlug, hookType } = req.params;
     const { content } = req.body as { content: string };
@@ -324,13 +324,13 @@ router.put('/site/:siteSlug/hooks/:hookType', validateSiteSlug, validateHookType
     res.json({ success: true, filePath: hookPath });
   })().catch((err: unknown) => {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in PUT /site/:siteSlug/hooks/:hookType: ${errMsg}`);
+    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in PUT /sites/:siteSlug/generation/hooks/:hookType: ${errMsg}`);
     res.status(500).json({ error: 'Internal server error' });
   });
 });
 
 // Delete site hook
-router.delete('/site/:siteSlug/hooks/:hookType', validateSiteSlug, validateHookType, (req, res) => {
+router.delete('/sites/:siteSlug/generation/hooks/:hookType', validateSiteSlug, validateHookType, (req, res) => {
   (async () => {
     const { siteSlug, hookType } = req.params;
 
@@ -360,13 +360,13 @@ router.delete('/site/:siteSlug/hooks/:hookType', validateSiteSlug, validateHookT
     res.json({ success: true });
   })().catch((err: unknown) => {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in DELETE /site/:siteSlug/hooks/:hookType: ${errMsg}`);
+    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in DELETE /sites/:siteSlug/generation/hooks/:hookType: ${errMsg}`);
     res.status(500).json({ error: 'Internal server error' });
   });
 });
 
 // Validate hook and preview changes
-router.post('/site/:siteSlug/hooks/validate', validateSiteSlug, (req, res) => {
+router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req, res) => {
   const { siteSlug, hookType, content } = req.body as { 
     siteSlug: string;
     hookType: HookType;
@@ -551,7 +551,7 @@ router.post('/site/:siteSlug/hooks/validate', validateSiteSlug, (req, res) => {
 });
 
 // Toggle disabled state for a global hook
-router.post('/site/:siteSlug/disabled-global-hooks/:hookType', validateSiteSlug, validateHookType, (req, res) => {
+router.post('/sites/:siteSlug/generation/hooks/disabled-global-hooks/:hookType', validateSiteSlug, validateHookType, (req, res) => {
   (async () => {
     const { siteSlug, hookType } = req.params;
     const { disabled } = req.body as { disabled: boolean };
@@ -595,13 +595,13 @@ router.post('/site/:siteSlug/disabled-global-hooks/:hookType', validateSiteSlug,
     res.json({ success: true, disabledGlobalHooks });
   })().catch((err: unknown) => {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in POST /site/:siteSlug/disabled-global-hooks/:hookType: ${errMsg}`);
+    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in POST /sites/:siteSlug/generation/hooks/disabled-global-hooks/:hookType: ${errMsg}`);
     res.status(500).json({ error: 'Internal server error' });
   });
 });
 
 // Set hook mode (append or override) for a site hook
-router.post('/site/:siteSlug/hook-mode/:hookType', validateSiteSlug, validateHookType, (req, res) => {
+router.post('/sites/:siteSlug/generation/hooks/mode/:hookType', validateSiteSlug, validateHookType, (req, res) => {
   (async () => {
     const { siteSlug, hookType } = req.params;
     const { mode } = req.body as { mode: 'append' | 'override' };
@@ -649,13 +649,13 @@ router.post('/site/:siteSlug/hook-mode/:hookType', validateSiteSlug, validateHoo
     res.json({ success: true, hookAppendMode, disabledGlobalHooks });
   })().catch((err: unknown) => {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in POST /site/:siteSlug/hook-mode/:hookType: ${errMsg}`);
+    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in POST /sites/:siteSlug/generation/hooks/mode/:hookType: ${errMsg}`);
     res.status(500).json({ error: 'Internal server error' });
   });
 });
 
 // Get hook template
-router.get('/templates/:hookType', validateHookType, (req, res) => {
+router.get('/generation/hooks/templates/:hookType', validateHookType, (req, res) => {
   const { hookType } = req.params;
   
   const template = HOOK_TEMPLATES[hookType as HookType];
@@ -663,7 +663,7 @@ router.get('/templates/:hookType', validateHookType, (req, res) => {
 });
 
 // Generate agent prompt for custom assets and hooks
-router.get('/agent-prompt/:siteSlug', validateSiteSlug, (req, res) => {
+router.get('/sites/:siteSlug/generation/agent-prompt', validateSiteSlug, (req, res) => {
   const { siteSlug } = req.params;
   const configDir = getConfigDirectory();
   const siteDir = getSiteDirectory(siteSlug);
@@ -773,7 +773,7 @@ ${hookTemplates}
 });
 
 // Create a pre-agent checkpoint commit
-router.post('/agent-prompt/:siteSlug/commit', validateSiteSlug, (req, res) => {
+router.post('/sites/:siteSlug/generation/agent-prompt/commit', validateSiteSlug, (req, res) => {
   (async () => {
     const { siteSlug } = req.params;
     const configDir = getConfigDirectory();
@@ -803,13 +803,13 @@ router.post('/agent-prompt/:siteSlug/commit', validateSiteSlug, (req, res) => {
     }
   })().catch((err: unknown) => {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in POST /agent-prompt/:siteSlug/commit: ${errMsg}`);
+    logErrorWithFile(getConfigDirectory(), `[hooksRoutes] Error in POST /sites/:siteSlug/generation/agent-prompt/commit: ${errMsg}`);
     res.status(500).json({ error: 'Internal server error' });
   });
 });
 
 // Clear hooks cache (useful for testing and development)
-router.post('/clear-cache', (_req, res) => {
+router.post('/generation/hooks/clear-cache', (_req, res) => {
   HooksLoader.clearCache();
   res.json({ success: true });
 });

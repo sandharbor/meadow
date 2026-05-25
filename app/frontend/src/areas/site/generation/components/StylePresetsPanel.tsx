@@ -48,15 +48,15 @@ const StylePresetsPanel: React.FC<StylePresetsPanelProps> = ({ siteSlug, onPrese
   const loadPresets = useCallback(async () => {
     try {
       // Load all presets
-      const presetsResponse = await fetch(`${API_BASE_URL}/presets`);
+      const presetsResponse = await fetch(`${API_BASE_URL}/generation/style-presets`);
       const presetsData = await presetsResponse.json();
 
       // Load global preset
-      const globalResponse = await fetch(`${API_BASE_URL}/presets/global`);
+      const globalResponse = await fetch(`${API_BASE_URL}/generation/style-presets/global`);
       const globalData = await globalResponse.json();
 
       // Load site preset
-      const siteResponse = await fetch(`${API_BASE_URL}/presets/site/${siteSlug}`);
+      const siteResponse = await fetch(`${API_BASE_URL}/sites/${siteSlug}/generation/style-preset`);
       const siteData = await siteResponse.json();
 
       setState({
@@ -82,7 +82,7 @@ const StylePresetsPanel: React.FC<StylePresetsPanelProps> = ({ siteSlug, onPrese
     try {
       if (scope === 'global') {
         // Update global preset
-        const response = await fetch(`${API_BASE_URL}/presets/global`, {
+        const response = await fetch(`${API_BASE_URL}/generation/style-presets/global`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ presetId }),
@@ -99,7 +99,7 @@ const StylePresetsPanel: React.FC<StylePresetsPanelProps> = ({ siteSlug, onPrese
         }
       } else {
         // Update site preset
-        const response = await fetch(`${API_BASE_URL}/presets/site/${siteSlug}`, {
+        const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/generation/style-preset`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ presetId }),

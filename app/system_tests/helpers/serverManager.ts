@@ -302,7 +302,7 @@ export function cleanupTestWorkspace(workspacePath: string): void {
  * since the server may have cached that hooks don't exist from a previous test.
  */
 export async function clearHooksCache(): Promise<void> {
-  const response = await fetch(`${TEST_BASE_URL}/api/hooks/clear-cache`, {
+  const response = await fetch(`${TEST_BASE_URL}/api/generation/hooks/clear-cache`, {
     method: 'POST'
   });
   if (!response.ok) {

@@ -35,7 +35,7 @@ const router = express.Router();
 const loadAppConfig = () => loadAppConfigFromDisk(getConfigDirectory());
 
 // Copy tracked pages to site's tracked_page_content directory
-router.post('/site/:siteSlug/copy-tracked-pages', (req, res, next) => {
+router.post('/sites/:siteSlug/curation/copy-tracked-pages', (req, res, next) => {
   (async () => {
     const { siteSlug } = req.params;
     const { trackedPages, commitMessage } = req.body as {
@@ -134,7 +134,7 @@ router.post('/site/:siteSlug/copy-tracked-pages', (req, res, next) => {
   })().catch(next);
 });
 
-router.get('/site/:siteSlug/working-graph', (req, res, next) => {
+router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
   (async () => {
     const { siteSlug } = req.params;
     const initialPageTitleQuery = req.query.initialPageTitle;

@@ -385,7 +385,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   // Persist the full config array as a draft
   const persistAllConfigs = async () => {
     const configs = buildPageConfigs(graph.getAllPages());
-    await fetch(`${API_BASE_URL}/site/${siteSlug || ''}/site-config`, {
+    await fetch(`${API_BASE_URL}/sites/${siteSlug || ''}/curation/site-config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ configs, isDraft: true })
@@ -559,7 +559,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
 
     try {
       // Call the API to update the file
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug || ''}/page/${encodeURIComponent(page.title)}/sensitive`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug || ''}/curation/page/${encodeURIComponent(page.title)}/sensitive`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isSensitive, sourceGraphDirectory: page.sourceGraphSubdirectory })

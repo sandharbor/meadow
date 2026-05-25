@@ -74,7 +74,7 @@ const asyncHandler = (fn: (req: express.Request, res: express.Response, next: ex
 };
 
 // Get all custom filters for a site (includes global filters)
-router.get('/site/:siteSlug/custom-filters', validateSiteSlug, asyncHandler((req, res) => {
+router.get('/sites/:siteSlug/curation/custom-filters', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
   
   const configDir = getConfigDirectory();
@@ -102,13 +102,13 @@ router.get('/site/:siteSlug/custom-filters', validateSiteSlug, asyncHandler((req
 }));
 
 // Get global custom filters
-router.get('/custom-filters/global', asyncHandler((req, res) => {
+router.get('/curation/custom-filters/global', asyncHandler((req, res) => {
   const config = loadGlobalCustomFilters(getConfigDirectory());
   res.json({ filters: config.filters });
 }));
 
 // Save custom filter
-router.post('/site/:siteSlug/custom-filters', validateSiteSlug, asyncHandler((req, res) => {
+router.post('/sites/:siteSlug/curation/custom-filters', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
   const { filter } = req.body as { filter: CustomFilterConfig };
   
@@ -152,7 +152,7 @@ router.post('/site/:siteSlug/custom-filters', validateSiteSlug, asyncHandler((re
 }));
 
 // Delete custom filter
-router.delete('/site/:siteSlug/custom-filters/:filterId', validateSiteSlug, asyncHandler((req, res) => {
+router.delete('/sites/:siteSlug/curation/custom-filters/:filterId', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug, filterId } = req.params;
   const { scope } = req.query as { scope: 'global' | 'site' };
   
@@ -188,7 +188,7 @@ router.delete('/site/:siteSlug/custom-filters/:filterId', validateSiteSlug, asyn
 }));
 
 // Get disabled global filters for a site
-router.get('/site/:siteSlug/disabled-global-filters', validateSiteSlug, asyncHandler((req, res) => {
+router.get('/sites/:siteSlug/curation/disabled-global-filters', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
   const siteDirectory = getSiteDirectory(siteSlug);
   const siteConfig = loadSiteConfig(siteDirectory);
@@ -197,7 +197,7 @@ router.get('/site/:siteSlug/disabled-global-filters', validateSiteSlug, asyncHan
 }));
 
 // Toggle a global filter's disabled status for a site
-router.post('/site/:siteSlug/disabled-global-filters/:filterId', validateSiteSlug, asyncHandler((req, res) => {
+router.post('/sites/:siteSlug/curation/disabled-global-filters/:filterId', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug, filterId } = req.params;
   const { disabled } = req.body as { disabled: boolean };
   

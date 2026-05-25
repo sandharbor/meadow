@@ -60,7 +60,7 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
         >
           <ExcalidrawThumbnail
             mdSourceUrl={imageUrl}
-            vendorUrl={`${API_BASE_URL}/assets/excalidraw-vendor.js`}
+            vendorUrl={`${API_BASE_URL}/generation/assets/excalidraw-vendor.js`}
             alt={title}
             className="w-full h-full"
           />

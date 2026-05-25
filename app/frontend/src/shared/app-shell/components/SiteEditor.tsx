@@ -179,7 +179,7 @@ const SiteEditor: React.FC = () => {
   const checkDraftStatus = useCallback(async () => {
     if (!slug) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/site/${slug}/site-config-draft-status`);
+      const response = await fetch(`${API_BASE_URL}/sites/${slug}/curation/site-config-draft-status`);
       const data = await response.json();
       setHasDraftChanges(data.hasChanges);
     } catch (error) {
@@ -196,7 +196,7 @@ const SiteEditor: React.FC = () => {
   const checkPublishedVersions = useCallback(async () => {
     if (!slug) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/site/${slug}/versions`);
+      const response = await fetch(`${API_BASE_URL}/sites/${slug}/review/versions`);
       if (response.ok) {
         const data = await response.json();
         setHasPublishedVersions(data.versions && data.versions.length > 0);
@@ -210,7 +210,7 @@ const SiteEditor: React.FC = () => {
   const checkHooksLoadStatus = useCallback(async () => {
     if (!slug) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/hooks/site/${slug}/hooks/load-status`);
+      const response = await fetch(`${API_BASE_URL}/sites/${slug}/generation/hooks/load-status`);
       if (response.ok) {
         const data = await response.json();
         setHooksHaveErrors(!data.allLoaded);
@@ -359,7 +359,7 @@ const SiteEditor: React.FC = () => {
     // Clear previous error when starting a new fetch
     setGraphError(null);
     const frontierParam = viewFrontierEnabled ? `&frontierDepth=${frontierDepth}` : '';
-    const url = `${API_BASE_URL}/site/${slug || ''}/working-graph?initialPageTitle=${encodeURIComponent(initialPageTitle)}&traversalPageTitle=${encodeURIComponent(initialPageTitle)}${frontierParam}`;
+    const url = `${API_BASE_URL}/sites/${slug || ''}/curation/working-graph?initialPageTitle=${encodeURIComponent(initialPageTitle)}&traversalPageTitle=${encodeURIComponent(initialPageTitle)}${frontierParam}`;
     logger.debug('Fetching working graph from:', url);
     fetch(url)
       .then(res => {
@@ -433,7 +433,7 @@ const SiteEditor: React.FC = () => {
   useEffect(() => {
     if (!graph) return;
     // Fetch site-config after graph is loaded
-    fetch(`${API_BASE_URL}/site/${slug || ''}/site-config`)
+    fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`)
       .then(res => res.json())
       .then(data => {
         const loadedSitePageConfigs: SitePageConfig[] = Array.isArray(data.configs)
@@ -539,7 +539,7 @@ const SiteEditor: React.FC = () => {
     const pageConfigs = buildMergedPageConfigsFrom(updatedSitePageConfigs);
     try {
       if (!hasDraftChanges) {
-        const response = await fetch(`${API_BASE_URL}/site/${slug || ''}/site-config`, {
+        const response = await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ configs: pageConfigs, isDraft: false })
@@ -547,7 +547,7 @@ const SiteEditor: React.FC = () => {
         if (!response.ok) throw new Error('Failed to save configuration');
         checkDraftStatus();
       } else {
-        await fetch(`${API_BASE_URL}/site/${slug || ''}/site-config`, {
+        await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ configs: pageConfigs, isDraft: true })
@@ -590,7 +590,7 @@ const SiteEditor: React.FC = () => {
     if (!graph) return;
     const pageConfigs = buildMergedPageConfigs();
     try {
-      await fetch(`${API_BASE_URL}/site/${slug || ''}/site-config`, {
+      await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ configs: pageConfigs, isDraft: true })
@@ -608,7 +608,7 @@ const SiteEditor: React.FC = () => {
     if (!graph) return;
     const pageConfigs = buildMergedPageConfigs();
     try {
-      const response = await fetch(`${API_BASE_URL}/site/${slug || ''}/site-config`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ configs: pageConfigs, isDraft: false })
@@ -628,7 +628,7 @@ const SiteEditor: React.FC = () => {
         }));
 
       try {
-        const copyResponse = await fetch(`${API_BASE_URL}/site/${slug || ''}/copy-tracked-pages`, {
+        const copyResponse = await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/copy-tracked-pages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ trackedPages, commitMessage })
@@ -679,13 +679,13 @@ const SiteEditor: React.FC = () => {
   const handleUndoChanges = async () => {
     try {
       // Delete the draft
-      await fetch(`${API_BASE_URL}/site/${slug || ''}/site-config-draft`, {
+      await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config-draft`, {
         method: 'DELETE'
       });
 
       // Re-fetch the committed config (not draft) and apply directly
       // This avoids a full graph reload which would cause a flash of 0-tracked state
-      const response = await fetch(`${API_BASE_URL}/site/${slug || ''}/site-config`);
+      const response = await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`);
       const data = await response.json();
       const committedConfigs: SitePageConfig[] = Array.isArray(data.configs)
         ? data.configs.map((c: SitePageConfig) => ({
@@ -812,7 +812,7 @@ const SiteEditor: React.FC = () => {
     const updatePayload = payloadMap[option];
 
     try {
-      await fetch(`${API_BASE_URL}/sites/${slug}/generation-options`, {
+      await fetch(`${API_BASE_URL}/sites/${slug}/generation/options`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatePayload)
@@ -843,7 +843,7 @@ const SiteEditor: React.FC = () => {
     const updatePayload = payloadMap[option];
 
     try {
-      const res = await fetch(`${API_BASE_URL}/app-config/generation-options`, {
+      const res = await fetch(`${API_BASE_URL}/generation/options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatePayload)
@@ -880,7 +880,7 @@ const SiteEditor: React.FC = () => {
     setGlobalGenerationSpacedRepetitionTags(tags);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/app-config/generation-options`, {
+      const res = await fetch(`${API_BASE_URL}/generation/options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ generationSpacedRepetitionTags: tags })
@@ -906,7 +906,7 @@ const SiteEditor: React.FC = () => {
     setSiteGenerationSpacedRepetitionTags(tags);
 
     try {
-      await fetch(`${API_BASE_URL}/sites/${slug}/generation-options`, {
+      await fetch(`${API_BASE_URL}/sites/${slug}/generation/options`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ generationSpacedRepetitionTags: tags })

@@ -137,7 +137,7 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
         updatedAt: now
       };
 
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/custom-filters`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/curation/custom-filters`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filter: filterConfig })
@@ -168,7 +168,7 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
 
     try {
       const deleteResponse = await fetch(
-        `${API_BASE_URL}/site/${siteSlug}/custom-filters/${existingFilter.id}?scope=${existingFilter.scope}`,
+        `${API_BASE_URL}/sites/${siteSlug}/curation/custom-filters/${existingFilter.id}?scope=${existingFilter.scope}`,
         { method: 'DELETE' }
       );
 

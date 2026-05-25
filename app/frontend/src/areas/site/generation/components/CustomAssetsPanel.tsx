@@ -58,7 +58,7 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ siteSlug, onCusto
 
   const loadAssets = useCallback(async () => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/custom-assets/site/${siteSlug}`);
+      const resp = await fetch(`${API_BASE_URL}/sites/${siteSlug}/generation/custom-assets`);
       if (!resp.ok) return;
       const data = await resp.json();
 
@@ -91,8 +91,8 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ siteSlug, onCusto
   const openEditor = async (assetType: CustomAssetType, editorScope: 'global' | 'site') => {
     try {
       const url = editorScope === 'global'
-        ? `${API_BASE_URL}/custom-assets/global/${assetType}`
-        : `${API_BASE_URL}/custom-assets/site/${siteSlug}/${assetType}`;
+        ? `${API_BASE_URL}/generation/custom-assets/global/${assetType}`
+        : `${API_BASE_URL}/sites/${siteSlug}/generation/custom-assets/${assetType}`;
       const resp = await fetch(url);
       if (!resp.ok) return;
       const data = await resp.json();
@@ -111,8 +111,8 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ siteSlug, onCusto
     setIsSaving(true);
     try {
       const url = editingAsset.scope === 'global'
-        ? `${API_BASE_URL}/custom-assets/global/${editingAsset.assetType}`
-        : `${API_BASE_URL}/custom-assets/site/${siteSlug}/${editingAsset.assetType}`;
+        ? `${API_BASE_URL}/generation/custom-assets/global/${editingAsset.assetType}`
+        : `${API_BASE_URL}/sites/${siteSlug}/generation/custom-assets/${editingAsset.assetType}`;
       const resp = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -139,8 +139,8 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ siteSlug, onCusto
     if (!confirm('Delete this custom asset?')) return;
     try {
       const url = editingAsset.scope === 'global'
-        ? `${API_BASE_URL}/custom-assets/global/${editingAsset.assetType}`
-        : `${API_BASE_URL}/custom-assets/site/${siteSlug}/${editingAsset.assetType}`;
+        ? `${API_BASE_URL}/generation/custom-assets/global/${editingAsset.assetType}`
+        : `${API_BASE_URL}/sites/${siteSlug}/generation/custom-assets/${editingAsset.assetType}`;
       await fetch(url, { method: 'DELETE' });
       setEditingAsset(null);
       setAssetContent('');
@@ -168,8 +168,8 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ siteSlug, onCusto
   ) => {
     try {
       const url = toggleScope === 'global'
-        ? `${API_BASE_URL}/custom-assets/global/base-disabled`
-        : `${API_BASE_URL}/custom-assets/site/${siteSlug}/base-disabled`;
+        ? `${API_BASE_URL}/generation/custom-assets/global/base-disabled`
+        : `${API_BASE_URL}/sites/${siteSlug}/generation/custom-assets/base-disabled`;
       await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

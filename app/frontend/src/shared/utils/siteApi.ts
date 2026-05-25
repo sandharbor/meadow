@@ -42,7 +42,7 @@ export interface SiteEditData {
  * Fetches all sites with their full configuration
  */
 export async function fetchSites(): Promise<SiteConfigWithSlug[]> {
-  const response = await fetch(`${API_BASE_URL}/sites-detailed`);
+  const response = await fetch(`${API_BASE_URL}/sites/detailed`);
   if (!response.ok) {
     throw new Error('Failed to fetch sites');
   }

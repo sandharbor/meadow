@@ -48,7 +48,7 @@ function getRequestOrigin(req: express.Request): string {
 // uses. The bundle is the build artifact at
 // `src/areas/site/generation/html/shared/excalidraw-vendor.js` (refreshed via
 // `node scripts/build-excalidraw-vendor.mjs`).
-router.get('/assets/excalidraw-vendor.js', (_req, res) => {
+router.get('/generation/assets/excalidraw-vendor.js', (_req, res) => {
   const bundlePath = path.join(__dirname, '..', 'html', 'shared', 'excalidraw-vendor.js');
   if (!fs.existsSync(bundlePath)) {
     return res.status(404).send('// excalidraw-vendor.js not found');
@@ -61,7 +61,7 @@ router.get('/assets/excalidraw-vendor.js', (_req, res) => {
 
 
 // Preview site endpoint  
-router.post('/site/:siteSlug/preview', (req, res, next) => {
+router.post('/sites/:siteSlug/generation/preview', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -124,7 +124,7 @@ router.post('/site/:siteSlug/preview', (req, res, next) => {
         if (traversalPageTitle) {
           const foundPath = getHtmlPathForPage(siteDirectory, traversalPageTitle, traversalPageDirectory);
           if (foundPath) {
-            traversalPageUrl = `${requestOrigin}/api/site/${siteSlug}/published/${encodePathForUrl(foundPath)}`;
+            traversalPageUrl = `${requestOrigin}/api/sites/${siteSlug}/generation/published/${encodePathForUrl(foundPath)}`;
           }
         }
 
@@ -135,7 +135,7 @@ router.post('/site/:siteSlug/preview', (req, res, next) => {
           if (htmlFiles.length > 0) {
             // Use the first HTML file found, but log a warning since this is a fallback
             logger.warn(`No traversal page specified or found, falling back to first HTML file: ${htmlFiles[0]}`);
-            traversalPageUrl = `${requestOrigin}/api/site/${siteSlug}/published/${encodePathForUrl(htmlFiles[0])}`;
+            traversalPageUrl = `${requestOrigin}/api/sites/${siteSlug}/generation/published/${encodePathForUrl(htmlFiles[0])}`;
           }
         }
 
@@ -184,7 +184,7 @@ export interface PreviewProgress {
 }
 
 // Preview site endpoint with Server-Sent Events for progress
-router.get('/site/:siteSlug/preview-stream', (req, res, _next) => {
+router.get('/sites/:siteSlug/generation/preview-stream', (req, res, _next) => {
   const { siteSlug } = req.params;
   const requestOrigin = getRequestOrigin(req);
   const startPageTitleRaw = typeof req.query.startPageTitle === 'string' ? req.query.startPageTitle : undefined;
@@ -282,7 +282,7 @@ router.get('/site/:siteSlug/preview-stream', (req, res, _next) => {
         onStartPageRendered: ({ relativeHtmlPath }) => {
           if (startUrlSent) return;
           startUrlSent = true;
-          const traversalPageUrl = `${requestOrigin}/api/site/${siteSlug}/published/${encodePathForUrl(relativeHtmlPath)}`;
+          const traversalPageUrl = `${requestOrigin}/api/sites/${siteSlug}/generation/published/${encodePathForUrl(relativeHtmlPath)}`;
           firstPageUrl = traversalPageUrl;
           sendProgress({
             stage: 'generating',
@@ -349,7 +349,7 @@ router.get('/site/:siteSlug/preview-stream', (req, res, _next) => {
       if (traversalPageTitle) {
         const foundPath = getHtmlPathForPage(siteDirectory, traversalPageTitle, traversalPageDirectory);
         if (foundPath) {
-          traversalPageUrl = `${requestOrigin}/api/site/${siteSlug}/published/${encodePathForUrl(foundPath)}`;
+          traversalPageUrl = `${requestOrigin}/api/sites/${siteSlug}/generation/published/${encodePathForUrl(foundPath)}`;
         }
       }
 
@@ -358,7 +358,7 @@ router.get('/site/:siteSlug/preview-stream', (req, res, _next) => {
         const htmlFiles = fs.readdirSync(previewHtmlDir).filter(file => file.endsWith('.html'));
         if (htmlFiles.length > 0) {
           logger.warn(`No traversal page specified or found, falling back to first HTML file: ${htmlFiles[0]}`);
-          traversalPageUrl = `${requestOrigin}/api/site/${siteSlug}/published/${encodePathForUrl(htmlFiles[0])}`;
+          traversalPageUrl = `${requestOrigin}/api/sites/${siteSlug}/generation/published/${encodePathForUrl(htmlFiles[0])}`;
         }
       }
 
@@ -389,7 +389,7 @@ router.get('/site/:siteSlug/preview-stream', (req, res, _next) => {
 
 
 // Get normalized page name (applies user-defined hook transformations)
-router.get('/site/:siteSlug/normalize-page-name', (req, res, next) => {
+router.get('/sites/:siteSlug/generation/normalize-page-name', (req, res, next) => {
   try {
     const { siteSlug } = req.params;
     const { pageName } = req.query;
@@ -428,7 +428,7 @@ router.get('/site/:siteSlug/normalize-page-name', (req, res, next) => {
 
 
 // Serve source graph files (images, etc.) for thumbnails
-router.get('/site/:siteSlug/source-file/*', (req, res, next) => {
+router.get('/sites/:siteSlug/generation/source-file/*', (req, res, next) => {
   try {
     const { siteSlug } = req.params;
     // Extract the wildcard path from the URL and decode it
@@ -495,7 +495,7 @@ router.get('/site/:siteSlug/source-file/*', (req, res, next) => {
 
 
 // Serve published HTML files and static assets
-router.get('/site/:siteSlug/published/*', (req, res, next) => {
+router.get('/sites/:siteSlug/generation/published/*', (req, res, next) => {
   try {
     const { siteSlug } = req.params;
     // Extract the wildcard path from the URL and decode it
@@ -626,7 +626,7 @@ router.get('/site/:siteSlug/published/*', (req, res, next) => {
 
 
 // Update publish options (breadcrumbs, backlinks, tags)
-router.patch('/sites/:slug/generation-options', (req, res, next) => {
+router.patch('/sites/:slug/generation/options', (req, res, next) => {
   const { slug } = req.params;
   const {
     generationBreadcrumbsEnabled,
@@ -725,7 +725,7 @@ router.patch('/sites/:slug/generation-options', (req, res, next) => {
             { configDir: getConfigDirectory() }
           );
         } catch (commitError) {
-          logger.warn('[generation-options] Failed to commit config change:', commitError);
+          logger.warn('[generation/options] Failed to commit config change:', commitError);
         }
       })();
     }

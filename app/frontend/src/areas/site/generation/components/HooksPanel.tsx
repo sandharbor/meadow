@@ -66,7 +66,7 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ siteSlug, onHooksChanged }) => 
 
   const loadHooks = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/hooks/site/${siteSlug}/hooks`);
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/generation/hooks`);
       if (response.ok) {
         const data = await response.json();
         setHooks(data.hooks || []);
@@ -109,8 +109,8 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ siteSlug, onHooksChanged }) => 
 
     try {
       const endpoint = scope === 'global'
-        ? `${API_BASE_URL}/hooks/global/${hookType}`
-        : `${API_BASE_URL}/hooks/site/${siteSlug}/hooks/${hookType}`;
+        ? `${API_BASE_URL}/generation/hooks/global/${hookType}`
+        : `${API_BASE_URL}/sites/${siteSlug}/generation/hooks/${hookType}`;
 
       const response = await fetch(endpoint);
       let content = '';
@@ -123,7 +123,7 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ siteSlug, onHooksChanged }) => 
           originalContent = metadata.content;
         } else {
           // Load template for new hook
-          const templateResp = await fetch(`${API_BASE_URL}/hooks/templates/${hookType}`);
+          const templateResp = await fetch(`${API_BASE_URL}/generation/hooks/templates/${hookType}`);
           if (templateResp.ok) {
             const data = await templateResp.json();
             content = data.template || '';
@@ -169,8 +169,8 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ siteSlug, onHooksChanged }) => 
 
     try {
       const endpoint = editor.scope === 'global'
-        ? `${API_BASE_URL}/hooks/global/${editor.hookType}`
-        : `${API_BASE_URL}/hooks/site/${siteSlug}/hooks/${editor.hookType}`;
+        ? `${API_BASE_URL}/generation/hooks/global/${editor.hookType}`
+        : `${API_BASE_URL}/sites/${siteSlug}/generation/hooks/${editor.hookType}`;
 
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -201,8 +201,8 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ siteSlug, onHooksChanged }) => 
 
     try {
       const endpoint = editor.scope === 'global'
-        ? `${API_BASE_URL}/hooks/global/${editor.hookType}`
-        : `${API_BASE_URL}/hooks/site/${siteSlug}/hooks/${editor.hookType}`;
+        ? `${API_BASE_URL}/generation/hooks/global/${editor.hookType}`
+        : `${API_BASE_URL}/sites/${siteSlug}/generation/hooks/${editor.hookType}`;
 
       const response = await fetch(endpoint, { method: 'DELETE' });
       if (response.ok) {
@@ -220,7 +220,7 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ siteSlug, onHooksChanged }) => 
   const handleToggleMode = async (hookType: HookType, mode: 'append' | 'override') => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/hooks/site/${siteSlug}/hook-mode/${hookType}`,
+        `${API_BASE_URL}/sites/${siteSlug}/generation/hooks/mode/${hookType}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

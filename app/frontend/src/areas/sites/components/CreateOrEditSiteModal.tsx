@@ -277,7 +277,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
           setSuggestionsLoadError(null);
 
           const response = await fetch(
-            `${API_BASE_URL}/search-source-pages?sourceDirectory=${encodeURIComponent(form.sourceDirectory)}&query=${encodeURIComponent(form.initialSitePageTitle)}&limit=${typeaheadLimit}`,
+            `${API_BASE_URL}/sites/source-pages/search?sourceDirectory=${encodeURIComponent(form.sourceDirectory)}&query=${encodeURIComponent(form.initialSitePageTitle)}&limit=${typeaheadLimit}`,
             { signal: controller.signal }
           );
 
@@ -384,7 +384,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
   // Search for pages in source directory
   const searchPagesInSource = async (sourceDirectory: string, pageName: string): Promise<{ found: boolean; count: number; pages: MatchingPage[] }> => {
     const response = await fetch(
-      `${API_BASE_URL}/search-pages-in-source?sourceDirectory=${encodeURIComponent(sourceDirectory)}&pageName=${encodeURIComponent(pageName)}`
+      `${API_BASE_URL}/sites/source-pages/exact-search?sourceDirectory=${encodeURIComponent(sourceDirectory)}&pageName=${encodeURIComponent(pageName)}`
     );
 
     if (!response.ok) {

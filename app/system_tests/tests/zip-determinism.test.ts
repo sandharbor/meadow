@@ -58,7 +58,7 @@ describe('Generated archive determinism', () => {
       const mdExportDir = testSetup!.getPathInSite('html/preview/_mw_assets/md-export');
 
       async function runPreviewAndReadZip(): Promise<{ filename: string; bytes: Buffer }> {
-        const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+        const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);
@@ -111,7 +111,7 @@ describe('Generated archive determinism', () => {
       const assetsDir = testSetup!.getPathInSite('html/preview/_mw_assets');
 
       async function runPreviewAndReadGzipped(): Promise<Map<string, Buffer>> {
-        const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+        const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);

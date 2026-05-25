@@ -74,8 +74,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api', siteConfigRoutes);
 app.use('/api', customFiltersRoutes);
 app.use('/api', siteCurationRoutes);
-app.use('/api/hooks', hooksRoutes);
-app.use('/api/custom-assets', customAssetsRoutes);
+app.use('/api', hooksRoutes);
+app.use('/api', customAssetsRoutes);
 app.use('/api', appConfigRoutes);
 app.use('/api', localSaveRoutes);
 app.use('/api', logRoutes);
@@ -88,7 +88,7 @@ app.use('/api', stylePresetsRoutes);
 app.use('/api', createHealthRoutes(() => port));
 
 // Mounts each registered provider's routes under
-// /api/publishing-providers/<providerId>/...
+// /api/sharing/publishing-providers/<providerId>/...
 registerAllProviderRoutes(app);
 
 // Centralized error handler

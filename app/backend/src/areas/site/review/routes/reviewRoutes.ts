@@ -35,7 +35,7 @@ const router = express.Router();
 const loadAppConfig = () => loadAppConfigFromDisk(getConfigDirectory());
 
 // Get preview changes (diff between preview and last published)
-router.get('/site/:siteSlug/preview-changes', (req, res, next) => {
+router.get('/sites/:siteSlug/review/preview-changes', (req, res, next) => {
   try {
     const { siteSlug } = req.params;
     
@@ -64,7 +64,7 @@ router.get('/site/:siteSlug/preview-changes', (req, res, next) => {
 });
 
 // Save preview changes to git (without publishing)
-router.get('/site/:siteSlug/save-changes', (req, res, next) => {
+router.get('/sites/:siteSlug/review/save-changes', (req, res, next) => {
   void (async () => {
     try {
       const { siteSlug } = req.params;
@@ -104,7 +104,7 @@ router.get('/site/:siteSlug/save-changes', (req, res, next) => {
 });
 
 // Get file tree for site's conf directory
-router.get('/site/:siteSlug/conf-files/tree', (req, res, next) => {
+router.get('/sites/:siteSlug/review/conf-files/tree', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -131,7 +131,7 @@ router.get('/site/:siteSlug/conf-files/tree', (req, res, next) => {
 });
 
 // Get file tree for site's preview directory
-router.get('/site/:siteSlug/preview-files/tree', (req, res, next) => {
+router.get('/sites/:siteSlug/review/preview-files/tree', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -158,7 +158,7 @@ router.get('/site/:siteSlug/preview-files/tree', (req, res, next) => {
 });
 
 // Get HTML section changes for files under the site's preview directory (working tree vs index)
-router.get('/site/:siteSlug/preview-files/html-section-changes', (req, res, next) => {
+router.get('/sites/:siteSlug/review/preview-files/html-section-changes', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -182,7 +182,7 @@ router.get('/site/:siteSlug/preview-files/html-section-changes', (req, res, next
 });
 
 // Get file content (works for both conf and preview directories)
-router.get('/site/:siteSlug/file-content', (req, res, next) => {
+router.get('/sites/:siteSlug/review/file-content', (req, res, next) => {
   try {
     const { siteSlug } = req.params;
     const filePath = req.query.path as string;
@@ -228,7 +228,7 @@ router.get('/site/:siteSlug/file-content', (req, res, next) => {
 });
 
 // Get original (committed) file content for diff comparison
-router.get('/site/:siteSlug/file-original', (req, res, next) => {
+router.get('/sites/:siteSlug/review/file-original', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -276,7 +276,7 @@ router.get('/site/:siteSlug/file-original', (req, res, next) => {
 // === Config File Explorer Git History API (fast_git_ops) ===
 
 // Directory change log (like `git log -- <dir>`)
-router.get('/site/:siteSlug/git/dir-log', (req, res, next) => {
+router.get('/sites/:siteSlug/review/git/dir-log', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -305,7 +305,7 @@ router.get('/site/:siteSlug/git/dir-log', (req, res, next) => {
 });
 
 // Commit changed files (all files in commit)
-router.get('/site/:siteSlug/git/commit-files', (req, res, next) => {
+router.get('/sites/:siteSlug/review/git/commit-files', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -357,7 +357,7 @@ router.get('/site/:siteSlug/git/commit-files', (req, res, next) => {
 });
 
 // Diff HTML sections for a specific commit vs its parent, scoped to a context directory
-router.get('/site/:siteSlug/git/html-section-diff', (req, res, next) => {
+router.get('/sites/:siteSlug/review/git/html-section-diff', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -387,7 +387,7 @@ router.get('/site/:siteSlug/git/html-section-diff', (req, res, next) => {
 });
 
 // File content at a specific commit (for commit viewer)
-router.get('/site/:siteSlug/git/commit-file-content', (req, res, next) => {
+router.get('/sites/:siteSlug/review/git/commit-file-content', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -443,7 +443,7 @@ router.get('/site/:siteSlug/git/commit-file-content', (req, res, next) => {
 });
 
 // File content at parent of a commit (for commit viewer diffs)
-router.get('/site/:siteSlug/git/commit-file-original', (req, res, next) => {
+router.get('/sites/:siteSlug/review/git/commit-file-original', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -510,7 +510,7 @@ router.get('/site/:siteSlug/git/commit-file-original', (req, res, next) => {
 });
 
 // Single-file log (newest-first, no merges)
-router.get('/site/:siteSlug/git/file-log', (req, res, next) => {
+router.get('/sites/:siteSlug/review/git/file-log', (req, res, next) => {
   (async () => {
     try {
       const { siteSlug } = req.params;
@@ -549,7 +549,7 @@ router.get('/site/:siteSlug/git/file-log', (req, res, next) => {
 // Version management endpoints
 
 // Get all versions for a site
-router.get('/site/:siteSlug/versions', (req, res, next) => {
+router.get('/sites/:siteSlug/review/versions', (req, res, next) => {
   try {
     const { siteSlug } = req.params;
     
@@ -572,7 +572,7 @@ router.get('/site/:siteSlug/versions', (req, res, next) => {
 });
 
 // Mark page as sensitive/non-sensitive
-router.patch('/site/:siteSlug/page/:pageTitle/sensitive', (req, res, next) => {
+router.patch('/sites/:siteSlug/curation/page/:pageTitle/sensitive', (req, res, next) => {
   try {
     const { siteSlug, pageTitle } = req.params;
     const { isSensitive } = req.body as { isSensitive: boolean };
@@ -649,7 +649,7 @@ router.patch('/site/:siteSlug/page/:pageTitle/sensitive', (req, res, next) => {
 });
 
 // Update version notes
-router.patch('/site/:siteSlug/versions/:versionId', (req, res, next) => {
+router.patch('/sites/:siteSlug/review/versions/:versionId', (req, res, next) => {
   try {
     const { siteSlug, versionId } = req.params;
     const { notes } = req.body as { notes: string };
@@ -683,7 +683,7 @@ router.patch('/site/:siteSlug/versions/:versionId', (req, res, next) => {
 });
 
 // Delete a version
-router.delete('/site/:siteSlug/versions/:versionId', (req, res, next) => {
+router.delete('/sites/:siteSlug/review/versions/:versionId', (req, res, next) => {
   try {
     const { siteSlug, versionId } = req.params;
     
@@ -729,7 +729,7 @@ router.delete('/site/:siteSlug/versions/:versionId', (req, res, next) => {
 });
 
 // Set active version
-router.post('/site/:siteSlug/versions/:versionId/set-active', (req, res, next) => {
+router.post('/sites/:siteSlug/review/versions/:versionId/set-active', (req, res, next) => {
   try {
     const { siteSlug, versionId } = req.params;
     

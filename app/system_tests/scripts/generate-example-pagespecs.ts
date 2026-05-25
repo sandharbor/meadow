@@ -99,7 +99,7 @@ async function main() {
     // 1. Fetch normal working graph (no frontier)
     console.log('Fetching working graph (normal)…');
     const normalResp = await fetch(
-      `${TEST_BASE_URL}/api/site/${slug}/working-graph?initialPageTitle=${encodeURIComponent(INITIAL_PAGE)}&traversalPageTitle=${encodeURIComponent(INITIAL_PAGE)}`
+      `${TEST_BASE_URL}/api/sites/${slug}/curation/working-graph?initialPageTitle=${encodeURIComponent(INITIAL_PAGE)}&traversalPageTitle=${encodeURIComponent(INITIAL_PAGE)}`
     );
     if (!normalResp.ok) throw new Error(`Working graph API failed: ${normalResp.status}`);
     const normalGraph = (await normalResp.json()) as {
@@ -111,7 +111,7 @@ async function main() {
     // 2. Fetch frontier working graph
     console.log('Fetching working graph (frontier depth=10)…');
     const frontierResp = await fetch(
-      `${TEST_BASE_URL}/api/site/${slug}/working-graph?initialPageTitle=${encodeURIComponent(INITIAL_PAGE)}&traversalPageTitle=${encodeURIComponent(INITIAL_PAGE)}&frontierDepth=10`
+      `${TEST_BASE_URL}/api/sites/${slug}/curation/working-graph?initialPageTitle=${encodeURIComponent(INITIAL_PAGE)}&traversalPageTitle=${encodeURIComponent(INITIAL_PAGE)}&frontierDepth=10`
     );
     if (!frontierResp.ok) throw new Error(`Working graph frontier API failed: ${frontierResp.status}`);
     const frontierGraph = (await frontierResp.json()) as {
@@ -120,7 +120,7 @@ async function main() {
 
     // 3. Generate preview HTML
     console.log('Generating preview…');
-    const previewResp = await fetch(`${TEST_BASE_URL}/api/site/${slug}/preview`, { method: 'POST' });
+    const previewResp = await fetch(`${TEST_BASE_URL}/api/sites/${slug}/generation/preview`, { method: 'POST' });
     if (!previewResp.ok) throw new Error(`Preview API failed: ${previewResp.status}`);
 
     // 4. Load site_page_config

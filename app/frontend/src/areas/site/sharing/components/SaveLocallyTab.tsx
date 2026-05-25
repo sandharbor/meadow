@@ -35,7 +35,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
   useEffect(() => {
     const fetchPaths = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/local-paths`);
+        const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/sharing/local-paths`);
         if (response.ok) {
           setPaths(await response.json());
         }
@@ -64,7 +64,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
       const destinationPath = result.filePaths[0];
 
       // Perform the export — backend handles non-empty folders by creating a slug subfolder
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/copy-to-directory`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/sharing/copy-to-directory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceType: type, destinationPath })
@@ -102,7 +102,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/create-zip`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/sharing/create-zip`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceType: type, destinationPath: result.filePath })

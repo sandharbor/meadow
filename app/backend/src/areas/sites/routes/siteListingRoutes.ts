@@ -75,7 +75,7 @@ router.get('/sites', (req, res, next) => {
 });
 
 // Get site config from site_config.yaml. Provider-specific fields live
-// under each provider's /api/publishing-providers/{id}/sites/{slug}/... —
+// under each provider's /api/sharing/publishing-providers/{id}/sites/{slug}/... —
 // core deliberately doesn't merge them in.
 router.get('/sites/:slug/config', (req, res, next) => {
   const { slug } = req.params;
@@ -128,7 +128,7 @@ router.get('/sites/:slug/obsidian-info', (req, res, next) => {
 });
 
 // Get all sites with their configurations for the enhanced site list
-router.get('/sites-detailed', (req, res, next) => {
+router.get('/sites/detailed', (req, res, next) => {
   const sitesDir = getSitesDirectory();
   try {
     const siteSlugs = fs.readdirSync(sitesDir, { withFileTypes: true })
@@ -220,7 +220,7 @@ router.get('/sites/directories', (req, res, next) => {
 });
 
 // Check if a site tracks a specific page
-router.get('/site/:siteSlug/tracks-page', (req, res, next) => {
+router.get('/sites/:siteSlug/tracks-page', (req, res, next) => {
   const { siteSlug } = req.params;
   const { pageName } = req.query;
 
@@ -337,7 +337,7 @@ function cleanSourcePageSearchText(value: string): string {
 
 // Search for pages in a source directory by name
 // Returns all matching pages with their full paths (for handling duplicates)
-router.get('/search-pages-in-source', (req, res, next) => {
+router.get('/sites/source-pages/exact-search', (req, res, next) => {
   (async () => {
     const { sourceDirectory, pageName } = req.query;
 
@@ -384,7 +384,7 @@ router.get('/search-pages-in-source', (req, res, next) => {
 });
 
 // List all markdown source pages in a source directory (for create/edit site typeahead preload)
-router.get('/source-pages-in-source', (req, res, next) => {
+router.get('/sites/source-pages', (req, res, next) => {
   (async () => {
     const { sourceDirectory } = req.query;
 
@@ -408,7 +408,7 @@ router.get('/source-pages-in-source', (req, res, next) => {
 
 // Search markdown source pages in a source directory by title (server-side typeahead).
 // Uses the same ranking rules as the create/edit site modal previously used client-side.
-router.get('/search-source-pages', (req, res, next) => {
+router.get('/sites/source-pages/search', (req, res, next) => {
   (async () => {
     const { sourceDirectory, query, limit } = req.query;
 

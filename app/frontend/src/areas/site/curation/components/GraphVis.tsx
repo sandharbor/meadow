@@ -948,7 +948,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
                       y: screenPt.y - containerRect.top,
                       title: page.title,
                       isImage,
-                      imageUrl: isImage ? `${API_BASE_URL}/site/${siteSlug}/source-file/${encodeURIComponent(filePath)}` : undefined,
+                      imageUrl: isImage ? `${API_BASE_URL}/sites/${siteSlug}/generation/source-file/${encodeURIComponent(filePath)}` : undefined,
                       highlights: page.highlights,
                     });
                   }

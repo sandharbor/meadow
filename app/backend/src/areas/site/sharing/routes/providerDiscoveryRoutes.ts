@@ -22,7 +22,7 @@ const router = express.Router();
 // Lightweight provider discovery endpoint: the frontend registry merges
 // this with its own locally-known manifests so it can decide which provider
 // owns the Publish tab, the "open website" button, etc.
-router.get('/publishing-providers', (_req, res) => {
+router.get('/sharing/publishing-providers', (_req, res) => {
   const active = new Set(getActiveBackendProviders().map((p) => p.manifest.id));
   res.json({
     providers: getAllBackendProviders().map((p) => ({

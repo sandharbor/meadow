@@ -55,7 +55,7 @@ const asyncHandler = (fn: (req: express.Request, res: express.Response, next: ex
 };
 
 // Read site page configuration
-router.get('/site/:siteSlug/site-config', validateSiteSlug, asyncHandler((req, res) => {
+router.get('/sites/:siteSlug/curation/site-config', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
   const { draftPath, mainPath } = getConfigPaths(siteSlug);
   
@@ -74,7 +74,7 @@ router.get('/site/:siteSlug/site-config', validateSiteSlug, asyncHandler((req, r
 }));
 
 // Save site page configuration
-router.post('/site/:siteSlug/site-config', validateSiteSlug, asyncHandler((req, res) => {
+router.post('/sites/:siteSlug/curation/site-config', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
   const { configs, isDraft = true } = req.body as { configs?: SitePageConfig[], isDraft?: boolean };
 
@@ -101,7 +101,7 @@ router.post('/site/:siteSlug/site-config', validateSiteSlug, asyncHandler((req, 
 }));
 
 // Undo draft changes (remove draft file)
-router.delete('/site/:siteSlug/site-config-draft', validateSiteSlug, asyncHandler((req, res) => {
+router.delete('/sites/:siteSlug/curation/site-config-draft', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
   const { draftPath } = getConfigPaths(siteSlug);
   
@@ -112,7 +112,7 @@ router.delete('/site/:siteSlug/site-config-draft', validateSiteSlug, asyncHandle
 }));
 
 // Check if draft differs from main config
-router.get('/site/:siteSlug/site-config-draft-status', validateSiteSlug, asyncHandler((req, res) => {
+router.get('/sites/:siteSlug/curation/site-config-draft-status', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
   const { draftPath, mainPath } = getConfigPaths(siteSlug);
   

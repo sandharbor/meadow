@@ -60,7 +60,7 @@ export const AdvancedTab: React.FC<AdvancedTabProps> = ({ siteSlug }) => {
   useEffect(() => {
     const fetchPaths = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/local-paths`);
+        const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/sharing/local-paths`);
         if (response.ok) {
           setPaths(await response.json());
         }

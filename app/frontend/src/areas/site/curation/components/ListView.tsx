@@ -277,11 +277,11 @@ const ListView: React.FC<ListViewProps> = ({
       const mdPath = page.sourceGraphSubdirectory
         ? `${page.sourceGraphSubdirectory}/${page.title}.excalidraw.md`
         : `${page.title}.excalidraw.md`;
-      const mdSourceUrl = `${API_BASE_URL}/site/${siteSlug}/source-file/${encodeURIComponent(mdPath)}`;
+      const mdSourceUrl = `${API_BASE_URL}/sites/${siteSlug}/generation/source-file/${encodeURIComponent(mdPath)}`;
       return (
         <ExcalidrawThumbnail
           mdSourceUrl={mdSourceUrl}
-          vendorUrl={`${API_BASE_URL}/assets/excalidraw-vendor.js`}
+          vendorUrl={`${API_BASE_URL}/generation/assets/excalidraw-vendor.js`}
           alt={page.title}
           className="w-8 h-8 rounded border border-gray-200 cursor-pointer bg-white"
           lazy
@@ -291,7 +291,7 @@ const ListView: React.FC<ListViewProps> = ({
       );
     }
     if (isImageFileType(page.file_type)) {
-      const imageUrl = `${API_BASE_URL}/site/${siteSlug}/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.title}.${page.file_type}` : `${page.title}.${page.file_type}`)}`;
+      const imageUrl = `${API_BASE_URL}/sites/${siteSlug}/generation/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.title}.${page.file_type}` : `${page.title}.${page.file_type}`)}`;
       return (
         <img
           src={imageUrl}

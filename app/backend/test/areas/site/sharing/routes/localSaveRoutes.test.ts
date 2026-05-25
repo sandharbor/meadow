@@ -51,7 +51,7 @@ describe('Advanced-tab raw markdown export (localSaveRoutes)', () => {
     const zipDestination = path.join(scratchDir, 'tracked-raw-markdown.zip');
 
     const response = await request(app)
-      .post(`/api/site/${siteSlug}/create-zip`)
+      .post(`/api/sites/${siteSlug}/sharing/create-zip`)
       .send({ sourceType: 'raw', destinationPath: zipDestination })
       .expect(200);
 
@@ -71,7 +71,7 @@ describe('Advanced-tab raw markdown export (localSaveRoutes)', () => {
     fs.mkdirSync(destDir, { recursive: true });
 
     const response = await request(app)
-      .post(`/api/site/${siteSlug}/copy-to-directory`)
+      .post(`/api/sites/${siteSlug}/sharing/copy-to-directory`)
       .send({ sourceType: 'raw', destinationPath: destDir })
       .expect(200);
 

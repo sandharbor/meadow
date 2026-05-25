@@ -128,7 +128,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
     if (!slug || !publishSuccess || isRegeneratingPreview || !isActive) return;
 
     setHtmlSectionChangesLoading(true);
-    fetch(`${API_BASE_URL}/site/${slug}/preview-files/html-section-changes`)
+    fetch(`${API_BASE_URL}/sites/${slug}/review/preview-files/html-section-changes`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to fetch HTML section changes (${res.status})`);
         return res.json() as Promise<{ files: Array<{ path: string; sections: HtmlSectionChanges }> }>;

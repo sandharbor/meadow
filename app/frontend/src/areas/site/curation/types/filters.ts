@@ -143,7 +143,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
   const loadCustomFilters = React.useCallback(async () => {
     if (!siteSlug) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/custom-filters`);
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/curation/custom-filters`);
       if (response.ok) {
         const data = await response.json();
         setCustomFilters(data.filters || []);

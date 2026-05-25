@@ -61,7 +61,7 @@ const VersionsModal: React.FC<VersionsModalProps> = ({
     
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/versions`);
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/review/versions`);
       if (response.ok) {
         const data = await response.json();
         const provider = await getActiveFrontendProvider();
@@ -99,7 +99,7 @@ const VersionsModal: React.FC<VersionsModalProps> = ({
 
   const handleSaveNotes = async (versionId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/versions/${versionId}`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/review/versions/${versionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: editingNotes })
@@ -126,7 +126,7 @@ const VersionsModal: React.FC<VersionsModalProps> = ({
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/versions/${versionId}`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/review/versions/${versionId}`, {
         method: 'DELETE'
       });
 
@@ -173,7 +173,7 @@ const VersionsModal: React.FC<VersionsModalProps> = ({
 
   const handleSetActiveVersion = async (versionId: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/site/${siteSlug}/versions/${versionId}/set-active`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug}/review/versions/${versionId}/set-active`, {
         method: 'POST'
       });
 

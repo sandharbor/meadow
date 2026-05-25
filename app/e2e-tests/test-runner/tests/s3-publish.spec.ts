@@ -29,7 +29,7 @@ test("S3 provider publishes and deletes a site via MinIO", async ({
   testServer,
 }) => {
   // Swap the active provider to S3PublishingProvider before the frontend
-  // fetches /api/publishing-providers.
+  // fetches /api/sharing/publishing-providers.
   await testServer.activateS3Provider();
 
   const wf = new Workflows(page, expect);

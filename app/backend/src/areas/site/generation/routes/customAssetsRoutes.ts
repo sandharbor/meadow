@@ -55,7 +55,7 @@ function commitInBackground(directories: string[], message: string): void {
 
 // ─── Global routes ───────────────────────────────────────────────────────────
 
-router.get('/global', (_req, res) => {
+router.get('/generation/custom-assets/global', (_req, res) => {
   try {
     const assets = (['style_css', 'javascript_js'] as CustomAssetType[]).map(t =>
       getCustomAssetMetadata('global', t)
@@ -72,13 +72,13 @@ router.get('/global', (_req, res) => {
   }
 });
 
-router.get('/global/folder-path', (_req, res) => {
+router.get('/generation/custom-assets/global/folder-path', (_req, res) => {
   const dir = getCustomAssetsDir('global');
   mkdirSync(dir, { recursive: true });
   res.json({ path: dir });
 });
 
-router.get('/global/:assetType', (req, res) => {
+router.get('/generation/custom-assets/global/:assetType', (req, res) => {
   const { assetType } = req.params;
   if (!isValidAssetType(assetType)) {
     res.status(400).json({ error: 'Invalid asset type' });
@@ -93,7 +93,7 @@ router.get('/global/:assetType', (req, res) => {
   }
 });
 
-router.put('/global/:assetType', (req, res) => {
+router.put('/generation/custom-assets/global/:assetType', (req, res) => {
   const { assetType } = req.params;
   if (!isValidAssetType(assetType)) {
     res.status(400).json({ error: 'Invalid asset type' });
@@ -117,7 +117,7 @@ router.put('/global/:assetType', (req, res) => {
   }
 });
 
-router.delete('/global/:assetType', (req, res) => {
+router.delete('/generation/custom-assets/global/:assetType', (req, res) => {
   const { assetType } = req.params;
   if (!isValidAssetType(assetType)) {
     res.status(400).json({ error: 'Invalid asset type' });
@@ -137,7 +137,7 @@ router.delete('/global/:assetType', (req, res) => {
   }
 });
 
-router.post('/global/base-disabled', (req, res) => {
+router.post('/generation/custom-assets/global/base-disabled', (req, res) => {
   try {
     const { disableBaseStyleCss, disableBaseJavascriptJs } = req.body as {
       disableBaseStyleCss?: boolean;
@@ -163,7 +163,7 @@ router.post('/global/base-disabled', (req, res) => {
 
 // ─── Site routes ─────────────────────────────────────────────────────────────
 
-router.get('/site/:siteSlug', validateSiteSlug, (req, res) => {
+router.get('/sites/:siteSlug/generation/custom-assets', validateSiteSlug, (req, res) => {
   const { siteSlug } = req.params;
   try {
     const globalAssets = (['style_css', 'javascript_js'] as CustomAssetType[]).map(t =>
@@ -191,14 +191,14 @@ router.get('/site/:siteSlug', validateSiteSlug, (req, res) => {
   }
 });
 
-router.get('/site/:siteSlug/folder-path', validateSiteSlug, (req, res) => {
+router.get('/sites/:siteSlug/generation/custom-assets/folder-path', validateSiteSlug, (req, res) => {
   const { siteSlug } = req.params;
   const dir = getCustomAssetsDir('site', siteSlug);
   mkdirSync(dir, { recursive: true });
   res.json({ path: dir });
 });
 
-router.get('/site/:siteSlug/:assetType', validateSiteSlug, (req, res) => {
+router.get('/sites/:siteSlug/generation/custom-assets/:assetType', validateSiteSlug, (req, res) => {
   const { siteSlug, assetType } = req.params;
   if (!isValidAssetType(assetType)) {
     res.status(400).json({ error: 'Invalid asset type' });
@@ -213,7 +213,7 @@ router.get('/site/:siteSlug/:assetType', validateSiteSlug, (req, res) => {
   }
 });
 
-router.put('/site/:siteSlug/:assetType', validateSiteSlug, (req, res) => {
+router.put('/sites/:siteSlug/generation/custom-assets/:assetType', validateSiteSlug, (req, res) => {
   const { siteSlug, assetType } = req.params;
   if (!isValidAssetType(assetType)) {
     res.status(400).json({ error: 'Invalid asset type' });
@@ -237,7 +237,7 @@ router.put('/site/:siteSlug/:assetType', validateSiteSlug, (req, res) => {
   }
 });
 
-router.delete('/site/:siteSlug/:assetType', validateSiteSlug, (req, res) => {
+router.delete('/sites/:siteSlug/generation/custom-assets/:assetType', validateSiteSlug, (req, res) => {
   const { siteSlug, assetType } = req.params;
   if (!isValidAssetType(assetType)) {
     res.status(400).json({ error: 'Invalid asset type' });
@@ -257,7 +257,7 @@ router.delete('/site/:siteSlug/:assetType', validateSiteSlug, (req, res) => {
   }
 });
 
-router.post('/site/:siteSlug/base-disabled', validateSiteSlug, (req, res) => {
+router.post('/sites/:siteSlug/generation/custom-assets/base-disabled', validateSiteSlug, (req, res) => {
   const { siteSlug } = req.params;
   try {
     const { disableBaseStyleCss, disableBaseJavascriptJs } = req.body as {

@@ -225,7 +225,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     fetchTree: async (options) => {
       const params = new URLSearchParams();
       if (options?.changedOnly) params.set('changedOnly', 'true');
-      const url = `${API_BASE_URL}/site/${slug}/preview-files/tree${params.toString() ? `?${params}` : ''}`;
+      const url = `${API_BASE_URL}/sites/${slug}/review/preview-files/tree${params.toString() ? `?${params}` : ''}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch preview file tree');
       const data = await res.json();
@@ -235,12 +235,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       return data;
     },
     fetchContent: async (path: string) => {
-      const res = await fetch(`${API_BASE_URL}/site/${slug}/file-content?path=${encodeURIComponent(path)}`);
+      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/file-content?path=${encodeURIComponent(path)}`);
       if (!res.ok) throw new Error('Failed to fetch file content');
       return res.json();
     },
     fetchOriginal: async (path: string) => {
-      const res = await fetch(`${API_BASE_URL}/site/${slug}/file-original?path=${encodeURIComponent(path)}`);
+      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/file-original?path=${encodeURIComponent(path)}`);
       if (!res.ok) {
         return { content: null, path, isNew: true };
       }
@@ -248,14 +248,14 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     },
     fetchDirLog: async (dirPath: string, limit = 50) => {
       const res = await fetch(
-        `${API_BASE_URL}/site/${slug}/git/dir-log?dir=${encodeURIComponent(dirPath)}&limit=${encodeURIComponent(String(limit))}`
+        `${API_BASE_URL}/sites/${slug}/review/git/dir-log?dir=${encodeURIComponent(dirPath)}&limit=${encodeURIComponent(String(limit))}`
       );
       if (!res.ok) throw new Error('Failed to fetch directory log');
       return res.json();
     },
     fetchCommitFiles: async (sha: string, contextDir: string) => {
       const res = await fetch(
-        `${API_BASE_URL}/site/${slug}/git/commit-files?sha=${encodeURIComponent(sha)}&contextDir=${encodeURIComponent(contextDir)}`
+        `${API_BASE_URL}/sites/${slug}/review/git/commit-files?sha=${encodeURIComponent(sha)}&contextDir=${encodeURIComponent(contextDir)}`
       );
       if (!res.ok) {
         const body = await res.text().catch(() => '');
@@ -266,7 +266,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     fetchCommitFileContent: async (sha: string, pathStr: string, contextDir?: string) => {
       const params = new URLSearchParams({ sha, path: pathStr });
       if (contextDir) params.set('contextDir', contextDir);
-      const res = await fetch(`${API_BASE_URL}/site/${slug}/git/commit-file-content?${params.toString()}`);
+      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/git/commit-file-content?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch commit file content');
       return res.json();
     },
@@ -274,7 +274,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       const params = new URLSearchParams({ sha, path: pathStr });
       if (parentSha) params.set('parentSha', parentSha);
       if (contextDir) params.set('contextDir', contextDir);
-      const res = await fetch(`${API_BASE_URL}/site/${slug}/git/commit-file-original?${params.toString()}`);
+      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/git/commit-file-original?${params.toString()}`);
       if (!res.ok) {
         return { content: null, path: pathStr, isNew: true };
       }
@@ -282,7 +282,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     },
     fetchFileLog: async (pathStr: string, limit = 50) => {
       const res = await fetch(
-        `${API_BASE_URL}/site/${slug}/git/file-log?path=${encodeURIComponent(pathStr)}&limit=${encodeURIComponent(String(limit))}`
+        `${API_BASE_URL}/sites/${slug}/review/git/file-log?path=${encodeURIComponent(pathStr)}&limit=${encodeURIComponent(String(limit))}`
       );
       if (!res.ok) throw new Error('Failed to fetch file log');
       return res.json();
@@ -339,8 +339,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         }
 
         const url = startPage
-          ? `${API_BASE_URL}/site/${slug}/preview-stream?${params.toString()}`
-          : `${API_BASE_URL}/site/${slug}/preview-stream`;
+          ? `${API_BASE_URL}/sites/${slug}/generation/preview-stream?${params.toString()}`
+          : `${API_BASE_URL}/sites/${slug}/generation/preview-stream`;
 
         const eventSource = new EventSource(url);
 
@@ -441,7 +441,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     const completion = await new Promise<{ stage: 'complete' | 'error'; traversalPageUrl?: string }>((resolve) => {
       // Pass the current page path so the backend renders it first
       const currentFilePath = getCurrentPreviewFilePath();
-      let streamUrl = `${API_BASE_URL}/site/${slug}/preview-stream`;
+      let streamUrl = `${API_BASE_URL}/sites/${slug}/generation/preview-stream`;
       if (currentFilePath && previewRootPath) {
         const relativePath = currentFilePath.startsWith(previewRootPath)
           ? currentFilePath.slice(previewRootPath.length + 1)
@@ -548,7 +548,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     setSaveChangesMessage(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/site/${slug}/save-changes`);
+      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/save-changes`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -690,7 +690,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   const handleCustomizeRefresh = useCallback(async () => {
     // Clear server-side hooks cache so regeneration picks up file changes from disk
     try {
-      await fetch(`${API_BASE_URL}/hooks/clear-cache`, { method: 'POST' });
+      await fetch(`${API_BASE_URL}/generation/hooks/clear-cache`, { method: 'POST' });
     } catch (err) {
       logger.error('Failed to clear hooks cache:', err);
     }

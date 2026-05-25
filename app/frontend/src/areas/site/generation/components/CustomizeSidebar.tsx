@@ -124,7 +124,7 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
     setAgentPromptCopied(false);
     setCheckpointResult(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/hooks/agent-prompt/${siteSlug}`);
+      const res = await fetch(`${API_BASE_URL}/sites/${siteSlug}/generation/agent-prompt`);
       const data = await res.json() as { prompt: string; configDir: string };
       setAgentPrompt(data.prompt);
       setAgentPromptConfigDir(data.configDir);
@@ -140,7 +140,7 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
     setCheckpointCommitting(true);
     setCheckpointResult(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/hooks/agent-prompt/${siteSlug}/commit`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/sites/${siteSlug}/generation/agent-prompt/commit`, { method: 'POST' });
       if (res.ok) {
         setCheckpointResult('success');
       } else {

@@ -43,21 +43,21 @@ const asyncHandler = (fn: (req: express.Request, res: express.Response, next: ex
   };
 };
 
-// GET /api/presets - List all available presets
-router.get('/presets', asyncHandler((_req, res) => {
+// GET /api/generation/style-presets - List all available presets
+router.get('/generation/style-presets', asyncHandler((_req, res) => {
   const presets = loadPresetsRegistry();
   res.json({ presets });
 }));
 
-// GET /api/presets/global - Get current global preset ID
-router.get('/presets/global', asyncHandler((_req, res) => {
+// GET /api/generation/style-presets/global - Get current global preset ID
+router.get('/generation/style-presets/global', asyncHandler((_req, res) => {
   const presetId = getGlobalPresetId();
   const preset = getPresetById(presetId);
   res.json({ presetId, preset });
 }));
 
-// PUT /api/presets/global - Update global preset
-router.put('/presets/global', asyncHandler((req, res) => {
+// PUT /api/generation/style-presets/global - Update global preset
+router.put('/generation/style-presets/global', asyncHandler((req, res) => {
   const { presetId } = req.body as { presetId?: string };
 
   if (!presetId || typeof presetId !== 'string') {
@@ -81,8 +81,8 @@ router.put('/presets/global', asyncHandler((req, res) => {
   res.json({ success: true, presetId, preset });
 }));
 
-// GET /api/presets/site/:siteSlug - Get site preset + effective preset
-router.get('/presets/site/:siteSlug', asyncHandler((req, res) => {
+// GET /api/sites/:siteSlug/generation/style-preset - Get site preset + effective preset
+router.get('/sites/:siteSlug/generation/style-preset', asyncHandler((req, res) => {
   const { siteSlug } = req.params;
 
   if (!siteSlug) {
@@ -102,8 +102,8 @@ router.get('/presets/site/:siteSlug', asyncHandler((req, res) => {
   });
 }));
 
-// PUT /api/presets/site/:siteSlug - Update site preset
-router.put('/presets/site/:siteSlug', asyncHandler((req, res) => {
+// PUT /api/sites/:siteSlug/generation/style-preset - Update site preset
+router.put('/sites/:siteSlug/generation/style-preset', asyncHandler((req, res) => {
   const { siteSlug } = req.params;
   const { presetId } = req.body as { presetId?: string | null };
 

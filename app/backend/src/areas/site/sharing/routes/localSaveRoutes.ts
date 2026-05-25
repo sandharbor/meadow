@@ -89,7 +89,7 @@ interface CreateZipBody {
 }
 
 // Get paths for a site's local content
-router.get('/site/:siteSlug/local-paths', (req, res) => {
+router.get('/sites/:siteSlug/sharing/local-paths', (req, res) => {
   const { siteSlug } = req.params;
   const siteDir = getSiteDirectory(siteSlug);
 
@@ -108,7 +108,7 @@ router.get('/site/:siteSlug/local-paths', (req, res) => {
 // If the destination folder is empty, exports directly into it.
 // If not empty, creates a subfolder named after the site slug (with incrementing suffix if needed).
 // eslint-disable-next-line @typescript-eslint/no-misused-promises
-router.post('/site/:siteSlug/copy-to-directory', async (req, res) => {
+router.post('/sites/:siteSlug/sharing/copy-to-directory', async (req, res) => {
   const { siteSlug } = req.params;
   const body = req.body as CopyToDirectoryBody;
   const { sourceType, destinationPath } = body;
@@ -153,7 +153,7 @@ router.post('/site/:siteSlug/copy-to-directory', async (req, res) => {
 
 // Create zip file
 // eslint-disable-next-line @typescript-eslint/no-misused-promises
-router.post('/site/:siteSlug/create-zip', async (req, res) => {
+router.post('/sites/:siteSlug/sharing/create-zip', async (req, res) => {
   const { siteSlug } = req.params;
   const body = req.body as CreateZipBody;
   const { sourceType, destinationPath } = body;

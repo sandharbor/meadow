@@ -368,7 +368,7 @@ const SiteList: React.FC = () => {
   // Check if a site tracks the target page
   const doesSiteTrackPage = async (siteSlug: string, pageName: string, signal?: AbortSignal): Promise<boolean> => {
     try {
-      const url = `${API_BASE_URL}/site/${siteSlug}/tracks-page?pageName=${encodeURIComponent(pageName)}`;
+      const url = `${API_BASE_URL}/sites/${siteSlug}/tracks-page?pageName=${encodeURIComponent(pageName)}`;
       logger.debug(`Making request to: ${url}`);
       const response = await fetch(url, { signal });
       logger.debug(`Response status: ${response.status} ${response.statusText}`);

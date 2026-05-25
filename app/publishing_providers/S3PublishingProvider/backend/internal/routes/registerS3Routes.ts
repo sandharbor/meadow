@@ -25,7 +25,7 @@ import { registerS3ConfigurationRoutes } from './configurationRoutes.js';
  * Mount point for every S3PublishingProvider HTTP endpoint. Composed URL:
  * `${S3_API_PREFIX}<router-path>`.
  */
-export const S3_API_PREFIX = '/api/publishing-providers/S3PublishingProvider';
+export const S3_API_PREFIX = '/api/sharing/publishing-providers/S3PublishingProvider';
 
 export function registerS3Routes(app: Express): void {
   const router = express.Router();

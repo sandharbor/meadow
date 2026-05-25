@@ -95,7 +95,7 @@ router.delete('/app-config/manage-git-automatically', asyncHandler((_req, res) =
 }));
 
 // Update global publish option defaults (breadcrumbs, backlinks, tags)
-router.post('/app-config/generation-options', asyncHandler((req, res) => {
+router.post('/generation/options', asyncHandler((req, res) => {
   const {
     generationBreadcrumbsEnabled,
     generationBacklinksEnabled,

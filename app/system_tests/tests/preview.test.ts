@@ -57,7 +57,7 @@ describe('Preview System Tests', () => {
       const siteSlug = testSetup!.getSiteSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -92,7 +92,7 @@ describe('Preview System Tests', () => {
       const siteSlug = testSetup!.getSiteSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -124,7 +124,7 @@ describe('Preview System Tests', () => {
       const siteSlug = testSetup!.getSiteSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -218,7 +218,7 @@ describe('Preview System Tests', () => {
 
       expect(isolatedBetaBefore).toBe(sharedBetaBefore);
 
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -245,7 +245,7 @@ describe('Preview System Tests', () => {
     it('should create content matching the expected preview site for srs', async () => {
       const siteSlug = testSetup!.getSiteSlug();
 
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -321,7 +321,7 @@ describe('Preview System Tests', () => {
     it('should create build/markdown_export matching the expected golden set', async () => {
       const siteSlug = testSetup!.getSiteSlug();
 
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -404,7 +404,7 @@ describe('Preview System Tests', () => {
       const siteSlug = testSetup!.getSiteSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -489,7 +489,7 @@ describe('Preview System Tests', () => {
       const siteSlug = testSetup!.getSiteSlug();
 
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -594,7 +594,7 @@ describe('Preview System Tests', () => {
       const siteSlug = testSetup!.getSiteSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/site/${siteSlug}/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
         method: 'POST'
       });
 

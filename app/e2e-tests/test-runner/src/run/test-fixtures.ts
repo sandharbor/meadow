@@ -366,7 +366,7 @@ export interface TestServer {
    * Swap the active publishing provider to S3PublishingProvider and deactivate
    * every other publishing provider mounted in the source tree. Writes MinIO
    * connection details to the S3 provider's pp_resources.local.yaml. Must be
-   * called before the frontend fetches /api/publishing-providers (i.e. before
+   * called before the frontend fetches /api/sharing/publishing-providers (i.e. before
    * the first page navigation).
    */
   activateS3Provider: () => Promise<void>;
@@ -745,7 +745,7 @@ export const test = base.extend<{
         },
         waitForProviderAccount: async (pg, providerId, key, timeoutMs = 10_000) => {
           const start = Date.now();
-          const url = `http://localhost:${backendPort}/api/publishing-providers/${providerId}/account`;
+          const url = `http://localhost:${backendPort}/api/sharing/publishing-providers/${providerId}/account`;
           while (Date.now() - start < timeoutMs) {
             const res = await pg.request.get(url);
             if (res.ok()) {
