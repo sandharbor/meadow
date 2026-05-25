@@ -17,6 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage } from "../src/run/pages/index.js";
 import { callout } from "../src/scenario-docs/index.js";
+import { sites } from "../src/app-area-docs/index.js";
 
 test.use({ fixtureHome: "none" });
 
@@ -28,6 +29,7 @@ test("Callout turn your notes into sites shown on empty state", async ({ page, s
   await siteList.expectCalloutVisible("Turn your notes into sites");
   await addKeyFrame(callout);
   await snapshot("turn your notes into sites callout visible");
+  void sites;
 
   await assertMeadowHomeState();
 });

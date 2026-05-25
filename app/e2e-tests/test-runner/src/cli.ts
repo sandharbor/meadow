@@ -21,6 +21,7 @@ import path from "path";
 import { performance } from "perf_hooks";
 import { assembleRun } from "./artifacts/assemble.ts";
 import { allDocs as baseDocs } from "./scenario-docs/index.ts";
+import { allAppAreaDocs, deriveAppAreaDocIds } from "./app-area-docs/index.ts";
 
 const E2E_DIR = path.join(import.meta.dirname, "..");
 
@@ -63,6 +64,7 @@ const allDocs = [...baseDocs, ...meadowExtensionDocs];
 
 // Build a map from scenario doc export name to doc ID (mirrors assemble.ts logic)
 import * as scenarioDocExports from "./scenario-docs/index.ts";
+import * as appAreaDocExports from "./app-area-docs/index.ts";
 const exportNameToDocId = new Map<string, string>();
 for (const exports of [scenarioDocExports, meadowExtensionScenarioDocExports]) {
   for (const [key, value] of Object.entries(exports)) {
@@ -72,27 +74,81 @@ for (const exports of [scenarioDocExports, meadowExtensionScenarioDocExports]) {
   }
 }
 
+const appAreaExportNameToDocId = new Map<string, string>();
+for (const [key, value] of Object.entries(appAreaDocExports)) {
+  if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
+    appAreaExportNameToDocId.set(key, value.id);
+  }
+}
+
 function extractScenarioDocIds(testSource: string): string[] {
+  const re = /import\s+\{([^}]+)\}\s+from\s+["'][^"']*scenario-docs[^"']*["']/g;
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const match of testSource.matchAll(re)) {
+    const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
+    for (const name of names) {
+      const id = exportNameToDocId.get(name.split(/\s+as\s+/)[0]);
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        ids.push(id);
+      }
+    }
+  }
+  return ids;
+}
+
+function extractExplicitAppAreaDocIds(testSource: string): string[] {
   const match = testSource.match(
-    /import\s+\{([^}]+)\}\s+from\s+["'][^"']*scenario-docs[^"']*["']/
+    /import\s+\{([^}]+)\}\s+from\s+["'][^"']*app-area-docs[^"']*["']/
   );
   if (!match) return [];
   const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
   return names
-    .map((name) => exportNameToDocId.get(name.split(/\s+as\s+/)[0]))
+    .map((name) => appAreaExportNameToDocId.get(name.split(/\s+as\s+/)[0]))
     .filter((id): id is string => !!id);
+}
+
+function listSpecFiles(dir: string): string[] {
+  const files: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    const isDir = entry.isDirectory() || (entry.isSymbolicLink() && statSync(full).isDirectory());
+    if (isDir) {
+      files.push(...listSpecFiles(full));
+    } else if (entry.isFile() && entry.name.endsWith(".spec.ts")) {
+      files.push(full);
+    }
+  }
+  return files;
 }
 
 function resolveSpecFilesForScenarios(scenarioIds: string[]): string[] {
   const testsDir = path.join(E2E_DIR, "tests");
-  const specFiles = readdirSync(testsDir).filter((f) => f.endsWith(".spec.ts"));
   const matchingFiles: Set<string> = new Set();
 
-  for (const specFile of specFiles) {
-    const source = readFileSync(path.join(testsDir, specFile), "utf8");
+  for (const specFile of listSpecFiles(testsDir)) {
+    const source = readFileSync(specFile, "utf8");
     const docIds = extractScenarioDocIds(source);
     if (scenarioIds.some((id) => docIds.includes(id))) {
-      matchingFiles.add(path.join(testsDir, specFile));
+      matchingFiles.add(specFile);
+    }
+  }
+
+  return [...matchingFiles];
+}
+
+function resolveSpecFilesForAppAreas(appAreaIds: string[]): string[] {
+  const testsDir = path.join(E2E_DIR, "tests");
+  const matchingFiles: Set<string> = new Set();
+
+  for (const specFile of listSpecFiles(testsDir)) {
+    const source = readFileSync(specFile, "utf8");
+    const scenarioDocIds = extractScenarioDocIds(source);
+    const explicitAppAreaDocIds = extractExplicitAppAreaDocIds(source);
+    const docIds = deriveAppAreaDocIds(scenarioDocIds, explicitAppAreaDocIds);
+    if (appAreaIds.some((id) => docIds.includes(id))) {
+      matchingFiles.add(specFile);
     }
   }
 
@@ -180,11 +236,12 @@ function runStatus(statusRunId: string): never {
 }
 
 // Parse CLI args
-function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: string; scenarios?: string[]; highlighted?: string[]; statusRunId?: string } {
+function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: string; scenarios?: string[]; appAreas?: string[]; highlighted?: string[]; statusRunId?: string } {
   let runId = "";
   let runNotes: string | undefined;
   let grep: string | undefined;
   let scenarios: string[] | undefined;
+  let appAreas: string[] | undefined;
   let highlighted: string[] | undefined;
   let statusRunId: string | undefined;
 
@@ -207,6 +264,15 @@ function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: s
         console.error("ERROR: --scenarios requires at least one scenario doc ID.");
         process.exit(1);
       }
+    } else if (argv[i] === "--areas") {
+      appAreas = [];
+      while (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+        appAreas.push(argv[++i]);
+      }
+      if (appAreas.length === 0) {
+        console.error("ERROR: --areas requires at least one app area doc ID.");
+        process.exit(1);
+      }
     } else if (argv[i] === "--highlighted") {
       highlighted = [];
       while (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
@@ -225,26 +291,33 @@ function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: s
     runId = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
   }
 
-  return { runId, runNotes, grep, scenarios, highlighted, statusRunId };
+  return { runId, runNotes, grep, scenarios, appAreas, highlighted, statusRunId };
 }
 
-const { runId, runNotes, grep, scenarios, highlighted, statusRunId } = parseArgs(process.argv);
+const { runId, runNotes, grep, scenarios, appAreas, highlighted, statusRunId } = parseArgs(process.argv);
 
 // Handle --status subcommand before anything else
 if (statusRunId) {
   runStatus(statusRunId);
 }
 
-// Validate mutual exclusivity of --grep and --scenarios
-if (grep && scenarios) {
-  console.error("ERROR: --grep and --scenarios are mutually exclusive. Use one or the other.");
+// Validate mutual exclusivity of grep and metadata-driven filters
+if (grep && (scenarios || appAreas)) {
+  console.error("ERROR: --grep cannot be combined with --scenarios or --areas. Use one filter mode.");
   process.exit(1);
 }
 
-// Validate mutual exclusivity of --scenarios and --highlighted
-if (scenarios && highlighted) {
-  console.error("ERROR: --scenarios and --highlighted are mutually exclusive.");
-  console.error("  --scenarios filters the run to specific scenario areas.");
+// Validate mutual exclusivity of filter modes
+if (scenarios && appAreas) {
+  console.error("ERROR: --scenarios and --areas are mutually exclusive. Use one or the other.");
+  process.exit(1);
+}
+
+// Validate mutual exclusivity of filters and --highlighted
+if ((scenarios || appAreas) && highlighted) {
+  console.error("ERROR: --highlighted cannot be combined with --scenarios or --areas.");
+  console.error("  --scenarios filters the run to specific scenario docs.");
+  console.error("  --areas filters the run to specific app area docs.");
   console.error("  --highlighted marks specific specs for reviewer focus — it does not filter.");
   console.error("  Pick one.");
   process.exit(1);
@@ -254,9 +327,8 @@ if (scenarios && highlighted) {
 let highlightedBasenames: string[] | undefined;
 if (highlighted) {
   const testsDir = path.join(E2E_DIR, "tests");
-  const specBasenames = readdirSync(testsDir)
-    .filter((f) => f.endsWith(".spec.ts"))
-    .map((f) => f.replace(/\.spec\.ts$/, ""));
+  const specBasenames = listSpecFiles(testsDir)
+    .map((f) => path.basename(f).replace(/\.spec\.ts$/, ""));
   // Allow users to pass either "foo" or "foo.spec.ts"
   const normalized = highlighted.map((name) => name.replace(/\.spec\.ts$/, ""));
   const invalid = normalized.filter((n) => !specBasenames.includes(n));
@@ -288,6 +360,24 @@ if (scenarios) {
   console.log(`Filtering to ${scenarioSpecFiles.length} spec file(s) for scenario(s): ${scenarios.join(", ")}`);
 }
 
+// Validate and resolve --areas
+let appAreaSpecFiles: string[] | undefined;
+if (appAreas) {
+  const validIds = allAppAreaDocs.map((d) => d.id);
+  const invalidIds = appAreas.filter((s) => !validIds.includes(s));
+  if (invalidIds.length > 0) {
+    console.error(`ERROR: Unknown app area doc ID(s): ${invalidIds.join(", ")}`);
+    console.error(`\nAvailable app area doc IDs:\n  ${validIds.join("\n  ")}`);
+    process.exit(1);
+  }
+  appAreaSpecFiles = resolveSpecFilesForAppAreas(appAreas);
+  if (appAreaSpecFiles.length === 0) {
+    console.error(`ERROR: No spec files found for app area doc(s): ${appAreas.join(", ")}`);
+    process.exit(1);
+  }
+  console.log(`Filtering to ${appAreaSpecFiles.length} spec file(s) for app area(s): ${appAreas.join(", ")}`);
+}
+
 // Step 1: Run Playwright
 const totalStart = performance.now();
 console.log(`\nE2E run: ${runId}\n`);
@@ -297,6 +387,9 @@ if (grep) {
 }
 if (scenarioSpecFiles) {
   playwrightArgs.push(...scenarioSpecFiles);
+}
+if (appAreaSpecFiles) {
+  playwrightArgs.push(...appAreaSpecFiles);
 }
 const result = spawnSync("npx", playwrightArgs, {
   cwd: E2E_DIR,
@@ -322,7 +415,7 @@ const artifactCount = existsSync(artifactsDir)
   ? readdirSync(artifactsDir).filter((d) => statSync(path.join(artifactsDir, d)).isDirectory()).length
   : 0;
 
-if (!grep && !scenarios && specCount !== artifactCount) {
+if (!grep && !scenarios && !appAreas && specCount !== artifactCount) {
   console.error("");
   console.error("ERROR: Artifact count mismatch!");
   console.error(`  Spec files found:        ${specCount}`);
@@ -332,12 +425,15 @@ if (!grep && !scenarios && specCount !== artifactCount) {
   process.exit(1);
 }
 
-// Step 4: Write run-level notes and targeted-scenarios metadata
+// Step 4: Write run-level notes and filter/highlight metadata
 if (runNotes && existsSync(artifactsDir)) {
   writeFileSync(path.join(artifactsDir, "notes.md"), runNotes, "utf8");
 }
 if (scenarios && existsSync(artifactsDir)) {
   writeFileSync(path.join(artifactsDir, "targeted-scenarios.json"), JSON.stringify(scenarios), "utf8");
+}
+if (appAreas && existsSync(artifactsDir)) {
+  writeFileSync(path.join(artifactsDir, "targeted-app-areas.json"), JSON.stringify(appAreas), "utf8");
 }
 if (highlightedBasenames && existsSync(artifactsDir)) {
   writeFileSync(path.join(artifactsDir, "highlighted-tests.json"), JSON.stringify(highlightedBasenames), "utf8");

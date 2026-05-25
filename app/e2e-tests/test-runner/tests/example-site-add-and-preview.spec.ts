@@ -19,6 +19,7 @@ import { SiteListPage, SiteEditorPage, PreviewPublishModal } from "../src/run/pa
 import { Fixture } from "../src/run/workflows.js";
 import { htmlGeneration } from "../src/scenario-docs/index.js";
 import { exampleSite } from "../src/site-docs/index.js";
+import { sites } from "../src/app-area-docs/index.js";
 
 test.use({ fixtureHome: Fixture.None });
 
@@ -51,6 +52,7 @@ test("add example site from empty state and preview it", async ({
   await snapshot("example site preview visible");
 
   void exampleSite;
+  void sites;
 
   await skipMeadowHomeStateCheck();
 });

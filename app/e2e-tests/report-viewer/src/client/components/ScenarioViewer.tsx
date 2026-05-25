@@ -38,6 +38,7 @@ interface Manifest {
   endTime?: string
   logs: LogEntry[]
   scenarioDocIds?: string[]
+  appAreaDocIds?: string[]
   keyFrames?: KeyFrame[]
 }
 
@@ -71,6 +72,13 @@ interface ScenarioDoc {
   name: string
   description: string
   isMeadowExtension?: boolean
+}
+
+interface AppAreaDoc {
+  id: string
+  name: string
+  description: string
+  parentId?: string
 }
 
 interface StateRepoMeta {
@@ -329,6 +337,7 @@ export default function ScenarioViewer() {
 
   // Content state
   const [fileList, setFileList] = useState<string[]>([])
+  const [appAreaDocs, setAppAreaDocs] = useState<AppAreaDoc[]>([])
   const [stateTables, setStateTables] = useState<Record<string, string>>({})
   const [prevStateTables, setPrevStateTables] = useState<Record<string, string>>({})
   const [stateSnapshotDeltas, setStateSnapshotDeltas] = useState<Record<number, FileDelta>>({})
@@ -432,6 +441,10 @@ export default function ScenarioViewer() {
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setScenarioDocs(d))
       .catch(() => {})
+    fetch('/api/app-area-docs')
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setAppAreaDocs(d))
+      .catch(() => {})
   }, [])
 
   const matchingDocs = useMemo(() => {
@@ -439,6 +452,12 @@ export default function ScenarioViewer() {
     if (docIds.length === 0) return []
     return scenarioDocs.filter((doc) => docIds.includes(doc.id))
   }, [scenarioDocs, manifest])
+
+  const matchingAppAreas = useMemo(() => {
+    const docIds = manifest?.appAreaDocIds || []
+    if (docIds.length === 0) return []
+    return appAreaDocs.filter((doc) => docIds.includes(doc.id))
+  }, [appAreaDocs, manifest])
 
   const parseOptions = useMemo(() => ({
     recordKeyMap: stateRepoMeta?.recordKeyMap,
@@ -1816,7 +1835,22 @@ export default function ScenarioViewer() {
           )}
         </div>
 
-        {/* Scenario doc chips */}
+        {/* App area and scenario doc chips */}
+        {matchingAppAreas.length > 0 && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200">
+            <span className="text-[11px] text-neutral-400">Areas:</span>
+            {matchingAppAreas.map((area) => (
+              <Link
+                key={area.id}
+                to={`/${runId}?area=${encodeURIComponent(area.id)}`}
+                title={area.description}
+                className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors bg-sky-100 text-sky-700 hover:bg-sky-200"
+              >
+                {area.name}
+              </Link>
+            ))}
+          </div>
+        )}
         {matchingDocs.length > 0 && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200">
             <span className="text-[11px] text-neutral-400">Docs:</span>

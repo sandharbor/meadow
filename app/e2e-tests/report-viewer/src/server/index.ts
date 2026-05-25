@@ -21,6 +21,7 @@ import os from "os";
 import path from "path";
 import { allDocs } from "../../../test-runner/src/scenario-docs/index.ts";
 import { allSiteDocs } from "../../../test-runner/src/site-docs/index.ts";
+import { allAppAreaDocs } from "../../../test-runner/src/app-area-docs/index.ts";
 import {
   generateFixtureScenario,
   FIXTURE_RUN_ID,
@@ -203,6 +204,11 @@ app.get("/api/site-docs", (_req, res) => {
   res.json(allSiteDocs);
 });
 
+// GET /api/app-area-docs — return all app area doc definitions
+app.get("/api/app-area-docs", (_req, res) => {
+  res.json(allAppAreaDocs);
+});
+
 // --- Navigation APIs ---
 
 // GET /api/runs — list all runs with scenario statuses
@@ -370,6 +376,7 @@ app.get("/api/runs/:runId", (req, res) => {
       let duration: number | null = null;
       let scenarioDocIds: string[] = [];
       let siteDocIds: string[] = [];
+      let appAreaDocIds: string[] = [];
       let keyFrames: { docId: string; filename: string }[] = [];
       let failureReason: string | undefined;
       let hasIssues = runMeta?.[slug]?.hasIssues ?? false;
@@ -389,6 +396,7 @@ app.get("/api/runs/:runId", (req, res) => {
             duration = meta.scenarioInfo.duration ?? null;
             scenarioDocIds = meta.scenarioInfo.scenarioDocIds || [];
             siteDocIds = meta.scenarioInfo.siteDocIds || [];
+            appAreaDocIds = meta.scenarioInfo.appAreaDocIds || [];
             keyFrames = meta.scenarioInfo.keyFrames || [];
             failureReason = meta.scenarioInfo.failureReason;
             hasIssues = runMeta?.[slug]?.hasIssues ?? meta.summary?.hasIssues ?? false;
@@ -408,6 +416,7 @@ app.get("/api/runs/:runId", (req, res) => {
             testName = manifest.testName || slug;
             scenarioDocIds = manifest.scenarioDocIds || [];
             siteDocIds = manifest.siteDocIds || [];
+            appAreaDocIds = manifest.appAreaDocIds || [];
             keyFrames = manifest.keyFrames || [];
             if (manifest.startTime && manifest.endTime) {
               duration =
@@ -443,7 +452,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, testBasename, status, duration, scenarioDocIds, siteDocIds, keyFrames, failureReason, hasIssues };
+      return { slug, testName, testBasename, status, duration, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read targeted-scenarios metadata (written when --scenarios flag was used)
@@ -468,7 +477,17 @@ app.get("/api/runs/:runId", (req, res) => {
     }
   }
 
-  res.json({ runId: req.params.runId, scenarios, targetedScenarioIds, highlightedTestBasenames });
+  let targetedAppAreaIds: string[] | undefined;
+  const targetedAppAreasFile = path.join(runDir, "targeted-app-areas.json");
+  if (existsSync(targetedAppAreasFile)) {
+    try {
+      targetedAppAreaIds = JSON.parse(readFileSync(targetedAppAreasFile, "utf8"));
+    } catch {
+      // ignore
+    }
+  }
+
+  res.json({ runId: req.params.runId, scenarios, targetedScenarioIds, targetedAppAreaIds, highlightedTestBasenames });
 });
 
 // GET /api/runs/:runId/health — health summaries for all scenarios in a run

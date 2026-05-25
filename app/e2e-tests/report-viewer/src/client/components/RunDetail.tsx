@@ -33,6 +33,13 @@ interface SiteDoc {
   description: string
 }
 
+interface AppAreaDoc {
+  id: string
+  name: string
+  description: string
+  parentId?: string
+}
+
 interface KeyFrame {
   docId: string
   filename: string
@@ -46,6 +53,7 @@ interface Scenario {
   duration: number | null
   scenarioDocIds: string[]
   siteDocIds: string[]
+  appAreaDocIds: string[]
   failureReason?: string
   keyFrames: KeyFrame[]
   hasIssues: boolean
@@ -55,6 +63,7 @@ interface RunData {
   runId: string
   scenarios: Scenario[]
   targetedScenarioIds?: string[]
+  targetedAppAreaIds?: string[]
   highlightedTestBasenames?: string[]
 }
 
@@ -66,6 +75,7 @@ export default function RunDetail() {
   const [healthMap, setHealthMap] = useState<Record<string, HealthSummary>>({})
   const [docs, setDocs] = useState<ScenarioDoc[]>([])
   const [siteDocs, setSiteDocs] = useState<SiteDoc[]>([])
+  const [appAreaDocs, setAppAreaDocs] = useState<AppAreaDoc[]>([])
   const [notes, setNotes] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'thumbs' | 'list' | 'videos' | 'timing'>('thumbs')
@@ -73,6 +83,8 @@ export default function RunDetail() {
   const [playSpeed, setPlaySpeed] = useState(100)
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
 
+  const selectedAreaIds = searchParams.getAll('area')
+  const selectedAreas = appAreaDocs.filter((d) => selectedAreaIds.includes(d.id))
   const selectedDocIds = searchParams.getAll('doc')
   const selectedDocs = docs.filter((d) => selectedDocIds.includes(d.id))
   const selectedSiteIds = searchParams.getAll('site')
@@ -82,14 +94,30 @@ export default function RunDetail() {
   const presentDocIds = new Set(
     (data?.scenarios ?? []).flatMap((s) => s.scenarioDocIds)
   )
+  const presentAreaIds = new Set(
+    (data?.scenarios ?? []).flatMap((s) => s.appAreaDocIds)
+  )
   const isPartialRun = docs.length > 0 && presentDocIds.size < docs.length
+  const isPartialAreaRun = appAreaDocs.length > 0 && presentAreaIds.size < appAreaDocs.length
   const targetedDocIds = new Set(data?.targetedScenarioIds ?? [])
+  const targetedAreaIds = new Set(data?.targetedAppAreaIds ?? [])
   const highlightedBasenames = new Set(data?.highlightedTestBasenames ?? [])
   const highlightedDocIds = new Set(
     (data?.scenarios ?? [])
       .filter((s) => s.testBasename && highlightedBasenames.has(s.testBasename))
       .flatMap((s) => s.scenarioDocIds)
   )
+
+  const setFilters = (next: { areaIds?: string[]; docIds?: string[]; siteIds?: string[] }) => {
+    const areaIds = next.areaIds ?? selectedAreaIds
+    const docIds = next.docIds ?? selectedDocIds
+    const siteIds = next.siteIds ?? selectedSiteIds
+    setSearchParams([
+      ...areaIds.map((id): [string, string] => ['area', id]),
+      ...docIds.map((id): [string, string] => ['doc', id]),
+      ...siteIds.map((id): [string, string] => ['site', id]),
+    ])
+  }
 
   const setVideoRef = useCallback((slug: string, el: HTMLVideoElement | null) => {
     if (el) {
@@ -125,6 +153,10 @@ export default function RunDetail() {
     fetch('/api/site-docs')
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setSiteDocs(d))
+      .catch(() => {})
+    fetch('/api/app-area-docs')
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setAppAreaDocs(d))
       .catch(() => {})
   }, [])
 
@@ -177,11 +209,17 @@ export default function RunDetail() {
   // Sort scenarios by slug descending (higher t-numbers = newer scenarios first)
   const sortedScenarios = [...data.scenarios].sort((a, b) => b.slug.localeCompare(a.slug))
 
-  const docFiltered = selectedDocs.length > 0
+  const areaFiltered = selectedAreas.length > 0
     ? sortedScenarios.filter((s) =>
-        selectedDocs.some((doc) => s.scenarioDocIds.includes(doc.id))
+        selectedAreas.some((area) => s.appAreaDocIds.includes(area.id))
       )
     : sortedScenarios
+
+  const docFiltered = selectedDocs.length > 0
+    ? areaFiltered.filter((s) =>
+        selectedDocs.some((doc) => s.scenarioDocIds.includes(doc.id))
+      )
+    : areaFiltered
 
   const filteredScenarios = selectedSites.length > 0
     ? docFiltered.filter((s) =>
@@ -234,6 +272,67 @@ export default function RunDetail() {
       )}
       {!notes && <div className="mb-3" />}
 
+      {/* App area filter chips */}
+      {appAreaDocs.length > 0 && (() => {
+        const rootAreas = appAreaDocs.filter((d) => !d.parentId)
+        const siteAreas = appAreaDocs.filter((d) => d.parentId === 'site')
+
+        const renderAreaPill = (area: AppAreaDoc) => {
+          const isSelected = selectedAreaIds.includes(area.id)
+          const hasData = presentAreaIds.has(area.id)
+          const isTargeted = targetedAreaIds.has(area.id)
+          const highlight = isSelected ? ''
+            : isTargeted ? ' ring-2 ring-purple-400 bg-purple-50'
+            : isPartialAreaRun && hasData ? ' ring-1 ring-blue-300 bg-blue-50'
+            : ''
+          return (
+            <button
+              key={area.id}
+              title={area.description}
+              className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                isSelected
+                  ? 'bg-sky-500 text-white'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }${highlight}`}
+              onClick={() => {
+                const nextAreas = isSelected
+                  ? selectedAreaIds.filter((id) => id !== area.id)
+                  : [...selectedAreaIds, area.id]
+                setFilters({ areaIds: nextAreas })
+              }}
+            >
+              {area.name}
+            </button>
+          )
+        }
+
+        return (
+          <div className="mb-3">
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <span className="text-xs text-neutral-400 font-medium mr-1">Areas:</span>
+              <button
+                className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                  selectedAreaIds.length === 0
+                    ? 'bg-sky-500 text-white'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                }`}
+                onClick={() => setFilters({ areaIds: [] })}
+              >
+                All
+              </button>
+              {rootAreas.map(renderAreaPill)}
+              {siteAreas.length > 0 && (
+                <span className="text-xs text-neutral-400 font-medium mr-1">Site:</span>
+              )}
+              {siteAreas.map(renderAreaPill)}
+            </div>
+            {selectedAreas.length === 1 && (
+              <p className="mt-2 text-xs text-neutral-500">{selectedAreas[0].description}</p>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Doc filter chips — two rows: base, then meadow-extension */}
       {docs.length > 0 && (() => {
         const baseDocs = docs.filter((d) => !d.isMeadowExtension)
@@ -264,10 +363,7 @@ export default function RunDetail() {
                 const nextDocs = isSelected
                   ? selectedDocIds.filter((id) => id !== doc.id)
                   : [...selectedDocIds, doc.id]
-                setSearchParams([
-                  ...nextDocs.map((id): [string, string] => ['doc', id]),
-                  ...selectedSiteIds.map((id): [string, string] => ['site', id]),
-                ])
+                setFilters({ docIds: nextDocs })
               }}
             >
               {doc.isMeadowExtension && <span className="mr-1" aria-hidden>☁</span>}
@@ -286,7 +382,7 @@ export default function RunDetail() {
                     ? 'bg-brand-500 text-white'
                     : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                 }`}
-                onClick={() => setSearchParams(selectedSiteIds.map((id): [string, string] => ['site', id]))}
+                onClick={() => setFilters({ docIds: [] })}
               >
                 All
               </button>
@@ -304,12 +400,7 @@ export default function RunDetail() {
                       : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                   }`}
                   title="Select all Meadow Extension scenarios"
-                  onClick={() => {
-                    setSearchParams([
-                      ...extensionDocIds.map((id): [string, string] => ['doc', id]),
-                      ...selectedSiteIds.map((id): [string, string] => ['site', id]),
-                    ])
-                  }}
+                  onClick={() => setFilters({ docIds: extensionDocIds })}
                 >
                   All
                 </button>
@@ -343,11 +434,7 @@ export default function RunDetail() {
                     const nextSites = isSelected
                       ? selectedSiteIds.filter((id) => id !== site.id)
                       : [...selectedSiteIds, site.id]
-                    const nextParams = [
-                      ...selectedDocIds.map((id): [string, string] => ['doc', id]),
-                      ...nextSites.map((id): [string, string] => ['site', id]),
-                    ]
-                    setSearchParams(nextParams)
+                    setFilters({ siteIds: nextSites })
                   }}
                 >
                   {site.name}

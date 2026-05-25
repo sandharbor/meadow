@@ -28,6 +28,8 @@ import path from "path";
 import { performance } from "perf_hooks";
 import * as scenarioDocExports from "../scenario-docs/index.ts";
 import * as siteDocExports from "../site-docs/index.ts";
+import * as appAreaDocExports from "../app-area-docs/index.ts";
+import { deriveAppAreaDocIds } from "../app-area-docs/index.ts";
 
 // Build a map from export name (e.g. "htmlGeneration") to doc ID (e.g. "html-generation")
 const exportNameToDocId = new Map<string, string>();
@@ -61,6 +63,13 @@ for (const [key, value] of Object.entries(siteDocExports)) {
   }
 }
 
+const appAreaExportNameToDocId = new Map<string, string>();
+for (const [key, value] of Object.entries(appAreaDocExports)) {
+  if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
+    appAreaExportNameToDocId.set(key, value.id);
+  }
+}
+
 function extractScenarioDocIds(testSource: string): string[] {
   // Tests often import from both the base and an extension scenario-doc
   // barrel, so match every scenario-docs import statement (global flag).
@@ -89,6 +98,18 @@ function extractSiteDocIds(testSource: string): string[] {
   const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
   return names
     .map((name) => siteExportNameToDocId.get(name.split(/\s+as\s+/)[0]))
+    .filter((id): id is string => !!id);
+}
+
+function extractExplicitAppAreaDocIds(testSource: string): string[] {
+  const match = testSource.match(
+    /import\s+\{([^}]+)\}\s+from\s+["'][^"']*app-area-docs[^"']*["']/
+  );
+  if (!match) return [];
+
+  const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
+  return names
+    .map((name) => appAreaExportNameToDocId.get(name.split(/\s+as\s+/)[0]))
     .filter((id): id is string => !!id);
 }
 
@@ -216,6 +237,7 @@ interface Manifest {
   testSource: string;
   scenarioDocIds: string[];
   siteDocIds: string[];
+  appAreaDocIds: string[];
   keyFrames: KeyFrame[];
   ticks: ProcessedTick[];
   consolidatedTicks: ConsolidatedTickGroup[];
@@ -241,6 +263,7 @@ interface ScenarioReportMeta {
     duration: number | null;
     scenarioDocIds: string[];
     siteDocIds: string[];
+    appAreaDocIds: string[];
     keyFrames: { docId: string; filename: string; timestamp?: string }[];
     failureReason?: string;
   };
@@ -901,7 +924,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, startTime, endTime, logs, uncommittedEntries, scenarioDocIds, siteDocIds, keyFrames } = manifest;
+  const { testName, startTime, endTime, logs, uncommittedEntries, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -914,7 +937,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { testName, duration, scenarioDocIds, siteDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { testName, duration, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1134,9 +1157,13 @@ export function assembleTestArtifacts(testDir: string): void {
     }
   }
 
-  // Extract scenario doc IDs and site doc IDs from test source imports
+  // Extract scenario doc IDs, app area doc IDs, and site doc IDs from test source imports.
   const scenarioDocIds = extractScenarioDocIds(testSource);
   const siteDocIds = extractSiteDocIds(testSource);
+  const appAreaDocIds = deriveAppAreaDocIds(
+    scenarioDocIds,
+    extractExplicitAppAreaDocIds(testSource)
+  );
 
   // Read key frames if they exist
   const keyFramesPath = path.join(testDir, "keyframes.json");
@@ -1148,7 +1175,7 @@ export function assembleTestArtifacts(testDir: string): void {
   const tickData = processTickLog(testDir);
 
   // Write manifest
-  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, scenarioDocIds, siteDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...tickData };
   writeFileSync(
     path.join(testDir, "manifest.json"),
     JSON.stringify(manifest, null, 2)

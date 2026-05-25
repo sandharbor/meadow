@@ -17,6 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
 import { bigSite } from "../src/site-docs/index.js";
+import { sites } from "../src/app-area-docs/index.js";
 
 test("navigate from site list to site and see graph view", async ({ page, snapshot, assertMeadowHomeState }) => {
   const siteList = new SiteListPage(page, expect);
@@ -31,6 +32,7 @@ test("navigate from site list to site and see graph view", async ({ page, snapsh
   await expect(graphViewButton).toHaveClass(/border-main-500/);
   await snapshot("graph view visible");
   void bigSite;
+  void sites;
 
   await assertMeadowHomeState();
 });
