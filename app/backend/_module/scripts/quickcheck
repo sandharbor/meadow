@@ -7,9 +7,11 @@ check_no_console_calls src/ --strict || exit 1
 # Check that area-owned code does not import directly across areas.
 node "$(dirname "$0")/../../../shared_code/check_support/check_area_boundaries.js" src || exit 1
 
-# Keep a source ownership inventory visible and enforce that oversized files
-# have documented temporary exceptions.
-node "$(dirname "$0")/../../../shared_code/check_support/check_source_inventory.js" src --exceptions source_inventory_exceptions.json --require-line-exceptions --require-ownership --summary || exit 1
+# Check that source files belong to an area or shared code.
+node "$(dirname "$0")/../../../shared_code/check_support/check_area_ownership.js" src --require-ownership --summary || exit 1
+
+# Check that oversized files have documented temporary exceptions.
+node "$(dirname "$0")/../../../shared_code/check_support/check_file_size.js" src --exceptions file_size_exceptions.json --require-line-exceptions --summary || exit 1
 
 echo "🧪 Running type checking and linting in parallel..."
 

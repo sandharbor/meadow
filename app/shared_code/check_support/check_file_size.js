@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * Reports whether source files stay within the configured size limit.
+ *
+ * The check walks a source root, skips generated/build directories, and counts
+ * lines for each source file. Files over `--max-lines` must have a documented
+ * temporary exception when `--require-line-exceptions` is used; stale exceptions
+ * are reported when the matching file is no longer oversized.
+ */
 import fs from 'fs';
 import path from 'path';
 
@@ -29,7 +37,6 @@ function parseArgs(argv) {
     sourceRoot: argv[2] ?? 'src',
     exceptionsPath: null,
     maxLines: 1000,
-    requireOwnership: false,
     requireLineExceptions: false,
     summary: false,
   };
@@ -42,8 +49,6 @@ function parseArgs(argv) {
     } else if (arg === '--max-lines') {
       args.maxLines = Number.parseInt(argv[i + 1] ?? '', 10);
       i += 1;
-    } else if (arg === '--require-ownership') {
-      args.requireOwnership = true;
     } else if (arg === '--require-line-exceptions') {
       args.requireLineExceptions = true;
     } else if (arg === '--summary') {
@@ -92,29 +97,6 @@ function loadExceptions(exceptionsPath) {
   };
 }
 
-function getOwner(sourceRoot, filePath) {
-  const relativePath = toPosixPath(path.relative(sourceRoot, filePath));
-  const parts = relativePath.split('/');
-
-  if (parts[0] === 'areas') {
-    if (parts[1] === 'sites') {
-      return 'area:sites';
-    }
-    if (parts[1] === 'site' && parts[2]) {
-      return `area:site/${parts[2]}`;
-    }
-    if (parts[1]) {
-      return `area:${parts[1]}`;
-    }
-  }
-
-  if (parts[0] === 'shared') {
-    return 'shared';
-  }
-
-  return null;
-}
-
 function countLines(filePath) {
   const source = fs.readFileSync(filePath, 'utf8');
   if (source.length === 0) return 0;
@@ -148,9 +130,8 @@ function main() {
   const lineExceptions = exceptions.temporaryLineLimitExceptions;
 
   const files = walkFiles(sourceRoot).sort();
-  const inventory = files.map((file) => {
+  const fileSizes = files.map((file) => {
     const relativePath = toPosixPath(path.relative(sourceRoot, file));
-    const owner = getOwner(sourceRoot, file);
     const lines = countLines(file);
     const lineException = lineExceptions[relativePath];
     const oversized = lines > args.maxLines;
@@ -159,31 +140,22 @@ function main() {
     return {
       file,
       relativePath,
-      owner,
       lines,
       oversized,
       documentedLineException,
     };
   });
 
-  const owned = inventory.filter((item) => item.owner);
-  const unowned = inventory.filter((item) => !item.owner);
-  const oversized = inventory.filter((item) => item.oversized);
+  const oversized = fileSizes.filter((item) => item.oversized);
   const oversizedWithoutException = oversized.filter((item) => !item.documentedLineException);
   const staleLineExceptions = Object.keys(lineExceptions)
     .filter((relativePath) => !oversized.some((item) => item.relativePath === relativePath))
     .sort();
 
   console.log(
-    `Source inventory for ${sourceLabel}: ${files.length} files, ${owned.length} owned, ${unowned.length} unowned, ${oversized.length} over ${args.maxLines} lines`
+    `File size check for ${sourceLabel}: ${files.length} files, ${oversized.length} over ${args.maxLines} lines`
   );
 
-  printList(
-    'Unowned source files:',
-    unowned,
-    (item) => `${item.relativePath}`,
-    args.summary
-  );
   printList(
     'Oversized source files:',
     oversized,
@@ -197,26 +169,15 @@ function main() {
     args.summary
   );
 
-  const failures = [];
-  if (args.requireOwnership && unowned.length > 0) {
-    failures.push(`${unowned.length} source file(s) do not have an area/shared owner`);
-  }
   if (args.requireLineExceptions && oversizedWithoutException.length > 0) {
-    failures.push(`${oversizedWithoutException.length} oversized source file(s) lack a documented temporary exception`);
-  }
-
-  if (failures.length > 0) {
-    for (const failure of failures) {
-      console.log(`❌ ${failure}`);
-    }
+    console.log(`❌ ${oversizedWithoutException.length} oversized source file(s) lack a documented temporary exception`);
     process.exit(1);
   }
 
-  const ownershipStatus = unowned.length > 0 ? `${unowned.length} ownership gap(s) remain` : 'all source files are owned';
   const lineStatus = oversizedWithoutException.length > 0
     ? `${oversizedWithoutException.length} line-limit exception gap(s) remain`
     : 'all oversized source files have documented exceptions';
-  console.log(`✅ Source inventory checked for ${sourceLabel}: ${ownershipStatus}; ${lineStatus}`);
+  console.log(`✅ File size checked for ${sourceLabel}: ${lineStatus}`);
 }
 
 try {
