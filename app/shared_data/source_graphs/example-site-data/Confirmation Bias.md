@@ -27,10 +27,12 @@ What mental model is one of the best defenses against [[Confirmation Bias]]?
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: 1
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

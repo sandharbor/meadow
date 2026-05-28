@@ -9,28 +9,32 @@ The transclusion should appear above this line.
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /t017/t017 ---- full page source.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /t017 - transclusion.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: t017 ---- full page source.html
-      footerSectionBacklinks:
-        - relativeLinkPath: ../t017 - transclusion.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: ../t017 - transclusion.html
-              embeddedLinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t017/t017 ---- full page source.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /t017 - transclusion.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: t017 ---- full page source.html
+        footerSectionBacklinks:
+          - relativeLinkPath: ../t017 - transclusion.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../t017 - transclusion.html
+                embeddedLinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

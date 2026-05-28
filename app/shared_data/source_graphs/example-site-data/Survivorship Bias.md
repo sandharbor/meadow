@@ -29,10 +29,12 @@ Instead of asking "what did the winners do?", ask "what did the losers also do?"
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: 1
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

@@ -45,7 +45,11 @@ import {
   extractMainSectionLinkPaths,
   extractBacklinkDetails,
 } from '../helpers/htmlLinkExtractor.js';
-import { linkPathToPageId, pageIdToLinkPath } from '../../shared_code/test/pagespecLinkChecker.js';
+import {
+  extractContentWithoutPagespecs,
+  linkPathToPageId,
+  pageIdToLinkPath,
+} from '../pagespecs/index.js';
 
 const SITE_NAME = 'example-site';
 const INITIAL_PAGE = 'Notable Mental Models';
@@ -71,13 +75,6 @@ function findAllMarkdownFiles(dir: string): string[] {
 function getPageIdFromPath(filePath: string, sourceGraphDir: string): string {
   const rel = path.relative(sourceGraphDir, filePath);
   return rel.slice(0, -3); // strip .md extension
-}
-
-/** The pagespecs YAML regex (same as in pagespecUtils.ts). */
-const PAGESPECS_BLOCK_PATTERN = /```(?:yaml|pagespecs)\s*\n[\s\S]*?pagespecs:[\s\S]*?```\s*$/;
-
-function stripPagespecsBlock(content: string): string {
-  return content.replace(PAGESPECS_BLOCK_PATTERN, '').trimEnd();
 }
 
 // ---------------------------------------------------------------------------
@@ -185,10 +182,14 @@ async function main() {
 
         entry = {
           site: SITE_NAME,
-          isTracked,
-          isInWorkingGraph: true,
-          links: { outlinks, inlinks },
-          htmlRenderedLinks,
+          curation: {
+            isTracked,
+            isInWorkingGraph: true,
+            links: { outlinks, inlinks },
+          },
+          generation: {
+            htmlRenderedLinks,
+          },
         };
       } else {
         // Not in working graph — determine frontier depth or orphan
@@ -200,16 +201,20 @@ async function main() {
 
         entry = {
           site: SITE_NAME,
-          isTracked,
-          isInWorkingGraph: false,
-          frontierDepthOrNullForOrphan,
-          htmlRenderedLinks,
+          curation: {
+            isTracked,
+            isInWorkingGraph: false,
+            frontierDepthOrNullForOrphan,
+          },
+          generation: {
+            htmlRenderedLinks,
+          },
         };
       }
 
       // Write back to file
       const originalContent = fs.readFileSync(srcFile, 'utf-8');
-      const contentWithout = stripPagespecsBlock(originalContent);
+      const contentWithout = extractContentWithoutPagespecs(originalContent);
 
       const yamlStr = YAML.stringify({ pagespecs: [entry] }, {
         lineWidth: 0,        // no line wrapping

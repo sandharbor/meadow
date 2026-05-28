@@ -28,31 +28,35 @@ The flag is {{c1::red}}, {{c1::white}}, and {{c2::blue}}.
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /t022/t022 ---- alpha cards.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /t022 - spaced repetition.md
-          isInGraph: true
-        - linkPath: /t022/t022 ---- alpha cards.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: ../x-tagpages/tag--t022-srs--beta.html
-        - relativeLinkPath: t022 ---- alpha cards.html
-      footerSectionBacklinks:
-        - relativeLinkPath: ../t022 - spaced repetition.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: ../t022 - spaced repetition.html
-              embeddedLinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t022/t022 ---- alpha cards.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /t022 - spaced repetition.md
+            isInGraph: true
+          - linkPath: /t022/t022 ---- alpha cards.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../x-tagpages/tag--t022-srs--beta.html
+          - relativeLinkPath: t022 ---- alpha cards.html
+        footerSectionBacklinks:
+          - relativeLinkPath: ../t022 - spaced repetition.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../t022 - spaced repetition.html
+                embeddedLinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

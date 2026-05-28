@@ -8,22 +8,26 @@ This page is not referenced by any other pages.
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /main page.md
-          isInGraph: true
-      inlinks: []
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: ../main page.html
-      footerSectionBacklinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /main page.md
+            isInGraph: true
+        inlinks: []
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../main page.html
+        footerSectionBacklinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

@@ -30,67 +30,69 @@ They're shortcuts that match [[Base Rates]] — most explanations really are sim
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Base Rates.md
-          isInGraph: true
-        - linkPath: /Hanlon's Razor.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Razors.md
-          isInGraph: true
-        - linkPath: /William of Ockham.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Base Rates.md
-          isInGraph: true
-        - linkPath: /Hanlon's Razor.md
-          isInGraph: true
-        - linkPath: /Notable Mental Models.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /Razors.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Occam's Razor.html
-        - relativeLinkPath: Hanlon's Razor.html
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: Razors.html
-        - relativeLinkPath: Razors.html
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: Hanlon's Razor.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Hanlon's Razor.html
-              embeddedLinks: []
-        - relativeLinkPath: Notable Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Notable Mental Models.html
-              embeddedLinks:
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-                - linkName: Occam's Razor
-                  linkRelativePath: Occam's Razor.html
-                - linkName: Hanlon's Razor
-                  linkRelativePath: Hanlon's Razor.html
-        - relativeLinkPath: Occam's Razor.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Occam's Razor.html
-              embeddedLinks: []
-        - relativeLinkPath: Razors.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Razors.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Razors.html
-              embeddedLinks:
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Base Rates.md
+            isInGraph: true
+          - linkPath: /Hanlon's Razor.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Razors.md
+            isInGraph: true
+          - linkPath: /William of Ockham.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Base Rates.md
+            isInGraph: true
+          - linkPath: /Hanlon's Razor.md
+            isInGraph: true
+          - linkPath: /Notable Mental Models.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /Razors.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Occam's Razor.html
+          - relativeLinkPath: Hanlon's Razor.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: Razors.html
+          - relativeLinkPath: Razors.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: Hanlon's Razor.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Hanlon's Razor.html
+                embeddedLinks: []
+          - relativeLinkPath: Notable Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Notable Mental Models.html
+                embeddedLinks:
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+                  - linkName: Occam's Razor
+                    linkRelativePath: Occam's Razor.html
+                  - linkName: Hanlon's Razor
+                    linkRelativePath: Hanlon's Razor.html
+          - relativeLinkPath: Occam's Razor.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Occam's Razor.html
+                embeddedLinks: []
+          - relativeLinkPath: Razors.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Razors.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Razors.html
+                embeddedLinks:
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
 ```

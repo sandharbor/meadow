@@ -5,21 +5,25 @@ The other two are at the root and in the t002 folder.
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks: []
-      inlinks:
-        - linkPath: /t002/t002 ---- points to extra nested dup.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /t002/t002 ---- points to extra nested dup.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

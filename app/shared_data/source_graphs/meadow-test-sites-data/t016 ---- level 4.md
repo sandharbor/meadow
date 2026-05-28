@@ -11,25 +11,29 @@ By default this image will show up if `allowImagesToExtendToFrontier` is enabled
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /t016 ---- level 5.md
-          isInGraph: false
-        - linkPath: /t016 ---- level 5 - frontier image.png
-          isInGraph: true
-      inlinks:
-        - linkPath: /t016 ---- level 3.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t016 ---- level 5.md
+            isInGraph: false
+          - linkPath: /t016 ---- level 5 - frontier image.png
+            isInGraph: true
+        inlinks:
+          - linkPath: /t016 ---- level 3.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

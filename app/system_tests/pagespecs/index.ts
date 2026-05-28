@@ -54,3 +54,26 @@ export {
   validateInlinks,
   checkPagespecLinks,
 } from './pagespecLinkChecker.js';
+
+export type {
+  BacklinkContextEmbeddedLink,
+  BacklinkContextSpec,
+  PagespecLinkSpec,
+  PagespecLinks,
+  HtmlRenderedLinkSpec,
+  HtmlRenderedLinks,
+  PagespecFiltersSelected,
+  PagespecCuration,
+  PagespecCurationInWorkingGraph,
+  PagespecCurationNotInWorkingGraph,
+  PagespecGeneration,
+  PagespecInWorkingGraph,
+  PagespecNotInWorkingGraph,
+  PagespecEntry,
+  PagespecsBlock,
+} from './types.js';
+
+export {
+  isPagespecInWorkingGraph,
+  isPagespecNotInWorkingGraph,
+} from './types.js';

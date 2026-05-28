@@ -21,13 +21,16 @@ limitations under the License.
 import * as fs from 'fs';
 import * as path from 'path';
 import YAML from 'yaml';
-import type { PagespecsBlock, PagespecEntry } from '../types/test/pagespec.js';
+import {
+  hasPagespecsBlock,
+  PAGESPECS_BLOCK_PATTERN,
+} from '../../shared_code/utils/pagespecBlockUtils.js';
+import type { PagespecsBlock, PagespecEntry } from './types.js';
 
-/**
- * Pattern to match a pagespecs YAML block at the end of a markdown file.
- * Matches ```yaml or ```pagespecs code blocks containing a pagespecs: key.
- */
-const PAGESPECS_BLOCK_PATTERN = /```(?:yaml|pagespecs)\s*\n([\s\S]*?pagespecs:[\s\S]*?)```\s*$/;
+export {
+  extractContentWithoutPagespecs,
+  hasPagespecsBlock,
+} from '../../shared_code/utils/pagespecBlockUtils.js';
 
 /**
  * Extracts the pagespecs block from markdown content if present.
@@ -78,27 +81,6 @@ export function getPagespecForSite(
  */
 export function getReferencedSites(block: PagespecsBlock): string[] {
   return block.pagespecs.map((spec) => spec.site);
-}
-
-/**
- * Extracts the markdown content without the pagespecs block.
- * This is used when rendering HTML to exclude test metadata from output.
- *
- * @param content - The original markdown content
- * @returns The content with pagespecs block removed
- */
-export function extractContentWithoutPagespecs(content: string): string {
-  return content.replace(PAGESPECS_BLOCK_PATTERN, '').trimEnd();
-}
-
-/**
- * Checks if content has a pagespecs block.
- *
- * @param content - The markdown content to check
- * @returns true if a pagespecs block is present
- */
-export function hasPagespecsBlock(content: string): boolean {
-  return PAGESPECS_BLOCK_PATTERN.test(content);
 }
 
 /**

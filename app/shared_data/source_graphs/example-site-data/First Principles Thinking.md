@@ -31,113 +31,115 @@ Which mental model pairs with [[First Principles Thinking]] by helping find hidd
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /2026-02-02.md
-          isInGraph: true
-        - linkPath: /Elon Musk.md
-          isInGraph: true
-        - linkPath: /First Principles Thinking.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /2026-02-02.md
-          isInGraph: true
-        - linkPath: /Elon Musk.md
-          isInGraph: true
-        - linkPath: /First Principles Thinking.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Latticework of Mental Models.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Notable Mental Models.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /William of Ockham.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Occam's Razor.html
-        - relativeLinkPath: Mental Models Overview.html
-        - relativeLinkPath: First Principles Thinking.html
-        - relativeLinkPath: First Principles Thinking.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: First Principles Thinking.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: First Principles Thinking.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: First Principles Thinking.html
-              embeddedLinks:
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-        - relativeLinkPath: Inversion.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Inversion.html
-              embeddedLinks:
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-                - linkName: Hanlon's Razor
-                  linkRelativePath: Hanlon's Razor.html
-            - seeInContextLinkRelativePath: Inversion.html
-              embeddedLinks:
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-        - relativeLinkPath: Latticework of Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Latticework of Mental Models.html
-              embeddedLinks:
-                - linkName: Mental Models Overview
-                  linkRelativePath: Mental Models Overview.html
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-                - linkName: Margin of Safety
-                  linkRelativePath: Margin of Safety.html
-        - relativeLinkPath: Mental Models Overview.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks:
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Second Order Thinking
-                  linkRelativePath: Second Order Thinking.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks:
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-                - linkName: Margin of Safety
-                  linkRelativePath: Margin of Safety.html
-        - relativeLinkPath: Notable Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Notable Mental Models.html
-              embeddedLinks:
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Second Order Thinking
-                  linkRelativePath: Second Order Thinking.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-        - relativeLinkPath: Occam's Razor.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Occam's Razor.html
-              embeddedLinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /2026-02-02.md
+            isInGraph: true
+          - linkPath: /Elon Musk.md
+            isInGraph: true
+          - linkPath: /First Principles Thinking.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /2026-02-02.md
+            isInGraph: true
+          - linkPath: /Elon Musk.md
+            isInGraph: true
+          - linkPath: /First Principles Thinking.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Notable Mental Models.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /William of Ockham.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Occam's Razor.html
+          - relativeLinkPath: Mental Models Overview.html
+          - relativeLinkPath: First Principles Thinking.html
+          - relativeLinkPath: First Principles Thinking.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: First Principles Thinking.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: First Principles Thinking.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: First Principles Thinking.html
+                embeddedLinks:
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+          - relativeLinkPath: Inversion.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Inversion.html
+                embeddedLinks:
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+                  - linkName: Hanlon's Razor
+                    linkRelativePath: Hanlon's Razor.html
+              - seeInContextLinkRelativePath: Inversion.html
+                embeddedLinks:
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+          - relativeLinkPath: Latticework of Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Latticework of Mental Models.html
+                embeddedLinks:
+                  - linkName: Mental Models Overview
+                    linkRelativePath: Mental Models Overview.html
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+                  - linkName: Margin of Safety
+                    linkRelativePath: Margin of Safety.html
+          - relativeLinkPath: Mental Models Overview.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks:
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Second Order Thinking
+                    linkRelativePath: Second Order Thinking.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks:
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+                  - linkName: Margin of Safety
+                    linkRelativePath: Margin of Safety.html
+          - relativeLinkPath: Notable Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Notable Mental Models.html
+                embeddedLinks:
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Second Order Thinking
+                    linkRelativePath: Second Order Thinking.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+          - relativeLinkPath: Occam's Razor.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Occam's Razor.html
+                embeddedLinks: []
 ```

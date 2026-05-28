@@ -26,28 +26,30 @@ He broke down rockets to raw materials (aluminum, titanium, copper, carbon fiber
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Elon Musk.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /First Principles Thinking.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Second Order Thinking.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Elon Musk.md
-          isInGraph: true
-        - linkPath: /First Principles Thinking.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Elon Musk.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /First Principles Thinking.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Second Order Thinking.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Elon Musk.md
+            isInGraph: true
+          - linkPath: /First Principles Thinking.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

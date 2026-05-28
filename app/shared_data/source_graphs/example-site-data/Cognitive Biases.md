@@ -30,74 +30,76 @@ They provide systematic checks: [[Inversion]] forces you to consider what you'd 
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Anchoring Bias.md
-          isInGraph: true
-        - linkPath: /Availability Bias.md
-          isInGraph: false
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Cognitive Biases.md
-          isInGraph: true
-        - linkPath: /Confirmation Bias.md
-          isInGraph: false
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Survivorship Bias.md
-          isInGraph: false
-      inlinks:
-        - linkPath: /Anchoring Bias.md
-          isInGraph: true
-        - linkPath: /Availability Bias.md
-          isInGraph: false
-        - linkPath: /Base Rates.md
-          isInGraph: true
-        - linkPath: /Cognitive Biases.md
-          isInGraph: true
-        - linkPath: /Confirmation Bias.md
-          isInGraph: false
-        - linkPath: /Man with a Hammer.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Survivorship Bias.md
-          isInGraph: false
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: Mental Models Overview.html
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Cognitive Biases.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: Cognitive Biases.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Cognitive Biases.html
-              embeddedLinks:
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-        - relativeLinkPath: Man with a Hammer.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Man with a Hammer.html
-              embeddedLinks:
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-        - relativeLinkPath: Probabilistic Thinking.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Probabilistic Thinking.html
-              embeddedLinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Anchoring Bias.md
+            isInGraph: true
+          - linkPath: /Availability Bias.md
+            isInGraph: false
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Cognitive Biases.md
+            isInGraph: true
+          - linkPath: /Confirmation Bias.md
+            isInGraph: false
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Survivorship Bias.md
+            isInGraph: false
+        inlinks:
+          - linkPath: /Anchoring Bias.md
+            isInGraph: true
+          - linkPath: /Availability Bias.md
+            isInGraph: false
+          - linkPath: /Base Rates.md
+            isInGraph: true
+          - linkPath: /Cognitive Biases.md
+            isInGraph: true
+          - linkPath: /Confirmation Bias.md
+            isInGraph: false
+          - linkPath: /Man with a Hammer.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Survivorship Bias.md
+            isInGraph: false
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: Mental Models Overview.html
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Cognitive Biases.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: Cognitive Biases.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Cognitive Biases.html
+                embeddedLinks:
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+          - relativeLinkPath: Man with a Hammer.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Man with a Hammer.html
+                embeddedLinks:
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+          - relativeLinkPath: Probabilistic Thinking.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Probabilistic Thinking.html
+                embeddedLinks: []
 ```

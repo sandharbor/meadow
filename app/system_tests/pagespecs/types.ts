@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 /**
- * Type definitions for the pagespecs testing system.
+ * Type definitions for the pagespecs system tests.
  *
  * Pagespecs are YAML blocks at the end of source pages that define
  * expected test outcomes per-site (working graph inclusion, filter states, link paths).
@@ -53,21 +53,35 @@ export interface HtmlRenderedLinks {
 
 export type PagespecFiltersSelected = Record<string, boolean>;
 
-export interface PagespecInWorkingGraph {
-  site: string;
+export interface PagespecCurationInWorkingGraph {
   isTracked: boolean;
   isInWorkingGraph: true;
   filtersSelected?: PagespecFiltersSelected;
   links?: PagespecLinks;
+}
+
+export interface PagespecCurationNotInWorkingGraph {
+  isTracked: boolean;
+  isInWorkingGraph: false;
+  frontierDepthOrNullForOrphan: number | null;
+}
+
+export type PagespecCuration = PagespecCurationInWorkingGraph | PagespecCurationNotInWorkingGraph;
+
+export interface PagespecGeneration {
   htmlRenderedLinks: HtmlRenderedLinks;
+}
+
+export interface PagespecInWorkingGraph {
+  site: string;
+  curation: PagespecCurationInWorkingGraph;
+  generation: PagespecGeneration;
 }
 
 export interface PagespecNotInWorkingGraph {
   site: string;
-  isTracked: boolean;
-  isInWorkingGraph: false;
-  frontierDepthOrNullForOrphan: number | null;
-  htmlRenderedLinks: HtmlRenderedLinks;
+  curation: PagespecCurationNotInWorkingGraph;
+  generation: PagespecGeneration;
 }
 
 export type PagespecEntry = PagespecInWorkingGraph | PagespecNotInWorkingGraph;
@@ -80,12 +94,12 @@ export interface PagespecsBlock {
  * Type guard to check if a pagespec entry indicates the page is in the working graph.
  */
 export function isPagespecInWorkingGraph(spec: PagespecEntry): spec is PagespecInWorkingGraph {
-  return spec.isInWorkingGraph === true;
+  return spec.curation.isInWorkingGraph === true;
 }
 
 /**
  * Type guard to check if a pagespec entry indicates the page is NOT in the working graph.
  */
 export function isPagespecNotInWorkingGraph(spec: PagespecEntry): spec is PagespecNotInWorkingGraph {
-  return spec.isInWorkingGraph === false;
+  return spec.curation.isInWorkingGraph === false;
 }

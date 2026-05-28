@@ -9,27 +9,31 @@ This content will be embedded in its entirety when transcluded using the full pa
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks: []
-      inlinks:
-        - linkPath: /t017/t017 ---- full page transclusion.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks:
-        - relativeLinkPath: t017 ---- full page transclusion.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: t017 ---- full page transclusion.html
-              embeddedLinks:
-                - linkName: "⤢"
-                  linkRelativePath: t017 ---- full page source.html
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /t017/t017 ---- full page transclusion.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: t017 ---- full page transclusion.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: t017 ---- full page transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- full page source.html
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

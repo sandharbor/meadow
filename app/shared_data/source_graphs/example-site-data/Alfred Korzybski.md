@@ -37,30 +37,32 @@ In what work did [[Alfred Korzybski]] argue that humans experience reality throu
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Alfred Korzybski.md
-          isInGraph: true
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Map is Not the Territory.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Alfred Korzybski.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Map is Not the Territory.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Alfred Korzybski.md
+            isInGraph: true
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Map is Not the Territory.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Alfred Korzybski.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Map is Not the Territory.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

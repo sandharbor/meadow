@@ -29,10 +29,12 @@ Plane crashes are vivid and heavily covered, making them easy to recall — so t
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: 1
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

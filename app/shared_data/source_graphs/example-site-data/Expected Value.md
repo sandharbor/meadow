@@ -29,28 +29,30 @@ If the magnitude of the outcome is large enough (catastrophic loss or enormous g
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Base Rates.md
-          isInGraph: true
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Expected Value.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Warren Buffett.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Expected Value.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Base Rates.md
+            isInGraph: true
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Expected Value.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Warren Buffett.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Expected Value.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

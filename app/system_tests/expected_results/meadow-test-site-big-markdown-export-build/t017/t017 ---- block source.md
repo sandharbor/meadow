@@ -15,31 +15,35 @@ And this is the final paragraph without a block identifier.
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks: []
-      inlinks:
-        - linkPath: /t017/t017 ---- block transclusion.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks:
-        - relativeLinkPath: t017 ---- block transclusion.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: t017 ---- block transclusion.html
-              embeddedLinks:
-                - linkName: "⤢"
-                  linkRelativePath: t017 ---- block source.html
-            - seeInContextLinkRelativePath: t017 ---- block transclusion.html
-              embeddedLinks:
-                - linkName: "⤢"
-                  linkRelativePath: t017 ---- block source.html
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /t017/t017 ---- block transclusion.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: t017 ---- block transclusion.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: t017 ---- block transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- block source.html
+              - seeInContextLinkRelativePath: t017 ---- block transclusion.html
+                embeddedLinks:
+                  - linkName: ⤢
+                    linkRelativePath: t017 ---- block source.html
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

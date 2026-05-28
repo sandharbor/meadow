@@ -33,118 +33,120 @@ You're accounting for the tails of the distribution — because probability esti
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Benjamin Graham.md
-          isInGraph: true
-        - linkPath: /Elon Musk.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Warren Buffett.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Benjamin Graham.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Elon Musk.md
-          isInGraph: true
-        - linkPath: /Expected Value.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Howard Marks.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Latticework of Mental Models.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Notable Mental Models.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Warren Buffett.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Warren Buffett.html
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Margin of Safety.html
-        - relativeLinkPath: Margin of Safety.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: Circle of Competence.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Circle of Competence.html
-              embeddedLinks: []
-        - relativeLinkPath: Howard Marks.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Howard Marks.html
-              embeddedLinks:
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-        - relativeLinkPath: Inversion.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Inversion.html
-              embeddedLinks: []
-        - relativeLinkPath: Latticework of Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Latticework of Mental Models.html
-              embeddedLinks:
-                - linkName: Mental Models Overview
-                  linkRelativePath: Mental Models Overview.html
-                - linkName: First Principles Thinking
-                  linkRelativePath: First Principles Thinking.html
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-        - relativeLinkPath: Margin of Safety.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Margin of Safety.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Margin of Safety.html
-              embeddedLinks: []
-        - relativeLinkPath: Mental Models Overview.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks:
-                - linkName: First Principles Thinking
-                  linkRelativePath: First Principles Thinking.html
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-        - relativeLinkPath: Notable Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Notable Mental Models.html
-              embeddedLinks: []
-        - relativeLinkPath: Probabilistic Thinking.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Probabilistic Thinking.html
-              embeddedLinks:
-                - linkName: Howard Marks
-                  linkRelativePath: Howard Marks.html
-        - relativeLinkPath: Warren Buffett.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Warren Buffett.html
-              embeddedLinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Benjamin Graham.md
+            isInGraph: true
+          - linkPath: /Elon Musk.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Warren Buffett.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Benjamin Graham.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Elon Musk.md
+            isInGraph: true
+          - linkPath: /Expected Value.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Howard Marks.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Notable Mental Models.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Warren Buffett.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Warren Buffett.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Margin of Safety.html
+          - relativeLinkPath: Margin of Safety.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: Circle of Competence.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Circle of Competence.html
+                embeddedLinks: []
+          - relativeLinkPath: Howard Marks.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Howard Marks.html
+                embeddedLinks:
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+          - relativeLinkPath: Inversion.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Inversion.html
+                embeddedLinks: []
+          - relativeLinkPath: Latticework of Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Latticework of Mental Models.html
+                embeddedLinks:
+                  - linkName: Mental Models Overview
+                    linkRelativePath: Mental Models Overview.html
+                  - linkName: First Principles Thinking
+                    linkRelativePath: First Principles Thinking.html
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+          - relativeLinkPath: Margin of Safety.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Margin of Safety.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Margin of Safety.html
+                embeddedLinks: []
+          - relativeLinkPath: Mental Models Overview.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks:
+                  - linkName: First Principles Thinking
+                    linkRelativePath: First Principles Thinking.html
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+          - relativeLinkPath: Notable Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Notable Mental Models.html
+                embeddedLinks: []
+          - relativeLinkPath: Probabilistic Thinking.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Probabilistic Thinking.html
+                embeddedLinks:
+                  - linkName: Howard Marks
+                    linkRelativePath: Howard Marks.html
+          - relativeLinkPath: Warren Buffett.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Warren Buffett.html
+                embeddedLinks: []
 ```

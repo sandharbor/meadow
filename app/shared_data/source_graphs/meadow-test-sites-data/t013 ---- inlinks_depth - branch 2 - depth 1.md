@@ -5,25 +5,29 @@ But it also points _out_ to [[t013 ---- inlinks_depth - branch 2 - depth 2 from 
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /t013 - inlinks_depth.md
-          isInGraph: true
-        - linkPath: /t013 ---- inlinks_depth - branch 2 - depth 2 from outlink.md
-          isInGraph: true
-      inlinks: []
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: t013 - inlinks_depth.html
-        - relativeLinkPath: t013 ---- inlinks_depth - branch 2 - depth 2 from outlink.html
-      footerSectionBacklinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t013 - inlinks_depth.md
+            isInGraph: true
+          - linkPath: /t013 ---- inlinks_depth - branch 2 - depth 2 from outlink.md
+            isInGraph: true
+        inlinks: []
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: t013 - inlinks_depth.html
+          - relativeLinkPath: t013 ---- inlinks_depth - branch 2 - depth 2 from outlink.html
+        footerSectionBacklinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

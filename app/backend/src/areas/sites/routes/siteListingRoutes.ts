@@ -26,7 +26,7 @@ import { AppConfigPaths } from '../../../../../shared_code/paths/appConfigPaths.
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../shared_code/utils/appConfigGitUtils.js';
 import { rankSourcePageCandidatesWithCount, recentSourcePageCandidatesWithCount } from '../../../../../shared_code/utils/sourcePageSearchUtils.js';
 import { generateSiteGuid, isValidSiteGuid } from '../../../../../shared_code/utils/siteGuidUtils.js';
-import { extractContentWithoutPagespecs } from '../../../../../shared_code/test/pagespecUtils.js';
+import { extractContentWithoutPagespecs } from '../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
 import { getConfigDirectory, getSitesDirectory, getSiteDirectory, getSiteConfigPath } from '../../../shared/site-config/siteConfigPaths.js';
 import { loadSiteConfig, updateSiteConfig, getGeneratedSiteVersionsWithFallback } from '../../../shared/utils/siteConfigUtils.js';

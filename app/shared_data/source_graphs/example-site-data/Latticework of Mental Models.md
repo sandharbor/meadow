@@ -34,97 +34,99 @@ It's only as strong as your genuine understanding of each model within it — be
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /First Principles Thinking.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Latticework of Mental Models.md
-          isInGraph: true
-        - linkPath: /Man with a Hammer.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /2026-02-10.md
-          isInGraph: true
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Latticework of Mental Models.md
-          isInGraph: true
-        - linkPath: /Man with a Hammer.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Man with a Hammer.html
-        - relativeLinkPath: Mental Models Overview.html
-        - relativeLinkPath: First Principles Thinking.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: Margin of Safety.html
-        - relativeLinkPath: Circle of Competence.html
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Latticework of Mental Models.html
-        - relativeLinkPath: Circle of Competence.html
-        - relativeLinkPath: Latticework of Mental Models.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: Charlie Munger.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Charlie Munger.html
-              embeddedLinks:
-                - linkName: Man with a Hammer
-                  linkRelativePath: Man with a Hammer.html
-            - seeInContextLinkRelativePath: Charlie Munger.html
-              embeddedLinks:
-                - linkName: Mental Models Overview
-                  linkRelativePath: Mental Models Overview.html
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-                - linkName: Warren Buffett
-                  linkRelativePath: Warren Buffett.html
-            - seeInContextLinkRelativePath: Charlie Munger.html
-              embeddedLinks:
-                - linkName: Charlie Munger
-                  linkRelativePath: Charlie Munger.html
-        - relativeLinkPath: Latticework of Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Latticework of Mental Models.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Latticework of Mental Models.html
-              embeddedLinks:
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-        - relativeLinkPath: Man with a Hammer.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Man with a Hammer.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Man with a Hammer.html
-              embeddedLinks:
-                - linkName: Charlie Munger
-                  linkRelativePath: Charlie Munger.html
-                - linkName: Man with a Hammer
-                  linkRelativePath: Man with a Hammer.html
-        - relativeLinkPath: Mental Models Overview.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks:
-                - linkName: Charlie Munger
-                  linkRelativePath: Charlie Munger.html
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /First Principles Thinking.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Man with a Hammer.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /2026-02-10.md
+            isInGraph: true
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Man with a Hammer.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Man with a Hammer.html
+          - relativeLinkPath: Mental Models Overview.html
+          - relativeLinkPath: First Principles Thinking.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: Margin of Safety.html
+          - relativeLinkPath: Circle of Competence.html
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Latticework of Mental Models.html
+          - relativeLinkPath: Circle of Competence.html
+          - relativeLinkPath: Latticework of Mental Models.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: Charlie Munger.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Charlie Munger.html
+                embeddedLinks:
+                  - linkName: Man with a Hammer
+                    linkRelativePath: Man with a Hammer.html
+              - seeInContextLinkRelativePath: Charlie Munger.html
+                embeddedLinks:
+                  - linkName: Mental Models Overview
+                    linkRelativePath: Mental Models Overview.html
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+                  - linkName: Warren Buffett
+                    linkRelativePath: Warren Buffett.html
+              - seeInContextLinkRelativePath: Charlie Munger.html
+                embeddedLinks:
+                  - linkName: Charlie Munger
+                    linkRelativePath: Charlie Munger.html
+          - relativeLinkPath: Latticework of Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Latticework of Mental Models.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Latticework of Mental Models.html
+                embeddedLinks:
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+          - relativeLinkPath: Man with a Hammer.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Man with a Hammer.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Man with a Hammer.html
+                embeddedLinks:
+                  - linkName: Charlie Munger
+                    linkRelativePath: Charlie Munger.html
+                  - linkName: Man with a Hammer
+                    linkRelativePath: Man with a Hammer.html
+          - relativeLinkPath: Mental Models Overview.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks:
+                  - linkName: Charlie Munger
+                    linkRelativePath: Charlie Munger.html
 ```

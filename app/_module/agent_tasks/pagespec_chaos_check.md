@@ -23,6 +23,30 @@ pagespecs are intended to **very carefully and precisely specify properties of
 pages within the fixture context in which they are used**. However, repeated
 discrepancies have been observed.
 
+Pagespec entries are organized by system area:
+
+```yaml
+pagespecs:
+  - site: meadow-test-site-big
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /some page.md
+            isInGraph: true
+        inlinks: []
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: some page.html
+        footerSectionBacklinks: []
+```
+
+The `curation` section describes tracked state, working graph membership,
+filters, frontier/orphan status, and graph links. The `generation` section
+describes rendered HTML expectations.
+
 These discrepancies appear to arise for several reasons:
 
 ### 1. Incorrect Specifications
@@ -103,6 +127,8 @@ for potential issues.
 Possible actions include:
 
 - Inspect a small section of pagespec logic.
+- Check whether curation validation and generation validation are covered in
+  their area-specific system tests.
 - Attempt minor code modifications.
 - Observe whether those modifications should logically cause a failure.
 - Run the tests and check whether the failure is actually detected.
@@ -114,6 +140,8 @@ Specific things to look for:
 - Conditions where validation appears to be happening but **the result is ignored**
 - Absent coverage specs like that _all_ fixtures are covered or that _all_ pages have specs
 - Type system being too lax and relying on other specs to catch errors
+- Curation checks accidentally reading generation fields, or generation checks
+  accidentally relying on curation validation to fail first
 
 The key question is:
 
@@ -146,7 +174,9 @@ Rename a key within a pagespec to test whether keys are strictly validated.
 **Behavior:**
 
 1. Select a pagespec.
-2. Modify the name of one of its keys.
+2. Modify the name of one of its keys. Prefer changing one nested key inside
+   either `curation` or `generation` rather than only changing the top-level
+   `site` key.
 3. Run the root-level checks.
 
 This tests whether pagespec keys are validated strictly or silently ignored.
@@ -161,7 +191,8 @@ Flip a boolean field in a pagespec to verify that mismatches are detected.
 **Behavior:**
 
 1. Pick a random page.
-2. Select a boolean value in its pagespec.
+2. Select a boolean value in its `curation` pagespec, such as `isTracked`,
+   `isInWorkingGraph`, `isInGraph`, or a `filtersSelected` value.
 3. Flip the value (`true → false` or `false → true`).
 4. Run the root-level checks.
 
@@ -178,7 +209,9 @@ Modify path definitions inside a pagespec.
 
 For a randomly selected page:
 
-- Change one of the paths specified in the pagespec
+- Change one of the paths specified in the pagespec. Include both curation
+  paths such as `curation.links.*.linkPath` and generation paths such as
+  `generation.htmlRenderedLinks.*.relativeLinkPath` in the random selection.
 - Remove an existing path
 - Add an additional path
 
@@ -197,20 +230,23 @@ Within a single page's pagespec, look for inconsistencies
 
 **Behavior:**
 
-For example, this was an issue we found at one point.  One of the inlink was to
-the "nested" one, but the backlink was to the "root" one:
+Compare the `curation` section and the `generation` section for one page. For
+example, this was an issue we found at one point. One curation inlink was to the
+"nested" one, but the generation backlink was to the "root" one:
 
 ```
     <snip>
-    links:
-      outlinks: []
-      inlinks:
-        - linkPath: /t002/t002 ---- points to nested dup.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks:
-        - relativeLinkPath: t002 ---- points to root dup.html
+    curation:
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /t002/t002 ---- points to nested dup.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: t002 ---- points to root dup.html
     <snip>
 ```
 
@@ -218,17 +254,19 @@ Or this one where the inlink was completely absent from the footerSectionBacklin
 
 ```
     <snip>
-    links:
-      outlinks: []
-      inlinks:
-        - linkPath: /t018 - tags.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: ../x-tagpages/tag--t018-unique-a.html
-        - relativeLinkPath: ../x-tagpages/tag--t018-unique-b.html
-        - relativeLinkPath: ../x-tagpages/tag--t018-unique-c.html
-      footerSectionBacklinks: []
+    curation:
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /t018 - tags.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../x-tagpages/tag--t018-unique-a.html
+          - relativeLinkPath: ../x-tagpages/tag--t018-unique-b.html
+          - relativeLinkPath: ../x-tagpages/tag--t018-unique-c.html
+        footerSectionBacklinks: []
     <snip>
 ```
 
@@ -237,13 +275,14 @@ Or this one where the inlink was completely absent from the footerSectionBacklin
 ## Task: `ALIGNMENT_WITH_RENDERED_HTML`
 
 **Short description:**  
-Within a single page's pagespec, look at the associated rendered HTML
+Within a single page's generation pagespec, look at the associated rendered HTML
 
 **Behavior:**
 
 Look at the system_tests/expected_results/ folder for the associated HTML
 
-Does the content of that HTML look like it aligns with the expectation set in the pagespec?
+Does the content of that HTML look like it aligns with the expectation set in
+`generation.htmlRenderedLinks`?
 
 For example, it is possible that the rendering skewed from the spec, even though parts of
 the spec are intended to test the HTML rendering.
@@ -272,6 +311,15 @@ checks **are not properly included in the root-level check script**.
 
 Running the root-level checks ensures we are testing the **same validation path
 used during normal development workflows**.
+
+When debugging a failure, targeted pagespec tests may be run first:
+
+```bash
+cd app/system_tests
+npx vitest run tests/pagespecs_general.test.ts tests/areas/site/curation/pagespecs_curation.test.ts tests/areas/site/generation/pagespecs_generation.test.ts
+```
+
+The final validation for a run must still be the root-level check.
 
 ---
 

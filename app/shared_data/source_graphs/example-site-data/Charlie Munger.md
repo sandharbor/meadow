@@ -34,157 +34,159 @@ How did [[Charlie Munger]] express the value of [[Inversion]] in a funny, morbid
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Latticework of Mental Models.md
-          isInGraph: true
-        - linkPath: /Man with a Hammer.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /Thoughts on Munger's Investment Portfolio.md
-          isInGraph: true
-        - linkPath: /Warren Buffett.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /2026-02-02.md
-          isInGraph: true
-        - linkPath: /2026-02-10.md
-          isInGraph: true
-        - linkPath: /Alfred Korzybski.md
-          isInGraph: true
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Cognitive Biases.md
-          isInGraph: true
-        - linkPath: /Confirmation Bias.md
-          isInGraph: false
-        - linkPath: /Expected Value.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Latticework of Mental Models.md
-          isInGraph: true
-        - linkPath: /Man with a Hammer.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Notable Mental Models.md
-          isInGraph: true
-        - linkPath: /Thoughts on Munger's Investment Portfolio.md
-          isInGraph: true
-        - linkPath: /Warren Buffett.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Latticework of Mental Models.html
-        - relativeLinkPath: Man with a Hammer.html
-        - relativeLinkPath: Latticework of Mental Models.html
-        - relativeLinkPath: Mental Models Overview.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Circle of Competence.html
-        - relativeLinkPath: Warren Buffett.html
-        - relativeLinkPath: Occam's Razor.html
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Latticework of Mental Models.html
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Man with a Hammer.html
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: Charlie Munger.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Charlie Munger.html
-              embeddedLinks:
-                - linkName: Latticework of Mental Models
-                  linkRelativePath: Latticework of Mental Models.html
-            - seeInContextLinkRelativePath: Charlie Munger.html
-              embeddedLinks:
-                - linkName: Man with a Hammer
-                  linkRelativePath: Man with a Hammer.html
-            - seeInContextLinkRelativePath: Charlie Munger.html
-              embeddedLinks:
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-        - relativeLinkPath: Circle of Competence.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Circle of Competence.html
-              embeddedLinks:
-                - linkName: Warren Buffett
-                  linkRelativePath: Warren Buffett.html
-            - seeInContextLinkRelativePath: Circle of Competence.html
-              embeddedLinks:
-                - linkName: Warren Buffett
-                  linkRelativePath: Warren Buffett.html
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-        - relativeLinkPath: Cognitive Biases.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Cognitive Biases.html
-              embeddedLinks:
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-            - seeInContextLinkRelativePath: Cognitive Biases.html
-              embeddedLinks: []
-        - relativeLinkPath: Inversion.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Inversion.html
-              embeddedLinks:
-                - linkName: Warren Buffett
-                  linkRelativePath: Warren Buffett.html
-        - relativeLinkPath: Latticework of Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Latticework of Mental Models.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Latticework of Mental Models.html
-              embeddedLinks: []
-        - relativeLinkPath: Man with a Hammer.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Man with a Hammer.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Man with a Hammer.html
-              embeddedLinks:
-                - linkName: Man with a Hammer
-                  linkRelativePath: Man with a Hammer.html
-                - linkName: Latticework of Mental Models
-                  linkRelativePath: Latticework of Mental Models.html
-        - relativeLinkPath: Mental Models Overview.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks:
-                - linkName: latticework of mental models
-                  linkRelativePath: Latticework of Mental Models.html
-        - relativeLinkPath: Notable Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Notable Mental Models.html
-              embeddedLinks:
-                - linkName: Warren Buffett
-                  linkRelativePath: Warren Buffett.html
-                - linkName: Howard Marks
-                  linkRelativePath: Howard Marks.html
-        - relativeLinkPath: Warren Buffett.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Warren Buffett.html
-              embeddedLinks:
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-                - linkName: Second Order Thinking
-                  linkRelativePath: Second Order Thinking.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Man with a Hammer.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /Thoughts on Munger's Investment Portfolio.md
+            isInGraph: true
+          - linkPath: /Warren Buffett.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /2026-02-02.md
+            isInGraph: true
+          - linkPath: /2026-02-10.md
+            isInGraph: true
+          - linkPath: /Alfred Korzybski.md
+            isInGraph: true
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Cognitive Biases.md
+            isInGraph: true
+          - linkPath: /Confirmation Bias.md
+            isInGraph: false
+          - linkPath: /Expected Value.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Man with a Hammer.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Notable Mental Models.md
+            isInGraph: true
+          - linkPath: /Thoughts on Munger's Investment Portfolio.md
+            isInGraph: true
+          - linkPath: /Warren Buffett.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Latticework of Mental Models.html
+          - relativeLinkPath: Man with a Hammer.html
+          - relativeLinkPath: Latticework of Mental Models.html
+          - relativeLinkPath: Mental Models Overview.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Circle of Competence.html
+          - relativeLinkPath: Warren Buffett.html
+          - relativeLinkPath: Occam's Razor.html
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Latticework of Mental Models.html
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Man with a Hammer.html
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: Charlie Munger.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Charlie Munger.html
+                embeddedLinks:
+                  - linkName: Latticework of Mental Models
+                    linkRelativePath: Latticework of Mental Models.html
+              - seeInContextLinkRelativePath: Charlie Munger.html
+                embeddedLinks:
+                  - linkName: Man with a Hammer
+                    linkRelativePath: Man with a Hammer.html
+              - seeInContextLinkRelativePath: Charlie Munger.html
+                embeddedLinks:
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+          - relativeLinkPath: Circle of Competence.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Circle of Competence.html
+                embeddedLinks:
+                  - linkName: Warren Buffett
+                    linkRelativePath: Warren Buffett.html
+              - seeInContextLinkRelativePath: Circle of Competence.html
+                embeddedLinks:
+                  - linkName: Warren Buffett
+                    linkRelativePath: Warren Buffett.html
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+          - relativeLinkPath: Cognitive Biases.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Cognitive Biases.html
+                embeddedLinks:
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+              - seeInContextLinkRelativePath: Cognitive Biases.html
+                embeddedLinks: []
+          - relativeLinkPath: Inversion.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Inversion.html
+                embeddedLinks:
+                  - linkName: Warren Buffett
+                    linkRelativePath: Warren Buffett.html
+          - relativeLinkPath: Latticework of Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Latticework of Mental Models.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Latticework of Mental Models.html
+                embeddedLinks: []
+          - relativeLinkPath: Man with a Hammer.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Man with a Hammer.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Man with a Hammer.html
+                embeddedLinks:
+                  - linkName: Man with a Hammer
+                    linkRelativePath: Man with a Hammer.html
+                  - linkName: Latticework of Mental Models
+                    linkRelativePath: Latticework of Mental Models.html
+          - relativeLinkPath: Mental Models Overview.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks:
+                  - linkName: latticework of mental models
+                    linkRelativePath: Latticework of Mental Models.html
+          - relativeLinkPath: Notable Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Notable Mental Models.html
+                embeddedLinks:
+                  - linkName: Warren Buffett
+                    linkRelativePath: Warren Buffett.html
+                  - linkName: Howard Marks
+                    linkRelativePath: Howard Marks.html
+          - relativeLinkPath: Warren Buffett.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Warren Buffett.html
+                embeddedLinks:
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+                  - linkName: Second Order Thinking
+                    linkRelativePath: Second Order Thinking.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
 ```

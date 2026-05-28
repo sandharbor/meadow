@@ -22,7 +22,7 @@ import type { LinkInfo, PageNameToPage } from './types.js';
 import { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
 import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
-import { extractContentWithoutPagespecs, hasPagespecsBlock } from '../../../../../../shared_code/test/pagespecUtils.js';
+import { extractContentWithoutPagespecs, hasPagespecsBlock } from '../../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { IMAGE_FILE_TYPES } from './constants.js';
 

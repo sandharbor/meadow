@@ -13,37 +13,41 @@ This tests full page, section, and block transclusion, as well as deep transclus
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /t017/t017 ---- full page transclusion.md
-          isInGraph: true
-        - linkPath: /t017/t017 ---- section transclusion.md
-          isInGraph: true
-        - linkPath: /t017/t017 ---- block transclusion.md
-          isInGraph: true
-        - linkPath: /t017/t017 ---- deep transclusion.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /main page.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: t017/t017 ---- full page transclusion.html
-        - relativeLinkPath: t017/t017 ---- section transclusion.html
-        - relativeLinkPath: t017/t017 ---- block transclusion.html
-        - relativeLinkPath: t017/t017 ---- deep transclusion.html
-      footerSectionBacklinks:
-        - relativeLinkPath: main page.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: main page.html
-              embeddedLinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t017/t017 ---- full page transclusion.md
+            isInGraph: true
+          - linkPath: /t017/t017 ---- section transclusion.md
+            isInGraph: true
+          - linkPath: /t017/t017 ---- block transclusion.md
+            isInGraph: true
+          - linkPath: /t017/t017 ---- deep transclusion.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /main page.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: t017/t017 ---- full page transclusion.html
+          - relativeLinkPath: t017/t017 ---- section transclusion.html
+          - relativeLinkPath: t017/t017 ---- block transclusion.html
+          - relativeLinkPath: t017/t017 ---- deep transclusion.html
+        footerSectionBacklinks:
+          - relativeLinkPath: main page.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: main page.html
+                embeddedLinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

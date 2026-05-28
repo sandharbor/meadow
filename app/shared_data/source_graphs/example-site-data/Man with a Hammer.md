@@ -29,64 +29,66 @@ Building a [[Latticework of Mental Models]] — deliberately collecting framewor
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Cognitive Biases.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Latticework of Mental Models.md
-          isInGraph: true
-        - linkPath: /Man with a Hammer.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Latticework of Mental Models.md
-          isInGraph: true
-        - linkPath: /Man with a Hammer.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Latticework of Mental Models.html
-        - relativeLinkPath: Circle of Competence.html
-        - relativeLinkPath: Cognitive Biases.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Man with a Hammer.html
-        - relativeLinkPath: Charlie Munger.html
-        - relativeLinkPath: Man with a Hammer.html
-        - relativeLinkPath: Latticework of Mental Models.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: Charlie Munger.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Charlie Munger.html
-              embeddedLinks:
-                - linkName: Latticework of Mental Models
-                  linkRelativePath: Latticework of Mental Models.html
-            - seeInContextLinkRelativePath: Charlie Munger.html
-              embeddedLinks:
-                - linkName: Charlie Munger
-                  linkRelativePath: Charlie Munger.html
-        - relativeLinkPath: Latticework of Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Latticework of Mental Models.html
-              embeddedLinks: []
-        - relativeLinkPath: Man with a Hammer.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Man with a Hammer.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Man with a Hammer.html
-              embeddedLinks:
-                - linkName: Charlie Munger
-                  linkRelativePath: Charlie Munger.html
-                - linkName: Latticework of Mental Models
-                  linkRelativePath: Latticework of Mental Models.html
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Cognitive Biases.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Man with a Hammer.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Man with a Hammer.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Latticework of Mental Models.html
+          - relativeLinkPath: Circle of Competence.html
+          - relativeLinkPath: Cognitive Biases.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Man with a Hammer.html
+          - relativeLinkPath: Charlie Munger.html
+          - relativeLinkPath: Man with a Hammer.html
+          - relativeLinkPath: Latticework of Mental Models.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: Charlie Munger.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Charlie Munger.html
+                embeddedLinks:
+                  - linkName: Latticework of Mental Models
+                    linkRelativePath: Latticework of Mental Models.html
+              - seeInContextLinkRelativePath: Charlie Munger.html
+                embeddedLinks:
+                  - linkName: Charlie Munger
+                    linkRelativePath: Charlie Munger.html
+          - relativeLinkPath: Latticework of Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Latticework of Mental Models.html
+                embeddedLinks: []
+          - relativeLinkPath: Man with a Hammer.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Man with a Hammer.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Man with a Hammer.html
+                embeddedLinks:
+                  - linkName: Charlie Munger
+                    linkRelativePath: Charlie Munger.html
+                  - linkName: Latticework of Mental Models
+                    linkRelativePath: Latticework of Mental Models.html
 ```

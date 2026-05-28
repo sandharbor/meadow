@@ -28,32 +28,34 @@ Inverting the problem gives you a second anchor point to triangulate from.
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /2026-02-02.md
-          isInGraph: true
-        - linkPath: /Anchoring Bias.md
-          isInGraph: true
-        - linkPath: /Base Rates.md
-          isInGraph: true
-        - linkPath: /Cognitive Biases.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /2026-02-02.md
-          isInGraph: true
-        - linkPath: /Anchoring Bias.md
-          isInGraph: true
-        - linkPath: /Base Rates.md
-          isInGraph: true
-        - linkPath: /Cognitive Biases.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /2026-02-02.md
+            isInGraph: true
+          - linkPath: /Anchoring Bias.md
+            isInGraph: true
+          - linkPath: /Base Rates.md
+            isInGraph: true
+          - linkPath: /Cognitive Biases.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /2026-02-02.md
+            isInGraph: true
+          - linkPath: /Anchoring Bias.md
+            isInGraph: true
+          - linkPath: /Base Rates.md
+            isInGraph: true
+          - linkPath: /Cognitive Biases.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

@@ -28,100 +28,102 @@ First order: lower rents for tenants. Second order: fewer apartments get built, 
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Howard Marks.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Second Order Thinking.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Elon Musk.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Howard Marks.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Notable Mental Models.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Second Order Thinking.md
-          isInGraph: true
-        - linkPath: /Warren Buffett.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Howard Marks.html
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Second Order Thinking.html
-        - relativeLinkPath: Second Order Thinking.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: Howard Marks.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Howard Marks.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Howard Marks.html
-              embeddedLinks:
-                - linkName: Howard Marks
-                  linkRelativePath: Howard Marks.html
-        - relativeLinkPath: Mental Models Overview.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks:
-                - linkName: First Principles Thinking
-                  linkRelativePath: First Principles Thinking.html
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-        - relativeLinkPath: Notable Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Notable Mental Models.html
-              embeddedLinks:
-                - linkName: First Principles Thinking
-                  linkRelativePath: First Principles Thinking.html
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-        - relativeLinkPath: Probabilistic Thinking.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Probabilistic Thinking.html
-              embeddedLinks:
-                - linkName: Inversion
-                  linkRelativePath: Inversion.html
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-        - relativeLinkPath: Second Order Thinking.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Second Order Thinking.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Second Order Thinking.html
-              embeddedLinks: []
-        - relativeLinkPath: Warren Buffett.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Warren Buffett.html
-              embeddedLinks:
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-                - linkName: Charlie Munger
-                  linkRelativePath: Charlie Munger.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-            - seeInContextLinkRelativePath: Warren Buffett.html
-              embeddedLinks:
-                - linkName: Warren Buffett
-                  linkRelativePath: Warren Buffett.html
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Howard Marks.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Second Order Thinking.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Elon Musk.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Howard Marks.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Notable Mental Models.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Second Order Thinking.md
+            isInGraph: true
+          - linkPath: /Warren Buffett.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Howard Marks.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Second Order Thinking.html
+          - relativeLinkPath: Second Order Thinking.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: Howard Marks.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Howard Marks.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Howard Marks.html
+                embeddedLinks:
+                  - linkName: Howard Marks
+                    linkRelativePath: Howard Marks.html
+          - relativeLinkPath: Mental Models Overview.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks:
+                  - linkName: First Principles Thinking
+                    linkRelativePath: First Principles Thinking.html
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+          - relativeLinkPath: Notable Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Notable Mental Models.html
+                embeddedLinks:
+                  - linkName: First Principles Thinking
+                    linkRelativePath: First Principles Thinking.html
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+          - relativeLinkPath: Probabilistic Thinking.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Probabilistic Thinking.html
+                embeddedLinks:
+                  - linkName: Inversion
+                    linkRelativePath: Inversion.html
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+          - relativeLinkPath: Second Order Thinking.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Second Order Thinking.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Second Order Thinking.html
+                embeddedLinks: []
+          - relativeLinkPath: Warren Buffett.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Warren Buffett.html
+                embeddedLinks:
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+                  - linkName: Charlie Munger
+                    linkRelativePath: Charlie Munger.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+              - seeInContextLinkRelativePath: Warren Buffett.html
+                embeddedLinks:
+                  - linkName: Warren Buffett
+                    linkRelativePath: Warren Buffett.html
 ```

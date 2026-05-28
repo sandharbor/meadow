@@ -34,94 +34,96 @@ Assuming confusion opens a door to resolution, while assuming malice escalates c
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Hanlon's Razor.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Razors.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Hanlon's Razor.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Notable Mental Models.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /Razors.md
-          isInGraph: true
-        - linkPath: /William of Ockham.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: Razors.html
-        - relativeLinkPath: Circle of Competence.html
-        - relativeLinkPath: Occam's Razor.html
-        - relativeLinkPath: Probabilistic Thinking.html
-        - relativeLinkPath: Inversion.html
-        - relativeLinkPath: Hanlon's Razor.html
-        - relativeLinkPath: Hanlon's Razor.html
-        - relativeLinkPath: Occam's Razor.html
-        - relativeLinkPath: Hanlon's Razor.html
-        - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
-      footerSectionBacklinks:
-        - relativeLinkPath: Hanlon's Razor.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Hanlon's Razor.html
-              embeddedLinks: []
-            - seeInContextLinkRelativePath: Hanlon's Razor.html
-              embeddedLinks:
-                - linkName: Occam's Razor
-                  linkRelativePath: Occam's Razor.html
-            - seeInContextLinkRelativePath: Hanlon's Razor.html
-              embeddedLinks: []
-        - relativeLinkPath: Inversion.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Inversion.html
-              embeddedLinks:
-                - linkName: First Principles Thinking
-                  linkRelativePath: First Principles Thinking.html
-                - linkName: Probabilistic Thinking
-                  linkRelativePath: Probabilistic Thinking.html
-        - relativeLinkPath: Mental Models Overview.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Mental Models Overview.html
-              embeddedLinks:
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-                - linkName: Occam's Razor
-                  linkRelativePath: Occam's Razor.html
-        - relativeLinkPath: Notable Mental Models.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Notable Mental Models.html
-              embeddedLinks:
-                - linkName: Circle of Competence
-                  linkRelativePath: Circle of Competence.html
-                - linkName: Razors
-                  linkRelativePath: Razors.html
-                - linkName: Occam's Razor
-                  linkRelativePath: Occam's Razor.html
-        - relativeLinkPath: Occam's Razor.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Occam's Razor.html
-              embeddedLinks: []
-        - relativeLinkPath: Razors.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: Razors.html
-              embeddedLinks:
-                - linkName: Occam's Razor
-                  linkRelativePath: Occam's Razor.html
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Hanlon's Razor.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Razors.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Hanlon's Razor.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Notable Mental Models.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /Razors.md
+            isInGraph: true
+          - linkPath: /William of Ockham.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Razors.html
+          - relativeLinkPath: Circle of Competence.html
+          - relativeLinkPath: Occam's Razor.html
+          - relativeLinkPath: Probabilistic Thinking.html
+          - relativeLinkPath: Inversion.html
+          - relativeLinkPath: Hanlon's Razor.html
+          - relativeLinkPath: Hanlon's Razor.html
+          - relativeLinkPath: Occam's Razor.html
+          - relativeLinkPath: Hanlon's Razor.html
+          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+        footerSectionBacklinks:
+          - relativeLinkPath: Hanlon's Razor.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Hanlon's Razor.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: Hanlon's Razor.html
+                embeddedLinks:
+                  - linkName: Occam's Razor
+                    linkRelativePath: Occam's Razor.html
+              - seeInContextLinkRelativePath: Hanlon's Razor.html
+                embeddedLinks: []
+          - relativeLinkPath: Inversion.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Inversion.html
+                embeddedLinks:
+                  - linkName: First Principles Thinking
+                    linkRelativePath: First Principles Thinking.html
+                  - linkName: Probabilistic Thinking
+                    linkRelativePath: Probabilistic Thinking.html
+          - relativeLinkPath: Mental Models Overview.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Mental Models Overview.html
+                embeddedLinks:
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+                  - linkName: Occam's Razor
+                    linkRelativePath: Occam's Razor.html
+          - relativeLinkPath: Notable Mental Models.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Notable Mental Models.html
+                embeddedLinks:
+                  - linkName: Circle of Competence
+                    linkRelativePath: Circle of Competence.html
+                  - linkName: Razors
+                    linkRelativePath: Razors.html
+                  - linkName: Occam's Razor
+                    linkRelativePath: Occam's Razor.html
+          - relativeLinkPath: Occam's Razor.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Occam's Razor.html
+                embeddedLinks: []
+          - relativeLinkPath: Razors.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Razors.html
+                embeddedLinks:
+                  - linkName: Occam's Razor
+                    linkRelativePath: Occam's Razor.html
 ```

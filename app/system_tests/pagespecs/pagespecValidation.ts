@@ -23,8 +23,8 @@ import {
   PagespecsBlock,
   isPagespecNotInWorkingGraph,
   isPagespecInWorkingGraph,
-} from '../types/test/pagespec.js';
-import { IMAGE_EXTENSIONS } from '../utils/fileTypeUtils.js';
+} from './types.js';
+import { IMAGE_EXTENSIONS } from '../../shared_code/utils/fileTypeUtils.js';
 
 /**
  * Valid file extensions for link paths.
@@ -487,6 +487,7 @@ export function validatePagespecEntry(
 ): ValidationError[] {
   const errors: ValidationError[] = [];
   const { requireLinksWhenInWorkingGraph = true, requireHtmlRenderedLinks = true } = options;
+  const { generation } = spec;
 
   // Check that the site exists
   if (!availableSites.has(spec.site)) {
@@ -500,7 +501,7 @@ export function validatePagespecEntry(
 
   // If not in working graph, frontierDepthOrNullForOrphan must be present
   if (isPagespecNotInWorkingGraph(spec)) {
-    if (spec.frontierDepthOrNullForOrphan === undefined) {
+    if (spec.curation.frontierDepthOrNullForOrphan === undefined) {
       errors.push({
         message: `When isInWorkingGraph is false, frontierDepthOrNullForOrphan must be specified`,
         pageTitle,
@@ -509,9 +510,11 @@ export function validatePagespecEntry(
       });
     }
   } else {
+    const { curation } = spec;
+
     // Page is in working graph - validate filter IDs if present
-    if (spec.filtersSelected) {
-      for (const filterId of Object.keys(spec.filtersSelected)) {
+    if (curation.filtersSelected) {
+      for (const filterId of Object.keys(curation.filtersSelected)) {
         if (!isValidFilterId(filterId)) {
           errors.push({
             message: `Invalid filter ID "${filterId}". Must be a built-in filter (${BUILTIN_FILTER_IDS.join(', ')}) or match pattern "custom-{id}"`,
@@ -525,7 +528,7 @@ export function validatePagespecEntry(
 
     // Require links section when isInWorkingGraph is true (if option enabled)
     if (requireLinksWhenInWorkingGraph && isPagespecInWorkingGraph(spec)) {
-      if (!spec.links) {
+      if (!curation.links) {
         errors.push({
           message: `When isInWorkingGraph is true, links section must be specified`,
           pageTitle,
@@ -534,15 +537,14 @@ export function validatePagespecEntry(
         });
       } else {
         // Validate the links section structure
-        errors.push(...validateLinksSection(spec.links, pageTitle, spec.site));
+        errors.push(...validateLinksSection(curation.links, pageTitle, spec.site));
       }
     }
   }
 
   // Validate htmlRenderedLinks on all entries (both in and not-in working graph)
   if (requireHtmlRenderedLinks) {
-    const specAny = spec as unknown as Record<string, unknown>;
-    if (specAny.htmlRenderedLinks === undefined) {
+    if (generation.htmlRenderedLinks === undefined) {
       errors.push({
         message: `htmlRenderedLinks must be specified`,
         pageTitle,
@@ -550,7 +552,7 @@ export function validatePagespecEntry(
         field: 'htmlRenderedLinks',
       });
     } else {
-      errors.push(...validateHtmlRenderedLinks(specAny.htmlRenderedLinks, pageTitle, spec.site));
+      errors.push(...validateHtmlRenderedLinks(generation.htmlRenderedLinks, pageTitle, spec.site));
     }
   }
 
@@ -658,36 +660,75 @@ export function validatePagespecsBlockStructure(
       });
     }
 
-    if (typeof entry.isTracked !== 'boolean') {
+    if (!entry.curation || typeof entry.curation !== 'object') {
       errors.push({
-        message: `Pagespec entry ${i} must have an "isTracked" boolean`,
+        message: `Pagespec entry ${i} must have a "curation" object`,
         pageTitle,
       });
     }
 
-    if (typeof entry.isInWorkingGraph !== 'boolean') {
+    if (!entry.generation || typeof entry.generation !== 'object') {
       errors.push({
-        message: `Pagespec entry ${i} must have an "isInWorkingGraph" boolean`,
+        message: `Pagespec entry ${i} must have a "generation" object`,
         pageTitle,
       });
     }
 
     // Validate that no unknown keys are present
-    const allowedKeys = new Set([
-      'site',
-      'isTracked',
-      'isInWorkingGraph',
-      'filtersSelected',
-      'links',
-      'htmlRenderedLinks',
-      'frontierDepthOrNullForOrphan',
-    ]);
+    const allowedKeys = new Set(['site', 'curation', 'generation']);
     for (const key of Object.keys(entry)) {
       if (!allowedKeys.has(key)) {
         errors.push({
           message: `Pagespec entry ${i} has unknown key "${key}"`,
           pageTitle,
         });
+      }
+    }
+
+    if (entry.curation && typeof entry.curation === 'object') {
+      const curation = entry.curation as Record<string, unknown>;
+
+      if (typeof curation.isTracked !== 'boolean') {
+        errors.push({
+          message: `Pagespec entry ${i}.curation must have an "isTracked" boolean`,
+          pageTitle,
+        });
+      }
+
+      if (typeof curation.isInWorkingGraph !== 'boolean') {
+        errors.push({
+          message: `Pagespec entry ${i}.curation must have an "isInWorkingGraph" boolean`,
+          pageTitle,
+        });
+      }
+
+      const allowedCurationKeys = new Set([
+        'isTracked',
+        'isInWorkingGraph',
+        'filtersSelected',
+        'links',
+        'frontierDepthOrNullForOrphan',
+      ]);
+      for (const key of Object.keys(curation)) {
+        if (!allowedCurationKeys.has(key)) {
+          errors.push({
+            message: `Pagespec entry ${i}.curation has unknown key "${key}"`,
+            pageTitle,
+          });
+        }
+      }
+    }
+
+    if (entry.generation && typeof entry.generation === 'object') {
+      const generation = entry.generation as Record<string, unknown>;
+      const allowedGenerationKeys = new Set(['htmlRenderedLinks']);
+      for (const key of Object.keys(generation)) {
+        if (!allowedGenerationKeys.has(key)) {
+          errors.push({
+            message: `Pagespec entry ${i}.generation has unknown key "${key}"`,
+            pageTitle,
+          });
+        }
       }
     }
   }

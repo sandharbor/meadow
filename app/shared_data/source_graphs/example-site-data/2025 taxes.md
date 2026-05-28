@@ -8,16 +8,18 @@ Tax preparation notes for 2025 filing year.
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks: []
-      inlinks:
-        - linkPath: /2026-02-02.md
-          isInGraph: true
-        - linkPath: /2026-02-10.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /2026-02-02.md
+            isInGraph: true
+          - linkPath: /2026-02-10.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

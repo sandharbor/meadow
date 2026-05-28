@@ -30,34 +30,36 @@ Instead of asking "will this stock go up?", he asked "what could go wrong, and a
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Benjamin Graham.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Map is Not the Territory.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Warren Buffett.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Benjamin Graham.md
-          isInGraph: true
-        - linkPath: /Howard Marks.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Warren Buffett.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Benjamin Graham.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Map is Not the Territory.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Warren Buffett.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Benjamin Graham.md
+            isInGraph: true
+          - linkPath: /Howard Marks.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Warren Buffett.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

@@ -19,8 +19,8 @@ limitations under the License.
  * Validates that pagespec link specifications match actual working graph links.
  */
 
-import type { PagespecLinkSpec, PagespecLinks } from '../types/test/pagespec.js';
-import { IMAGE_EXTENSIONS } from '../utils/fileTypeUtils.js';
+import type { PagespecLinkSpec, PagespecLinks } from './types.js';
+import { IMAGE_EXTENSIONS } from '../../shared_code/utils/fileTypeUtils.js';
 
 /**
  * Result of a link check operation.

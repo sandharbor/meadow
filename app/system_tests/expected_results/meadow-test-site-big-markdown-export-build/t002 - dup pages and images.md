@@ -34,52 +34,56 @@ The purpose of this test is to ensure that duplicate image paths are correctly r
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /t002/t002 ---- points to root dup.md
-          isInGraph: true
-        - linkPath: /t002/t002 ---- points to nested dup.md
-          isInGraph: true
-        - linkPath: /t002/t002 ---- points to extra nested dup.md
-          isInGraph: true
-        - linkPath: /t002/t002 ---- points to root png dup.md
-          isInGraph: true
-        - linkPath: /t002/t002 ---- points to nested png dup.md
-          isInGraph: true
-        - linkPath: /t002 ---- points to png dup 2 with no path from root.md
-          isInGraph: true
-        - linkPath: /t002/t002 ---- points to png dup 2 with no path from t002.md
-          isInGraph: true
-        - linkPath: /t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.md
-          isInGraph: true
-        - linkPath: /t002 - second directory/t002 ---- points to png dup 2 with no path from second directory.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /main page.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: t002/t002 ---- points to root dup.html
-        - relativeLinkPath: t002/t002 ---- points to nested dup.html
-        - relativeLinkPath: t002/t002 ---- points to extra nested dup.html
-        - relativeLinkPath: t002/t002 ---- points to root png dup.html
-        - relativeLinkPath: t002/t002 ---- points to nested png dup.html
-        - relativeLinkPath: t002 ---- points to png dup 2 with no path from root.html
-        - relativeLinkPath: t002/t002 ---- points to png dup 2 with no path from t002.html
-        - relativeLinkPath: t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.html
-        - relativeLinkPath: t002 - second directory/t002 ---- points to png dup 2 with no path from second directory.html
-      footerSectionBacklinks:
-        - relativeLinkPath: main page.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: main page.html
-              embeddedLinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t002/t002 ---- points to root dup.md
+            isInGraph: true
+          - linkPath: /t002/t002 ---- points to nested dup.md
+            isInGraph: true
+          - linkPath: /t002/t002 ---- points to extra nested dup.md
+            isInGraph: true
+          - linkPath: /t002/t002 ---- points to root png dup.md
+            isInGraph: true
+          - linkPath: /t002/t002 ---- points to nested png dup.md
+            isInGraph: true
+          - linkPath: /t002 ---- points to png dup 2 with no path from root.md
+            isInGraph: true
+          - linkPath: /t002/t002 ---- points to png dup 2 with no path from t002.md
+            isInGraph: true
+          - linkPath: /t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.md
+            isInGraph: true
+          - linkPath: /t002 - second directory/t002 ---- points to png dup 2 with no path from second directory.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /main page.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: t002/t002 ---- points to root dup.html
+          - relativeLinkPath: t002/t002 ---- points to nested dup.html
+          - relativeLinkPath: t002/t002 ---- points to extra nested dup.html
+          - relativeLinkPath: t002/t002 ---- points to root png dup.html
+          - relativeLinkPath: t002/t002 ---- points to nested png dup.html
+          - relativeLinkPath: t002 ---- points to png dup 2 with no path from root.html
+          - relativeLinkPath: t002/t002 ---- points to png dup 2 with no path from t002.html
+          - relativeLinkPath: t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.html
+          - relativeLinkPath: t002 - second directory/t002 ---- points to png dup 2 with no path from second directory.html
+        footerSectionBacklinks:
+          - relativeLinkPath: main page.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: main page.html
+                embeddedLinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

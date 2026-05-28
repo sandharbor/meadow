@@ -24,7 +24,7 @@ import { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { logSiteDebug, logSiteWarn } from '../../../../shared/utils/logging/siteLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import { extractContentWithoutPagespecs } from '../../../../../../shared_code/test/pagespecUtils.js';
+import { extractContentWithoutPagespecs } from '../../../../../../shared_code/utils/pagespecBlockUtils.js';
 
 export function normalizePageTitle(pageTitle: string, siteConfig: SiteConfig, siteSlug?: string): string {
   if (siteSlug) {

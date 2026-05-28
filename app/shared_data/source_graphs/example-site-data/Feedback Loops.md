@@ -34,42 +34,44 @@ A few worried depositors cause more worry, which accelerates withdrawals, which 
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Alfred Korzybski.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Map is Not the Territory.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Second Order Thinking.md
-          isInGraph: true
-        - linkPath: /images/Feedback Loop Diagram.svg
-          isInGraph: true
-      inlinks:
-        - linkPath: /Alfred Korzybski.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Elon Musk.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Map is Not the Territory.md
-          isInGraph: true
-        - linkPath: /Margin of Safety.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Second Order Thinking.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Alfred Korzybski.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Map is Not the Territory.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Second Order Thinking.md
+            isInGraph: true
+          - linkPath: /images/Feedback Loop Diagram.svg
+            isInGraph: true
+        inlinks:
+          - linkPath: /Alfred Korzybski.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Elon Musk.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Map is Not the Territory.md
+            isInGraph: true
+          - linkPath: /Margin of Safety.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Second Order Thinking.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

@@ -27,40 +27,42 @@ Who coined the phrase "the map is not the territory"?
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Alfred Korzybski.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Map is Not the Territory.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Alfred Korzybski.md
-          isInGraph: true
-        - linkPath: /Availability Bias.md
-          isInGraph: false
-        - linkPath: /Benjamin Graham.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-        - linkPath: /Feedback Loops.md
-          isInGraph: true
-        - linkPath: /Map is Not the Territory.md
-          isInGraph: true
-        - linkPath: /Mental Models Overview.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /William of Ockham.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Alfred Korzybski.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Map is Not the Territory.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Alfred Korzybski.md
+            isInGraph: true
+          - linkPath: /Availability Bias.md
+            isInGraph: false
+          - linkPath: /Benjamin Graham.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+          - linkPath: /Feedback Loops.md
+            isInGraph: true
+          - linkPath: /Map is Not the Territory.md
+            isInGraph: true
+          - linkPath: /Mental Models Overview.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /William of Ockham.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

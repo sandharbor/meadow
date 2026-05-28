@@ -30,28 +30,30 @@ It moved from a tool for theological and philosophical debate to a cornerstone o
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /First Principles Thinking.md
-          isInGraph: true
-        - linkPath: /Hanlon's Razor.md
-          isInGraph: true
-        - linkPath: /Map is Not the Territory.md
-          isInGraph: true
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /William of Ockham.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Occam's Razor.md
-          isInGraph: true
-        - linkPath: /Razors.md
-          isInGraph: true
-        - linkPath: /William of Ockham.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /First Principles Thinking.md
+            isInGraph: true
+          - linkPath: /Hanlon's Razor.md
+            isInGraph: true
+          - linkPath: /Map is Not the Territory.md
+            isInGraph: true
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /William of Ockham.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Occam's Razor.md
+            isInGraph: true
+          - linkPath: /Razors.md
+            isInGraph: true
+          - linkPath: /William of Ockham.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

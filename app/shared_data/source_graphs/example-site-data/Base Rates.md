@@ -27,38 +27,40 @@ What should you ask *before* evaluating the specifics of a plan, according to [[
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Anchoring Bias.md
-          isInGraph: true
-        - linkPath: /Base Rates.md
-          isInGraph: true
-        - linkPath: /Cognitive Biases.md
-          isInGraph: true
-        - linkPath: /Inversion.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Razors.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Anchoring Bias.md
-          isInGraph: true
-        - linkPath: /Availability Bias.md
-          isInGraph: false
-        - linkPath: /Base Rates.md
-          isInGraph: true
-        - linkPath: /Expected Value.md
-          isInGraph: true
-        - linkPath: /Probabilistic Thinking.md
-          isInGraph: true
-        - linkPath: /Razors.md
-          isInGraph: true
-        - linkPath: /Survivorship Bias.md
-          isInGraph: false
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Anchoring Bias.md
+            isInGraph: true
+          - linkPath: /Base Rates.md
+            isInGraph: true
+          - linkPath: /Cognitive Biases.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Razors.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Anchoring Bias.md
+            isInGraph: true
+          - linkPath: /Availability Bias.md
+            isInGraph: false
+          - linkPath: /Base Rates.md
+            isInGraph: true
+          - linkPath: /Expected Value.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+          - linkPath: /Razors.md
+            isInGraph: true
+          - linkPath: /Survivorship Bias.md
+            isInGraph: false
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

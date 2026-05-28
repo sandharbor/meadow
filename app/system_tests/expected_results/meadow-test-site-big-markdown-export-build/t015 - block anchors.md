@@ -24,33 +24,37 @@ Here's a block that points to the second page with this link [[t015 ---- page 2 
 ```yaml
 pagespecs:
   - site: meadow-test-site-big
-    isTracked: true
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /t015 ---- page 1 with backlinks to block anchors.md
-          isInGraph: true
-        - linkPath: /t015 ---- page 2 with backlinks to block anchors.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /main page.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks:
-        - relativeLinkPath: t015 ---- page 1 with backlinks to block anchors.html
-        - relativeLinkPath: t015 ---- page 1 with backlinks to block anchors.html
-        - relativeLinkPath: t015 ---- page 1 with backlinks to block anchors.html
-        - relativeLinkPath: t015 ---- page 2 with backlinks to block anchors.html
-      footerSectionBacklinks:
-        - relativeLinkPath: main page.html
-          backlinkContexts:
-            - seeInContextLinkRelativePath: main page.html
-              embeddedLinks: []
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t015 ---- page 1 with backlinks to block anchors.md
+            isInGraph: true
+          - linkPath: /t015 ---- page 2 with backlinks to block anchors.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /main page.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: t015 ---- page 1 with backlinks to block anchors.html
+          - relativeLinkPath: t015 ---- page 1 with backlinks to block anchors.html
+          - relativeLinkPath: t015 ---- page 1 with backlinks to block anchors.html
+          - relativeLinkPath: t015 ---- page 2 with backlinks to block anchors.html
+        footerSectionBacklinks:
+          - relativeLinkPath: main page.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: main page.html
+                embeddedLinks: []
   - site: meadow-test-site-small
-    isTracked: false
-    isInWorkingGraph: false
-    frontierDepthOrNullForOrphan: null
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```

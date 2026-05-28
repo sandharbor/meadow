@@ -31,18 +31,20 @@ It's far more concentrated — he genuinely practiced what he preached about con
 ```yaml
 pagespecs:
   - site: example-site
-    isTracked: false
-    isInWorkingGraph: true
-    links:
-      outlinks:
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-        - linkPath: /Circle of Competence.md
-          isInGraph: true
-      inlinks:
-        - linkPath: /Charlie Munger.md
-          isInGraph: true
-    htmlRenderedLinks:
-      mainSectionLinks: []
-      footerSectionBacklinks: []
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Circle of Competence.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
 ```
