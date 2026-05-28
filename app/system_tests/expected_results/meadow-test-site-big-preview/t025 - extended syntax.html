@@ -288,11 +288,42 @@
 <p>Block math:
 <a id="block-4f8633e" class="block-anchor"></a></p>
 <span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mrow><mo>−</mo><mi>b</mi><mo>±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo>−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}</annotation></semantics></math></span><p><a id="block-6a5676a" class="block-anchor"></a></p>
-<p>LaTeX inside code blocks should not be transformed:
+<p>MathJax-style inline math: <span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>a</mi><mn>2</mn></msup><mo>+</mo><msup><mi>b</mi><mn>2</mn></msup><mo>=</mo><msup><mi>c</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">a^2 + b^2 = c^2</annotation></semantics></math></span>
 <a id="block-6ab7208" class="block-anchor"></a></p>
+<p>MathJax-style display math:
+<a id="block-00a8faa" class="block-anchor"></a></p>
+<span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msubsup><mo>∫</mo><mn>0</mn><mn>1</mn></msubsup><msup><mi>x</mi><mn>2</mn></msup><mi>d</mi><mi>x</mi><mo>=</mo><mfrac><mn>1</mn><mn>3</mn></mfrac></mrow><annotation encoding="application/x-tex">\int_0^1 x^2 dx = \frac{1}{3}</annotation></semantics></math></span><p><a id="block-1a51b60" class="block-anchor"></a></p>
+<p>MathJax-style complex display math:
+<a id="block-b15ae68" class="block-anchor"></a></p>
+<span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mtable rowspacing="0.25em" columnalign="right left" columnspacing="0em"><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mi mathvariant="normal">∇</mi><mo>⋅</mo><mover accent="true"><mi>E</mi><mo>⃗</mo></mover></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mo>=</mo><mfrac><mi>ρ</mi><msub><mi>ε</mi><mn>0</mn></msub></mfrac></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><msubsup><mo>∫</mo><mn>0</mn><mi mathvariant="normal">∞</mi></msubsup><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>x</mi><mn>2</mn></msup></mrow></msup><mtext> </mtext><mi>d</mi><mi>x</mi></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mo>=</mo><mfrac><msqrt><mi>π</mi></msqrt><mn>2</mn></mfrac></mrow></mstyle></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{aligned}
+\nabla \cdot \vec{E} &amp;= \frac{\rho}{\varepsilon_0} \\
+\int_0^\infty e^{-x^2}\,dx &amp;= \frac{\sqrt{\pi}}{2}
+\end{aligned}</annotation></semantics></math></span><p><a id="block-0aaff0b" class="block-anchor"></a></p>
+<p>MathJax-style cases:
+<a id="block-291709e" class="block-anchor"></a></p>
+<span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>f</mi><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mrow><mo fence="true">{</mo><mtable rowspacing="0.36em" columnalign="left left" columnspacing="1em"><mtr><mtd><mstyle scriptlevel="0" displaystyle="false"><msup><mi>x</mi><mn>2</mn></msup></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="false"><mrow><mi>x</mi><mo>≥</mo><mn>0</mn></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="false"><mrow><mo>−</mo><mi>x</mi></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="false"><mrow><mi>x</mi><mo>&lt;</mo><mn>0</mn></mrow></mstyle></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">f(x)=\begin{cases}
+x^2 &amp; x \ge 0 \\
+-x &amp; x &lt; 0
+\end{cases}</annotation></semantics></math></span><p><a id="block-00d4eb2" class="block-anchor"></a></p>
+<p>MathJax-style matrix and macro:
+<a id="block-7836406" class="block-anchor"></a></p>
+<span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>A</mi><mo>=</mo><mrow><mo fence="true">(</mo><mtable rowspacing="0.16em" columnalign="center center" columnspacing="1em"><mtr><mtd><mstyle scriptlevel="0" displaystyle="false"><mn>1</mn></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="false"><mn>2</mn></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="false"><mn>3</mn></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="false"><mn>4</mn></mstyle></mtd></mtr></mtable><mo fence="true">)</mo></mrow><mo separator="true">,</mo><mspace width="1em"/><mi>x</mi><mo>∈</mo><msup><mi mathvariant="double-struck">R</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\newcommand{\RR}{\mathbb{R}}
+A = \begin{pmatrix}1 &amp; 2 \\ 3 &amp; 4\end{pmatrix},\quad x \in \RR^2</annotation></semantics></math></span><p><a id="block-1d48d45" class="block-anchor"></a></p>
+<p>MathJax-style chemistry via mhchem:
+<a id="block-ba57b71" class="block-anchor"></a></p>
+<span class="katex"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mrow><mi mathvariant="normal">S</mi><mi mathvariant="normal">O</mi></mrow><msub><mpadded width="0px"><mphantom><mi>X</mi></mphantom></mpadded><mpadded height="0px"><mn>4</mn></mpadded></msub><msup><mpadded width="0px"><mphantom><mi>X</mi></mphantom></mpadded><mrow><mn>2</mn><mo>−</mo></mrow></msup><mrow></mrow><mo>+</mo><mrow></mrow><mrow><mi mathvariant="normal">B</mi><mi mathvariant="normal">a</mi></mrow><msup><mpadded width="0px"><mphantom><mi>X</mi></mphantom></mpadded><mrow><mn>2</mn><mo>+</mo></mrow></msup><mover><mo stretchy="true" minsize="3.0em">→</mo><mpadded width="+0.6em" lspace="0.3em"><mrow></mrow></mpadded></mover><mrow><mi mathvariant="normal">B</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">S</mi><mi mathvariant="normal">O</mi></mrow><msub><mpadded width="0px"><mphantom><mi>X</mi></mphantom></mpadded><mpadded height="0px"><mn>4</mn></mpadded></msub><mo>↓</mo><mrow></mrow></mrow><annotation encoding="application/x-tex">\ce{SO4^2- + Ba^2+ -&gt; BaSO4 v}</annotation></semantics></math></span><p><a id="block-a4c8fd5" class="block-anchor"></a></p>
+<p>MathJax-style delimiters inside code blocks should not be transformed:
+<a id="block-a48dda4" class="block-anchor"></a></p>
+<pre><code class="hljs language-text">\(a^2\) and \[\frac{1}{2}\]
+</code></pre>
+<p><a id="block-dff5550" class="block-anchor"></a></p>
+<p>Inline code too: <code class="inline-code">\(a^2 + b^2\)</code>
+<a id="block-358ad9c" class="block-anchor"></a></p>
+<p>LaTeX inside code blocks should not be transformed:
+<a id="block-535a3e1" class="block-anchor"></a></p>
 <pre><code class="hljs language-latex"><span class="hljs-built_in">$</span>E = mc<span class="hljs-built_in">^</span>2<span class="hljs-built_in">$</span> and <span class="hljs-built_in">$</span><span class="hljs-built_in">$</span><span class="hljs-keyword">\frac</span>{1}{2}<span class="hljs-built_in">$</span><span class="hljs-built_in">$</span>
 </code></pre>
-<p><a id="block-00a8faa" class="block-anchor"></a></p>
+<p><a id="block-9e8a7c1" class="block-anchor"></a></p>
 <p>Inline code too: <code class="inline-code">$E = mc^2$</code>
 <a id="block-1579d11" class="block-anchor"></a></p>
 <h3>Mermaid Diagram</h3>

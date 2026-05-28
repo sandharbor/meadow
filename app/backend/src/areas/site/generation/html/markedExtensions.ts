@@ -23,6 +23,7 @@ limitations under the License.
 
 import type { MarkedExtension, Token } from 'marked';
 import katex from 'katex';
+import 'katex/contrib/mhchem';
 
 interface SimpleToken {
   type: string;
@@ -239,8 +240,20 @@ const callout: MarkedExtension = {
   ]
 };
 
+function renderMathToHtml(text: string, displayMode: boolean, fallbackTag: 'code' | 'pre'): string {
+  try {
+    return katex.renderToString(text.trim(), { displayMode, output: 'mathml', throwOnError: true });
+  } catch {
+    const escaped = escapeInline(text);
+    if (fallbackTag === 'pre') {
+      return `<pre><code>${escaped}</code></pre>`;
+    }
+    return `<code>${escaped}</code>`;
+  }
+}
+
 // Math (LaTeX) support via KaTeX, rendered to MathML for zero-CSS rendering.
-// Inline: $expr$ — Block: $$expr$$
+// Inline: $expr$ or \(expr\) — Block: $$expr$$ or \[expr\]
 const mathBlock: MarkedExtension = {
   extensions: [
     {
@@ -259,11 +272,31 @@ const mathBlock: MarkedExtension = {
         };
       },
       renderer(token) {
-        try {
-          return katex.renderToString(token.text, { displayMode: true, output: 'mathml', throwOnError: false });
-        } catch {
-          return `<pre><code>${escapeInline(token.text)}</code></pre>`;
-        }
+        return renderMathToHtml(token.text, true, 'pre');
+      }
+    }
+  ]
+};
+
+const mathBracketBlock: MarkedExtension = {
+  extensions: [
+    {
+      name: 'mathBracketBlock',
+      level: 'block',
+      start(src: string) {
+        return src.indexOf('\\[');
+      },
+      tokenizer(src: string) {
+        const match = /^\\\[([\s\S]+?)\\\]/.exec(src);
+        if (!match) return undefined;
+        return {
+          type: 'mathBracketBlock',
+          raw: match[0],
+          text: match[1].trim(),
+        };
+      },
+      renderer(token) {
+        return renderMathToHtml(token.text, true, 'pre');
       }
     }
   ]
@@ -288,11 +321,31 @@ const mathInline: MarkedExtension = {
         };
       },
       renderer(token) {
-        try {
-          return katex.renderToString(token.text, { displayMode: false, output: 'mathml', throwOnError: false });
-        } catch {
-          return `<code>${escapeInline(token.text)}</code>`;
-        }
+        return renderMathToHtml(token.text, false, 'code');
+      }
+    }
+  ]
+};
+
+const mathParenInline: MarkedExtension = {
+  extensions: [
+    {
+      name: 'mathParenInline',
+      level: 'inline',
+      start(src: string) {
+        return src.indexOf('\\(');
+      },
+      tokenizer(src: string) {
+        const match = /^\\\((?=[^\n]*\S)([^\n]+?)\\\)/.exec(src);
+        if (!match) return undefined;
+        return {
+          type: 'mathParenInline',
+          raw: match[0],
+          text: match[1],
+        };
+      },
+      renderer(token) {
+        return renderMathToHtml(token.text, false, 'code');
       }
     }
   ]
@@ -305,5 +358,7 @@ export const extendedSyntaxExtensions: MarkedExtension[] = [
   definitionList,
   callout,
   mathBlock,
+  mathBracketBlock,
   mathInline,
+  mathParenInline,
 ];

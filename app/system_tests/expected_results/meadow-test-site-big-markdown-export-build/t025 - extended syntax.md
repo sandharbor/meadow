@@ -193,6 +193,53 @@ $$
 \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
 $$
 
+MathJax-style inline math: \(a^2 + b^2 = c^2\)
+
+MathJax-style display math:
+
+\[
+\int_0^1 x^2 dx = \frac{1}{3}
+\]
+
+MathJax-style complex display math:
+
+\[
+\begin{aligned}
+\nabla \cdot \vec{E} &= \frac{\rho}{\varepsilon_0} \\
+\int_0^\infty e^{-x^2}\,dx &= \frac{\sqrt{\pi}}{2}
+\end{aligned}
+\]
+
+MathJax-style cases:
+
+\[
+f(x)=\begin{cases}
+x^2 & x \ge 0 \\
+-x & x < 0
+\end{cases}
+\]
+
+MathJax-style matrix and macro:
+
+\[
+\newcommand{\RR}{\mathbb{R}}
+A = \begin{pmatrix}1 & 2 \\ 3 & 4\end{pmatrix},\quad x \in \RR^2
+\]
+
+MathJax-style chemistry via mhchem:
+
+\[
+\ce{SO4^2- + Ba^2+ -> BaSO4 v}
+\]
+
+MathJax-style delimiters inside code blocks should not be transformed:
+
+```text
+\(a^2\) and \[\frac{1}{2}\]
+```
+
+Inline code too: `\(a^2 + b^2\)`
+
 LaTeX inside code blocks should not be transformed:
 
 ```latex
