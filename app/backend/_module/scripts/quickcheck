@@ -7,6 +7,9 @@ check_no_console_calls src/ --strict || exit 1
 # Check that area-owned code does not import directly across areas.
 node "$(dirname "$0")/../../../shared_code/check_support/check_area_boundaries.js" src || exit 1
 
+# Check that area-owned route files declare routes for their own area.
+node "$(dirname "$0")/../../../shared_code/check_support/check_area_routes.js" src || exit 1
+
 # Check that source files belong to an area or shared code.
 node "$(dirname "$0")/../../../shared_code/check_support/check_area_ownership.js" src --require-ownership --summary || exit 1
 

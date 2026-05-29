@@ -23,7 +23,6 @@ import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigP
 import { loadAppConfig as loadAppConfigFromDisk } from '../../../../../../shared_code/utils/appConfigUtils.js';
 import { getConfigDirectory, getSiteDirectory, getSiteConfigPath, getSiteHtmlDirectory } from '../../../../shared/site-config/siteConfigPaths.js';
 import { loadYamlFromPath, saveYamlToPath } from '../../../../shared/utils/siteConfigUtils.js';
-import { FrontmatterUtils } from '../../../../shared/utils/frontmatterUtils.js';
 import { commitSiteChanges, getPreviewChanges } from '../../../../shared/utils/configDirectory/gitUtils/previewGitService.js';
 import { getConfFileTree, getPreviewFileTree, getOriginalContent, readFileContent, findGitRoot, detectFileType, getMimeType } from '../../../../shared/utils/confFileExplorerUtils.js';
 import { runGitDirLogNative, runGitCommitFilesNative, runGitCatFileNative, runGitFileLogNative, runGitHtmlSectionDiffNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
@@ -566,83 +565,6 @@ router.get('/sites/:siteSlug/review/versions', (req, res, next) => {
     const versionsData = loadYamlFromPath<{ versions: GeneratedSiteVersion[] }>(versionsPath);
     
     res.json(versionsData);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Mark page as sensitive/non-sensitive
-router.patch('/sites/:siteSlug/curation/page/:pageTitle/sensitive', (req, res, next) => {
-  try {
-    const { siteSlug, pageTitle } = req.params;
-    const { isSensitive } = req.body as { isSensitive: boolean };
-
-    if (!siteSlug || !pageTitle) {
-      return res.status(400).json({ error: 'siteSlug and pageTitle are required' });
-    }
-
-    if (typeof isSensitive !== 'boolean') {
-      return res.status(400).json({ error: 'isSensitive must be a boolean' });
-    }
-
-    // Get site configuration to find the source directory
-    const siteDirectory = getSiteDirectory(siteSlug);
-    if (!fs.existsSync(siteDirectory)) {
-      return res.status(404).json({ error: `Site '${siteSlug}' not found` });
-    }
-
-    const configPath = getSiteConfigPath(siteSlug);
-    let notesDir = '';
-    try {
-      if (!fs.existsSync(configPath)) {
-        return res.status(500).json({ error: `site_config.yaml not found for slug ${siteSlug}` });
-      }
-      const yamlContent = fs.readFileSync(configPath, 'utf8');
-      const config = YAML.parse(yamlContent) as { sourceDirectory?: string };
-      if (config && typeof config.sourceDirectory === 'string') {
-        notesDir = config.sourceDirectory;
-      }
-    } catch {
-      return res.status(500).json({ error: `Failed to load site configuration for ${siteSlug}` });
-    }
-
-    if (!notesDir) {
-      return res.status(500).json({ error: `Could not determine source directory for site ${siteSlug}` });
-    }
-
-    // Get sourceGraphDirectory from request body (frontend should provide this from page data)
-    const { sourceGraphDirectory } = req.body as { isSensitive: boolean; sourceGraphDirectory?: string };
-
-    // Construct the full path using the sourceGraphDirectory information
-    let markdownPath = '';
-    if (sourceGraphDirectory && sourceGraphDirectory.trim()) {
-      markdownPath = join(notesDir, sourceGraphDirectory, `${pageTitle}.md`);
-    } else {
-      markdownPath = join(notesDir, `${pageTitle}.md`);
-    }
-    
-    if (!fs.existsSync(markdownPath)) {
-      return res.status(404).json({ error: `Page file not found: ${markdownPath}` });
-    }
-
-    // Update the sensitive property in the file
-    try {
-      FrontmatterUtils.updateSensitiveProperty(markdownPath, isSensitive);
-      
-      res.json({
-        success: true,
-        message: `Page '${pageTitle}' marked as ${isSensitive ? 'sensitive' : 'non-sensitive'}`,
-        pageTitle,
-        isSensitive
-      });
-    } catch (error) {
-      logger.error('Error updating sensitive property:', error);
-      return res.status(500).json({ 
-        error: 'Failed to update sensitive property',
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-    
   } catch (error) {
     next(error);
   }
