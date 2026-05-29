@@ -115,7 +115,8 @@ function extractExplicitAppAreaDocIds(testSource: string): string[] {
 
 interface Snapshot {
   timestamp: string;
-  files: Record<string, string>;
+  commitHash: string;
+  commitMessage: string;
   changedFiles: string[];
 }
 
@@ -245,6 +246,61 @@ interface Manifest {
   tickConfig: { intervalMs: number; totalTicks: number; totalDurationMs: number };
 }
 
+interface AssemblyTimingStep {
+  name: string;
+  ms: number;
+}
+
+interface AssemblyTiming {
+  version: number;
+  testName: string;
+  status: string;
+  startTime: string;
+  endTime: string;
+  startedAt: string;
+  endedAt: string;
+  totalMs: number;
+  steps: AssemblyTimingStep[];
+  artifacts: Record<string, number | string | null>;
+}
+
+interface AssemblyTimingSummary {
+  version: number;
+  runId: string;
+  concurrency: number;
+  videoCollectMs: number;
+  parallelAssemblyMs: number;
+  scenarios: (AssemblyTiming & {
+    parentForkMs?: number;
+    videoCopyMs?: number;
+    videoBytes?: number;
+  })[];
+  totalsByStep: AssemblyTimingStep[];
+}
+
+function measured<T>(steps: AssemblyTimingStep[], name: string, fn: () => T): T {
+  const start = performance.now();
+  try {
+    return fn();
+  } finally {
+    steps.push({ name, ms: performance.now() - start });
+  }
+}
+
+function fileSizeOrNull(filePath: string): number | null {
+  try {
+    return statSync(filePath).size;
+  } catch {
+    return null;
+  }
+}
+
+function writeJsonFile(filePath: string, value: unknown): number {
+  const json = JSON.stringify(value, null, 2);
+  writeFileSync(filePath, json);
+  return Buffer.byteLength(json);
+}
+
 interface ReportMetaHealthPoint {
   pct: number;
   timestamp: string;
@@ -326,16 +382,23 @@ const E2E_DIR = path.join(import.meta.dirname, "../..");
 const ARTIFACTS_BASE = path.join(os.homedir(), "meadow-e2e-artifacts", "current");
 const TEST_RESULTS_DIR = path.join(E2E_DIR, "test-results");
 
-function extractSnapshots(stateRepo: string): Snapshot[] {
+function extractSnapshots(
+  stateRepo: string,
+  timingSteps?: AssemblyTimingStep[],
+  stepPrefix = "snapshots"
+): Snapshot[] {
   if (!existsSync(stateRepo)) return [];
+  const time = <T>(name: string, fn: () => T): T =>
+    timingSteps ? measured(timingSteps, `${stepPrefix}:${name}`, fn) : fn();
 
   let logOutput: string;
+  const timelineMap = readTimeline(path.join(stateRepo, "timeline.jsonl"));
   try {
-    logOutput = execSync('git log --format="%H %aI" --reverse', {
+    logOutput = time("git log", () => execSync('git log --format="%H %aI %s" --reverse', {
       cwd: stateRepo,
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
+    }).trim());
   } catch {
     return [];
   }
@@ -347,48 +410,37 @@ function extractSnapshots(stateRepo: string): Snapshot[] {
   let prevHash: string | null = null;
 
   for (const line of lines) {
-    const [hash, timestamp] = line.split(" ", 2);
-
-    // Get all files in this commit
-    const fileList = execSync(`git ls-tree -r --name-only ${hash}`, {
-      cwd: stateRepo,
-      encoding: "utf8",
-    })
-      .trim()
-      .split("\n")
-      .filter(Boolean);
-
-    // Read file contents
-    const files: Record<string, string> = {};
-    for (const filePath of fileList) {
-      try {
-        files[filePath] = execSync(`git show "${hash}:${filePath}"`, {
-          cwd: stateRepo,
-          encoding: "utf8",
-          stdio: ["pipe", "pipe", "pipe"],
-        });
-      } catch {
-        // Binary or unreadable file
-        files[filePath] = "[binary]";
-      }
-    }
+    const [hash, gitTimestamp, ...msgParts] = line.split(" ");
+    const commitMessage = msgParts.join(" ");
+    const timelineEntry = timelineMap.get(hash);
+    const timestamp = timelineEntry?.timestamp ?? gitTimestamp;
 
     // Get changed files vs previous commit
     let changedFiles: string[] = [];
     if (prevHash) {
-      changedFiles = execSync(
-        `git diff-tree --no-commit-id --name-only -r ${prevHash} ${hash}`,
-        { cwd: stateRepo, encoding: "utf8" }
-      )
-        .trim()
-        .split("\n")
-        .filter(Boolean);
+      changedFiles = time("diff-tree", () =>
+        execSync(
+          `git diff-tree --no-commit-id --name-only -r ${prevHash} ${hash}`,
+          { cwd: stateRepo, encoding: "utf8" }
+        )
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+      );
     } else {
       // First commit: all files are "changed"
-      changedFiles = Object.keys(files);
+      changedFiles = time("ls-tree", () =>
+        execSync(`git ls-tree -r --name-only ${hash}`, {
+          cwd: stateRepo,
+          encoding: "utf8",
+        })
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+      );
     }
 
-    snapshots.push({ timestamp, files, changedFiles });
+    snapshots.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
     prevHash = hash;
   }
 
@@ -641,6 +693,9 @@ function processTickLog(testDir: string): TickData {
   let prevS3ObjectContents: Record<string, string> | null = null;
   let prevStateRecords: Set<string> | null = null;
   let prevStateRecordContents: Record<string, string> | null = null;
+  let latestUncommittedFileContents: Record<string, string> = {};
+  let latestIgnoredFileContents: Record<string, string> = {};
+  let latestStateRecordContents: Record<string, string> | null = null;
   let prevUncommittedKey = "";
   let prevGitHead = "";
 
@@ -648,13 +703,45 @@ function processTickLog(testDir: string): TickData {
     const currentFiles = new Set(raw.files);
     const rawS3 = raw.s3Keys || [];
     const currentS3Keys = new Set(rawS3);
-    const rawStateRecordContents = raw.stateRecordContents;
-    const rawStateRecords = Object.keys(rawStateRecordContents ?? {}).sort();
+    if (raw.stateRecordContents !== undefined) {
+      latestStateRecordContents = raw.stateRecordContents;
+    }
+    const currentStateRecordContents = latestStateRecordContents;
+    const rawStateRecords = Object.keys(currentStateRecordContents ?? {}).sort();
     const currentStateRecords = new Set(rawStateRecords);
+    if (raw.uncommittedFileContents !== undefined) {
+      latestUncommittedFileContents = {
+        ...latestUncommittedFileContents,
+        ...raw.uncommittedFileContents,
+      };
+    }
+    const activeUncommittedPaths = new Set(
+      raw.uncommittedFiles
+        .filter((f) => !f.path.endsWith("/") && !f.status.includes("D") && f.status !== "deleted")
+        .map((f) => f.path)
+    );
+    latestUncommittedFileContents = Object.fromEntries(
+      Object.entries(latestUncommittedFileContents).filter(([filePath]) =>
+        activeUncommittedPaths.has(filePath)
+      )
+    );
+    if (raw.ignoredFileContents !== undefined) {
+      latestIgnoredFileContents = {
+        ...latestIgnoredFileContents,
+        ...raw.ignoredFileContents,
+      };
+    }
+    const activeIgnoredPaths = new Set(raw.ignoredFiles ?? []);
+    latestIgnoredFileContents = Object.fromEntries(
+      Object.entries(latestIgnoredFileContents).filter(([filePath]) =>
+        activeIgnoredPaths.has(filePath)
+      )
+    );
     const currentUncommittedKey = JSON.stringify(
       [
         ...raw.uncommittedFiles.map((f) => `${f.status}:${f.path}`),
-        ...Object.entries(raw.uncommittedFileContents ?? {}).map(([filePath, content]) => `content:${filePath}:${content}`),
+        ...Object.entries(latestUncommittedFileContents).map(([filePath, content]) => `content:${filePath}:${content}`),
+        ...Object.entries(latestIgnoredFileContents).map(([filePath, content]) => `ignored:${filePath}:${content}`),
       ].sort()
     );
     const currentGitHead = raw.gitHeadSha || "";
@@ -715,17 +802,22 @@ function processTickLog(testDir: string): TickData {
         s3KeyListing[raw.tickIndex] = rawS3;
       }
 
-      if (rawStateRecordContents && prevStateRecordContents) {
-        const previousContents = prevStateRecordContents;
-        stateAddedRecords = rawStateRecords.filter((record) => !prevStateRecords!.has(record));
-        stateModifiedRecords = rawStateRecords.filter((record) =>
-          prevStateRecords!.has(record) &&
-          rawStateRecordContents[record] !== undefined &&
-          previousContents[record] !== undefined &&
-          rawStateRecordContents[record] !== previousContents[record]
-        );
-        stateRemovedRecords = [...prevStateRecords!].filter((record) => !currentStateRecords.has(record));
-        stateChanged = stateAddedRecords.length > 0 || stateModifiedRecords.length > 0 || stateRemovedRecords.length > 0;
+      if (currentStateRecordContents) {
+        if (prevStateRecordContents === null) {
+          stateAddedRecords = rawStateRecords;
+          stateChanged = stateAddedRecords.length > 0;
+        } else {
+          const previousContents = prevStateRecordContents;
+          stateAddedRecords = rawStateRecords.filter((record) => !prevStateRecords!.has(record));
+          stateModifiedRecords = rawStateRecords.filter((record) =>
+            prevStateRecords!.has(record) &&
+            currentStateRecordContents[record] !== undefined &&
+            previousContents[record] !== undefined &&
+            currentStateRecordContents[record] !== previousContents[record]
+          );
+          stateRemovedRecords = [...prevStateRecords!].filter((record) => !currentStateRecords.has(record));
+          stateChanged = stateAddedRecords.length > 0 || stateModifiedRecords.length > 0 || stateRemovedRecords.length > 0;
+        }
       }
     }
 
@@ -763,7 +855,7 @@ function processTickLog(testDir: string): TickData {
     prevS3Keys = currentS3Keys;
     prevS3ObjectContents = raw.s3ObjectContents ?? null;
     prevStateRecords = currentStateRecords;
-    prevStateRecordContents = raw.stateRecordContents ?? null;
+    prevStateRecordContents = currentStateRecordContents;
     prevUncommittedKey = currentUncommittedKey;
     prevGitHead = currentGitHead;
   }
@@ -1081,25 +1173,34 @@ function computeScenarioReportMeta(
 export function assembleTestArtifacts(testDir: string): void {
   const testName = path.basename(testDir);
   console.log(`Assembling artifacts for: ${testName}`);
+  const assemblyStartedAt = new Date().toISOString();
+  const assemblyStart = performance.now();
+  const assemblySteps: AssemblyTimingStep[] = [];
 
-  const startTime = existsSync(path.join(testDir, "start-time.txt"))
-    ? readFileSync(path.join(testDir, "start-time.txt"), "utf8").trim()
-    : "";
-  const endTime = existsSync(path.join(testDir, "end-time.txt"))
-    ? readFileSync(path.join(testDir, "end-time.txt"), "utf8").trim()
-    : "";
-  const status = existsSync(path.join(testDir, "status.txt"))
-    ? readFileSync(path.join(testDir, "status.txt"), "utf8").trim()
-    : "unknown";
+  const { startTime, endTime, status } = measured(assemblySteps, "read lifecycle files", () => ({
+    startTime: existsSync(path.join(testDir, "start-time.txt"))
+      ? readFileSync(path.join(testDir, "start-time.txt"), "utf8").trim()
+      : "",
+    endTime: existsSync(path.join(testDir, "end-time.txt"))
+      ? readFileSync(path.join(testDir, "end-time.txt"), "utf8").trim()
+      : "",
+    status: existsSync(path.join(testDir, "status.txt"))
+      ? readFileSync(path.join(testDir, "status.txt"), "utf8").trim()
+      : "unknown",
+  }));
 
   // Extract snapshots from git repo
   const meadowHomeStateRepo = path.join(testDir, "meadowHome-state-repo");
-  const snapshots = extractSnapshots(meadowHomeStateRepo);
-  const snapshotMeta = extractSnapshotMeta(meadowHomeStateRepo, "");
+  const snapshots = extractSnapshots(meadowHomeStateRepo, assemblySteps, "meadowHome snapshots");
+  const snapshotMeta = measured(assemblySteps, "meadowHome snapshot meta", () =>
+    extractSnapshotMeta(meadowHomeStateRepo, "")
+  );
 
   // Extract MinIO S3 snapshot metadata
   const minioStateRepo = path.join(testDir, "minio-state-repo");
-  const minioSnapshotMeta = extractSnapshotMeta(minioStateRepo, "objects/");
+  const minioSnapshotMeta = measured(assemblySteps, "minio snapshot meta", () =>
+    extractSnapshotMeta(minioStateRepo, "objects/")
+  );
 
   // Extract snapshot metadata for any extension-contributed state repos.
   // Each repo's optional _meta.json declares the path prefix under which
@@ -1108,93 +1209,155 @@ export function assembleTestArtifacts(testDir: string): void {
   for (const repoName of listExtensionStateRepos(testDir)) {
     const repoPath = path.join(testDir, repoName);
     const repoMeta = readStateRepoMeta(repoPath);
-    extensionSnapshotMeta[repoName] = extractSnapshotMeta(repoPath, repoMeta.pathPrefix ?? "");
+    extensionSnapshotMeta[repoName] = measured(
+      assemblySteps,
+      `extension snapshot meta:${repoName}`,
+      () => extractSnapshotMeta(repoPath, repoMeta.pathPrefix ?? "")
+    );
   }
 
   // Parse logs
-  const frontendLogs = parseFrontendLog(path.join(testDir, "frontend.log"));
-  const backendLogs = parseBackendLog(path.join(testDir, "backend.log"));
-  const logs = [...frontendLogs, ...backendLogs].sort((a, b) =>
-    a.timestamp.localeCompare(b.timestamp)
+  const frontendLogs = measured(assemblySteps, "parse frontend log", () =>
+    parseFrontendLog(path.join(testDir, "frontend.log"))
   );
+  const backendLogs = measured(assemblySteps, "parse backend log", () =>
+    parseBackendLog(path.join(testDir, "backend.log"))
+  );
+  const logs = measured(assemblySteps, "merge logs", () => [...frontendLogs, ...backendLogs].sort((a, b) =>
+    a.timestamp.localeCompare(b.timestamp)
+  ));
 
 
   // Read test source code
-  let testSourceFile = "";
-  let testSource = "";
-  const testFilePath = path.join(testDir, "test-file.txt");
-  if (existsSync(testFilePath)) {
-    testSourceFile = readFileSync(testFilePath, "utf8").trim();
-    if (existsSync(testSourceFile)) {
-      testSource = readFileSync(testSourceFile, "utf8");
+  const { testSourceFile, testSource } = measured(assemblySteps, "read test source", () => {
+    let sourceFile = "";
+    let source = "";
+    const testFilePath = path.join(testDir, "test-file.txt");
+    if (existsSync(testFilePath)) {
+      sourceFile = readFileSync(testFilePath, "utf8").trim();
+      if (existsSync(sourceFile)) {
+        source = readFileSync(sourceFile, "utf8");
+      }
     }
-  }
+    return { testSourceFile: sourceFile, testSource: source };
+  });
 
   // Read uncommitted file log and do a final check on the copied repo
-  const uncommittedEntries = readUncommittedLog(
-    path.join(testDir, "meadowHome-uncommitted.jsonl")
+  const uncommittedEntries = measured(assemblySteps, "read uncommitted log", () =>
+    readUncommittedLog(path.join(testDir, "meadowHome-uncommitted.jsonl"))
   );
-  if (existsSync(meadowHomeStateRepo)) {
-    try {
-      const finalStatus = execSync("git status --porcelain", {
-        cwd: meadowHomeStateRepo,
-        encoding: "utf8",
-        stdio: ["pipe", "pipe", "pipe"],
-      }).trim();
-      const finalFiles = finalStatus
-        ? finalStatus.split("\n").map((line) => ({
-            status: line.slice(0, 2).trim(),
-            path: line.slice(3),
-          }))
-        : [];
-      uncommittedEntries.push({
-        timestamp: endTime || new Date().toISOString(),
-        message: "(final state at teardown)",
-        uncommittedFiles: finalFiles,
-      });
-    } catch {
-      // not a git repo or git not available
+  measured(assemblySteps, "final git status", () => {
+    if (existsSync(meadowHomeStateRepo)) {
+      try {
+        const finalStatus = execSync("git status --porcelain", {
+          cwd: meadowHomeStateRepo,
+          encoding: "utf8",
+          stdio: ["pipe", "pipe", "pipe"],
+        }).trim();
+        const finalFiles = finalStatus
+          ? finalStatus.split("\n").map((line) => ({
+              status: line.slice(0, 2).trim(),
+              path: line.slice(3),
+            }))
+          : [];
+        uncommittedEntries.push({
+          timestamp: endTime || new Date().toISOString(),
+          message: "(final state at teardown)",
+          uncommittedFiles: finalFiles,
+        });
+      } catch {
+        // not a git repo or git not available
+      }
     }
-  }
+  });
 
   // Extract scenario doc IDs, app area doc IDs, and site doc IDs from test source imports.
-  const scenarioDocIds = extractScenarioDocIds(testSource);
-  const siteDocIds = extractSiteDocIds(testSource);
-  const appAreaDocIds = deriveAppAreaDocIds(
-    scenarioDocIds,
-    extractExplicitAppAreaDocIds(testSource)
-  );
+  const { scenarioDocIds, siteDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
+    const scenarioIds = extractScenarioDocIds(testSource);
+    return {
+      scenarioDocIds: scenarioIds,
+      siteDocIds: extractSiteDocIds(testSource),
+      appAreaDocIds: deriveAppAreaDocIds(
+        scenarioIds,
+        extractExplicitAppAreaDocIds(testSource)
+      ),
+    };
+  });
 
   // Read key frames if they exist
   const keyFramesPath = path.join(testDir, "keyframes.json");
-  const keyFrames: KeyFrame[] = existsSync(keyFramesPath)
-    ? JSON.parse(readFileSync(keyFramesPath, "utf8"))
-    : [];
+  const keyFrames: KeyFrame[] = measured(assemblySteps, "read keyframes", () =>
+    existsSync(keyFramesPath)
+      ? JSON.parse(readFileSync(keyFramesPath, "utf8"))
+      : []
+  );
 
   // Process tick log
-  const tickData = processTickLog(testDir);
+  const tickData = measured(assemblySteps, "process tick log", () =>
+    processTickLog(testDir)
+  );
 
   // Write manifest
   const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...tickData };
-  writeFileSync(
-    path.join(testDir, "manifest.json"),
+  const manifestJson = measured(assemblySteps, "manifest stringify", () =>
     JSON.stringify(manifest, null, 2)
   );
+  measured(assemblySteps, "manifest write", () => {
+    writeFileSync(path.join(testDir, "manifest.json"), manifestJson);
+  });
   console.log(`  Manifest: ${snapshots.length} snapshots, ${logs.length} log entries, ${tickData.ticks.length} ticks`);
 
   // Pre-compute report metadata for fast viewer loading
+  let reportMetaBytes: number | null = null;
+  let reportMetaHealthPoints: number | null = null;
+  let reportMetaError: string | null = null;
   if (manifest.startTime && manifest.endTime) {
     try {
-      const reportMeta = computeScenarioReportMeta(testDir, manifest);
-      writeFileSync(
-        path.join(testDir, "report-meta.json"),
+      const reportMeta = measured(assemblySteps, "report meta compute", () =>
+        computeScenarioReportMeta(testDir, manifest)
+      );
+      const reportMetaJson = measured(assemblySteps, "report meta stringify", () =>
         JSON.stringify(reportMeta, null, 2)
       );
+      reportMetaBytes = Buffer.byteLength(reportMetaJson);
+      measured(assemblySteps, "report meta write", () => {
+        writeFileSync(path.join(testDir, "report-meta.json"), reportMetaJson);
+      });
+      reportMetaHealthPoints = reportMeta.health.points.length;
       console.log(`  Report meta: ${reportMeta.health.points.length} health points`);
     } catch (err) {
+      reportMetaError = String(err);
       console.log(`  Report meta: failed to compute (${err})`);
     }
   }
+
+  const timing: AssemblyTiming = {
+    version: 1,
+    testName,
+    status,
+    startTime,
+    endTime,
+    startedAt: assemblyStartedAt,
+    endedAt: new Date().toISOString(),
+    totalMs: performance.now() - assemblyStart,
+    steps: assemblySteps,
+    artifacts: {
+      manifestBytes: Buffer.byteLength(manifestJson),
+      reportMetaBytes,
+      reportMetaHealthPoints,
+      reportMetaError,
+      tickLogBytes: fileSizeOrNull(path.join(testDir, "ticks.jsonl")),
+      frontendLogBytes: fileSizeOrNull(path.join(testDir, "frontend.log")),
+      backendLogBytes: fileSizeOrNull(path.join(testDir, "backend.log")),
+      meadowHomeSnapshotCount: snapshots.length,
+      minioSnapshotMetaCount: minioSnapshotMeta.length,
+      extensionStateRepoCount: Object.keys(extensionSnapshotMeta).length,
+      tickCount: tickData.ticks.length,
+      consolidatedTickGroupCount: tickData.consolidatedTicks.length,
+      logEntryCount: logs.length,
+    },
+  };
+  writeJsonFile(path.join(testDir, "assembly-timing.json"), timing);
 }
 
 /**
@@ -1234,20 +1397,34 @@ export async function assembleRun(runId: string): Promise<void> {
   // Assemble per-test artifacts in parallel and copy videos
   const assemblyStart = performance.now();
   const failures: string[] = [];
+  const parentTimings = new Map<string, { parentForkMs: number; videoCopyMs: number; videoBytes?: number }>();
 
   await runWithConcurrency(dirs, CONCURRENCY, async (dir) => {
     const testDir = path.join(runDir, dir);
+    const forkStart = performance.now();
+    let parentForkMs = 0;
+    let videoCopyMs = 0;
+    let videoBytes: number | undefined;
 
     try {
       await forkAssembly(workerScript, testDir);
+      parentForkMs = performance.now() - forkStart;
     } catch (err) {
+      parentForkMs = performance.now() - forkStart;
       console.log(`  ${dir}: assembly failed (${err})`);
       failures.push(dir);
     }
 
-    const videoSrc = findVideoFromList(allVideos, dir);
-    if (videoSrc) {
-      cpSync(videoSrc, path.join(testDir, "video.webm"));
+    const videoStart = performance.now();
+    try {
+      const videoSrc = findVideoFromList(allVideos, dir);
+      if (videoSrc) {
+        cpSync(videoSrc, path.join(testDir, "video.webm"));
+        videoBytes = fileSizeOrNull(videoSrc) ?? undefined;
+      }
+    } finally {
+      videoCopyMs = performance.now() - videoStart;
+      parentTimings.set(dir, { parentForkMs, videoCopyMs, videoBytes });
     }
   });
 
@@ -1255,6 +1432,40 @@ export async function assembleRun(runId: string): Promise<void> {
   console.log(`\nParallel assembly: ${dirs.length} tests, ${CONCURRENCY} workers, ${(assemblyMs / 1000).toFixed(1)}s (video scan: ${videoCollectMs.toFixed(0)}ms)`);
   if (failures.length > 0) {
     console.log(`  ${failures.length} assembly failure(s): ${failures.join(", ")}`);
+  }
+
+  const scenarioTimings: AssemblyTimingSummary["scenarios"] = [];
+  const totalsByStep = new Map<string, number>();
+  for (const dir of dirs) {
+    const timingPath = path.join(runDir, dir, "assembly-timing.json");
+    if (!existsSync(timingPath)) continue;
+    try {
+      const timing = JSON.parse(readFileSync(timingPath, "utf8")) as AssemblyTiming;
+      for (const step of timing.steps) {
+        totalsByStep.set(step.name, (totalsByStep.get(step.name) ?? 0) + step.ms);
+      }
+      scenarioTimings.push({
+        ...timing,
+        ...(parentTimings.get(dir) ?? {}),
+      });
+    } catch {
+      // A failed or interrupted assembly may leave timing unavailable.
+    }
+  }
+  if (scenarioTimings.length > 0) {
+    const timingSummary: AssemblyTimingSummary = {
+      version: 1,
+      runId,
+      concurrency: CONCURRENCY,
+      videoCollectMs,
+      parallelAssemblyMs: assemblyMs,
+      scenarios: scenarioTimings.sort((a, b) => b.totalMs - a.totalMs),
+      totalsByStep: [...totalsByStep.entries()]
+        .map(([name, ms]) => ({ name, ms }))
+        .sort((a, b) => b.ms - a.ms),
+    };
+    writeJsonFile(path.join(runDir, "assembly-timing-summary.json"), timingSummary);
+    console.log(`Assembly timing summary written with ${scenarioTimings.length} scenario(s)`);
   }
 
   // Compute total wall-clock duration from earliest start to latest end

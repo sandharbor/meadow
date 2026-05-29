@@ -892,6 +892,7 @@ export default function ScenarioViewer() {
   // Compute per-tick changes across all state types (Files, structured state, S3)
   const tickStateChanges = useMemo(() => {
     const changes: Record<number, { files: boolean; state: boolean; s3: boolean; snapshot: boolean; snapshotMessage?: string }> = {}
+    const hasTickStateDataLocal = ticks.some((tick) => tick.stateRecordContents !== undefined)
     for (let i = 0; i < ticks.length; i++) {
       const tick = ticks[i]
       const tickTime = new Date(tick.timestamp).getTime()
@@ -902,7 +903,7 @@ export default function ScenarioViewer() {
       // State changed? Prefer tick-level record data when the artifact
       // captured it; older artifacts fall back to state-repo commits.
       let stateChanged = false
-      if (tick.stateRecordContents !== undefined) {
+      if (hasTickStateDataLocal && tick.stateChanged !== undefined) {
         stateChanged = Boolean(tick.stateChanged)
       } else if (stateSnapshots.length > 0) {
         const getStateIdx = (ts: number) => {
@@ -3179,20 +3180,31 @@ function MeadowFileModePane({
   }, [currentSnapshotIndex, currentTickIndex, mode, selectedFile])
 
   useEffect(() => {
+    const findCapturedTickFileContent = (tickIndex: number, filePath: string): string | null => {
+      if (tickIndex < 0 || tickIndex >= ticks.length) return null
+      for (let i = tickIndex; i >= 0; i--) {
+        const tick = ticks[i]
+        const tickContent = tick.uncommittedFileContents?.[filePath]
+        if (tickContent !== undefined) {
+          return tickContent
+        }
+        // Gitignored files never make it into git, so fetchFileContent
+        // can't recover them. Tick capture records their working-tree
+        // bytes at content-capture points, so walk back to the latest
+        // captured copy.
+        const ignoredContent = tick.ignoredFileContents?.[filePath]
+        if (ignoredContent !== undefined) {
+          return ignoredContent
+        }
+      }
+      return null
+    }
+
     const loadTickFileContent = async (tickIndex: number, filePath: string): Promise<string | null> => {
+      const capturedContent = findCapturedTickFileContent(tickIndex, filePath)
+      if (capturedContent !== null) return capturedContent
       if (tickIndex < 0 || tickIndex >= ticks.length) return null
       const tick = ticks[tickIndex]
-      const tickContent = tick.uncommittedFileContents?.[filePath]
-      if (tickContent !== undefined) {
-        return tickContent
-      }
-      // Gitignored files never make it into git, so fetchFileContent
-      // can't recover them — but the tick capture snapshots their
-      // working-tree bytes alongside uncommittedFileContents.
-      const ignoredContent = tick.ignoredFileContents?.[filePath]
-      if (ignoredContent !== undefined) {
-        return ignoredContent
-      }
       if (tick.gitHeadSha) {
         try {
           return await fetchFileContent(tick.gitHeadSha, filePath)
@@ -3253,8 +3265,8 @@ function MeadowFileModePane({
 
       let content = ''
       if (status !== 'removed') {
-        const capturedContent = ticks[currentTickIndex]?.uncommittedFileContents?.[filePath]
-        if (capturedContent !== undefined) {
+        const capturedContent = findCapturedTickFileContent(currentTickIndex, filePath)
+        if (capturedContent !== null) {
           content = capturedContent
         } else {
           try {
@@ -3290,8 +3302,8 @@ function MeadowFileModePane({
 
     const loadCapturedUncommittedContent = async (filePath: string): Promise<boolean> => {
       if (currentTickIndex < 0 || currentTickIndex >= ticks.length) return false
-      const content = ticks[currentTickIndex].uncommittedFileContents?.[filePath]
-      if (content === undefined) return false
+      const content = findCapturedTickFileContent(currentTickIndex, filePath)
+      if (content === null) return false
       setContentView(buildResourceContentView({
         selectedPath: filePath,
         status: 'committed',

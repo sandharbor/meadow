@@ -236,12 +236,65 @@ function runStatus(statusRunId: string): never {
 }
 
 // Parse CLI args
-function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: string; scenarios?: string[]; appAreas?: string[]; highlighted?: string[]; statusRunId?: string } {
+function resolveSpecFilesForSpecSelectors(specSelectors: string[]): string[] {
+  const testsDir = path.join(E2E_DIR, "tests");
+  const specFiles = listSpecFiles(testsDir);
+  const selected = new Set<string>();
+
+  for (const selector of specSelectors) {
+    const normalizedSelector = selector.replace(/\\/g, "/").replace(/\.spec\.ts$/, "");
+    const candidates: string[] = [];
+
+    const explicitPath = path.isAbsolute(selector)
+      ? selector
+      : path.resolve(E2E_DIR, selector);
+    if (existsSync(explicitPath) && explicitPath.endsWith(".spec.ts")) {
+      candidates.push(explicitPath);
+    }
+
+    for (const specFile of specFiles) {
+      const rel = path.relative(testsDir, specFile).replace(/\\/g, "/");
+      const relWithoutExt = rel.replace(/\.spec\.ts$/, "");
+      const basename = path.basename(specFile).replace(/\.spec\.ts$/, "");
+      if (
+        rel === selector ||
+        relWithoutExt === normalizedSelector ||
+        basename === normalizedSelector
+      ) {
+        candidates.push(specFile);
+      }
+    }
+
+    const uniqueCandidates = [...new Set(candidates)];
+    if (uniqueCandidates.length === 0) {
+      console.error(`ERROR: No spec file matched --spec ${selector}`);
+      console.error(`\nSpecs available (${specFiles.length}):`);
+      for (const specFile of specFiles.map((f) => path.relative(testsDir, f)).sort()) {
+        console.error(`  ${specFile}`);
+      }
+      process.exit(1);
+    }
+    if (uniqueCandidates.length > 1) {
+      console.error(`ERROR: --spec ${selector} matched multiple files:`);
+      for (const specFile of uniqueCandidates) {
+        console.error(`  ${path.relative(testsDir, specFile)}`);
+      }
+      console.error("Use a relative path under tests/ to disambiguate.");
+      process.exit(1);
+    }
+    selected.add(uniqueCandidates[0]);
+  }
+
+  return [...selected];
+}
+
+function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: string; scenarios?: string[]; appAreas?: string[]; specs?: string[]; highlighted?: string[]; statusRunId?: string } {
   let runId = "";
   let runNotes: string | undefined;
   let grep: string | undefined;
   let scenarios: string[] | undefined;
   let appAreas: string[] | undefined;
+  let specs: string[] | undefined;
   let highlighted: string[] | undefined;
   let statusRunId: string | undefined;
 
@@ -254,6 +307,15 @@ function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: s
       runNotes = argv[++i];
     } else if (argv[i] === "--grep" && i + 1 < argv.length) {
       grep = argv[++i];
+    } else if (argv[i] === "--spec") {
+      specs = [];
+      while (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+        specs.push(argv[++i]);
+      }
+      if (specs.length === 0) {
+        console.error("ERROR: --spec requires at least one spec basename or relative path.");
+        process.exit(1);
+      }
     } else if (argv[i] === "--scenarios") {
       scenarios = [];
       // Consume all following arguments until the next flag or end
@@ -291,10 +353,10 @@ function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: s
     runId = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
   }
 
-  return { runId, runNotes, grep, scenarios, appAreas, highlighted, statusRunId };
+  return { runId, runNotes, grep, scenarios, appAreas, specs, highlighted, statusRunId };
 }
 
-const { runId, runNotes, grep, scenarios, appAreas, highlighted, statusRunId } = parseArgs(process.argv);
+const { runId, runNotes, grep, scenarios, appAreas, specs, highlighted, statusRunId } = parseArgs(process.argv);
 
 // Handle --status subcommand before anything else
 if (statusRunId) {
@@ -302,25 +364,36 @@ if (statusRunId) {
 }
 
 // Validate mutual exclusivity of grep and metadata-driven filters
-if (grep && (scenarios || appAreas)) {
-  console.error("ERROR: --grep cannot be combined with --scenarios or --areas. Use one filter mode.");
+if (grep && (scenarios || appAreas || specs)) {
+  console.error("ERROR: --grep cannot be combined with --spec, --scenarios, or --areas. Use one filter mode.");
   process.exit(1);
 }
 
 // Validate mutual exclusivity of filter modes
-if (scenarios && appAreas) {
-  console.error("ERROR: --scenarios and --areas are mutually exclusive. Use one or the other.");
+if ([specs, scenarios, appAreas].filter(Boolean).length > 1) {
+  console.error("ERROR: --spec, --scenarios, and --areas are mutually exclusive. Use one filter mode.");
   process.exit(1);
 }
 
 // Validate mutual exclusivity of filters and --highlighted
-if ((scenarios || appAreas) && highlighted) {
-  console.error("ERROR: --highlighted cannot be combined with --scenarios or --areas.");
+if ((specs || scenarios || appAreas) && highlighted) {
+  console.error("ERROR: --highlighted cannot be combined with --spec, --scenarios, or --areas.");
+  console.error("  --spec filters the run to exact spec files.");
   console.error("  --scenarios filters the run to specific scenario docs.");
   console.error("  --areas filters the run to specific app area docs.");
   console.error("  --highlighted marks specific specs for reviewer focus — it does not filter.");
   console.error("  Pick one.");
   process.exit(1);
+}
+
+let selectedSpecFiles: string[] | undefined;
+if (specs) {
+  selectedSpecFiles = resolveSpecFilesForSpecSelectors(specs);
+  const testsDir = path.join(E2E_DIR, "tests");
+  console.log(`Filtering to ${selectedSpecFiles.length} exact spec file(s):`);
+  for (const specFile of selectedSpecFiles) {
+    console.log(`  ${path.relative(testsDir, specFile)}`);
+  }
 }
 
 // Validate and resolve --highlighted
@@ -391,6 +464,9 @@ if (scenarioSpecFiles) {
 if (appAreaSpecFiles) {
   playwrightArgs.push(...appAreaSpecFiles);
 }
+if (selectedSpecFiles) {
+  playwrightArgs.push(...selectedSpecFiles);
+}
 const result = spawnSync("npx", playwrightArgs, {
   cwd: E2E_DIR,
   env: { ...process.env, E2E_RUN_ID: runId },
@@ -415,7 +491,7 @@ const artifactCount = existsSync(artifactsDir)
   ? readdirSync(artifactsDir).filter((d) => statSync(path.join(artifactsDir, d)).isDirectory()).length
   : 0;
 
-if (!grep && !scenarios && !appAreas && specCount !== artifactCount) {
+if (!grep && !specs && !scenarios && !appAreas && specCount !== artifactCount) {
   console.error("");
   console.error("ERROR: Artifact count mismatch!");
   console.error(`  Spec files found:        ${specCount}`);
@@ -434,6 +510,9 @@ if (scenarios && existsSync(artifactsDir)) {
 }
 if (appAreas && existsSync(artifactsDir)) {
   writeFileSync(path.join(artifactsDir, "targeted-app-areas.json"), JSON.stringify(appAreas), "utf8");
+}
+if (specs && existsSync(artifactsDir)) {
+  writeFileSync(path.join(artifactsDir, "targeted-specs.json"), JSON.stringify(specs), "utf8");
 }
 if (highlightedBasenames && existsSync(artifactsDir)) {
   writeFileSync(path.join(artifactsDir, "highlighted-tests.json"), JSON.stringify(highlightedBasenames), "utf8");

@@ -16,6 +16,7 @@ limitations under the License.
 
 import { test as base, expect } from "@playwright/test";
 import { execSync, spawn, ChildProcess } from "child_process";
+import { createHash } from "crypto";
 import {
   mkdirSync,
   writeFileSync,
@@ -46,6 +47,7 @@ const E2E_DIR = path.join(import.meta.dirname, "../..");
 
 const MINIO_BUCKET_PREFIX = "meadow-e2e-test";
 const MAX_TICK_UNCOMMITTED_CONTENT_BYTES = 256 * 1024;
+const MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES = 1024 * 1024;
 
 // ---------------------------------------------------------------------------
 // Helpers (also exported for use by extension fixture layers)
@@ -832,7 +834,11 @@ export const test = base.extend<{
       // --- Tick recording ---
       const tickLogPath = path.join(artifactDir, "ticks.jsonl");
       const snapshotMarkerPath = path.join(artifactDir, "snapshot-marker.txt");
-      const tickIntervalMs = parseInt(process.env.E2E_TICK_INTERVAL_MS || "250", 10);
+      const tickIntervalMs = parseInt(process.env.E2E_TICK_INTERVAL_MS || "500", 10);
+      const additionalTickIntervalMs = parseInt(
+        process.env.E2E_ADDITIONAL_TICK_INTERVAL_MS || "1000",
+        10
+      );
       writeFileSync(
         path.join(artifactDir, "tick-config.json"),
         JSON.stringify({ intervalMs: tickIntervalMs })
@@ -847,11 +853,14 @@ export const test = base.extend<{
       }
 
       let tickIndex = 0;
+      let lastUncommittedContentSignatureByPath = new Map<string, string>();
+      let lastIgnoredContentSignatureByPath = new Map<string, string>();
+      let lastAdditionalTickDataKey = "";
       // Cache for gitignored files. The set is a pure function of
       // (.gitignore contents, files on disk), so we can safely reuse the
       // last result when neither has changed. This matters: running
-      // `git ls-files --ignored` every tick (4x/sec per worker) across
-      // 16 parallel workers caused I/O contention that destabilized
+      // `git ls-files --ignored` every tick across 16 parallel workers
+      // caused I/O contention that destabilized
       // unrelated tests (publish-flow, site-deletion) with empty-error
       // timeouts. The cache collapses the steady-state cost to zero
       // subprocess calls per tick while remaining correct when files
@@ -862,12 +871,11 @@ export const test = base.extend<{
       let cachedIgnoredFiles: string[] = [];
       let cachedFilesKey = "";
       let cachedGitignoreKey = "";
-      function captureTickSync() {
+      function captureTickSync(options: { forceContent?: boolean } = {}) {
         try {
           const files = listFilesRecursive(configDir, ["logs", ".git"]);
 
           let uncommittedFiles: { path: string; status: string }[] = [];
-          let uncommittedFileContents: Record<string, string> = {};
           let gitHeadSha: string | undefined;
 
           // Which files in the working tree does git consider gitignored?
@@ -930,52 +938,114 @@ export const test = base.extend<{
             }
           }
 
-          for (const file of uncommittedFiles) {
-            const normalizedStatus = file.status.includes("?") || file.status.includes("A") || file.status === "new"
-              ? "new"
-              : file.status.includes("D") || file.status === "deleted"
-                ? "deleted"
-                : "modified";
-            if (normalizedStatus === "deleted" || file.path.endsWith("/")) continue;
-            const resolved = path.resolve(configDir, file.path);
-            if (!resolved.startsWith(configDir + path.sep)) continue;
-            try {
-              const stat = statSync(resolved);
-              if (!stat.isFile() || stat.size > MAX_TICK_UNCOMMITTED_CONTENT_BYTES) continue;
-              uncommittedFileContents[file.path] = readFileSync(resolved, "utf8");
-            } catch {
-              // Skip unreadable or transient files; status still captures their presence.
-            }
-          }
-
-          // Snapshot the working-tree bytes of every gitignored file so
-          // the report viewer can render their contents (and diffs) at
-          // each tick, even though git never tracks them. Mirrors what
-          // the canonical fixture does. logs/ is in the standard
-          // gitignore — its files churn rapidly during a run and aren't
-          // useful as tick-stamped content, so skip them here just like
-          // the `files` listing above does.
-          const ignoredFileContents: Record<string, string> = {};
-          for (const relPath of ignoredFiles) {
-            if (relPath.startsWith("logs/") || relPath.endsWith("/")) continue;
-            const resolved = path.resolve(configDir, relPath);
-            if (!resolved.startsWith(configDir + path.sep)) continue;
-            try {
-              const stat = statSync(resolved);
-              if (!stat.isFile() || stat.size > MAX_TICK_UNCOMMITTED_CONTENT_BYTES) continue;
-              ignoredFileContents[relPath] = readFileSync(resolved, "utf8");
-            } catch {
-              // Skip unreadable or transient files; path still appears in ignoredFiles.
-            }
-          }
-
-          // Check for snapshot marker
+          // Check for snapshot marker before deciding whether to capture
+          // content bytes. File listings and statuses are cheap enough to
+          // record every tick; generated preview contents can be several MB
+          // and often stay identical across many adjacent ticks.
           let isSnapshot = false;
           let snapshotMessage: string | undefined;
           if (existsSync(snapshotMarkerPath)) {
             snapshotMessage = readFileSync(snapshotMarkerPath, "utf8");
             isSnapshot = true;
             unlinkSync(snapshotMarkerPath);
+          }
+
+          const forceContent = options.forceContent === true;
+          const uncommittedFileContents: Record<string, string> = {};
+          const currentUncommittedContentSignatureByPath = new Map<string, string>();
+          let capturedUncommittedContentBytes = 0;
+          const captureFileContentIfChanged = (
+            relPath: string,
+            lastSignatures: Map<string, string>,
+            currentSignatures: Map<string, string>,
+            output: Record<string, string>,
+            capturedBytes: number
+          ): number => {
+            if (relPath.endsWith("/")) return capturedBytes;
+            const resolved = path.resolve(configDir, relPath);
+            if (!resolved.startsWith(configDir + path.sep)) return capturedBytes;
+            try {
+              const stat = statSync(resolved);
+              if (!stat.isFile()) return capturedBytes;
+
+              if (stat.size > MAX_TICK_UNCOMMITTED_CONTENT_BYTES) {
+                const signature = `omitted:size=${stat.size}:mtime=${stat.mtimeMs}`;
+                currentSignatures.set(relPath, signature);
+                if (forceContent || signature !== lastSignatures.get(relPath)) {
+                  output[relPath] = `[content omitted: ${stat.size} bytes exceeds tick capture limit]`;
+                }
+                return capturedBytes;
+              }
+
+              const bytes = readFileSync(resolved);
+              const hash = createHash("sha256").update(bytes).digest("hex");
+              const signature = `sha256:${hash}:size=${stat.size}`;
+              currentSignatures.set(relPath, signature);
+              if (forceContent || signature !== lastSignatures.get(relPath)) {
+                if (
+                  !forceContent &&
+                  capturedBytes + stat.size > MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES
+                ) {
+                  output[relPath] = `[content omitted: tick content capture exceeded ${MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES} bytes]`;
+                  return capturedBytes;
+                }
+                output[relPath] = bytes.toString("utf8");
+                return capturedBytes + stat.size;
+              }
+            } catch {
+              // Skip unreadable or transient files; listings/statuses still capture their presence.
+            }
+            return capturedBytes;
+          };
+
+          for (const file of uncommittedFiles) {
+            const normalizedStatus = file.status.includes("?") || file.status.includes("A") || file.status === "new"
+              ? "new"
+              : file.status.includes("D") || file.status === "deleted"
+                ? "deleted"
+                : "modified";
+            if (normalizedStatus === "deleted") continue;
+            capturedUncommittedContentBytes = captureFileContentIfChanged(
+              file.path,
+              lastUncommittedContentSignatureByPath,
+              currentUncommittedContentSignatureByPath,
+              uncommittedFileContents,
+              capturedUncommittedContentBytes
+            );
+          }
+          lastUncommittedContentSignatureByPath = currentUncommittedContentSignatureByPath;
+
+          // Capture tick file bytes when the bytes change, not on every
+          // polling interval. logs/ is in the standard gitignore; its files
+          // churn rapidly during a run and aren't useful as tick-stamped
+          // content, so skip them here just like the `files` listing above
+          // does.
+          const ignoredFileContents: Record<string, string> = {};
+          const currentIgnoredContentSignatureByPath = new Map<string, string>();
+          let capturedIgnoredContentBytes = 0;
+          for (const relPath of ignoredFiles) {
+            if (relPath.startsWith("logs/") || relPath.endsWith("/")) continue;
+            capturedIgnoredContentBytes = captureFileContentIfChanged(
+              relPath,
+              lastIgnoredContentSignatureByPath,
+              currentIgnoredContentSignatureByPath,
+              ignoredFileContents,
+              capturedIgnoredContentBytes
+            );
+          }
+          lastIgnoredContentSignatureByPath = currentIgnoredContentSignatureByPath;
+
+          const hasUncommittedFileContents = Object.keys(uncommittedFileContents).length > 0;
+          const hasIgnoredFileContents = Object.keys(ignoredFileContents).length > 0;
+
+          const additionalTickData = _tickCaptureRegistry.latestData;
+          const additionalTickDataKey = JSON.stringify(additionalTickData);
+          const shouldCaptureAdditionalTickData =
+            isSnapshot ||
+            forceContent ||
+            additionalTickDataKey !== lastAdditionalTickDataKey;
+          if (shouldCaptureAdditionalTickData) {
+            lastAdditionalTickDataKey = additionalTickDataKey;
           }
 
           const entry = {
@@ -985,12 +1055,12 @@ export const test = base.extend<{
             ...(snapshotMessage !== undefined && { snapshotMessage }),
             files,
             uncommittedFiles,
-            uncommittedFileContents,
             ignoredFiles,
-            ignoredFileContents,
+            ...(hasUncommittedFileContents && { uncommittedFileContents }),
+            ...(hasIgnoredFileContents && { ignoredFileContents }),
             ...(gitHeadSha !== undefined && { gitHeadSha }),
             s3Keys: latestS3Keys,
-            ..._tickCaptureRegistry.latestData,
+            ...(shouldCaptureAdditionalTickData && additionalTickData),
           };
           appendFileSync(tickLogPath, JSON.stringify(entry) + "\n");
         } catch (err) {
@@ -1036,7 +1106,10 @@ export const test = base.extend<{
       };
       _tickCaptureRegistry.captureNow = captureAdditionalTickData;
       await captureAdditionalTickData(); // establish extension baselines before tick 0
-      const additionalTickTimer = setInterval(captureAdditionalTickData, tickIntervalMs);
+      const additionalTickTimer = setInterval(
+        captureAdditionalTickData,
+        additionalTickIntervalMs
+      );
 
       captureTickSync(); // tick 0 immediately
       const tickTimer = setInterval(captureTickSync, tickIntervalMs);
@@ -1062,7 +1135,7 @@ export const test = base.extend<{
       clearInterval(additionalTickTimer);
       await captureS3Keys(); // final S3 capture before last tick
       await captureAdditionalTickData(); // final extension capture before last tick
-      captureTickSync();
+      captureTickSync({ forceContent: true });
 
       // Copy the MeadowHome config dir (including its .git history) as-is
       const meadowHomeStateRepo = path.join(artifactDir, "meadowHome-state-repo");
