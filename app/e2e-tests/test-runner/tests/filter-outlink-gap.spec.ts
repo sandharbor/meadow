@@ -32,9 +32,9 @@ test("outlink gap filter auto-calculates threshold and selects correct pages", a
   await snapshot("outlink gap filter enabled");
 
   const threshold = await filterPanel.getFilterThresholdValue("Outlink Gap");
-  expect(threshold).toBe(4);
+  expect(threshold).toBe(9);
   await addKeyFrame(linkGap);
-  await snapshot("outlink gap threshold is 4");
+  await snapshot("outlink gap threshold is 9");
 
   await filterPanel.clickSoloOnFilter("Outlink Gap");
   await snapshot("outlink gap filter soloed");

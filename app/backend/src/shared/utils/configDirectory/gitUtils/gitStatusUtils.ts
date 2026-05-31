@@ -21,6 +21,7 @@ import { setTimeout as delay } from 'timers/promises';
 import { loadAppConfig, getDefaultConfigDirectory } from '../../../../../../shared_code/utils/appConfigUtils.js';
 import { createLogger } from '../../logging/backendLoggingUtils.js';
 import { notifyGitOperation } from './gitOperationTracker.js';
+import { timeAsync } from '../../../telemetry/timingMetrics.js';
 import { resolveNativeRustBinaryPath } from '../../../../../../shared_code/utils/nativeRustBinaryPath.js';
 
 interface NativeGitFileStatus {
@@ -305,11 +306,19 @@ export async function commitChangesNative(
 
   logWithFile(configDir, `[commitChangesNative] Committing to directories: ${directories.join(', ')} (message="${message}"${options?.allowEmpty ? ', allowEmpty=true' : ''})`);
 
-  const output = await spawnFastGitOpsWithLockRetry(
-    binaryPath,
-    args,
-    60000, // 60 second timeout
-    10 * 1024 * 1024, // 10MB buffer
+  const output = await timeAsync(
+    'git.commit_changes.stage',
+    {
+      stage: 'fast_git_ops_commit_changes',
+      directory_count: directories.length,
+      allow_empty: options?.allowEmpty === true,
+    },
+    () => spawnFastGitOpsWithLockRetry(
+      binaryPath,
+      args,
+      60000, // 60 second timeout
+      10 * 1024 * 1024, // 10MB buffer
+    )
   );
 
   const result = JSON.parse(output) as CommitChangesResult;

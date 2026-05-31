@@ -20,6 +20,7 @@ import { commitChangesNative } from './gitStatusUtils.js';
 import { getConfigDirectory } from '../../../site-config/siteConfigPaths.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 import { logger } from '../../logging/backendLoggingUtils.js';
+import { timeAsync } from '../../../telemetry/timingMetrics.js';
 
 interface DiffResult {
   filepath: string;
@@ -142,10 +143,19 @@ export async function commitSiteChanges(
 
   try {
     // Use native fast_git_ops for fast commit
-    const sha = await commitChangesNative(
-      directoriesToCommit,
-      commitMessage,
-      { configDir: getConfigDirectory() }
+    const sha = await timeAsync(
+      'site.git.stage',
+      {
+        stage: 'commit_site_changes',
+        directory_count: directoriesToCommit.length,
+        include_conf_dir: includeConfDir,
+        additional_dir_count: existingAdditionalDirs.length,
+      },
+      () => commitChangesNative(
+        directoriesToCommit,
+        commitMessage,
+        { configDir: getConfigDirectory() }
+      )
     );
 
     if (sha) {

@@ -69,6 +69,21 @@ export interface CollectedSrsCard {
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+let cachedPageTemplatePath = '';
+let cachedPageTemplateMtimeMs = -1;
+let cachedPageTemplate: ReturnType<typeof handlebars.compile> | null = null;
+
+function getPageTemplate(): ReturnType<typeof handlebars.compile> {
+  const templatePath = path.join(__dirname, 'templates', 'page.html');
+  const mtimeMs = fs.statSync(templatePath).mtimeMs;
+  if (!cachedPageTemplate || cachedPageTemplatePath !== templatePath || cachedPageTemplateMtimeMs !== mtimeMs) {
+    const templateSource = fs.readFileSync(templatePath, 'utf-8');
+    cachedPageTemplate = handlebars.compile(templateSource);
+    cachedPageTemplatePath = templatePath;
+    cachedPageTemplateMtimeMs = mtimeMs;
+  }
+  return cachedPageTemplate;
+}
 
 // Configure marked once at module load. marked is a singleton; calling
 // `marked.use` on every render would accumulate extensions and slow rendering
@@ -630,19 +645,7 @@ export function renderPageToHtml(
     }
   }
 
-  // Set up Handlebars template
-  let templatesDir: string;
-  if (process.env.NODE_ENV === 'production' && __dirname.includes('Resources')) {
-    // Running in Electron app production mode
-    templatesDir = path.join(__dirname, 'templates');
-  } else {
-    // Running in development mode
-    templatesDir = path.join(__dirname, 'templates');
-  }
-  const templatePath = path.join(templatesDir, 'page.html');
-  logger.debug(`Looking for HTML template at: ${templatePath}`);
-  const templateSource = fs.readFileSync(templatePath, 'utf-8');
-  const template = handlebars.compile(templateSource);
+  const template = getPageTemplate();
 
   const pageTitle = normalizePageTitle(pageName, siteConfig, siteSlug);
 
@@ -868,9 +871,7 @@ export function renderExcalidrawPageToHtml(args: {
   const globalJavascriptJs = staticAssetNames?.globalJavascriptJs;
   const siteJavascriptJs = staticAssetNames?.siteJavascriptJs;
 
-  const templatePath = path.join(__dirname, 'templates', 'page.html');
-  const templateSource = fs.readFileSync(templatePath, 'utf-8');
-  const template = handlebars.compile(templateSource);
+  const template = getPageTemplate();
 
   const fullPageContent = template({
     content: bodyHtml,

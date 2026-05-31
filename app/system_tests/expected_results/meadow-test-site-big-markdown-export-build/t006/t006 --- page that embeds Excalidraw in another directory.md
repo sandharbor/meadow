@@ -2,7 +2,7 @@ This should show an Excalidraw drawing that says "Simple Textbox".
 
 It is in a sibling directory and the path is implicit, not explicit.
 
-![[embedded in page in other t006 directory|500]]
+_link not tracked_
 
 ```yaml
 pagespecs:
@@ -19,8 +19,7 @@ pagespecs:
             isInGraph: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: ../t006 - second directory/embedded in page in other t006 directory.html
+        mainSectionLinks: []
         footerSectionBacklinks:
           - relativeLinkPath: ../t006 - embedded media.html
             backlinkContexts:

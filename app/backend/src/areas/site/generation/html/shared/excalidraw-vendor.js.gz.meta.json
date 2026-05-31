@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "source": "excalidraw-vendor.js",
+  "sourceSha256": "abae3e228ffba6b1fd294d420dae5b6ae5671a677fd9fd1c7f81cfc541a77462",
+  "gzip": "excalidraw-vendor.js.gz",
+  "gzipSha256": "cc19bef4120c08b0eb8180086e3a9bd474fda4efcb9876d9519c9b87891a26a8",
+  "gzipAlgorithm": "gzip",
+  "gzipLevel": 9,
+  "gzipHeaderOsByte": "ff"
+}

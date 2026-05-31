@@ -13,6 +13,9 @@ node "$(dirname "$0")/../../../shared_code/check_support/check_area_routes.js" s
 # Check that source files belong to an area or shared code.
 node "$(dirname "$0")/../../../shared_code/check_support/check_area_ownership.js" src --require-ownership --summary || exit 1
 
+# Check that the checked-in Excalidraw gzip bundle matches the raw vendor bundle.
+node scripts/check-excalidraw-vendor-assets.mjs || exit 1
+
 # Check that oversized files have documented temporary exceptions.
 node "$(dirname "$0")/../../../shared_code/check_support/check_file_size.js" src --exceptions file_size_exceptions.json --require-line-exceptions --summary || exit 1
 

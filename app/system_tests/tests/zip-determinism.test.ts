@@ -18,6 +18,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
+import YAML from 'yaml';
 import {
   startServer,
   stopServer,
@@ -25,6 +26,51 @@ import {
 } from '../helpers/serverManager.js';
 import { SystemTestSiteSetup } from '../helpers/testSetup.js';
 import { readCompressionManifest } from '../../shared_code/utils/compressionManifestUtils.js';
+
+const BIG_SITE_EXCALIDRAW_PAGE_CONFIGS = [
+  {
+    fileType: 'excalidraw',
+    listType: 'whitelist',
+    sourceGraphSubdirectory: 't006 - second directory',
+    title: 'embedded in page in other t006 directory',
+    tracked: true,
+  },
+  {
+    fileType: 'excalidraw',
+    listType: 'whitelist',
+    sourceGraphSubdirectory: 't006',
+    title: 't006 --- meadow-flower',
+    tracked: true,
+  },
+];
+
+function trackBigSiteExcalidrawPages(testSetup: SystemTestSiteSetup) {
+  const sitePageConfigPath = testSetup.getPathInSite('conf/site_page_config.yaml');
+  const parsed = YAML.parse(fs.readFileSync(sitePageConfigPath, 'utf8')) as {
+    pages?: Array<Record<string, unknown>>;
+  } | null;
+  const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
+  const keyFor = (page: {
+    sourceGraphSubdirectory?: unknown;
+    title?: unknown;
+    fileType?: unknown;
+  }) => [
+    typeof page.sourceGraphSubdirectory === 'string' ? page.sourceGraphSubdirectory : '',
+    typeof page.title === 'string' ? page.title : '',
+    typeof page.fileType === 'string' ? page.fileType : '',
+  ].join('\u0000');
+
+  for (const config of BIG_SITE_EXCALIDRAW_PAGE_CONFIGS) {
+    const existingPage = pages.find((page) => keyFor(page) === keyFor(config));
+    if (existingPage) {
+      Object.assign(existingPage, config);
+    } else {
+      pages.push(config);
+    }
+  }
+
+  fs.writeFileSync(sitePageConfigPath, YAML.stringify({ ...(parsed ?? {}), pages }), 'utf8');
+}
 
 describe('Generated archive determinism', () => {
   beforeAll(async () => {
@@ -100,6 +146,7 @@ describe('Generated archive determinism', () => {
         { siteFolderName: 'meadow-test-site-big' }
       );
       testSetup.setUp();
+      trackBigSiteExcalidrawPages(testSetup);
     });
 
     afterEach(() => {

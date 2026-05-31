@@ -137,7 +137,7 @@ pages:
     title: t006 --- page that embeds Excalidraw in another directory
     tracked: true
   - fileType: excalidraw
-    listType: whitelist
+    listType: blacklist
     sourceGraphSubdirectory: t006 - second directory
     title: embedded in page in other t006 directory
     tracked: true
@@ -172,7 +172,7 @@ pages:
     title: page linked from tracked sunflower image in Excalidraw
     tracked: true
   - fileType: excalidraw
-    listType: whitelist
+    listType: blacklist
     sourceGraphSubdirectory: t006
     title: t006 --- meadow-flower
     tracked: true

@@ -87,8 +87,6 @@ pagespecs:
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
-          - relativeLinkPath: t006/t006 --- meadow-flower.html
-          - relativeLinkPath: t006/t006 --- meadow-flower.html
           - relativeLinkPath: t006/t006 --- meadow-flower.svg
           - relativeLinkPath: t006/t006 --- meadow-flower.svg
           - relativeLinkPath: t006/t006 --- meadow-flower.svg

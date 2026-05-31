@@ -19,8 +19,7 @@ pagespecs:
             isInGraph: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: ../t006 - second directory/embedded in page in other t006 directory.html
+        mainSectionLinks: []
         footerSectionBacklinks:
           - relativeLinkPath: ../t006 - embedded media.html
             backlinkContexts:

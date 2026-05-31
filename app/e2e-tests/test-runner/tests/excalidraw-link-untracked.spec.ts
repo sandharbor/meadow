@@ -20,6 +20,8 @@ import { SiteEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { excalidraw } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ trackBigSiteExcalidrawPages: true });
+
 /**
  * Verifies that a wikilink inside an Excalidraw drawing whose target page is
  * not whitelisted on the site renders as a non-clickable "link not tracked"

@@ -11,9 +11,7 @@ pagespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
-        footerSectionBacklinks:
-          - relativeLinkPath: ../t006/t006 --- page that embeds Excalidraw in another directory.html
-            backlinkContexts: []
+        footerSectionBacklinks: []
   - site: meadow-test-site-small
     curation:
       isTracked: false

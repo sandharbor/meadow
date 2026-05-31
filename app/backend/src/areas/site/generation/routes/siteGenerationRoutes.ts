@@ -33,6 +33,7 @@ import { ensureTrackedPageContent } from '../../../../shared/utils/trackedPageCo
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { clearSiteGuidCache, logSiteError, logSiteInfo } from '../../../../shared/utils/logging/siteLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
 
 const router = express.Router();
 
@@ -83,15 +84,24 @@ router.post('/sites/:siteSlug/generation/preview', (req, res, next) => {
       
       // Ensure tracked page content is populated from source directory
       if (siteConfig.sourceDirectory) {
-        await ensureTrackedPageContent(siteDirectory, siteConfig.sourceDirectory);
+        const sourceDirectory = siteConfig.sourceDirectory;
+        await timeAsync(
+          'site.preview.request.stage',
+          { stage: 'sync_tracked_page_content', site_slug: siteSlug },
+          () => ensureTrackedPageContent(siteDirectory, sourceDirectory)
+        );
       }
 
       // Generate HTML using TypeScript implementation
       try {
         logger.info(`Generating HTML for site: ${siteDirectory}`);
-        
+
         // Generate preview HTML ONLY (not published version)
-        await generateHtmlForSite(siteDirectory, { preview: true });
+        await timeAsync(
+          'site.preview.request.stage',
+          { stage: 'generate_html', site_slug: siteSlug },
+          () => generateHtmlForSite(siteDirectory, { preview: true })
+        );
 
         // Check if preview HTML directory exists
         const previewHtmlDir = SiteConfigPaths.getPreviewDir(siteDirectory);
@@ -107,13 +117,15 @@ router.post('/sites/:siteSlug/generation/preview', (req, res, next) => {
         
         try {
           if (fs.existsSync(configPath)) {
-            const yamlContent = fs.readFileSync(configPath, 'utf8');
-            const config = YAML.parse(yamlContent) as { 
-              defaultTraversalSitePageTitle?: string;
-              defaultTraversalSitePageDirectory?: string;
-            };
-            traversalPageTitle = config?.defaultTraversalSitePageTitle || '';
-            traversalPageDirectory = config?.defaultTraversalSitePageDirectory;
+            timeSync('site.preview.request.stage', { stage: 'load_traversal_config', site_slug: siteSlug }, () => {
+              const yamlContent = fs.readFileSync(configPath, 'utf8');
+              const config = YAML.parse(yamlContent) as {
+                defaultTraversalSitePageTitle?: string;
+                defaultTraversalSitePageDirectory?: string;
+              };
+              traversalPageTitle = config?.defaultTraversalSitePageTitle || '';
+              traversalPageDirectory = config?.defaultTraversalSitePageDirectory;
+            });
           }
         } catch (error) {
           logger.warn('Could not read site config for traversal page:', error);
@@ -260,7 +272,12 @@ router.get('/sites/:siteSlug/generation/preview-stream', (req, res, _next) => {
 
       // Ensure tracked page content is populated from source directory
       if (siteConfig.sourceDirectory) {
-        await ensureTrackedPageContent(siteDirectory, siteConfig.sourceDirectory);
+        const sourceDirectory = siteConfig.sourceDirectory;
+        await timeAsync(
+          'site.preview.request.stage',
+          { stage: 'sync_tracked_page_content', site_slug: siteSlug },
+          () => ensureTrackedPageContent(siteDirectory, sourceDirectory)
+        );
       }
 
       // Generate preview HTML ONLY (not published version)
@@ -274,39 +291,43 @@ router.get('/sites/:siteSlug/generation/preview-stream', (req, res, _next) => {
       let startUrlSent = false;
       let firstPageUrl: string | null = null;
 
-      await generateHtmlForSite(siteDirectory, {
-        preview: true,
-        startPage: startPageTitle ? { title: startPageTitle, directory: startPageDirectory } : undefined,
-        startPagePath,
-        shouldCancel,
-        onStartPageRendered: ({ relativeHtmlPath }) => {
-          if (startUrlSent) return;
-          startUrlSent = true;
-          const traversalPageUrl = `${requestOrigin}/api/sites/${siteSlug}/generation/published/${encodePathForUrl(relativeHtmlPath)}`;
-          firstPageUrl = traversalPageUrl;
-          sendProgress({
-            stage: 'generating',
-            message: 'Start page ready',
-            result: { success: true, traversalPageUrl },
-            progress: { current: 0, total: 0, percent: 0 }
-          });
-        },
-        onProgress: (info) => {
-          if (info.stage === 'rendering-pages' && typeof info.current === 'number' && typeof info.total === 'number') {
+      await timeAsync(
+        'site.preview.request.stage',
+        { stage: 'generate_html', site_slug: siteSlug },
+        () => generateHtmlForSite(siteDirectory, {
+          preview: true,
+          startPage: startPageTitle ? { title: startPageTitle, directory: startPageDirectory } : undefined,
+          startPagePath,
+          shouldCancel,
+          onStartPageRendered: ({ relativeHtmlPath }) => {
+            if (startUrlSent) return;
+            startUrlSent = true;
+            const traversalPageUrl = `${requestOrigin}/api/sites/${siteSlug}/generation/published/${encodePathForUrl(relativeHtmlPath)}`;
+            firstPageUrl = traversalPageUrl;
             sendProgress({
               stage: 'generating',
-              message: info.message,
-              progress: {
-                current: info.current,
-                total: info.total,
-                percent: typeof info.percent === 'number' ? info.percent : 0
-              }
+              message: 'Start page ready',
+              result: { success: true, traversalPageUrl },
+              progress: { current: 0, total: 0, percent: 0 }
             });
-          } else if (info.stage === 'copying-shared' || info.stage === 'scanning-links' || info.stage === 'computing-breadcrumbs') {
-            sendProgress({ stage: 'generating', message: info.message, progress: { current: 0, total: 0, percent: 0 } });
+          },
+          onProgress: (info) => {
+            if (info.stage === 'rendering-pages' && typeof info.current === 'number' && typeof info.total === 'number') {
+              sendProgress({
+                stage: 'generating',
+                message: info.message,
+                progress: {
+                  current: info.current,
+                  total: info.total,
+                  percent: typeof info.percent === 'number' ? info.percent : 0
+                }
+              });
+            } else if (info.stage === 'copying-shared' || info.stage === 'scanning-links' || info.stage === 'computing-breadcrumbs') {
+              sendProgress({ stage: 'generating', message: info.message, progress: { current: 0, total: 0, percent: 0 } });
+            }
           }
-        }
-      });
+        })
+      );
 
       // If this render was cancelled (superseded by a newer request), send a cancelled message
       // so the frontend knows to ignore this stream (a newer one is in progress)
@@ -332,13 +353,15 @@ router.get('/sites/:siteSlug/generation/preview-stream', (req, res, _next) => {
 
       try {
         if (fs.existsSync(configPath)) {
-          const yamlContent = fs.readFileSync(configPath, 'utf8');
-          const config = YAML.parse(yamlContent) as {
-            defaultTraversalSitePageTitle?: string;
-            defaultTraversalSitePageDirectory?: string;
-          };
-          traversalPageTitle = config?.defaultTraversalSitePageTitle || '';
-          traversalPageDirectory = config?.defaultTraversalSitePageDirectory;
+          timeSync('site.preview.request.stage', { stage: 'load_traversal_config', site_slug: siteSlug }, () => {
+            const yamlContent = fs.readFileSync(configPath, 'utf8');
+            const config = YAML.parse(yamlContent) as {
+              defaultTraversalSitePageTitle?: string;
+              defaultTraversalSitePageDirectory?: string;
+            };
+            traversalPageTitle = config?.defaultTraversalSitePageTitle || '';
+            traversalPageDirectory = config?.defaultTraversalSitePageDirectory;
+          });
         }
       } catch (error) {
         logger.warn('Could not read site config for traversal page:', error);

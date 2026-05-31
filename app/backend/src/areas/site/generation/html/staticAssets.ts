@@ -17,7 +17,9 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
+import { performance } from 'perf_hooks';
 import type { StaticAssetNames } from './types.js';
+import { recordTimingMetric } from '../../../../shared/telemetry/timingMetrics.js';
 import { deterministicGzip, writeCompressionManifest } from '../../../../../../shared_code/utils/compressionManifestUtils.js';
 
 /**
@@ -30,20 +32,60 @@ import { deterministicGzip, writeCompressionManifest } from '../../../../../../s
  */
 const PRE_GZIPPED_BASENAMES = new Set(['excalidraw-vendor.js']);
 
-function contentHashHex8(filePath: string): string {
-  const buf = fs.readFileSync(filePath);
-  return createHash('sha256').update(buf).digest('hex').slice(0, 8);
+interface ContentDigest {
+  digest: string;
+  bytes: Buffer;
 }
 
-function renameWithHash(filePath: string): { oldBasename: string; newBasename: string; newPath: string } {
+interface RenameWithHashResult {
+  oldBasename: string;
+  newBasename: string;
+  newPath: string;
+  contentDigest: string;
+}
+
+interface RenameWithHashAndContentResult extends RenameWithHashResult {
+  bytes: Buffer;
+}
+
+export interface PrecompressedAssetSource {
+  sourceSha256: string;
+  gzipPath: string;
+  gzipSha256?: string;
+}
+
+interface HashStaticAssetsOptions {
+  precompressedSourceAssets?: Record<string, PrecompressedAssetSource>;
+}
+
+function readContentDigest(filePath: string): ContentDigest {
+  const bytes = fs.readFileSync(filePath);
+  const digest = createHash('sha256').update(bytes).digest('hex');
+  return { digest, bytes };
+}
+
+function renameWithHash(filePath: string): RenameWithHashResult {
+  const { digest } = readContentDigest(filePath);
   const dir = path.dirname(filePath);
   const ext = path.extname(filePath);
   const base = path.basename(filePath, ext);
-  const hash = contentHashHex8(filePath);
+  const hash = digest.slice(0, 8);
   const newBasename = `${base}.${hash}${ext}`;
   const newPath = path.join(dir, newBasename);
   fs.renameSync(filePath, newPath);
-  return { oldBasename: path.basename(filePath), newBasename, newPath };
+  return { oldBasename: path.basename(filePath), newBasename, newPath, contentDigest: digest };
+}
+
+function renameWithHashAndContent(filePath: string): RenameWithHashAndContentResult {
+  const { digest, bytes } = readContentDigest(filePath);
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const base = path.basename(filePath, ext);
+  const hash = digest.slice(0, 8);
+  const newBasename = `${base}.${hash}${ext}`;
+  const newPath = path.join(dir, newBasename);
+  fs.renameSync(filePath, newPath);
+  return { oldBasename: path.basename(filePath), newBasename, newPath, contentDigest: digest, bytes };
 }
 
 function renameWithHashIfExists(filePath: string): string | undefined {
@@ -51,6 +93,20 @@ function renameWithHashIfExists(filePath: string): string | undefined {
     return undefined;
   }
   return renameWithHash(filePath).newBasename;
+}
+
+function writePrecompressedSourceAsset(outputDir: string, assetBasename: string, source: PrecompressedAssetSource): string {
+  const ext = path.extname(assetBasename);
+  const base = path.basename(assetBasename, ext);
+  const newBasename = `${base}.${source.sourceSha256.slice(0, 8)}${ext}`;
+  const writeStart = performance.now();
+  fs.copyFileSync(source.gzipPath, path.join(outputDir, newBasename));
+  recordTimingMetric('site.static_assets.stage', performance.now() - writeStart, {
+    stage: 'gzip_precompressed_asset',
+    asset: assetBasename,
+    precomputed: true,
+  });
+  return newBasename;
 }
 
 function listFilesRecursively(rootDir: string): string[] {
@@ -82,7 +138,7 @@ function isFontFile(filePath: string): boolean {
  *
  * Returns the new basenames for the top-level shared assets so HTML rendering can reference them.
  */
-export function hashAndRenameStaticAssets(outputDir: string): StaticAssetNames {
+export function hashAndRenameStaticAssets(outputDir: string, options: HashStaticAssetsOptions = {}): StaticAssetNames {
   const fontsDir = path.join(outputDir, 'fonts');
   const fontRenameMap: Map<string, string> = new Map(); // oldBasename -> newBasename
 
@@ -128,18 +184,34 @@ export function hashAndRenameStaticAssets(outputDir: string): StaticAssetNames {
   const { newBasename: mermaidMinJs } = renameWithHash(path.join(outputDir, 'mermaid.min.js'));
   const { newBasename: calloutsCss } = renameWithHash(path.join(outputDir, 'callouts.css'));
   const excalidrawCss = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.css')) ?? '';
-  const excalidrawVendorJs = renameWithHashIfExists(path.join(outputDir, 'excalidraw-vendor.js')) ?? '';
   const excalidrawJs = renameWithHashIfExists(path.join(outputDir, 'meadow-excalidraw.js')) ?? '';
 
   // Hash for the URL was computed on the raw bytes (above), so the URL stays
   // stable across compression form. Now overwrite the on-disk bytes with the
   // gzipped form and record it in the manifest.
   const gzipPaths: string[] = [];
-  if (excalidrawVendorJs && PRE_GZIPPED_BASENAMES.has('excalidraw-vendor.js')) {
-    const fullPath = path.join(outputDir, excalidrawVendorJs);
-    const raw = fs.readFileSync(fullPath);
-    fs.writeFileSync(fullPath, deterministicGzip(raw));
+  let excalidrawVendorJs = '';
+  const excalidrawVendorSource = options.precompressedSourceAssets?.['excalidraw-vendor.js'];
+  if (excalidrawVendorSource && fs.existsSync(excalidrawVendorSource.gzipPath)) {
+    excalidrawVendorJs = writePrecompressedSourceAsset(outputDir, 'excalidraw-vendor.js', excalidrawVendorSource);
     gzipPaths.push(excalidrawVendorJs);
+  } else {
+    const excalidrawVendorPath = path.join(outputDir, 'excalidraw-vendor.js');
+    const excalidrawVendorResult = fs.existsSync(excalidrawVendorPath)
+      ? renameWithHashAndContent(excalidrawVendorPath)
+      : undefined;
+    excalidrawVendorJs = excalidrawVendorResult?.newBasename ?? '';
+    if (excalidrawVendorResult && PRE_GZIPPED_BASENAMES.has(excalidrawVendorResult.oldBasename)) {
+      const gzipStart = performance.now();
+      const gzippedBytes = deterministicGzip(excalidrawVendorResult.bytes);
+      recordTimingMetric('site.static_assets.stage', performance.now() - gzipStart, {
+        stage: 'gzip_precompressed_asset',
+        asset: excalidrawVendorResult.oldBasename,
+        precomputed: false,
+      });
+      fs.writeFileSync(excalidrawVendorResult.newPath, gzippedBytes);
+      gzipPaths.push(excalidrawVendorJs);
+    }
   }
   const srsDir = path.join(outputDir, 'srs');
   const srsCssBase = renameWithHashIfExists(path.join(srsDir, 'srs.css'));
@@ -194,4 +266,3 @@ export function hashAndRenameStaticAssets(outputDir: string): StaticAssetNames {
 
   return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
 }
-

@@ -17,6 +17,7 @@ limitations under the License.
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { performance } from 'perf_hooks';
 import { setTimeout as delay } from 'timers/promises';
 import { Page } from './page.js';
 import { renderPageToHtml, renderExcalidrawPageToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
@@ -39,7 +40,7 @@ import { loadAppConfig } from '../../../../../../shared_code/utils/appConfigUtil
 import { resolveEffectiveGenerationOptions } from '../../../../../../shared_code/utils/generationOptionsUtils.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
-import { hashAndRenameStaticAssets } from './staticAssets.js';
+import { hashAndRenameStaticAssets, type PrecompressedAssetSource } from './staticAssets.js';
 import { createRequire } from 'module';
 
 // Load highlight.js github-light theme once at module load so the preset
@@ -63,6 +64,7 @@ import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.j
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { getEffectivePresetIdForSiteDirectory, getPresetAssetsPath } from '../utils/stylePresetsLoader.js';
 import { resolveCustomAssets } from '../utils/customAssetsLoader.js';
+import { recordTimingMetric, timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,12 +72,66 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Should always be 0 in production.
 const AFTER_HTML_GENERATION_PAUSE_MS = 0;
 
+const SHA256_HEX_RE = /^[a-f0-9]{64}$/i;
+
+interface GzipMetadata {
+  source?: unknown;
+  sourceSha256?: unknown;
+  gzip?: unknown;
+  gzipSha256?: unknown;
+}
+
+function generationMode(options: { publish?: boolean; publishNewVersion?: boolean; preview?: boolean }): string {
+  if (options.publishNewVersion) return 'publish_new_version';
+  if (options.publish) return 'publish';
+  if (options.preview) return 'preview';
+  return 'generate';
+}
+
 function getPublishedSiteSrsAssetsPath(): string {
   if (process.env.NODE_ENV === 'production' && __dirname.includes('Resources')) {
     return path.join(__dirname, 'published_site_utils', 'srs');
   }
 
   return path.join(__dirname, 'published_site_utils', 'srs');
+}
+
+function loadPrecompressedExcalidrawVendorAsset(sharedDirectory: string): PrecompressedAssetSource | null {
+  const assetBasename = 'excalidraw-vendor.js';
+  const gzipBasename = `${assetBasename}.gz`;
+  const gzipPath = path.join(sharedDirectory, gzipBasename);
+  const metadataPath = `${gzipPath}.meta.json`;
+
+  if (!fs.existsSync(gzipPath) || !fs.existsSync(metadataPath)) {
+    return null;
+  }
+
+  try {
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8')) as GzipMetadata;
+    if (
+      metadata.source !== assetBasename ||
+      metadata.gzip !== gzipBasename ||
+      typeof metadata.sourceSha256 !== 'string' ||
+      !SHA256_HEX_RE.test(metadata.sourceSha256)
+    ) {
+      logger.warn(`Invalid Excalidraw vendor gzip metadata at ${metadataPath}`);
+      return null;
+    }
+
+    if (metadata.gzipSha256 !== undefined && (typeof metadata.gzipSha256 !== 'string' || !SHA256_HEX_RE.test(metadata.gzipSha256))) {
+      logger.warn(`Invalid Excalidraw vendor gzip checksum metadata at ${metadataPath}`);
+      return null;
+    }
+
+    return {
+      sourceSha256: metadata.sourceSha256.toLowerCase(),
+      gzipPath,
+      gzipSha256: typeof metadata.gzipSha256 === 'string' ? metadata.gzipSha256.toLowerCase() : undefined,
+    };
+  } catch (error) {
+    logger.warn(`Unable to read Excalidraw vendor gzip metadata at ${metadataPath}: ${String(error)}`);
+    return null;
+  }
 }
 
 // TODO: feels like we could get this from the siteConfig?
@@ -392,9 +448,20 @@ export async function generateHtmlForSite(
   
   // Extract the site slug from the directory path
   const siteSlug = extractSiteSlugFromDirectory(siteDirectory);
+  const mode = generationMode(options);
+  const timingLabels = { mode, site_slug: siteSlug ?? 'unknown' };
+  const recordStageTiming = (stage: string, startMs: number, extra?: Record<string, string | number | boolean>) => {
+    recordTimingMetric('site.generation.stage', performance.now() - startMs, {
+      ...timingLabels,
+      stage,
+      ...extra,
+    });
+  };
   
   // Load site configuration
-  const siteConfig = loadSiteConfig(siteDirectory);
+  const siteConfig = timeSync('site.generation.stage', { ...timingLabels, stage: 'load_site_config' }, () =>
+    loadSiteConfig(siteDirectory)
+  );
   
   const trackedPageContentDirectory = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const modifiedPageContentDirectory = SiteConfigPaths.getModifiedPageContentDir(siteDirectory);
@@ -405,27 +472,35 @@ export async function generateHtmlForSite(
   const previewHtmlDirectory = SiteConfigPaths.getPreviewDir(siteDirectory);
   
   const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-  const sitePageConfs = parseSitePageConfig(sitePageConfPath);
+  const sitePageConfs = timeSync('site.generation.stage', { ...timingLabels, stage: 'parse_site_page_config' }, () =>
+    parseSitePageConfig(sitePageConfPath)
+  );
   const sitePageConfigsArray = Object.values(sitePageConfs);
-  const appConfig = loadAppConfig(getConfigDirectory());
-  const generationOptions = resolveEffectiveGenerationOptions(appConfig, siteConfig);
+  const generationOptions = timeSync('site.generation.stage', { ...timingLabels, stage: 'resolve_generation_options' }, () => {
+    const appConfig = loadAppConfig(getConfigDirectory());
+    return resolveEffectiveGenerationOptions(appConfig, siteConfig);
+  });
 
   if (generationOptions.spacedRepetitionEnabled) {
     try {
-      prepareModifiedSrsMarkdownDirectory(
-        trackedPageContentDirectory,
-        modifiedPageContentDirectory,
-        generationOptions.spacedRepetitionTags
-      );
-      if (fs.existsSync(modifiedPageContentDirectory)) {
-        sourceContentDirectory = modifiedPageContentDirectory;
-      }
+      timeSync('site.generation.stage', { ...timingLabels, stage: 'prepare_srs_markdown' }, () => {
+        prepareModifiedSrsMarkdownDirectory(
+          trackedPageContentDirectory,
+          modifiedPageContentDirectory,
+          generationOptions.spacedRepetitionTags
+        );
+        if (fs.existsSync(modifiedPageContentDirectory)) {
+          sourceContentDirectory = modifiedPageContentDirectory;
+        }
+      });
     } catch (error) {
       logger.error(`Error preparing modified SRS markdown: ${String(error)}`);
       sourceContentDirectory = trackedPageContentDirectory;
     }
   } else if (fs.existsSync(modifiedPageContentDirectory)) {
-    fs.rmSync(modifiedPageContentDirectory, { recursive: true, force: true });
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'remove_srs_markdown' }, () => {
+      fs.rmSync(modifiedPageContentDirectory, { recursive: true, force: true });
+    });
   }
   
   // Filter for whitelisted markdown pages only (we only render HTML for markdown files)
@@ -445,14 +520,18 @@ export async function generateHtmlForSite(
   let scrubbedAllLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
   try {
     emitProgress({ stage: 'preparing', message: 'Preparing scrubbed source content...' });
-    const sourceGraphData = await loadWorkingGraphData({
-      graphRoot: sourceContentDirectory,
-      sitePageConfigPath: sitePageConfPath,
-      sitePageConfigsArray,
-      initialSitePageTitle,
-      initialSitePageDirectory,
-      breadcrumbsEnabled: false,
-    });
+    const sourceGraphData = await timeAsync(
+      'site.generation.stage',
+      { ...timingLabels, stage: 'load_scrub_working_graph' },
+      () => loadWorkingGraphData({
+        graphRoot: sourceContentDirectory,
+        sitePageConfigPath: sitePageConfPath,
+        sitePageConfigsArray,
+        initialSitePageTitle,
+        initialSitePageDirectory,
+        breadcrumbsEnabled: false,
+      })
+    );
     scrubbedTraversablePageKeys = sourceGraphData.traversablePageKeys;
     scrubbedAllLinkResolutionMaps = sourceGraphData.allLinkResolutionMaps;
 
@@ -461,31 +540,36 @@ export async function generateHtmlForSite(
       return scrubbedTraversablePageKeys.has(key);
     });
 
-    prepareScrubbedSourceDirectory(
-      sourceContentDirectory,
-      scrubbedSourceContentDirectory,
-      scrubbedTraversablePageKeys,
-      sitePageConfs,
-      sitePageConfigsArrayForScrubbing,
-      scrubbedAllLinkResolutionMaps
-    );
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'prepare_scrubbed_source' }, () => {
+      prepareScrubbedSourceDirectory(
+        sourceContentDirectory,
+        scrubbedSourceContentDirectory,
+        scrubbedTraversablePageKeys,
+        sitePageConfs,
+        sitePageConfigsArrayForScrubbing,
+        scrubbedAllLinkResolutionMaps
+      );
+    });
     logger.debug(`Prepared scrubbed source content at ${scrubbedSourceContentDirectory}`);
   } catch (err) {
     logger.warn(`Could not prepare scrubbed source content (will render an empty publishable set): ${err instanceof Error ? err.message : String(err)}`);
-    prepareScrubbedSourceDirectory(
-      sourceContentDirectory,
-      scrubbedSourceContentDirectory,
-      new Set(),
-      sitePageConfs,
-      [],
-      new Map()
-    );
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'prepare_empty_scrubbed_source' }, () => {
+      prepareScrubbedSourceDirectory(
+        sourceContentDirectory,
+        scrubbedSourceContentDirectory,
+        new Set(),
+        sitePageConfs,
+        [],
+        new Map()
+      );
+    });
   }
 
   const renderContentDirectory = scrubbedSourceContentDirectory;
   
 
   // Create and clean the preview directory
+  const prepareOutputStart = performance.now();
   if (fs.existsSync(previewHtmlDirectory)) {
     fs.rmSync(previewHtmlDirectory, { recursive: true, force: true });
   }
@@ -493,6 +577,7 @@ export async function generateHtmlForSite(
 
   const assetsDirectory = path.join(previewHtmlDirectory, '_mw_assets');
   fs.mkdirSync(assetsDirectory, { recursive: true });
+  recordStageTiming('prepare_output_directories', prepareOutputStart);
 
   // Get the effective style preset for this site
   const effectivePresetId = getEffectivePresetIdForSiteDirectory(siteDirectory);
@@ -506,6 +591,7 @@ export async function generateHtmlForSite(
 
   // Copy preset assets (style.css, javascript.js, fonts/)
   // Skip style.css or javascript.js if base is disabled
+  const copyAssetsStart = performance.now();
   if (fs.existsSync(presetDirectory)) {
     try {
       const items = fs.readdirSync(presetDirectory);
@@ -627,7 +713,9 @@ export async function generateHtmlForSite(
   const siteHasExcalidraw = Object.values(sitePageConfs).some(
     conf => conf.file_type === 'excalidraw' && conf.config.list_type === 'whitelist'
   );
+  const precompressedStaticAssetSources: Record<string, PrecompressedAssetSource> = {};
   if (siteHasExcalidraw) {
+    const precompressedExcalidrawVendor = loadPrecompressedExcalidrawVendorAsset(sharedDirectory);
     const excalidrawAssets = [
       'meadow-excalidraw.css',
       'excalidraw-vendor.js', // pre-bundled @excalidraw/excalidraw + lz-string; sets window.MeadowExcalidraw
@@ -636,6 +724,18 @@ export async function generateHtmlForSite(
     for (const asset of excalidrawAssets) {
       const src = path.join(sharedDirectory, asset);
       const dst = path.join(assetsDirectory, asset);
+      if (asset === 'excalidraw-vendor.js') {
+        if (precompressedExcalidrawVendor) {
+          precompressedStaticAssetSources[asset] = precompressedExcalidrawVendor;
+          logger.debug(`Deferred ${asset} copy until hashed gzip write`);
+        } else if (fs.existsSync(src)) {
+          fs.copyFileSync(src, dst);
+          logger.debug(`Copied ${asset} to ${dst}`);
+        } else {
+          logger.warn(`${asset} not found at ${src}`);
+        }
+        continue;
+      }
       if (fs.existsSync(src)) {
         fs.copyFileSync(src, dst);
         logger.debug(`Copied ${asset} to ${dst}`);
@@ -662,12 +762,15 @@ export async function generateHtmlForSite(
       logger.debug(`Copied SRS asset: ${assetName}`);
     }
   }
+  recordStageTiming('copy_assets', copyAssetsStart, { has_excalidraw: siteHasExcalidraw });
 
   // Hash+rename static assets (css/js/mermaid/fonts) so they can be cached immutably in browsers/CDNs.
   // IMPORTANT: This must happen BEFORE pages are rendered so HTML references the new basenames.
   let staticAssetNames: StaticAssetNames | undefined;
   try {
-    staticAssetNames = hashAndRenameStaticAssets(assetsDirectory);
+    staticAssetNames = timeSync('site.generation.stage', { ...timingLabels, stage: 'hash_static_assets' }, () =>
+      hashAndRenameStaticAssets(assetsDirectory, { precompressedSourceAssets: precompressedStaticAssetSources })
+    );
   } catch (error) {
     logger.error(`Error hashing/renaming shared assets: ${String(error)}`);
     staticAssetNames = undefined;
@@ -687,14 +790,18 @@ export async function generateHtmlForSite(
       stage: 'computing-breadcrumbs',
       message: breadcrumbsEnabled ? 'Creating traversal and breadcrumbs...' : 'Creating traversal...'
     });
-    const renderGraphData = await loadWorkingGraphData({
-      graphRoot: renderContentDirectory,
-      sitePageConfigPath: sitePageConfPath,
-      sitePageConfigsArray,
-      initialSitePageTitle,
-      initialSitePageDirectory,
-      breadcrumbsEnabled,
-    });
+    const renderGraphData = await timeAsync(
+      'site.generation.stage',
+      { ...timingLabels, stage: 'load_render_working_graph', breadcrumbs_enabled: breadcrumbsEnabled },
+      () => loadWorkingGraphData({
+        graphRoot: renderContentDirectory,
+        sitePageConfigPath: sitePageConfPath,
+        sitePageConfigsArray,
+        initialSitePageTitle,
+        initialSitePageDirectory,
+        breadcrumbsEnabled,
+      })
+    );
     breadcrumbPaths = renderGraphData.breadcrumbPaths;
     allLinkResolutionMaps = renderGraphData.allLinkResolutionMaps;
     traversablePageKeys = renderGraphData.traversablePageKeys;
@@ -721,33 +828,37 @@ export async function generateHtmlForSite(
   let markdownZipEnabled = false;
   if (generationOptions.markdownZipEnabled) {
     try {
-      const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
-      if (fs.existsSync(markdownExportDir)) {
-        fs.rmSync(markdownExportDir, { recursive: true, force: true });
-      }
-      prepareMarkdownExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, markdownExportDir);
+      await timeAsync('site.generation.stage', { ...timingLabels, stage: 'markdown_export' }, async () => {
+        const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
+        if (fs.existsSync(markdownExportDir)) {
+          fs.rmSync(markdownExportDir, { recursive: true, force: true });
+        }
+        prepareMarkdownExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, markdownExportDir);
 
-      const mdExportOutputDir = path.join(assetsDirectory, 'md-export');
-      fs.mkdirSync(mdExportOutputDir, { recursive: true });
-      const zipResult = await createMarkdownExportZip(markdownExportDir, mdExportOutputDir);
-      writeMarkdownExportManifest(mdExportOutputDir, zipResult);
-      if (zipResult) {
-        markdownZipEnabled = true;
-        logger.info(`Generated markdown export ZIP: ${zipResult}`);
-      }
+        const mdExportOutputDir = path.join(assetsDirectory, 'md-export');
+        fs.mkdirSync(mdExportOutputDir, { recursive: true });
+        const zipResult = await createMarkdownExportZip(markdownExportDir, mdExportOutputDir);
+        writeMarkdownExportManifest(mdExportOutputDir, zipResult);
+        if (zipResult) {
+          markdownZipEnabled = true;
+          logger.info(`Generated markdown export ZIP: ${zipResult}`);
+        }
+      });
     } catch (error) {
       logger.error(`Error generating markdown export ZIP: ${String(error)}`);
     }
   } else {
-    const mdExportOutputDir = path.join(assetsDirectory, 'md-export');
-    if (fs.existsSync(mdExportOutputDir)) {
-      writeMarkdownExportManifest(mdExportOutputDir, null);
-    }
-    // Clean up intermediate directory if it exists
-    const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
-    if (fs.existsSync(markdownExportDir)) {
-      fs.rmSync(markdownExportDir, { recursive: true, force: true });
-    }
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'markdown_export_cleanup' }, () => {
+      const mdExportOutputDir = path.join(assetsDirectory, 'md-export');
+      if (fs.existsSync(mdExportOutputDir)) {
+        writeMarkdownExportManifest(mdExportOutputDir, null);
+      }
+      // Clean up intermediate directory if it exists
+      const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
+      if (fs.existsSync(markdownExportDir)) {
+        fs.rmSync(markdownExportDir, { recursive: true, force: true });
+      }
+    });
   }
 
   // Build the inverse_links mappings by scanning all traversable text-content
@@ -758,6 +869,7 @@ export async function generateHtmlForSite(
   const pageNameToPage: PageNameToPage = {};
 
   emitProgress({ stage: 'scanning-links', message: 'Scanning links for backlinks...' });
+  const scanLinksStart = performance.now();
   const traversableLinkScanPageKeys = Object.keys(sitePageConfs).filter(pageKey => {
     const conf = sitePageConfs[pageKey];
     const ft = conf.file_type;
@@ -831,6 +943,7 @@ export async function generateHtmlForSite(
     // Create a simple page object
     pageNameToPage[conf.title] = new Page();
   }
+  recordStageTiming('scan_backlinks', scanLinksStart, { page_count: traversableLinkScanPageKeys.length });
 
   // Second pass: generate HTML for each traversable page to preview directory with subdirectories
   // Only pages reachable via the working graph traversal will have HTML generated
@@ -1045,10 +1158,15 @@ export async function generateHtmlForSite(
     if (options.shouldCancel?.()) {
       logger.warn('[generateHtmlForSite] Cancel requested; stopping render loop early');
     } else {
-      await renderStandaloneExcalidrawPage(startPageKey);
+      await timeAsync(
+        'site.generation.stage',
+        { ...timingLabels, stage: 'render_start_excalidraw_page' },
+        () => renderStandaloneExcalidrawPage(startPageKey)
+      );
     }
   }
 
+  const renderMarkdownStart = performance.now();
   for (const pageKey of mdRenderOrder) {
     if (options.shouldCancel?.()) {
       logger.warn('[generateHtmlForSite] Cancel requested; stopping render loop early');
@@ -1176,10 +1294,12 @@ export async function generateHtmlForSite(
     // Use AFTER_HTML_GENERATION_PAUSE_MS to add an artificial delay for debugging progress visualization.
     await delay(AFTER_HTML_GENERATION_PAUSE_MS);
   }
+  recordStageTiming('render_markdown_pages', renderMarkdownStart, { page_count: mdRenderOrder.length });
 
   // Standalone Excalidraw HTML pages (so direct navigation works and breadcrumbs
   // pointing at an Excalidraw drawing resolve to a real page). The body is the
   // inline-rendered SVG; the standard page shell wraps breadcrumbs and footer.
+  const renderExcalidrawStart = performance.now();
   for (const pageKey of excalidrawRenderOrder) {
     if (pageKey === startPageKey && startPageRenderedEmitted) {
       continue;
@@ -1190,37 +1310,44 @@ export async function generateHtmlForSite(
     }
     await renderStandaloneExcalidrawPage(pageKey);
   }
+  recordStageTiming('render_excalidraw_pages', renderExcalidrawStart, { page_count: excalidrawRenderOrder.length });
 
   if (generationOptions.spacedRepetitionEnabled && allCollectedSrsCards.length > 0) {
-    const siteGuid = siteConfig.siteGuid || '';
-    const globalCards = allCollectedSrsCards.map(c => ({
-      guid: c.guid,
-      kind: c.kind,
-      promptHtml: c.promptHtml,
-      answerHtml: c.answerHtml,
-      siblingGroup: c.siblingGroup,
-      pageId: c.pageId,
-      pageTitle: c.pageTitle,
-    }));
-    const srsOutputDirectory = path.join(assetsDirectory, 'srs');
-    fs.mkdirSync(srsOutputDirectory, { recursive: true });
-    fs.writeFileSync(
-      path.join(srsOutputDirectory, 'srs-all-cards.json'),
-      JSON.stringify({ version: 1, siteGuid, cards: globalCards })
-    );
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'write_srs_manifest', card_count: allCollectedSrsCards.length }, () => {
+      const siteGuid = siteConfig.siteGuid || '';
+      const globalCards = allCollectedSrsCards.map(c => ({
+        guid: c.guid,
+        kind: c.kind,
+        promptHtml: c.promptHtml,
+        answerHtml: c.answerHtml,
+        siblingGroup: c.siblingGroup,
+        pageId: c.pageId,
+        pageTitle: c.pageTitle,
+      }));
+      const srsOutputDirectory = path.join(assetsDirectory, 'srs');
+      fs.mkdirSync(srsOutputDirectory, { recursive: true });
+      fs.writeFileSync(
+        path.join(srsOutputDirectory, 'srs-all-cards.json'),
+        JSON.stringify({ version: 1, siteGuid, cards: globalCards })
+      );
+    });
   }
 
   emitProgress({ stage: 'complete', message: 'HTML render complete', current: renderedOrSkipped, total: totalToRender, percent: 100 });
   
   // If publish flag is set, also create versioned directory
   if (options.publish) {
-    const { version, directory } = publishToVersionedDirectory(siteDirectory, siteConfig);
+    const { version, directory } = timeSync('site.generation.stage', { ...timingLabels, stage: 'publish_to_versioned_directory' }, () =>
+      publishToVersionedDirectory(siteDirectory, siteConfig)
+    );
     logger.info(`Published to versioned directory: ${version} at ${directory}`);
   }
 
   // If publish-new-version flag is set, create a new version
   if (options.publishNewVersion) {
-    const { version, directory } = publishToNewVersion(siteDirectory, siteConfig);
+    const { version, directory } = timeSync('site.generation.stage', { ...timingLabels, stage: 'publish_to_new_version' }, () =>
+      publishToNewVersion(siteDirectory, siteConfig)
+    );
     logger.info(`Published to new version: ${version} at ${directory}`);
   }
 } 

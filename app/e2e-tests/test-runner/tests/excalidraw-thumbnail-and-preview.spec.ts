@@ -20,6 +20,8 @@ import { SiteEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { excalidraw } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ trackBigSiteExcalidrawPages: true });
+
 /**
  * Walks Excalidraw drawing support end-to-end through the UI:
  *   1. Editor list view shows the inline thumbnail rendered via the same

@@ -24,6 +24,8 @@ import {
 import { excalidraw, hooks } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ trackBigSiteExcalidrawPages: true });
+
 // A maximally-aggressive page-title hook: every page on the site gets a
 // "myprefix " prepended to its title. The point is to exercise three places
 // the prefix has to flow through for an Excalidraw drawing:

@@ -20,7 +20,7 @@ import { Workflows } from "../src/run/workflows.js";
 import { orphan, callout } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-const EXPECTED_ORPHAN_COUNT = 6;
+const EXPECTED_ORPHAN_COUNT = 13;
 const CHILD_OF_BLACKLISTED = "t007 ---- child of blacklisted page";
 
 test("Callout banner warns about orphaned pages in site config", async ({

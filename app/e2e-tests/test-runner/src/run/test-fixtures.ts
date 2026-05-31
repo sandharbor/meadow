@@ -48,6 +48,22 @@ const E2E_DIR = path.join(import.meta.dirname, "../..");
 const MINIO_BUCKET_PREFIX = "meadow-e2e-test";
 const MAX_TICK_UNCOMMITTED_CONTENT_BYTES = 256 * 1024;
 const MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES = 1024 * 1024;
+const BIG_SITE_EXCALIDRAW_PAGE_CONFIGS = [
+  {
+    fileType: "excalidraw",
+    listType: "whitelist",
+    sourceGraphSubdirectory: "t006 - second directory",
+    title: "embedded in page in other t006 directory",
+    tracked: true,
+  },
+  {
+    fileType: "excalidraw",
+    listType: "whitelist",
+    sourceGraphSubdirectory: "t006",
+    title: "t006 --- meadow-flower",
+    tracked: true,
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Helpers (also exported for use by extension fixture layers)
@@ -283,6 +299,45 @@ function populateConfigDir(configDir: string, fixtureName = "home_fixture_big_an
   }
 }
 
+function trackBigSiteExcalidrawPages(configDir: string) {
+  const sitePageConfigPath = path.join(
+    configDir,
+    "sites",
+    "meadow-test-site-big",
+    "conf",
+    "site_page_config.yaml",
+  );
+  if (!existsSync(sitePageConfigPath)) return;
+
+  const parsed = YAML.parse(readFileSync(sitePageConfigPath, "utf8")) as {
+    pages?: Array<Record<string, unknown>>;
+  } | null;
+  const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
+  const keyFor = (page: {
+    sourceGraphSubdirectory?: unknown;
+    title?: unknown;
+    fileType?: unknown;
+  }) => [
+    typeof page.sourceGraphSubdirectory === "string" ? page.sourceGraphSubdirectory : "",
+    typeof page.title === "string" ? page.title : "",
+    typeof page.fileType === "string" ? page.fileType : "",
+  ].join("\u0000");
+  const existing = new Set(pages.map(keyFor));
+  for (const config of BIG_SITE_EXCALIDRAW_PAGE_CONFIGS) {
+    const existingPage = pages.find((page) => keyFor(page) === keyFor(config));
+    if (existingPage) {
+      Object.assign(existingPage, config);
+    } else if (!existing.has(keyFor(config))) {
+      pages.push(config);
+    }
+  }
+  writeFileSync(
+    sitePageConfigPath,
+    YAML.stringify({ ...(parsed ?? {}), pages }),
+    "utf8",
+  );
+}
+
 // ---------------------------------------------------------------------------
 // File listing helper for tick capture
 // ---------------------------------------------------------------------------
@@ -429,6 +484,7 @@ export type PreSpawnSeed = (deps: {
 
 export const test = base.extend<{
   fixtureHome: string;
+  trackBigSiteExcalidrawPages: boolean;
   /**
    * Absolute path to a pre-migration MeadowHome snapshot (typically
    * resolved via preMigrationFixturePath()). When set, the test's
@@ -496,6 +552,7 @@ export const test = base.extend<{
   _preSpawnSeed: PreSpawnSeed;
 }>({
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
+  trackBigSiteExcalidrawPages: [false, { option: true }],
   migrationBeforePath: [null, { option: true }],
   // _backendExtraEnv and _preSpawnSeed are declared as fixtures (rather than
   // options) because their values are objects/functions that Playwright's
@@ -531,7 +588,7 @@ export const test = base.extend<{
   },
 
   testServer: [
-    async ({ fixtureHome, migrationBeforePath, _backendExtraEnv, _preSpawnSeed }, use, testInfo) => {
+    async ({ fixtureHome, trackBigSiteExcalidrawPages: shouldTrackBigSiteExcalidrawPages, migrationBeforePath, _backendExtraEnv, _preSpawnSeed }, use, testInfo) => {
       const workerIndex = testInfo.parallelIndex;
       const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
 
@@ -547,6 +604,9 @@ export const test = base.extend<{
         populateConfigDirFromSnapshot(configDir, migrationBeforePath);
       } else {
         populateConfigDir(configDir, fixtureHome);
+      }
+      if (shouldTrackBigSiteExcalidrawPages) {
+        trackBigSiteExcalidrawPages(configDir);
       }
 
       // 3. Read allocated ports from resources.local.yaml
@@ -1158,6 +1218,13 @@ export const test = base.extend<{
       const backendLog = path.join(configDir, "logs", "meadow.log");
       if (existsSync(backendLog)) {
         copyFileSync(backendLog, path.join(artifactDir, "backend.log"));
+      }
+
+      // Copy structured backend telemetry separately from prose logs. The
+      // perf wrapper converts this JSONL file into VictoriaMetrics series.
+      const backendTelemetry = path.join(configDir, "logs", "telemetry.jsonl");
+      if (existsSync(backendTelemetry) && statSync(backendTelemetry).size > 0) {
+        copyFileSync(backendTelemetry, path.join(artifactDir, "backend-telemetry.jsonl"));
       }
 
       // Copy backend/frontend stderr captures — these surface crash traces

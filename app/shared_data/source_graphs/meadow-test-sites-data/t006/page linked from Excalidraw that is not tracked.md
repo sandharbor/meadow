@@ -5,12 +5,8 @@ pagespecs:
   - site: meadow-test-site-big
     curation:
       isTracked: false
-      isInWorkingGraph: true
-      links:
-        outlinks: []
-        inlinks:
-          - linkPath: /t006/t006 --- meadow-flower.excalidraw
-            isInGraph: true
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

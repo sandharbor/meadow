@@ -40,12 +40,12 @@ _link not tracked_
 
 ## Excalidraw
 
-![[t006 --- meadow-flower.excalidraw]]
+_link not tracked_
 
 with a **container directive** that causes the links to be functional
 
 :::meadow
-![[t006 --- meadow-flower.excalidraw|300]]
+_link not tracked_
 
 enableEmbeddedLinks: true
 enableFullscreenButton: true
@@ -54,7 +54,7 @@ enableOpenDedicatedPage: false
 
 | test embed in table                         |
 | ------------------------------------------- |
-| ![[t006 --- meadow-flower.excalidraw\|100]] |
+| _link not tracked_ |
 [[t006 --- page that embeds Excalidraw in another directory]]
 
 
@@ -87,8 +87,6 @@ pagespecs:
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
           - relativeLinkPath: t006/t006 --- meadow-flower-petals-ani.gif
-          - relativeLinkPath: t006/t006 --- meadow-flower.html
-          - relativeLinkPath: t006/t006 --- meadow-flower.html
           - relativeLinkPath: t006/t006 --- meadow-flower.svg
           - relativeLinkPath: t006/t006 --- meadow-flower.svg
           - relativeLinkPath: t006/t006 --- meadow-flower.svg
