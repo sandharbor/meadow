@@ -40,6 +40,59 @@ const SCENARIO_SOURCE_PATH = path.join(HERE, "canonical-scenario.ts");
 // ordering does.
 const EPOCH_ISO = "2026-01-01T12:00:00.000Z";
 
+function writeFixtureTelemetry(): void {
+  const epochMs = new Date(EPOCH_ISO).getTime();
+  const line = (
+    offsetMs: number,
+    name: string,
+    durationMs: number,
+    labels: Record<string, string | number | boolean>
+  ) => JSON.stringify({
+    version: 1,
+    type: "timing",
+    timestamp: new Date(epochMs + offsetMs).toISOString(),
+    name,
+    durationMs,
+    status: "ok",
+    labels,
+  });
+
+  const events = [
+    line(720, "site.preview.request.stage", 34.2, {
+      stage: "sync_tracked_page_content",
+      site_slug: "fixture-site",
+    }),
+    line(820, "site.generation.stage", 4.8, {
+      mode: "preview",
+      site_slug: "fixture-site",
+      stage: "load_site_config",
+    }),
+    line(960, "site.generation.stage", 46.5, {
+      mode: "preview",
+      site_slug: "fixture-site",
+      stage: "load_render_working_graph",
+      page_count: 7,
+    }),
+    line(1320, "site.generation.stage", 271.4, {
+      mode: "preview",
+      site_slug: "fixture-site",
+      stage: "render_markdown_pages",
+      page_count: 7,
+    }),
+    line(1390, "site.preview.request.stage", 585.2, {
+      stage: "generate_html",
+      site_slug: "fixture-site",
+    }),
+    line(2550, "git.commit_changes.stage", 94.7, {
+      stage: "fast_git_ops_commit_changes",
+      directory_count: 2,
+      allow_empty: false,
+    }),
+  ];
+
+  writeFileSync(path.join(FIXTURE_DIR, "backend-telemetry.jsonl"), `${events.join("\n")}\n`);
+}
+
 export async function generateFixtureScenario(): Promise<string> {
   // Wipe and recreate so each refresh starts from a known-empty state.
   if (existsSync(FIXTURE_DIR)) {
@@ -53,6 +106,7 @@ export async function generateFixtureScenario(): Promise<string> {
   buildCanonicalScenario(builder);
   builder.finalize();
   builder.flushKeyFrames();
+  writeFixtureTelemetry();
 
   // Required scalar files the assembler reads.
   writeFileSync(path.join(FIXTURE_DIR, "start-time.txt"), builder.ticker.startIso());

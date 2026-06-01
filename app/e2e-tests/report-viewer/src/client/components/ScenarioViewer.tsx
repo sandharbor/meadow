@@ -146,10 +146,166 @@ interface FileTimelineItem {
   meta?: string
 }
 
+type ActiveTab = 'files' | 'test-code' | 'state' | 's3' | 'otel'
+type TelemetryTab = 'spans' | 'slowest' | 'groups'
+
+interface TelemetryEvent {
+  version?: number
+  type?: string
+  timestamp?: string
+  name?: string
+  durationMs?: number
+  status?: string
+  labels?: Record<string, unknown>
+}
+
+interface TelemetryResponse {
+  events?: TelemetryEvent[]
+  malformedLineCount?: number
+  fileExists?: boolean
+}
+
+interface TelemetryGroup {
+  key: string
+  name: string
+  count: number
+  totalMs: number
+  avgMs: number
+  maxMs: number
+}
+
+interface TelemetrySummary {
+  eventCount: number
+  timedSumMs: number
+  wallRangeMs: number
+  maxDurationMs: number
+  slowest: TelemetryEvent | null
+  groups: TelemetryGroup[]
+}
+
 const FILE_CHANGE_LENSES: { key: FileChangeLens; label: string }[] = [
   { key: 'tick', label: 'Tick' },
   { key: 'git', label: 'Git' },
 ]
+
+function telemetryDurationMs(event: TelemetryEvent): number {
+  return typeof event.durationMs === 'number' && Number.isFinite(event.durationMs)
+    ? Math.max(0, event.durationMs)
+    : 0
+}
+
+function telemetryStage(event: TelemetryEvent): string | null {
+  const stage = event.labels?.stage
+  return typeof stage === 'string' && stage ? stage : null
+}
+
+function telemetryDisplayName(event: TelemetryEvent): string {
+  const base = event.name || '(unnamed)'
+  const stage = telemetryStage(event)
+  return stage ? `${base} / ${stage}` : base
+}
+
+function formatDurationMs(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms)) return '-'
+  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`
+  if (ms >= 100) return `${ms.toFixed(0)}ms`
+  if (ms >= 10) return `${ms.toFixed(1)}ms`
+  return `${ms.toFixed(2)}ms`
+}
+
+function formatTelemetryValue(value: unknown): string {
+  if (value == null) return 'null'
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
+function formatTelemetryLabels(labels?: Record<string, unknown>, omit = new Set<string>()): string {
+  const entries = Object.entries(labels || {}).filter(([key]) => !omit.has(key))
+  return entries.map(([key, value]) => `${key}=${formatTelemetryValue(value)}`).join('  ')
+}
+
+function telemetryEventStartMs(event: TelemetryEvent): number | null {
+  if (!event.timestamp) return null
+  const endMs = Date.parse(event.timestamp)
+  if (!Number.isFinite(endMs)) return null
+  return endMs - telemetryDurationMs(event)
+}
+
+function formatTelemetryOffset(event: TelemetryEvent, scenarioStartMs: number): string {
+  const eventStartMs = telemetryEventStartMs(event)
+  if (eventStartMs == null) return '-'
+  if (!scenarioStartMs) {
+    return new Date(eventStartMs).toLocaleTimeString([], {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  }
+  const offsetSeconds = (eventStartMs - scenarioStartMs) / 1000
+  return `${offsetSeconds >= 0 ? '+' : ''}${offsetSeconds.toFixed(2)}s`
+}
+
+function getTelemetryIndexAtOrBefore(events: TelemetryEvent[], realTime: number): number {
+  let eventIndex = -1
+  for (let i = 0; i < events.length; i++) {
+    const eventStartMs = telemetryEventStartMs(events[i])
+    if (eventStartMs == null) continue
+    if (eventStartMs <= realTime) eventIndex = i
+    else break
+  }
+  return eventIndex
+}
+
+function computeTelemetrySummary(events: TelemetryEvent[]): TelemetrySummary {
+  let timedSumMs = 0
+  let maxDurationMs = 0
+  let slowest: TelemetryEvent | null = null
+  let minStartMs = Infinity
+  let maxEndMs = -Infinity
+  const groups = new Map<string, Omit<TelemetryGroup, 'avgMs'>>()
+
+  for (const event of events) {
+    const durationMs = telemetryDurationMs(event)
+    timedSumMs += durationMs
+    if (durationMs > maxDurationMs) {
+      maxDurationMs = durationMs
+      slowest = event
+    }
+
+    if (event.timestamp) {
+      const endMs = Date.parse(event.timestamp)
+      if (Number.isFinite(endMs)) {
+        minStartMs = Math.min(minStartMs, endMs - durationMs)
+        maxEndMs = Math.max(maxEndMs, endMs)
+      }
+    }
+
+    const name = telemetryDisplayName(event)
+    const key = `${event.name || '(unnamed)'}\u0000${telemetryStage(event) || ''}`
+    const group = groups.get(key) || { key, name, count: 0, totalMs: 0, maxMs: 0 }
+    group.count += 1
+    group.totalMs += durationMs
+    group.maxMs = Math.max(group.maxMs, durationMs)
+    groups.set(key, group)
+  }
+
+  return {
+    eventCount: events.length,
+    timedSumMs,
+    wallRangeMs: Number.isFinite(minStartMs) && Number.isFinite(maxEndMs) ? Math.max(0, maxEndMs - minStartMs) : 0,
+    maxDurationMs,
+    slowest,
+    groups: [...groups.values()]
+      .map((group) => ({ ...group, avgMs: group.count > 0 ? group.totalMs / group.count : 0 }))
+      .sort((a, b) => b.totalMs - a.totalMs),
+  }
+}
 
 function normalizeGitStatus(status: string): 'new' | 'modified' | 'deleted' {
   const normalized = status.trim().toLowerCase()
@@ -313,7 +469,7 @@ export default function ScenarioViewer() {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(-1)
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'files' | 'test-code' | 'state' | 's3'>('test-code')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('test-code')
   const [snapshotDropdownOpen, setSnapshotDropdownOpen] = useState(false)
   const [logFilter, setLogFilter] = useState<'all' | 'backend' | 'frontend'>('all')
   const [levelFilter, setLevelFilter] = useState<Set<string>>(() => new Set(['DEBUG', 'INFO', 'WARN', 'ERROR', 'LOG']))
@@ -347,6 +503,10 @@ export default function ScenarioViewer() {
   const [prevS3Objects, setPrevS3Objects] = useState<Record<string, string>>({})
   const [s3DiffMode, setS3DiffMode] = useState(true)
   const [testSource, setTestSource] = useState('')
+  const [telemetryEvents, setTelemetryEvents] = useState<TelemetryEvent[]>([])
+  const [telemetryMalformedLineCount, setTelemetryMalformedLineCount] = useState(0)
+  const [highlightedTelemetryIndex, setHighlightedTelemetryIndex] = useState(-1)
+  const [activeTelemetryTab, setActiveTelemetryTab] = useState<TelemetryTab>('spans')
   const [highlightedLogIndex, setHighlightedLogIndex] = useState(-1)
   const [notes, setNotes] = useState<string | null>(null)
   const [notesExpanded, setNotesExpanded] = useState(false)
@@ -356,6 +516,7 @@ export default function ScenarioViewer() {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null)
   const logEntriesRef = useRef<HTMLDivElement>(null)
+  const telemetryEntriesRef = useRef<HTMLDivElement>(null)
   const testCodeRef = useRef<HTMLPreElement>(null)
   const autoFollowRef = useRef(true)
   const lastHighlightRef = useRef<string | null>(null)
@@ -391,6 +552,25 @@ export default function ScenarioViewer() {
   const toVideoTime = useCallback((realMs: number) => {
     return realTimeToVideo(startTime, realMs)
   }, [startTime])
+
+  const telemetrySummary = useMemo(() => computeTelemetrySummary(telemetryEvents), [telemetryEvents])
+  const slowestTelemetryEvents = useMemo(
+    () => [...telemetryEvents]
+      .sort((a, b) => telemetryDurationMs(b) - telemetryDurationMs(a))
+      .slice(0, 12),
+    [telemetryEvents],
+  )
+  const chronologicalTelemetryEvents = useMemo(
+    () => [...telemetryEvents].sort((a, b) => {
+      const aStart = telemetryEventStartMs(a) ?? 0
+      const bStart = telemetryEventStartMs(b) ?? 0
+      return aStart - bStart
+    }),
+    [telemetryEvents],
+  )
+  const highlightedTelemetryEvent = highlightedTelemetryIndex >= 0
+    ? chronologicalTelemetryEvents[highlightedTelemetryIndex] ?? null
+    : null
 
   // --- Data fetching ---
 
@@ -516,13 +696,14 @@ export default function ScenarioViewer() {
     let mounted = true
 
     async function init() {
-      const [manifestRes, snapshotsRes, stateReposRes, s3Res, testSourceRes, uncommittedRes, notesRes] = await Promise.all([
+      const [manifestRes, snapshotsRes, stateReposRes, s3Res, testSourceRes, uncommittedRes, telemetryRes, notesRes] = await Promise.all([
         fetch(`${API}/manifest`),
         fetch(`${API}/snapshots`),
         fetch(`${API}/state-repos`),
         fetch(`${API}/minio-snapshots`),
         fetch(`${API}/test-source`),
         fetch(`${API}/uncommitted`),
+        fetch(`${API}/backend-telemetry`),
         fetch(`/api/${runId}/notes`),
       ])
 
@@ -534,6 +715,7 @@ export default function ScenarioViewer() {
       const s3Data: Snapshot[] = await s3Res.json()
       const testSourceData = await testSourceRes.json()
       const uncommittedData: UncommittedEntry[] = await uncommittedRes.json()
+      const telemetryData: TelemetryResponse = telemetryRes.ok ? await telemetryRes.json() : {}
       const notesText = notesRes.ok ? await notesRes.text() : null
 
       // Pick the first extension state repo (if any) as the source for
@@ -552,6 +734,8 @@ export default function ScenarioViewer() {
       setS3Snapshots(s3Data)
       setTestSource(testSourceData.source || '')
       setUncommittedEntries(uncommittedData)
+      setTelemetryEvents(Array.isArray(telemetryData.events) ? telemetryData.events : [])
+      setTelemetryMalformedLineCount(telemetryData.malformedLineCount || 0)
       setNotes(notesText)
 
       // Extract tick data from manifest
@@ -782,6 +966,9 @@ export default function ScenarioViewer() {
       setCurrentTickIndex(tickIdx)
     }
 
+    const telemetryIdx = getTelemetryIndexAtOrBefore(chronologicalTelemetryEvents, realTime)
+    setHighlightedTelemetryIndex(telemetryIdx)
+
     // Highlight log
     if (manifest.logs.length > 0) {
       const filteredLogs = manifest.logs.filter(
@@ -801,7 +988,7 @@ export default function ScenarioViewer() {
       }
       setHighlightedLogIndex(closest)
     }
-  }, [manifest, snapshots, stateSnapshots, s3Snapshots, timelineSnapshotMessages, ticks, toRealTime, logFilter, levelFilter, currentSnapshotIndex, currentStateIndex, currentS3Index, currentTickIndex, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick, getSnapshotMessageIndexAtOrBefore])
+  }, [manifest, snapshots, stateSnapshots, s3Snapshots, timelineSnapshotMessages, ticks, chronologicalTelemetryEvents, toRealTime, logFilter, levelFilter, currentSnapshotIndex, currentStateIndex, currentS3Index, currentTickIndex, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick, getSnapshotMessageIndexAtOrBefore])
 
   // Video timeupdate handler
   const handleTimeUpdate = useCallback(() => {
@@ -875,6 +1062,14 @@ export default function ScenarioViewer() {
       el.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }
   }, [highlightedLogIndex])
+
+  useEffect(() => {
+    if (activeTab !== 'otel' || activeTelemetryTab !== 'spans' || highlightedTelemetryIndex < 0) return
+    const el = telemetryEntriesRef.current?.querySelector(`[data-otel-idx="${highlightedTelemetryIndex}"]`)
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [activeTab, activeTelemetryTab, highlightedTelemetryIndex])
 
   // --- Tick helpers ---
 
@@ -1488,6 +1683,7 @@ export default function ScenarioViewer() {
                 setTimelinePercent((video.currentTime / video.duration) * 100)
                 setTimeDisplay(`${formatTime(video.currentTime)} / ${formatTime(video.duration)}`)
               }
+              syncToVideoTime()
             }}
           >
             <source src={`${API}/video.webm`} type="video/webm" />
@@ -2014,10 +2210,10 @@ export default function ScenarioViewer() {
       <div className="flex flex-col overflow-hidden">
         {/* Tab bar */}
         <div className="flex bg-neutral-100 border-b border-neutral-200">
-          {(['test-code', 'files', 'state', 's3'] as const).map((tab) => (
+          {(['test-code', 'files', 'state', 's3', 'otel'] as const).map((tab) => (
             <button
               key={tab}
-              className={`px-4 py-1.5 text-xs font-bold cursor-pointer border-b-2 ${
+              className={`px-4 py-1.5 text-xs font-bold cursor-pointer border-b-2 inline-flex items-center gap-1.5 ${
                 activeTab === tab
                   ? 'text-brand-500 border-brand-500'
                   : 'text-neutral-500 border-transparent hover:text-neutral-700'
@@ -2026,6 +2222,7 @@ export default function ScenarioViewer() {
             >
               {tab === 'files' ? 'Files' :
                tab === 'test-code' ? 'Test Code' :
+               tab === 'otel' ? 'OTEL' :
                tab === 'state' ? stateDisplayName : 'S3 Objects'}
             </button>
           ))}
@@ -2272,6 +2469,151 @@ export default function ScenarioViewer() {
                 <div className="p-10 text-center text-neutral-400">No test source code captured.</div>
               )}
             </pre>
+          )}
+
+          {/* OTEL tab */}
+          {activeTab === 'otel' && (
+            <div className="flex-1 min-h-0 overflow-auto bg-white text-xs">
+              {telemetryEvents.length === 0 ? (
+                <div className="p-10 text-center text-neutral-400 text-sm">No backend telemetry captured.</div>
+              ) : (
+                <div className="w-full">
+                  {telemetryMalformedLineCount > 0 && (
+                    <div className="border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-700">
+                      {telemetryMalformedLineCount} malformed telemetry {telemetryMalformedLineCount === 1 ? 'line was' : 'lines were'} skipped.
+                    </div>
+                  )}
+
+                  <div className="flex border-b border-neutral-200 bg-neutral-50 px-2 pt-1.5">
+                    {([
+                      ['spans', 'Spans'],
+                      ['slowest', 'Slowest spans'],
+                      ['groups', 'Groups'],
+                    ] as const).map(([tab, label]) => (
+                      <button
+                        key={tab}
+                        className={`border-b-2 px-3 py-1.5 text-[11px] font-bold ${
+                          activeTelemetryTab === tab
+                            ? 'border-brand-500 text-brand-500'
+                            : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                        }`}
+                        onClick={() => setActiveTelemetryTab(tab)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {activeTelemetryTab === 'spans' && (
+                    <section>
+                      <div className="grid grid-cols-[52px_minmax(0,1fr)_76px_36px] gap-2 border-b border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[10px] font-bold uppercase text-neutral-400 sm:grid-cols-[64px_minmax(0,1fr)_110px_54px]">
+                        <span>Start</span>
+                        <span>Span</span>
+                        <span>Duration</span>
+                        <span>Status</span>
+                      </div>
+                      <div ref={telemetryEntriesRef} className="divide-y divide-neutral-100">
+                        {chronologicalTelemetryEvents.map((event, index) => {
+                          const durationMs = telemetryDurationMs(event)
+                          const widthPercent = telemetrySummary.maxDurationMs > 0
+                            ? Math.max(durationMs === 0 ? 0 : 2, (durationMs / telemetrySummary.maxDurationMs) * 100)
+                            : 0
+                          const labels = formatTelemetryLabels(event.labels, new Set(['stage']))
+                          const eventStartMs = telemetryEventStartMs(event)
+                          const isHighlighted = index === highlightedTelemetryIndex
+                          return (
+                            <button
+                              key={`otel-${index}`}
+                              data-otel-idx={index}
+                              className={`grid w-full grid-cols-[52px_minmax(0,1fr)_76px_36px] gap-2 px-3 py-1.5 text-left sm:grid-cols-[64px_minmax(0,1fr)_110px_54px] ${
+                                isHighlighted
+                                  ? 'bg-brand-50 ring-1 ring-inset ring-brand-200 hover:bg-brand-50'
+                                  : 'hover:bg-neutral-50'
+                              }`}
+                              onClick={() => {
+                                const video = videoRef.current
+                                if (video && eventStartMs != null) {
+                                  video.currentTime = Math.max(0, toVideoTime(eventStartMs))
+                                }
+                              }}
+                            >
+                              <span className="font-mono text-neutral-400">{formatTelemetryOffset(event, startTime)}</span>
+                              <span className="min-w-0">
+                                <span className="block truncate font-medium text-neutral-700" title={telemetryDisplayName(event)}>{telemetryDisplayName(event)}</span>
+                                {labels && <span className="block truncate text-[11px] text-neutral-400" title={labels}>{labels}</span>}
+                              </span>
+                              <span className="flex items-center justify-end gap-2">
+                                <span className="hidden h-1.5 flex-1 rounded-full bg-neutral-100 sm:block">
+                                  <span
+                                    className="block h-1.5 rounded-full bg-brand-400"
+                                    style={{ width: `${widthPercent}%` }}
+                                  />
+                                </span>
+                                <span className="text-right font-mono text-neutral-700">{formatDurationMs(durationMs)}</span>
+                              </span>
+                              <span className={`font-mono ${
+                                event.status === 'ok' ? 'text-green-700' :
+                                event.status === 'error' ? 'text-red-600' :
+                                'text-neutral-400'
+                              }`}>
+                                {event.status || '-'}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  )}
+
+                  {activeTelemetryTab === 'slowest' && (
+                    <section className="min-w-0">
+                      <div className="divide-y divide-neutral-100">
+                        {slowestTelemetryEvents.map((event, index) => {
+                          const durationMs = telemetryDurationMs(event)
+                          const labels = formatTelemetryLabels(event.labels, new Set(['stage']))
+                          const isHighlighted = event === highlightedTelemetryEvent
+                          return (
+                            <div
+                              key={`slow-${index}`}
+                              className={`grid grid-cols-[34px_minmax(0,1fr)_62px] gap-2 px-3 py-1.5 ${
+                                isHighlighted ? 'bg-brand-50 ring-1 ring-inset ring-brand-200' : ''
+                              }`}
+                            >
+                              <span className="font-mono text-neutral-400">#{index + 1}</span>
+                              <span className="min-w-0 truncate text-neutral-700" title={telemetryDisplayName(event)}>
+                                {telemetryDisplayName(event)}
+                                {labels && <span className="ml-1 text-neutral-400">{labels}</span>}
+                              </span>
+                              <span className="text-right font-mono font-bold text-neutral-800">{formatDurationMs(durationMs)}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  )}
+
+                  {activeTelemetryTab === 'groups' && (
+                    <section className="min-w-0">
+                      <div className="divide-y divide-neutral-100">
+                        {telemetrySummary.groups.slice(0, 12).map((group) => (
+                          <div key={group.key} className="px-3 py-1.5">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="min-w-0 flex-1 truncate text-neutral-700" title={group.name}>{group.name}</span>
+                              <span className="font-mono font-bold text-neutral-800">{formatDurationMs(group.totalMs)}</span>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-3 text-[11px] text-neutral-400">
+                              <span className="font-mono">{group.count}x</span>
+                              <span className="font-mono">{formatDurationMs(group.avgMs)} avg</span>
+                              <span className="font-mono">{formatDurationMs(group.maxMs)} max</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Structured-state tab */}

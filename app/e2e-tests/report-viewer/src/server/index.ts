@@ -743,6 +743,45 @@ app.get("/api/:runId/:testSlug/test-source", (req, res) => {
   });
 });
 
+interface BackendTelemetryEvent {
+  version?: number;
+  type?: string;
+  timestamp?: string;
+  name?: string;
+  durationMs?: number;
+  status?: string;
+  labels?: Record<string, unknown>;
+}
+
+// API: structured backend telemetry copied from the scenario artifact
+app.get("/api/:runId/:testSlug/backend-telemetry", (req, res) => {
+  const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
+  if (!dir) return res.status(404).json({ error: "Scenario not found" });
+
+  const telemetryPath = path.join(dir, "backend-telemetry.jsonl");
+  if (!existsSync(telemetryPath)) {
+    return res.json({ events: [], malformedLineCount: 0, fileExists: false });
+  }
+
+  const events: BackendTelemetryEvent[] = [];
+  let malformedLineCount = 0;
+  const content = readFileSync(telemetryPath, "utf8").trim();
+  for (const line of content ? content.split("\n") : []) {
+    try {
+      const parsed = JSON.parse(line) as unknown;
+      if (typeof parsed === "object" && parsed !== null) {
+        events.push(parsed as BackendTelemetryEvent);
+      } else {
+        malformedLineCount += 1;
+      }
+    } catch {
+      malformedLineCount += 1;
+    }
+  }
+
+  res.json({ events, malformedLineCount, fileExists: true });
+});
+
 // API: key frame image
 // Serve keyframe by exact filename (supports incremented names like keyframe-callout-2.png)
 app.get("/api/:runId/:testSlug/keyframe-file/:filename", (req, res) => {
