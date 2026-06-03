@@ -5,6 +5,7 @@ defaultTraversalSitePageDirectory: ""
 sourceDirectory: ./source_graphs/example-site-data
 initialSitePageTitle: Notable Mental Models
 initialSitePageDirectory: ""
+publishSlug: example-site
 siteCreatedAt: 2026-03-20T00:00:00.000Z
 siteLastPublishedAt: null
 siteNotes: ""

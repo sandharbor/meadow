@@ -63,7 +63,7 @@ export function restoreMarkdownLinkNotTrackedMarkers(markdown: string): string {
  * HTML-navigation artifacts, and generated tag wikilinks are restored to
  * normal Obsidian `#tag` text for local use.
  */
-export function prepareMarkdownExportFromScrubbedSourceDirectory(
+export function prepareSourcesExportFromScrubbedSourceDirectory(
   scrubbedContentDir: string,
   exportDir: string
 ): void {
@@ -99,10 +99,10 @@ export function prepareMarkdownExportFromScrubbedSourceDirectory(
 }
 
 /**
- * Backward-compatible wrapper for the markdown export build. The markdown
- * export now uses the same scrubbed source stage as generated site files.
+ * Backward-compatible wrapper for the sources export build. The sources export
+ * uses the same scrubbed source stage as generated site files.
  */
-export function prepareMarkdownExportDirectory(
+export function prepareSourcesExportDirectory(
   trackedContentDir: string,
   _sourceContentDir: string | undefined,
   exportDir: string,
@@ -118,6 +118,6 @@ export function prepareMarkdownExportDirectory(
     sitePageConfs,
     sitePageConfigsForLinks
   );
-  prepareMarkdownExportFromScrubbedSourceDirectory(scrubbedTempDir, exportDir);
+  prepareSourcesExportFromScrubbedSourceDirectory(scrubbedTempDir, exportDir);
   fs.rmSync(scrubbedTempDir, { recursive: true, force: true });
 }

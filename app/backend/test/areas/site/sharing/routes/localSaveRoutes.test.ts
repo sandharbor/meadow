@@ -24,9 +24,9 @@ import request from 'supertest';
 import localSaveRoutes from '../../../../../src/areas/site/sharing/routes/localSaveRoutes.js';
 import { TestSiteSetup } from '../../../../shared/support/testSiteSetup.js';
 
-describe('Advanced-tab raw markdown export (localSaveRoutes)', () => {
-  const siteSlug = 'markdown-export-test';
-  const testSetup = new TestSiteSetup('shared/fixtures/markdown-export-site', siteSlug);
+describe('Advanced-tab sources export (localSaveRoutes)', () => {
+  const siteSlug = 'sources-export-test';
+  const testSetup = new TestSiteSetup('shared/fixtures/sources-export-site', siteSlug);
   let app: express.Express;
   let scratchDir: string;
 
@@ -37,7 +37,7 @@ describe('Advanced-tab raw markdown export (localSaveRoutes)', () => {
     app.use(express.json());
     app.use('/api', localSaveRoutes);
 
-    scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mdexport-advanced-'));
+    scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sources-export-advanced-'));
   });
 
   afterEach(() => {
@@ -60,8 +60,8 @@ describe('Advanced-tab raw markdown export (localSaveRoutes)', () => {
 
     const zipContents = execFileSync('unzip', ['-l', finalZipPath], { encoding: 'utf8' });
 
-    expect(zipContents).toContain('main page.md');
-    expect(zipContents).toContain('connected page.md');
+    expect(zipContents).toContain(`${siteSlug}/main page.md`);
+    expect(zipContents).toContain(`${siteSlug}/connected page.md`);
     expect(zipContents).not.toContain('orphaned page.md');
     expect(zipContents).not.toContain('blacklisted page.md');
   });

@@ -56,7 +56,7 @@ export interface RenderOptions {
    * rendered HTML pages. When omitted, defaults to the legacy filenames (style.css, javascript.js, mermaid.min.js).
    */
   staticAssetNames?: StaticAssetNames;
-  markdownZipEnabled?: boolean;
+  sourcesExportEnabled?: boolean;
   srsEnabled?: boolean;
 }
 

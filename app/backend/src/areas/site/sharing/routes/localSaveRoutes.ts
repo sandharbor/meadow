@@ -24,16 +24,16 @@ import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigP
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
 import { createZipFromDirectory } from '../../../../shared/utils/zipUtils.js';
 import { findUniqueName } from '../../../../shared/utils/uniqueNameUtils.js';
-import { buildFilteredMarkdownExportForSite } from '../services/filteredMarkdownExport.js';
+import { buildFilteredSourcesExportForSite } from '../services/filteredSourcesExport.js';
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../../shared_code/utils/compressionManifestUtils.js';
 
-// For 'raw' source: produces (and returns the path to) a filtered markdown
+// For 'raw' source: produces (and returns the path to) a filtered sources
 // export directory that excludes orphaned-tracked and non-whitelisted pages,
 // matching the site-publish path. For 'html': returns the preview directory
 // as-is.
 async function resolveSourcePath(siteDir: string, sourceType: 'raw' | 'html'): Promise<string> {
   if (sourceType === 'raw') {
-    return await buildFilteredMarkdownExportForSite(siteDir);
+    return await buildFilteredSourcesExportForSite(siteDir);
   }
   return SiteConfigPaths.getPreviewDir(siteDir);
 }
@@ -46,7 +46,7 @@ async function resolveSourcePath(siteDir: string, sourceType: 'raw' | 'html'): P
  * bytes, and drop the manifest itself before exporting.
  *
  * Returns the source path unchanged when there's nothing to inflate (e.g.
- * raw-markdown exports, sites without the excalidraw vendor).
+ * sources exports, sites without the excalidraw vendor).
  */
 function stageForLocalExport(sourcePath: string): { stagedPath: string; cleanup: () => void } {
   const assetsDir = path.join(sourcePath, '_mw_assets');
@@ -179,7 +179,9 @@ router.post('/sites/:siteSlug/sharing/create-zip', async (req, res) => {
 
   const staged = stageForLocalExport(sourcePath);
   try {
-    await createZipFromDirectory(staged.stagedPath, finalPath);
+    await createZipFromDirectory(staged.stagedPath, finalPath, {
+      archiveRootDirectory: sourceType === 'raw' ? siteSlug : undefined,
+    });
     res.json({ success: true, path: finalPath });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

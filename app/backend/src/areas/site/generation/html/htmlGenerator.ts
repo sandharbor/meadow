@@ -57,7 +57,7 @@ import { HooksLoader } from '../utils/hooksLoader.js';
 import { frontmatterAsDict, replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
 import { renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import { MARKDOWN_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
+import { SOURCES_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
 import { replaceSrsCardsWithCustomElements } from '../../../../shared/utils/srsMarkdownUtils.js';
 
 export interface CollectedSrsCard {
@@ -173,7 +173,7 @@ export function renderPageToHtml(
     showHoverPreview = false,
     breadcrumbPath = [],
     staticAssetNames,
-    markdownZipEnabled,
+    sourcesExportEnabled,
     srsEnabled = false,
   } = options;
 
@@ -738,8 +738,8 @@ export function renderPageToHtml(
     srs_site_guid: siteConfig.siteGuid || '',
     srs_page_id: srsPageId,
     include_hover_preview: showHoverPreview,
-    markdown_zip_enabled: markdownZipEnabled,
-    markdown_zip_manifest_url: `${assetsPrefix}md-export/${MARKDOWN_EXPORT_MANIFEST_FILENAME}`
+    sources_export_enabled: sourcesExportEnabled,
+    sources_export_manifest_url: `${assetsPrefix}sources-export/${SOURCES_EXPORT_MANIFEST_FILENAME}`
   });
 
   let htmlPath: string | null = null;

@@ -16,10 +16,10 @@ limitations under the License.
 
 import { ScenarioDoc } from "./types.js";
 
-export const markdown: ScenarioDoc = {
-  id: "markdown",
-  name: "Markdown",
+export const sourcesExport: ScenarioDoc = {
+  id: "sources-export",
+  name: "Sources Export",
   description:
-    "Tests covering the markdown export feature, including ZIP generation " +
+    "Tests covering the sources export feature, including ZIP generation " +
     "with filtered and sanitized markdown files published alongside the HTML site.",
 };

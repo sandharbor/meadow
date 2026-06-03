@@ -90,8 +90,8 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('hashchange', highlightAnchorBlock);
 
 document.addEventListener('DOMContentLoaded', function() {
-    var markdownDownloadLinks = document.querySelectorAll('.markdown-zip-download[data-markdown-zip-manifest-url]');
-    if (!markdownDownloadLinks.length) return;
+    var sourcesExportDownloadLinks = document.querySelectorAll('.sources-export-download[data-sources-export-manifest-url]');
+    if (!sourcesExportDownloadLinks.length) return;
 
     var manifestCache = {};
 
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             manifestCache[manifestUrl] = fetch(manifestUrl, { cache: 'no-store' })
                 .then(function(response) {
                     if (!response.ok) {
-                        throw new Error('Failed to load markdown export manifest');
+                        throw new Error('Failed to load sources export manifest');
                     }
                     return response.json();
                 });
@@ -117,28 +117,28 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.removeChild(tempLink);
     }
 
-    for (var i = 0; i < markdownDownloadLinks.length; i++) {
+    for (var i = 0; i < sourcesExportDownloadLinks.length; i++) {
         (function(link) {
             link.addEventListener('click', function(event) {
                 event.preventDefault();
 
-                var manifestUrl = link.getAttribute('data-markdown-zip-manifest-url');
+                var manifestUrl = link.getAttribute('data-sources-export-manifest-url');
                 if (!manifestUrl) return;
 
                 fetchManifest(manifestUrl)
                     .then(function(manifest) {
                         if (!manifest || !manifest.zipFilename) {
-                            throw new Error('Missing markdown export zip filename');
+                            throw new Error('Missing sources export zip filename');
                         }
 
                         var resolvedManifestUrl = new URL(manifestUrl, window.location.href);
                         var downloadUrl = new URL(manifest.zipFilename, resolvedManifestUrl).toString();
-                        startDownload(downloadUrl, manifest.zipFilename);
+                        startDownload(downloadUrl, manifest.downloadFilename || manifest.zipFilename);
                     })
                     .catch(function() {
-                        link.title = 'Markdown export is unavailable';
+                        link.title = 'Sources export is unavailable';
                     });
             });
-        })(markdownDownloadLinks[i]);
+        })(sourcesExportDownloadLinks[i]);
     }
 });

@@ -40,7 +40,7 @@ export const siteGeneration: AppAreaDoc = {
   parentId: "site",
   description:
     "Tests focused on producing site output: HTML generation, hooks, customizations, " +
-    "assets, markdown export, and generated-page rendering.",
+    "assets, sources export, and generated-page rendering.",
 };
 
 export const siteReview: AppAreaDoc = {
@@ -92,7 +92,7 @@ const scenarioDocToAppAreaIds: Record<string, string[]> = {
   lambda: ["site/sharing"],
   links: ["site/curation"],
   "link-gap": ["site/curation"],
-  markdown: ["site/generation", "site/sharing"],
+  "sources-export": ["site/generation", "site/sharing"],
   migration: ["site/generation"],
   "multi-site": ["sites"],
   orphan: ["site/curation"],

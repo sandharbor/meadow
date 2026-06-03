@@ -57,7 +57,7 @@ describe('html publish', () => {
     expect(fs.existsSync(publishedVersionsPath)).toBe(true);
   });
 
-  it('should keep page HTML stable when markdown export is enabled', async () => {
+  it('should keep page HTML stable when sources export is enabled', async () => {
     const siteConfigPath = path.join(sitePath, 'conf/site_config.yaml');
     fs.appendFileSync(siteConfigPath, '\ngenerationMarkdownZipEnabled: true\n', 'utf8');
 
@@ -69,11 +69,14 @@ describe('html publish', () => {
 
     const firstHtmlPath = path.join(previewDir, htmlFiles[0]);
     const firstHtml = fs.readFileSync(firstHtmlPath, 'utf8');
-    const manifestPath = path.join(previewDir, '_mw_assets', 'md-export', 'markdown-export-manifest.json');
+    const manifestPath = path.join(previewDir, '_mw_assets', 'sources-export', 'sources-export-manifest.json');
 
     expect(fs.existsSync(manifestPath)).toBe(true);
-    expect(firstHtml).toContain('data-markdown-zip-manifest-url="_mw_assets/md-export/markdown-export-manifest.json"');
-    expect(firstHtml).not.toMatch(/markdown-export-[a-f0-9]{12}\.zip/);
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { downloadFilename: string };
+    expect(manifest.downloadFilename).toBe('minimal-test-site-sources.zip');
+    expect(firstHtml).toContain('data-sources-export-manifest-url="_mw_assets/sources-export/sources-export-manifest.json"');
+    expect(firstHtml).toContain('>&#8681; sources</a>');
+    expect(firstHtml).not.toMatch(/sources-export-[a-f0-9]{12}\.zip/);
 
     await createPreviewFolder();
 
@@ -136,14 +139,14 @@ describe('html publish', () => {
     expect(previewHtml).not.toContain('<!--SR:!2026-03-12,3,250-->');
 
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(previewDir, '_mw_assets', 'md-export', 'markdown-export-manifest.json'), 'utf8')
+      fs.readFileSync(path.join(previewDir, '_mw_assets', 'sources-export', 'sources-export-manifest.json'), 'utf8')
     ) as { zipFilename: string };
-    const zipPath = path.join(previewDir, '_mw_assets', 'md-export', manifest.zipFilename);
-    const zippedMarkdown = execFileSync('unzip', ['-p', zipPath, 'main page.md'], {
+    const zipPath = path.join(previewDir, '_mw_assets', 'sources-export', manifest.zipFilename);
+    const zippedMarkdown = execFileSync('unzip', ['-p', zipPath, 'minimal-test-site/main page.md'], {
       encoding: 'utf8',
     });
 
-    // The markdown export preserves original source content but strips SR
+    // The sources export preserves original source content but strips SR
     // scheduling comments when SRS is enabled (they are Obsidian-local metadata).
     expect(zippedMarkdown).toContain(`<!--MEADOW_SR_GUID:${guidMatch![1]}-->`);
     expect(zippedMarkdown).not.toContain('<!--SR:!2026-03-12,3,250-->');

@@ -6,7 +6,7 @@
     },
     "areas/site/generation/html/htmlService.ts": {
       "reason": "Large site-generation orchestration service still owns preview, publish, export, and version pointer flows.",
-      "followUp": "Split preview, publish, markdown export, and version pointer services under the site/generation area."
+      "followUp": "Split preview, publish, sources export, and version pointer services under the site/generation area."
     },
     "areas/site/generation/html/shared/excalidraw-vendor.js": {
       "reason": "Generated vendor bundle served as a static asset for Excalidraw rendering.",

@@ -41,6 +41,7 @@ export interface SiteConfig {
   siteUpdatedAt?: string;
   siteLastPublishedAt?: string | null;
   siteNotes?: string;
+  publishSlug?: string; // Stable slug to use for published/exported filenames when present
   disabledGlobalFilters?: string[]; // Array of global filter IDs that are disabled for this site
   disabledGlobalHooks?: string[]; // Array of global hook types that are disabled for this site
   hookAppendMode?: Record<string, boolean>; // { pageTitleNormalization: true } = append mode (run global then site), absent/false = override
@@ -52,7 +53,7 @@ export interface SiteConfig {
   generationTagsEnabled?: boolean; // Whether to generate tag pages + convert #tags to links (default: true; requires backlinks)
   generationHoverPreviewEnabled?: boolean; // Whether to render hover previews on links (overrides app setting)
   allowImagesToExtendToFrontier?: boolean; // Whether images linked from frontier-edge pages should be included (overrides app setting)
-  generationMarkdownZipEnabled?: boolean; // Whether to generate a downloadable markdown+images ZIP (default: false)
+  generationMarkdownZipEnabled?: boolean; // Whether to generate a downloadable sources ZIP (default: false)
   generationSpacedRepetitionEnabled?: boolean; // Whether to render client-side spaced repetition widgets (default: false)
   generationSpacedRepetitionTags?: string[]; // Tags that identify source pages whose SRS prompts should be processed during generation
   stylePresetId?: string; // Style preset ID for this site (undefined = inherit from global)

@@ -55,9 +55,9 @@ const HLJS_THEME_CSS: string = (() => {
     return '';
   }
 })();
-import { createMarkdownExportZip, writeMarkdownExportManifest } from '../../../../shared/utils/zipUtils.js';
+import { createSourcesExportZip, getSourcesExportDownloadFilename, writeSourcesExportManifest } from '../../../../shared/utils/zipUtils.js';
 import { prepareModifiedSrsMarkdownDirectory } from '../../../../shared/utils/srsMarkdownUtils.js';
-import { prepareMarkdownExportFromScrubbedSourceDirectory } from '../../../../shared/utils/markdownExportUtils.js';
+import { prepareSourcesExportFromScrubbedSourceDirectory } from '../../../../shared/utils/sourcesExportUtils.js';
 import { prepareScrubbedSourceDirectory } from '../../../../shared/utils/sourceScrubbingUtils.js';
 import type { StaticAssetNames } from './types.js';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
@@ -144,6 +144,14 @@ function extractSiteSlugFromDirectory(siteDirectory: string): string | null {
     return parts[0] || null;
   }
   return null;
+}
+
+function getSourcesExportSlug(siteDirectory: string, siteConfig: SiteConfig): string {
+  const configuredSlug = siteConfig.publishSlug;
+  if (typeof configuredSlug === 'string' && configuredSlug.trim()) {
+    return configuredSlug.trim();
+  }
+  return extractSiteSlugFromDirectory(siteDirectory) ?? path.basename(siteDirectory);
 }
 
 // Re-export for backward compatibility
@@ -822,41 +830,62 @@ export async function generateHtmlForSite(
     return traversablePageKeys.has(key);
   });
 
-  // Generate markdown export ZIP if enabled. The ZIP is a copy of
+  // Generate sources export ZIP if enabled. The ZIP is a copy of
   // scrubbed_source_content so Obsidian-compatible downloads and rendered HTML
   // share the same privacy boundary.
-  let markdownZipEnabled = false;
-  if (generationOptions.markdownZipEnabled) {
+  let sourcesExportEnabled = false;
+  if (generationOptions.sourcesExportEnabled) {
     try {
-      await timeAsync('site.generation.stage', { ...timingLabels, stage: 'markdown_export' }, async () => {
-        const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
-        if (fs.existsSync(markdownExportDir)) {
-          fs.rmSync(markdownExportDir, { recursive: true, force: true });
+      await timeAsync('site.generation.stage', { ...timingLabels, stage: 'sources_export' }, async () => {
+        const sourcesExportDir = SiteConfigPaths.getSourcesExportDir(siteDirectory);
+        const legacySourcesExportDir = path.join(siteDirectory, 'build', 'markdown_export');
+        const legacySourcesExportOutputDir = path.join(assetsDirectory, 'md-export');
+        if (fs.existsSync(sourcesExportDir)) {
+          fs.rmSync(sourcesExportDir, { recursive: true, force: true });
         }
-        prepareMarkdownExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, markdownExportDir);
+        if (fs.existsSync(legacySourcesExportDir)) {
+          fs.rmSync(legacySourcesExportDir, { recursive: true, force: true });
+        }
+        if (fs.existsSync(legacySourcesExportOutputDir)) {
+          fs.rmSync(legacySourcesExportOutputDir, { recursive: true, force: true });
+        }
+        prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, sourcesExportDir);
 
-        const mdExportOutputDir = path.join(assetsDirectory, 'md-export');
-        fs.mkdirSync(mdExportOutputDir, { recursive: true });
-        const zipResult = await createMarkdownExportZip(markdownExportDir, mdExportOutputDir);
-        writeMarkdownExportManifest(mdExportOutputDir, zipResult);
+        const sourcesExportOutputDir = path.join(assetsDirectory, 'sources-export');
+        fs.mkdirSync(sourcesExportOutputDir, { recursive: true });
+        const sourcesExportSlug = getSourcesExportSlug(siteDirectory, siteConfig);
+        const zipResult = await createSourcesExportZip(sourcesExportDir, sourcesExportOutputDir, {
+          archiveRootDirectory: sourcesExportSlug,
+        });
+        writeSourcesExportManifest(sourcesExportOutputDir, zipResult, {
+          downloadFilename: getSourcesExportDownloadFilename(sourcesExportSlug),
+        });
         if (zipResult) {
-          markdownZipEnabled = true;
-          logger.info(`Generated markdown export ZIP: ${zipResult}`);
+          sourcesExportEnabled = true;
+          logger.info(`Generated sources export ZIP: ${zipResult}`);
         }
       });
     } catch (error) {
-      logger.error(`Error generating markdown export ZIP: ${String(error)}`);
+      logger.error(`Error generating sources export ZIP: ${String(error)}`);
     }
   } else {
-    timeSync('site.generation.stage', { ...timingLabels, stage: 'markdown_export_cleanup' }, () => {
-      const mdExportOutputDir = path.join(assetsDirectory, 'md-export');
-      if (fs.existsSync(mdExportOutputDir)) {
-        writeMarkdownExportManifest(mdExportOutputDir, null);
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'sources_export_cleanup' }, () => {
+      const sourcesExportOutputDir = path.join(assetsDirectory, 'sources-export');
+      if (fs.existsSync(sourcesExportOutputDir)) {
+        fs.rmSync(sourcesExportOutputDir, { recursive: true, force: true });
+      }
+      const legacySourcesExportOutputDir = path.join(assetsDirectory, 'md-export');
+      if (fs.existsSync(legacySourcesExportOutputDir)) {
+        fs.rmSync(legacySourcesExportOutputDir, { recursive: true, force: true });
       }
       // Clean up intermediate directory if it exists
-      const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
-      if (fs.existsSync(markdownExportDir)) {
-        fs.rmSync(markdownExportDir, { recursive: true, force: true });
+      const sourcesExportDir = SiteConfigPaths.getSourcesExportDir(siteDirectory);
+      if (fs.existsSync(sourcesExportDir)) {
+        fs.rmSync(sourcesExportDir, { recursive: true, force: true });
+      }
+      const legacySourcesExportDir = path.join(siteDirectory, 'build', 'markdown_export');
+      if (fs.existsSync(legacySourcesExportDir)) {
+        fs.rmSync(legacySourcesExportDir, { recursive: true, force: true });
       }
     });
   }
@@ -1240,7 +1269,7 @@ export async function generateHtmlForSite(
         breadcrumbPath,
         initialPageTitle: initialSitePageTitle,
         staticAssetNames,
-        markdownZipEnabled,
+        sourcesExportEnabled,
         srsEnabled: generationOptions.spacedRepetitionEnabled,
       },
       siteSlug || undefined,

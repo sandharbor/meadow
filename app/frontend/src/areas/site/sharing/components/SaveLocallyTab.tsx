@@ -53,7 +53,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
     try {
       const result = await window.electronAPI?.showOpenDialog({
         properties: ['openDirectory', 'createDirectory'],
-        title: `Select destination for ${type === 'raw' ? 'Tracked Raw Markdown' : 'Rendered Site'}`
+        title: `Select destination for ${type === 'raw' ? 'Sources' : 'Rendered Site'}`
       });
 
       if (result?.canceled || !result?.filePaths?.[0]) {
@@ -89,10 +89,10 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
     setMessage(null);
 
     try {
-      const defaultName = type === 'raw' ? `${siteSlug}-raw.zip` : `${siteSlug}-html.zip`;
+      const defaultName = type === 'raw' ? `${siteSlug}-sources.zip` : `${siteSlug}-html.zip`;
 
       const result = await window.electronAPI?.showSaveDialog({
-        title: `Save ${type === 'raw' ? 'Tracked Raw Markdown' : 'Rendered Site'} as ZIP`,
+        title: `Save ${type === 'raw' ? 'Sources' : 'Rendered Site'} as ZIP`,
         defaultPath: defaultName,
         filters: [{ name: 'ZIP files', extensions: ['zip'] }]
       });
@@ -123,7 +123,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
   };
 
   const rows = [
-    { label: 'Tracked Raw Markdown', type: 'raw' as const },
+    { label: 'Sources', type: 'raw' as const },
     { label: 'Rendered Site', type: 'html' as const },
   ];
 

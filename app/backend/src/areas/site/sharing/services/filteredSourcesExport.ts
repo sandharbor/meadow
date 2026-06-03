@@ -23,7 +23,7 @@ import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.j
 import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
 import { prepareModifiedSrsMarkdownDirectory } from '../../../../shared/utils/srsMarkdownUtils.js';
 import { prepareScrubbedSourceDirectory } from '../../../../shared/utils/sourceScrubbingUtils.js';
-import { prepareMarkdownExportFromScrubbedSourceDirectory } from '../../../../shared/utils/markdownExportUtils.js';
+import { prepareSourcesExportFromScrubbedSourceDirectory } from '../../../../shared/utils/sourcesExportUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import fs from 'fs';
 
@@ -54,19 +54,19 @@ function readSitePageConfigs(sitePageConfPath: string): SitePageConfigs {
 
 /**
  * Builds the same scrubbed source directory that the site-publish path uses,
- * so the Advanced-tab "tracked raw markdown" download agrees with the
+ * so the Advanced-tab "sources" download agrees with the
  * generated site on which pages/assets are safe to emit.
  *
  * Returns the absolute path to the built directory.
  */
-export async function buildFilteredMarkdownExportForSite(siteDirectory: string): Promise<string> {
+export async function buildFilteredSourcesExportForSite(siteDirectory: string): Promise<string> {
   const siteConfig = loadSiteConfig(siteDirectory);
   const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
   const sitePageConfs = readSitePageConfigs(sitePageConfPath);
   const trackedContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const modifiedContentDir = SiteConfigPaths.getModifiedPageContentDir(siteDirectory);
   const scrubbedSourceDir = SiteConfigPaths.getScrubbedSourceContentDir(siteDirectory);
-  const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
+  const sourcesExportDir = SiteConfigPaths.getSourcesExportDir(siteDirectory);
 
   let sourceContentDir = trackedContentDir;
   if (siteConfig.generationSpacedRepetitionEnabled) {
@@ -81,7 +81,7 @@ export async function buildFilteredMarkdownExportForSite(siteDirectory: string):
       }
     } catch (err) {
       logger.warn(
-        `buildFilteredMarkdownExportForSite: SRS modified markdown failed (will use tracked content): ${err instanceof Error ? err.message : String(err)}`
+        `buildFilteredSourcesExportForSite: SRS modified markdown failed (will use tracked content): ${err instanceof Error ? err.message : String(err)}`
       );
       sourceContentDir = trackedContentDir;
     }
@@ -124,7 +124,7 @@ export async function buildFilteredMarkdownExportForSite(siteDirectory: string):
       }
     } catch (err) {
       logger.warn(
-        `buildFilteredMarkdownExportForSite: working_graph traversal failed (will export an empty filtered set): ${err instanceof Error ? err.message : String(err)}`
+        `buildFilteredSourcesExportForSite: working_graph traversal failed (will export an empty filtered set): ${err instanceof Error ? err.message : String(err)}`
       );
     }
   }
@@ -142,7 +142,7 @@ export async function buildFilteredMarkdownExportForSite(siteDirectory: string):
     allLinkResolutionMaps
   );
 
-  prepareMarkdownExportFromScrubbedSourceDirectory(scrubbedSourceDir, markdownExportDir);
+  prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceDir, sourcesExportDir);
 
-  return markdownExportDir;
+  return sourcesExportDir;
 }

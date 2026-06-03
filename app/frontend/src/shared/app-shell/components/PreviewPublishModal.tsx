@@ -48,7 +48,7 @@ interface PreviewPublishModalProps {
     backlinksEnabled: boolean;
     tagsEnabled: boolean;
     hoverPreviewEnabled: boolean;
-    markdownZipEnabled: boolean;
+    sourcesExportEnabled: boolean;
     spacedRepetitionEnabled: boolean;
   };
   siteGenerationOptions: {
@@ -56,13 +56,13 @@ interface PreviewPublishModalProps {
     backlinksSetting: OverrideSetting;
     tagsSetting: OverrideSetting;
     hoverPreviewSetting: OverrideSetting;
-    markdownZipSetting: OverrideSetting;
+    sourcesExportSetting: OverrideSetting;
     spacedRepetitionSetting: OverrideSetting;
   };
   globalSrsTags: string[];
   siteSrsTagsOverride: string[] | null;
-  onGlobalGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'markdownZip' | 'spacedRepetition', enabled: boolean) => Promise<void>;
-  onSiteGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'markdownZip' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
+  onGlobalGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', enabled: boolean) => Promise<void>;
+  onSiteGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
 
@@ -654,12 +654,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   }, []);
 
   // Wrappers for option changes that trigger regeneration
-  const handleGlobalOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'markdownZip' | 'spacedRepetition', enabled: boolean) => {
+  const handleGlobalOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', enabled: boolean) => {
     await onGlobalGenerationOptionChange(option, enabled);
     await regeneratePreviewAndReload();
   }, [onGlobalGenerationOptionChange, regeneratePreviewAndReload]);
 
-  const handleSiteOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'markdownZip' | 'spacedRepetition', setting: OverrideSetting) => {
+  const handleSiteOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', setting: OverrideSetting) => {
     await onSiteGenerationOptionChange(option, setting);
     await regeneratePreviewAndReload();
   }, [onSiteGenerationOptionChange, regeneratePreviewAndReload]);

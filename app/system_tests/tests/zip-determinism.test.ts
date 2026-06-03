@@ -81,13 +81,13 @@ describe('Generated archive determinism', () => {
     stopServer();
   });
 
-  describe('markdown export ZIP', () => {
+  describe('sources export ZIP', () => {
     let testSetup: SystemTestSiteSetup | undefined;
 
     beforeEach(() => {
       testSetup = new SystemTestSiteSetup(
         'home_fixture_big_and_small',
-        'zip-determinism-md-export',
+        'zip-determinism-sources-export',
         { siteFolderName: 'meadow-test-site-big' }
       );
       testSetup.setUp();
@@ -101,7 +101,7 @@ describe('Generated archive determinism', () => {
 
     it('produces byte-identical ZIPs across two consecutive preview runs', async () => {
       const siteSlug = testSetup!.getSiteSlug();
-      const mdExportDir = testSetup!.getPathInSite('html/preview/_mw_assets/md-export');
+      const sourcesExportDir = testSetup!.getPathInSite('html/preview/_mw_assets/sources-export');
 
       async function runPreviewAndReadZip(): Promise<{ filename: string; bytes: Buffer }> {
         const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
@@ -109,11 +109,12 @@ describe('Generated archive determinism', () => {
         });
         expect(response.ok).toBe(true);
 
-        const manifestPath = path.join(mdExportDir, 'markdown-export-manifest.json');
+        const manifestPath = path.join(sourcesExportDir, 'sources-export-manifest.json');
         expect(fs.existsSync(manifestPath)).toBe(true);
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { zipFilename: string };
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { zipFilename: string; downloadFilename: string };
+        expect(manifest.downloadFilename).toBe('meadow-test-site-big-sources.zip');
 
-        const zipPath = path.join(mdExportDir, manifest.zipFilename);
+        const zipPath = path.join(sourcesExportDir, manifest.zipFilename);
         expect(fs.existsSync(zipPath)).toBe(true);
         return { filename: manifest.zipFilename, bytes: fs.readFileSync(zipPath) };
       }

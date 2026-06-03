@@ -1148,7 +1148,7 @@ const SiteList: React.FC = () => {
           <ul className="list-disc list-inside text-gray-700 ml-2">
             <li>You tracked some of the pages</li>
             <li>You enabled the spaced repetition plugin</li>
-            <li>You enabled markdown download</li>
+            <li>You enabled sources export</li>
           </ul>
           <div className="flex justify-end space-x-3 pt-4">
             <button

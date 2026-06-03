@@ -298,18 +298,18 @@ describe('Preview System Tests', () => {
     });
   });
 
-  describe('matching the expected markdown export build (big site)', () => {
+  describe('matching the expected sources export build (big site)', () => {
     let testSetup: SystemTestSiteSetup | undefined;
 
     beforeEach(() => {
       testSetup = new SystemTestSiteSetup(
         'home_fixture_big_and_small',
-        'fixture-test-md-export',
+        'fixture-test-sources-export',
         { siteFolderName: 'meadow-test-site-big' }
       );
       testSetup.setUp();
 
-      // Enable markdown ZIP export and SRS on the big site
+      // Enable sources ZIP export and SRS on the big site
       const siteConfigPath = testSetup.getPathInSite('conf/site_config.yaml');
       fs.appendFileSync(siteConfigPath, 'generationMarkdownZipEnabled: true\ngenerationSpacedRepetitionEnabled: true\ngenerationSpacedRepetitionTags:\n  - "#t022-srs"\n', 'utf8');
     });
@@ -318,7 +318,7 @@ describe('Preview System Tests', () => {
       testSetup?.tearDown();
     });
 
-    it('should create build/markdown_export matching the expected golden set', async () => {
+    it('should create build/sources_export matching the expected golden set', async () => {
       const siteSlug = testSetup!.getSiteSlug();
 
       const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
@@ -328,8 +328,8 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Verify the intermediate build directory was created
-      const markdownExportPath = testSetup!.getPathInSite('build/markdown_export');
-      expect(fs.existsSync(markdownExportPath)).toBe(true);
+      const sourcesExportPath = testSetup!.getPathInSite('build/sources_export');
+      expect(fs.existsSync(sourcesExportPath)).toBe(true);
 
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-markdown-export-build');
 
@@ -337,12 +337,12 @@ describe('Preview System Tests', () => {
       if (!fs.existsSync(expectedResultsFolder)) {
         fs.mkdirSync(expectedResultsFolder, { recursive: true });
         console.log(`Created expected results folder: ${expectedResultsFolder}`);
-        console.log('First run - copying generated markdown export to expected results for review.');
+        console.log('First run - copying generated sources export to expected results for review.');
       }
 
-      // Copy generated markdown export to expected results folder and check for git changes
+      // Copy generated sources export to expected results folder and check for git changes
       fs.rmSync(expectedResultsFolder, { recursive: true, force: true });
-      fs.cpSync(markdownExportPath, expectedResultsFolder, { recursive: true });
+      fs.cpSync(sourcesExportPath, expectedResultsFolder, { recursive: true });
 
       // Check for UNSTAGED changes only
       const gitDiffStatus = execSync('git diff --name-status .', {
@@ -359,7 +359,7 @@ describe('Preview System Tests', () => {
       const hasUntrackedFiles = gitUntrackedStatus.trim().length > 0;
 
       if (hasUnstagedChanges || hasUntrackedFiles) {
-        console.log('Unstaged changes detected in expected markdown export build folder:');
+        console.log('Unstaged changes detected in expected sources export build folder:');
         if (hasUnstagedChanges) {
           console.log('Modified/Deleted files (unstaged):');
           console.log(gitDiffStatus);

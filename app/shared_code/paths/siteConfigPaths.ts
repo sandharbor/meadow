@@ -22,7 +22,7 @@ limitations under the License.
  *   SITE_DIR/
  *     build/
  *       modified_page_content/
- *       markdown_export/
+ *       sources_export/
  *       scrubbed_source_content/
  *     conf/
  *       site_config.yaml
@@ -54,7 +54,7 @@ const HTML_DIR = 'html';
 const RAW_DIR = 'raw';
 const HOOKS_DIR = 'hooks';
 const CUSTOM_ASSETS_DIR = 'custom_assets';
-const MARKDOWN_EXPORT_DIR = 'markdown_export';
+const SOURCES_EXPORT_DIR = 'sources_export';
 const PREVIEW_DIR = 'preview';
 const GENERATED_SITE_VERSIONS_DIR = 'generated_site_versions';
 const TRACKED_PAGE_CONTENT_DIR = 'tracked_page_content';
@@ -127,9 +127,9 @@ export const SiteConfigPaths = {
       return join(BUILD_DIR, SCRUBBED_SOURCE_CONTENT_DIR);
     },
 
-    /** build/markdown_export/ */
-    markdownExportDir(): string {
-      return join(BUILD_DIR, MARKDOWN_EXPORT_DIR);
+    /** build/sources_export/ */
+    sourcesExportDir(): string {
+      return join(BUILD_DIR, SOURCES_EXPORT_DIR);
     },
 
     /** raw/tracked_page_content/{subdir}/ */
@@ -258,10 +258,10 @@ export const SiteConfigPaths = {
   },
 
   /**
-   * Get the markdown export directory: SITE_DIR/build/markdown_export/
+   * Get the sources export directory: SITE_DIR/build/sources_export/
    */
-  getMarkdownExportDir(siteDir: string): string {
-    return join(siteDir, this.relative.markdownExportDir());
+  getSourcesExportDir(siteDir: string): string {
+    return join(siteDir, this.relative.sourcesExportDir());
   },
 
   /**
@@ -379,8 +379,8 @@ export const SiteConfigPaths = {
   /** The tagpages subdirectory name: 'x-tagpages' */
   TAGPAGES_DIR,
 
-  /** The markdown_export subdirectory name: 'markdown_export' */
-  MARKDOWN_EXPORT_DIR,
+  /** The sources_export subdirectory name: 'sources_export' */
+  SOURCES_EXPORT_DIR,
 
   /** Config file names */
   CONFIG_FILES: {

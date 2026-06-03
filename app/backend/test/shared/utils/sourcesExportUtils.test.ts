@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { sanitizeMarkdownLinks } from '../../../src/shared/utils/markdownExportUtils.js';
+import { sanitizeMarkdownLinks } from '../../../src/shared/utils/sourcesExportUtils.js';
 import type { SitePageConfig } from '../../../../shared_code/types/sitePageConfig.js';
 
 function makeConfig(title: string, listType: 'whitelist' | 'blacklist', fileType?: string, dir?: string): SitePageConfig {

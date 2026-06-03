@@ -25,7 +25,7 @@ describe('GenerationOptionsPanel', () => {
       backlinksEnabled: true,
       tagsEnabled: true,
       hoverPreviewEnabled: false,
-      markdownZipEnabled: false,
+      sourcesExportEnabled: false,
       spacedRepetitionEnabled: false,
     },
     siteOptions: {
@@ -33,7 +33,7 @@ describe('GenerationOptionsPanel', () => {
       backlinksSetting: 'inherit' as const,
       tagsSetting: 'inherit' as const,
       hoverPreviewSetting: 'inherit' as const,
-      markdownZipSetting: 'inherit' as const,
+      sourcesExportSetting: 'inherit' as const,
       spacedRepetitionSetting: 'inherit' as const,
     },
     globalSrsTags: [],

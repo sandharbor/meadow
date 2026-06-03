@@ -19,7 +19,19 @@ import path from 'path';
 import { createHash } from 'crypto';
 import archiver from 'archiver';
 
-export const MARKDOWN_EXPORT_MANIFEST_FILENAME = 'markdown-export-manifest.json';
+export const SOURCES_EXPORT_MANIFEST_FILENAME = 'sources-export-manifest.json';
+
+interface CreateZipFromDirectoryOptions {
+  archiveRootDirectory?: string;
+}
+
+interface CreateSourcesExportZipOptions {
+  archiveRootDirectory?: string;
+}
+
+interface WriteSourcesExportManifestOptions {
+  downloadFilename?: string;
+}
 
 // Yes, it looks weird that we're hardcoding a static date here. The reason:
 // we need the zip to be byte-identical when the content hasn't changed (so the
@@ -49,6 +61,29 @@ function walkFilesSorted(dir: string, base?: string): string[] {
   return files;
 }
 
+function normalizeArchiveRootDirectory(archiveRootDirectory?: string): string | undefined {
+  const trimmed = archiveRootDirectory?.trim().replace(/^[/\\]+|[/\\]+$/g, '');
+  if (!trimmed) return undefined;
+
+  const segments = trimmed.split(/[/\\]+/);
+  if (segments.some(segment => segment === '..')) {
+    throw new Error(`Invalid ZIP archive root directory: ${archiveRootDirectory}`);
+  }
+  return segments.join('/');
+}
+
+function buildArchiveEntryName(relativePath: string, archiveRootDirectory?: string): string {
+  const pathSegments = relativePath.split(path.sep).filter(Boolean);
+  if (archiveRootDirectory) {
+    return [archiveRootDirectory, ...pathSegments].join('/');
+  }
+  return pathSegments.join('/');
+}
+
+export function getSourcesExportDownloadFilename(siteSlug: string): string {
+  return `${siteSlug}-sources.zip`;
+}
+
 /**
  * Creates a ZIP archive of a source directory and writes it to destPath.
  * Output is byte-deterministic: same input bytes produce the same zip bytes,
@@ -68,10 +103,16 @@ function walkFilesSorted(dir: string, base?: string): string[] {
  * within the archive can vary run to run. Pre-reading into a buffer
  * sidesteps that and forces strict enqueue order.
  */
-export async function createZipFromDirectory(sourceDir: string, destPath: string): Promise<void> {
+export async function createZipFromDirectory(
+  sourceDir: string,
+  destPath: string,
+  options: CreateZipFromDirectoryOptions = {}
+): Promise<void> {
   if (!fs.existsSync(sourceDir)) {
     throw new Error(`Source directory not found: ${sourceDir}`);
   }
+
+  const archiveRootDirectory = normalizeArchiveRootDirectory(options.archiveRootDirectory);
 
   const destDir = path.dirname(destPath);
   if (!fs.existsSync(destDir)) {
@@ -91,7 +132,11 @@ export async function createZipFromDirectory(sourceDir: string, destPath: string
     for (const relativePath of files) {
       const fullPath = path.join(sourceDir, relativePath);
       const fileContent = fs.readFileSync(fullPath);
-      archive.append(fileContent, { name: relativePath, date: FIXED_ZIP_DATE, mode: 0o644 });
+      archive.append(fileContent, {
+        name: buildArchiveEntryName(relativePath, archiveRootDirectory),
+        date: FIXED_ZIP_DATE,
+        mode: 0o644,
+      });
     }
 
     void archive.finalize();
@@ -99,23 +144,26 @@ export async function createZipFromDirectory(sourceDir: string, destPath: string
 }
 
 /**
- * Creates a content-addressed ZIP of the tracked markdown and image content.
+ * Creates a content-addressed ZIP of the exported source content.
  * The ZIP filename includes a hash prefix for cache-busting.
  *
- * @returns The filename of the generated ZIP (e.g. "markdown-export-a1b2c3d4e5f6.zip"),
+ * @returns The filename of the generated ZIP (e.g. "sources-export-a1b2c3d4e5f6.zip"),
  *          or null if there was nothing to zip.
  */
-export async function createMarkdownExportZip(
+export async function createSourcesExportZip(
   trackedContentDir: string,
-  outputDir: string
+  outputDir: string,
+  options: CreateSourcesExportZipOptions = {}
 ): Promise<string | null> {
   if (!fs.existsSync(trackedContentDir)) {
     return null;
   }
 
   // Generate to a temp name first, then rename with hash
-  const tempZipPath = path.join(outputDir, 'markdown-export-temp.zip');
-  await createZipFromDirectory(trackedContentDir, tempZipPath);
+  const tempZipPath = path.join(outputDir, 'sources-export-temp.zip');
+  await createZipFromDirectory(trackedContentDir, tempZipPath, {
+    archiveRootDirectory: options.archiveRootDirectory,
+  });
 
   // Hash the zip content
   const hash = createHash('sha256');
@@ -124,13 +172,15 @@ export async function createMarkdownExportZip(
   const hashPrefix = hash.digest('hex').substring(0, 12);
 
   // Rename to content-addressed filename
-  const finalFilename = `markdown-export-${hashPrefix}.zip`;
+  const finalFilename = `sources-export-${hashPrefix}.zip`;
   const finalPath = path.join(outputDir, finalFilename);
 
-  // Remove any previous markdown-export zips
+  // Remove any previous sources-export zips, plus legacy markdown-export zips.
   const existingFiles = fs.readdirSync(outputDir);
   for (const file of existingFiles) {
-    if (file.startsWith('markdown-export-') && file.endsWith('.zip') && file !== 'markdown-export-temp.zip') {
+    const isSourcesExportZip = file.startsWith('sources-export-') && file.endsWith('.zip') && file !== 'sources-export-temp.zip';
+    const isLegacyMarkdownExportZip = file.startsWith('markdown-export-') && file.endsWith('.zip');
+    if (isSourcesExportZip || isLegacyMarkdownExportZip) {
       fs.unlinkSync(path.join(outputDir, file));
     }
   }
@@ -140,8 +190,12 @@ export async function createMarkdownExportZip(
   return finalFilename;
 }
 
-export function writeMarkdownExportManifest(outputDir: string, zipFilename: string | null): void {
-  const manifestPath = path.join(outputDir, MARKDOWN_EXPORT_MANIFEST_FILENAME);
+export function writeSourcesExportManifest(
+  outputDir: string,
+  zipFilename: string | null,
+  options: WriteSourcesExportManifestOptions = {}
+): void {
+  const manifestPath = path.join(outputDir, SOURCES_EXPORT_MANIFEST_FILENAME);
 
   if (!zipFilename) {
     if (fs.existsSync(manifestPath)) {
@@ -152,7 +206,7 @@ export function writeMarkdownExportManifest(outputDir: string, zipFilename: stri
 
   fs.writeFileSync(
     manifestPath,
-    JSON.stringify({ zipFilename }),
+    JSON.stringify({ zipFilename, downloadFilename: options.downloadFilename ?? zipFilename }),
     'utf8'
   );
 }

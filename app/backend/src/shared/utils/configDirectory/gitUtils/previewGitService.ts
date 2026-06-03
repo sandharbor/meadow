@@ -67,7 +67,7 @@ export async function commitSiteChanges(
   const trackedPageContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const modifiedPageContentDir = SiteConfigPaths.getModifiedPageContentDir(siteDirectory);
   const scrubbedSourceContentDir = SiteConfigPaths.getScrubbedSourceContentDir(siteDirectory);
-  const markdownExportDir = SiteConfigPaths.getMarkdownExportDir(siteDirectory);
+  const sourcesExportDir = SiteConfigPaths.getSourcesExportDir(siteDirectory);
   const confDir = SiteConfigPaths.getConfDir(siteDirectory);
 
   // Check if at least one directory exists
@@ -76,7 +76,7 @@ export async function commitSiteChanges(
   const trackedPageContentExists = fs.existsSync(trackedPageContentDir);
   const modifiedPageContentExists = fs.existsSync(modifiedPageContentDir);
   const scrubbedSourceContentExists = fs.existsSync(scrubbedSourceContentDir);
-  const markdownExportExists = fs.existsSync(markdownExportDir);
+  const sourcesExportExists = fs.existsSync(sourcesExportDir);
   const confExists = includeConfDir && fs.existsSync(confDir);
   const existingAdditionalDirs = additionalDirs.filter(d => fs.existsSync(d));
 
@@ -86,7 +86,7 @@ export async function commitSiteChanges(
     !trackedPageContentExists &&
     !modifiedPageContentExists &&
     !scrubbedSourceContentExists &&
-    !markdownExportExists &&
+    !sourcesExportExists &&
     !confExists &&
     existingAdditionalDirs.length === 0
   ) {
@@ -96,7 +96,7 @@ export async function commitSiteChanges(
     logger.warn(`  Tracked Page Content: ${trackedPageContentDir}`);
     logger.warn(`  Modified Page Content: ${modifiedPageContentDir}`);
     logger.warn(`  Scrubbed Source Content: ${scrubbedSourceContentDir}`);
-    logger.warn(`  Markdown Export: ${markdownExportDir}`);
+    logger.warn(`  Sources Export: ${sourcesExportDir}`);
     if (includeConfDir) {
       logger.warn(`  Conf: ${confDir}`);
     }
@@ -128,9 +128,9 @@ export async function commitSiteChanges(
     directoriesToCommit.push(scrubbedSourceContentDir);
     logger.info(`[commitSiteChanges] Will commit scrubbed_source_content dir: ${scrubbedSourceContentDir}`);
   }
-  if (markdownExportExists) {
-    directoriesToCommit.push(markdownExportDir);
-    logger.info(`[commitSiteChanges] Will commit markdown_export dir: ${markdownExportDir}`);
+  if (sourcesExportExists) {
+    directoriesToCommit.push(sourcesExportDir);
+    logger.info(`[commitSiteChanges] Will commit sources_export dir: ${sourcesExportDir}`);
   }
   if (confExists) {
     directoriesToCommit.push(confDir);

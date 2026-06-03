@@ -23,8 +23,8 @@ import { generateHtmlForSite } from '../../../../../src/areas/site/generation/ht
 import { TestSiteSetup } from '../../../../shared/support/testSiteSetup.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 
-describe('markdown export filtering', () => {
-  const testSetup = new TestSiteSetup('shared/fixtures/markdown-export-site', 'markdown-export-test');
+describe('sources export filtering', () => {
+  const testSetup = new TestSiteSetup('shared/fixtures/sources-export-site', 'sources-export-test');
   let sitePath: string;
 
   beforeEach(() => {
@@ -40,12 +40,13 @@ describe('markdown export filtering', () => {
     await generateHtmlForSite(sitePath, { preview: true });
   }
 
-  function getMarkdownExportZipPath(): string {
+  function getSourcesExportZipPath(): string {
     const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(previewDir, '_mw_assets', 'md-export', 'markdown-export-manifest.json'), 'utf8')
-    ) as { zipFilename: string };
-    return path.join(previewDir, '_mw_assets', 'md-export', manifest.zipFilename);
+      fs.readFileSync(path.join(previewDir, '_mw_assets', 'sources-export', 'sources-export-manifest.json'), 'utf8')
+    ) as { zipFilename: string; downloadFilename: string };
+    expect(manifest.downloadFilename).toBe('sources-export-test-sources.zip');
+    return path.join(previewDir, '_mw_assets', 'sources-export', manifest.zipFilename);
   }
 
   function addReachableExcalidrawDrawing() {
@@ -125,7 +126,7 @@ describe('markdown export filtering', () => {
   it('should exclude orphaned pages from the intermediate export directory and ZIP', async () => {
     await createPreview();
 
-    const exportDir = SiteConfigPaths.getMarkdownExportDir(sitePath);
+    const exportDir = SiteConfigPaths.getSourcesExportDir(sitePath);
     const exportFiles = fs.readdirSync(exportDir);
 
     // Orphaned page should not be in the export directory
@@ -138,11 +139,11 @@ describe('markdown export filtering', () => {
     expect(exportFiles).toContain('connected page.md');
 
     // Verify the ZIP also excludes them
-    const zipPath = getMarkdownExportZipPath();
+    const zipPath = getSourcesExportZipPath();
 
     const zipContents = execFileSync('unzip', ['-l', zipPath], { encoding: 'utf8' });
-    expect(zipContents).toContain('main page.md');
-    expect(zipContents).toContain('connected page.md');
+    expect(zipContents).toContain('sources-export-test/main page.md');
+    expect(zipContents).toContain('sources-export-test/connected page.md');
     expect(zipContents).not.toContain('orphaned page.md');
     expect(zipContents).not.toContain('blacklisted page.md');
   });
@@ -150,7 +151,7 @@ describe('markdown export filtering', () => {
   it('should replace links to non-publishable pages with _link not tracked_', async () => {
     await createPreview();
 
-    const exportDir = SiteConfigPaths.getMarkdownExportDir(sitePath);
+    const exportDir = SiteConfigPaths.getSourcesExportDir(sitePath);
     const mainPageContent = fs.readFileSync(path.join(exportDir, 'main page.md'), 'utf8');
 
     // Untracked page link should be replaced (outside code blocks)
@@ -179,7 +180,7 @@ describe('markdown export filtering', () => {
   it('should preserve links to traversable pages', async () => {
     await createPreview();
 
-    const exportDir = SiteConfigPaths.getMarkdownExportDir(sitePath);
+    const exportDir = SiteConfigPaths.getSourcesExportDir(sitePath);
     const mainPageContent = fs.readFileSync(path.join(exportDir, 'main page.md'), 'utf8');
 
     // Connected page link should remain
@@ -189,7 +190,7 @@ describe('markdown export filtering', () => {
   it('should preserve links inside code fences and inline code', async () => {
     await createPreview();
 
-    const exportDir = SiteConfigPaths.getMarkdownExportDir(sitePath);
+    const exportDir = SiteConfigPaths.getSourcesExportDir(sitePath);
     const mainPageContent = fs.readFileSync(path.join(exportDir, 'main page.md'), 'utf8');
 
     // Links inside code fences should be preserved
@@ -201,7 +202,7 @@ describe('markdown export filtering', () => {
   it('should contain exactly the right set of files in the intermediate directory', async () => {
     await createPreview();
 
-    const exportDir = SiteConfigPaths.getMarkdownExportDir(sitePath);
+    const exportDir = SiteConfigPaths.getSourcesExportDir(sitePath);
     const exportFiles = fs.readdirSync(exportDir).sort();
 
     // Only traversable pages should be in the export
@@ -240,27 +241,27 @@ describe('markdown export filtering', () => {
     expect(byId.shapeUnsafe.link).toBeNull();
     expect(byId.shapeMissing.link).toBeNull();
 
-    const markdownExportPath = path.join(SiteConfigPaths.getMarkdownExportDir(sitePath), 'drawing.excalidraw.md');
-    expect(fs.readFileSync(markdownExportPath, 'utf8')).toBe(scrubbedContent);
+    const sourcesExportPath = path.join(SiteConfigPaths.getSourcesExportDir(sitePath), 'drawing.excalidraw.md');
+    expect(fs.readFileSync(sourcesExportPath, 'utf8')).toBe(scrubbedContent);
 
     const previewSourcePath = path.join(SiteConfigPaths.getPreviewDir(sitePath), 'drawing.excalidraw.md');
     expect(fs.readFileSync(previewSourcePath, 'utf8')).toBe(scrubbedContent);
 
-    const zipPath = getMarkdownExportZipPath();
+    const zipPath = getSourcesExportZipPath();
     const zipContents = execFileSync('unzip', ['-l', zipPath], { encoding: 'utf8' });
-    expect(zipContents).toContain('drawing.excalidraw.md');
+    expect(zipContents).toContain('sources-export-test/drawing.excalidraw.md');
 
-    const zippedDrawing = execFileSync('unzip', ['-p', zipPath, 'drawing.excalidraw.md'], { encoding: 'utf8' });
+    const zippedDrawing = execFileSync('unzip', ['-p', zipPath, 'sources-export-test/drawing.excalidraw.md'], { encoding: 'utf8' });
     expect(zippedDrawing).toBe(scrubbedContent);
   });
 
-  it('should clean up intermediate directory when markdownZipEnabled is false', async () => {
-    // First generate with markdown zip enabled (the fixture has it enabled)
+  it('should clean up intermediate directory when sourcesExportEnabled is false', async () => {
+    // First generate with sources export enabled (the fixture has it enabled)
     await createPreview();
-    const exportDir = SiteConfigPaths.getMarkdownExportDir(sitePath);
+    const exportDir = SiteConfigPaths.getSourcesExportDir(sitePath);
     expect(fs.existsSync(exportDir)).toBe(true);
 
-    // Now disable markdown zip and regenerate
+    // Now disable sources export and regenerate
     const siteConfigPath = path.join(sitePath, 'conf/site_config.yaml');
     let configContent = fs.readFileSync(siteConfigPath, 'utf8');
     configContent = configContent.replace('generationMarkdownZipEnabled: true', 'generationMarkdownZipEnabled: false');

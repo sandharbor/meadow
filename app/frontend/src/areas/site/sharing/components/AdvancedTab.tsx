@@ -81,7 +81,7 @@ export const AdvancedTab: React.FC<AdvancedTabProps> = ({ siteSlug }) => {
     { label: 'App Config', path: paths.appConfigFile },
     { label: 'Site Config', path: paths.siteConfigFile },
     { label: 'Site Page Config', path: paths.sitePageConfigFile },
-    { label: 'Raw Markdown', path: paths.rawMarkdown },
+    { label: 'Sources', path: paths.rawMarkdown },
     { label: 'Rendered Preview Site', path: paths.previewHtml },
   ];
 

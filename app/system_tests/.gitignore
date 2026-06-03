@@ -1,9 +1,10 @@
 node_modules
 scratch_config_folder
 
-# Markdown export zips are non-deterministic (archiver produces different bytes
-# for identical input), so exclude them from expected results tracking
+# Sources export zip assets are covered by dedicated archive determinism tests,
+# so exclude the generated archives from preview expected-results tracking.
 expected_results/**/md-export/
+expected_results/**/sources-export/
 
 # Pre-gzipped vendor bundles. zlib's deflate output isn't byte-stable across
 # zlib versions (or platforms / Node releases that bundle different zlib),

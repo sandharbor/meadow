@@ -16,7 +16,7 @@ In the future it will also have potentially.  At a certain point, though, we sho
 * [[backlink]]
 * [[html generation hooks]]
 * [[tag site page]]s
-* [[meadow markdown export type -- published to site as zip file|markdown zip file]]
+* [[meadow sources export type -- published to site as zip file|sources ZIP file]]
 * [[meadow workflow -- SRS markdown to SRS interactive elements on the published site|SRS]]
 
 ### Presets

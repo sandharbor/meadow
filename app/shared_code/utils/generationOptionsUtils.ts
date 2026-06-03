@@ -22,7 +22,7 @@ export interface EffectiveGenerationOptions {
   backlinksEnabled: boolean;
   tagsEnabled: boolean;
   hoverPreviewEnabled: boolean;
-  markdownZipEnabled: boolean;
+  sourcesExportEnabled: boolean;
   spacedRepetitionEnabled: boolean;
   spacedRepetitionTags: string[];
   baseStyleCssDisabled: boolean;
@@ -46,7 +46,7 @@ export function resolveEffectiveGenerationOptions(
   const rawTagsEnabled = (siteConfig?.generationTagsEnabled ?? appConfig?.generationTagsEnabled) !== false;
   const tagsEnabled = rawTagsEnabled && backlinksEnabled;
   const hoverPreviewEnabled = (siteConfig?.generationHoverPreviewEnabled ?? appConfig?.generationHoverPreviewEnabled) === true;
-  const markdownZipEnabled = (siteConfig?.generationMarkdownZipEnabled ?? appConfig?.generationMarkdownZipEnabled) === true;
+  const sourcesExportEnabled = (siteConfig?.generationMarkdownZipEnabled ?? appConfig?.generationMarkdownZipEnabled) === true;
   const spacedRepetitionEnabled = (siteConfig?.generationSpacedRepetitionEnabled ?? appConfig?.generationSpacedRepetitionEnabled) === true;
   const spacedRepetitionTags = siteConfig?.generationSpacedRepetitionTags
     ?? appConfig?.generationSpacedRepetitionTags
@@ -55,5 +55,5 @@ export function resolveEffectiveGenerationOptions(
   const baseStyleCssDisabled = (siteConfig?.disableBaseStyleCss ?? appConfig?.disableBaseStyleCss) === true;
   const baseJavascriptJsDisabled = (siteConfig?.disableBaseJavascriptJs ?? appConfig?.disableBaseJavascriptJs) === true;
 
-  return { breadcrumbsEnabled, backlinksEnabled, tagsEnabled, hoverPreviewEnabled, markdownZipEnabled, spacedRepetitionEnabled, spacedRepetitionTags, baseStyleCssDisabled, baseJavascriptJsDisabled };
+  return { breadcrumbsEnabled, backlinksEnabled, tagsEnabled, hoverPreviewEnabled, sourcesExportEnabled, spacedRepetitionEnabled, spacedRepetitionTags, baseStyleCssDisabled, baseJavascriptJsDisabled };
 }

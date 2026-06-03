@@ -162,7 +162,7 @@ const SiteEditor: React.FC = () => {
   const [globalGenerationBacklinksEnabled, setGlobalGenerationBacklinksEnabled] = useState(true);
   const [globalGenerationTagsEnabled, setGlobalGenerationTagsEnabled] = useState(true);
   const [globalGenerationHoverPreviewEnabled, setGlobalGenerationHoverPreviewEnabled] = useState(false);
-  const [globalGenerationMarkdownZipEnabled, setGlobalGenerationMarkdownZipEnabled] = useState(false);
+  const [globalGenerationSourcesExportEnabled, setGlobalGenerationSourcesExportEnabled] = useState(false);
   const [globalGenerationSpacedRepetitionEnabled, setGlobalGenerationSpacedRepetitionEnabled] = useState(false);
   const [globalGenerationSpacedRepetitionTags, setGlobalGenerationSpacedRepetitionTags] = useState<string[]>([]);
 
@@ -171,7 +171,7 @@ const SiteEditor: React.FC = () => {
   const [siteGenerationBacklinksSetting, setSiteGenerationBacklinksSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationTagsSetting, setSiteGenerationTagsSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationHoverPreviewSetting, setSiteGenerationHoverPreviewSetting] = useState<OverrideSetting>('inherit');
-  const [siteGenerationMarkdownZipSetting, setSiteGenerationMarkdownZipSetting] = useState<OverrideSetting>('inherit');
+  const [siteGenerationSourcesExportSetting, setSiteGenerationSourcesExportSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationSpacedRepetitionSetting, setSiteGenerationSpacedRepetitionSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationSpacedRepetitionTags, setSiteGenerationSpacedRepetitionTags] = useState<string[] | null>(null);
 
@@ -299,7 +299,7 @@ const SiteEditor: React.FC = () => {
         setSiteGenerationBacklinksSetting(toSetting(config.generationBacklinksEnabled));
         setSiteGenerationTagsSetting(toSetting(config.generationTagsEnabled));
         setSiteGenerationHoverPreviewSetting(toSetting(config.generationHoverPreviewEnabled));
-        setSiteGenerationMarkdownZipSetting(toSetting(config.generationMarkdownZipEnabled));
+        setSiteGenerationSourcesExportSetting(toSetting(config.generationMarkdownZipEnabled));
         setSiteGenerationSpacedRepetitionSetting(toSetting(config.generationSpacedRepetitionEnabled));
         setSiteGenerationSpacedRepetitionTags(
           Array.isArray(config.generationSpacedRepetitionTags)
@@ -332,7 +332,7 @@ const SiteEditor: React.FC = () => {
         setGlobalGenerationBacklinksEnabled(cfg.generationBacklinksEnabled !== false);
         setGlobalGenerationTagsEnabled(cfg.generationTagsEnabled !== false);
         setGlobalGenerationHoverPreviewEnabled(cfg.generationHoverPreviewEnabled === true);
-        setGlobalGenerationMarkdownZipEnabled(cfg.generationMarkdownZipEnabled === true);
+        setGlobalGenerationSourcesExportEnabled(cfg.generationMarkdownZipEnabled === true);
         setGlobalGenerationSpacedRepetitionEnabled(cfg.generationSpacedRepetitionEnabled === true);
         setGlobalGenerationSpacedRepetitionTags(
           Array.isArray(cfg.generationSpacedRepetitionTags)
@@ -777,7 +777,7 @@ const SiteEditor: React.FC = () => {
   };
 
   // Update a site-level override (inherit/enable/disable) - just persist to server
-  const handleSiteGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'markdownZip' | 'spacedRepetition', setting: OverrideSetting) => {
+  const handleSiteGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', setting: OverrideSetting) => {
     if (!slug) return;
 
     // Update local state immediately
@@ -790,8 +790,8 @@ const SiteEditor: React.FC = () => {
       }
     } else if (option === 'tags') {
       setSiteGenerationTagsSetting(setting);
-    } else if (option === 'markdownZip') {
-      setSiteGenerationMarkdownZipSetting(setting);
+    } else if (option === 'sourcesExport') {
+      setSiteGenerationSourcesExportSetting(setting);
     } else if (option === 'spacedRepetition') {
       setSiteGenerationSpacedRepetitionSetting(setting);
     } else {
@@ -806,7 +806,7 @@ const SiteEditor: React.FC = () => {
       },
       tags: { generationTagsEnabled: settingToPayload(setting) },
       hoverPreview: { generationHoverPreviewEnabled: settingToPayload(setting) },
-      markdownZip: { generationMarkdownZipEnabled: settingToPayload(setting) },
+      sourcesExport: { generationMarkdownZipEnabled: settingToPayload(setting) },
       spacedRepetition: { generationSpacedRepetitionEnabled: settingToPayload(setting) },
     };
     const updatePayload = payloadMap[option];
@@ -823,13 +823,13 @@ const SiteEditor: React.FC = () => {
   };
 
   // Update a global default - just persist to server
-  const handleGlobalGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'markdownZip' | 'spacedRepetition', enabled: boolean) => {
+  const handleGlobalGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', enabled: boolean) => {
     // Update local state immediately
     if (option === 'breadcrumbs') setGlobalGenerationBreadcrumbsEnabled(enabled);
     if (option === 'backlinks') setGlobalGenerationBacklinksEnabled(enabled);
     if (option === 'tags') setGlobalGenerationTagsEnabled(enabled);
     if (option === 'hoverPreview') setGlobalGenerationHoverPreviewEnabled(enabled);
-    if (option === 'markdownZip') setGlobalGenerationMarkdownZipEnabled(enabled);
+    if (option === 'sourcesExport') setGlobalGenerationSourcesExportEnabled(enabled);
     if (option === 'spacedRepetition') setGlobalGenerationSpacedRepetitionEnabled(enabled);
 
     const payloadMap: Record<string, Record<string, boolean>> = {
@@ -837,7 +837,7 @@ const SiteEditor: React.FC = () => {
       backlinks: { generationBacklinksEnabled: enabled, ...(enabled ? {} : { generationTagsEnabled: false }) },
       tags: { generationTagsEnabled: enabled },
       hoverPreview: { generationHoverPreviewEnabled: enabled },
-      markdownZip: { generationMarkdownZipEnabled: enabled },
+      sourcesExport: { generationMarkdownZipEnabled: enabled },
       spacedRepetition: { generationSpacedRepetitionEnabled: enabled },
     };
     const updatePayload = payloadMap[option];
@@ -863,7 +863,7 @@ const SiteEditor: React.FC = () => {
         setGlobalGenerationBacklinksEnabled(cfg.generationBacklinksEnabled !== false);
         setGlobalGenerationTagsEnabled(cfg.generationTagsEnabled !== false);
         setGlobalGenerationHoverPreviewEnabled(cfg.generationHoverPreviewEnabled === true);
-        setGlobalGenerationMarkdownZipEnabled(cfg.generationMarkdownZipEnabled === true);
+        setGlobalGenerationSourcesExportEnabled(cfg.generationMarkdownZipEnabled === true);
         setGlobalGenerationSpacedRepetitionEnabled(cfg.generationSpacedRepetitionEnabled === true);
         setGlobalGenerationSpacedRepetitionTags(
           Array.isArray(cfg.generationSpacedRepetitionTags)
@@ -1103,7 +1103,7 @@ const SiteEditor: React.FC = () => {
           backlinksEnabled: globalGenerationBacklinksEnabled,
           tagsEnabled: globalGenerationTagsEnabled,
           hoverPreviewEnabled: globalGenerationHoverPreviewEnabled,
-          markdownZipEnabled: globalGenerationMarkdownZipEnabled,
+          sourcesExportEnabled: globalGenerationSourcesExportEnabled,
           spacedRepetitionEnabled: globalGenerationSpacedRepetitionEnabled,
         }}
         siteGenerationOptions={{
@@ -1111,7 +1111,7 @@ const SiteEditor: React.FC = () => {
           backlinksSetting: siteGenerationBacklinksSetting,
           tagsSetting: siteGenerationTagsSetting,
           hoverPreviewSetting: siteGenerationHoverPreviewSetting,
-          markdownZipSetting: siteGenerationMarkdownZipSetting,
+          sourcesExportSetting: siteGenerationSourcesExportSetting,
           spacedRepetitionSetting: siteGenerationSpacedRepetitionSetting,
         }}
         globalSrsTags={globalGenerationSpacedRepetitionTags}

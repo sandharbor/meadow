@@ -5,6 +5,7 @@ defaultTraversalSitePageDirectory: ""
 sourceDirectory: ./source_graphs/meadow-test-sites-data
 initialSitePageTitle: main page
 initialSitePageDirectory: ""
+publishSlug: meadow-test-site-big
 siteCreatedAt: 2025-06-02T16:25:00.000Z
 siteLastPublishedAt: null
 siteNotes: ""

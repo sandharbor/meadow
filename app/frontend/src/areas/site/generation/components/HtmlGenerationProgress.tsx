@@ -37,7 +37,7 @@ export type HtmlGenerationProgressProps = {
       currentFileSize?: number;
       currentFileBytesUploaded?: number;
       currentFilePercentComplete?: number;
-      currentFileKind?: 'regular' | 'markdown-export-manifest' | 'markdown-export-zip';
+      currentFileKind?: 'regular' | 'sources-export-manifest' | 'sources-export-zip';
     };
   } | null;
   previewProgress: {
@@ -59,7 +59,7 @@ const HtmlGenerationProgress: React.FC<HtmlGenerationProgressProps> = ({
     : (previewProgress?.message || 'Working...');
 
   const percent = isPublishing
-    ? publishProgress?.uploadProgress?.currentFileKind === 'markdown-export-zip'
+    ? publishProgress?.uploadProgress?.currentFileKind === 'sources-export-zip'
       ? publishProgress.uploadProgress.currentFilePercentComplete
       : publishProgress?.uploadProgress?.totalFiles
       ? publishProgress.uploadProgress.percentComplete
@@ -69,7 +69,7 @@ const HtmlGenerationProgress: React.FC<HtmlGenerationProgressProps> = ({
       : undefined;
 
   const rightText = isPublishing
-    ? publishProgress?.uploadProgress?.currentFileKind === 'markdown-export-zip'
+    ? publishProgress?.uploadProgress?.currentFileKind === 'sources-export-zip'
       ? typeof publishProgress.uploadProgress.currentFileSize === 'number' &&
         typeof publishProgress.uploadProgress.currentFileBytesUploaded === 'number'
         ? `${formatUploadBytes(publishProgress.uploadProgress.currentFileBytesUploaded)} / ${formatUploadBytes(publishProgress.uploadProgress.currentFileSize)}`

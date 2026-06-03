@@ -165,9 +165,9 @@ class GenerationOptionsSection {
     await this.selectHoverOption("Backlinks", "Off");
   }
 
-  /** Set the Markdown ZIP site-level setting to "On" (enabled). */
-  async enableMarkdownZip() {
-    await this.selectHoverOption("Markdown ZIP", "On");
+  /** Set the Sources ZIP site-level setting to "On" (enabled). */
+  async enableSourcesExport() {
+    await this.selectHoverOption("Sources ZIP", "On");
   }
 }
 

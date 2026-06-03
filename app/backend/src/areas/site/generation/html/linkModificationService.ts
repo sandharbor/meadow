@@ -335,7 +335,7 @@ function resolveTarget(
 
 /**
  * Checks whether a wiki-link target (page or image) resolves to a whitelisted/publishable page.
- * Reusable outside of HTML rendering (e.g. markdown export sanitisation).
+ * Reusable outside of HTML rendering (e.g. sources export sanitisation).
  */
 export function isLinkTracked(
   linkText: string,
