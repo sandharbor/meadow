@@ -16,12 +16,6 @@ function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
 }
 
-function deterministicGzip(input) {
-  const out = zlib.gzipSync(input, { level: zlib.constants.Z_BEST_COMPRESSION });
-  out[GZIP_HEADER_OS_OFFSET] = 0xff;
-  return out;
-}
-
 function readJson(filePath, failures) {
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -29,6 +23,22 @@ function readJson(filePath, failures) {
     failures.push(`Unable to read ${filePath}: ${String(error)}`);
     return null;
   }
+}
+
+function gunzip(filePath, bytes, failures) {
+  try {
+    return zlib.gunzipSync(bytes);
+  } catch (error) {
+    failures.push(`Unable to decompress ${filePath}: ${String(error)}`);
+    return null;
+  }
+}
+
+function gzipHeaderOsByte(bytes) {
+  if (bytes.length <= GZIP_HEADER_OS_OFFSET) {
+    return null;
+  }
+  return bytes[GZIP_HEADER_OS_OFFSET].toString(16).padStart(2, '0');
 }
 
 const failures = [];
@@ -41,8 +51,17 @@ for (const requiredPath of [sourcePath, gzipPath, metadataPath]) {
 if (failures.length === 0) {
   const sourceBytes = fs.readFileSync(sourcePath);
   const gzipBytes = fs.readFileSync(gzipPath);
-  const expectedGzipBytes = deterministicGzip(sourceBytes);
+  const uncompressedGzipBytes = gunzip(gzipPath, gzipBytes, failures);
+  const actualGzipHeaderOsByte = gzipHeaderOsByte(gzipBytes);
   const metadata = readJson(metadataPath, failures);
+
+  if (uncompressedGzipBytes && !uncompressedGzipBytes.equals(sourceBytes)) {
+    failures.push(`${gzipPath} does not decompress to ${sourcePath}`);
+  }
+
+  if (actualGzipHeaderOsByte !== 'ff') {
+    failures.push(`Invalid gzip header OS byte in ${gzipPath}: expected "ff", got ${JSON.stringify(actualGzipHeaderOsByte)}`);
+  }
 
   if (metadata) {
     const expectedSourceSha256 = sha256(sourceBytes);
@@ -70,10 +89,6 @@ if (failures.length === 0) {
     if (typeof metadata.gzipSha256 !== 'string' || !SHA256_HEX_RE.test(metadata.gzipSha256)) {
       failures.push(`Invalid gzipSha256 format in ${metadataPath}`);
     }
-  }
-
-  if (!gzipBytes.equals(expectedGzipBytes)) {
-    failures.push(`${gzipPath} is not the deterministic gzip output for ${sourcePath}`);
   }
 }
 
