@@ -16,14 +16,14 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { SitePageConfig } from '../../../../shared_code/types/sitePageConfig.js';
-import { SiteConfigPaths } from '../../../../shared_code/paths/siteConfigPaths.js';
-import { replaceOutsideCode } from '../../areas/site/generation/html/markdown.js';
+import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
+import { replaceOutsideCode } from '../html/markdown.js';
 import {
   HTML_LINK_NOT_TRACKED_REPLACEMENT,
   prepareScrubbedSourceDirectory,
   sanitizeMarkdownLinks
-} from './sourceScrubbingUtils.js';
+} from '../source-material/sourceScrubbing.js';
 
 export { sanitizeMarkdownLinks };
 

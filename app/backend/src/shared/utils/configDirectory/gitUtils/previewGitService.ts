@@ -51,7 +51,7 @@ interface CommitOptions {
  * Commit site changes to git.
  * Uses the native fast_git_ops binary for fast commits of multiple directories.
  * Commits html/generated_site_versions, html/preview, raw/tracked_page_content,
- * and generated build intermediates (when they exist). Optionally includes conf
+ * generated build intermediates, and cleanup paths. Optionally includes conf
  * directory for publish operations. Callers (typically publishing providers)
  * can pass `additionalDirs` to include provider-scoped caches in the same commit.
  */
@@ -65,18 +65,14 @@ export async function commitSiteChanges(
   const publishedDir = SiteConfigPaths.getGeneratedSiteVersionsDir(siteDirectory);
   const previewDir = SiteConfigPaths.getPreviewDir(siteDirectory);
   const trackedPageContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
-  const modifiedPageContentDir = SiteConfigPaths.getModifiedPageContentDir(siteDirectory);
-  const scrubbedSourceContentDir = SiteConfigPaths.getScrubbedSourceContentDir(siteDirectory);
-  const sourcesExportDir = SiteConfigPaths.getSourcesExportDir(siteDirectory);
+  const buildDir = SiteConfigPaths.getBuildDir(siteDirectory);
   const confDir = SiteConfigPaths.getConfDir(siteDirectory);
 
   // Check if at least one directory exists
   const publishedExists = fs.existsSync(publishedDir);
   const previewExists = fs.existsSync(previewDir);
   const trackedPageContentExists = fs.existsSync(trackedPageContentDir);
-  const modifiedPageContentExists = fs.existsSync(modifiedPageContentDir);
-  const scrubbedSourceContentExists = fs.existsSync(scrubbedSourceContentDir);
-  const sourcesExportExists = fs.existsSync(sourcesExportDir);
+  const buildExists = fs.existsSync(buildDir);
   const confExists = includeConfDir && fs.existsSync(confDir);
   const existingAdditionalDirs = additionalDirs.filter(d => fs.existsSync(d));
 
@@ -84,9 +80,7 @@ export async function commitSiteChanges(
     !publishedExists &&
     !previewExists &&
     !trackedPageContentExists &&
-    !modifiedPageContentExists &&
-    !scrubbedSourceContentExists &&
-    !sourcesExportExists &&
+    !buildExists &&
     !confExists &&
     existingAdditionalDirs.length === 0
   ) {
@@ -94,9 +88,7 @@ export async function commitSiteChanges(
     logger.warn(`  Published: ${publishedDir}`);
     logger.warn(`  Preview: ${previewDir}`);
     logger.warn(`  Tracked Page Content: ${trackedPageContentDir}`);
-    logger.warn(`  Modified Page Content: ${modifiedPageContentDir}`);
-    logger.warn(`  Scrubbed Source Content: ${scrubbedSourceContentDir}`);
-    logger.warn(`  Sources Export: ${sourcesExportDir}`);
+    logger.warn(`  Build: ${buildDir}`);
     if (includeConfDir) {
       logger.warn(`  Conf: ${confDir}`);
     }
@@ -120,17 +112,9 @@ export async function commitSiteChanges(
     directoriesToCommit.push(trackedPageContentDir);
     logger.info(`[commitSiteChanges] Will commit tracked_page_content dir: ${trackedPageContentDir}`);
   }
-  if (modifiedPageContentExists) {
-    directoriesToCommit.push(modifiedPageContentDir);
-    logger.info(`[commitSiteChanges] Will commit modified_page_content dir: ${modifiedPageContentDir}`);
-  }
-  if (scrubbedSourceContentExists) {
-    directoriesToCommit.push(scrubbedSourceContentDir);
-    logger.info(`[commitSiteChanges] Will commit scrubbed_source_content dir: ${scrubbedSourceContentDir}`);
-  }
-  if (sourcesExportExists) {
-    directoriesToCommit.push(sourcesExportDir);
-    logger.info(`[commitSiteChanges] Will commit sources_export dir: ${sourcesExportDir}`);
+  if (buildExists) {
+    directoriesToCommit.push(buildDir);
+    logger.info(`[commitSiteChanges] Will commit build dir: ${buildDir}`);
   }
   if (confExists) {
     directoriesToCommit.push(confDir);

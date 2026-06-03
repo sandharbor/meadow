@@ -20,9 +20,9 @@ import {
   pageMatchesConfiguredSrsTags,
   removeSrsCommentsFromMarkdown,
   replaceSrsCardsWithCustomElements,
-} from '../../../src/shared/utils/srsMarkdownUtils.js';
+} from '../../../../../src/areas/site/generation/render-source/srsMarkdown.js';
 
-describe('srsMarkdownUtils', () => {
+describe('srsMarkdown', () => {
   it('matches configured tags from raw tags, nested tags, and rewritten tag links', () => {
     expect(pageMatchesConfiguredSrsTags('#srs\n\nPrompt::Answer\n', ['#srs'])).toBe(true);
     expect(pageMatchesConfiguredSrsTags('#flashcards/ka-quiz\n\nPrompt::Answer\n', ['#flashcards'])).toBe(true);

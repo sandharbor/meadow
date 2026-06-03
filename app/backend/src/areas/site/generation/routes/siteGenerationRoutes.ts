@@ -29,7 +29,7 @@ import { generateHtmlForSite } from '../html/htmlService.js';
 import { normalizePageTitle } from '../html/shared.js';
 import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
 import { getHtmlPathForPage } from '../../../../shared/utils/htmlPathLookup.js';
-import { ensureTrackedPageContent } from '../../../../shared/utils/trackedPageContentUtils.js';
+import { ensureTrackedPageContent } from '../source-material/trackedPageContent.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { clearSiteGuidCache, logSiteError, logSiteInfo } from '../../../../shared/utils/logging/siteLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';

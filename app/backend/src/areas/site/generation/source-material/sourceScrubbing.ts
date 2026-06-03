@@ -17,14 +17,14 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import LZString from 'lz-string';
-import type { SitePageConfig } from '../../../../shared_code/types/sitePageConfig.js';
-import type { FileType } from '../../../../shared_code/types/FileType.js';
-import type { LinkResolvedInfo } from '../../../../shared_code/types/ISitePage.js';
-import { replaceOutsideCode } from '../../areas/site/generation/html/markdown.js';
-import { LINK_PATTERN } from '../../areas/site/generation/html/constants.js';
-import { isLinkTracked } from '../../areas/site/generation/html/linkModificationService.js';
-import { pageConfigToKey } from '../site-page/pageKeys.js';
-import { logger } from './logging/backendLoggingUtils.js';
+import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { FileType } from '../../../../../../shared_code/types/FileType.js';
+import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
+import { replaceOutsideCode } from '../html/markdown.js';
+import { LINK_PATTERN } from '../html/constants.js';
+import { isLinkTracked } from '../html/linkModificationService.js';
+import { pageConfigToKey } from '../../../../shared/site-page/pageKeys.js';
+import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
 type AllLinkResolutionMaps = Map<string, LinkResolutionMap>;

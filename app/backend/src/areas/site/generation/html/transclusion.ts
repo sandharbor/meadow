@@ -32,12 +32,12 @@ import {
 } from './shared.js';
 import { replaceOutsideCode, splitMarkdownBlocks } from './markdown.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
-import { replaceSrsCardsWithCustomElements } from '../../../../shared/utils/srsMarkdownUtils.js';
+import { replaceSrsCardsWithCustomElements } from '../render-source/srsMarkdown.js';
 
 export interface TransclusionOptions {
   /** Directory of the final page that will contain this transclusion (for relative URL calculation) */
   finalPageDirectory: string;
-  /** Root directory of tracked_page_content */
+  /** Root directory of the active source content phase */
   baseContentDirectory: string;
   /** Root directory of preview output (for images) */
   baseOutputFolder: string;
@@ -321,7 +321,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
   }
   visited.add(visitKey);
 
-  // Read markdown from tracked_page_content root + page directory
+  // Read markdown from active source-content root + page directory
   const sourceDir = resolved.directory
     ? path.join(baseContentDirectory, resolved.directory)
     : baseContentDirectory;

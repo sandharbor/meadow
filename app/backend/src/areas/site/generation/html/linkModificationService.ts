@@ -430,7 +430,7 @@ export interface LinkOrImageHtmlOptions {
   siteConfig?: SiteConfig;
   siteSlug?: string;
   directory?: string;
-  baseContentDirectory?: string;  // Base tracked_page_content directory for image lookups
+  baseContentDirectory?: string;  // Base source-content directory for image lookups
   outputFolder?: string;
   baseOutputFolder?: string;  // Base preview directory for image output
   processingMode?: 'each-page' | 'single-page';

@@ -25,7 +25,8 @@ import siteCurationRoutes from '../../areas/site/curation/routes/siteCurationRou
 import hooksRoutes from '../../areas/site/generation/routes/hooksRoutes.js';
 import customAssetsRoutes from '../../areas/site/generation/routes/customAssetsRoutes.js';
 import appConfigRoutes from '../routes/appConfigRoutes.js';
-import localSaveRoutes from '../../areas/site/sharing/routes/localSaveRoutes.js';
+import { createLocalSaveRoutes } from '../../areas/site/sharing/routes/localSaveRoutes.js';
+import { buildFilteredSourcesExportForSite } from '../../areas/site/generation/sources-export/filteredSourcesExport.js';
 import siteListingRoutes from '../../areas/sites/routes/siteListingRoutes.js';
 import siteGenerationRoutes from '../../areas/site/generation/routes/siteGenerationRoutes.js';
 import stylePresetsRoutes from '../../areas/site/generation/routes/stylePresetsRoutes.js';
@@ -77,7 +78,9 @@ app.use('/api', siteCurationRoutes);
 app.use('/api', hooksRoutes);
 app.use('/api', customAssetsRoutes);
 app.use('/api', appConfigRoutes);
-app.use('/api', localSaveRoutes);
+app.use('/api', createLocalSaveRoutes({
+  buildRawSourcesExportForSite: buildFilteredSourcesExportForSite,
+}));
 app.use('/api', logRoutes);
 app.use('/api', appConfigFileRoutes);
 app.use('/api', providerDiscoveryRoutes);

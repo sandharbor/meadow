@@ -16,9 +16,9 @@
       "reason": "Vendored minified Mermaid runtime served as a static asset for generated sites.",
       "followUp": "Keep vendored runtime assets exempt or move them under a generated-assets path excluded from source line limits."
     },
-    "shared/utils/srsMarkdownUtils.ts": {
-      "reason": "Legacy spaced-repetition markdown utility is shared by generation and export paths and exceeds the line limit.",
-      "followUp": "Split the utility with the site-generation markdown pipeline and isolate shared parsing helpers if needed."
+    "areas/site/generation/render-source/srsMarkdown.ts": {
+      "reason": "Spaced-repetition markdown transforms are generation render-source logic and exceed the line limit.",
+      "followUp": "Split card parsing, GUID preparation, and render-element replacement helpers within the generation render-source area."
     }
   }
 }

@@ -56,9 +56,10 @@ const HLJS_THEME_CSS: string = (() => {
   }
 })();
 import { createSourcesExportZip, getSourcesExportDownloadFilename, writeSourcesExportManifest } from '../../../../shared/utils/zipUtils.js';
-import { prepareModifiedSrsMarkdownDirectory } from '../../../../shared/utils/srsMarkdownUtils.js';
-import { prepareSourcesExportFromScrubbedSourceDirectory } from '../../../../shared/utils/sourcesExportUtils.js';
-import { prepareScrubbedSourceDirectory } from '../../../../shared/utils/sourceScrubbingUtils.js';
+import { backfillSrsGuidsInMarkdownDirectory, prepareSrsRenderSourceDirectory } from '../render-source/srsMarkdown.js';
+import { prepareSourcesExportFromScrubbedSourceDirectory } from '../sources-export/sourcesExport.js';
+import { prepareScrubbedSourceDirectory } from '../source-material/sourceScrubbing.js';
+import { prepareGenerationSourceMaterial } from '../source-material/trackedPageContent.js';
 import type { StaticAssetNames } from './types.js';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -472,42 +473,67 @@ export async function generateHtmlForSite(
   );
   
   const trackedPageContentDirectory = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
-  const modifiedPageContentDirectory = SiteConfigPaths.getModifiedPageContentDir(siteDirectory);
+  const renderSourceContentDirectory = SiteConfigPaths.getRenderSourceContentDir(siteDirectory);
+  const legacyRenderSourceContentDirectory = SiteConfigPaths.getLegacyRenderSourceContentDir(siteDirectory);
   const scrubbedSourceContentDirectory = SiteConfigPaths.getScrubbedSourceContentDir(siteDirectory);
-  let sourceContentDirectory = trackedPageContentDirectory;
   
   // Use new directory structure: html/preview for preview, html/generated_site_versions/<version> for published
   const previewHtmlDirectory = SiteConfigPaths.getPreviewDir(siteDirectory);
   
-  const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-  const sitePageConfs = timeSync('site.generation.stage', { ...timingLabels, stage: 'parse_site_page_config' }, () =>
-    parseSitePageConfig(sitePageConfPath)
-  );
-  const sitePageConfigsArray = Object.values(sitePageConfs);
   const generationOptions = timeSync('site.generation.stage', { ...timingLabels, stage: 'resolve_generation_options' }, () => {
     const appConfig = loadAppConfig(getConfigDirectory());
     return resolveEffectiveGenerationOptions(appConfig, siteConfig);
   });
 
-  if (generationOptions.spacedRepetitionEnabled) {
+  if (generationOptions.tagsEnabled && generationOptions.spacedRepetitionEnabled) {
     try {
-      timeSync('site.generation.stage', { ...timingLabels, stage: 'prepare_srs_markdown' }, () => {
-        prepareModifiedSrsMarkdownDirectory(
+      timeSync('site.generation.stage', { ...timingLabels, stage: 'backfill_srs_guids' }, () => {
+        backfillSrsGuidsInMarkdownDirectory(
           trackedPageContentDirectory,
-          modifiedPageContentDirectory,
           generationOptions.spacedRepetitionTags
         );
-        if (fs.existsSync(modifiedPageContentDirectory)) {
-          sourceContentDirectory = modifiedPageContentDirectory;
+      });
+    } catch (error) {
+      logger.warn(`Error backfilling SRS GUIDs before source preparation: ${String(error)}`);
+    }
+  }
+
+  const preparedSourceMaterial = timeSync('site.generation.stage', { ...timingLabels, stage: 'prepare_generation_source_material' }, () =>
+    prepareGenerationSourceMaterial(siteDirectory, { tagsEnabled: generationOptions.tagsEnabled })
+  );
+  let sourceContentDirectory = preparedSourceMaterial.sourceContentDirectory;
+
+  const sitePageConfPath = preparedSourceMaterial.sitePageConfigPath;
+  const sitePageConfs = timeSync('site.generation.stage', { ...timingLabels, stage: 'parse_site_page_config' }, () =>
+    parseSitePageConfig(sitePageConfPath)
+  );
+  const sitePageConfigsArray = Object.values(sitePageConfs);
+
+  if (generationOptions.spacedRepetitionEnabled) {
+    try {
+      timeSync('site.generation.stage', { ...timingLabels, stage: 'prepare_srs_render_source' }, () => {
+        prepareSrsRenderSourceDirectory(
+          sourceContentDirectory,
+          renderSourceContentDirectory,
+          generationOptions.spacedRepetitionTags
+        );
+        if (fs.existsSync(renderSourceContentDirectory)) {
+          sourceContentDirectory = renderSourceContentDirectory;
         }
       });
     } catch (error) {
-      logger.error(`Error preparing modified SRS markdown: ${String(error)}`);
-      sourceContentDirectory = trackedPageContentDirectory;
+      logger.error(`Error preparing SRS render source: ${String(error)}`);
+      sourceContentDirectory = preparedSourceMaterial.sourceContentDirectory;
     }
-  } else if (fs.existsSync(modifiedPageContentDirectory)) {
-    timeSync('site.generation.stage', { ...timingLabels, stage: 'remove_srs_markdown' }, () => {
-      fs.rmSync(modifiedPageContentDirectory, { recursive: true, force: true });
+  } else if (fs.existsSync(renderSourceContentDirectory)) {
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'remove_srs_render_source' }, () => {
+      fs.rmSync(renderSourceContentDirectory, { recursive: true, force: true });
+    });
+  }
+
+  if (fs.existsSync(legacyRenderSourceContentDirectory)) {
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'remove_legacy_srs_render_source' }, () => {
+      fs.rmSync(legacyRenderSourceContentDirectory, { recursive: true, force: true });
     });
   }
   

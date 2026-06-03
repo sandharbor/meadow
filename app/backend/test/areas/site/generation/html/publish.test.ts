@@ -19,7 +19,7 @@ import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { generateHtmlForSite, publishToVersionedDirectory, publishToNewVersion } from '../../../../../src/areas/site/generation/html/htmlService.js';
-import { ensureTrackedPageContent } from '../../../../../src/shared/utils/trackedPageContentUtils.js';
+import { ensureTrackedPageContent } from '../../../../../src/areas/site/generation/source-material/trackedPageContent.js';
 import { loadSiteConfig } from '../../../../../src/shared/utils/siteConfigUtils.js';
 import { TestSiteSetup } from '../../../../shared/support/testSiteSetup.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
@@ -101,7 +101,7 @@ describe('html publish', () => {
     expect(firstHtml).toMatch(/srs\/srs\.[a-f0-9]{8}\.js/);
   });
 
-  it('should render SRS cards from modified markdown and export original markdown in zip', async () => {
+  it('should render SRS cards from render source markdown and export original markdown in zip', async () => {
     const siteConfigPath = path.join(sitePath, 'conf/site_config.yaml');
     fs.appendFileSync(
       siteConfigPath,

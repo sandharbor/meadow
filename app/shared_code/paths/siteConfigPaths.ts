@@ -21,7 +21,9 @@ limitations under the License.
  * This file defines the structure of:
  *   SITE_DIR/
  *     build/
- *       modified_page_content/
+ *       prepared_source_content/
+ *       prepared_site_page_config.yaml
+ *       render_source_content/
  *       sources_export/
  *       scrubbed_source_content/
  *     conf/
@@ -58,7 +60,9 @@ const SOURCES_EXPORT_DIR = 'sources_export';
 const PREVIEW_DIR = 'preview';
 const GENERATED_SITE_VERSIONS_DIR = 'generated_site_versions';
 const TRACKED_PAGE_CONTENT_DIR = 'tracked_page_content';
-const MODIFIED_PAGE_CONTENT_DIR = 'modified_page_content';
+const PREPARED_SOURCE_CONTENT_DIR = 'prepared_source_content';
+const RENDER_SOURCE_CONTENT_DIR = 'render_source_content';
+const LEGACY_RENDER_SOURCE_CONTENT_DIR = 'modified_page_content';
 const SCRUBBED_SOURCE_CONTENT_DIR = 'scrubbed_source_content';
 const FONTS_DIR = 'fonts';
 const TAGPAGES_DIR = 'x-tagpages';
@@ -66,6 +70,7 @@ const TAGPAGES_DIR = 'x-tagpages';
 // File names
 const SITE_CONFIG_FILE = 'site_config.yaml';
 const SITE_PAGE_CONFIG_FILE = 'site_page_config.yaml';
+const PREPARED_SITE_PAGE_CONFIG_FILE = 'prepared_site_page_config.yaml';
 const CUSTOM_FILTERS_FILE = 'custom_filters.json';
 const PAGE_TITLE_NORMALIZATION_HOOK_FILE = 'pageTitleNormalization.ts';
 const MARKDOWN_PROCESSING_HOOK_FILE = 'markdownProcessing.ts';
@@ -117,9 +122,19 @@ export const SiteConfigPaths = {
       return join(RAW_DIR, TRACKED_PAGE_CONTENT_DIR);
     },
 
-    /** build/modified_page_content/ */
-    modifiedPageContentDir(): string {
-      return join(BUILD_DIR, MODIFIED_PAGE_CONTENT_DIR);
+    /** build/prepared_source_content/ */
+    preparedSourceContentDir(): string {
+      return join(BUILD_DIR, PREPARED_SOURCE_CONTENT_DIR);
+    },
+
+    /** build/prepared_site_page_config.yaml */
+    preparedSitePageConfigFile(): string {
+      return join(BUILD_DIR, PREPARED_SITE_PAGE_CONFIG_FILE);
+    },
+
+    /** build/render_source_content/ */
+    renderSourceContentDir(): string {
+      return join(BUILD_DIR, RENDER_SOURCE_CONTENT_DIR);
     },
 
     /** build/scrubbed_source_content/ */
@@ -186,6 +201,13 @@ export const SiteConfigPaths = {
     return join(siteDir, this.relative.confDir());
   },
 
+  /**
+   * Get the build directory: SITE_DIR/build/
+   */
+  getBuildDir(siteDir: string): string {
+    return join(siteDir, BUILD_DIR);
+  },
+
   // ─────────────────────────────────────────────────────────────────
   // Absolute HTML output directory paths (built from relative paths)
   // ─────────────────────────────────────────────────────────────────
@@ -244,10 +266,31 @@ export const SiteConfigPaths = {
   },
 
   /**
-   * Get the modified page content directory: SITE_DIR/build/modified_page_content/
+   * Get the prepared source content directory: SITE_DIR/build/prepared_source_content/
    */
-  getModifiedPageContentDir(siteDir: string): string {
-    return join(siteDir, this.relative.modifiedPageContentDir());
+  getPreparedSourceContentDir(siteDir: string): string {
+    return join(siteDir, this.relative.preparedSourceContentDir());
+  },
+
+  /**
+   * Get the prepared site page config file: SITE_DIR/build/prepared_site_page_config.yaml
+   */
+  getPreparedSitePageConfigFile(siteDir: string): string {
+    return join(siteDir, this.relative.preparedSitePageConfigFile());
+  },
+
+  /**
+   * Get the render source content directory: SITE_DIR/build/render_source_content/
+   */
+  getRenderSourceContentDir(siteDir: string): string {
+    return join(siteDir, this.relative.renderSourceContentDir());
+  },
+
+  /**
+   * Get the legacy render source content directory used before the build phase was renamed.
+   */
+  getLegacyRenderSourceContentDir(siteDir: string): string {
+    return join(siteDir, BUILD_DIR, LEGACY_RENDER_SOURCE_CONTENT_DIR);
   },
 
   /**
@@ -370,8 +413,11 @@ export const SiteConfigPaths = {
   /** The tracked_page_content subdirectory name: 'tracked_page_content' */
   TRACKED_PAGE_CONTENT_DIR,
 
-  /** The modified_page_content subdirectory name: 'modified_page_content' */
-  MODIFIED_PAGE_CONTENT_DIR,
+  /** The prepared_source_content subdirectory name: 'prepared_source_content' */
+  PREPARED_SOURCE_CONTENT_DIR,
+
+  /** The render_source_content subdirectory name: 'render_source_content' */
+  RENDER_SOURCE_CONTENT_DIR,
 
   /** The scrubbed_source_content subdirectory name: 'scrubbed_source_content' */
   SCRUBBED_SOURCE_CONTENT_DIR,
@@ -386,6 +432,7 @@ export const SiteConfigPaths = {
   CONFIG_FILES: {
     site_config: SITE_CONFIG_FILE,
     site_page_config: SITE_PAGE_CONFIG_FILE,
+    prepared_site_page_config: PREPARED_SITE_PAGE_CONFIG_FILE,
     custom_filters: CUSTOM_FILTERS_FILE,
   } as const,
 

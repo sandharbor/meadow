@@ -21,7 +21,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import request from 'supertest';
-import localSaveRoutes from '../../../../../src/areas/site/sharing/routes/localSaveRoutes.js';
+import { createLocalSaveRoutes } from '../../../../../src/areas/site/sharing/routes/localSaveRoutes.js';
+import { buildFilteredSourcesExportForSite } from '../../../../../src/areas/site/generation/sources-export/filteredSourcesExport.js';
 import { TestSiteSetup } from '../../../../shared/support/testSiteSetup.js';
 
 describe('Advanced-tab sources export (localSaveRoutes)', () => {
@@ -35,7 +36,9 @@ describe('Advanced-tab sources export (localSaveRoutes)', () => {
 
     app = express();
     app.use(express.json());
-    app.use('/api', localSaveRoutes);
+    app.use('/api', createLocalSaveRoutes({
+      buildRawSourcesExportForSite: buildFilteredSourcesExportForSite,
+    }));
 
     scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sources-export-advanced-'));
   });

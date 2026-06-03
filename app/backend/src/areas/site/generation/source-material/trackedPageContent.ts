@@ -16,27 +16,33 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { parsePageConfig } from '../../../../shared_code/utils/sitePageConfigUtils.js';
-import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../shared_code/utils/fileTypeUtils.js';
-import { SitePageConfig } from '../../../../shared_code/types/sitePageConfig.js';
-import { stringifyPageConfig } from '../../../../shared_code/utils/sitePageConfigUtils.js';
-import { SiteConfigPaths } from '../../../../shared_code/paths/siteConfigPaths.js';
-import { loadSiteConfig } from './siteConfigUtils.js';
-import { loadAppConfig } from '../../../../shared_code/utils/appConfigUtils.js';
-import { resolveEffectiveGenerationOptions } from '../../../../shared_code/utils/generationOptionsUtils.js';
-import { getConfigDirectory } from '../site-config/siteConfigPaths.js';
+import { parsePageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
+import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../shared_code/utils/fileTypeUtils.js';
+import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import { stringifyPageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
+import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
+import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
+import { loadAppConfig } from '../../../../../../shared_code/utils/appConfigUtils.js';
+import { resolveEffectiveGenerationOptions } from '../../../../../../shared_code/utils/generationOptionsUtils.js';
+import { getConfigDirectory } from '../../../../shared/site-config/siteConfigPaths.js';
 import {
   extractObsidianTagsFromMarkdown,
   listMarkdownFilesRecursive,
   normalizeTagToKey,
   rewriteObsidianTagsToWikiLinks,
   tagKeyToPageTitle
-} from './tagPagesUtils.js';
+} from './tagPages.js';
 import {
   ensureSrsCardGuidsInMarkdown,
   pageMatchesConfiguredSrsTags,
-} from './srsMarkdownUtils.js';
-import { logger } from './logging/backendLoggingUtils.js';
+} from '../render-source/srsMarkdown.js';
+import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+
+export interface PreparedGenerationSourceMaterial {
+  sourceContentDirectory: string;
+  sitePageConfigPath: string;
+  tagPageCount: number;
+}
 
 /**
  * Ensures the tracked_page_content directory is populated with files from the source directory.
@@ -55,12 +61,9 @@ export async function ensureTrackedPageContent(
   await Promise.resolve();
   const targetDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const tagPagesSubdirName = SiteConfigPaths.TAGPAGES_DIR;
-  const tagPagesRelativeDir = path.join(tagPagesSubdirName);
-  const tagPagesDir = path.join(targetDir, tagPagesRelativeDir);
   const siteConfig = loadSiteConfig(siteDirectory);
   const appConfig = loadAppConfig(getConfigDirectory());
   const generationOptions = resolveEffectiveGenerationOptions(appConfig, siteConfig);
-  const tagsEnabled = generationOptions.tagsEnabled;
 
   // Read site_page_config.yaml to get tracked page titles
   const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
@@ -70,16 +73,7 @@ export async function ensureTrackedPageContent(
   }
 
   const confContent = fs.readFileSync(sitePageConfPath, 'utf8');
-  let sitePageConfigs = parsePageConfig(confContent);
-
-  // If tags are disabled (or backlinks are disabled), remove tag pages from site_page_config.yaml.
-  if (!tagsEnabled) {
-    const withoutTagPages = sitePageConfigs.filter(c => (c.source_graph_subdirectory || '') !== tagPagesSubdirName);
-    if (withoutTagPages.length !== sitePageConfigs.length) {
-      fs.writeFileSync(sitePageConfPath, stringifyPageConfig(withoutTagPages), 'utf8');
-      sitePageConfigs = withoutTagPages;
-    }
-  }
+  const sitePageConfigs = parsePageConfig(confContent);
 
   // Get tracked pages (whitelist with tracked:true or tracked not explicitly false)
   const trackedPages = sitePageConfigs
@@ -188,22 +182,62 @@ export async function ensureTrackedPageContent(
   }
 
   logger.info(`Synced ${copiedCount} tracked pages to ${targetDir}`);
+}
 
-  // Tag support: generate tag pages + rewrite #tags -> wikilinks in tracked_page_content
-  if (!tagsEnabled) {
-    // Ensure no stale tag pages directory remains (targetDir was cleared, but be safe if behavior changes)
-    if (fs.existsSync(tagPagesDir)) {
-      fs.rmSync(tagPagesDir, { recursive: true, force: true });
-    }
-    return;
+function cleanupPreparedGenerationSourceMaterial(siteDirectory: string): void {
+  const preparedSourceContentDir = SiteConfigPaths.getPreparedSourceContentDir(siteDirectory);
+  const preparedSitePageConfigPath = SiteConfigPaths.getPreparedSitePageConfigFile(siteDirectory);
+
+  if (fs.existsSync(preparedSourceContentDir)) {
+    fs.rmSync(preparedSourceContentDir, { recursive: true, force: true });
+  }
+  if (fs.existsSync(preparedSitePageConfigPath)) {
+    fs.rmSync(preparedSitePageConfigPath, { force: true });
+  }
+}
+
+/**
+ * Builds the generation-only source material used after tracked content has
+ * been synced. When tag pages are needed, this creates a prepared copy of the
+ * tracked source tree plus a prepared page config snapshot that includes the
+ * generated tag pages. The persisted page config remains curation input.
+ */
+export function prepareGenerationSourceMaterial(
+  siteDirectory: string,
+  options: { tagsEnabled: boolean }
+): PreparedGenerationSourceMaterial {
+  const trackedPageContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
+  const persistedSitePageConfigPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
+  const preparedSourceContentDir = SiteConfigPaths.getPreparedSourceContentDir(siteDirectory);
+  const preparedSitePageConfigPath = SiteConfigPaths.getPreparedSitePageConfigFile(siteDirectory);
+  const tagPagesSubdirName = SiteConfigPaths.TAGPAGES_DIR;
+  const tagPagesDir = path.join(preparedSourceContentDir, tagPagesSubdirName);
+
+  const fallback: PreparedGenerationSourceMaterial = {
+    sourceContentDirectory: trackedPageContentDir,
+    sitePageConfigPath: persistedSitePageConfigPath,
+    tagPageCount: 0,
+  };
+
+  if (!options.tagsEnabled) {
+    cleanupPreparedGenerationSourceMaterial(siteDirectory);
+    return fallback;
+  }
+
+  if (!fs.existsSync(persistedSitePageConfigPath) || !fs.existsSync(trackedPageContentDir)) {
+    cleanupPreparedGenerationSourceMaterial(siteDirectory);
+    return fallback;
   }
 
   try {
-    // 1) Scan copied markdown for Obsidian-style #tags
-    const mdFiles = listMarkdownFilesRecursive(targetDir, { excludeDirNames: new Set([tagPagesSubdirName]) });
+    const sitePageConfigs = parsePageConfig(fs.readFileSync(persistedSitePageConfigPath, 'utf8'));
+    const nonTagConfigs = sitePageConfigs.filter(c => (c.source_graph_subdirectory || '') !== tagPagesSubdirName);
+
+    // 1) Scan tracked markdown for Obsidian-style #tags
+    const trackedMarkdownFiles = listMarkdownFilesRecursive(trackedPageContentDir, { excludeDirNames: new Set([tagPagesSubdirName]) });
     const tagKeyToExampleBody = new Map<string, string>();
 
-    for (const filePath of mdFiles) {
+    for (const filePath of trackedMarkdownFiles) {
       const md = fs.readFileSync(filePath, 'utf8');
       const found = extractObsidianTagsFromMarkdown(md);
       for (const [key, exampleBody] of found.entries()) {
@@ -216,6 +250,11 @@ export async function ensureTrackedPageContent(
       .sort()
       .map(tagKey => tagKeyToPageTitle(tagKey));
 
+    if (desiredTagPageTitles.length === 0) {
+      cleanupPreparedGenerationSourceMaterial(siteDirectory);
+      return fallback;
+    }
+
     const desiredTagPageConfigs: SitePageConfig[] = desiredTagPageTitles.map(title => ({
       title,
       source_graph_subdirectory: tagPagesSubdirName,
@@ -223,47 +262,52 @@ export async function ensureTrackedPageContent(
       config: { list_type: 'whitelist', tracked: true }
     }));
 
-    // 3) Update site_page_config.yaml to include *only* current tag pages
-    const nonTagConfigs = sitePageConfigs.filter(c => (c.source_graph_subdirectory || '') !== tagPagesSubdirName);
-    const updatedConfigs = [...nonTagConfigs, ...desiredTagPageConfigs];
-    fs.writeFileSync(sitePageConfPath, stringifyPageConfig(updatedConfigs), 'utf8');
-
-    // 4) Write tag page markdown files into tracked_page_content/x-tagpages
-    if (desiredTagPageTitles.length === 0) {
-      if (fs.existsSync(tagPagesDir)) fs.rmSync(tagPagesDir, { recursive: true, force: true });
-    } else {
-      fs.mkdirSync(tagPagesDir, { recursive: true });
-
-      // Remove stale tag page files
-      const desiredFilenames = new Set(desiredTagPageTitles.map(t => `${t}.md`));
-      for (const ent of fs.readdirSync(tagPagesDir, { withFileTypes: true })) {
-        if (ent.isFile() && ent.name.toLowerCase().endsWith('.md') && !desiredFilenames.has(ent.name)) {
-          fs.rmSync(path.join(tagPagesDir, ent.name), { force: true });
-        }
-      }
-
-      // Write/update current tag pages
-      for (const [tagKey, exampleBody] of tagKeyToExampleBody.entries()) {
-        const title = tagKeyToPageTitle(tagKey);
-        const filePath = path.join(tagPagesDir, `${title}.md`);
-        const display = `#${exampleBody || tagKey}`;
-        // Keep tag pages visually empty; backlinks section provides all useful info.
-        // We leave a small HTML comment for debugging without affecting rendered output.
-        const content = `<!-- auto-generated tag page for ${display} -->\n`;
-        fs.writeFileSync(filePath, content, 'utf8');
-      }
+    // 3) Copy tracked content into the generation-prepared source tree
+    if (fs.existsSync(preparedSourceContentDir)) {
+      fs.rmSync(preparedSourceContentDir, { recursive: true, force: true });
+    }
+    fs.cpSync(trackedPageContentDir, preparedSourceContentDir, { recursive: true });
+    if (fs.existsSync(tagPagesDir)) {
+      fs.rmSync(tagPagesDir, { recursive: true, force: true });
     }
 
-    // 5) Rewrite tags in copied markdown to wikilinks pointing at tag pages
+    // 4) Write the prepared page config snapshot with only current tag pages
+    fs.mkdirSync(path.dirname(preparedSitePageConfigPath), { recursive: true });
+    fs.writeFileSync(
+      preparedSitePageConfigPath,
+      stringifyPageConfig([...nonTagConfigs, ...desiredTagPageConfigs]),
+      'utf8'
+    );
+
+    // 5) Write tag page markdown files into prepared_source_content/x-tagpages
+    fs.mkdirSync(tagPagesDir, { recursive: true });
+    for (const [tagKey, exampleBody] of tagKeyToExampleBody.entries()) {
+      const title = tagKeyToPageTitle(tagKey);
+      const filePath = path.join(tagPagesDir, `${title}.md`);
+      const display = `#${exampleBody || tagKey}`;
+      const content = `<!-- auto-generated tag page for ${display} -->\n`;
+      fs.writeFileSync(filePath, content, 'utf8');
+    }
+
+    // 6) Rewrite tags in prepared markdown to wikilinks pointing at tag pages
+    const preparedMarkdownFiles = listMarkdownFilesRecursive(preparedSourceContentDir, { excludeDirNames: new Set([tagPagesSubdirName]) });
     const tagBodyToPageTitle = (tagBody: string) => tagKeyToPageTitle(normalizeTagToKey(tagBody));
-    for (const filePath of mdFiles) {
+    for (const filePath of preparedMarkdownFiles) {
       const original = fs.readFileSync(filePath, 'utf8');
       const rewritten = rewriteObsidianTagsToWikiLinks(original, tagBodyToPageTitle);
       if (rewritten !== original) {
         fs.writeFileSync(filePath, rewritten, 'utf8');
       }
     }
+
+    return {
+      sourceContentDirectory: preparedSourceContentDir,
+      sitePageConfigPath: preparedSitePageConfigPath,
+      tagPageCount: desiredTagPageTitles.length,
+    };
   } catch (err) {
-    logger.warn(`Tag page generation failed (continuing without tags): ${err instanceof Error ? err.message : String(err)}`);
+    cleanupPreparedGenerationSourceMaterial(siteDirectory);
+    logger.warn(`Tag page source preparation failed (continuing without tags): ${err instanceof Error ? err.message : String(err)}`);
+    return fallback;
   }
 }

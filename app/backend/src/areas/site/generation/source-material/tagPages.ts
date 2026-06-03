@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { removeFrontmatter } from '../../areas/site/generation/html/markdown.js';
+import { removeFrontmatter } from '../html/markdown.js';
 
 /**
  * Obsidian tags (per docs) generally allow:
@@ -186,5 +186,4 @@ export function listMarkdownFilesRecursive(rootDir: string, opts?: { excludeDirN
 
   return results;
 }
-
 

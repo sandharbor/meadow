@@ -21,9 +21,9 @@ import { parsePageConfig } from '../../../../../../shared_code/utils/sitePageCon
 import { pageConfigToKey, SitePageConfigs } from '../../../../shared/site-page/pageKeys.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
-import { prepareModifiedSrsMarkdownDirectory } from '../../../../shared/utils/srsMarkdownUtils.js';
-import { prepareScrubbedSourceDirectory } from '../../../../shared/utils/sourceScrubbingUtils.js';
-import { prepareSourcesExportFromScrubbedSourceDirectory } from '../../../../shared/utils/sourcesExportUtils.js';
+import { prepareSrsRenderSourceDirectory } from '../render-source/srsMarkdown.js';
+import { prepareScrubbedSourceDirectory } from '../source-material/sourceScrubbing.js';
+import { prepareSourcesExportFromScrubbedSourceDirectory } from './sourcesExport.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import fs from 'fs';
 
@@ -64,27 +64,32 @@ export async function buildFilteredSourcesExportForSite(siteDirectory: string): 
   const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
   const sitePageConfs = readSitePageConfigs(sitePageConfPath);
   const trackedContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
-  const modifiedContentDir = SiteConfigPaths.getModifiedPageContentDir(siteDirectory);
+  const renderSourceContentDir = SiteConfigPaths.getRenderSourceContentDir(siteDirectory);
+  const legacyRenderSourceContentDir = SiteConfigPaths.getLegacyRenderSourceContentDir(siteDirectory);
   const scrubbedSourceDir = SiteConfigPaths.getScrubbedSourceContentDir(siteDirectory);
   const sourcesExportDir = SiteConfigPaths.getSourcesExportDir(siteDirectory);
 
   let sourceContentDir = trackedContentDir;
   if (siteConfig.generationSpacedRepetitionEnabled) {
     try {
-      prepareModifiedSrsMarkdownDirectory(
+      prepareSrsRenderSourceDirectory(
         trackedContentDir,
-        modifiedContentDir,
+        renderSourceContentDir,
         siteConfig.generationSpacedRepetitionTags || []
       );
-      if (fs.existsSync(modifiedContentDir)) {
-        sourceContentDir = modifiedContentDir;
+      if (fs.existsSync(renderSourceContentDir)) {
+        sourceContentDir = renderSourceContentDir;
       }
     } catch (err) {
       logger.warn(
-        `buildFilteredSourcesExportForSite: SRS modified markdown failed (will use tracked content): ${err instanceof Error ? err.message : String(err)}`
+        `buildFilteredSourcesExportForSite: SRS render source failed (will use tracked content): ${err instanceof Error ? err.message : String(err)}`
       );
       sourceContentDir = trackedContentDir;
     }
+  }
+
+  if (fs.existsSync(legacyRenderSourceContentDir)) {
+    fs.rmSync(legacyRenderSourceContentDir, { recursive: true, force: true });
   }
 
   const traversablePageKeys = new Set<string>();

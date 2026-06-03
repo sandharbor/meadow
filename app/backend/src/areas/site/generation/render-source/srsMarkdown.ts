@@ -21,7 +21,7 @@ import {
   extractObsidianTagsFromMarkdown,
   listMarkdownFilesRecursive,
   normalizeTagToKey
-} from './tagPagesUtils.js';
+} from '../source-material/tagPages.js';
 
 const GUID_COMMENT_RE = /^<!--MEADOW_SR_GUID:([^>]+)-->$/;
 const SR_COMMENT_RE = /^<!--SR:[\s\S]*-->$/;
@@ -29,7 +29,7 @@ const REWRITTEN_TAG_WIKILINK_RE = /\[\[tag--[^\]|]+?\|#([A-Za-z0-9][A-Za-z0-9_/-
 
 export interface PreparedSrsMarkdownResult {
   matchedPageRelativePaths: Set<string>;
-  updatedRawFiles: string[];
+  updatedFiles: string[];
 }
 
 type SrsInlineCardKind = 'basic' | 'bidirectional';
@@ -912,43 +912,27 @@ function toPosixRelativePath(rootDir: string, filePath: string): string {
   return path.relative(rootDir, filePath).split(path.sep).join('/');
 }
 
-export function prepareModifiedSrsMarkdownDirectory(
-  rawTrackedContentDir: string,
-  modifiedContentDir: string,
+export function prepareSrsRenderSourceDirectory(
+  sourceContentDir: string,
+  renderSourceContentDir: string,
   configuredTags: string[]
 ): PreparedSrsMarkdownResult {
-  const matchedPageRelativePaths = new Set<string>();
-  const updatedRawFiles: string[] = [];
+  const { matchedPageRelativePaths, updatedFiles } = backfillSrsGuidsInMarkdownDirectory(
+    sourceContentDir,
+    configuredTags
+  );
 
-  if (!fs.existsSync(rawTrackedContentDir)) {
-    return { matchedPageRelativePaths, updatedRawFiles };
+  if (fs.existsSync(renderSourceContentDir)) {
+    fs.rmSync(renderSourceContentDir, { recursive: true, force: true });
   }
-
-  const rawMarkdownFiles = listMarkdownFilesRecursive(rawTrackedContentDir);
-  for (const markdownFile of rawMarkdownFiles) {
-    const relativePath = toPosixRelativePath(rawTrackedContentDir, markdownFile);
-    const originalMarkdown = fs.readFileSync(markdownFile, 'utf8');
-    if (!pageMatchesConfiguredSrsTags(originalMarkdown, configuredTags)) {
-      continue;
-    }
-
-    matchedPageRelativePaths.add(relativePath);
-
-    const withGuids = ensureSrsCardGuidsInMarkdown(originalMarkdown, relativePath);
-    if (withGuids.changed) {
-      fs.writeFileSync(markdownFile, withGuids.markdown, 'utf8');
-      updatedRawFiles.push(relativePath);
-    }
+  if (!fs.existsSync(sourceContentDir)) {
+    return { matchedPageRelativePaths, updatedFiles };
   }
+  fs.cpSync(sourceContentDir, renderSourceContentDir, { recursive: true });
 
-  if (fs.existsSync(modifiedContentDir)) {
-    fs.rmSync(modifiedContentDir, { recursive: true, force: true });
-  }
-  fs.cpSync(rawTrackedContentDir, modifiedContentDir, { recursive: true });
-
-  const modifiedMarkdownFiles = listMarkdownFilesRecursive(modifiedContentDir);
-  for (const markdownFile of modifiedMarkdownFiles) {
-    const relativePath = toPosixRelativePath(modifiedContentDir, markdownFile);
+  const renderSourceMarkdownFiles = listMarkdownFilesRecursive(renderSourceContentDir);
+  for (const markdownFile of renderSourceMarkdownFiles) {
+    const relativePath = toPosixRelativePath(renderSourceContentDir, markdownFile);
     if (!matchedPageRelativePaths.has(relativePath)) {
       continue;
     }
@@ -960,7 +944,38 @@ export function prepareModifiedSrsMarkdownDirectory(
     }
   }
 
-  return { matchedPageRelativePaths, updatedRawFiles };
+  return { matchedPageRelativePaths, updatedFiles };
+}
+
+export function backfillSrsGuidsInMarkdownDirectory(
+  contentDir: string,
+  configuredTags: string[]
+): PreparedSrsMarkdownResult {
+  const matchedPageRelativePaths = new Set<string>();
+  const updatedFiles: string[] = [];
+
+  if (!fs.existsSync(contentDir)) {
+    return { matchedPageRelativePaths, updatedFiles };
+  }
+
+  const rawMarkdownFiles = listMarkdownFilesRecursive(contentDir);
+  for (const markdownFile of rawMarkdownFiles) {
+    const relativePath = toPosixRelativePath(contentDir, markdownFile);
+    const originalMarkdown = fs.readFileSync(markdownFile, 'utf8');
+    if (!pageMatchesConfiguredSrsTags(originalMarkdown, configuredTags)) {
+      continue;
+    }
+
+    matchedPageRelativePaths.add(relativePath);
+
+    const withGuids = ensureSrsCardGuidsInMarkdown(originalMarkdown, relativePath);
+    if (withGuids.changed) {
+      fs.writeFileSync(markdownFile, withGuids.markdown, 'utf8');
+      updatedFiles.push(relativePath);
+    }
+  }
+
+  return { matchedPageRelativePaths, updatedFiles };
 }
 
 function escapeAttribute(value: string): string {

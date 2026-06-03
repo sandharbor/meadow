@@ -58,7 +58,7 @@ import { frontmatterAsDict, replaceOutsideCode, splitMarkdownBlocks } from './ma
 import { renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { SOURCES_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
-import { replaceSrsCardsWithCustomElements } from '../../../../shared/utils/srsMarkdownUtils.js';
+import { replaceSrsCardsWithCustomElements } from '../render-source/srsMarkdown.js';
 
 export interface CollectedSrsCard {
   guid: string;
@@ -158,7 +158,7 @@ export function renderPageToHtml(
   options: RenderOptions = {},
   siteSlug?: string,
   currentPageDirectory?: string,  // The source directory of the current page
-  baseContentDirectory?: string,  // Base tracked_page_content directory for image lookups
+  baseContentDirectory?: string,  // Base source-content directory for image lookups
   baseOutputFolder?: string,  // Base preview directory for image output
   linkResolutionMap?: Record<string, LinkResolvedInfo>,  // Pre-computed link resolution map
   allLinkResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>  // All page link resolution maps for transclusion
@@ -583,7 +583,7 @@ export function renderPageToHtml(
 
             if (showBacklinkContext) {
               // Find the backlink content in its subdirectory
-              // Use baseContentDirectory (tracked_page_content root) as the base,
+              // Use baseContentDirectory (source-content root) as the base,
               // not `directory` which is the current page's directory
               const contentRoot = baseContentDirectory || directory;
               const backlinkDir = backlinkSourceDir
