@@ -152,6 +152,18 @@ function gitTreeEntry(mode: string, name: string, oid: string): Buffer {
   return Buffer.concat([Buffer.from(`${mode} ${name}\0`), Buffer.from(oid, 'hex')]);
 }
 
+function countRootTreeEntries(repoDir: string, treeish: string, name: string): number {
+  const output = execSync(`git ls-tree "${treeish}"`, { cwd: repoDir, encoding: 'utf8' }).trim();
+  if (!output) {
+    return 0;
+  }
+  return output.split('\n').filter(line => line.endsWith(`\t${name}`)).length;
+}
+
+function indexContainsTreeExtension(repoDir: string): boolean {
+  return fs.readFileSync(path.join(repoDir, '.git', 'index')).includes(Buffer.from('TREE'));
+}
+
 // Helper to create a file with content
 function createFile(filePath: string, content: string): void {
   const dir = path.dirname(filePath);
@@ -480,13 +492,22 @@ interface CommitResult {
 }
 
 // Helper to run fast_git_ops commit_changes command
-function runCommitChanges(directories: string[], message: string, authorName?: string, authorEmail?: string): CommitResult {
+function runCommitChanges(
+  directories: string[],
+  message: string,
+  authorName?: string,
+  authorEmail?: string,
+  options?: { allowEmpty?: boolean },
+): CommitResult {
   const args = ['commit-changes', ...directories, '-m', message];
   if (authorName) {
     args.push('-n', authorName);
   }
   if (authorEmail) {
     args.push('-e', authorEmail);
+  }
+  if (options?.allowEmpty) {
+    args.push('--allow-empty');
   }
   const result = execSync(`"${FAST_GIT_OPS_BINARY}" ${args.map(a => `"${a}"`).join(' ')}`, { 
     encoding: 'utf8',
@@ -630,6 +651,122 @@ test('fast_git_ops commit_changes: overlapping directories are deduplicated and 
 
     const status = runGitStatus(repoDir);
     t.equal(status.length, 0, `Status should be clean, got ${status.length} file(s): ${status.map(s => `${s.status} ${s.path}`).join(', ')}`);
+  } finally {
+    fs.rmSync(repoDir, { recursive: true, force: true });
+  }
+
+  t.end();
+});
+
+test('fast_git_ops commit_changes: allow-empty rebuilds duplicate HEAD tree from index', async (t) => {
+  const repoDir = path.join(import.meta.dirname, 'allow_empty_duplicate_tree_repo');
+  fs.rmSync(repoDir, { recursive: true, force: true });
+  fs.mkdirSync(path.join(repoDir, 'app'), { recursive: true });
+  fs.mkdirSync(path.join(repoDir, 'sites', 'example-site'), { recursive: true });
+
+  try {
+    execSync('git init -q -b main', { cwd: repoDir });
+    execSync('git config user.name Test', { cwd: repoDir });
+    execSync('git config user.email test@test.com', { cwd: repoDir });
+
+    createFile(path.join(repoDir, 'app', 'file.txt'), 'app\n');
+    createFile(path.join(repoDir, 'sites', 'example-site', 'file.txt'), 'site\n');
+    execSync('git add . && git commit -q -m base', { cwd: repoDir });
+
+    const baseCommitOid = execSync('git rev-parse HEAD', { cwd: repoDir, encoding: 'utf8' }).trim();
+    const appTreeOid = execSync('git rev-parse HEAD:app', { cwd: repoDir, encoding: 'utf8' }).trim();
+    const sitesTreeOid = execSync('git rev-parse HEAD:sites', { cwd: repoDir, encoding: 'utf8' }).trim();
+    const duplicateRootTreeOid = writeLooseGitObject(
+      repoDir,
+      'tree',
+      Buffer.concat([
+        gitTreeEntry('40000', 'app', appTreeOid),
+        gitTreeEntry('40000', 'sites', sitesTreeOid),
+        gitTreeEntry('40000', 'sites', sitesTreeOid),
+      ]),
+    );
+    const badCommitOid = writeLooseGitObject(
+      repoDir,
+      'commit',
+      Buffer.from(
+        `tree ${duplicateRootTreeOid}\n` +
+        `parent ${baseCommitOid}\n` +
+        'author Test <test@example.com> 0 +0000\n' +
+        'committer Test <test@example.com> 0 +0000\n' +
+        '\n' +
+        'bad duplicate sites tree\n',
+      ),
+    );
+    execSync(`git update-ref refs/heads/main ${badCommitOid}`, { cwd: repoDir });
+
+    t.equal(countRootTreeEntries(repoDir, 'HEAD^{tree}', 'sites'), 2, 'Fixture HEAD starts with duplicate sites entries');
+
+    const args = [
+      'commit-changes',
+      repoDir,
+      '-m',
+      'allow-empty checkpoint',
+      '-n',
+      'Test',
+      '-e',
+      'test@test.com',
+      '--allow-empty',
+    ];
+    const output = execSync(`"${FAST_GIT_OPS_BINARY}" ${args.map(a => `"${a}"`).join(' ')}`, {
+      encoding: 'utf8',
+      cwd: repoDir,
+    });
+    const result = JSON.parse(output) as CommitResult;
+
+    t.ok(result.success, 'Commit should succeed');
+    t.ok(result.sha, 'Should create a checkpoint commit');
+    t.notEqual(
+      execSync('git rev-parse HEAD^{tree}', { cwd: repoDir, encoding: 'utf8' }).trim(),
+      duplicateRootTreeOid,
+      'Checkpoint should not reuse malformed HEAD tree',
+    );
+    t.equal(countRootTreeEntries(repoDir, 'HEAD^{tree}', 'sites'), 1, 'Checkpoint tree has one sites entry');
+  } finally {
+    fs.rmSync(repoDir, { recursive: true, force: true });
+  }
+
+  t.end();
+});
+
+test('fast_git_ops commit_changes: strips cache-tree extension from written index', async (t) => {
+  const repoDir = path.join(import.meta.dirname, 'cache_tree_extension_repo');
+  fs.rmSync(repoDir, { recursive: true, force: true });
+  fs.mkdirSync(path.join(repoDir, 'app'), { recursive: true });
+
+  try {
+    execSync('git init -q -b main', { cwd: repoDir });
+    execSync('git config user.name Test', { cwd: repoDir });
+    execSync('git config user.email test@test.com', { cwd: repoDir });
+
+    createFile(path.join(repoDir, 'app', 'file.txt'), 'one\n');
+    execSync('git add . && git commit -q -m base', { cwd: repoDir });
+    t.ok(indexContainsTreeExtension(repoDir), 'Fixture index starts with a cache-tree extension');
+
+    createFile(path.join(repoDir, 'app', 'file.txt'), 'two\n');
+    const args = [
+      'commit-changes',
+      path.join(repoDir, 'app'),
+      '-m',
+      'update app file',
+      '-n',
+      'Test',
+      '-e',
+      'test@test.com',
+    ];
+    const output = execSync(`"${FAST_GIT_OPS_BINARY}" ${args.map(a => `"${a}"`).join(' ')}`, {
+      encoding: 'utf8',
+      cwd: repoDir,
+    });
+    const result = JSON.parse(output) as CommitResult;
+
+    t.ok(result.success, 'Commit should succeed');
+    t.ok(result.sha, 'Should create a commit');
+    t.notOk(indexContainsTreeExtension(repoDir), 'fast_git_ops should not preserve cache-tree extension');
   } finally {
     fs.rmSync(repoDir, { recursive: true, force: true });
   }

@@ -1,6 +1,6 @@
 #![deny(warnings)]
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -840,6 +840,35 @@ fn collect_tree_paths(
     Ok(())
 }
 
+fn validate_tree_has_unique_entries(
+    repo: &gix::Repository,
+    tree_id: gix_hash::ObjectId,
+    prefix: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let tree = repo.find_object(tree_id)?.into_tree();
+    let tree_ref = tree.decode()?;
+    let mut names = BTreeSet::new();
+
+    for entry in tree_ref.entries {
+        let name = entry.filename.to_string();
+        let full_path = if prefix.is_empty() {
+            name.clone()
+        } else {
+            format!("{}/{}", prefix, name)
+        };
+
+        if !names.insert(name.clone()) {
+            return Err(format!("Tree {} has duplicate entry {}", tree_id, full_path).into());
+        }
+
+        if entry.mode.kind() == gix_object::tree::EntryKind::Tree {
+            validate_tree_has_unique_entries(repo, entry.oid.to_owned(), &full_path)?;
+        }
+    }
+
+    Ok(())
+}
+
 fn diff_trees_paths(
     repo: &gix::Repository,
     parent_tree: gix_hash::ObjectId,
@@ -1345,6 +1374,13 @@ fn write_tree_from_index_state(
     write_tree_build_node(repo, &root)
 }
 
+fn index_write_options() -> gix_index::write::Options {
+    gix_index::write::Options {
+        extensions: gix_index::write::Extensions::None,
+        ..Default::default()
+    }
+}
+
 fn run_commit_changes(
     directories: Vec<PathBuf>,
     message: String,
@@ -1550,10 +1586,16 @@ fn run_commit_changes(
             return Ok(());
         }
 
-        // Create empty commit using HEAD's tree
+        // Rebuild the commit tree from the index rather than reusing HEAD's
+        // tree verbatim. This keeps allow-empty checkpoints from carrying
+        // forward malformed duplicate tree entries.
         let head_id = repo.head()?.id().ok_or("No HEAD commit for empty commit")?;
         let head_commit = repo.find_object(head_id)?.into_commit();
-        let tree_id = head_commit.tree_id()?.detach();
+        let head_tree_id = head_commit.tree_id()?.detach();
+        let index_file = repo.open_index()?;
+        let (index_state, _) = index_file.into_parts();
+        let tree_id = write_tree_from_index_state(&repo, &index_state)?;
+        validate_tree_has_unique_entries(&repo, tree_id, "")?;
 
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -1592,7 +1634,11 @@ fn run_commit_changes(
             success: true,
             sha: Some(commit_id.to_string()),
             files_committed: 0,
-            message: Some("Empty commit created".to_string()),
+            message: Some(if tree_id == head_tree_id {
+                "Empty commit created".to_string()
+            } else {
+                "Commit created from rebuilt index tree".to_string()
+            }),
         };
         println!("{}", serde_json::to_string(&result)?);
         return Ok(());
@@ -1835,10 +1881,11 @@ fn run_commit_changes(
 
     // Persist index to disk.
     index_file = gix_index::File::from_state(index_state.clone(), index_path.clone());
-    index_file.write(gix_index::write::Options::default())?;
+    index_file.write(index_write_options())?;
 
     // ===== Build a tree from the index and create commit (no git CLI) =====
     let tree_id = write_tree_from_index_state(&repo, &index_state)?;
+    validate_tree_has_unique_entries(&repo, tree_id, "")?;
 
     let parent_ids: Vec<gix_hash::ObjectId> = match repo.head()?.id() {
         Some(id) => vec![id.detach()],
@@ -1891,7 +1938,7 @@ fn run_commit_changes(
     });
     index_state.sort_entries();
     let mut cleaned_index = gix_index::File::from_state(index_state, index_path);
-    cleaned_index.write(gix_index::write::Options::default())?;
+    cleaned_index.write(index_write_options())?;
 
     let result = CommitResult {
         success: true,
