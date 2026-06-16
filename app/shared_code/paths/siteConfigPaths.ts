@@ -24,6 +24,7 @@ limitations under the License.
  *       prepared_source_content/
  *       prepared_site_page_config.yaml
  *       render_source_content/
+ *       okf/
  *       sources_export/
  *       scrubbed_source_content/
  *     conf/
@@ -56,6 +57,7 @@ const HTML_DIR = 'html';
 const RAW_DIR = 'raw';
 const HOOKS_DIR = 'hooks';
 const CUSTOM_ASSETS_DIR = 'custom_assets';
+const OPEN_KNOWLEDGE_FORMAT_DIR = 'okf';
 const SOURCES_EXPORT_DIR = 'sources_export';
 const PREVIEW_DIR = 'preview';
 const GENERATED_SITE_VERSIONS_DIR = 'generated_site_versions';
@@ -135,6 +137,11 @@ export const SiteConfigPaths = {
     /** build/render_source_content/ */
     renderSourceContentDir(): string {
       return join(BUILD_DIR, RENDER_SOURCE_CONTENT_DIR);
+    },
+
+    /** build/okf/ */
+    openKnowledgeFormatDir(): string {
+      return join(BUILD_DIR, OPEN_KNOWLEDGE_FORMAT_DIR);
     },
 
     /** build/scrubbed_source_content/ */
@@ -287,6 +294,13 @@ export const SiteConfigPaths = {
   },
 
   /**
+   * Get the OKF build directory: SITE_DIR/build/okf/
+   */
+  getOpenKnowledgeFormatDir(siteDir: string): string {
+    return join(siteDir, this.relative.openKnowledgeFormatDir());
+  },
+
+  /**
    * Get the legacy render source content directory used before the build phase was renamed.
    */
   getLegacyRenderSourceContentDir(siteDir: string): string {
@@ -418,6 +432,9 @@ export const SiteConfigPaths = {
 
   /** The render_source_content subdirectory name: 'render_source_content' */
   RENDER_SOURCE_CONTENT_DIR,
+
+  /** The OKF build subdirectory name: 'okf' */
+  OPEN_KNOWLEDGE_FORMAT_DIR,
 
   /** The scrubbed_source_content subdirectory name: 'scrubbed_source_content' */
   SCRUBBED_SOURCE_CONTENT_DIR,

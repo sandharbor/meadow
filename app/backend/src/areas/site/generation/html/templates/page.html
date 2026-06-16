@@ -142,10 +142,12 @@
 <body{{#if srs_enabled}} data-meadow-srs-site-guid="{{ srs_site_guid }}" data-meadow-srs-page-id="{{ srs_page_id }}"{{/if}}>
     <header>
         <div id="new-version-pointer" style="display:none"></div>
-        {{#if sources_export_enabled}}
+        {{#if downloadable_artifacts_enabled}}
         <div class="site-header-row">
             {{{ breadcrumbs }}}
-            <a href="#" data-sources-export-manifest-url="{{ sources_export_manifest_url }}" download class="sources-export-download" title="Download source files as ZIP">&#8681; sources</a>
+            {{#each download_artifacts}}
+            <a href="#" data-sources-export-manifest-url="{{ manifest_url }}" download class="sources-export-download" title="{{ title }}">&#8681; {{ label }}</a>
+            {{/each}}
         </div>
         {{else}}
         {{{ breadcrumbs }}}

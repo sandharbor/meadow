@@ -58,6 +58,10 @@ import { frontmatterAsDict, replaceOutsideCode, splitMarkdownBlocks } from './ma
 import { renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { SOURCES_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
+import {
+  OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR,
+  OPEN_KNOWLEDGE_FORMAT_MANIFEST_FILENAME
+} from '../open-knowledge-format/openKnowledgeFormatArchive.js';
 import { replaceSrsCardsWithCustomElements } from '../render-source/srsMarkdown.js';
 
 export interface CollectedSrsCard {
@@ -174,6 +178,7 @@ export function renderPageToHtml(
     breadcrumbPath = [],
     staticAssetNames,
     sourcesExportEnabled,
+    openKnowledgeFormatEnabled,
     srsEnabled = false,
   } = options;
 
@@ -712,6 +717,21 @@ export function renderPageToHtml(
   const srsPageId = currentPageDirectory
     ? `${currentPageDirectory}/${outputFilename}.html`
     : `${outputFilename}.html`;
+  const downloadArtifacts: Array<{ label: string; title: string; manifest_url: string }> = [];
+  if (sourcesExportEnabled) {
+    downloadArtifacts.push({
+      label: 'sources',
+      title: 'Download source files as ZIP',
+      manifest_url: `${assetsPrefix}sources-export/${SOURCES_EXPORT_MANIFEST_FILENAME}`,
+    });
+  }
+  if (openKnowledgeFormatEnabled) {
+    downloadArtifacts.push({
+      label: 'OKF',
+      title: 'Download Open Knowledge Format ZIP',
+      manifest_url: `${assetsPrefix}${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_MANIFEST_FILENAME}`,
+    });
+  }
   const fullPageContent = template({
     content: htmlContent,
     page_title: pageTitle,
@@ -738,8 +758,8 @@ export function renderPageToHtml(
     srs_site_guid: siteConfig.siteGuid || '',
     srs_page_id: srsPageId,
     include_hover_preview: showHoverPreview,
-    sources_export_enabled: sourcesExportEnabled,
-    sources_export_manifest_url: `${assetsPrefix}sources-export/${SOURCES_EXPORT_MANIFEST_FILENAME}`
+    downloadable_artifacts_enabled: downloadArtifacts.length > 0,
+    download_artifacts: downloadArtifacts,
   });
 
   let htmlPath: string | null = null;

@@ -29,7 +29,13 @@ interface CreateSourcesExportZipOptions {
   archiveRootDirectory?: string;
 }
 
-interface WriteSourcesExportManifestOptions {
+export interface CreateContentAddressedZipOptions {
+  archiveRootDirectory?: string;
+  filenamePrefix: string;
+  legacyFilenamePrefixes?: string[];
+}
+
+export interface WriteDownloadManifestOptions {
   downloadFilename?: string;
 }
 
@@ -150,18 +156,18 @@ export async function createZipFromDirectory(
  * @returns The filename of the generated ZIP (e.g. "sources-export-a1b2c3d4e5f6.zip"),
  *          or null if there was nothing to zip.
  */
-export async function createSourcesExportZip(
-  trackedContentDir: string,
+export async function createContentAddressedZip(
+  sourceDir: string,
   outputDir: string,
-  options: CreateSourcesExportZipOptions = {}
+  options: CreateContentAddressedZipOptions
 ): Promise<string | null> {
-  if (!fs.existsSync(trackedContentDir)) {
+  if (!fs.existsSync(sourceDir)) {
     return null;
   }
 
   // Generate to a temp name first, then rename with hash
-  const tempZipPath = path.join(outputDir, 'sources-export-temp.zip');
-  await createZipFromDirectory(trackedContentDir, tempZipPath, {
+  const tempZipPath = path.join(outputDir, `${options.filenamePrefix}-temp.zip`);
+  await createZipFromDirectory(sourceDir, tempZipPath, {
     archiveRootDirectory: options.archiveRootDirectory,
   });
 
@@ -172,15 +178,19 @@ export async function createSourcesExportZip(
   const hashPrefix = hash.digest('hex').substring(0, 12);
 
   // Rename to content-addressed filename
-  const finalFilename = `sources-export-${hashPrefix}.zip`;
+  const finalFilename = `${options.filenamePrefix}-${hashPrefix}.zip`;
   const finalPath = path.join(outputDir, finalFilename);
 
-  // Remove any previous sources-export zips, plus legacy markdown-export zips.
+  // Remove any previous content-addressed zips owned by this export type.
   const existingFiles = fs.readdirSync(outputDir);
   for (const file of existingFiles) {
-    const isSourcesExportZip = file.startsWith('sources-export-') && file.endsWith('.zip') && file !== 'sources-export-temp.zip';
-    const isLegacyMarkdownExportZip = file.startsWith('markdown-export-') && file.endsWith('.zip');
-    if (isSourcesExportZip || isLegacyMarkdownExportZip) {
+    const prefixes = [options.filenamePrefix, ...(options.legacyFilenamePrefixes ?? [])];
+    const shouldRemove = prefixes.some(prefix =>
+      file.startsWith(`${prefix}-`) &&
+      file.endsWith('.zip') &&
+      file !== `${options.filenamePrefix}-temp.zip`
+    );
+    if (shouldRemove) {
       fs.unlinkSync(path.join(outputDir, file));
     }
   }
@@ -190,13 +200,30 @@ export async function createSourcesExportZip(
   return finalFilename;
 }
 
-export function writeSourcesExportManifest(
+/**
+ * Creates a content-addressed ZIP of the exported source content.
+ * The ZIP filename includes a hash prefix for cache-busting.
+ *
+ * @returns The filename of the generated ZIP (e.g. "sources-export-a1b2c3d4e5f6.zip"),
+ *          or null if there was nothing to zip.
+ */
+export async function createSourcesExportZip(
+  trackedContentDir: string,
   outputDir: string,
-  zipFilename: string | null,
-  options: WriteSourcesExportManifestOptions = {}
-): void {
-  const manifestPath = path.join(outputDir, SOURCES_EXPORT_MANIFEST_FILENAME);
+  options: CreateSourcesExportZipOptions = {}
+): Promise<string | null> {
+  return createContentAddressedZip(trackedContentDir, outputDir, {
+    archiveRootDirectory: options.archiveRootDirectory,
+    filenamePrefix: 'sources-export',
+    legacyFilenamePrefixes: ['markdown-export'],
+  });
+}
 
+export function writeDownloadManifest(
+  manifestPath: string,
+  zipFilename: string | null,
+  options: WriteDownloadManifestOptions = {}
+): void {
   if (!zipFilename) {
     if (fs.existsSync(manifestPath)) {
       fs.unlinkSync(manifestPath);
@@ -208,5 +235,17 @@ export function writeSourcesExportManifest(
     manifestPath,
     JSON.stringify({ zipFilename, downloadFilename: options.downloadFilename ?? zipFilename }),
     'utf8'
+  );
+}
+
+export function writeSourcesExportManifest(
+  outputDir: string,
+  zipFilename: string | null,
+  options: WriteDownloadManifestOptions = {}
+): void {
+  writeDownloadManifest(
+    path.join(outputDir, SOURCES_EXPORT_MANIFEST_FILENAME),
+    zipFilename,
+    options
   );
 }

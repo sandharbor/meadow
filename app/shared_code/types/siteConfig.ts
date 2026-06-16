@@ -54,6 +54,7 @@ export interface SiteConfig {
   generationHoverPreviewEnabled?: boolean; // Whether to render hover previews on links (overrides app setting)
   allowImagesToExtendToFrontier?: boolean; // Whether images linked from frontier-edge pages should be included (overrides app setting)
   generationMarkdownZipEnabled?: boolean; // Whether to generate a downloadable sources ZIP (default: false)
+  generationOpenKnowledgeFormatEnabled?: boolean; // Whether to generate an Open Knowledge Format bundle (default: false)
   generationSpacedRepetitionEnabled?: boolean; // Whether to render client-side spaced repetition widgets (default: false)
   generationSpacedRepetitionTags?: string[]; // Tags that identify source pages whose SRS prompts should be processed during generation
   stylePresetId?: string; // Style preset ID for this site (undefined = inherit from global)

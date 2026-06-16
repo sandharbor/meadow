@@ -55,9 +55,17 @@ const HLJS_THEME_CSS: string = (() => {
     return '';
   }
 })();
-import { createSourcesExportZip, getSourcesExportDownloadFilename, writeSourcesExportManifest } from '../../../../shared/utils/zipUtils.js';
+import {
+  createSourcesExportZip,
+  getSourcesExportDownloadFilename,
+  writeSourcesExportManifest
+} from '../../../../shared/utils/zipUtils.js';
 import { backfillSrsGuidsInMarkdownDirectory, prepareSrsRenderSourceDirectory } from '../render-source/srsMarkdown.js';
 import { prepareSourcesExportFromScrubbedSourceDirectory } from '../sources-export/sourcesExport.js';
+import {
+  cleanupPublishedOpenKnowledgeFormatArtifacts,
+  generatePublishedOpenKnowledgeFormatArtifacts
+} from '../open-knowledge-format/publishedOpenKnowledgeFormat.js';
 import { prepareScrubbedSourceDirectory } from '../source-material/sourceScrubbing.js';
 import { prepareGenerationSourceMaterial } from '../source-material/trackedPageContent.js';
 import type { StaticAssetNames } from './types.js';
@@ -147,7 +155,7 @@ function extractSiteSlugFromDirectory(siteDirectory: string): string | null {
   return null;
 }
 
-function getSourcesExportSlug(siteDirectory: string, siteConfig: SiteConfig): string {
+function getArtifactArchiveSlug(siteDirectory: string, siteConfig: SiteConfig): string {
   const configuredSlug = siteConfig.publishSlug;
   if (typeof configuredSlug === 'string' && configuredSlug.trim()) {
     return configuredSlug.trim();
@@ -879,7 +887,7 @@ export async function generateHtmlForSite(
 
         const sourcesExportOutputDir = path.join(assetsDirectory, 'sources-export');
         fs.mkdirSync(sourcesExportOutputDir, { recursive: true });
-        const sourcesExportSlug = getSourcesExportSlug(siteDirectory, siteConfig);
+        const sourcesExportSlug = getArtifactArchiveSlug(siteDirectory, siteConfig);
         const zipResult = await createSourcesExportZip(sourcesExportDir, sourcesExportOutputDir, {
           archiveRootDirectory: sourcesExportSlug,
         });
@@ -913,6 +921,34 @@ export async function generateHtmlForSite(
       if (fs.existsSync(legacySourcesExportDir)) {
         fs.rmSync(legacySourcesExportDir, { recursive: true, force: true });
       }
+    });
+  }
+
+  let openKnowledgeFormatEnabled = false;
+  if (generationOptions.openKnowledgeFormatEnabled) {
+    try {
+      await timeAsync('site.generation.stage', { ...timingLabels, stage: 'open_knowledge_format' }, async () => {
+        const result = await generatePublishedOpenKnowledgeFormatArtifacts({
+          siteDirectory,
+          assetsDirectory,
+          scrubbedSourceContentDirectory,
+          sitePageConfigs: sitePageConfigsArrayForLinks,
+          allLinkResolutionMaps,
+          initialPageTitle: initialSitePageTitle,
+          initialPageDirectory: initialSitePageDirectory,
+          archiveRootDirectory: getArtifactArchiveSlug(siteDirectory, siteConfig),
+        });
+        if (result.enabled) {
+          openKnowledgeFormatEnabled = true;
+          logger.info(`Generated OKF ZIP: ${result.zipFilename}`);
+        }
+      });
+    } catch (error) {
+      logger.error(`Error generating OKF bundle: ${String(error)}`);
+    }
+  } else {
+    timeSync('site.generation.stage', { ...timingLabels, stage: 'open_knowledge_format_cleanup' }, () => {
+      cleanupPublishedOpenKnowledgeFormatArtifacts({ siteDirectory, assetsDirectory });
     });
   }
 
@@ -1296,6 +1332,7 @@ export async function generateHtmlForSite(
         initialPageTitle: initialSitePageTitle,
         staticAssetNames,
         sourcesExportEnabled,
+        openKnowledgeFormatEnabled,
         srsEnabled: generationOptions.spacedRepetitionEnabled,
       },
       siteSlug || undefined,

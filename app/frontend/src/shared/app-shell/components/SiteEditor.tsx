@@ -163,6 +163,7 @@ const SiteEditor: React.FC = () => {
   const [globalGenerationTagsEnabled, setGlobalGenerationTagsEnabled] = useState(true);
   const [globalGenerationHoverPreviewEnabled, setGlobalGenerationHoverPreviewEnabled] = useState(false);
   const [globalGenerationSourcesExportEnabled, setGlobalGenerationSourcesExportEnabled] = useState(false);
+  const [globalGenerationOpenKnowledgeFormatEnabled, setGlobalGenerationOpenKnowledgeFormatEnabled] = useState(false);
   const [globalGenerationSpacedRepetitionEnabled, setGlobalGenerationSpacedRepetitionEnabled] = useState(false);
   const [globalGenerationSpacedRepetitionTags, setGlobalGenerationSpacedRepetitionTags] = useState<string[]>([]);
 
@@ -172,6 +173,7 @@ const SiteEditor: React.FC = () => {
   const [siteGenerationTagsSetting, setSiteGenerationTagsSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationHoverPreviewSetting, setSiteGenerationHoverPreviewSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationSourcesExportSetting, setSiteGenerationSourcesExportSetting] = useState<OverrideSetting>('inherit');
+  const [siteGenerationOpenKnowledgeFormatSetting, setSiteGenerationOpenKnowledgeFormatSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationSpacedRepetitionSetting, setSiteGenerationSpacedRepetitionSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationSpacedRepetitionTags, setSiteGenerationSpacedRepetitionTags] = useState<string[] | null>(null);
 
@@ -300,6 +302,7 @@ const SiteEditor: React.FC = () => {
         setSiteGenerationTagsSetting(toSetting(config.generationTagsEnabled));
         setSiteGenerationHoverPreviewSetting(toSetting(config.generationHoverPreviewEnabled));
         setSiteGenerationSourcesExportSetting(toSetting(config.generationMarkdownZipEnabled));
+        setSiteGenerationOpenKnowledgeFormatSetting(toSetting(config.generationOpenKnowledgeFormatEnabled));
         setSiteGenerationSpacedRepetitionSetting(toSetting(config.generationSpacedRepetitionEnabled));
         setSiteGenerationSpacedRepetitionTags(
           Array.isArray(config.generationSpacedRepetitionTags)
@@ -325,6 +328,7 @@ const SiteEditor: React.FC = () => {
         generationTagsEnabled?: boolean;
         generationHoverPreviewEnabled?: boolean;
         generationMarkdownZipEnabled?: boolean;
+        generationOpenKnowledgeFormatEnabled?: boolean;
         generationSpacedRepetitionEnabled?: boolean;
         generationSpacedRepetitionTags?: string[];
       }) => {
@@ -333,6 +337,7 @@ const SiteEditor: React.FC = () => {
         setGlobalGenerationTagsEnabled(cfg.generationTagsEnabled !== false);
         setGlobalGenerationHoverPreviewEnabled(cfg.generationHoverPreviewEnabled === true);
         setGlobalGenerationSourcesExportEnabled(cfg.generationMarkdownZipEnabled === true);
+        setGlobalGenerationOpenKnowledgeFormatEnabled(cfg.generationOpenKnowledgeFormatEnabled === true);
         setGlobalGenerationSpacedRepetitionEnabled(cfg.generationSpacedRepetitionEnabled === true);
         setGlobalGenerationSpacedRepetitionTags(
           Array.isArray(cfg.generationSpacedRepetitionTags)
@@ -777,7 +782,7 @@ const SiteEditor: React.FC = () => {
   };
 
   // Update a site-level override (inherit/enable/disable) - just persist to server
-  const handleSiteGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', setting: OverrideSetting) => {
+  const handleSiteGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => {
     if (!slug) return;
 
     // Update local state immediately
@@ -792,6 +797,8 @@ const SiteEditor: React.FC = () => {
       setSiteGenerationTagsSetting(setting);
     } else if (option === 'sourcesExport') {
       setSiteGenerationSourcesExportSetting(setting);
+    } else if (option === 'openKnowledgeFormat') {
+      setSiteGenerationOpenKnowledgeFormatSetting(setting);
     } else if (option === 'spacedRepetition') {
       setSiteGenerationSpacedRepetitionSetting(setting);
     } else {
@@ -807,6 +814,7 @@ const SiteEditor: React.FC = () => {
       tags: { generationTagsEnabled: settingToPayload(setting) },
       hoverPreview: { generationHoverPreviewEnabled: settingToPayload(setting) },
       sourcesExport: { generationMarkdownZipEnabled: settingToPayload(setting) },
+      openKnowledgeFormat: { generationOpenKnowledgeFormatEnabled: settingToPayload(setting) },
       spacedRepetition: { generationSpacedRepetitionEnabled: settingToPayload(setting) },
     };
     const updatePayload = payloadMap[option];
@@ -823,13 +831,14 @@ const SiteEditor: React.FC = () => {
   };
 
   // Update a global default - just persist to server
-  const handleGlobalGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', enabled: boolean) => {
+  const handleGlobalGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => {
     // Update local state immediately
     if (option === 'breadcrumbs') setGlobalGenerationBreadcrumbsEnabled(enabled);
     if (option === 'backlinks') setGlobalGenerationBacklinksEnabled(enabled);
     if (option === 'tags') setGlobalGenerationTagsEnabled(enabled);
     if (option === 'hoverPreview') setGlobalGenerationHoverPreviewEnabled(enabled);
     if (option === 'sourcesExport') setGlobalGenerationSourcesExportEnabled(enabled);
+    if (option === 'openKnowledgeFormat') setGlobalGenerationOpenKnowledgeFormatEnabled(enabled);
     if (option === 'spacedRepetition') setGlobalGenerationSpacedRepetitionEnabled(enabled);
 
     const payloadMap: Record<string, Record<string, boolean>> = {
@@ -838,6 +847,7 @@ const SiteEditor: React.FC = () => {
       tags: { generationTagsEnabled: enabled },
       hoverPreview: { generationHoverPreviewEnabled: enabled },
       sourcesExport: { generationMarkdownZipEnabled: enabled },
+      openKnowledgeFormat: { generationOpenKnowledgeFormatEnabled: enabled },
       spacedRepetition: { generationSpacedRepetitionEnabled: enabled },
     };
     const updatePayload = payloadMap[option];
@@ -856,6 +866,7 @@ const SiteEditor: React.FC = () => {
           generationTagsEnabled?: boolean;
           generationHoverPreviewEnabled?: boolean;
           generationMarkdownZipEnabled?: boolean;
+          generationOpenKnowledgeFormatEnabled?: boolean;
           generationSpacedRepetitionEnabled?: boolean;
           generationSpacedRepetitionTags?: string[];
         };
@@ -864,6 +875,7 @@ const SiteEditor: React.FC = () => {
         setGlobalGenerationTagsEnabled(cfg.generationTagsEnabled !== false);
         setGlobalGenerationHoverPreviewEnabled(cfg.generationHoverPreviewEnabled === true);
         setGlobalGenerationSourcesExportEnabled(cfg.generationMarkdownZipEnabled === true);
+        setGlobalGenerationOpenKnowledgeFormatEnabled(cfg.generationOpenKnowledgeFormatEnabled === true);
         setGlobalGenerationSpacedRepetitionEnabled(cfg.generationSpacedRepetitionEnabled === true);
         setGlobalGenerationSpacedRepetitionTags(
           Array.isArray(cfg.generationSpacedRepetitionTags)
@@ -1104,6 +1116,7 @@ const SiteEditor: React.FC = () => {
           tagsEnabled: globalGenerationTagsEnabled,
           hoverPreviewEnabled: globalGenerationHoverPreviewEnabled,
           sourcesExportEnabled: globalGenerationSourcesExportEnabled,
+          openKnowledgeFormatEnabled: globalGenerationOpenKnowledgeFormatEnabled,
           spacedRepetitionEnabled: globalGenerationSpacedRepetitionEnabled,
         }}
         siteGenerationOptions={{
@@ -1112,6 +1125,7 @@ const SiteEditor: React.FC = () => {
           tagsSetting: siteGenerationTagsSetting,
           hoverPreviewSetting: siteGenerationHoverPreviewSetting,
           sourcesExportSetting: siteGenerationSourcesExportSetting,
+          openKnowledgeFormatSetting: siteGenerationOpenKnowledgeFormatSetting,
           spacedRepetitionSetting: siteGenerationSpacedRepetitionSetting,
         }}
         globalSrsTags={globalGenerationSpacedRepetitionTags}

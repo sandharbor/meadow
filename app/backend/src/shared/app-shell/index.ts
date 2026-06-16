@@ -27,6 +27,7 @@ import customAssetsRoutes from '../../areas/site/generation/routes/customAssetsR
 import appConfigRoutes from '../routes/appConfigRoutes.js';
 import { createLocalSaveRoutes } from '../../areas/site/sharing/routes/localSaveRoutes.js';
 import { buildFilteredSourcesExportForSite } from '../../areas/site/generation/sources-export/filteredSourcesExport.js';
+import { buildFilteredOpenKnowledgeFormatForSite } from '../../areas/site/generation/open-knowledge-format/filteredOpenKnowledgeFormat.js';
 import siteListingRoutes from '../../areas/sites/routes/siteListingRoutes.js';
 import siteGenerationRoutes from '../../areas/site/generation/routes/siteGenerationRoutes.js';
 import stylePresetsRoutes from '../../areas/site/generation/routes/stylePresetsRoutes.js';
@@ -80,6 +81,7 @@ app.use('/api', customAssetsRoutes);
 app.use('/api', appConfigRoutes);
 app.use('/api', createLocalSaveRoutes({
   buildRawSourcesExportForSite: buildFilteredSourcesExportForSite,
+  buildOpenKnowledgeFormatForSite: buildFilteredOpenKnowledgeFormatForSite,
 }));
 app.use('/api', logRoutes);
 app.use('/api', appConfigFileRoutes);

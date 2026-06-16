@@ -25,6 +25,7 @@ interface SaveLocallyTabProps {
 interface LocalPaths {
   rawMarkdown: string;
   previewHtml: string;
+  openKnowledgeFormat: string;
 }
 
 export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
@@ -46,14 +47,22 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
     fetchPaths();
   }, [siteSlug]);
 
-  const handleSaveToDisk = async (type: 'raw' | 'html') => {
+  type ExportType = 'raw' | 'html' | 'okf';
+
+  const exportLabel = (type: ExportType): string => {
+    if (type === 'raw') return 'Sources';
+    if (type === 'okf') return 'OKF';
+    return 'Rendered Site';
+  };
+
+  const handleSaveToDisk = async (type: ExportType) => {
     setLoading(true);
     setMessage(null);
 
     try {
       const result = await window.electronAPI?.showOpenDialog({
         properties: ['openDirectory', 'createDirectory'],
-        title: `Select destination for ${type === 'raw' ? 'Sources' : 'Rendered Site'}`
+        title: `Select destination for ${exportLabel(type)}`
       });
 
       if (result?.canceled || !result?.filePaths?.[0]) {
@@ -84,15 +93,19 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
     }
   };
 
-  const handleSaveAsZip = async (type: 'raw' | 'html') => {
+  const handleSaveAsZip = async (type: ExportType) => {
     setLoading(true);
     setMessage(null);
 
     try {
-      const defaultName = type === 'raw' ? `${siteSlug}-sources.zip` : `${siteSlug}-html.zip`;
+      const defaultName = type === 'raw'
+        ? `${siteSlug}-sources.zip`
+        : type === 'okf'
+          ? `${siteSlug}-okf.zip`
+          : `${siteSlug}-html.zip`;
 
       const result = await window.electronAPI?.showSaveDialog({
-        title: `Save ${type === 'raw' ? 'Sources' : 'Rendered Site'} as ZIP`,
+        title: `Save ${exportLabel(type)} as ZIP`,
         defaultPath: defaultName,
         filters: [{ name: 'ZIP files', extensions: ['zip'] }]
       });
@@ -124,6 +137,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ siteSlug }) => {
 
   const rows = [
     { label: 'Sources', type: 'raw' as const },
+    { label: 'OKF', type: 'okf' as const },
     { label: 'Rendered Site', type: 'html' as const },
   ];
 

@@ -23,6 +23,7 @@ import path from 'path';
 import request from 'supertest';
 import { createLocalSaveRoutes } from '../../../../../src/areas/site/sharing/routes/localSaveRoutes.js';
 import { buildFilteredSourcesExportForSite } from '../../../../../src/areas/site/generation/sources-export/filteredSourcesExport.js';
+import { buildFilteredOpenKnowledgeFormatForSite } from '../../../../../src/areas/site/generation/open-knowledge-format/filteredOpenKnowledgeFormat.js';
 import { TestSiteSetup } from '../../../../shared/support/testSiteSetup.js';
 
 describe('Advanced-tab sources export (localSaveRoutes)', () => {
@@ -38,6 +39,7 @@ describe('Advanced-tab sources export (localSaveRoutes)', () => {
     app.use(express.json());
     app.use('/api', createLocalSaveRoutes({
       buildRawSourcesExportForSite: buildFilteredSourcesExportForSite,
+      buildOpenKnowledgeFormatForSite: buildFilteredOpenKnowledgeFormatForSite,
     }));
 
     scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sources-export-advanced-'));
@@ -86,5 +88,27 @@ describe('Advanced-tab sources export (localSaveRoutes)', () => {
     expect(copiedFiles).toContain('connected page.md');
     expect(copiedFiles).not.toContain('orphaned page.md');
     expect(copiedFiles).not.toContain('blacklisted page.md');
+  });
+
+  it('create-zip with sourceType=okf should export an OKF bundle', async () => {
+    const zipDestination = path.join(scratchDir, 'okf.zip');
+
+    const response = await request(app)
+      .post(`/api/sites/${siteSlug}/sharing/create-zip`)
+      .send({ sourceType: 'okf', destinationPath: zipDestination })
+      .expect(200);
+
+    const finalZipPath = (response.body as { path: string }).path;
+    expect(fs.existsSync(finalZipPath)).toBe(true);
+
+    const zipContents = execFileSync('unzip', ['-l', finalZipPath], { encoding: 'utf8' });
+    expect(zipContents).toContain(`${siteSlug}/index.md`);
+    expect(zipContents).toContain(`${siteSlug}/main page.md`);
+    expect(zipContents).not.toContain('orphaned page.md');
+
+    const indexContent = execFileSync('unzip', ['-p', finalZipPath, `${siteSlug}/index.md`], { encoding: 'utf8' });
+    const mainPageContent = execFileSync('unzip', ['-p', finalZipPath, `${siteSlug}/main page.md`], { encoding: 'utf8' });
+    expect(indexContent).toContain('okf_version: "0.1"');
+    expect(mainPageContent).toContain('type: Knowledge Page');
   });
 });

@@ -1,0 +1,416 @@
+/*
+Copyright 2026 Sand Harbor Software, LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+import fs from 'fs';
+import path from 'path';
+import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
+import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
+import { FrontmatterUtils } from '../../../../shared/utils/frontmatterUtils.js';
+import { replaceOutsideCode } from '../html/markdown.js';
+import { linkTextToLinkInfo } from '../html/shared.js';
+import {
+  restoreGeneratedTagWikilinks,
+  restoreMarkdownLinkNotTrackedMarkers
+} from '../sources-export/sourcesExport.js';
+import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
+
+type LinkResolutionMap = Record<string, LinkResolvedInfo>;
+type AllLinkResolutionMaps = Map<string, LinkResolutionMap>;
+
+export type OpenKnowledgeFormatLogSource =
+  | { mode: 'auto' }
+  | { mode: 'none' }
+  | { mode: 'trackedPage'; sourceGraphPath: string };
+
+export interface OpenKnowledgeFormatRename {
+  sourcePath: string;
+  originalOutputPath: string;
+  finalOutputPath: string;
+  reason: 'reserved-filename';
+}
+
+export interface PrepareOpenKnowledgeFormatOptions {
+  sitePageConfigs: SitePageConfig[];
+  allLinkResolutionMaps?: AllLinkResolutionMaps;
+  initialPageTitle?: string;
+  initialPageDirectory?: string;
+  logSource?: OpenKnowledgeFormatLogSource;
+}
+
+export interface PrepareOpenKnowledgeFormatResult {
+  renames: OpenKnowledgeFormatRename[];
+  logOutputPath: string | null;
+}
+
+const WIKI_LINK_OR_EMBED_PATTERN = /(!?)\[\[([^\]]+)\]\]/g;
+const RESERVED_MARKDOWN_FILENAMES = new Set(['index.md', 'log.md']);
+const DEFAULT_CONCEPT_TYPE = 'Knowledge Page';
+const ROOT_INDEX_PATH = 'index.md';
+const ROOT_LOG_PATH = 'log.md';
+
+function walkFilesSorted(dir: string, base = ''): string[] {
+  if (!fs.existsSync(dir)) return [];
+  const entries = fs.readdirSync(path.join(dir, base), { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of [...entries].sort((a, b) => a.name.localeCompare(b.name))) {
+    const relativePath = base ? path.join(base, entry.name) : entry.name;
+    if (entry.isDirectory()) {
+      files.push(...walkFilesSorted(dir, relativePath));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+  return files;
+}
+
+function toPosixPath(value: string): string {
+  return value.split(path.sep).join('/');
+}
+
+function outputPathToFilesystemPath(outputDir: string, outputPath: string): string {
+  return path.join(outputDir, ...outputPath.split('/'));
+}
+
+function relativeDirFor(relativePath: string): string {
+  const dir = path.posix.dirname(relativePath);
+  return dir === '.' ? '' : dir;
+}
+
+function markdownTitleForSourcePath(sourcePath: string): string {
+  const basename = path.posix.basename(sourcePath);
+  if (basename.endsWith('.excalidraw.md')) {
+    return basename.slice(0, -'.excalidraw.md'.length);
+  }
+  return basename.endsWith('.md') ? basename.slice(0, -'.md'.length) : basename;
+}
+
+function fileTypeForSourcePath(sourcePath: string): string {
+  if (sourcePath.endsWith('.excalidraw.md')) return 'excalidraw';
+  if (sourcePath.endsWith('.md')) return 'md';
+  return path.posix.extname(sourcePath).slice(1);
+}
+
+function pageIdentForSourcePath(sourcePath: string): string {
+  const dir = relativeDirFor(sourcePath);
+  const title = markdownTitleForSourcePath(sourcePath);
+  const fileType = fileTypeForSourcePath(sourcePath);
+  const filename = `${title}.${fileType}`;
+  return dir ? `${dir}/${filename}` : `/${filename}`;
+}
+
+function sourcePathForConfig(config: SitePageConfig): string {
+  const fileType = config.file_type || 'md';
+  const filename = fileType === 'excalidraw'
+    ? `${config.title}.excalidraw.md`
+    : `${config.title}.${fileType}`;
+  const dir = config.source_graph_subdirectory || '';
+  return dir ? `${dir}/${filename}` : filename;
+}
+
+function markdownLinkLabelFor(linkText: string): string {
+  const linkInfo = linkTextToLinkInfo(linkText);
+  if (linkInfo.alternative_name) return linkInfo.alternative_name;
+  return path.posix.basename(linkInfo.filename);
+}
+
+function markdownLinkTargetFor(outputPath: string, section?: string): string {
+  const encodedPath = encodePathForUrl(outputPath);
+  if (!section) return `/${encodedPath}`;
+  return `/${encodedPath}#${encodeURIComponent(section.trim())}`;
+}
+
+function escapeMarkdownLabel(label: string): string {
+  return label.replace(/\\/g, '\\\\').replace(/\]/g, '\\]');
+}
+
+function restoreScrubbedMarkdown(content: string): string {
+  return restoreMarkdownLinkNotTrackedMarkers(restoreGeneratedTagWikilinks(content));
+}
+
+function normalizeSourcePath(value: string): string {
+  return value.replace(/\\/g, '/').replace(/^\/+/, '');
+}
+
+function findFallbackTargetSourcePath(linkText: string, sourcePathByTitleAndDir: Map<string, string>): string | null {
+  const linkInfo = linkTextToLinkInfo(linkText);
+  const rawFilename = linkInfo.filename.replace(/\\/g, '/').replace(/^\/+/, '');
+  const explicitDir = path.posix.dirname(rawFilename);
+  const dir = explicitDir === '.' ? '' : explicitDir;
+  const base = path.posix.basename(rawFilename);
+  const title = base.endsWith('.md') ? base.slice(0, -'.md'.length) : base;
+
+  const exact = sourcePathByTitleAndDir.get(`${dir}\0${title}`);
+  if (exact) return exact;
+
+  const root = sourcePathByTitleAndDir.get(`\0${title}`);
+  if (root) return root;
+
+  const suffix = `\0${title}`;
+  const matches = [...sourcePathByTitleAndDir.entries()]
+    .filter(([key]) => key.endsWith(suffix))
+    .map(([, sourcePath]) => sourcePath)
+    .sort((a, b) => a.localeCompare(b));
+  return matches[0] ?? null;
+}
+
+function convertWikiLinksToMarkdown(
+  content: string,
+  sourcePath: string,
+  outputPathBySourcePath: Map<string, string>,
+  sourcePathByTitleAndDir: Map<string, string>,
+  allLinkResolutionMaps?: AllLinkResolutionMaps
+): string {
+  const linkResolutionMap = allLinkResolutionMaps?.get(pageIdentForSourcePath(sourcePath));
+
+  return replaceOutsideCode(content, WIKI_LINK_OR_EMBED_PATTERN, (match: string, embedMarker: string, linkText: string) => {
+    const linkInfo = linkTextToLinkInfo(linkText);
+    const resolvedTarget = linkResolutionMap?.[linkText]?.link_resolved_target_path;
+    const targetSourcePath = resolvedTarget
+      ? normalizeSourcePath(resolvedTarget)
+      : findFallbackTargetSourcePath(linkText, sourcePathByTitleAndDir);
+
+    if (!targetSourcePath) return match;
+
+    const targetOutputPath = outputPathBySourcePath.get(targetSourcePath);
+    if (!targetOutputPath) return match;
+
+    const target = markdownLinkTargetFor(targetOutputPath, linkInfo.section);
+    const label = escapeMarkdownLabel(markdownLinkLabelFor(linkText));
+    const targetExt = path.posix.extname(targetOutputPath).toLowerCase();
+    const imageLike = embedMarker === '!' && ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'].includes(targetExt);
+    return imageLike ? `![${label}](${target})` : `[${label}](${target})`;
+  });
+}
+
+function uniquePathFor(baseOutputPath: string, occupied: Set<string>): string {
+  if (!occupied.has(baseOutputPath)) {
+    occupied.add(baseOutputPath);
+    return baseOutputPath;
+  }
+
+  const dir = relativeDirFor(baseOutputPath);
+  const basename = path.posix.basename(baseOutputPath);
+  const ext = path.posix.extname(basename);
+  const stem = ext ? basename.slice(0, -ext.length) : basename;
+  let counter = 2;
+  while (true) {
+    const candidate = dir ? `${dir}/${stem}-${counter}${ext}` : `${stem}-${counter}${ext}`;
+    if (!occupied.has(candidate)) {
+      occupied.add(candidate);
+      return candidate;
+    }
+    counter++;
+  }
+}
+
+function reservedOriginalPathFor(sourcePath: string): string {
+  const dir = relativeDirFor(sourcePath);
+  const basename = path.posix.basename(sourcePath);
+  const ext = path.posix.extname(basename);
+  const stem = basename.slice(0, -ext.length);
+  const renamed = `${stem}-original${ext}`;
+  return dir ? `${dir}/${renamed}` : renamed;
+}
+
+function selectAutoLogSource(markdownFiles: string[], initialSourcePath: string | null): string | null {
+  const candidates = markdownFiles.filter(file => path.posix.basename(file) === ROOT_LOG_PATH);
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  const initialDir = initialSourcePath ? relativeDirFor(initialSourcePath) : '';
+  const besideInitialPage = candidates.find(file => relativeDirFor(file) === initialDir);
+  if (besideInitialPage) return besideInitialPage;
+
+  const rootLog = candidates.find(file => file === ROOT_LOG_PATH);
+  if (rootLog) return rootLog;
+
+  return [...candidates].sort((a, b) => {
+    const dirCompare = relativeDirFor(a).localeCompare(relativeDirFor(b));
+    return dirCompare !== 0 ? dirCompare : a.localeCompare(b);
+  })[0] ?? null;
+}
+
+function selectConfiguredLogSource(
+  markdownFiles: string[],
+  sourcePathByTitleAndDir: Map<string, string>,
+  initialSourcePath: string | null,
+  setting: OpenKnowledgeFormatLogSource
+): string | null {
+  if (setting.mode === 'none') return null;
+  if (setting.mode === 'trackedPage') {
+    const normalized = normalizeSourcePath(setting.sourceGraphPath);
+    return markdownFiles.includes(normalized) ? normalized : null;
+  }
+  return selectAutoLogSource(markdownFiles, initialSourcePath);
+}
+
+function buildSourcePathByTitleAndDir(sitePageConfigs: SitePageConfig[]): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const config of sitePageConfigs) {
+    const fileType = config.file_type || 'md';
+    if (fileType !== 'md' && fileType !== 'excalidraw') continue;
+    const dir = config.source_graph_subdirectory || '';
+    result.set(`${dir}\0${config.title}`, sourcePathForConfig(config));
+  }
+  return result;
+}
+
+function writeTextFile(outputDir: string, outputPath: string, content: string): void {
+  const fullPath = outputPathToFilesystemPath(outputDir, outputPath);
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  fs.writeFileSync(fullPath, content, 'utf8');
+}
+
+function writeBinaryFile(outputDir: string, outputPath: string, sourcePath: string): void {
+  const fullPath = outputPathToFilesystemPath(outputDir, outputPath);
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  fs.copyFileSync(sourcePath, fullPath);
+}
+
+function conceptMarkdownFor(
+  sourceMarkdown: string,
+  sourcePath: string,
+  outputPathBySourcePath: Map<string, string>,
+  sourcePathByTitleAndDir: Map<string, string>,
+  allLinkResolutionMaps?: AllLinkResolutionMaps
+): string {
+  const restoredMarkdown = restoreScrubbedMarkdown(sourceMarkdown);
+  const parsed = FrontmatterUtils.parseFromText(restoredMarkdown);
+  const existingType = parsed.frontmatter.type;
+  const title = markdownTitleForSourcePath(sourcePath);
+  const frontmatter = {
+    ...parsed.frontmatter,
+    title: typeof parsed.frontmatter.title === 'string' && parsed.frontmatter.title.trim()
+      ? parsed.frontmatter.title
+      : title,
+    type: typeof existingType === 'string' && existingType.trim() ? existingType : DEFAULT_CONCEPT_TYPE,
+  };
+  const convertedContent = convertWikiLinksToMarkdown(
+    parsed.content,
+    sourcePath,
+    outputPathBySourcePath,
+    sourcePathByTitleAndDir,
+    allLinkResolutionMaps
+  );
+  return FrontmatterUtils.combineToText(frontmatter, convertedContent);
+}
+
+function logMarkdownFor(
+  sourceMarkdown: string,
+  sourcePath: string,
+  outputPathBySourcePath: Map<string, string>,
+  sourcePathByTitleAndDir: Map<string, string>,
+  allLinkResolutionMaps?: AllLinkResolutionMaps
+): string {
+  return convertWikiLinksToMarkdown(
+    restoreScrubbedMarkdown(sourceMarkdown),
+    sourcePath,
+    outputPathBySourcePath,
+    sourcePathByTitleAndDir,
+    allLinkResolutionMaps
+  );
+}
+
+function rootIndexMarkdown(initialOutputPath: string | null, initialTitle: string | undefined): string {
+  const frontmatter = '---\nokf_version: "0.1"\n---\n';
+  if (!initialOutputPath) {
+    return `${frontmatter}\n`;
+  }
+  const label = escapeMarkdownLabel(initialTitle || markdownTitleForSourcePath(initialOutputPath));
+  return `${frontmatter}\n- [${label}](${markdownLinkTargetFor(initialOutputPath)})\n`;
+}
+
+export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
+  scrubbedContentDir: string,
+  outputDir: string,
+  options: PrepareOpenKnowledgeFormatOptions
+): PrepareOpenKnowledgeFormatResult {
+  if (fs.existsSync(outputDir)) {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  const files = walkFilesSorted(scrubbedContentDir)
+    .map(toPosixPath)
+    .filter(relativePath => relativePath.split('/')[0] !== SiteConfigPaths.TAGPAGES_DIR);
+  const markdownFiles = files.filter(file => file.endsWith('.md'));
+  const sourcePathByTitleAndDir = buildSourcePathByTitleAndDir(options.sitePageConfigs);
+  const initialPageDirectory = options.initialPageDirectory || '';
+  const initialSourcePath = options.initialPageTitle
+    ? sourcePathByTitleAndDir.get(`${initialPageDirectory}\0${options.initialPageTitle}`) ?? null
+    : null;
+  const logSourcePath = selectConfiguredLogSource(
+    markdownFiles,
+    sourcePathByTitleAndDir,
+    initialSourcePath,
+    options.logSource ?? { mode: 'auto' }
+  );
+
+  const occupied = new Set<string>([ROOT_INDEX_PATH]);
+  if (logSourcePath) occupied.add(ROOT_LOG_PATH);
+  const outputPathBySourcePath = new Map<string, string>();
+  const renames: OpenKnowledgeFormatRename[] = [];
+
+  for (const relativePath of files) {
+    if (relativePath === logSourcePath) continue;
+    if (relativePath.endsWith('.md') && RESERVED_MARKDOWN_FILENAMES.has(path.posix.basename(relativePath))) continue;
+    outputPathBySourcePath.set(relativePath, uniquePathFor(relativePath, occupied));
+  }
+
+  for (const relativePath of markdownFiles) {
+    if (relativePath === logSourcePath) continue;
+    if (!RESERVED_MARKDOWN_FILENAMES.has(path.posix.basename(relativePath))) continue;
+
+    const originalOutputPath = reservedOriginalPathFor(relativePath);
+    const finalOutputPath = uniquePathFor(originalOutputPath, occupied);
+    outputPathBySourcePath.set(relativePath, finalOutputPath);
+    renames.push({
+      sourcePath: relativePath,
+      originalOutputPath,
+      finalOutputPath,
+      reason: 'reserved-filename',
+    });
+  }
+
+  if (logSourcePath) {
+    outputPathBySourcePath.set(logSourcePath, ROOT_LOG_PATH);
+  }
+
+  for (const relativePath of files) {
+    const outputPath = outputPathBySourcePath.get(relativePath);
+    if (!outputPath) continue;
+
+    const sourcePath = path.join(scrubbedContentDir, ...relativePath.split('/'));
+    if (relativePath.endsWith('.md')) {
+      const content = fs.readFileSync(sourcePath, 'utf8');
+      const output = relativePath === logSourcePath
+        ? logMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, options.allLinkResolutionMaps)
+        : conceptMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, options.allLinkResolutionMaps);
+      writeTextFile(outputDir, outputPath, output);
+    } else {
+      writeBinaryFile(outputDir, outputPath, sourcePath);
+    }
+  }
+
+  const initialOutputPath = initialSourcePath ? outputPathBySourcePath.get(initialSourcePath) ?? null : null;
+  writeTextFile(outputDir, ROOT_INDEX_PATH, rootIndexMarkdown(initialOutputPath, options.initialPageTitle));
+
+  return {
+    renames,
+    logOutputPath: logSourcePath ? ROOT_LOG_PATH : null,
+  };
+}

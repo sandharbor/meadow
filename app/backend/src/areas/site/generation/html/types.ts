@@ -57,6 +57,7 @@ export interface RenderOptions {
    */
   staticAssetNames?: StaticAssetNames;
   sourcesExportEnabled?: boolean;
+  openKnowledgeFormatEnabled?: boolean;
   srsEnabled?: boolean;
 }
 

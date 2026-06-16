@@ -28,12 +28,20 @@ import { API_BASE_URL } from '../../utils/apiConfig';
 import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
+import Modal from '../../components/Modal';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 type TopLevelTab = 'review' | 'share';
 type PreviewSubTab = 'sitePreview' | 'changes';
 type ShareSubTab = 'localExport' | 'publish' | 'advanced';
 type PreviewModalTab = PreviewSubTab | ShareSubTab | 'customization';  // customization kept for URL param backward compat
+
+interface OpenKnowledgeFormatRename {
+  sourcePath: string;
+  originalOutputPath: string;
+  finalOutputPath: string;
+  reason: 'reserved-filename';
+}
 
 interface PreviewPublishModalProps {
   onClose: () => void;
@@ -49,6 +57,7 @@ interface PreviewPublishModalProps {
     tagsEnabled: boolean;
     hoverPreviewEnabled: boolean;
     sourcesExportEnabled: boolean;
+    openKnowledgeFormatEnabled: boolean;
     spacedRepetitionEnabled: boolean;
   };
   siteGenerationOptions: {
@@ -57,12 +66,13 @@ interface PreviewPublishModalProps {
     tagsSetting: OverrideSetting;
     hoverPreviewSetting: OverrideSetting;
     sourcesExportSetting: OverrideSetting;
+    openKnowledgeFormatSetting: OverrideSetting;
     spacedRepetitionSetting: OverrideSetting;
   };
   globalSrsTags: string[];
   siteSrsTagsOverride: string[] | null;
-  onGlobalGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', enabled: boolean) => Promise<void>;
-  onSiteGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
+  onGlobalGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
+  onSiteGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
 
@@ -162,6 +172,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   const [impactedPages, setImpactedPages] = useState<string[]>([]);
   const [impactedPagesTotal, setImpactedPagesTotal] = useState(0);
   const changedFilesSnapshotRef = useRef<Set<string> | null>(null);
+  const [openKnowledgeFormatRenames, setOpenKnowledgeFormatRenames] = useState<OpenKnowledgeFormatRename[]>([]);
+  const [isOkfRenameModalOpen, setIsOkfRenameModalOpen] = useState(false);
 
   // Save changes state
   const [isSavingChanges, setIsSavingChanges] = useState(false);
@@ -305,6 +317,33 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         });
     }
   }, [previewResult?.success, isRegeneratingPreview, previewFileExplorerApi]);
+
+  useEffect(() => {
+    if (!slug || !previewResult?.success || isRegeneratingPreview) {
+      setOpenKnowledgeFormatRenames([]);
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`${API_BASE_URL}/sites/${slug}/generation/open-knowledge-format/manifest`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Failed to fetch OKF manifest (${res.status})`);
+        return res.json() as Promise<{ renames?: OpenKnowledgeFormatRename[] }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setOpenKnowledgeFormatRenames(Array.isArray(data.renames) ? data.renames : []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        logger.error('Failed to fetch OKF generation manifest:', err);
+        setOpenKnowledgeFormatRenames([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, previewResult?.success, previewResult?.traversalPageUrl, isRegeneratingPreview]);
 
   // Reset the preview URL and history when a new preview is generated
   useEffect(() => {
@@ -654,12 +693,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   }, []);
 
   // Wrappers for option changes that trigger regeneration
-  const handleGlobalOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', enabled: boolean) => {
+  const handleGlobalOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => {
     await onGlobalGenerationOptionChange(option, enabled);
     await regeneratePreviewAndReload();
   }, [onGlobalGenerationOptionChange, regeneratePreviewAndReload]);
 
-  const handleSiteOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'spacedRepetition', setting: OverrideSetting) => {
+  const handleSiteOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => {
     await onSiteGenerationOptionChange(option, setting);
     await regeneratePreviewAndReload();
   }, [onSiteGenerationOptionChange, regeneratePreviewAndReload]);
@@ -813,6 +852,24 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
               onClick={onShowUntrackedPages}
               showActionLink
             />
+          </div>
+        )}
+
+        {previewResult?.success && openKnowledgeFormatRenames.length > 0 && (
+          <div className="flex justify-center mb-3">
+            <div className="px-4 py-2 bg-warning-50 text-warning-700 text-sm rounded border border-warning-300 flex items-center gap-2">
+              <span className="text-warning-600">&#9888;&#65039;</span>
+              <span>
+                OKF export renamed {openKnowledgeFormatRenames.length} reserved file{openKnowledgeFormatRenames.length === 1 ? '' : 's'}.
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsOkfRenameModalOpen(true)}
+                className="text-warning-800 underline hover:text-warning-900 font-medium"
+              >
+                View details.
+              </button>
+            </div>
           </div>
         )}
 
@@ -1133,6 +1190,38 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             </div>
           )}
         </div>
+        <Modal
+          isOpen={isOkfRenameModalOpen}
+          onClose={() => setIsOkfRenameModalOpen(false)}
+          title="OKF Reserved Files Renamed"
+          className="w-full max-w-3xl"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-neutral-700">
+              The Open Knowledge Format bundle reserves <code className="rounded bg-neutral-100 px-1 py-0.5">index.md</code> and <code className="rounded bg-neutral-100 px-1 py-0.5">log.md</code>. These tracked source files were renamed in the OKF export only; your source files were not changed.
+            </p>
+            <div className="overflow-x-auto rounded border border-neutral-200">
+              <table className="w-full border-collapse text-sm">
+                <thead className="bg-neutral-50 text-neutral-500">
+                  <tr>
+                    <th className="border-b border-neutral-200 px-3 py-2 text-left font-medium">Source file</th>
+                    <th className="border-b border-neutral-200 px-3 py-2 text-left font-medium">Reserved output</th>
+                    <th className="border-b border-neutral-200 px-3 py-2 text-left font-medium">Final output</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {openKnowledgeFormatRenames.map((rename) => (
+                    <tr key={`${rename.sourcePath}->${rename.finalOutputPath}`} className="border-b border-neutral-100 last:border-b-0">
+                      <td className="px-3 py-2 font-mono text-xs text-neutral-800">{rename.sourcePath}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-neutral-600">{rename.originalOutputPath}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-neutral-800">{rename.finalOutputPath}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Modal>
       </div>
     </div>
   );

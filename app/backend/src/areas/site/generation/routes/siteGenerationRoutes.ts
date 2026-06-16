@@ -30,6 +30,7 @@ import { normalizePageTitle } from '../html/shared.js';
 import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
 import { getHtmlPathForPage } from '../../../../shared/utils/htmlPathLookup.js';
 import { ensureTrackedPageContent } from '../source-material/trackedPageContent.js';
+import { readOpenKnowledgeFormatGenerationManifest } from '../open-knowledge-format/openKnowledgeFormatGenerationManifest.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { clearSiteGuidCache, logSiteError, logSiteInfo } from '../../../../shared/utils/logging/siteLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -57,6 +58,24 @@ router.get('/generation/assets/excalidraw-vendor.js', (_req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
   res.setHeader('Cache-Control', 'public, max-age=86400');
   res.sendFile(bundlePath);
+});
+
+router.get('/sites/:siteSlug/generation/open-knowledge-format/manifest', (req, res, next) => {
+  try {
+    const { siteSlug } = req.params;
+    if (!siteSlug) {
+      return res.status(400).json({ error: 'siteSlug is required' });
+    }
+
+    const siteDirectory = getSiteDirectory(siteSlug);
+    if (!fs.existsSync(siteDirectory)) {
+      return res.status(404).json({ error: `Site '${siteSlug}' not found` });
+    }
+
+    res.json(readOpenKnowledgeFormatGenerationManifest(siteDirectory));
+  } catch (error) {
+    next(error);
+  }
 });
 
 
@@ -657,6 +676,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     generationTagsEnabled,
     generationHoverPreviewEnabled,
     generationMarkdownZipEnabled,
+    generationOpenKnowledgeFormatEnabled,
     generationSpacedRepetitionEnabled,
     generationSpacedRepetitionTags,
   } = req.body as {
@@ -665,6 +685,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     generationTagsEnabled?: boolean | null;
     generationHoverPreviewEnabled?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
+    generationOpenKnowledgeFormatEnabled?: boolean | null;
     generationSpacedRepetitionEnabled?: boolean | null;
     generationSpacedRepetitionTags?: string[] | null;
   };
@@ -689,6 +710,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
       !validateBoolOrNullOrUndef(generationTagsEnabled) ||
       !validateBoolOrNullOrUndef(generationHoverPreviewEnabled) ||
       !validateBoolOrNullOrUndef(generationMarkdownZipEnabled) ||
+      !validateBoolOrNullOrUndef(generationOpenKnowledgeFormatEnabled) ||
       !validateBoolOrNullOrUndef(generationSpacedRepetitionEnabled) ||
       !validateStringArrayOrNullOrUndef(generationSpacedRepetitionTags)
     ) {
@@ -701,7 +723,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     const existingConfig = YAML.parse(yamlContent) as SiteConfig;
     const updatedConfig: SiteConfig = { ...existingConfig, siteUpdatedAt: new Date().toISOString() };
 
-    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationHoverPreviewEnabled' | 'generationMarkdownZipEnabled' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
+    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationHoverPreviewEnabled' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
       key: K,
       value: SiteConfig[K] | null | undefined
     ) => {
@@ -718,6 +740,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     setOrDelete('generationTagsEnabled', generationTagsEnabled);
     setOrDelete('generationHoverPreviewEnabled', generationHoverPreviewEnabled);
     setOrDelete('generationMarkdownZipEnabled', generationMarkdownZipEnabled);
+    setOrDelete('generationOpenKnowledgeFormatEnabled', generationOpenKnowledgeFormatEnabled);
     setOrDelete('generationSpacedRepetitionEnabled', generationSpacedRepetitionEnabled);
     setOrDelete(
       'generationSpacedRepetitionTags',

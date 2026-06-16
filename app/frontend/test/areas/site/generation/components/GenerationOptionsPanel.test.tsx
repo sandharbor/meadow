@@ -26,6 +26,7 @@ describe('GenerationOptionsPanel', () => {
       tagsEnabled: true,
       hoverPreviewEnabled: false,
       sourcesExportEnabled: false,
+      openKnowledgeFormatEnabled: false,
       spacedRepetitionEnabled: false,
     },
     siteOptions: {
@@ -34,6 +35,7 @@ describe('GenerationOptionsPanel', () => {
       tagsSetting: 'inherit' as const,
       hoverPreviewSetting: 'inherit' as const,
       sourcesExportSetting: 'inherit' as const,
+      openKnowledgeFormatSetting: 'inherit' as const,
       spacedRepetitionSetting: 'inherit' as const,
     },
     globalSrsTags: [],
@@ -144,6 +146,13 @@ describe('GenerationOptionsPanel', () => {
     render(<GenerationOptionsPanel {...props} />);
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
+  it('renders the OKF generation option', () => {
+    const props = buildProps();
+    render(<GenerationOptionsPanel {...props} />);
+
+    expect(screen.getByText('Open Knowledge Format (OKF)')).toBeInTheDocument();
   });
 
   it('shows an edit button when site SRS is explicitly enabled without a tag override', () => {

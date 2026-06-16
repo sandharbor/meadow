@@ -28,6 +28,7 @@ import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../.
 
 export interface LocalSaveRoutesDependencies {
   buildRawSourcesExportForSite: (siteDir: string) => Promise<string>;
+  buildOpenKnowledgeFormatForSite: (siteDir: string) => Promise<string>;
 }
 
 // For 'raw' source: produces (and returns the path to) a filtered sources
@@ -36,11 +37,14 @@ export interface LocalSaveRoutesDependencies {
 // as-is.
 async function resolveSourcePath(
   siteDir: string,
-  sourceType: 'raw' | 'html',
+  sourceType: 'raw' | 'html' | 'okf',
   dependencies: LocalSaveRoutesDependencies
 ): Promise<string> {
   if (sourceType === 'raw') {
     return await dependencies.buildRawSourcesExportForSite(siteDir);
+  }
+  if (sourceType === 'okf') {
+    return await dependencies.buildOpenKnowledgeFormatForSite(siteDir);
   }
   return SiteConfigPaths.getPreviewDir(siteDir);
 }
@@ -84,12 +88,12 @@ function stageForLocalExport(sourcePath: string): { stagedPath: string; cleanup:
 }
 
 interface CopyToDirectoryBody {
-  sourceType: 'raw' | 'html';
+  sourceType: 'raw' | 'html' | 'okf';
   destinationPath: string;
 }
 
 interface CreateZipBody {
-  sourceType: 'raw' | 'html';
+  sourceType: 'raw' | 'html' | 'okf';
   destinationPath: string;
 }
 
@@ -107,6 +111,7 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
       appConfigFile: AppConfigPaths.getAppConfigFile(configDir),
       rawMarkdown: SiteConfigPaths.getTrackedPageContentDir(siteDir),
       previewHtml: SiteConfigPaths.getPreviewDir(siteDir),
+      openKnowledgeFormat: SiteConfigPaths.getOpenKnowledgeFormatDir(siteDir),
       siteConfigFile: SiteConfigPaths.getSiteConfigFile(siteDir),
       sitePageConfigFile: SiteConfigPaths.getSitePageConfigFile(siteDir),
     });
@@ -188,7 +193,7 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
     const staged = stageForLocalExport(sourcePath);
     try {
       await createZipFromDirectory(staged.stagedPath, finalPath, {
-        archiveRootDirectory: sourceType === 'raw' ? siteSlug : undefined,
+        archiveRootDirectory: sourceType === 'raw' || sourceType === 'okf' ? siteSlug : undefined,
       });
       res.json({ success: true, path: finalPath });
     } catch (error) {

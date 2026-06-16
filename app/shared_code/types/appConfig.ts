@@ -35,6 +35,7 @@ export interface AppConfig {
   generationTagsEnabled?: boolean; // Default for whether to generate tag pages + convert #tags to links (default: true; requires backlinks)
   generationHoverPreviewEnabled?: boolean; // Default for whether to render hover previews on links (default: false)
   generationMarkdownZipEnabled?: boolean; // Default for whether to generate a downloadable sources ZIP (default: false)
+  generationOpenKnowledgeFormatEnabled?: boolean; // Default for whether to generate an Open Knowledge Format bundle (default: false)
   generationSpacedRepetitionEnabled?: boolean; // Default for whether to render client-side spaced repetition widgets (default: false)
   generationSpacedRepetitionTags?: string[]; // Default tags that identify source pages whose SRS prompts should be processed during generation
   deletedDefaultFilterIds?: string[]; // Tracks default filter IDs the user has intentionally deleted, so they aren't re-created
@@ -50,4 +51,3 @@ export interface AppConfig {
   disableBaseStyleCss?: boolean; // Whether to disable the base style.css from the preset (default: false)
   disableBaseJavascriptJs?: boolean; // Whether to disable the base javascript.js from the preset (default: false)
 }
-

@@ -139,6 +139,10 @@ export function ensureAppConfigInitialized(
     settings.generationMarkdownZipEnabled = false;
     changed = true;
   }
+  if (settings.generationOpenKnowledgeFormatEnabled === undefined) {
+    settings.generationOpenKnowledgeFormatEnabled = false;
+    changed = true;
+  }
   if (settings.generationSpacedRepetitionEnabled === undefined) {
     settings.generationSpacedRepetitionEnabled = false;
     changed = true;
@@ -248,6 +252,7 @@ export function updateGenerationOptions(
     generationTagsEnabled?: boolean | null;
     generationHoverPreviewEnabled?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
+    generationOpenKnowledgeFormatEnabled?: boolean | null;
     generationSpacedRepetitionEnabled?: boolean | null;
     generationSpacedRepetitionTags?: string[] | null;
   },
@@ -270,6 +275,7 @@ export function updateGenerationOptions(
   setOrDelete('generationTagsEnabled', updates.generationTagsEnabled);
   setOrDelete('generationHoverPreviewEnabled', updates.generationHoverPreviewEnabled);
   setOrDelete('generationMarkdownZipEnabled', updates.generationMarkdownZipEnabled);
+  setOrDelete('generationOpenKnowledgeFormatEnabled', updates.generationOpenKnowledgeFormatEnabled);
   setOrDelete('generationSpacedRepetitionEnabled', updates.generationSpacedRepetitionEnabled);
   setOrDelete(
     'generationSpacedRepetitionTags',
