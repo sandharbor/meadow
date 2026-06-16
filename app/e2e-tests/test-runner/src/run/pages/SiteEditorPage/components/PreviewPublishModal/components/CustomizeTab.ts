@@ -169,6 +169,11 @@ class GenerationOptionsSection {
   async enableSourcesExport() {
     await this.selectHoverOption("Sources ZIP", "On");
   }
+
+  /** Set the OKF site-level setting to "On" (enabled). */
+  async enableOpenKnowledgeFormat() {
+    await this.selectHoverOption("Open Knowledge Format (OKF)", "On");
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -224,6 +224,12 @@ export class ChangesTab {
     await this.expect(match).toHaveCount(0);
   }
 
+  /** Assert that a file matching the given name appears in the changes list. */
+  async expectFileInChanges(filename: string) {
+    const match = this.page.locator(`span:has-text("${filename}")`).first();
+    await this.expect(match).toBeVisible({ timeout: 15_000 });
+  }
+
   // ---------------------------------------------------------------------------
   // HTML section changes filter
   // ---------------------------------------------------------------------------

@@ -70,6 +70,26 @@ export class PreviewPublishModal {
     return this.page.locator("button", { hasText: /Check (them|it)/ });
   }
 
+  private get okfRenameWarning() {
+    return this.page.getByText(/OKF export renamed \d+ reserved file/);
+  }
+
+  private get okfRenameDetailsBtn() {
+    return this.page.getByRole("button", { name: "View details." });
+  }
+
+  private get okfRenameModalHeading() {
+    return this.page.getByRole("heading", { name: "OKF Reserved Files Renamed" });
+  }
+
+  private get okfRenameModalCloseBtn() {
+    return this.page
+      .locator("div.fixed.inset-0.bg-black")
+      .filter({ has: this.okfRenameModalHeading })
+      .locator("button", { hasText: "×" })
+      .last();
+  }
+
   // ---------------------------------------------------------------------------
   // Preview completion
   // ---------------------------------------------------------------------------
@@ -196,6 +216,26 @@ export class PreviewPublishModal {
   async clickChangesTab() {
     await this.expect(this.changesTab).toBeVisible();
     await this.changesTab.click();
+  }
+
+  // ---------------------------------------------------------------------------
+  // OKF warnings
+  // ---------------------------------------------------------------------------
+
+  async expectOkfRenameWarningVisible() {
+    await this.expect(this.okfRenameWarning).toBeVisible({ timeout: 30_000 });
+  }
+
+  async openOkfRenameDetails() {
+    await this.expect(this.okfRenameDetailsBtn).toBeVisible({ timeout: 30_000 });
+    await this.okfRenameDetailsBtn.click();
+    await this.expect(this.okfRenameModalHeading).toBeVisible();
+  }
+
+  async closeOkfRenameDetails() {
+    await this.expect(this.okfRenameModalCloseBtn).toBeVisible();
+    await this.okfRenameModalCloseBtn.click();
+    await this.expect(this.okfRenameModalHeading).not.toBeVisible();
   }
 
   // ---------------------------------------------------------------------------

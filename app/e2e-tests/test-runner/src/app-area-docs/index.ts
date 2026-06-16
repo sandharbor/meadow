@@ -92,6 +92,7 @@ const scenarioDocToAppAreaIds: Record<string, string[]> = {
   lambda: ["site/sharing"],
   links: ["site/curation"],
   "link-gap": ["site/curation"],
+  okf: ["site/generation", "site/sharing"],
   "sources-export": ["site/generation", "site/sharing"],
   migration: ["site/generation"],
   "multi-site": ["sites"],
