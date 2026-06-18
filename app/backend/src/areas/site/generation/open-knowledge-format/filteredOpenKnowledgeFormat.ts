@@ -30,6 +30,10 @@ import {
   removeOpenKnowledgeFormatGenerationManifest,
   writeOpenKnowledgeFormatGenerationManifest
 } from './openKnowledgeFormatGenerationManifest.js';
+import {
+  openKnowledgeFormatIndexSourceFromSiteConfig,
+  openKnowledgeFormatLogSourceFromSiteConfig
+} from './openKnowledgeFormatConfig.js';
 
 type WorkingGraphPage = {
   title: string;
@@ -153,6 +157,8 @@ export async function buildFilteredOpenKnowledgeFormatForSite(siteDirectory: str
       allLinkResolutionMaps,
       initialPageTitle: initialTitle,
       initialPageDirectory: initialDirectory,
+      indexSource: openKnowledgeFormatIndexSourceFromSiteConfig(siteConfig),
+      logSource: openKnowledgeFormatLogSourceFromSiteConfig(siteConfig),
     }
   );
   writeOpenKnowledgeFormatGenerationManifest(siteDirectory, result);

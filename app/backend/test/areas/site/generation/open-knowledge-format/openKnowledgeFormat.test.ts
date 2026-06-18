@@ -164,6 +164,65 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     expect(fs.existsSync(path.join(okfDir, 'updates.md'))).toBe(false);
   });
 
+  it('can map a tracked source page to root index.md without renaming that source page', () => {
+    writeFile(scrubbedDir, 'home.md', 'Home\n');
+    writeFile(scrubbedDir, 'index.md', [
+      '---',
+      'audience: public',
+      '---',
+      'Reserved source index with [[home]].',
+      '',
+    ].join('\n'));
+
+    prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
+      sitePageConfigs: [pageConfig('home'), pageConfig('index')],
+      initialPageTitle: 'home',
+      initialPageDirectory: '',
+      indexSource: { mode: 'trackedPage', sourceGraphPath: 'index.md' },
+    });
+
+    const index = readFile(okfDir, 'index.md');
+    expect(index).toContain('audience: public');
+    expect(index).toContain('okf_version:');
+    expect(index).toContain('Reserved source index with [home](/home.md).');
+    expect(fs.existsSync(path.join(okfDir, 'index-original.md'))).toBe(false);
+  });
+
+  it('renames a source index.md when another tracked page is mapped to root index.md', () => {
+    writeFile(scrubbedDir, 'home.md', 'Home\n');
+    writeFile(scrubbedDir, 'index.md', 'Reserved source index\n');
+    writeFile(scrubbedDir, 'custom index.md', 'Custom OKF index\n');
+
+    prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
+      sitePageConfigs: [pageConfig('home'), pageConfig('index'), pageConfig('custom index')],
+      initialPageTitle: 'home',
+      initialPageDirectory: '',
+      indexSource: { mode: 'trackedPage', sourceGraphPath: 'custom index.md' },
+    });
+
+    expect(readFile(okfDir, 'index.md')).toContain('Custom OKF index');
+    expect(readFile(okfDir, 'index-original.md')).toContain('Reserved source index');
+    expect(fs.existsSync(path.join(okfDir, 'custom index.md'))).toBe(false);
+  });
+
+  it('can write the same tracked source page to root index.md and log.md', () => {
+    writeFile(scrubbedDir, 'home.md', 'Home\n');
+    writeFile(scrubbedDir, 'release notes.md', 'Shared OKF entry content\n');
+
+    prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
+      sitePageConfigs: [pageConfig('home'), pageConfig('release notes')],
+      initialPageTitle: 'home',
+      initialPageDirectory: '',
+      indexSource: { mode: 'trackedPage', sourceGraphPath: 'release notes.md' },
+      logSource: { mode: 'trackedPage', sourceGraphPath: 'release notes.md' },
+    });
+
+    expect(readFile(okfDir, 'index.md')).toContain('Shared OKF entry content');
+    expect(readFile(okfDir, 'index.md')).toContain('okf_version:');
+    expect(readFile(okfDir, 'log.md')).toBe('Shared OKF entry content\n');
+    expect(fs.existsSync(path.join(okfDir, 'release notes.md'))).toBe(false);
+  });
+
   it('omits log.md when the log source mode is none', () => {
     writeFile(scrubbedDir, 'home.md', 'Home\n');
     writeFile(scrubbedDir, 'log.md', 'Log\n');

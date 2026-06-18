@@ -36,6 +36,7 @@ export interface EffectiveGenerationOptions {
  * - else global app config (if present)
  * - else default (true for most options, false for hover preview)
  *
+ * OKF is currently site-specific because its root files require per-site source page choices.
  * Note: tags require backlinks; if backlinks are disabled, tags are forced off.
  */
 export function resolveEffectiveGenerationOptions(
@@ -48,7 +49,7 @@ export function resolveEffectiveGenerationOptions(
   const tagsEnabled = rawTagsEnabled && backlinksEnabled;
   const hoverPreviewEnabled = (siteConfig?.generationHoverPreviewEnabled ?? appConfig?.generationHoverPreviewEnabled) === true;
   const sourcesExportEnabled = (siteConfig?.generationMarkdownZipEnabled ?? appConfig?.generationMarkdownZipEnabled) === true;
-  const openKnowledgeFormatEnabled = (siteConfig?.generationOpenKnowledgeFormatEnabled ?? appConfig?.generationOpenKnowledgeFormatEnabled) === true;
+  const openKnowledgeFormatEnabled = siteConfig?.generationOpenKnowledgeFormatEnabled === true;
   const spacedRepetitionEnabled = (siteConfig?.generationSpacedRepetitionEnabled ?? appConfig?.generationSpacedRepetitionEnabled) === true;
   const spacedRepetitionTags = siteConfig?.generationSpacedRepetitionTags
     ?? appConfig?.generationSpacedRepetitionTags

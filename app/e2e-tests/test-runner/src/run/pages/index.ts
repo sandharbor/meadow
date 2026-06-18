@@ -20,6 +20,7 @@ export { PreviewPublishModal } from "./SiteEditorPage/components/PreviewPublishM
 export { PublishToS3Tab } from "./SiteEditorPage/components/PreviewPublishModal/components/PublishToS3Tab.js";
 export { ChangesTab } from "./SiteEditorPage/components/PreviewPublishModal/components/ChangesTab.js";
 export { CustomizeTab } from "./SiteEditorPage/components/PreviewPublishModal/components/CustomizeTab.js";
+export { OpenKnowledgeFormatModal } from "./SiteEditorPage/components/PreviewPublishModal/components/OpenKnowledgeFormatModal.js";
 export { FilterPanelComponent } from "./SiteEditorPage/components/FilterPanelComponent.js";
 export { CreateAndEditSiteModal } from "./shared/CreateAndEditSiteModal.js";
 export { SelectedPageDetailComponent, Pill, ActionButton } from "./SiteEditorPage/components/SelectedPageDetailComponent.js";

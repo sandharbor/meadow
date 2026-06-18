@@ -16,6 +16,9 @@ limitations under the License.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '../../../../shared/components/Modal';
+import OpenKnowledgeFormatSettingsModal, {
+  type OpenKnowledgeFormatSettings
+} from './open-knowledge-format/OpenKnowledgeFormatSettingsModal';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 
@@ -40,18 +43,27 @@ interface GenerationOptionsPanelProps {
   };
   globalSrsTags: string[];
   siteSrsTagsOverride: string[] | null;
+  siteSlug: string;
   onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
   onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
   onGlobalSrsEnable: (tags: string[]) => Promise<void>;
   onSiteSrsEnable: (setting: OverrideSetting, tags: string[]) => Promise<void>;
+  onSiteOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  onSiteOkfEnable: (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  openKnowledgeFormatRenameCount?: number;
+  onOpenKnowledgeFormatRenameDetails?: () => void;
   disabled?: boolean;
 }
 
 type PendingSrsEnable =
   | { scope: 'global' }
   | { scope: 'site'; setting: OverrideSetting };
+
+type PendingOkfEnable =
+  | { scope: 'site'; setting: OverrideSetting }
+  | { scope: 'edit' };
 
 const DEFAULT_SRS_TAG = '#flashcards';
 
@@ -85,6 +97,11 @@ const SITE_OPTIONS = [
   { value: 'inherit', label: '\u2014' },
   { value: 'enabled', label: 'On' },
   { value: 'disabled', label: 'Off' },
+];
+
+const SITE_ONLY_OPTIONS = [
+  { value: 'disabled', label: 'Off' },
+  { value: 'enabled', label: 'On' },
 ];
 
 const HoverSelect: React.FC<{
@@ -155,12 +172,17 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
   siteOptions,
   globalSrsTags,
   siteSrsTagsOverride,
+  siteSlug,
   onGlobalOptionChange,
   onSiteOptionChange,
   onGlobalSrsTagsChange,
   onSiteSrsTagsChange,
   onGlobalSrsEnable,
   onSiteSrsEnable,
+  onSiteOkfLogSettingsChange,
+  onSiteOkfEnable,
+  openKnowledgeFormatRenameCount = 0,
+  onOpenKnowledgeFormatRenameDetails,
   disabled,
 }) => {
   // scope is only used by the SRS tags modal
@@ -175,6 +197,8 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
   const [tagSaveError, setTagSaveError] = useState<string | null>(null);
   const [isSavingTags, setIsSavingTags] = useState(false);
   const [isSubmittingSrsEnable, setIsSubmittingSrsEnable] = useState(false);
+  const [isOkfSettingsModalOpen, setIsOkfSettingsModalOpen] = useState(false);
+  const [pendingOkfEnable, setPendingOkfEnable] = useState<PendingOkfEnable | null>(null);
 
   useEffect(() => {
     setGlobalTagInput(tagsToInput(globalSrsTags));
@@ -189,6 +213,8 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
     siteOptions.spacedRepetitionSetting === 'inherit'
       ? globalOptions.spacedRepetitionEnabled
       : siteOptions.spacedRepetitionSetting === 'enabled';
+
+  const effectiveOpenKnowledgeFormatEnabled = siteOptions.openKnowledgeFormatSetting === 'enabled';
 
   const effectiveSrsTags = useMemo(
     () => siteSrsTagsOverride ?? globalSrsTags,
@@ -249,6 +275,31 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
     }
 
     await onSiteOptionChange('spacedRepetition', setting);
+  };
+
+  const openOkfSettingsModal = (pending: PendingOkfEnable) => {
+    setPendingOkfEnable(pending);
+    setIsOkfSettingsModalOpen(true);
+  };
+
+  const handleSiteOpenKnowledgeFormatChange = async (setting: OverrideSetting) => {
+    const nextEffective = setting === 'enabled';
+
+    if (nextEffective && !effectiveOpenKnowledgeFormatEnabled) {
+      openOkfSettingsModal({ scope: 'site', setting });
+      return;
+    }
+
+    await onSiteOptionChange('openKnowledgeFormat', setting);
+  };
+
+  const handleConfirmOkfSettings = async (settings: OpenKnowledgeFormatSettings) => {
+    if (!pendingOkfEnable || pendingOkfEnable.scope === 'edit') {
+      await onSiteOkfLogSettingsChange(settings);
+      return;
+    }
+
+    await onSiteOkfEnable(pendingOkfEnable.setting, settings);
   };
 
   const handleConfirmSrsEnable = async () => {
@@ -395,6 +446,49 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
     );
   };
 
+  const renderSiteOnlyOkfRow = () => {
+    const siteSetting = effectiveOpenKnowledgeFormatEnabled ? 'enabled' : 'disabled';
+    const siteColorClass = effectiveOpenKnowledgeFormatEnabled ? 'text-success-600' : 'text-neutral-500';
+
+    return (
+      <div className="grid grid-cols-[1fr,60px,60px] items-center gap-2 px-3 py-2 border-b border-neutral-100">
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="text-neutral-700 truncate">Open Knowledge Format (OKF)</span>
+          {effectiveOpenKnowledgeFormatEnabled ? (
+            <button
+              type="button"
+              onClick={() => openOkfSettingsModal({ scope: 'edit' })}
+              disabled={disabled}
+              className="flex-shrink-0 rounded border border-neutral-300 px-2 py-0.5 text-xs text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Edit
+            </button>
+          ) : null}
+          {openKnowledgeFormatRenameCount > 0 && onOpenKnowledgeFormatRenameDetails ? (
+            <button
+              type="button"
+              onClick={onOpenKnowledgeFormatRenameDetails}
+              className="flex-shrink-0 rounded border border-warning-300 bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-800 hover:bg-warning-100"
+              title="View OKF reserved file renames"
+            >
+              {openKnowledgeFormatRenameCount} renamed
+            </button>
+          ) : null}
+        </div>
+        <div className="text-center text-xs text-neutral-300" title="OKF is configured per site">
+          Site only
+        </div>
+        <HoverSelect
+          value={siteSetting}
+          options={SITE_ONLY_OPTIONS}
+          onChange={(val) => handleSiteOpenKnowledgeFormatChange(val as OverrideSetting)}
+          colorClass={siteColorClass}
+          disabled={disabled}
+        />
+      </div>
+    );
+  };
+
   return (
     <>
       <div className="text-sm">
@@ -446,13 +540,7 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
             (enabled) => onGlobalOptionChange('sourcesExport', enabled),
             (setting) => onSiteOptionChange('sourcesExport', setting),
           )}
-          {renderRow(
-            'Open Knowledge Format (OKF)',
-            globalOptions.openKnowledgeFormatEnabled,
-            siteOptions.openKnowledgeFormatSetting,
-            (enabled) => onGlobalOptionChange('openKnowledgeFormat', enabled),
-            (setting) => onSiteOptionChange('openKnowledgeFormat', setting),
-          )}
+          {renderSiteOnlyOkfRow()}
           {renderRow(
             'Spaced Repetition',
             globalOptions.spacedRepetitionEnabled,
@@ -658,6 +746,17 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
           </div>
         </div>
       </Modal>
+
+      <OpenKnowledgeFormatSettingsModal
+        siteSlug={siteSlug}
+        isOpen={isOkfSettingsModalOpen}
+        confirmLabel={pendingOkfEnable?.scope === 'edit' ? 'Save Settings' : 'Enable OKF'}
+        onClose={() => {
+          setIsOkfSettingsModalOpen(false);
+          setPendingOkfEnable(null);
+        }}
+        onConfirm={handleConfirmOkfSettings}
+      />
     </>
   );
 };

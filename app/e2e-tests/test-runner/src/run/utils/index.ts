@@ -19,4 +19,9 @@ export { MeadowHomeMigrations } from "./MeadowHomeMigrations.js";
 export { MeadowHomePublishingProviderConfig } from "./MeadowHomePublishingProviderConfig.js";
 export { MeadowHomeSiteConfig } from "./MeadowHomeSiteConfig.js";
 export { MinioS3 } from "./MinioS3.js";
+export {
+  seedOkfBigSite,
+  seedTrackedAndLinkedFile,
+  seedTrackedFile,
+} from "./okfSeedUtils.js";
 export { preMigrationFixturePath } from "./preMigrationFixture.js";

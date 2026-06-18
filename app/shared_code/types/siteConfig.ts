@@ -55,6 +55,10 @@ export interface SiteConfig {
   allowImagesToExtendToFrontier?: boolean; // Whether images linked from frontier-edge pages should be included (overrides app setting)
   generationMarkdownZipEnabled?: boolean; // Whether to generate a downloadable sources ZIP (default: false)
   generationOpenKnowledgeFormatEnabled?: boolean; // Whether to generate an Open Knowledge Format bundle (default: false)
+  generationOpenKnowledgeFormatIndexMode?: 'generated' | 'trackedPage'; // Site-specific OKF index.md source selection
+  generationOpenKnowledgeFormatIndexSourcePath?: string; // Source-graph-relative path used when OKF index mode is trackedPage
+  generationOpenKnowledgeFormatLogMode?: 'auto' | 'none' | 'trackedPage'; // Site-specific OKF log.md source selection
+  generationOpenKnowledgeFormatLogSourcePath?: string; // Source-graph-relative path used when OKF log mode is trackedPage
   generationSpacedRepetitionEnabled?: boolean; // Whether to render client-side spaced repetition widgets (default: false)
   generationSpacedRepetitionTags?: string[]; // Tags that identify source pages whose SRS prompts should be processed during generation
   stylePresetId?: string; // Style preset ID for this site (undefined = inherit from global)

@@ -16,6 +16,7 @@ limitations under the License.
 
 import React, { useState, useCallback, useRef } from 'react';
 import GenerationOptionsPanel from './GenerationOptionsPanel';
+import type { OpenKnowledgeFormatSettings } from './open-knowledge-format/OpenKnowledgeFormatSettingsModal';
 import StylePresetsPanel from './StylePresetsPanel';
 import CustomAssetsPanel from './CustomAssetsPanel';
 import HooksPanel from './HooksPanel';
@@ -58,6 +59,10 @@ interface CustomizeSidebarProps {
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
   onGlobalSrsEnable: (tags: string[]) => Promise<void>;
   onSiteSrsEnable: (setting: OverrideSetting, tags: string[]) => Promise<void>;
+  onSiteOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  onSiteOkfEnable: (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  openKnowledgeFormatRenameCount: number;
+  onOpenKnowledgeFormatRenameDetails: () => void;
   disabled: boolean;
 
   // Style presets
@@ -96,6 +101,10 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
   onSiteSrsTagsChange,
   onGlobalSrsEnable,
   onSiteSrsEnable,
+  onSiteOkfLogSettingsChange,
+  onSiteOkfEnable,
+  openKnowledgeFormatRenameCount,
+  onOpenKnowledgeFormatRenameDetails,
   disabled,
   onPresetChanged,
   onCustomAssetsChanged,
@@ -242,12 +251,17 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
               siteOptions={siteGenerationOptions}
               globalSrsTags={globalSrsTags}
               siteSrsTagsOverride={siteSrsTagsOverride}
+              siteSlug={siteSlug}
               onGlobalOptionChange={onGlobalOptionChange}
               onSiteOptionChange={onSiteOptionChange}
               onGlobalSrsTagsChange={onGlobalSrsTagsChange}
               onSiteSrsTagsChange={onSiteSrsTagsChange}
               onGlobalSrsEnable={onGlobalSrsEnable}
               onSiteSrsEnable={onSiteSrsEnable}
+              onSiteOkfLogSettingsChange={onSiteOkfLogSettingsChange}
+              onSiteOkfEnable={onSiteOkfEnable}
+              openKnowledgeFormatRenameCount={openKnowledgeFormatRenameCount}
+              onOpenKnowledgeFormatRenameDetails={onOpenKnowledgeFormatRenameDetails}
               disabled={disabled}
             />
           </div>

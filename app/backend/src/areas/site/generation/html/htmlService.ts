@@ -66,6 +66,10 @@ import {
   cleanupPublishedOpenKnowledgeFormatArtifacts,
   generatePublishedOpenKnowledgeFormatArtifacts
 } from '../open-knowledge-format/publishedOpenKnowledgeFormat.js';
+import {
+  openKnowledgeFormatIndexSourceFromSiteConfig,
+  openKnowledgeFormatLogSourceFromSiteConfig
+} from '../open-knowledge-format/openKnowledgeFormatConfig.js';
 import { prepareScrubbedSourceDirectory } from '../source-material/sourceScrubbing.js';
 import { prepareGenerationSourceMaterial } from '../source-material/trackedPageContent.js';
 import type { StaticAssetNames } from './types.js';
@@ -936,6 +940,8 @@ export async function generateHtmlForSite(
           allLinkResolutionMaps,
           initialPageTitle: initialSitePageTitle,
           initialPageDirectory: initialSitePageDirectory,
+          indexSource: openKnowledgeFormatIndexSourceFromSiteConfig(siteConfig),
+          logSource: openKnowledgeFormatLogSourceFromSiteConfig(siteConfig),
           archiveRootDirectory: getArtifactArchiveSlug(siteDirectory, siteConfig),
         });
         if (result.enabled) {

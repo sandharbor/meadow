@@ -36,6 +36,10 @@ export type OpenKnowledgeFormatLogSource =
   | { mode: 'none' }
   | { mode: 'trackedPage'; sourceGraphPath: string };
 
+export type OpenKnowledgeFormatIndexSource =
+  | { mode: 'generated' }
+  | { mode: 'trackedPage'; sourceGraphPath: string };
+
 export interface OpenKnowledgeFormatRename {
   sourcePath: string;
   originalOutputPath: string;
@@ -48,11 +52,13 @@ export interface PrepareOpenKnowledgeFormatOptions {
   allLinkResolutionMaps?: AllLinkResolutionMaps;
   initialPageTitle?: string;
   initialPageDirectory?: string;
+  indexSource?: OpenKnowledgeFormatIndexSource;
   logSource?: OpenKnowledgeFormatLogSource;
 }
 
 export interface PrepareOpenKnowledgeFormatResult {
   renames: OpenKnowledgeFormatRename[];
+  indexOutputPath: string;
   logOutputPath: string | null;
 }
 
@@ -226,8 +232,12 @@ function reservedOriginalPathFor(sourcePath: string): string {
   return dir ? `${dir}/${renamed}` : renamed;
 }
 
-function selectAutoLogSource(markdownFiles: string[], initialSourcePath: string | null): string | null {
-  const candidates = markdownFiles.filter(file => path.posix.basename(file) === ROOT_LOG_PATH);
+function selectAutoReservedOpenKnowledgeFormatSource(
+  markdownFiles: string[],
+  initialSourcePath: string | null,
+  rootPath: string
+): string | null {
+  const candidates = markdownFiles.filter(file => path.posix.basename(file) === rootPath);
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return candidates[0];
 
@@ -235,13 +245,21 @@ function selectAutoLogSource(markdownFiles: string[], initialSourcePath: string 
   const besideInitialPage = candidates.find(file => relativeDirFor(file) === initialDir);
   if (besideInitialPage) return besideInitialPage;
 
-  const rootLog = candidates.find(file => file === ROOT_LOG_PATH);
-  if (rootLog) return rootLog;
+  const rootSource = candidates.find(file => file === rootPath);
+  if (rootSource) return rootSource;
 
   return [...candidates].sort((a, b) => {
     const dirCompare = relativeDirFor(a).localeCompare(relativeDirFor(b));
     return dirCompare !== 0 ? dirCompare : a.localeCompare(b);
   })[0] ?? null;
+}
+
+export function selectAutoOpenKnowledgeFormatIndexSource(markdownFiles: string[], initialSourcePath: string | null): string | null {
+  return selectAutoReservedOpenKnowledgeFormatSource(markdownFiles, initialSourcePath, ROOT_INDEX_PATH);
+}
+
+export function selectAutoOpenKnowledgeFormatLogSource(markdownFiles: string[], initialSourcePath: string | null): string | null {
+  return selectAutoReservedOpenKnowledgeFormatSource(markdownFiles, initialSourcePath, ROOT_LOG_PATH);
 }
 
 function selectConfiguredLogSource(
@@ -255,7 +273,18 @@ function selectConfiguredLogSource(
     const normalized = normalizeSourcePath(setting.sourceGraphPath);
     return markdownFiles.includes(normalized) ? normalized : null;
   }
-  return selectAutoLogSource(markdownFiles, initialSourcePath);
+  return selectAutoOpenKnowledgeFormatLogSource(markdownFiles, initialSourcePath);
+}
+
+function selectConfiguredIndexSource(
+  markdownFiles: string[],
+  setting: OpenKnowledgeFormatIndexSource
+): string | null {
+  if (setting.mode === 'trackedPage') {
+    const normalized = normalizeSourcePath(setting.sourceGraphPath);
+    return markdownFiles.includes(normalized) ? normalized : null;
+  }
+  return null;
 }
 
 function buildSourcePathByTitleAndDir(sitePageConfigs: SitePageConfig[]): Map<string, string> {
@@ -309,6 +338,31 @@ function conceptMarkdownFor(
   return FrontmatterUtils.combineToText(frontmatter, convertedContent);
 }
 
+function indexMarkdownFor(
+  sourceMarkdown: string,
+  sourcePath: string,
+  outputPathBySourcePath: Map<string, string>,
+  sourcePathByTitleAndDir: Map<string, string>,
+  allLinkResolutionMaps?: AllLinkResolutionMaps
+): string {
+  const restoredMarkdown = restoreScrubbedMarkdown(sourceMarkdown);
+  const parsed = FrontmatterUtils.parseFromText(restoredMarkdown);
+  const convertedContent = convertWikiLinksToMarkdown(
+    parsed.content,
+    sourcePath,
+    outputPathBySourcePath,
+    sourcePathByTitleAndDir,
+    allLinkResolutionMaps
+  );
+  return FrontmatterUtils.combineToText(
+    {
+      ...parsed.frontmatter,
+      okf_version: '0.1',
+    },
+    convertedContent
+  );
+}
+
 function logMarkdownFor(
   sourceMarkdown: string,
   sourcePath: string,
@@ -353,6 +407,10 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
   const initialSourcePath = options.initialPageTitle
     ? sourcePathByTitleAndDir.get(`${initialPageDirectory}\0${options.initialPageTitle}`) ?? null
     : null;
+  const indexSourcePath = selectConfiguredIndexSource(
+    markdownFiles,
+    options.indexSource ?? { mode: 'generated' }
+  );
   const logSourcePath = selectConfiguredLogSource(
     markdownFiles,
     sourcePathByTitleAndDir,
@@ -366,12 +424,14 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
   const renames: OpenKnowledgeFormatRename[] = [];
 
   for (const relativePath of files) {
+    if (relativePath === indexSourcePath) continue;
     if (relativePath === logSourcePath) continue;
     if (relativePath.endsWith('.md') && RESERVED_MARKDOWN_FILENAMES.has(path.posix.basename(relativePath))) continue;
     outputPathBySourcePath.set(relativePath, uniquePathFor(relativePath, occupied));
   }
 
   for (const relativePath of markdownFiles) {
+    if (relativePath === indexSourcePath) continue;
     if (relativePath === logSourcePath) continue;
     if (!RESERVED_MARKDOWN_FILENAMES.has(path.posix.basename(relativePath))) continue;
 
@@ -386,31 +446,66 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
     });
   }
 
-  if (logSourcePath) {
+  if (indexSourcePath) {
+    outputPathBySourcePath.set(indexSourcePath, ROOT_INDEX_PATH);
+  }
+  if (logSourcePath && logSourcePath !== indexSourcePath) {
     outputPathBySourcePath.set(logSourcePath, ROOT_LOG_PATH);
   }
 
   for (const relativePath of files) {
-    const outputPath = outputPathBySourcePath.get(relativePath);
-    if (!outputPath) continue;
-
     const sourcePath = path.join(scrubbedContentDir, ...relativePath.split('/'));
     if (relativePath.endsWith('.md')) {
       const content = fs.readFileSync(sourcePath, 'utf8');
-      const output = relativePath === logSourcePath
-        ? logMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, options.allLinkResolutionMaps)
-        : conceptMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, options.allLinkResolutionMaps);
+      if (relativePath === indexSourcePath) {
+        writeTextFile(outputDir, ROOT_INDEX_PATH, indexMarkdownFor(
+          content,
+          relativePath,
+          outputPathBySourcePath,
+          sourcePathByTitleAndDir,
+          options.allLinkResolutionMaps
+        ));
+        if (relativePath === logSourcePath) {
+          writeTextFile(outputDir, ROOT_LOG_PATH, logMarkdownFor(
+            content,
+            relativePath,
+            outputPathBySourcePath,
+            sourcePathByTitleAndDir,
+            options.allLinkResolutionMaps
+          ));
+        }
+        continue;
+      }
+      if (relativePath === logSourcePath) {
+        writeTextFile(outputDir, ROOT_LOG_PATH, logMarkdownFor(
+          content,
+          relativePath,
+          outputPathBySourcePath,
+          sourcePathByTitleAndDir,
+          options.allLinkResolutionMaps
+        ));
+        continue;
+      }
+
+      const outputPath = outputPathBySourcePath.get(relativePath);
+      if (!outputPath) continue;
+      const output = conceptMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, options.allLinkResolutionMaps);
       writeTextFile(outputDir, outputPath, output);
     } else {
+      const outputPath = outputPathBySourcePath.get(relativePath);
+      if (!outputPath) continue;
       writeBinaryFile(outputDir, outputPath, sourcePath);
     }
   }
 
   const initialOutputPath = initialSourcePath ? outputPathBySourcePath.get(initialSourcePath) ?? null : null;
-  writeTextFile(outputDir, ROOT_INDEX_PATH, rootIndexMarkdown(initialOutputPath, options.initialPageTitle));
+  if (!indexSourcePath) {
+    writeTextFile(outputDir, ROOT_INDEX_PATH, rootIndexMarkdown(initialOutputPath, options.initialPageTitle));
+  }
 
   return {
     renames,
+    indexOutputPath: ROOT_INDEX_PATH,
     logOutputPath: logSourcePath ? ROOT_LOG_PATH : null,
   };
 }

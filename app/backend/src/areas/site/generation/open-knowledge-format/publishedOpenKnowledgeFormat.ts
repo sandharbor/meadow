@@ -19,7 +19,11 @@ import path from 'path';
 import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
 import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
-import { prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory } from './openKnowledgeFormat.js';
+import {
+  prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory,
+  type OpenKnowledgeFormatIndexSource,
+  type OpenKnowledgeFormatLogSource
+} from './openKnowledgeFormat.js';
 import {
   createOpenKnowledgeFormatZip,
   getOpenKnowledgeFormatDownloadFilename,
@@ -43,6 +47,8 @@ export interface GeneratePublishedOpenKnowledgeFormatOptions {
   allLinkResolutionMaps?: AllLinkResolutionMaps;
   initialPageTitle?: string;
   initialPageDirectory?: string;
+  indexSource?: OpenKnowledgeFormatIndexSource;
+  logSource?: OpenKnowledgeFormatLogSource;
   archiveRootDirectory: string;
 }
 
@@ -68,6 +74,8 @@ export async function generatePublishedOpenKnowledgeFormatArtifacts(
       allLinkResolutionMaps: options.allLinkResolutionMaps,
       initialPageTitle: options.initialPageTitle,
       initialPageDirectory: options.initialPageDirectory,
+      indexSource: options.indexSource,
+      logSource: options.logSource,
     }
   );
   writeOpenKnowledgeFormatGenerationManifest(options.siteDirectory, result);

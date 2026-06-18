@@ -24,6 +24,7 @@ import SiteLogsModal from './SiteLogsModal';
 import SinglePagePreviewCallout, { useSinglePagePreviewCallout } from '../../../areas/site/review/components/calloutModals/SinglePagePreviewCallout';
 import CreateOrEditSiteModal from '../../../areas/sites/components/CreateOrEditSiteModal';
 import PreviewPublishModal from './PreviewPublishModal';
+import type { OpenKnowledgeFormatSettings } from '../../../areas/site/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
 import { useFilterState, createUntrackedPageSelector } from '../../../areas/site/curation/types/filters';
 import type { SitePageConfig } from '../../../../../shared_code/types/sitePageConfig';
 import { configMatchesPage, getPageKey, getOrphanPageConfigs } from '../../../../../shared_code/utils/sitePageConfigUtils';
@@ -928,6 +929,46 @@ const SiteEditor: React.FC = () => {
     }
   };
 
+  const handleSiteOkfLogSettingsChange = async (settings: OpenKnowledgeFormatSettings) => {
+    if (!slug) return;
+
+    try {
+      await fetch(`${API_BASE_URL}/sites/${slug}/generation/options`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          generationOpenKnowledgeFormatIndexMode: settings.index.mode,
+          generationOpenKnowledgeFormatIndexSourcePath: settings.index.sourceGraphPath,
+          generationOpenKnowledgeFormatLogMode: settings.log.mode,
+          generationOpenKnowledgeFormatLogSourcePath: settings.log.sourceGraphPath,
+        })
+      });
+    } catch (error) {
+      logger.error('Failed to update site OKF log settings:', error);
+    }
+  };
+
+  const handleSiteOkfEnable = async (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => {
+    if (!slug) return;
+    setSiteGenerationOpenKnowledgeFormatSetting(setting);
+
+    try {
+      await fetch(`${API_BASE_URL}/sites/${slug}/generation/options`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          generationOpenKnowledgeFormatEnabled: settingToPayload(setting),
+          generationOpenKnowledgeFormatIndexMode: settings.index.mode,
+          generationOpenKnowledgeFormatIndexSourcePath: settings.index.sourceGraphPath,
+          generationOpenKnowledgeFormatLogMode: settings.log.mode,
+          generationOpenKnowledgeFormatLogSourcePath: settings.log.sourceGraphPath,
+        })
+      });
+    } catch (error) {
+      logger.error('Failed to enable site OKF settings:', error);
+    }
+  };
+
   const handleClosePublishModal = () => {
     setIsPublishModalOpen(false);
     setPreviewStartPage(undefined);
@@ -1134,6 +1175,8 @@ const SiteEditor: React.FC = () => {
         onSiteGenerationOptionChange={handleSiteGenerationOptionChange}
         onGlobalSrsTagsChange={handleGlobalSrsTagsChange}
         onSiteSrsTagsChange={handleSiteSrsTagsChange}
+        onSiteOkfLogSettingsChange={handleSiteOkfLogSettingsChange}
+        onSiteOkfEnable={handleSiteOkfEnable}
         hasPublishedVersions={hasPublishedVersions}
         onOpenVersionsModal={() => {
           setIsPublishModalOpen(false);

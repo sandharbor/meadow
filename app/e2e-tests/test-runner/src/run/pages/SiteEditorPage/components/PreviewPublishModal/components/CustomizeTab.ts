@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import type { Page, Expect } from "@playwright/test";
+import { OpenKnowledgeFormatModal } from "./OpenKnowledgeFormatModal.js";
 
 // ---------------------------------------------------------------------------
 // Hook — represents a single hook row in the Hooks section
@@ -137,9 +138,14 @@ class GenerationOptionsSection {
     private expect: Expect,
   ) {}
 
+  /** Get a named setting row in the publish options grid. */
+  private settingRow(name: string) {
+    return this.page.locator("span", { hasText: name }).locator("xpath=ancestor::div[contains(@class, 'grid')]");
+  }
+
   /** Get the Site column HoverSelect combobox for a named setting row. */
   private settingSiteCombobox(name: string) {
-    const row = this.page.locator("span", { hasText: name }).locator("xpath=ancestor::div[contains(@class, 'grid')]");
+    const row = this.settingRow(name);
     // Site column is the last combobox in the row (Global is first)
     return row.locator('[role="combobox"]').last();
   }
@@ -172,7 +178,27 @@ class GenerationOptionsSection {
 
   /** Set the OKF site-level setting to "On" (enabled). */
   async enableOpenKnowledgeFormat() {
+    const modal = await this.openOpenKnowledgeFormatSettings();
+    await modal.save();
+  }
+
+  async openOpenKnowledgeFormatSettings(): Promise<OpenKnowledgeFormatModal> {
     await this.selectHoverOption("Open Knowledge Format (OKF)", "On");
+    const modal = new OpenKnowledgeFormatModal(this.page, this.expect);
+    await modal.expectVisible();
+    return modal;
+  }
+
+  async expectOpenKnowledgeFormatRenameIndicatorVisible(count: number) {
+    const indicator = this.settingRow("Open Knowledge Format (OKF)").getByRole("button", { name: `${count} renamed` });
+    await this.expect(indicator).toBeVisible({ timeout: 30_000 });
+  }
+
+  async openOpenKnowledgeFormatRenameDetails(count: number) {
+    const indicator = this.settingRow("Open Knowledge Format (OKF)").getByRole("button", { name: `${count} renamed` });
+    await this.expect(indicator).toBeVisible({ timeout: 30_000 });
+    await indicator.click();
+    await this.expect(this.page.getByRole("heading", { name: "OKF Reserved Files Renamed" })).toBeVisible();
   }
 }
 

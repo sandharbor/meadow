@@ -31,6 +31,7 @@ import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
 import { getHtmlPathForPage } from '../../../../shared/utils/htmlPathLookup.js';
 import { ensureTrackedPageContent } from '../source-material/trackedPageContent.js';
 import { readOpenKnowledgeFormatGenerationManifest } from '../open-knowledge-format/openKnowledgeFormatGenerationManifest.js';
+import { getOpenKnowledgeFormatLogPageOptions } from '../open-knowledge-format/openKnowledgeFormatLogPages.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { clearSiteGuidCache, logSiteError, logSiteInfo } from '../../../../shared/utils/logging/siteLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -76,6 +77,30 @@ router.get('/sites/:siteSlug/generation/open-knowledge-format/manifest', (req, r
   } catch (error) {
     next(error);
   }
+});
+
+router.get('/sites/:siteSlug/generation/open-knowledge-format/log-page-options', (req, res, next) => {
+  (async () => {
+    const { siteSlug } = req.params;
+    if (!siteSlug) {
+      return res.status(400).json({ error: 'siteSlug is required' });
+    }
+
+    const siteDirectory = getSiteDirectory(siteSlug);
+    if (!fs.existsSync(siteDirectory)) {
+      return res.status(404).json({ error: `Site '${siteSlug}' not found` });
+    }
+
+    const siteConfig = loadSiteConfig(siteDirectory);
+    if (siteConfig.sourceDirectory) {
+      await ensureTrackedPageContent(siteDirectory, siteConfig.sourceDirectory);
+    }
+
+    const rawQuery = typeof req.query.query === 'string' ? req.query.query : '';
+    const parsedLimit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : NaN;
+    const limit = !Number.isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
+    res.json(await getOpenKnowledgeFormatLogPageOptions(siteDirectory, { query: rawQuery, limit }));
+  })().catch(next);
 });
 
 
@@ -677,6 +702,10 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     generationHoverPreviewEnabled,
     generationMarkdownZipEnabled,
     generationOpenKnowledgeFormatEnabled,
+    generationOpenKnowledgeFormatIndexMode,
+    generationOpenKnowledgeFormatIndexSourcePath,
+    generationOpenKnowledgeFormatLogMode,
+    generationOpenKnowledgeFormatLogSourcePath,
     generationSpacedRepetitionEnabled,
     generationSpacedRepetitionTags,
   } = req.body as {
@@ -686,6 +715,10 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     generationHoverPreviewEnabled?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
     generationOpenKnowledgeFormatEnabled?: boolean | null;
+    generationOpenKnowledgeFormatIndexMode?: 'generated' | 'trackedPage' | null;
+    generationOpenKnowledgeFormatIndexSourcePath?: string | null;
+    generationOpenKnowledgeFormatLogMode?: 'auto' | 'none' | 'trackedPage' | null;
+    generationOpenKnowledgeFormatLogSourcePath?: string | null;
     generationSpacedRepetitionEnabled?: boolean | null;
     generationSpacedRepetitionTags?: string[] | null;
   };
@@ -703,6 +736,12 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
       v === undefined ||
       v === null ||
       (Array.isArray(v) && v.every(item => typeof item === 'string'));
+    const validateStringOrNullOrUndef = (v: unknown): v is string | null | undefined =>
+      v === undefined || v === null || typeof v === 'string';
+    const validateOkfLogModeOrNullOrUndef = (v: unknown): v is 'auto' | 'none' | 'trackedPage' | null | undefined =>
+      v === undefined || v === null || v === 'auto' || v === 'none' || v === 'trackedPage';
+    const validateOkfIndexModeOrNullOrUndef = (v: unknown): v is 'generated' | 'trackedPage' | null | undefined =>
+      v === undefined || v === null || v === 'generated' || v === 'trackedPage';
 
     if (
       !validateBoolOrNullOrUndef(generationBreadcrumbsEnabled) ||
@@ -711,10 +750,28 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
       !validateBoolOrNullOrUndef(generationHoverPreviewEnabled) ||
       !validateBoolOrNullOrUndef(generationMarkdownZipEnabled) ||
       !validateBoolOrNullOrUndef(generationOpenKnowledgeFormatEnabled) ||
+      !validateOkfIndexModeOrNullOrUndef(generationOpenKnowledgeFormatIndexMode) ||
+      !validateStringOrNullOrUndef(generationOpenKnowledgeFormatIndexSourcePath) ||
+      !validateOkfLogModeOrNullOrUndef(generationOpenKnowledgeFormatLogMode) ||
+      !validateStringOrNullOrUndef(generationOpenKnowledgeFormatLogSourcePath) ||
       !validateBoolOrNullOrUndef(generationSpacedRepetitionEnabled) ||
       !validateStringArrayOrNullOrUndef(generationSpacedRepetitionTags)
     ) {
       return res.status(400).json({ error: 'Publish options must be boolean, null, or undefined' });
+    }
+    if (
+      generationOpenKnowledgeFormatIndexMode === 'trackedPage' &&
+      generationOpenKnowledgeFormatIndexSourcePath !== undefined &&
+      !generationOpenKnowledgeFormatIndexSourcePath?.trim()
+    ) {
+      return res.status(400).json({ error: 'OKF index source path is required when index mode is trackedPage' });
+    }
+    if (
+      generationOpenKnowledgeFormatLogMode === 'trackedPage' &&
+      generationOpenKnowledgeFormatLogSourcePath !== undefined &&
+      !generationOpenKnowledgeFormatLogSourcePath?.trim()
+    ) {
+      return res.status(400).json({ error: 'OKF log source path is required when log mode is trackedPage' });
     }
 
     // Read existing config to support "inherit" (null => delete key) without losing unknown fields.
@@ -723,7 +780,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     const existingConfig = YAML.parse(yamlContent) as SiteConfig;
     const updatedConfig: SiteConfig = { ...existingConfig, siteUpdatedAt: new Date().toISOString() };
 
-    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationHoverPreviewEnabled' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
+    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationHoverPreviewEnabled' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationOpenKnowledgeFormatIndexMode' | 'generationOpenKnowledgeFormatIndexSourcePath' | 'generationOpenKnowledgeFormatLogMode' | 'generationOpenKnowledgeFormatLogSourcePath' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
       key: K,
       value: SiteConfig[K] | null | undefined
     ) => {
@@ -741,11 +798,32 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     setOrDelete('generationHoverPreviewEnabled', generationHoverPreviewEnabled);
     setOrDelete('generationMarkdownZipEnabled', generationMarkdownZipEnabled);
     setOrDelete('generationOpenKnowledgeFormatEnabled', generationOpenKnowledgeFormatEnabled);
+    setOrDelete('generationOpenKnowledgeFormatIndexMode', generationOpenKnowledgeFormatIndexMode);
+    setOrDelete(
+      'generationOpenKnowledgeFormatIndexSourcePath',
+      typeof generationOpenKnowledgeFormatIndexSourcePath === 'string'
+        ? generationOpenKnowledgeFormatIndexSourcePath.trim()
+        : generationOpenKnowledgeFormatIndexSourcePath
+    );
+    setOrDelete('generationOpenKnowledgeFormatLogMode', generationOpenKnowledgeFormatLogMode);
+    setOrDelete(
+      'generationOpenKnowledgeFormatLogSourcePath',
+      typeof generationOpenKnowledgeFormatLogSourcePath === 'string'
+        ? generationOpenKnowledgeFormatLogSourcePath.trim()
+        : generationOpenKnowledgeFormatLogSourcePath
+    );
     setOrDelete('generationSpacedRepetitionEnabled', generationSpacedRepetitionEnabled);
     setOrDelete(
       'generationSpacedRepetitionTags',
       generationSpacedRepetitionTags?.map(tag => tag.trim()).filter(tag => tag.length > 0)
     );
+
+    if (generationOpenKnowledgeFormatIndexMode && generationOpenKnowledgeFormatIndexMode !== 'trackedPage') {
+      delete updatedConfig.generationOpenKnowledgeFormatIndexSourcePath;
+    }
+    if (generationOpenKnowledgeFormatLogMode && generationOpenKnowledgeFormatLogMode !== 'trackedPage') {
+      delete updatedConfig.generationOpenKnowledgeFormatLogSourcePath;
+    }
 
     // Enforce dependency when backlinks are explicitly overridden off for this site.
     if (generationBacklinksEnabled === false) {

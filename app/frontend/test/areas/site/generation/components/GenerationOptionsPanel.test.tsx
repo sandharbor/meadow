@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import GenerationOptionsPanel from '../../../../../src/areas/site/generation/components/GenerationOptionsPanel';
 
@@ -40,13 +40,54 @@ describe('GenerationOptionsPanel', () => {
     },
     globalSrsTags: [],
     siteSrsTagsOverride: null,
+    siteSlug: 'test-site',
     onGlobalOptionChange: vi.fn().mockResolvedValue(undefined),
     onSiteOptionChange: vi.fn().mockResolvedValue(undefined),
     onGlobalSrsTagsChange: vi.fn().mockResolvedValue(undefined),
     onSiteSrsTagsChange: vi.fn().mockResolvedValue(undefined),
     onGlobalSrsEnable: vi.fn().mockResolvedValue(undefined),
     onSiteSrsEnable: vi.fn().mockResolvedValue(undefined),
+    onSiteOkfLogSettingsChange: vi.fn().mockResolvedValue(undefined),
+    onSiteOkfEnable: vi.fn().mockResolvedValue(undefined),
     disabled: false,
+  });
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        index: {
+          mode: 'generated',
+          sourceGraphPath: null,
+          defaultPage: null,
+          selectedPage: null,
+        },
+        log: {
+          mode: 'auto',
+          sourceGraphPath: null,
+          defaultPage: {
+            title: 'log',
+            directory: '',
+            file_type: 'md',
+            fullPath: 'log.md',
+            modifiedTimeMs: 0,
+          },
+          selectedPage: {
+            title: 'log',
+            directory: '',
+            file_type: 'md',
+            fullPath: 'log.md',
+            modifiedTimeMs: 0,
+          },
+        },
+        pages: [],
+        count: 0,
+      }),
+    }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('shows a confirmation modal before enabling site SRS and saves the chosen tags', async () => {
@@ -153,6 +194,55 @@ describe('GenerationOptionsPanel', () => {
     render(<GenerationOptionsPanel {...props} />);
 
     expect(screen.getByText('Open Knowledge Format (OKF)')).toBeInTheDocument();
+    expect(screen.getByText('Site only')).toBeInTheDocument();
+  });
+
+  it('shows the OKF reserved rename indicator beside the OKF generation option', () => {
+    const props = buildProps();
+    const onOpenKnowledgeFormatRenameDetails = vi.fn();
+    render(
+      <GenerationOptionsPanel
+        {...props}
+        siteOptions={{ ...props.siteOptions, openKnowledgeFormatSetting: 'enabled' }}
+        openKnowledgeFormatRenameCount={2}
+        onOpenKnowledgeFormatRenameDetails={onOpenKnowledgeFormatRenameDetails}
+      />
+    );
+
+    const okfRow = screen.getByText('Open Knowledge Format (OKF)').closest('div')!.parentElement!;
+    const indicator = within(okfRow).getByRole('button', { name: '2 renamed' });
+    fireEvent.click(indicator);
+
+    expect(onOpenKnowledgeFormatRenameDetails).toHaveBeenCalledOnce();
+  });
+
+  it('shows settings before enabling site OKF and saves the selected log mode', async () => {
+    const props = buildProps();
+    render(<GenerationOptionsPanel {...props} />);
+
+    const okfRow = screen.getByText('Open Knowledge Format (OKF)').closest('div')!.parentElement!;
+    const comboboxes = within(okfRow).getAllByRole('combobox');
+    expect(comboboxes).toHaveLength(1);
+    fireEvent.click(comboboxes[0]);
+    const dropdownButtons = screen.getAllByRole('button', { name: 'On' });
+    fireEvent.click(dropdownButtons[dropdownButtons.length - 1]);
+
+    await screen.findByText('Open Knowledge Format Settings');
+    expect(screen.getByText(/Uses log \(root\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Enable OKF' }));
+
+    await waitFor(() => {
+      expect(props.onSiteOkfEnable).toHaveBeenCalledWith('enabled', {
+        index: {
+          mode: 'generated',
+          sourceGraphPath: null,
+        },
+        log: {
+          mode: 'auto',
+          sourceGraphPath: null,
+        },
+      });
+    });
   });
 
   it('shows an edit button when site SRS is explicitly enabled without a tag override', () => {

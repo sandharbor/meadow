@@ -26,6 +26,7 @@ export const OPEN_KNOWLEDGE_FORMAT_GENERATION_MANIFEST_FILENAME = 'okf-generatio
 
 export interface OpenKnowledgeFormatGenerationManifest {
   renames: OpenKnowledgeFormatRename[];
+  indexOutputPath: string | null;
   logOutputPath: string | null;
 }
 
@@ -46,6 +47,7 @@ export function writeOpenKnowledgeFormatGenerationManifest(
     manifestPath,
     JSON.stringify({
       renames: result.renames,
+      indexOutputPath: result.indexOutputPath,
       logOutputPath: result.logOutputPath,
     }, null, 2),
     'utf8'
@@ -57,12 +59,13 @@ export function readOpenKnowledgeFormatGenerationManifest(
 ): OpenKnowledgeFormatGenerationManifest {
   const manifestPath = getOpenKnowledgeFormatGenerationManifestPath(siteDirectory);
   if (!fs.existsSync(manifestPath)) {
-    return { renames: [], logOutputPath: null };
+    return { renames: [], indexOutputPath: null, logOutputPath: null };
   }
 
   const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as Partial<OpenKnowledgeFormatGenerationManifest>;
   return {
     renames: Array.isArray(parsed.renames) ? parsed.renames : [],
+    indexOutputPath: typeof parsed.indexOutputPath === 'string' ? parsed.indexOutputPath : null,
     logOutputPath: typeof parsed.logOutputPath === 'string' ? parsed.logOutputPath : null,
   };
 }

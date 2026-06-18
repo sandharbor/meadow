@@ -29,6 +29,7 @@ import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import Modal from '../../components/Modal';
+import type { OpenKnowledgeFormatSettings } from '../../../areas/site/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 type TopLevelTab = 'review' | 'share';
@@ -75,6 +76,8 @@ interface PreviewPublishModalProps {
   onSiteGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
+  onSiteOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  onSiteOkfEnable: (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => Promise<void>;
 
   // Version management
   hasPublishedVersions: boolean;
@@ -112,6 +115,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   onSiteGenerationOptionChange,
   onGlobalSrsTagsChange,
   onSiteSrsTagsChange,
+  onSiteOkfLogSettingsChange,
+  onSiteOkfEnable,
   hasPublishedVersions: _hasPublishedVersions,
   onOpenVersionsModal: _onOpenVersionsModal,
   onBusyChange,
@@ -725,6 +730,16 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     await regeneratePreviewAndReload();
   }, [onSiteGenerationOptionChange, onSiteSrsTagsChange, regeneratePreviewAndReload]);
 
+  const handleSiteOkfLogSettingsChange = useCallback(async (settings: OpenKnowledgeFormatSettings) => {
+    await onSiteOkfLogSettingsChange(settings);
+    await regeneratePreviewAndReload();
+  }, [onSiteOkfLogSettingsChange, regeneratePreviewAndReload]);
+
+  const handleSiteOkfEnable = useCallback(async (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => {
+    await onSiteOkfEnable(setting, settings);
+    await regeneratePreviewAndReload();
+  }, [onSiteOkfEnable, regeneratePreviewAndReload]);
+
   // Handle refresh from external editor changes
   const handleCustomizeRefresh = useCallback(async () => {
     // Clear server-side hooks cache so regeneration picks up file changes from disk
@@ -797,6 +812,9 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   const activeProvider = useActivePublishingProvider();
   const PublishTabComponent = activeProvider?.PublishTabComponent ?? null;
   const publishTabLabel = activeProvider?.manifest.publishTabLabel ?? 'Publish';
+  const hasOkfRenameCollisions = openKnowledgeFormatRenames.some(
+    rename => rename.originalOutputPath !== rename.finalOutputPath
+  );
 
   return (
     <div
@@ -852,24 +870,6 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
               onClick={onShowUntrackedPages}
               showActionLink
             />
-          </div>
-        )}
-
-        {previewResult?.success && openKnowledgeFormatRenames.length > 0 && (
-          <div className="flex justify-center mb-3">
-            <div className="px-4 py-2 bg-warning-50 text-warning-700 text-sm rounded border border-warning-300 flex items-center gap-2">
-              <span className="text-warning-600">&#9888;&#65039;</span>
-              <span>
-                OKF export renamed {openKnowledgeFormatRenames.length} reserved file{openKnowledgeFormatRenames.length === 1 ? '' : 's'}.
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsOkfRenameModalOpen(true)}
-                className="text-warning-800 underline hover:text-warning-900 font-medium"
-              >
-                View details.
-              </button>
-            </div>
           </div>
         )}
 
@@ -1164,6 +1164,10 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                   onSiteSrsTagsChange={handleSiteSrsTagsChange}
                   onGlobalSrsEnable={handleGlobalSrsEnable}
                   onSiteSrsEnable={handleSiteSrsEnable}
+                  onSiteOkfLogSettingsChange={handleSiteOkfLogSettingsChange}
+                  onSiteOkfEnable={handleSiteOkfEnable}
+                  openKnowledgeFormatRenameCount={openKnowledgeFormatRenames.length}
+                  onOpenKnowledgeFormatRenameDetails={() => setIsOkfRenameModalOpen(true)}
                   disabled={providerBusy || isRegeneratingPreview}
                   onPresetChanged={regeneratePreviewAndReload}
                   onCustomAssetsChanged={regeneratePreviewAndReload}
@@ -1205,21 +1209,31 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                 <thead className="bg-neutral-50 text-neutral-500">
                   <tr>
                     <th className="border-b border-neutral-200 px-3 py-2 text-left font-medium">Source file</th>
-                    <th className="border-b border-neutral-200 px-3 py-2 text-left font-medium">Reserved output</th>
-                    <th className="border-b border-neutral-200 px-3 py-2 text-left font-medium">Final output</th>
+                    <th className="border-b border-neutral-200 px-3 py-2 text-left font-medium">Renamed to</th>
                   </tr>
                 </thead>
                 <tbody>
                   {openKnowledgeFormatRenames.map((rename) => (
                     <tr key={`${rename.sourcePath}->${rename.finalOutputPath}`} className="border-b border-neutral-100 last:border-b-0">
                       <td className="px-3 py-2 font-mono text-xs text-neutral-800">{rename.sourcePath}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-neutral-600">{rename.originalOutputPath}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-neutral-800">{rename.finalOutputPath}</td>
+                      <td className="px-3 py-2">
+                        <div className="font-mono text-xs text-neutral-800">{rename.finalOutputPath}</div>
+                        {rename.originalOutputPath !== rename.finalOutputPath ? (
+                          <div className="mt-1 text-xs text-neutral-500">
+                            Preferred {rename.originalOutputPath} was already present.
+                          </div>
+                        ) : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {hasOkfRenameCollisions ? (
+              <p className="text-xs text-neutral-500">
+                When a preferred rename is already present in the export, OKF uses the next available filename.
+              </p>
+            ) : null}
           </div>
         </Modal>
       </div>
