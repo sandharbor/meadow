@@ -28,6 +28,44 @@ import {
 } from '../helpers/serverManager.js';
 import { SystemTestSiteSetup } from '../helpers/testSetup.js';
 
+function stripPagespecBlocks(content: string): string {
+  const lines = content.split(/\r?\n/);
+  const output: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === '```yaml' && lines[i + 1]?.trim() === 'pagespecs:') {
+      i += 2;
+      while (i < lines.length && lines[i].trim() !== '```') {
+        i++;
+      }
+      continue;
+    }
+
+    output.push(lines[i]);
+  }
+
+  return output.join('\n');
+}
+
+function removePagespecBlocksFromMarkdownFiles(directory: string): void {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const filePath = path.join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      removePagespecBlocksFromMarkdownFiles(filePath);
+      continue;
+    }
+
+    if (entry.isFile() && entry.name.endsWith('.md')) {
+      const before = fs.readFileSync(filePath, 'utf8');
+      const after = stripPagespecBlocks(before);
+      if (after !== before) {
+        fs.writeFileSync(filePath, after, 'utf8');
+      }
+    }
+  }
+}
+
 describe('Preview System Tests', () => {
   beforeAll(async () => {
     await startServer();
@@ -360,6 +398,88 @@ describe('Preview System Tests', () => {
 
       if (hasUnstagedChanges || hasUntrackedFiles) {
         console.log('Unstaged changes detected in expected sources export build folder:');
+        if (hasUnstagedChanges) {
+          console.log('Modified/Deleted files (unstaged):');
+          console.log(gitDiffStatus);
+
+          const gitDiff = execSync('git diff .', {
+            cwd: expectedResultsFolder,
+            encoding: 'utf8'
+          });
+          if (gitDiff.trim()) {
+            console.log('Git diff:');
+            console.log(gitDiff);
+          }
+        }
+        if (hasUntrackedFiles) {
+          console.log('Untracked files:');
+          console.log(gitUntrackedStatus);
+        }
+
+        const allChanges = [gitDiffStatus.trim(), gitUntrackedStatus.trim()].filter(Boolean).join('\n');
+        expect(allChanges).toBe('');
+      }
+    });
+  });
+
+  describe('matching the expected OKF bundle (big site)', () => {
+    let testSetup: SystemTestSiteSetup | undefined;
+
+    beforeEach(() => {
+      testSetup = new SystemTestSiteSetup(
+        'home_fixture_big_and_small',
+        'fixture-test-okf',
+        { siteFolderName: 'meadow-test-site-big' }
+      );
+      testSetup.setUp();
+      removePagespecBlocksFromMarkdownFiles(testSetup.getSourceGraphPath());
+
+      const siteConfigPath = testSetup.getPathInSite('conf/site_config.yaml');
+      fs.appendFileSync(siteConfigPath, 'generationOpenKnowledgeFormatEnabled: true\n', 'utf8');
+    });
+
+    afterEach(() => {
+      testSetup?.tearDown();
+    });
+
+    it('should create the OKF preview bundle matching the expected golden set', async () => {
+      const siteSlug = testSetup!.getSiteSlug();
+
+      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+        method: 'POST'
+      });
+
+      expect(response.ok).toBe(true);
+
+      const okfBundlePath = testSetup!.getPathInSite('html/preview/_mw_assets/okf/bundle');
+      expect(fs.existsSync(okfBundlePath)).toBe(true);
+
+      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-okf-preview');
+
+      if (!fs.existsSync(expectedResultsFolder)) {
+        fs.mkdirSync(expectedResultsFolder, { recursive: true });
+        console.log(`Created expected results folder: ${expectedResultsFolder}`);
+        console.log('First run - copying generated OKF bundle to expected results for review.');
+      }
+
+      fs.rmSync(expectedResultsFolder, { recursive: true, force: true });
+      fs.cpSync(okfBundlePath, expectedResultsFolder, { recursive: true });
+
+      const gitDiffStatus = execSync('git diff --name-status .', {
+        cwd: expectedResultsFolder,
+        encoding: 'utf8'
+      });
+
+      const gitUntrackedStatus = execSync('git ls-files --others --exclude-standard .', {
+        cwd: expectedResultsFolder,
+        encoding: 'utf8'
+      });
+
+      const hasUnstagedChanges = gitDiffStatus.trim().length > 0;
+      const hasUntrackedFiles = gitUntrackedStatus.trim().length > 0;
+
+      if (hasUnstagedChanges || hasUntrackedFiles) {
+        console.log('Unstaged changes detected in expected OKF bundle folder:');
         if (hasUnstagedChanges) {
           console.log('Modified/Deleted files (unstaged):');
           console.log(gitDiffStatus);

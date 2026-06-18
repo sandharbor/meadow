@@ -64,6 +64,7 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
       'description: A useful page',
       '---',
       'See [[connected page]] and ![[image file.png]].',
+      'Embed ![[connected page]].',
       '',
     ].join('\n'));
     writeFile(scrubbedDir, 'connected page.md', 'Connected body\n');
@@ -96,6 +97,7 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     expect(mainPage).toContain('type: Knowledge Page');
     expect(mainPage).toContain('[connected page](/connected%20page.md)');
     expect(mainPage).toContain('![image file.png](/image%20file.png)');
+    expect(mainPage).toContain('![connected page](/connected%20page.md)');
     expect(readFile(okfDir, 'index.md')).toContain('[main page](/main%20page.md)');
     expect(fs.readFileSync(path.join(okfDir, 'image file.png'))).toEqual(Buffer.from([1, 2, 3]));
   });

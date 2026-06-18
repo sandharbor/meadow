@@ -196,9 +196,7 @@ function convertWikiLinksToMarkdown(
 
     const target = markdownLinkTargetFor(targetOutputPath, linkInfo.section);
     const label = escapeMarkdownLabel(markdownLinkLabelFor(linkText));
-    const targetExt = path.posix.extname(targetOutputPath).toLowerCase();
-    const imageLike = embedMarker === '!' && ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'].includes(targetExt);
-    return imageLike ? `![${label}](${target})` : `[${label}](${target})`;
+    return embedMarker === '!' ? `![${label}](${target})` : `[${label}](${target})`;
   });
 }
 
