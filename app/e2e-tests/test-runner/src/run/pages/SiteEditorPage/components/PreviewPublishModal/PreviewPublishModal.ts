@@ -137,6 +137,23 @@ export class PreviewPublishModal {
     await this.expect(this.previewIframeH1).toContainText(expectedText, { timeout });
   }
 
+  async expectPreviewIframeUrlContains(expectedPath: string, timeout = 15_000) {
+    await this.expect.poll(
+      async () => {
+        const iframeHandle = await this.page.locator('iframe[title="Preview"]').elementHandle();
+        if (!iframeHandle) return "";
+
+        try {
+          const frame = await iframeHandle.contentFrame();
+          return frame?.url() ?? "";
+        } finally {
+          await iframeHandle.dispose();
+        }
+      },
+      { timeout },
+    ).toContain(expectedPath);
+  }
+
   /**
    * Assert the preview iframe contains a link pointing at the given rendered
    * page href (e.g. "Razors.html"). Use this to verify that a tracked page

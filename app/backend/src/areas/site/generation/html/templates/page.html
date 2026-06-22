@@ -146,7 +146,19 @@
         <div class="site-header-row">
             {{{ breadcrumbs }}}
             {{#each download_artifacts}}
+            {{#if browse_url}}
+            <details class="download-artifact-menu">
+                <summary class="sources-export-download" title="{{ title }}">{{ label }}</summary>
+                <div class="download-artifact-menu-panel">
+                    <div class="download-artifact-menu-items">
+                        <a href="#" data-sources-export-manifest-url="{{ manifest_url }}" class="download-artifact-menu-item">Download ZIP</a>
+                        <a href="{{ browse_url }}" class="download-artifact-menu-item">Bundle index</a>
+                    </div>
+                </div>
+            </details>
+            {{else}}
             <a href="#" data-sources-export-manifest-url="{{ manifest_url }}" download class="sources-export-download" title="{{ title }}">&#8681; {{ label }}</a>
+            {{/if}}
             {{/each}}
         </div>
         {{else}}

@@ -60,6 +60,7 @@ import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js'
 import { SOURCES_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
 import {
   OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR,
+  OPEN_KNOWLEDGE_FORMAT_BUNDLE_DIR,
   OPEN_KNOWLEDGE_FORMAT_MANIFEST_FILENAME
 } from '../open-knowledge-format/openKnowledgeFormatArchive.js';
 import { replaceSrsCardsWithCustomElements } from '../render-source/srsMarkdown.js';
@@ -717,7 +718,7 @@ export function renderPageToHtml(
   const srsPageId = currentPageDirectory
     ? `${currentPageDirectory}/${outputFilename}.html`
     : `${outputFilename}.html`;
-  const downloadArtifacts: Array<{ label: string; title: string; manifest_url: string }> = [];
+  const downloadArtifacts: Array<{ label: string; title: string; manifest_url: string; browse_url?: string }> = [];
   if (sourcesExportEnabled) {
     downloadArtifacts.push({
       label: 'sources',
@@ -728,8 +729,9 @@ export function renderPageToHtml(
   if (openKnowledgeFormatEnabled) {
     downloadArtifacts.push({
       label: 'OKF',
-      title: 'Download Open Knowledge Format ZIP',
+      title: 'Open Knowledge Format package',
       manifest_url: `${assetsPrefix}${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_MANIFEST_FILENAME}`,
+      browse_url: `${assetsPrefix}${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_BUNDLE_DIR}/index.md`,
     });
   }
   const fullPageContent = template({

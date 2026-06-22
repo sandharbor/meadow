@@ -21,5 +21,5 @@ export const openKnowledgeFormat: ScenarioDoc = {
   name: "OKF",
   description:
     "Tests covering Open Knowledge Format generation, reserved file rename " +
-    "warnings, and local OKF ZIP export.",
+    "warnings, rendered-site OKF ZIP export, and bundle-index browsing.",
 };

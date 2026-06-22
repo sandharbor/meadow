@@ -90,17 +90,51 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('hashchange', highlightAnchorBlock);
 
 document.addEventListener('DOMContentLoaded', function() {
-    var sourcesExportDownloadLinks = document.querySelectorAll('.sources-export-download[data-sources-export-manifest-url]');
-    if (!sourcesExportDownloadLinks.length) return;
+    var sourcesExportDownloadLinks = document.querySelectorAll('[data-sources-export-manifest-url]');
+    var artifactMenus = document.querySelectorAll('details.download-artifact-menu');
+    if (!sourcesExportDownloadLinks.length && !artifactMenus.length) return;
 
     var manifestCache = {};
+
+    function closeArtifactMenus(exceptMenu) {
+        for (var i = 0; i < artifactMenus.length; i++) {
+            if (artifactMenus[i] !== exceptMenu) {
+                artifactMenus[i].removeAttribute('open');
+            }
+        }
+    }
+
+    for (var menuIndex = 0; menuIndex < artifactMenus.length; menuIndex++) {
+        (function(menu) {
+            menu.addEventListener('toggle', function() {
+                if (menu.open) {
+                    closeArtifactMenus(menu);
+                }
+            });
+        })(artifactMenus[menuIndex]);
+    }
+
+    document.addEventListener('click', function(event) {
+        var target = event.target;
+        for (var i = 0; i < artifactMenus.length; i++) {
+            if (artifactMenus[i].open && !artifactMenus[i].contains(target)) {
+                artifactMenus[i].removeAttribute('open');
+            }
+        }
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeArtifactMenus(null);
+        }
+    });
 
     function fetchManifest(manifestUrl) {
         if (!manifestCache[manifestUrl]) {
             manifestCache[manifestUrl] = fetch(manifestUrl, { cache: 'no-store' })
                 .then(function(response) {
                     if (!response.ok) {
-                        throw new Error('Failed to load sources export manifest');
+                        throw new Error('Failed to load download manifest');
                     }
                     return response.json();
                 });
@@ -125,10 +159,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 var manifestUrl = link.getAttribute('data-sources-export-manifest-url');
                 if (!manifestUrl) return;
 
+                var menu = link.closest('details.download-artifact-menu');
+                if (menu) {
+                    menu.removeAttribute('open');
+                }
+
                 fetchManifest(manifestUrl)
                     .then(function(manifest) {
                         if (!manifest || !manifest.zipFilename) {
-                            throw new Error('Missing sources export zip filename');
+                            throw new Error('Missing download zip filename');
                         }
 
                         var resolvedManifestUrl = new URL(manifestUrl, window.location.href);
@@ -136,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         startDownload(downloadUrl, manifest.downloadFilename || manifest.zipFilename);
                     })
                     .catch(function() {
-                        link.title = 'Sources export is unavailable';
+                        link.title = 'Download is unavailable';
                     });
             });
         })(sourcesExportDownloadLinks[i]);

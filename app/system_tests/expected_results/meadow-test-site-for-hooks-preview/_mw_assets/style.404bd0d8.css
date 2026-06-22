@@ -37,6 +37,16 @@ header, main, footer {
   max-width: 800px;
 }
 
+header {
+  position: relative;
+  z-index: 2;
+}
+
+main, footer {
+  position: relative;
+  z-index: 1;
+}
+
 .new-version-pointer {
   width: 100%;
   max-width: 800px;
@@ -258,8 +268,12 @@ th {
   flex: 0 0 auto;
   align-items: center;
   gap: 0.3em;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 2.25rem;
   padding: 0.4em 0.75em;
   font-size: 0.8em;
+  line-height: 1;
   color: #666;
   text-decoration: none;
   border: 1px solid #ddd;
@@ -271,6 +285,87 @@ th {
 .sources-export-download:hover {
   color: #333;
   border-color: #bbb;
+  background: #f0f0f0;
+}
+
+.download-artifact-menu {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.download-artifact-menu > summary.sources-export-download {
+  display: inline-flex;
+  width: max-content;
+  box-sizing: border-box;
+  align-self: flex-end;
+  list-style: none;
+}
+
+.download-artifact-menu > summary.sources-export-download::-webkit-details-marker {
+  display: none;
+}
+
+.download-artifact-menu > summary.sources-export-download::after {
+  content: "▾";
+  color: #999;
+  display: inline-block;
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.download-artifact-menu[open] > summary.sources-export-download {
+  color: #333;
+  border-color: #bbb;
+  background: #f0f0f0;
+}
+
+.download-artifact-menu[open] {
+  z-index: 30;
+}
+
+.download-artifact-menu:not([open]) .download-artifact-menu-panel {
+  display: none;
+}
+
+.download-artifact-menu-panel {
+  width: 100%;
+  height: 0;
+  overflow: visible;
+  position: relative;
+  z-index: 30;
+}
+
+.download-artifact-menu-items {
+  position: absolute;
+  top: 0.35em;
+  right: 0;
+  z-index: 30;
+  width: max-content;
+  min-width: 10em;
+  padding: 0.25em 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.download-artifact-menu-item,
+.download-artifact-menu-item:link,
+.download-artifact-menu-item:visited,
+.download-artifact-menu-item:active {
+  display: block;
+  padding: 0.5em 0.75em;
+  color: #666;
+  font-size: 0.85em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.download-artifact-menu-item:hover {
+  color: #333;
   background: #f0f0f0;
 }
 
@@ -312,7 +407,8 @@ th {
     gap: 0.5em;
   }
 
-  .sources-export-download {
+  .sources-export-download,
+  .download-artifact-menu {
     align-self: flex-start;
   }
 }
