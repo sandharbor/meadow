@@ -102,6 +102,34 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     expect(fs.readFileSync(path.join(okfDir, 'image file.png'))).toEqual(Buffer.from([1, 2, 3]));
   });
 
+  it('strips okf prefixes from concept frontmatter properties', () => {
+    writeFile(scrubbedDir, 'main page.md', [
+      '---',
+      'status: draft',
+      'type: Obsidian note',
+      'okf-description: A bundle description',
+      'okf-type: OKF Concept',
+      '---',
+      'Body',
+      '',
+    ].join('\n'));
+
+    prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
+      sitePageConfigs: [pageConfig('main page')],
+      initialPageTitle: 'main page',
+      initialPageDirectory: '',
+    });
+
+    const mainPage = readFile(okfDir, 'main page.md');
+    expect(mainPage).toContain('description: A bundle description');
+    expect(mainPage).toContain('status: draft');
+    expect(mainPage).toContain('title: main page');
+    expect(mainPage).toContain('type: OKF Concept');
+    expect(mainPage).not.toContain('okf-description');
+    expect(mainPage).not.toContain('okf-type');
+    expect(mainPage).not.toContain('type: Obsidian note');
+  });
+
   it('uses the log beside the initial page and renames other reserved files without collisions', () => {
     writeFile(scrubbedDir, 'sub/home.md', 'Home\n');
     writeFile(scrubbedDir, 'sub/log.md', 'Preferred log\n');
@@ -188,6 +216,55 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     expect(index).toContain('okf_version:');
     expect(index).toContain('Reserved source index with [home](/home.md).');
     expect(fs.existsSync(path.join(okfDir, 'index-original.md'))).toBe(false);
+  });
+
+  it('strips okf prefixes from tracked index frontmatter properties', () => {
+    writeFile(scrubbedDir, 'home.md', 'Home\n');
+    writeFile(scrubbedDir, 'index.md', [
+      '---',
+      'audience: public',
+      'okf-description: Bundle landing page',
+      '---',
+      'Reserved source index.',
+      '',
+    ].join('\n'));
+
+    prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
+      sitePageConfigs: [pageConfig('home'), pageConfig('index')],
+      initialPageTitle: 'home',
+      initialPageDirectory: '',
+      indexSource: { mode: 'trackedPage', sourceGraphPath: 'index.md' },
+    });
+
+    const index = readFile(okfDir, 'index.md');
+    expect(index).toContain('audience: public');
+    expect(index).toContain('description: Bundle landing page');
+    expect(index).toContain('okf_version:');
+    expect(index).not.toContain('okf-description');
+  });
+
+  it('strips okf prefixes from tracked log frontmatter properties', () => {
+    writeFile(scrubbedDir, 'home.md', 'Home\n');
+    writeFile(scrubbedDir, 'updates.md', [
+      '---',
+      'channel: release',
+      'okf-description: Release history',
+      '---',
+      'Updates',
+      '',
+    ].join('\n'));
+
+    prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
+      sitePageConfigs: [pageConfig('home'), pageConfig('updates')],
+      initialPageTitle: 'home',
+      initialPageDirectory: '',
+      logSource: { mode: 'trackedPage', sourceGraphPath: 'updates.md' },
+    });
+
+    const log = readFile(okfDir, 'log.md');
+    expect(log).toContain('channel: release');
+    expect(log).toContain('description: Release history');
+    expect(log).not.toContain('okf-description');
   });
 
   it('renames a source index.md when another tracked page is mapped to root index.md', () => {

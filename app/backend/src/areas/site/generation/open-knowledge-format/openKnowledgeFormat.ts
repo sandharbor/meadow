@@ -67,6 +67,7 @@ const RESERVED_MARKDOWN_FILENAMES = new Set(['index.md', 'log.md']);
 const DEFAULT_CONCEPT_TYPE = 'Knowledge Page';
 const ROOT_INDEX_PATH = 'index.md';
 const ROOT_LOG_PATH = 'log.md';
+const OKF_FRONTMATTER_PREFIX = 'okf-';
 
 function walkFilesSorted(dir: string, base = ''): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -308,6 +309,24 @@ function writeBinaryFile(outputDir: string, outputPath: string, sourcePath: stri
   fs.copyFileSync(sourcePath, fullPath);
 }
 
+function frontmatterForOpenKnowledgeFormatBundle(sourceFrontmatter: Record<string, unknown>): Record<string, unknown> {
+  const frontmatter: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(sourceFrontmatter)) {
+    if (!key.startsWith(OKF_FRONTMATTER_PREFIX) || key.length === OKF_FRONTMATTER_PREFIX.length) {
+      frontmatter[key] = value;
+    }
+  }
+
+  for (const [key, value] of Object.entries(sourceFrontmatter)) {
+    if (key.startsWith(OKF_FRONTMATTER_PREFIX) && key.length > OKF_FRONTMATTER_PREFIX.length) {
+      frontmatter[key.slice(OKF_FRONTMATTER_PREFIX.length)] = value;
+    }
+  }
+
+  return frontmatter;
+}
+
 function conceptMarkdownFor(
   sourceMarkdown: string,
   sourcePath: string,
@@ -317,12 +336,13 @@ function conceptMarkdownFor(
 ): string {
   const restoredMarkdown = restoreScrubbedMarkdown(sourceMarkdown);
   const parsed = FrontmatterUtils.parseFromText(restoredMarkdown);
-  const existingType = parsed.frontmatter.type;
+  const sourceFrontmatter = frontmatterForOpenKnowledgeFormatBundle(parsed.frontmatter);
+  const existingType = sourceFrontmatter.type;
   const title = markdownTitleForSourcePath(sourcePath);
   const frontmatter = {
-    ...parsed.frontmatter,
-    title: typeof parsed.frontmatter.title === 'string' && parsed.frontmatter.title.trim()
-      ? parsed.frontmatter.title
+    ...sourceFrontmatter,
+    title: typeof sourceFrontmatter.title === 'string' && sourceFrontmatter.title.trim()
+      ? sourceFrontmatter.title
       : title,
     type: typeof existingType === 'string' && existingType.trim() ? existingType : DEFAULT_CONCEPT_TYPE,
   };
@@ -336,6 +356,27 @@ function conceptMarkdownFor(
   return FrontmatterUtils.combineToText(frontmatter, convertedContent);
 }
 
+function convertedMarkdownFor(
+  sourceMarkdown: string,
+  sourcePath: string,
+  outputPathBySourcePath: Map<string, string>,
+  sourcePathByTitleAndDir: Map<string, string>,
+  allLinkResolutionMaps?: AllLinkResolutionMaps
+): { frontmatter: Record<string, unknown>; content: string } {
+  const restoredMarkdown = restoreScrubbedMarkdown(sourceMarkdown);
+  const parsed = FrontmatterUtils.parseFromText(restoredMarkdown);
+  return {
+    frontmatter: frontmatterForOpenKnowledgeFormatBundle(parsed.frontmatter),
+    content: convertWikiLinksToMarkdown(
+      parsed.content,
+      sourcePath,
+      outputPathBySourcePath,
+      sourcePathByTitleAndDir,
+      allLinkResolutionMaps
+    ),
+  };
+}
+
 function indexMarkdownFor(
   sourceMarkdown: string,
   sourcePath: string,
@@ -343,10 +384,8 @@ function indexMarkdownFor(
   sourcePathByTitleAndDir: Map<string, string>,
   allLinkResolutionMaps?: AllLinkResolutionMaps
 ): string {
-  const restoredMarkdown = restoreScrubbedMarkdown(sourceMarkdown);
-  const parsed = FrontmatterUtils.parseFromText(restoredMarkdown);
-  const convertedContent = convertWikiLinksToMarkdown(
-    parsed.content,
+  const converted = convertedMarkdownFor(
+    sourceMarkdown,
     sourcePath,
     outputPathBySourcePath,
     sourcePathByTitleAndDir,
@@ -354,10 +393,10 @@ function indexMarkdownFor(
   );
   return FrontmatterUtils.combineToText(
     {
-      ...parsed.frontmatter,
+      ...converted.frontmatter,
       okf_version: '0.1',
     },
-    convertedContent
+    converted.content
   );
 }
 
@@ -368,13 +407,14 @@ function logMarkdownFor(
   sourcePathByTitleAndDir: Map<string, string>,
   allLinkResolutionMaps?: AllLinkResolutionMaps
 ): string {
-  return convertWikiLinksToMarkdown(
-    restoreScrubbedMarkdown(sourceMarkdown),
+  const converted = convertedMarkdownFor(
+    sourceMarkdown,
     sourcePath,
     outputPathBySourcePath,
     sourcePathByTitleAndDir,
     allLinkResolutionMaps
   );
+  return FrontmatterUtils.combineToText(converted.frontmatter, converted.content);
 }
 
 function rootIndexMarkdown(initialOutputPath: string | null, initialTitle: string | undefined): string {
