@@ -41,6 +41,7 @@ fi
 REQUIRED_DIRS=(
     "app"
     "obsidian_meadow_plugin"
+    "specs"
     "tools"
     "_agent"
 )
@@ -195,6 +196,17 @@ if [ $exit_code -ne 0 ]; then
         echo "---"
     done
     echo_and_exit "❌ One or more directory checks failed (full logs in $QUICKCHECK_LOG_DIR)"
+fi
+
+echo "🧪 Running specs check..."
+if ! check_dir "specs"; then
+    log_file="$QUICKCHECK_LOG_DIR/specs.log"
+    echo ""
+    echo "❌ specs failed. Log: $log_file"
+    echo "--- last 30 lines ---"
+    tail -30 "$log_file"
+    echo "---"
+    echo_and_exit "❌ Specs check failed (full log in $log_file)"
 fi
 
 # Run e2e tests after parallel checks (they depend on app being installed)

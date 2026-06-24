@@ -1,0 +1,25 @@
+#!/bin/bash
+set -euo pipefail
+
+SPECS_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$SPECS_DIR"
+
+ensure_package_deps() {
+    local dir="$1"
+    local stamp="$dir/node_modules/.quickcheck_install_stamp"
+    local lock="$dir/package-lock.json"
+
+    if [ ! -f "$stamp" ] || [ ! -d "$dir/node_modules" ] || [ "$lock" -nt "$stamp" ]; then
+        echo "📦 Installing dependencies in $dir..."
+        (cd "$dir" && npm install --force && touch "node_modules/.quickcheck_install_stamp")
+    fi
+}
+
+ensure_package_deps "../app/shared_code"
+ensure_package_deps "../app/backend"
+ensure_package_deps "../app/frontend"
+
+echo "🧪 Typechecking specs..."
+../app/shared_code/node_modules/.bin/tsc --noEmit --project tsconfig.json
+
+echo "✅ Specs checks passed!"
