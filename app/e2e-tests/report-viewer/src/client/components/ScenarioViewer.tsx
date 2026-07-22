@@ -21,7 +21,22 @@ import 'prismjs/components/prism-typescript'
 import 'prismjs/components/prism-yaml'
 import 'prismjs/themes/prism.css'
 import { marked } from 'marked'
-import { formatTime, escapeHtml, diffHighlight, isBinary, videoTimeToReal, realTimeToVideo, computeHealthData, parseStateRepoAsFiles, computeStateRepoRecordDiffs } from '../helpers.ts'
+import {
+  DEFAULT_PLAYBACK_SPEED_PERCENT,
+  MAX_PLAYBACK_SPEED_PERCENT,
+  MIN_PLAYBACK_SPEED_PERCENT,
+  computeHealthData,
+  computeStateRepoRecordDiffs,
+  diffHighlight,
+  escapeHtml,
+  formatTime,
+  isBinary,
+  normalizePlaybackSpeedPercent,
+  parseStateRepoAsFiles,
+  realTimeToVideo,
+  setMediaPlaybackSpeed,
+  videoTimeToReal,
+} from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
 
 // --- Types ---
@@ -450,7 +465,9 @@ export default function ScenarioViewer() {
   const { runId, testSlug } = useParams<{ runId: string; testSlug: string }>()
   const [searchParams] = useSearchParams()
   const API = `/api/${runId}/${testSlug}`
-  const initialSpeed = Number(searchParams.get('speed')) || 100
+  const initialSpeed = normalizePlaybackSpeedPercent(
+    searchParams.get('speed') ?? DEFAULT_PLAYBACK_SPEED_PERCENT,
+  )
 
   // Core state
   const [manifest, setManifest] = useState<Manifest | null>(null)
@@ -539,7 +556,7 @@ export default function ScenarioViewer() {
   // Sync playback rate to video element when speed changes
   useEffect(() => {
     if (videoRef.current) {
-      videoRef.current.playbackRate = playSpeed / 100
+      setMediaPlaybackSpeed(videoRef.current, playSpeed)
     }
   }, [playSpeed])
 
@@ -1678,7 +1695,7 @@ export default function ScenarioViewer() {
             onLoadedMetadata={() => {
               const video = videoRef.current
               if (!video) return
-              video.playbackRate = playSpeed / 100
+              setMediaPlaybackSpeed(video, playSpeed)
               if (video.duration) {
                 setTimelinePercent((video.currentTime / video.duration) * 100)
                 setTimeDisplay(`${formatTime(video.currentTime)} / ${formatTime(video.duration)}`)
@@ -1708,10 +1725,12 @@ export default function ScenarioViewer() {
             <div className="flex items-center gap-1.5">
               <input
                 type="range"
-                min="0"
-                max="100"
+                min={MIN_PLAYBACK_SPEED_PERCENT}
+                max={MAX_PLAYBACK_SPEED_PERCENT}
+                step="1"
                 value={playSpeed}
-                onChange={(e) => setPlaySpeed(Number(e.target.value))}
+                aria-label="Playback speed"
+                onChange={(e) => setPlaySpeed(normalizePlaybackSpeedPercent(e.target.value))}
                 className="w-20 accent-neutral-400"
               />
               <span className="text-neutral-500 min-w-[36px]">{playSpeed}%</span>

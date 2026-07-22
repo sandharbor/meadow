@@ -21,7 +21,7 @@ import os from "os";
 import path from "path";
 
 // Builds (or reuses) a cached artifact directory produced by running
-// `app/e2e-tests/test-runner/tests/publish-flow.spec.ts`. This artifact is the
+// `app/e2e-tests/test-runner/tests/meadow-extension/publish-flow.spec.ts`. This artifact is the
 // shared fixture for every report-viewer e2e spec.
 //
 // Cache strategy
@@ -39,7 +39,7 @@ import path from "path";
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
 const PUBLISH_FLOW_SPEC = path.join(
   REPO_ROOT,
-  "app/e2e-tests/test-runner/tests/publish-flow.spec.ts"
+  "app/e2e-tests/test-runner/tests/meadow-extension/publish-flow.spec.ts"
 );
 const TEST_RUNNER_DIR = path.join(REPO_ROOT, "app/e2e-tests/test-runner");
 const ARTIFACTS_ROOT = path.join(os.homedir(), "meadow-e2e-artifacts", "current");
@@ -101,6 +101,10 @@ function buildArtifact(runId: string): void {
     ],
     {
       cwd: TEST_RUNNER_DIR,
+      env: {
+        ...process.env,
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --preserve-symlinks`.trim(),
+      },
       stdio: "inherit",
     }
   );

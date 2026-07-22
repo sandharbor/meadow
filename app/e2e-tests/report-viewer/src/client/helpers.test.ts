@@ -15,7 +15,19 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { formatTime, escapeHtml, isBinary, diffHighlight, videoTimeToReal, realTimeToVideo, computeHealthData, parseStateRepoAsFiles } from './helpers'
+import {
+  computeHealthData,
+  diffHighlight,
+  escapeHtml,
+  formatTime,
+  isBinary,
+  normalizePlaybackSpeedPercent,
+  parseStateRepoAsFiles,
+  playbackRateForSpeedPercent,
+  realTimeToVideo,
+  setMediaPlaybackSpeed,
+  videoTimeToReal,
+} from './helpers'
 
 describe('formatTime', () => {
   it('formats zero seconds', () => {
@@ -37,6 +49,38 @@ describe('formatTime', () => {
   it('floors fractional seconds', () => {
     expect(formatTime(5.7)).toBe('0:05')
     expect(formatTime(90.9)).toBe('1:30')
+  })
+})
+
+describe('playback speed', () => {
+  it('clamps zero and too-small percentages to the browser-safe minimum', () => {
+    expect(normalizePlaybackSpeedPercent(0)).toBe(7)
+    expect(normalizePlaybackSpeedPercent(1)).toBe(7)
+    expect(normalizePlaybackSpeedPercent(6.25)).toBe(7)
+    expect(playbackRateForSpeedPercent(0)).toBe(0.07)
+  })
+
+  it('normalizes invalid and excessive percentages', () => {
+    expect(normalizePlaybackSpeedPercent('not-a-number')).toBe(100)
+    expect(normalizePlaybackSpeedPercent(Infinity)).toBe(100)
+    expect(normalizePlaybackSpeedPercent(150)).toBe(100)
+    expect(normalizePlaybackSpeedPercent(42.6)).toBe(43)
+  })
+
+  it('falls back to 1x when a media element rejects the requested rate', () => {
+    let appliedRate = 1
+    const media = {
+      get playbackRate() {
+        return appliedRate
+      },
+      set playbackRate(value: number) {
+        if (value < 0.25) throw new Error('Unsupported rate')
+        appliedRate = value
+      },
+    }
+
+    expect(setMediaPlaybackSpeed(media, 7)).toBe(1)
+    expect(appliedRate).toBe(1)
   })
 })
 

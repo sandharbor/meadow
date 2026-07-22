@@ -72,3 +72,25 @@ test("cached publish-flow artifact has multiple ticks and multiple snapshots", a
   await expect(page.getByText(testSlug)).toBeVisible();
   await expect(page.getByRole("button", { name: /^Tick/ })).toBeVisible();
 });
+
+test("playback speed cannot reach an unsupported rate", async ({ page }) => {
+  const { runId, testSlug } = fixture;
+
+  await page.goto(`/${runId}/${testSlug}?speed=1`);
+
+  const speedSlider = page.getByRole("slider", { name: "Playback speed" });
+  await expect(speedSlider).toHaveAttribute("min", "7");
+  await expect(speedSlider).toHaveValue("7");
+  await expect(page.getByText("7%", { exact: true })).toBeVisible();
+
+  await speedSlider.press("End");
+  await expect(speedSlider).toHaveValue("100");
+  await speedSlider.press("Home");
+  await expect(speedSlider).toHaveValue("7");
+
+  const playbackRate = await page.locator("video").evaluate(
+    (video) => (video as unknown as { playbackRate: number }).playbackRate,
+  );
+  expect(playbackRate).toBeCloseTo(0.07);
+  await expect(page.getByRole("heading", { name: "E2E Report Viewer" })).toBeVisible();
+});

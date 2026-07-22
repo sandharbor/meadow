@@ -16,7 +16,14 @@ limitations under the License.
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { HealthSummary } from '../helpers.ts'
+import {
+  DEFAULT_PLAYBACK_SPEED_PERCENT,
+  HealthSummary,
+  MAX_PLAYBACK_SPEED_PERCENT,
+  MIN_PLAYBACK_SPEED_PERCENT,
+  normalizePlaybackSpeedPercent,
+  setMediaPlaybackSpeed,
+} from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
 
@@ -80,7 +87,7 @@ export default function RunDetail() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'thumbs' | 'list' | 'videos' | 'timing'>('thumbs')
   const [mediaSize, setMediaSize] = useState<0 | 1 | 2 | 3>(0)
-  const [playSpeed, setPlaySpeed] = useState(100)
+  const [playSpeed, setPlaySpeed] = useState(DEFAULT_PLAYBACK_SPEED_PERCENT)
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
 
   const selectedAreaIds = searchParams.getAll('area')
@@ -121,7 +128,7 @@ export default function RunDetail() {
 
   const setVideoRef = useCallback((slug: string, el: HTMLVideoElement | null) => {
     if (el) {
-      el.playbackRate = playSpeed / 100
+      setMediaPlaybackSpeed(el, playSpeed)
       videoRefs.current.set(slug, el)
     } else {
       videoRefs.current.delete(slug)
@@ -129,9 +136,8 @@ export default function RunDetail() {
   }, [playSpeed])
 
   const playAll = useCallback(() => {
-    const rate = playSpeed / 100
     videoRefs.current.forEach((video) => {
-      video.playbackRate = rate
+      setMediaPlaybackSpeed(video, playSpeed)
       video.currentTime = 0
       video.play()
     })
@@ -139,9 +145,8 @@ export default function RunDetail() {
 
   // Sync playback rate to all mounted videos when speed changes
   useEffect(() => {
-    const rate = playSpeed / 100
     videoRefs.current.forEach((video) => {
-      video.playbackRate = rate
+      setMediaPlaybackSpeed(video, playSpeed)
     })
   }, [playSpeed])
 
@@ -622,10 +627,12 @@ export default function RunDetail() {
             <div className="flex items-center gap-2">
               <input
                 type="range"
-                min="0"
-                max="100"
+                min={MIN_PLAYBACK_SPEED_PERCENT}
+                max={MAX_PLAYBACK_SPEED_PERCENT}
+                step="1"
                 value={playSpeed}
-                onChange={(e) => setPlaySpeed(Number(e.target.value))}
+                aria-label="Playback speed"
+                onChange={(e) => setPlaySpeed(normalizePlaybackSpeedPercent(e.target.value))}
                 className="w-28 accent-brand-500"
               />
               <span className="text-xs text-neutral-500 min-w-[36px]">{playSpeed}%</span>

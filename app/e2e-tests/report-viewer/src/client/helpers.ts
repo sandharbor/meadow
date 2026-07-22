@@ -20,6 +20,45 @@ export function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+export const MIN_PLAYBACK_SPEED_PERCENT = 7
+export const MAX_PLAYBACK_SPEED_PERCENT = 100
+export const DEFAULT_PLAYBACK_SPEED_PERCENT = 100
+
+export function normalizePlaybackSpeedPercent(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_PLAYBACK_SPEED_PERCENT
+
+  return Math.min(
+    MAX_PLAYBACK_SPEED_PERCENT,
+    Math.max(MIN_PLAYBACK_SPEED_PERCENT, Math.round(parsed)),
+  )
+}
+
+export function playbackRateForSpeedPercent(value: unknown): number {
+  return normalizePlaybackSpeedPercent(value) / 100
+}
+
+export function setMediaPlaybackSpeed(
+  media: { playbackRate: number },
+  speedPercent: unknown,
+): number {
+  const playbackRate = playbackRateForSpeedPercent(speedPercent)
+
+  try {
+    media.playbackRate = playbackRate
+    return playbackRate
+  } catch {
+    // Browser playback limits vary. 1x is universally supported and keeps a
+    // rejected rate from escaping a React effect and blanking the viewer.
+    try {
+      media.playbackRate = 1
+    } catch {
+      // A detached or otherwise unusable media element can reject all writes.
+    }
+    return 1
+  }
+}
+
 export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
