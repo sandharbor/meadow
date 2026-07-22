@@ -22,6 +22,7 @@ limitations under the License.
 import { Graph } from '../../../../../../shared_code/types/graph.js';
 import { ISitePage } from '../../../../../../shared_code/types/ISitePage.js';
 import { CustomPageSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
+import { pageIsInFolder } from './folderFilterUtils.js';
 
 export interface SelectorBase {
   id: string;
@@ -164,6 +165,21 @@ export const createFrontierPageSelector = (): INormalPageSelector => ({
     const selectedPages = new Set<string>();
     graph.getAllPages().forEach((page: ISitePage) => {
       if (page.isFrontierPage) {
+        selectedPages.add(page.id);
+      }
+    });
+    return selectedPages;
+  }
+});
+
+export const createFolderPageSelector = (folderPath: string): INormalPageSelector => ({
+  id: `folder-${folderPath || 'root'}`,
+  name: folderPath ? `Folder: ${folderPath}` : 'Folder: Root',
+  type: 'normal',
+  select: (graph: Graph) => {
+    const selectedPages = new Set<string>();
+    graph.getAllPages().forEach((page: ISitePage) => {
+      if (pageIsInFolder(page.sourceGraphSubdirectory, folderPath)) {
         selectedPages.add(page.id);
       }
     });

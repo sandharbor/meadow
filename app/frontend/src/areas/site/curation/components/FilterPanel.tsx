@@ -23,6 +23,9 @@ import CustomFilterModal from './CustomFilterModal';
 import { CustomFilterConfig } from '../../../../../../shared_code/types/customFilters';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { logger } from '../../../../shared/utils/logger';
+import { ISitePage } from '../../../../../../shared_code/types/ISitePage';
+import { hasPagesInMultipleFolders } from '../utils/folderFilterUtils';
+import FolderFilterTree from './FolderFilterTree';
 
 const SEARCH_HIGHLIGHT_ACTION = { type: 'highlight' as const, color: '#009688', isDashed: false };
 
@@ -32,6 +35,7 @@ interface FilterPanelProps {
   siteSlug: string;
   onCustomFiltersChange?: () => void;
   untrackedPagesCount?: number;
+  pages?: ISitePage[];
 }
 
 const FilterPanel = React.memo<FilterPanelProps>(({
@@ -40,6 +44,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   siteSlug,
   onCustomFiltersChange,
   untrackedPagesCount,
+  pages = [],
 }) => {
 
   
@@ -256,7 +261,12 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     }
   };
 
-  const otherFilters = filters.filter(f => !f.hideFromFilterList && f.id !== 'search-by-title-filter');
+  const showFolderFilter = hasPagesInMultipleFolders(pages);
+  const otherFilters = filters.filter(f =>
+    !f.hideFromFilterList
+    && f.id !== 'search-by-title-filter'
+    && (!f.isFolderFilter || showFolderFilter)
+  );
   const searchText = searchInputs['search-by-title-filter'] || '';
   const hasSearchText = searchText.length > 0;
 
@@ -402,7 +412,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                     </span>
                   )}
                 </div>
-                {filter.enabled && (
+                {filter.enabled && !filter.isFolderFilter && (
                   <div className="flex space-x-1 flex-shrink-0 ml-2">
                     {filter.id.startsWith('custom-') && (
                       <button
@@ -469,6 +479,13 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                   </div>
                 )}
               </div>
+              {filter.enabled && filter.isFolderFilter && (
+                <FolderFilterTree
+                  filter={filter}
+                  pages={pages}
+                  onFilterChange={onFilterChange}
+                />
+              )}
               {filter.enabled && filter.showSearchInput &&
                 filter.pageSelectors.length > 0 && (
                 <div className="ml-6">
@@ -566,4 +583,4 @@ const FilterPanel = React.memo<FilterPanelProps>(({
 
 FilterPanel.displayName = 'FilterPanel';
 
-export default FilterPanel; 
+export default FilterPanel;

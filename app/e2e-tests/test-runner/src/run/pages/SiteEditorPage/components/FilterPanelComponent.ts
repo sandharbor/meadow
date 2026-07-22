@@ -47,6 +47,12 @@ export class FilterPanelComponent {
     return this.page.getByRole("checkbox", { name: new RegExp(`^${escaped}(\\s|$)`) });
   }
 
+  private folderRow(folderPath: string) {
+    return this.page.locator('[data-folder-path]').filter({
+      has: this.page.locator(`[title="${folderPath || 'Root'}"]`),
+    }).first();
+  }
+
   async clickAddCustomFilter() {
     await this.expect(this.addCustomFilterBtn).toBeVisible();
     await this.addCustomFilterBtn.click();
@@ -131,6 +137,62 @@ export class FilterPanelComponent {
 
   async expectFilterVisible(filterName: string) {
     await this.expect(this.filterCheckbox(filterName)).toBeVisible();
+  }
+
+  async expectFolderFilterHidden() {
+    await this.expect(this.filterCheckbox("Folders")).toHaveCount(0);
+  }
+
+  async expectFolderVisible(folderPath: string) {
+    await this.expect(this.folderRow(folderPath)).toBeVisible();
+  }
+
+  async expectFolderCount(folderPath: string, count: number) {
+    const row = this.folderRow(folderPath);
+    const countLabel = `${count} ${count === 1 ? 'page' : 'pages'}`;
+    await this.expect(row.getByTitle(`${countLabel} in ${folderPath || 'Root'}`)).toHaveText(String(count));
+  }
+
+  async expandFolder(folderPath: string) {
+    const button = this.page.getByTitle(`Expand folder ${folderPath || 'Root'}`);
+    await this.expect(button).toBeVisible();
+    await button.click();
+  }
+
+  async collapseFolder(folderPath: string) {
+    const button = this.page.getByTitle(`Collapse folder ${folderPath || 'Root'}`);
+    await this.expect(button).toBeVisible();
+    await button.click();
+  }
+
+  async soloFolder(folderPath: string) {
+    const button = this.page.getByTitle(`Solo folder ${folderPath || 'Root'}`);
+    await this.expect(button).toBeVisible();
+    await button.click();
+  }
+
+  async hideFolder(folderPath: string) {
+    const button = this.page.getByTitle(`Hide folder ${folderPath || 'Root'}`);
+    await this.expect(button).toBeVisible();
+    await button.click();
+  }
+
+  async expectDescendantActivity(folderPath: string) {
+    await this.expect(this.page.getByTitle(`Active settings in subfolders of ${folderPath}`)).toBeVisible();
+  }
+
+  async expectNoDescendantActivity(folderPath: string) {
+    await this.expect(this.page.getByTitle(`Active settings in subfolders of ${folderPath}`)).toHaveCount(0);
+  }
+
+  async resetFolderFilters() {
+    const button = this.page.getByTitle("Reset folder filters");
+    await this.expect(button).toBeVisible();
+    await button.click();
+  }
+
+  async expectFolderResetHidden() {
+    await this.expect(this.page.getByTitle("Reset folder filters")).toHaveCount(0);
   }
 
   async hoverFilterQuestionIcon(filterName: string) {

@@ -19,6 +19,7 @@ export type { ScenarioDoc } from "./types.js";
 
 export { publishing } from "./publishing.js";
 export { filters } from "./filters.js";
+export { folderFilter } from "./folder-filter.js";
 export { frontier } from "./frontier.js";
 export { callout } from "./callout.js";
 export { htmlGeneration } from "./html-generation.js";
@@ -50,6 +51,7 @@ export { excalidraw } from "./excalidraw.js";
 
 import { publishing } from "./publishing.js";
 import { filters } from "./filters.js";
+import { folderFilter } from "./folder-filter.js";
 import { frontier } from "./frontier.js";
 import { callout } from "./callout.js";
 import { htmlGeneration } from "./html-generation.js";
@@ -79,4 +81,4 @@ import { tracking } from "./tracking.js";
 import { migration } from "./migration.js";
 import { excalidraw } from "./excalidraw.js";
 
-export const allDocs: ScenarioDoc[] = [publishing, filters, frontier, callout, htmlGeneration, hooks, s3, deletion, linkGap, labels, sensitive, search, links, customize, changesTab, multiSite, siteConfig, overrides, initialPage, images, sourcesExport, openKnowledgeFormat, git, findInSites, archived, blacklist, orphan, tracking, migration, excalidraw];
+export const allDocs: ScenarioDoc[] = [publishing, filters, folderFilter, frontier, callout, htmlGeneration, hooks, s3, deletion, linkGap, labels, sensitive, search, links, customize, changesTab, multiSite, siteConfig, overrides, initialPage, images, sourcesExport, openKnowledgeFormat, git, findInSites, archived, blacklist, orphan, tracking, migration, excalidraw];

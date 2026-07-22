@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Graph, IPage } from '../../../../../../shared_code/types/graph';
-import { createTrackedPageSelector, createUntrackedPageSelector, createBlacklistedPageSelector, createSearchByTitleSelector, createSensitivePageSelector } from '../../../../../src/areas/site/curation/types/filters';
+import { createTrackedPageSelector, createUntrackedPageSelector, createBlacklistedPageSelector, createSearchByTitleSelector, createSensitivePageSelector, createFolderPageSelector } from '../../../../../src/areas/site/curation/types/filters';
 
 describe('Page Selectors', () => {
   let graph: Graph;
@@ -215,4 +215,27 @@ describe('Page Selectors', () => {
     });
   });
 
-}); 
+  describe('Folder Page Selector', () => {
+    it('selects pages in a folder and all of its descendants', () => {
+      const nestedPage = graph.getPage('2');
+      if (!nestedPage) throw new Error('Expected nested test page');
+      nestedPage.sourceGraphSubdirectory = 'test/nested';
+
+      const selectedPages = createFolderPageSelector('test').select(graph);
+
+      expect(selectedPages.size).toBe(8);
+      expect(selectedPages.has('2')).toBe(true);
+    });
+
+    it('selects only directly-rooted pages for the root folder', () => {
+      const rootPage = graph.getPage('1');
+      if (!rootPage) throw new Error('Expected root test page');
+      rootPage.sourceGraphSubdirectory = '';
+
+      const selectedPages = createFolderPageSelector('').select(graph);
+
+      expect(selectedPages).toEqual(new Set(['1']));
+    });
+  });
+
+});

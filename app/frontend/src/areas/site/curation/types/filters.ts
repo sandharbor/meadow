@@ -27,6 +27,7 @@ export {
   createBlacklistedPageSelector,
   createSensitivePageSelector,
   createFrontierPageSelector,
+  createFolderPageSelector,
   createSearchByTitleSelector,
   createPageWithOverrideSelector,
   createOutlinkDiscrepancySelector,
@@ -70,6 +71,12 @@ export interface IMarkSensitiveAction {
 
 export type FilterAction = IHighlightAction | IShowLabelsAction | IShowTitlesAction | IMarkSensitiveAction;
 
+export interface IFolderFilterState {
+  showTitles: boolean;
+  isSolo: boolean;
+  isHidden: boolean;
+}
+
 export interface IFilter {
   id: string;
   name: string;
@@ -89,6 +96,8 @@ export interface IFilter {
   cannotHide?: boolean; // If true, the Hide button is disabled for this filter
   description?: string; // Tooltip description shown on hover
   descriptionNode?: React.ReactNode; // Rich tooltip content (takes precedence over description)
+  isFolderFilter?: boolean; // Whether this built-in filter renders the folder tree UI
+  folderStates?: Record<string, IFolderFilterState>; // Per-folder title, solo, and hide state
 }
 
 export interface IFilterState {
@@ -266,6 +275,19 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       thresholdValue: 1,
       thresholdLabel: 'Depth:',
       thresholdMax: 10
+    },
+    {
+      id: 'folder-filter',
+      name: 'Folders',
+      description: 'Filter pages by their folder in the source graph',
+      pageSelectors: [],
+      selectorApplicationCriteria: 'union',
+      actions: [],
+      enabled: false,
+      isSolo: false,
+      isHidden: false,
+      isFolderFilter: true,
+      folderStates: {}
     }
   ]);
 
@@ -283,4 +305,4 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
   }, [customFilters]);
 
   return [filters, setFilters, loadCustomFilters];
-} 
+}

@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Graph, IPage } from '../../../../../../shared_code/types/graph';
-import { IFilter, IPageSelector, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
+import { IFilter, IPageSelector, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector, createFolderPageSelector } from '../types/filters';
 import { DisplayGraph } from '../types/displayGraph';
 import GraphVis from './GraphVis';
 import ListView from './ListView';
@@ -28,12 +28,14 @@ import SitePageTabsDropdown from './SitePageTabsDropdown';
 import PageContextMenu, { ObsidianInfo } from './PageContextMenu';
 import EmptySoloCallout from './EmptySoloCallout';
 import SitePagesToggle from './SitePagesToggle';
+import ResizableSidebar from './ResizableSidebar';
 import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { buildPageConfigs, getOrphanPageConfigs } from '../../../../../../shared_code/utils/sitePageConfigUtils';
 import Modal from '../../../../shared/components/Modal';
 import { AppConfig } from '../../../../../../shared_code/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
+import { hasPagesInMultipleFolders } from '../utils/folderFilterUtils';
 
 interface SitePageTabsProps {
   graph: Graph;
@@ -219,7 +221,28 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
 
   // Build combined filters including solo and hide filters
   const combinedFilters = useMemo(() => {
+    // The graph object is mutated in place, so this revision keeps folder availability current.
+    void graphUpdateTrigger;
     const result: IFilter[] = [...filters];
+    const folderFilter = filters.find(filter => filter.isFolderFilter);
+
+    if (folderFilter?.enabled && hasPagesInMultipleFolders(graph.getAllPages())) {
+      Object.entries(folderFilter.folderStates || {}).forEach(([folderPath, state]) => {
+        if (!state.showTitles && !state.isSolo && !state.isHidden) return;
+
+        result.push({
+          id: `folder-filter-${folderPath || 'root'}`,
+          name: folderPath ? `Folder: ${folderPath}` : 'Folder: Root',
+          pageSelectors: [createFolderPageSelector(folderPath)],
+          selectorApplicationCriteria: 'union',
+          actions: state.showTitles ? [{ type: 'show_titles' }] : [],
+          enabled: true,
+          isSolo: state.isSolo,
+          isHidden: state.isHidden,
+          hideFromFilterList: true
+        });
+      });
+    }
 
     // Add solo filter if pages are being soloed
     if (soloPages.size > 0) {
@@ -270,7 +293,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
     }
 
     return result;
-  }, [filters, soloPages, hiddenPages, selectionShowTitles, selectedPages]);
+  }, [filters, soloPages, hiddenPages, selectionShowTitles, selectedPages, graph, graphUpdateTrigger]);
 
   // Create and manage the DisplayGraph using useMemo for immediate availability
   const currentDisplayGraph = useMemo(() => {
@@ -656,25 +679,34 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   );
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full min-w-0">
       {/* Left sidebar with filter panel */}
-      <div className="w-[310px] p-4 bg-gray-100 border-r flex flex-col space-y-4 overflow-y-auto">
-                    <FilterPanel
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              siteSlug={siteSlug}
-              onCustomFiltersChange={() => {
-                // Trigger a reload of custom filters from the backend
-                if (onReloadCustomFilters) {
-                  onReloadCustomFilters();
-                }
-              }}
-              untrackedPagesCount={untrackedPagesCount}
-            />
-      </div>
-
+      <ResizableSidebar
+        side="left"
+        defaultWidth={310}
+        minWidth={240}
+        maxWidth={480}
+        storageKey="siteEditorFilterSidebarWidth"
+        ariaLabel="Resize filters sidebar"
+        testId="filters-sidebar"
+        className="flex flex-col space-y-4 overflow-y-auto bg-gray-100 p-4"
+      >
+        <FilterPanel
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          siteSlug={siteSlug}
+          onCustomFiltersChange={() => {
+            // Trigger a reload of custom filters from the backend
+            if (onReloadCustomFilters) {
+              onReloadCustomFilters();
+            }
+          }}
+          untrackedPagesCount={untrackedPagesCount}
+          pages={graph.getAllPages()}
+        />
+      </ResizableSidebar>
       {/* Main content area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <OrphansBanner
           orphanCount={orphanConfigs.length}
           onReview={() => setIsOrphansModalOpen(true)}
@@ -843,14 +875,9 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
           )}
         </div>
       </div>
-
       {/* Right panel for selection management */}
-      <div
-        className={`border-l bg-white transition-all duration-300 ease-in-out flex ${
-          isSelectionPanelCollapsed ? 'w-[40px]' : 'w-[320px]'
-        }`}
-      >
-        {isSelectionPanelCollapsed ? (
+      {isSelectionPanelCollapsed ? (
+        <div className="flex w-[40px] flex-shrink-0 border-l bg-white">
           <button
             onClick={() => onSelectionPanelCollapseChange(false)}
             className="flex items-center justify-center w-full hover:bg-gray-100 focus:outline-none"
@@ -859,7 +886,18 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
               Selected
             </div>
           </button>
-        ) : (
+        </div>
+      ) : (
+        <ResizableSidebar
+          side="right"
+          defaultWidth={320}
+          minWidth={260}
+          maxWidth={560}
+          storageKey="siteEditorSelectionSidebarWidth"
+          ariaLabel="Resize selected pages sidebar"
+          testId="selection-sidebar"
+          className="flex bg-white"
+        >
           <SitePageSelectionSidebar
             selectedPages={selectedPages}
             graph={graph}
@@ -877,8 +915,8 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
             onMarkSensitive={handleMarkSensitive}
             obsidianInfo={obsidianInfo}
           />
-        )}
-      </div>
+        </ResizableSidebar>
+      )}
 
       {/* Right-click context menu for pages */}
       {contextMenuPage && (() => {
