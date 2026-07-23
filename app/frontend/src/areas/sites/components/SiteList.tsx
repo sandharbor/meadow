@@ -33,7 +33,6 @@ type SiteConfig = SiteConfigWithSlug;
 type SiteListSortKey =
   | 'default'
   | 'slug'
-  | 'initialSitePageTitle'
   | 'siteCreatedAt'
   | 'siteUpdatedAt'
   | 'siteLastPublishedAt'
@@ -123,10 +122,6 @@ const compareByKey = (a: SiteConfig, b: SiteConfig, key: SiteListSortKey, direct
       const cmp = compareStrings(a.slug || '', b.slug || '');
       return direction === 'asc' ? cmp : -cmp;
     }
-    case 'initialSitePageTitle': {
-      const cmp = compareStrings(a.initialSitePageTitle || '', b.initialSitePageTitle || '');
-      return direction === 'asc' ? cmp : -cmp;
-    }
     case 'siteCreatedAt': {
       return compareNullableNumbers(parseTime(a.siteCreatedAt), parseTime(b.siteCreatedAt), direction);
     }
@@ -145,6 +140,17 @@ const compareByKey = (a: SiteConfig, b: SiteConfig, key: SiteListSortKey, direct
   }
 };
 
+const formatSiteDate = (value?: string | null): string | null => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
 const SiteList: React.FC = () => {
   const location = useLocation();
   const [sites, setSites] = useState<SiteConfig[]>([]);
@@ -156,6 +162,12 @@ const SiteList: React.FC = () => {
   const [isExampleSiteModalOpen, setIsExampleSiteModalOpen] = useState(false);
   const [isSiteListMenuOpen, setIsSiteListMenuOpen] = useState(false);
   const siteListMenuRef = useRef<HTMLDivElement>(null);
+  const siteActionMenuRef = useRef<HTMLDivElement>(null);
+  const [siteActionMenu, setSiteActionMenu] = useState<{
+    slug: string;
+    top: number;
+    right: number;
+  } | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
@@ -179,21 +191,36 @@ const SiteList: React.FC = () => {
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [tempNotes, setTempNotes] = useState<string>('');
 
-  // Close site list menu on click outside or escape
+  // Close open menus on click outside, escape, or scrolling.
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (siteListMenuRef.current && !siteListMenuRef.current.contains(e.target as Node)) {
         setIsSiteListMenuOpen(false);
       }
+      const target = e.target as Element;
+      const clickedSiteActionTrigger = target.closest('[data-site-action-menu-trigger]');
+      if (
+        siteActionMenuRef.current &&
+        !siteActionMenuRef.current.contains(target) &&
+        !clickedSiteActionTrigger
+      ) {
+        setSiteActionMenu(null);
+      }
     };
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsSiteListMenuOpen(false);
+      if (e.key === 'Escape') {
+        setIsSiteListMenuOpen(false);
+        setSiteActionMenu(null);
+      }
     };
+    const handleScroll = () => setSiteActionMenu(null);
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
+    window.addEventListener('scroll', handleScroll, true);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('scroll', handleScroll, true);
     };
   }, []);
 
@@ -215,7 +242,6 @@ const SiteList: React.FC = () => {
       const validKeys: SiteListSortKey[] = [
         'default',
         'slug',
-        'initialSitePageTitle',
         'siteCreatedAt',
         'siteUpdatedAt',
         'siteLastPublishedAt',
@@ -239,34 +265,9 @@ const SiteList: React.FC = () => {
     }
   }, [sortState]);
 
-  const getDefaultDirectionForKey = (key: SiteListSortKey): SortDirection => {
-    if (
-      key === 'siteCreatedAt' ||
-      key === 'siteUpdatedAt' ||
-      key === 'siteLastPublishedAt' ||
-      key === 'archivedAt'
-    ) {
-      return 'desc';
-    }
-    return 'asc';
-  };
-
-  const handleSortHeaderClick = (key: SiteListSortKey) => {
-    setSortState(prev => {
-      if (prev.key === key) {
-        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
-      }
-      return { key, direction: getDefaultDirectionForKey(key) };
-    });
-  };
-
-  const renderSortIndicator = (key: SiteListSortKey) => {
-    if (sortState.key !== key) return null;
-    return (
-      <span className="text-neutral-400 ml-1" aria-hidden="true">
-        {sortState.direction === 'asc' ? '▲' : '▼'}
-      </span>
-    );
+  const handleSortChange = (value: string) => {
+    const [key, direction] = value.split(':') as [SiteListSortKey, SortDirection];
+    setSortState({ key, direction });
   };
 
   const loadSites = async () => {
@@ -538,6 +539,21 @@ const SiteList: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
+  const toggleSiteActionMenu = (event: React.MouseEvent<HTMLButtonElement>, slug: string) => {
+    event.stopPropagation();
+    if (siteActionMenu?.slug === slug) {
+      setSiteActionMenu(null);
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    setSiteActionMenu({
+      slug,
+      top: Math.min(rect.bottom + 6, window.innerHeight - 236),
+      right: Math.max(16, window.innerWidth - rect.right)
+    });
+  };
+
   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setSiteToDelete(null);
@@ -614,6 +630,10 @@ const SiteList: React.FC = () => {
     sortState.direction
   ]);
 
+  const actionMenuSite = siteActionMenu
+    ? sites.find(site => site.slug === siteActionMenu.slug) || null
+    : null;
+
   if (loading) {
     return <div className="flex items-center justify-center h-full">Loading sites...</div>;
   }
@@ -623,109 +643,49 @@ const SiteList: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 p-8">
+    <div className="flex flex-col h-full bg-white px-8 py-7">
       <div className="max-w-6xl mx-auto w-full flex flex-col flex-1 min-h-0">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 py-2 flex-shrink-0">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-3xl font-bold">Sites</h1>
-            {/* Search input */}
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search sites..."
-                className="pl-8 pr-8 py-1.5 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-main-500 focus:border-transparent w-48"
-              />
-              <svg
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                  title="Clear search"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-            {findInSitesOptions && !isFindInSitesFilterActive && (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setIsFindInSitesFilterActive(true)}
-                  className="px-3 py-1 bg-main-100 hover:bg-main-200 text-main-800 rounded-md text-sm transition-colors"
-                  title="Apply find in sites filter"
-                >
-                  Filter by &quot;{findInSitesOptions.pageName}&quot;
-                </button>
-                <button
-                  onClick={() => {
-                    setFindInSitesOptions(null);
-                    setIsFindInSitesFilterActive(false);
-                  }}
-                  className="px-3 py-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 rounded-md text-sm transition-colors"
-                  title="Clear find in sites filter"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-            {findInSitesOptions && isFindInSitesFilterActive && (
-              <div className="flex items-center space-x-2 px-3 py-1 bg-main-100 text-main-800 rounded-md">
-                <span className="text-sm">
-                  Find in sites filter: &quot;{findInSitesOptions.pageName}&quot;
-                </span>
-                <button
-                  onClick={() => setIsFindInSitesFilterActive(false)}
-                  className="text-main-600 hover:text-main-800 font-bold"
-                  title="Remove filter"
-                >
-                  ×
-                </button>
-                <button
-                  onClick={() => {
-                    setFindInSitesOptions(null);
-                    setIsFindInSitesFilterActive(false);
-                  }}
-                  className="text-main-600 hover:text-main-800 text-sm font-medium"
-                  title="Clear find in sites filter"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
+        <div className="flex items-start justify-between gap-8 mb-7 flex-shrink-0">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">Sites</h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              Create, revisit, and publish sites from your notes.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsCreateModalOpen(true)}
-              className="px-4 py-2 bg-success-600 text-white rounded hover:bg-success-700"
+              className="px-4 py-2 bg-main-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-main-700 transition-colors"
             >
               {findInSitesOptions && isFindInSitesFilterActive ? 'Create Site for Page' : 'Create New Site'}
             </button>
             <div className="relative" ref={siteListMenuRef}>
               <button
                 onClick={() => setIsSiteListMenuOpen(!isSiteListMenuOpen)}
-                className="px-2 py-1 text-sm text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 rounded"
+                className={`p-2 border rounded-lg transition-colors ${
+                  isSiteListMenuOpen
+                    ? 'bg-main-50 border-main-300 text-main-700'
+                    : 'bg-white border-neutral-300 text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                }`}
                 title="More options"
+                aria-label="More site options"
               >
-                ⋯
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="5" cy="12" r="1.7" />
+                  <circle cx="12" cy="12" r="1.7" />
+                  <circle cx="19" cy="12" r="1.7" />
+                </svg>
               </button>
               {isSiteListMenuOpen && (
-                <div className="absolute right-0 mt-1 w-48 bg-white border border-neutral-200 rounded-md shadow-lg z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-neutral-200 rounded-lg shadow-lg z-50">
                   <div className="py-1">
                     <button
                       onClick={() => {
                         setIsExampleSiteModalOpen(true);
                         setIsSiteListMenuOpen(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
+                      className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
                     >
                       Add Example Site
                     </button>
@@ -736,56 +696,138 @@ const SiteList: React.FC = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6 flex-shrink-0">
-          <div className="border-b border-neutral-200">
-            <nav className="flex space-x-8">
+        {findInSitesOptions && !isFindInSitesFilterActive && (
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-lg border border-main-200 bg-main-50 px-4 py-3">
+            <span className="text-sm text-main-900">
+              Show only sites that contain &quot;{findInSitesOptions.pageName}&quot;?
+            </span>
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setActiveTab('current')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm relative ${
-                  activeTab === 'current'
-                    ? 'border-main-500 text-main-600'
-                    : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                }`}
+                onClick={() => setIsFindInSitesFilterActive(true)}
+                className="px-3 py-1.5 bg-main-600 hover:bg-main-700 text-white rounded-md text-sm font-medium transition-colors"
+                title="Apply find in sites filter"
               >
-                Current Sites ({isFindInSitesFilterActive && findInSitesOptions ? filteredCurrentSites.length : currentSites.length})
-                {/* Show badge when viewing archived and there are search matches in current */}
-                {activeTab === 'archived' && searchQuery && filteredCurrentSites.length > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-main-600 rounded-full">
-                    {filteredCurrentSites.length}
-                  </span>
-                )}
+                Apply filter
               </button>
               <button
-                onClick={() => setActiveTab('archived')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm relative ${
-                  activeTab === 'archived'
-                    ? 'border-main-500 text-main-600'
-                    : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                }`}
+                onClick={() => {
+                  setFindInSitesOptions(null);
+                  setIsFindInSitesFilterActive(false);
+                }}
+                className="px-2 py-1.5 text-sm text-neutral-600 hover:text-neutral-900"
+                title="Clear find in sites filter"
               >
-                Archived Sites ({isFindInSitesFilterActive && findInSitesOptions ? filteredArchivedSites.length : archivedSites.length})
-                {/* Show badge for find-in-sites filter when viewing current tab */}
-                {isFindInSitesFilterActive && findInSitesOptions && activeTab === 'current' && filteredArchivedSites.length > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-main-600 rounded-full">
-                    {filteredArchivedSites.length}
-                  </span>
-                )}
-                {/* Show badge when viewing current and there are search matches in archived */}
-                {activeTab === 'current' && searchQuery && !isFindInSitesFilterActive && filteredArchivedSites.length > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-main-600 rounded-full">
-                    {filteredArchivedSites.length}
-                  </span>
-                )}
+                Dismiss
               </button>
-            </nav>
+            </div>
+          </div>
+        )}
+
+        {findInSitesOptions && isFindInSitesFilterActive && (
+          <div className="mb-4 flex items-center gap-2 self-start rounded-full border border-main-200 bg-main-50 py-1.5 pl-3 pr-1.5 text-main-800">
+            <span className="text-sm">Find in sites filter: &quot;{findInSitesOptions.pageName}&quot;</span>
+            <button
+              onClick={() => setIsFindInSitesFilterActive(false)}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-main-600 hover:bg-main-100 hover:text-main-900"
+              title="Remove filter"
+              aria-label="Remove find in sites filter"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Tabs and list controls */}
+        <div className="flex items-end justify-between gap-6 border-b border-neutral-200 flex-shrink-0">
+          <nav className="flex gap-6" aria-label="Site lists">
+            <button
+              onClick={() => {
+                setActiveTab('current');
+                if (sortState.key === 'archivedAt') {
+                  setSortState({ key: 'default', direction: 'desc' });
+                }
+              }}
+              className={`pb-3 border-b-2 font-medium text-sm relative transition-colors ${
+                activeTab === 'current'
+                  ? 'border-main-500 text-neutral-950'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800'
+              }`}
+            >
+              Current Sites
+              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                activeTab === 'current' ? 'bg-main-50 text-main-700' : 'bg-neutral-100 text-neutral-500'
+              }`}>
+                {isFindInSitesFilterActive && findInSitesOptions ? filteredCurrentSites.length : currentSites.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('archived')}
+              className={`pb-3 border-b-2 font-medium text-sm relative transition-colors ${
+                activeTab === 'archived'
+                  ? 'border-main-500 text-neutral-950'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-800'
+              }`}
+            >
+              Archived Sites
+              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                activeTab === 'archived' ? 'bg-main-50 text-main-700' : 'bg-neutral-100 text-neutral-500'
+              }`}>
+                {isFindInSitesFilterActive && findInSitesOptions ? filteredArchivedSites.length : archivedSites.length}
+              </span>
+            </button>
+          </nav>
+
+          <div className="flex items-center gap-2 pb-2">
+            <div className="relative">
+              <svg
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search sites..."
+                className="w-56 rounded-lg border border-neutral-300 bg-neutral-50 py-1.5 pl-9 pr-8 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-main-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-main-100"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700"
+                  title="Clear search"
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <select
+              value={`${sortState.key}:${sortState.direction}`}
+              onChange={(e) => handleSortChange(e.target.value)}
+              className="rounded-lg border border-neutral-300 bg-white py-1.5 pl-3 pr-8 text-sm text-neutral-600 focus:border-main-500 focus:outline-none focus:ring-2 focus:ring-main-100"
+              aria-label="Sort sites"
+            >
+              <option value="default:desc">Recent activity</option>
+              <option value="slug:asc">Site name</option>
+              <option value="siteLastPublishedAt:desc">Recently published</option>
+              <option value="siteUpdatedAt:desc">Recently updated</option>
+              <option value="siteCreatedAt:desc">Recently created</option>
+              {activeTab === 'archived' && (
+                <option value="archivedAt:desc">Recently archived</option>
+              )}
+            </select>
           </div>
         </div>
 
-        {/* Sites Table */}
-        <div className="flex-1 overflow-y-auto bg-white shadow rounded-lg">
+        {/* Sites list */}
+        <div className="mt-4 flex-1 min-h-0 overflow-y-auto rounded-xl border border-neutral-200 bg-white">
           {isFindInSitesFilterActive && findInSitesOptions && loadingPageTracking && (
-            <div className="px-6 py-4 bg-main-50 border-b border-main-200">
+            <div className="px-5 py-3 bg-main-50 border-b border-main-200">
               <div className="flex items-center space-x-2">
                 <div className="animate-spin h-4 w-4 border border-main-300 border-t-main-600 rounded-full"></div>
                 <span className="text-sm text-main-700">
@@ -796,7 +838,7 @@ const SiteList: React.FC = () => {
           )}
           
           {isFindInSitesFilterActive && findInSitesOptions && !loadingPageTracking && displaySites.length === 0 && (
-            <div className="px-6 py-8 bg-warning-50 border-b border-warning-200">
+            <div className="px-5 py-4 bg-warning-50 border-b border-warning-200">
               <div className="text-sm text-warning-800">
                 No sites found that track the page &quot;{findInSitesOptions.pageName}&quot;. 
                 <button 
@@ -809,282 +851,272 @@ const SiteList: React.FC = () => {
             </div>
           )}
           
-          <table className="min-w-full divide-y divide-neutral-200">
-            <thead className="bg-neutral-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  <button
-                    type="button"
-                    onClick={() => handleSortHeaderClick('slug')}
-                    className="inline-flex items-center hover:text-neutral-700"
-                    title="Sort by site"
-                  >
-                    Site {renderSortIndicator('slug')}
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  <button
-                    type="button"
-                    onClick={() => handleSortHeaderClick('initialSitePageTitle')}
-                    className="inline-flex items-center hover:text-neutral-700"
-                    title="Sort by initial page"
-                  >
-                    Initial Page {renderSortIndicator('initialSitePageTitle')}
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  <button
-                    type="button"
-                    onClick={() => handleSortHeaderClick('siteCreatedAt')}
-                    className="inline-flex items-center hover:text-neutral-700"
-                    title="Sort by created date"
-                  >
-                    Created At {renderSortIndicator('siteCreatedAt')}
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  <button
-                    type="button"
-                    onClick={() => handleSortHeaderClick('siteUpdatedAt')}
-                    className="inline-flex items-center hover:text-neutral-700"
-                    title="Sort by updated date"
-                  >
-                    Updated At {renderSortIndicator('siteUpdatedAt')}
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  <button
-                    type="button"
-                    onClick={() => handleSortHeaderClick('siteLastPublishedAt')}
-                    className="inline-flex items-center hover:text-neutral-700"
-                    title="Sort by last published date"
-                  >
-                    Last Published {renderSortIndicator('siteLastPublishedAt')}
-                  </button>
-                </th>
-                {activeTab === 'archived' && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                    <button
-                      type="button"
-                      onClick={() => handleSortHeaderClick('archivedAt')}
-                      className="inline-flex items-center hover:text-neutral-700"
-                      title="Sort by archived date"
+          {displaySites.length > 0 && (
+            <table className="min-w-full table-fixed">
+              <thead className="sr-only">
+                <tr>
+                  <th>Site</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-200">
+                {displaySites.map((site) => {
+                  const isExactMatch = isFindInSitesFilterActive && findInSitesOptions && site.initialSitePageTitle === findInSitesOptions.pageName;
+                  const publishedDate = formatSiteDate(site.siteLastPublishedAt);
+                  const updatedDate = formatSiteDate(site.siteUpdatedAt);
+                  const createdDate = formatSiteDate(site.siteCreatedAt);
+                  const archivedDate = formatSiteDate(site.archivedAt);
+                  const status = site.error
+                    ? { label: 'Needs attention', classes: 'bg-danger-50 text-danger-700 ring-danger-200' }
+                    : site.archivedAt
+                      ? { label: 'Archived', classes: 'bg-neutral-100 text-neutral-600 ring-neutral-200' }
+                      : site.siteLastPublishedAt
+                        ? { label: 'Published', classes: 'bg-main-50 text-main-700 ring-main-200' }
+                        : { label: 'Draft', classes: 'bg-neutral-100 text-neutral-600 ring-neutral-200' };
+                  const activityText = site.error
+                    ? 'Site details are unavailable'
+                    : archivedDate
+                      ? `Archived ${archivedDate}`
+                      : publishedDate
+                        ? `Published ${publishedDate}`
+                        : updatedDate
+                          ? `Updated ${updatedDate}`
+                          : createdDate
+                            ? `Created ${createdDate}`
+                            : 'Not published yet';
+
+                  return (
+                    <tr
+                      key={site.slug}
+                      className={`group cursor-pointer transition-colors hover:bg-neutral-50 ${
+                        isExactMatch ? 'bg-main-50/70 shadow-[inset_3px_0_0_#14b8a6]' : ''
+                      }`}
+                      onClick={() => handleOpenSite(site.slug)}
                     >
-                      Archived At {renderSortIndicator('archivedAt')}
-                    </button>
-                  </th>
-                )}
-                <th className="px-6 py-3">
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-neutral-200">
-              {displaySites.map((site) => {
-                const isExactMatch = isFindInSitesFilterActive && findInSitesOptions && site.initialSitePageTitle === findInSitesOptions.pageName;
-                return (
-                <React.Fragment key={site.slug}>
-                  <tr 
-                    className={`hover:bg-neutral-50 cursor-pointer ${isExactMatch ? 'bg-main-50 border-l-4 border-l-main-500' : ''}`}
-                    onClick={() => handleOpenSite(site.slug)}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="min-w-0 flex-1 max-w-xs">
-                          <div
-                            className="text-sm font-medium text-neutral-900 truncate"
+                      <td className="w-[54%] px-5 py-4 align-middle">
+                        <div className="min-w-0 pr-6">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenSite(site.slug);
+                            }}
+                            className="block max-w-full truncate text-left text-[15px] font-semibold text-neutral-900 hover:text-main-700"
                             title={site.slug}
                           >
                             {highlightMatch(site.slug, searchQuery)}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div
-                        className="text-sm text-neutral-900 truncate max-w-48"
-                        title={site.initialSitePageTitle || 'N/A'}
-                      >
-                        {highlightMatch(site.initialSitePageTitle || 'N/A', searchQuery)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                      {site.siteCreatedAt ? new Date(site.siteCreatedAt).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                      {site.siteUpdatedAt ? new Date(site.siteUpdatedAt).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                      {site.siteLastPublishedAt ? new Date(site.siteLastPublishedAt).toLocaleDateString() : 'Never'}
-                    </td>
-                    {activeTab === 'archived' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                        {site.archivedAt ? new Date(site.archivedAt).toLocaleDateString() : 'N/A'}
-                      </td>
-                    )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">
-                      <div className="flex space-x-2">
-                        {site.siteLastPublishedAt && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenWebsite(site.slug);
-                            }}
-                            className="text-success-600 hover:text-success-900"
-                            title="Open published website"
-                          >
-                            🌐
                           </button>
-                        )}
-                        {site.generatedSiteVersions && site.generatedSiteVersions.length > 1 && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenVersions(site.slug);
-                            }}
-                            className="text-main-600 hover:text-main-900"
-                            title="Manage versions"
-                          >
-                            V
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(site);
-                          }}
-                          className="text-info-600 hover:text-info-900"
-                          title="Edit site"
-                        >
-                          ✏️
-                        </button>
-                        {activeTab === 'current' && !site.archivedAt ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleArchive(site.slug);
-                            }}
-                            className="text-warning-600 hover:text-warning-900"
-                            title="Archive site"
-                          >
-                            📦
-                          </button>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUnarchive(site.slug);
-                            }}
-                            className="text-success-600 hover:text-success-900"
-                            title="Unarchive site"
-                          >
-                            📤
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteModal(site);
-                          }}
-                          className="text-danger-600 hover:text-danger-900"
-                          title="Delete site"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {/* Notes row */}
-                  <tr className="border-t-0">
-                    <td 
-                      colSpan={activeTab === 'archived' ? 7 : 6} 
-                      className={`px-6 py-2 group ${isExactMatch ? 'bg-main-50 border-l-4 border-l-main-500' : 'bg-neutral-50'}`}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex items-start space-x-2">
-                        <div className="flex-1">
                           {editingNotes === site.slug ? (
-                            <div className="space-y-2">
+                            <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
                               <textarea
                                 value={tempNotes}
                                 onChange={(e) => setTempNotes(e.target.value)}
                                 rows={3}
-                                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-main-500 text-sm"
-                                placeholder="Enter notes..."
+                                className="w-full max-w-xl rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-main-500 focus:outline-none focus:ring-2 focus:ring-main-100"
+                                placeholder="Add a note about this site..."
                                 autoFocus
                               />
-                              <div className="flex space-x-2">
+                              <div className="flex gap-2">
                                 <button
-                                  onClick={() => saveNotes(site.slug)}
-                                  className="px-3 py-1 bg-btn-standard-normal text-btn-standard-text text-xs rounded hover:bg-btn-standard-hover"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    saveNotes(site.slug);
+                                  }}
+                                  className="rounded-md bg-main-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-main-700"
                                 >
-                                  Save
+                                  Save note
                                 </button>
                                 <button
-                                  onClick={cancelEditingNotes}
-                                  className="px-3 py-1 bg-neutral-600 text-white text-xs rounded hover:bg-neutral-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    cancelEditingNotes();
+                                  }}
+                                  className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
                                 >
                                   Cancel
                                 </button>
                               </div>
                             </div>
-                          ) : (
-                            <div className="text-sm text-neutral-600 whitespace-pre-wrap min-h-[1.5rem]">
-                              {site.siteNotes &&
-                                site.siteNotes.split('\n').map((line, idx) => (
-                                  <React.Fragment key={idx}>
-                                    {highlightMatch(line, searchQuery)}
-                                    {idx < site.siteNotes!.split('\n').length - 1 && <br />}
-                                  </React.Fragment>
-                                ))
-                              }
-                            </div>
-                          )}
+                          ) : site.siteNotes ? (
+                            <p className="mt-1 truncate text-sm text-neutral-500" title={site.siteNotes}>
+                              {highlightMatch(site.siteNotes.replace(/\s+/g, ' '), searchQuery)}
+                            </p>
+                          ) : null}
                         </div>
-                        {editingNotes !== site.slug && (
+                      </td>
+                      <td className="w-[22%] px-4 py-4 align-middle">
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${status.classes}`}>
+                            {status.label}
+                          </span>
+                          <span className="text-xs text-neutral-500">{activityText}</span>
+                        </div>
+                      </td>
+                      <td className="w-[24%] px-5 py-4 align-middle">
+                        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                          {site.siteLastPublishedAt && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenWebsite(site.slug);
+                              }}
+                              className="rounded-md px-2.5 py-1.5 text-sm font-medium text-neutral-600 hover:bg-white hover:text-main-700 hover:shadow-sm"
+                              title="Open published website"
+                            >
+                              View live
+                            </button>
+                          )}
                           <button
-                            onClick={() => startEditingNotes(site.slug, site.siteNotes || '')}
-                            className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-neutral-600 transition-opacity"
-                            title="Edit notes"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenSite(site.slug);
+                            }}
+                            className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:border-neutral-400 hover:bg-neutral-50"
                           >
-                            ✏️
+                            Open
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                          <button
+                            onClick={(e) => toggleSiteActionMenu(e, site.slug)}
+                            data-site-action-menu-trigger
+                            className={`flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
+                              siteActionMenu?.slug === site.slug
+                                ? 'border-main-300 bg-main-50 text-main-700'
+                                : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:bg-white hover:text-neutral-800'
+                            }`}
+                            title="More actions"
+                            aria-label={`More actions for ${site.slug}`}
+                          >
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                              <circle cx="5" cy="12" r="1.7" />
+                              <circle cx="12" cy="12" r="1.7" />
+                              <circle cx="19" cy="12" r="1.7" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
           
           {displaySites.length === 0 && (
-            <div className="px-6 py-12 text-center">
-              <p className="text-neutral-500">No {activeTab} sites found.</p>
-              {sites.length === 0 && (
-                <div className="mt-8 p-4 bg-main-50 border border-main-200 rounded-lg inline-block">
-                  <p className="text-lg font-medium text-neutral-800 mb-1">Turn your notes into sites</p>
-                  <p className="text-sm text-neutral-600">
+            <div className="flex min-h-64 flex-col items-center justify-center px-6 py-12 text-center">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-500">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z" />
+                  <path d="M8 8h8M8 12h5" />
+                </svg>
+              </div>
+              {sites.length === 0 ? (
+                <>
+                  <p className="font-medium text-neutral-800">Turn your notes into sites</p>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Create a site from your notes, or explore the example.
+                  </p>
+                  <div className="mt-5 flex items-center gap-3">
                     <button
                       onClick={() => setIsCreateModalOpen(true)}
-                      className="text-main-600 hover:text-main-700 underline"
+                      className="rounded-md bg-main-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-main-700"
                     >
                       create a site
                     </button>
-                    {' or '}
                     <button
                       onClick={() => setIsExampleSiteModalOpen(true)}
-                      className="text-main-600 hover:text-main-700 underline"
+                      className="text-sm font-medium text-main-700 hover:text-main-900"
                     >
                       add the example site
                     </button>
-                  </p>
-                </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium text-neutral-800">No {activeTab} sites found</p>
+                  <p className="mt-1 text-sm text-neutral-500">Try changing your search or filters.</p>
+                </>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {siteActionMenu && actionMenuSite && (
+        <div
+          ref={siteActionMenuRef}
+          className="fixed z-[70] w-48 rounded-lg border border-neutral-200 bg-white py-1 shadow-xl"
+          style={{ top: siteActionMenu.top, right: siteActionMenu.right }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {actionMenuSite.generatedSiteVersions && actionMenuSite.generatedSiteVersions.length > 1 && (
+            <button
+              onClick={() => {
+                setSiteActionMenu(null);
+                handleOpenVersions(actionMenuSite.slug);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+              title="Manage versions"
+            >
+              Manage versions
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setSiteActionMenu(null);
+              handleEdit(actionMenuSite);
+            }}
+            className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+            title="Edit site"
+          >
+            Edit site
+          </button>
+          <button
+            onClick={() => {
+              setSiteActionMenu(null);
+              startEditingNotes(actionMenuSite.slug, actionMenuSite.siteNotes || '');
+            }}
+            className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+            title="Edit notes"
+          >
+            {actionMenuSite.siteNotes ? 'Edit note' : 'Add note'}
+          </button>
+          {activeTab === 'current' && !actionMenuSite.archivedAt ? (
+            <button
+              onClick={() => {
+                setSiteActionMenu(null);
+                handleArchive(actionMenuSite.slug);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+              title="Archive site"
+            >
+              Archive site
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                setSiteActionMenu(null);
+                handleUnarchive(actionMenuSite.slug);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+              title="Unarchive site"
+            >
+              Restore site
+            </button>
+          )}
+          <div className="my-1 border-t border-neutral-100" />
+          <button
+            onClick={() => {
+              setSiteActionMenu(null);
+              openDeleteModal(actionMenuSite);
+            }}
+            className="w-full px-3 py-2 text-left text-sm text-danger-600 hover:bg-danger-50"
+            title="Delete site"
+          >
+            Delete site
+          </button>
+        </div>
+      )}
 
       {/* Create Site Modal */}
       <CreateOrEditSiteModal

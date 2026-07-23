@@ -30,6 +30,14 @@ export class SiteListPage {
     return this.page.locator("tr", { hasText: name });
   }
 
+  private async openSiteActions(name: string) {
+    const row = this.siteRow(name);
+    await this.expect(row).toBeVisible();
+    const menuBtn = row.getByRole("button", { name: `More actions for ${name}` });
+    await this.expect(menuBtn).toBeVisible();
+    await menuBtn.click();
+  }
+
   async goto() {
     await this.page.goto("/");
     await this.expect(this.sitesHeading).toBeVisible();
@@ -66,7 +74,7 @@ export class SiteListPage {
   }
 
   async addExampleSiteFromMenu() {
-    const menuBtn = this.page.locator("button", { hasText: "⋯" }).first();
+    const menuBtn = this.page.getByRole("button", { name: "More site options" });
     await this.expect(menuBtn).toBeVisible();
     await menuBtn.click();
     const addBtn = this.page.locator("button", { hasText: "Add Example Site" });
@@ -78,8 +86,8 @@ export class SiteListPage {
   }
 
   async clickDeleteSite(name: string) {
-    await this.expect(this.siteRow(name)).toBeVisible();
-    const deleteBtn = this.siteRow(name).locator('button[title="Delete site"]');
+    await this.openSiteActions(name);
+    const deleteBtn = this.page.getByRole("button", { name: "Delete site", exact: true });
     await this.expect(deleteBtn).toBeVisible();
     await deleteBtn.click();
   }
@@ -119,8 +127,8 @@ export class SiteListPage {
   }
 
   async archiveSite(name: string) {
-    await this.expect(this.siteRow(name)).toBeVisible();
-    const archiveBtn = this.siteRow(name).locator('button[title="Archive site"]');
+    await this.openSiteActions(name);
+    const archiveBtn = this.page.getByRole("button", { name: "Archive site", exact: true });
     await this.expect(archiveBtn).toBeVisible();
     await archiveBtn.click();
   }
