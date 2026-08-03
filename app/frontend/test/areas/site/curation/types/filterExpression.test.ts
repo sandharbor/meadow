@@ -21,7 +21,9 @@ import {
   appendFilterExpressionGroup,
   createDefaultFilterExpression,
   evaluateFilterExpression,
+  isDefaultFilterExpression,
   moveFilterExpressionNode,
+  moveFilterExpressionNodeOnto,
   reconcileFilterExpression,
   setFilterExpressionOperator,
   ungroupFilterExpression
@@ -50,6 +52,32 @@ describe('filter expression language', () => {
     const expression = createDefaultFilterExpression(terms);
 
     expect(evaluateFilterExpression(expression, terms, matches, allPages)).toEqual(new Set(['c']));
+  });
+
+  it('detects a customized active expression while ignoring commutative ordering and inactive terms', () => {
+    const terms = [solo('alpha'), solo('beta')];
+    const defaultExpression = createDefaultFilterExpression(terms);
+    if (!defaultExpression || defaultExpression.type !== 'group') throw new Error('Expected a group expression');
+
+    expect(isDefaultFilterExpression(defaultExpression, terms)).toBe(true);
+    expect(isDefaultFilterExpression({
+      ...defaultExpression,
+      children: [...defaultExpression.children].reverse()
+    }, terms)).toBe(true);
+    expect(isDefaultFilterExpression({
+      ...defaultExpression,
+      operator: 'intersection'
+    }, terms)).toBe(false);
+
+    const retainedInactiveTerm = {
+      ...defaultExpression,
+      children: [...defaultExpression.children, { type: 'filter' as const, filterId: 'charlie', mode: 'solo' as const }]
+    };
+    expect(isDefaultFilterExpression(retainedInactiveTerm, terms)).toBe(true);
+
+    const defaultSoloAndHideExpression = createDefaultFilterExpression([...terms, hide('charlie')]);
+    if (!defaultSoloAndHideExpression) throw new Error('Expected a mixed expression');
+    expect(isDefaultFilterExpression(defaultSoloAndHideExpression, terms)).toBe(true);
   });
 
   it('evaluates nested union, intersection, and difference groups as parentheses', () => {
@@ -141,6 +169,29 @@ describe('filter expression language', () => {
     });
     expect(ungroupFilterExpression(intersected, 'nested')).toMatchObject({
       type: 'group',
+      children: [{ filterId: 'alpha' }, { filterId: 'beta' }]
+    });
+  });
+
+  it('reorders either of two sibling terms when one card is dropped on the other', () => {
+    const initial = createDefaultFilterExpression([solo('alpha'), solo('beta')]);
+    if (!initial || initial.type !== 'group') throw new Error('Expected a group expression');
+
+    const betaFirst = moveFilterExpressionNodeOnto(
+      initial,
+      'filter:solo:alpha',
+      'filter:solo:beta'
+    );
+    expect(betaFirst).toMatchObject({
+      children: [{ filterId: 'beta' }, { filterId: 'alpha' }]
+    });
+
+    const alphaFirstAgain = moveFilterExpressionNodeOnto(
+      betaFirst,
+      'filter:solo:beta',
+      'filter:solo:alpha'
+    );
+    expect(alphaFirstAgain).toMatchObject({
       children: [{ filterId: 'alpha' }, { filterId: 'beta' }]
     });
   });

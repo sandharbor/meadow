@@ -82,6 +82,29 @@ describe('FilterExpressionComposer', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ operator: 'intersection' }));
   });
 
+  it('marks a changed mix as customized until it is reset', () => {
+    const Harness = () => {
+      const [expression, setExpression] = useState(initialExpression);
+      return (
+        <FilterExpressionComposer
+          expression={expression}
+          activeTerms={activeTerms}
+          filterNames={filterNames}
+          onChange={setExpression}
+        />
+      );
+    };
+    render(<Harness />);
+
+    expect(screen.queryByTestId('mix-view-customized-indicator')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    expect(screen.getByTestId('mix-view-customized-indicator')).toHaveTextContent('Customized');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset mix' }));
+    expect(screen.queryByTestId('mix-view-customized-indicator')).not.toBeInTheDocument();
+  });
+
   it('creates parentheses and accepts a dragged filter inside them', () => {
     const Harness = () => {
       const [expression, setExpression] = useState(initialExpression);
@@ -98,16 +121,38 @@ describe('FilterExpressionComposer', () => {
     fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
     fireEvent.click(screen.getByRole('button', { name: /add parentheses/i }));
 
-    const transfer = new Map<string, string>();
-    const dataTransfer = {
-      effectAllowed: '',
-      setData: (type: string, value: string) => transfer.set(type, value),
-      getData: (type: string) => transfer.get(type) || ''
-    };
-    fireEvent.dragStart(screen.getByTitle('Drag Alpha'), { dataTransfer });
-    fireEvent.drop(screen.getByText('Drop filters here'), { dataTransfer });
+    fireEvent.pointerDown(screen.getByTestId('filter:solo:alpha'), { button: 0 });
+    fireEvent.pointerUp(screen.getByText('Drop filters here'));
 
     const nestedGroup = screen.getByTestId('filter-expression-group-1');
     expect(within(nestedGroup).getByText('Alpha')).toBeInTheDocument();
+  });
+
+  it('reorders two terms by dropping either card directly on the other', () => {
+    const Harness = () => {
+      const [expression, setExpression] = useState(initialExpression);
+      return (
+        <FilterExpressionComposer
+          expression={expression}
+          activeTerms={activeTerms}
+          filterNames={filterNames}
+          onChange={setExpression}
+        />
+      );
+    };
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
+
+    const root = screen.getByTestId('filter-expression-solos');
+
+    fireEvent.pointerDown(screen.getByTestId('filter:solo:alpha'), { button: 0 });
+    fireEvent.pointerUp(screen.getByTestId('filter:solo:beta'));
+    expect(within(root).getAllByTestId(/^filter:solo:/).map(card => card.getAttribute('data-testid')))
+      .toEqual(['filter:solo:beta', 'filter:solo:alpha']);
+
+    fireEvent.pointerDown(screen.getByTestId('filter:solo:beta'), { button: 0 });
+    fireEvent.pointerUp(screen.getByTestId('filter:solo:alpha'));
+    expect(within(root).getAllByTestId(/^filter:solo:/).map(card => card.getAttribute('data-testid')))
+      .toEqual(['filter:solo:alpha', 'filter:solo:beta']);
   });
 });

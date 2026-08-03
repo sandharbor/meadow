@@ -54,6 +54,13 @@ export class FilterPanelComponent {
     return this.mixViewHeading.locator("xpath=ancestor::div[contains(@class, 'bg-white')][1]");
   }
 
+  private mixTermCard(termName: string) {
+    return this.mixViewModal
+      .locator('[data-testid^="filter:"]')
+      .filter({ hasText: termName })
+      .first();
+  }
+
   private filterCheckbox(filterName: string) {
     const escaped = filterName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return this.page.getByRole("checkbox", { name: new RegExp(`^${escaped}(\\s|$)`) });
@@ -139,11 +146,42 @@ export class FilterPanelComponent {
     await this.expect(this.mixViewHeading).toBeVisible();
   }
 
+  async expectMixViewCustomized(customized: boolean) {
+    const indicator = this.mixViewBtn.getByTestId("mix-view-customized-indicator");
+    if (customized) {
+      await this.expect(indicator).toHaveText("Customized");
+    } else {
+      await this.expect(indicator).toHaveCount(0);
+    }
+  }
+
   async chooseMixOperator(operator: "Any" | "All" | "Without") {
     const button = this.mixViewModal.getByRole("button", { name: operator, exact: true });
     await this.expect(button).toBeVisible();
     await button.click();
     await this.expect(button).toHaveAttribute("aria-pressed", "true");
+  }
+
+  async resetMixView() {
+    const button = this.mixViewModal.getByRole("button", { name: "Reset mix", exact: true });
+    await this.expect(button).toBeVisible();
+    await button.click();
+  }
+
+  async expectMixTermOrder(termNames: string[]) {
+    const cards = this.mixViewModal.locator('[data-testid^="filter:"]');
+    await this.expect(cards).toHaveCount(termNames.length);
+    for (const [index, termName] of termNames.entries()) {
+      await this.expect(cards.nth(index)).toContainText(termName);
+    }
+  }
+
+  async dragMixTermOnto(sourceName: string, targetName: string) {
+    const source = this.mixTermCard(sourceName);
+    const target = this.mixTermCard(targetName);
+    await this.expect(source).toBeVisible();
+    await this.expect(target).toBeVisible();
+    await source.dragTo(target);
   }
 
   async closeMixView() {

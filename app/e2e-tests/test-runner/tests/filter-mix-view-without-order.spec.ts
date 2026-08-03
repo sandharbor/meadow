@@ -20,7 +20,7 @@ import { Workflows } from "../src/run/workflows.js";
 import { filters } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("mix view intersects soloed untracked and sensitive filters in graph and list views", async ({
+test("without mix terms can be reordered by dropping one directly on the other", async ({
   page,
   snapshot,
   assertMeadowHomeState,
@@ -28,38 +28,30 @@ test("mix view intersects soloed untracked and sensitive filters in graph and li
 }) => {
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigSite();
-  await snapshot("big site loaded");
 
   const editor = new SiteEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
+  await editor.clickSelectAll();
+  await editor.clickSoloSelection();
   await filterPanel.enableAndSoloFilter("Untracked");
-  await editor.expectGraphViewPageCount(11);
-  await filterPanel.expectMixViewHidden();
-  await snapshot("untracked filter soloed without mix view");
-
-  await filterPanel.clickSoloOnFilter("Sensitive");
-  await filterPanel.expectMixViewCustomized(false);
-  await filterPanel.openMixView();
-  await addKeyFrame(filters);
-  await snapshot("mix view defaults to any");
-
-  await filterPanel.chooseMixOperator("All");
-  await filterPanel.closeMixView();
-  await filterPanel.expectMixViewCustomized(true);
-  await editor.expectGraphViewPageCount(1);
-  await snapshot("graph view shows sensitive untracked intersection");
-
-  await editor.switchToListView();
-  expect(await editor.getListViewPageCount()).toBe(1);
-  await snapshot("list view shows the same intersection");
-  await addKeyFrame(filters);
 
   await filterPanel.openMixView();
-  await filterPanel.resetMixView();
-  await filterPanel.expectMixViewCustomized(false);
+  await filterPanel.expectMixTermOrder(["Selection Solo", "Untracked"]);
+  await filterPanel.chooseMixOperator("Without");
   await filterPanel.closeMixView();
-  await snapshot("reset mix restores the default view");
+  await editor.expectGraphViewHasPages();
+  await snapshot("selection without untracked pages");
+
+  await filterPanel.openMixView();
+  await filterPanel.dragMixTermOnto("Selection Solo", "Untracked");
+  await filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]);
+  await addKeyFrame(filters);
+  await snapshot("without terms reordered directly");
+
+  await filterPanel.closeMixView();
+  await editor.expectGraphViewPageCount(0);
+  await snapshot("untracked without the selected pages is empty");
   void bigSite;
 
   await assertMeadowHomeState();

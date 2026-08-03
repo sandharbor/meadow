@@ -114,6 +114,37 @@ export function createDefaultFilterExpression(
   };
 }
 
+function comparableFilterExpression(
+  expression: FilterExpression,
+  activeTermIds: ReadonlySet<string>
+): string | null {
+  if (expression.type === 'filter') {
+    const termId = filterExpressionTermId(expression);
+    return activeTermIds.has(termId) ? `filter:${JSON.stringify(termId)}` : null;
+  }
+  if (expression.type === 'all') return 'all-pages';
+
+  const children = expression.children
+    .map(child => comparableFilterExpression(child, activeTermIds))
+    .filter((child): child is string => child !== null);
+  if (children.length === 0 && expression.children.length > 0) return null;
+  if (children.length === 1) return children[0];
+  if (expression.operator !== 'difference') children.sort();
+  return `group:${expression.operator}:[${children.join(',')}]`;
+}
+
+/** Whether the active portion of an expression still matches basic Solo/Hide behavior. */
+export function isDefaultFilterExpression(
+  expression: FilterExpression,
+  activeTerms: ActiveFilterExpressionTerm[]
+): boolean {
+  const defaultExpression = createDefaultFilterExpression(activeTerms);
+  if (!defaultExpression) return true;
+  const activeTermIds = new Set(activeTerms.map(filterExpressionTermId));
+  return comparableFilterExpression(expression, activeTermIds)
+    === comparableFilterExpression(defaultExpression, activeTermIds);
+}
+
 function collectTermIds(expression: FilterExpression | null, result = new Set<string>()): Set<string> {
   if (!expression) return result;
   if (expression.type === 'filter') {
@@ -324,6 +355,28 @@ export function moveFilterExpressionNode(
     return { ...group, children };
   });
   return targetFound ? moved : expression;
+}
+
+/**
+ * Makes an entire sibling card a useful drop target. Dropping the earlier
+ * sibling on the later one moves it after the target; dropping the later
+ * sibling on the earlier one moves it before the target.
+ */
+export function moveFilterExpressionNodeOnto(
+  expression: FilterExpression,
+  nodeId: string,
+  targetNodeId: string
+): FilterExpression {
+  if (nodeId === targetNodeId) return expression;
+  const sourcePosition = findParentAndIndex(expression, nodeId);
+  const targetPosition = findParentAndIndex(expression, targetNodeId);
+  if (!sourcePosition || !targetPosition) return expression;
+
+  const targetIndex = sourcePosition.parentGroupId === targetPosition.parentGroupId
+    && sourcePosition.index < targetPosition.index
+    ? targetPosition.index + 1
+    : targetPosition.index;
+  return moveFilterExpressionNode(expression, nodeId, targetPosition.parentGroupId, targetIndex);
 }
 
 export function ungroupFilterExpression(

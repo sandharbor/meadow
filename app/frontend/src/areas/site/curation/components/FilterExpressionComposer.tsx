@@ -26,7 +26,9 @@ import {
   createFilterExpressionGroupId,
   filterExpressionNodeId,
   filterExpressionTermId,
+  isDefaultFilterExpression,
   moveFilterExpressionNode,
+  moveFilterExpressionNodeOnto,
   setFilterExpressionOperator,
   ungroupFilterExpression
 } from '../types/filterExpression';
@@ -45,6 +47,7 @@ interface ExpressionNodeProps extends FilterExpressionComposerProps {
   draggedNodeId: string | null;
   setDraggedNodeId: (nodeId: string | null) => void;
   onMove: (nodeId: string, targetGroupId: string, targetIndex: number) => void;
+  onMoveOnto: (nodeId: string, targetNodeId: string) => void;
   onAddGroup: (parentGroupId: string) => void;
   onOperatorChange: (groupId: string, operator: FilterExpressionOperator) => void;
   onUngroup: (groupId: string) => void;
@@ -65,21 +68,27 @@ function hasVisibleContent(node: FilterExpression, activeTermIds: ReadonlySet<st
 function DragHandle({
   nodeId,
   label,
-  setDraggedNodeId
+  setDraggedNodeId,
+  isDragSource = true
 }: {
   nodeId: string;
   label: string;
   setDraggedNodeId: (nodeId: string | null) => void;
+  isDragSource?: boolean;
 }) {
   return (
     <span
-      draggable
-      onDragStart={event => {
+      draggable={isDragSource}
+      onDragStart={isDragSource ? event => {
+        event.stopPropagation();
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', nodeId);
         setDraggedNodeId(nodeId);
-      }}
-      onDragEnd={() => setDraggedNodeId(null)}
+      } : undefined}
+      onDragEnd={isDragSource ? event => {
+        event.stopPropagation();
+        setDraggedNodeId(null);
+      } : undefined}
       className="cursor-grab select-none px-1 text-gray-400 active:cursor-grabbing"
       title={`Drag ${label}`}
       aria-label={`Drag ${label}`}
@@ -104,6 +113,12 @@ function DropLine({
     <div
       className={`h-2 rounded transition-colors ${draggedNodeId ? 'hover:bg-main-200' : ''}`}
       onDragOver={event => event.preventDefault()}
+      onPointerUp={event => {
+        if (!draggedNodeId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onMove(draggedNodeId, groupId, index);
+      }}
       onDrop={event => {
         event.preventDefault();
         event.stopPropagation();
@@ -123,12 +138,22 @@ function FilterTermCard({ node, filterNames, draggedNodeId, setDraggedNodeId }: 
   const name = filterNames.get(node.filterId) || node.filterId;
   return (
     <div
-      className={`flex items-center gap-2 rounded-md border bg-white px-2 py-2 shadow-sm ${
+      onPointerDown={event => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        setDraggedNodeId(nodeId);
+      }}
+      className={`flex cursor-grab items-center gap-2 rounded-md border bg-white px-2 py-2 shadow-sm active:cursor-grabbing ${
         isDragging ? 'border-main-400 opacity-50' : 'border-gray-200'
       }`}
       data-testid={nodeId}
     >
-      <DragHandle nodeId={nodeId} label={name} setDraggedNodeId={setDraggedNodeId} />
+      <DragHandle
+        nodeId={nodeId}
+        label={name}
+        setDraggedNodeId={setDraggedNodeId}
+        isDragSource={false}
+      />
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">{name}</span>
       <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
         node.mode === 'solo' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
@@ -232,7 +257,26 @@ function ExpressionNode(props: ExpressionNodeProps) {
               <span className="h-px flex-1 bg-gray-200" />
             </div>
           )}
-          <ExpressionNode {...props} node={child} />
+          <div
+            className={draggedNodeId && draggedNodeId !== filterExpressionNodeId(child)
+              ? 'rounded-md hover:ring-2 hover:ring-main-200'
+              : ''}
+            onDragOver={event => event.preventDefault()}
+            onPointerUp={event => {
+              if (!draggedNodeId) return;
+              event.preventDefault();
+              event.stopPropagation();
+              props.onMoveOnto(draggedNodeId, filterExpressionNodeId(child));
+            }}
+            onDrop={event => {
+              event.preventDefault();
+              event.stopPropagation();
+              const nodeId = draggedNodeId || event.dataTransfer.getData('text/plain');
+              if (nodeId) props.onMoveOnto(nodeId, filterExpressionNodeId(child));
+            }}
+          >
+            <ExpressionNode {...props} node={child} />
+          </div>
           <DropLine groupId={node.id} index={index + 1} draggedNodeId={draggedNodeId} onMove={props.onMove} />
         </React.Fragment>
       ))}
@@ -241,8 +285,15 @@ function ExpressionNode(props: ExpressionNodeProps) {
         <div
           className="rounded-md border border-dashed border-gray-300 px-3 py-5 text-center text-xs text-gray-400"
           onDragOver={event => event.preventDefault()}
+          onPointerUp={event => {
+            if (!draggedNodeId) return;
+            event.preventDefault();
+            event.stopPropagation();
+            props.onMove(draggedNodeId, node.id, 0);
+          }}
           onDrop={event => {
             event.preventDefault();
+            event.stopPropagation();
             const nodeId = draggedNodeId || event.dataTransfer.getData('text/plain');
             if (nodeId) props.onMove(nodeId, node.id, 0);
           }}
@@ -274,15 +325,35 @@ const FilterExpressionComposer: React.FC<FilterExpressionComposerProps> = ({
     () => new Set(activeTerms.map(filterExpressionTermId)),
     [activeTerms]
   );
+  const usesCustomizedMix = useMemo(
+    () => !isDefaultFilterExpression(expression, activeTerms),
+    [expression, activeTerms]
+  );
 
   useEffect(() => {
     if (activeTerms.length < 2) setIsOpen(false);
   }, [activeTerms.length]);
 
+  useEffect(() => {
+    const stopPointerDrag = () => setDraggedNodeId(null);
+    window.addEventListener('pointerup', stopPointerDrag);
+    window.addEventListener('pointercancel', stopPointerDrag);
+    window.addEventListener('blur', stopPointerDrag);
+    return () => {
+      window.removeEventListener('pointerup', stopPointerDrag);
+      window.removeEventListener('pointercancel', stopPointerDrag);
+      window.removeEventListener('blur', stopPointerDrag);
+    };
+  }, []);
+
   if (activeTerms.length < 2) return null;
 
   const handleMove = (nodeId: string, targetGroupId: string, targetIndex: number) => {
     onChange(moveFilterExpressionNode(expression, nodeId, targetGroupId, targetIndex));
+    setDraggedNodeId(null);
+  };
+  const handleMoveOnto = (nodeId: string, targetNodeId: string) => {
+    onChange(moveFilterExpressionNodeOnto(expression, nodeId, targetNodeId));
     setDraggedNodeId(null);
   };
   const handleAddGroup = (parentGroupId: string) => {
@@ -299,13 +370,27 @@ const FilterExpressionComposer: React.FC<FilterExpressionComposerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="mt-3 flex w-full items-center justify-between rounded-lg border border-main-200 bg-main-50 px-3 py-2 text-sm font-medium text-main-700 hover:border-main-300 hover:bg-main-100"
+        className={`mt-3 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium ${
+          usesCustomizedMix
+            ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400 hover:bg-amber-100'
+            : 'border-main-200 bg-main-50 text-main-700 hover:border-main-300 hover:bg-main-100'
+        }`}
       >
         <span className="flex items-center gap-2">
           <span aria-hidden="true">⑂</span>
           Mix view
         </span>
-        <span className="rounded-full bg-white px-2 py-0.5 text-xs text-main-600">{activeTerms.length}</span>
+        <span className="flex items-center gap-2">
+          {usesCustomizedMix && (
+            <span
+              className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900"
+              data-testid="mix-view-customized-indicator"
+            >
+              Customized
+            </span>
+          )}
+          <span className="rounded-full bg-white px-2 py-0.5 text-xs text-main-600">{activeTerms.length}</span>
+        </span>
       </button>
 
       <Modal
@@ -330,6 +415,7 @@ const FilterExpressionComposer: React.FC<FilterExpressionComposerProps> = ({
               setDraggedNodeId={setDraggedNodeId}
               onChange={onChange}
               onMove={handleMove}
+              onMoveOnto={handleMoveOnto}
               onAddGroup={handleAddGroup}
               onOperatorChange={(groupId, operator) => onChange(setFilterExpressionOperator(expression, groupId, operator))}
               onUngroup={groupId => onChange(ungroupFilterExpression(expression, groupId))}
