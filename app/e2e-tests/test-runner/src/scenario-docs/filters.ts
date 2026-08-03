@@ -20,6 +20,6 @@ export const filters: ScenarioDoc = {
   id: "filters",
   name: "Filters",
   description:
-    "Tests that cover custom filter creation, filter soloing, and verifying " +
-    "that filters correctly select matching pages.",
+    "Tests that cover custom filter creation, filter soloing, filter mix " +
+    "operations, and verifying that filters correctly select matching pages.",
 };

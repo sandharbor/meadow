@@ -87,6 +87,10 @@ export class SiteEditorPage {
     return this.listViewRows.count();
   }
 
+  async expectGraphViewPageCount(count: number) {
+    await this.expect(this.page.getByTestId("graph-page-node")).toHaveCount(count);
+  }
+
   async clickBackToSites() {
     const btn = this.page.locator("button", { hasText: "← Sites" });
     await this.expect(btn).toBeVisible();

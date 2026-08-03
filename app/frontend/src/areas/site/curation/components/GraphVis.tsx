@@ -29,7 +29,7 @@ import PageNode, { PAGE_NODE_RADIUS } from './PageNode';
 
 interface GraphVisProps {
   graph: Graph;
-  initialPageId?: string;
+  displayGraph: DisplayGraph;
   filters: IFilter[];
   selectedPages: Set<string>;
   onSelectedPagesChange: (pages: Set<string>) => void;
@@ -65,7 +65,7 @@ const MAX_ZOOM = 10; // Can zoom in to 10x magnification
 
 const GraphVis: React.FC<GraphVisProps> = ({
   graph,
-  initialPageId,
+  displayGraph,
   filters,
   selectedPages,
   onSelectedPagesChange,
@@ -77,7 +77,6 @@ const GraphVis: React.FC<GraphVisProps> = ({
 }) => {
   const [positions, setPositions] = useState<Map<string, PagePosition>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const displayGraph = useRef<DisplayGraph>(new DisplayGraph(graph));
   const [hoveredPage, setHoveredPage] = useState<{
     id: string;
     x: number;
@@ -119,23 +118,6 @@ const GraphVis: React.FC<GraphVisProps> = ({
   const panStartRef = useRef<{ x: number; y: number; viewBoxX: number; viewBoxY: number } | null>(null);
   const isAnimatingRef = useRef(false);
   const pendingAnimationRef = useRef(false);
-
-  // Update display graph when props change
-  useEffect(() => {
-    displayGraph.current = new DisplayGraph(graph);
-    displayGraph.current.setFilters(filters);
-    displayGraph.current.setSelectedPages(selectedPages);
-    if (initialPageId) {
-      displayGraph.current.setInitialPage(initialPageId);
-      // Notify parent of distance changes
-      const distances = new Map<string, number>();
-      displayGraph.current.allDisplayPages.forEach(page => {
-        if (page.distance !== undefined) {
-          distances.set(page.id, page.distance);
-        }
-      });
-    }
-  }, [graph, filters, selectedPages, initialPageId, graphUpdateTrigger]);
 
   const calculatePositions = useCallback((pages: DisplayPage[], includeHidden: boolean = false) => {
     // Determine the drawing area dimensions
@@ -226,7 +208,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
       return;
     }
 
-    const newPositions = calculatePositions(displayGraph.current.allDisplayPages, true);
+    const newPositions = calculatePositions(displayGraph.allDisplayPages, true);
 
     if (positions.size === 0) {
       // Initial position setup - no animation
@@ -305,7 +287,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
     const maxY = Math.max(box.startY, box.currentY);
 
     const pagesInBox: string[] = [];
-    displayGraph.current.allDisplayPages.forEach(page => {
+    displayGraph.allDisplayPages.forEach(page => {
       if (!page.isVisible) return;
       const pos = positions.get(page.id);
       if (!pos) return;
@@ -314,7 +296,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
       }
     });
     return pagesInBox;
-  }, [positions]);
+  }, [displayGraph, positions]);
 
   // Pan handlers - middle mouse button (defined before mouse handlers that use them)
   const handlePanStart = useCallback((e: React.MouseEvent<SVGSVGElement> | React.PointerEvent<SVGSVGElement>) => {
@@ -590,7 +572,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
   const getInitialPageScreenPosition = useCallback((): { x: number; y: number } | null => {
     if (!svgRef.current || !containerRef.current) return null;
 
-    const initialPage = displayGraph.current.allDisplayPages.find(n => n.distance === 0);
+    const initialPage = displayGraph.allDisplayPages.find(n => n.distance === 0);
     if (!initialPage) return null;
 
     const pagePos = positions.get(initialPage.id);
@@ -610,7 +592,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
       };
     }
     return null;
-  }, [positions]);
+  }, [displayGraph, positions]);
 
   const showDepthCallout = hasFrontierOutlinks && calloutDismissed === false && positions.size > 0;
   const initialPageScreenPos = showDepthCallout ? getInitialPageScreenPosition() : null;
@@ -623,7 +605,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
   // Compute search result label placements
   const searchLabelPlacements = useMemo(() => {
-    const titledPages = displayGraph.current.allDisplayPages
+    const titledPages = displayGraph.allDisplayPages
       .filter(p => p.isVisible && p.showTitle)
       .map(p => {
         const pos = positions.get(p.id);
@@ -632,7 +614,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
       .filter((p): p is NonNullable<typeof p> => p !== null);
 
     return computeLabelPlacements(titledPages, searchText, PAGE_NODE_RADIUS, 4);
-  }, [positions, searchText]);
+  }, [displayGraph, positions, searchText]);
 
   return (
     <div className="w-full relative bg-white min-h-[300px] h-full">
@@ -800,8 +782,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
           {/* Draw edges */}
           {graph.getAllEdges().map((edge, index) => {
-            const sourcePage = displayGraph.current.getDisplayPage(edge.source);
-            const targetPage = displayGraph.current.getDisplayPage(edge.target);
+            const sourcePage = displayGraph.getDisplayPage(edge.source);
+            const targetPage = displayGraph.getDisplayPage(edge.target);
             if (!sourcePage || !targetPage) return null;
 
             const sourcePos = positions.get(edge.source);
@@ -899,7 +881,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
           })}
 
           {/* Draw pages */}
-          {displayGraph.current.allDisplayPages.map((page) => {
+          {displayGraph.allDisplayPages.map((page) => {
             if (isSitePreviewActive) {
               if (!sitePageIds.has(page.id)) return null;
             } else {
@@ -912,6 +894,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
             return (
               <g
                 key={page.id}
+                data-testid="graph-page-node"
+                data-page-id={page.id}
                 transform={`translate(${pagePosition.x},${pagePosition.y})`}
                 onClick={() => handlePageClick(page.id)}
                 onContextMenu={(e) => {

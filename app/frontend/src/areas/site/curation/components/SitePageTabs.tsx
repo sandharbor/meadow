@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Graph, IPage } from '../../../../../../shared_code/types/graph';
-import { IFilter, IPageSelector, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector, createFolderPageSelector } from '../types/filters';
+import { IFilter, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
 import { DisplayGraph } from '../types/displayGraph';
 import GraphVis from './GraphVis';
 import ListView from './ListView';
@@ -35,7 +35,7 @@ import { buildPageConfigs, getOrphanPageConfigs } from '../../../../../../shared
 import Modal from '../../../../shared/components/Modal';
 import { AppConfig } from '../../../../../../shared_code/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
-import { hasPagesInMultipleFolders } from '../utils/folderFilterUtils';
+import { useDisplayFilters } from '../utils/useDisplayFilters';
 
 interface SitePageTabsProps {
   graph: Graph;
@@ -62,14 +62,6 @@ interface SitePageTabsProps {
 }
 
 type ViewType = 'graph' | 'list';
-
-// Create a page selector that selects specific pages by ID
-const createPageIdSelector = (pageIds: Set<string>, name: string): IPageSelector => ({
-  id: `page-id-selector-${name}`,
-  name: name,
-  type: 'normal',
-  select: () => new Set(pageIds)
-});
 
 const SitePageTabs: React.FC<SitePageTabsProps> = ({
   graph,
@@ -219,93 +211,26 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
     }));
   }, [graph, siteSlug, onFiltersChange]);
 
-  // Build combined filters including solo and hide filters
-  const combinedFilters = useMemo(() => {
-    // The graph object is mutated in place, so this revision keeps folder availability current.
-    void graphUpdateTrigger;
-    const result: IFilter[] = [...filters];
-    const folderFilter = filters.find(filter => filter.isFolderFilter);
-
-    if (folderFilter?.enabled && hasPagesInMultipleFolders(graph.getAllPages())) {
-      Object.entries(folderFilter.folderStates || {}).forEach(([folderPath, state]) => {
-        if (!state.showTitles && !state.isSolo && !state.isHidden) return;
-
-        result.push({
-          id: `folder-filter-${folderPath || 'root'}`,
-          name: folderPath ? `Folder: ${folderPath}` : 'Folder: Root',
-          pageSelectors: [createFolderPageSelector(folderPath)],
-          selectorApplicationCriteria: 'union',
-          actions: state.showTitles ? [{ type: 'show_titles' }] : [],
-          enabled: true,
-          isSolo: state.isSolo,
-          isHidden: state.isHidden,
-          hideFromFilterList: true
-        });
-      });
-    }
-
-    // Add solo filter if pages are being soloed
-    if (soloPages.size > 0) {
-      result.push({
-        id: 'selection-solo-filter',
-        name: 'Selection Solo',
-        pageSelectors: [createPageIdSelector(soloPages, 'solo-pages')],
-        selectorApplicationCriteria: 'union',
-        actions: [],
-        enabled: true,
-        isSolo: true,
-        isHidden: false,
-        hideFromFilterList: true
-      });
-    }
-
-    // Add selection titles filter if show titles is active
-    if (selectionShowTitles && selectedPages.size > 0) {
-      result.push({
-        id: 'selection-titles-filter',
-        name: 'Selection Titles',
-        pageSelectors: [createPageIdSelector(selectedPages, 'title-pages')],
-        selectorApplicationCriteria: 'union',
-        actions: [
-          { type: 'highlight', color: '#fbbf24', isDashed: false },
-          { type: 'show_titles' }
-        ],
-        enabled: true,
-        isSolo: false,
-        isHidden: false,
-        hideFromFilterList: true
-      });
-    }
-
-    // Add hidden filter if pages are hidden
-    if (hiddenPages.size > 0) {
-      result.push({
-        id: 'selection-hide-filter',
-        name: 'Hidden Selection',
-        pageSelectors: [createPageIdSelector(hiddenPages, 'hidden-pages')],
-        selectorApplicationCriteria: 'union',
-        actions: [],
-        enabled: true,
-        isSolo: false,
-        isHidden: true,
-        hideFromFilterList: true
-      });
-    }
-
-    return result;
-  }, [filters, soloPages, hiddenPages, selectionShowTitles, selectedPages, graph, graphUpdateTrigger]);
+  const {
+    combinedFilters,
+    effectiveExpression: effectiveFilterExpression,
+    setExpression: handleFilterExpressionChange
+  } = useDisplayFilters({
+    filters, graph, graphUpdateTrigger, hiddenPages, selectedPages,
+    selectionShowTitles, siteSlug, soloPages
+  });
 
   // Create and manage the DisplayGraph using useMemo for immediate availability
   const currentDisplayGraph = useMemo(() => {
     const dg = new DisplayGraph(graph);
-    dg.setFilters(combinedFilters);
+    dg.setFilters(combinedFilters, effectiveFilterExpression);
     dg.setSelectedPages(selectedPages);
     if (initialPageId) {
       dg.setInitialPage(initialPageId);
     }
     return dg;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- graphUpdateTrigger forces recompute when graph is mutated in-place
-  }, [graph, combinedFilters, selectedPages, initialPageId, graphUpdateTrigger]);
+  }, [graph, combinedFilters, effectiveFilterExpression, selectedPages, initialPageId, graphUpdateTrigger]);
 
   // When pages are selected, expand the panel
   useEffect(() => {
@@ -703,6 +628,9 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
           }}
           untrackedPagesCount={untrackedPagesCount}
           pages={graph.getAllPages()}
+          filterExpression={effectiveFilterExpression}
+          filterExpressionFilters={combinedFilters}
+          onFilterExpressionChange={handleFilterExpressionChange}
         />
       </ResizableSidebar>
       {/* Main content area */}
@@ -839,7 +767,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
             <div className="absolute inset-0">
               <GraphVis
                 graph={graph}
-                initialPageId={initialPageId}
+                displayGraph={currentDisplayGraph}
                 filters={combinedFilters}
                 selectedPages={selectedPages}
                 onSelectedPagesChange={onSelectedPagesChange}

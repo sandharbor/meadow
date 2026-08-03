@@ -26,6 +26,11 @@ import { logger } from '../../../../shared/utils/logger';
 import { ISitePage } from '../../../../../../shared_code/types/ISitePage';
 import { hasPagesInMultipleFolders } from '../utils/folderFilterUtils';
 import FolderFilterTree from './FolderFilterTree';
+import FilterExpressionComposer from './FilterExpressionComposer';
+import {
+  FilterExpression,
+  getActiveFilterExpressionTerms
+} from '../types/filterExpression';
 
 const SEARCH_HIGHLIGHT_ACTION = { type: 'highlight' as const, color: '#009688', isDashed: false };
 
@@ -36,6 +41,9 @@ interface FilterPanelProps {
   onCustomFiltersChange?: () => void;
   untrackedPagesCount?: number;
   pages?: ISitePage[];
+  filterExpression?: FilterExpression | null;
+  filterExpressionFilters?: IFilter[];
+  onFilterExpressionChange?: (expression: FilterExpression) => void;
 }
 
 const FilterPanel = React.memo<FilterPanelProps>(({
@@ -45,6 +53,9 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   onCustomFiltersChange,
   untrackedPagesCount,
   pages = [],
+  filterExpression = null,
+  filterExpressionFilters,
+  onFilterExpressionChange,
 }) => {
 
   
@@ -269,6 +280,9 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   );
   const searchText = searchInputs['search-by-title-filter'] || '';
   const hasSearchText = searchText.length > 0;
+  const expressionFilters = filterExpressionFilters || filters;
+  const activeExpressionTerms = getActiveFilterExpressionTerms(expressionFilters);
+  const expressionFilterNames = new Map(expressionFilters.map(filter => [filter.id, filter.name]));
 
   const handleClearSearch = () => {
     setSearchInputs(prev => ({
@@ -567,6 +581,15 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           })}
         </div>
       </div>
+
+      {filterExpression && onFilterExpressionChange && (
+        <FilterExpressionComposer
+          expression={filterExpression}
+          activeTerms={activeExpressionTerms}
+          filterNames={expressionFilterNames}
+          onChange={onFilterExpressionChange}
+        />
+      )}
 
       {/* Custom Filter Modal */}
       <CustomFilterModal

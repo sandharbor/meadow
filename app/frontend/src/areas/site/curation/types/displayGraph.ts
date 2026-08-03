@@ -20,6 +20,12 @@ import { FileType } from '../../../../../../shared_code/types/FileType.js';
 import { IFilter, IPageSelector } from './filters';
 import { logger } from '../../../../shared/utils/logger';
 import { calculateHighlightDetail } from '../utils/highlightDetailCalculators';
+import {
+  FilterExpression,
+  createDefaultFilterExpression,
+  evaluateFilterExpression,
+  getActiveFilterExpressionTerms
+} from './filterExpression';
 
 export interface Highlight {
   color: string;
@@ -155,11 +161,13 @@ export class DisplayGraph {
   private _graph: Graph;
   private _displayPages: Map<string, DisplayPage>;
   private _filters: IFilter[];
+  private _filterExpression: FilterExpression | null;
 
   constructor(graph: Graph) {
     this._graph = graph;
     this._displayPages = new Map();
     this._filters = [];
+    this._filterExpression = null;
 
     // Initialize display pages
     for (const page of graph.getAllPages()) {
@@ -179,8 +187,9 @@ export class DisplayGraph {
     return this._displayPages.get(id);
   }
 
-  setFilters(filters: IFilter[]): void {
+  setFilters(filters: IFilter[], filterExpression: FilterExpression | null = null): void {
     this._filters = filters;
+    this._filterExpression = filterExpression;
     this.applyFilters();
   }
 
@@ -212,52 +221,36 @@ export class DisplayGraph {
   }
 
   private applyFilters(): void {
-    const soloFilters = this._filters.filter((f: IFilter) => f.isSolo && f.enabled);
-    const hiddenFilters = this._filters.filter((f: IFilter) => f.isHidden && f.enabled);
+    const activeTerms = getActiveFilterExpressionTerms(this._filters);
+    const activeFilterIds = new Set(activeTerms.map(term => term.filterId));
+    const filterMatches = new Map<string, Set<string>>();
 
-    // Reset all pages to visible
+    this._filters.forEach(filter => {
+      if (!activeFilterIds.has(filter.id) || filterMatches.has(filter.id)) return;
+      const selectedPages = filter.pageSelectors.map((selector: IPageSelector) => selector.select(this._graph));
+      const matches = new Set<string>();
+      this._displayPages.forEach(displayPage => {
+        const isSelected = filter.selectorApplicationCriteria === 'union'
+          ? selectedPages.some((pages: Set<string>) => pages.has(displayPage.id))
+          : selectedPages.every((pages: Set<string>) => pages.has(displayPage.id));
+        if (isSelected) matches.add(displayPage.id);
+      });
+      filterMatches.set(filter.id, matches);
+    });
+
+    const expression = this._filterExpression || createDefaultFilterExpression(activeTerms);
+    const allPageIds = new Set(this._displayPages.keys());
+    const visiblePageIds = evaluateFilterExpression(expression, activeTerms, filterMatches, allPageIds);
+
+    // Reset page presentation and apply the visibility expression.
     this._displayPages.forEach(displayPage => {
-      displayPage.setVisible(true);
+      displayPage.setVisible(visiblePageIds.has(displayPage.id));
       displayPage.setHighlights([]);
       displayPage.setShowLabel(false);
       displayPage.setShowTitle(false);
       displayPage.clearTitleFilterColors();
       // Set effectively sensitive based on underlying page sensitivity
       displayPage.setEffectivelySensitive(displayPage.underlyingPage.sensitive || false);
-    });
-
-    // Apply solo filters
-    if (soloFilters.length > 0) {
-      // First mark all pages as invisible
-      this._displayPages.forEach(displayPage => {
-        displayPage.setVisible(false);
-      });
-
-      // Then make solo-matching pages visible
-      this._displayPages.forEach(displayPage => {
-        const matchesSoloFilter = soloFilters.some(filter => {
-          const selectedPages = filter.pageSelectors.map((selector: IPageSelector) => selector.select(this._graph));
-          return filter.selectorApplicationCriteria === 'union'
-            ? selectedPages.some((pages: Set<string>) => pages.has(displayPage.id))
-            : selectedPages.every((pages: Set<string>) => pages.has(displayPage.id));
-        });
-        if (matchesSoloFilter) {
-          displayPage.setVisible(true);
-        }
-      });
-    }
-
-    // Apply hidden filters
-    this._displayPages.forEach(displayPage => {
-      const isHidden = hiddenFilters.some(filter => {
-        const selectedPages = filter.pageSelectors.map((selector: IPageSelector) => selector.select(this._graph));
-        return filter.selectorApplicationCriteria === 'union'
-          ? selectedPages.some((pages: Set<string>) => pages.has(displayPage.id))
-          : selectedPages.every((pages: Set<string>) => pages.has(displayPage.id));
-      });
-      if (isHidden) {
-        displayPage.setVisible(false);
-      }
     });
 
     // Apply other filter actions (highlights, sensitivity, labels, titles)
@@ -325,4 +318,4 @@ export class DisplayGraph {
       });
     });
   }
-} 
+}

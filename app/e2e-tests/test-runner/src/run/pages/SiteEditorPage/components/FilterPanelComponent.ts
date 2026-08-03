@@ -42,6 +42,18 @@ export class FilterPanelComponent {
     return this.page.locator('input[placeholder="Search"]');
   }
 
+  private get mixViewBtn() {
+    return this.page.getByRole("button", { name: /Mix view/ });
+  }
+
+  private get mixViewHeading() {
+    return this.page.getByRole("heading", { name: "Mix the view" });
+  }
+
+  private get mixViewModal() {
+    return this.mixViewHeading.locator("xpath=ancestor::div[contains(@class, 'bg-white')][1]");
+  }
+
   private filterCheckbox(filterName: string) {
     const escaped = filterName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return this.page.getByRole("checkbox", { name: new RegExp(`^${escaped}(\\s|$)`) });
@@ -115,6 +127,30 @@ export class FilterPanelComponent {
   async enableAndSoloFilter(filterName: string) {
     await this.enableFilter(filterName);
     await this.clickSoloOnFilter(filterName);
+  }
+
+  async expectMixViewHidden() {
+    await this.expect(this.mixViewBtn).toHaveCount(0);
+  }
+
+  async openMixView() {
+    await this.expect(this.mixViewBtn).toBeVisible();
+    await this.mixViewBtn.click();
+    await this.expect(this.mixViewHeading).toBeVisible();
+  }
+
+  async chooseMixOperator(operator: "Any" | "All" | "Without") {
+    const button = this.mixViewModal.getByRole("button", { name: operator, exact: true });
+    await this.expect(button).toBeVisible();
+    await button.click();
+    await this.expect(button).toHaveAttribute("aria-pressed", "true");
+  }
+
+  async closeMixView() {
+    const button = this.mixViewModal.getByRole("button", { name: "Done", exact: true });
+    await this.expect(button).toBeVisible();
+    await button.click();
+    await this.expect(this.mixViewHeading).toBeHidden();
   }
 
   async clickShowTitlesOnFilter(filterName: string) {
