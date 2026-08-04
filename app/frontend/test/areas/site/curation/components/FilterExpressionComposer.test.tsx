@@ -105,6 +105,36 @@ describe('FilterExpressionComposer', () => {
     expect(screen.queryByTestId('mix-view-customized-indicator')).not.toBeInTheDocument();
   });
 
+  it('moves the Mix view modal by dragging its title bar', () => {
+    render(
+      <FilterExpressionComposer
+        expression={initialExpression()}
+        activeTerms={activeTerms}
+        filterNames={filterNames}
+        onChange={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
+
+    const panel = screen.getByTestId('movable-modal-panel');
+    vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({
+      x: 200,
+      y: 100,
+      left: 200,
+      top: 100,
+      right: 840,
+      bottom: 600,
+      width: 640,
+      height: 500,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.mouseDown(screen.getByTestId('movable-modal-title-bar'), { clientX: 300, clientY: 130 });
+    fireEvent.mouseMove(document, { clientX: 380, clientY: 180 });
+    expect(panel).toHaveStyle({ transform: 'translate(80px, 50px)' });
+    fireEvent.mouseUp(document);
+  });
+
   it('creates parentheses and accepts a dragged filter inside them', () => {
     const Harness = () => {
       const [expression, setExpression] = useState(initialExpression);

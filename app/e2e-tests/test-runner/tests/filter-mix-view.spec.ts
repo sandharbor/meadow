@@ -41,8 +41,9 @@ test("mix view intersects soloed untracked and sensitive filters in graph and li
   await filterPanel.clickSoloOnFilter("Sensitive");
   await filterPanel.expectMixViewCustomized(false);
   await filterPanel.openMixView();
+  await filterPanel.moveMixViewBy(80, 50);
   await addKeyFrame(filters);
-  await snapshot("mix view defaults to any");
+  await snapshot("mix view defaults to any and can move aside");
 
   await filterPanel.chooseMixOperator("All");
   await filterPanel.closeMixView();

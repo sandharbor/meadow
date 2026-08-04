@@ -398,6 +398,7 @@ const FilterExpressionComposer: React.FC<FilterExpressionComposerProps> = ({
         onClose={() => setIsOpen(false)}
         title="Mix the view"
         className="w-full max-w-2xl"
+        movable
       >
         <div className="flex min-h-[26rem] flex-col">
           <p className="mb-4 text-sm text-gray-600">

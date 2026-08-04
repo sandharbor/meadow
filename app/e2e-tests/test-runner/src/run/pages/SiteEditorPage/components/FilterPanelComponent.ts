@@ -146,6 +146,30 @@ export class FilterPanelComponent {
     await this.expect(this.mixViewHeading).toBeVisible();
   }
 
+  async moveMixViewBy(deltaX: number, deltaY: number) {
+    const panel = this.page.getByTestId("movable-modal-panel");
+    const titleBar = this.page.getByTestId("movable-modal-title-bar");
+    await this.expect(panel).toBeVisible();
+    await this.expect(titleBar).toBeVisible();
+
+    const before = await panel.boundingBox();
+    const handle = await titleBar.boundingBox();
+    if (!before || !handle) throw new Error("Mix view modal geometry is unavailable");
+    await this.page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+    await this.page.mouse.down();
+    await this.page.mouse.move(
+      handle.x + handle.width / 2 + deltaX,
+      handle.y + handle.height / 2 + deltaY,
+      { steps: 5 },
+    );
+    await this.page.mouse.up();
+
+    const after = await panel.boundingBox();
+    if (!after) throw new Error("Moved Mix view modal geometry is unavailable");
+    this.expect(after.x).toBeCloseTo(before.x + deltaX, 0);
+    this.expect(after.y).toBeCloseTo(before.y + deltaY, 0);
+  }
+
   async expectMixViewCustomized(customized: boolean) {
     const indicator = this.mixViewBtn.getByTestId("mix-view-customized-indicator");
     if (customized) {
