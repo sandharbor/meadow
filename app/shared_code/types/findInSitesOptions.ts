@@ -25,3 +25,73 @@ export interface FindInSitesOptions {
   pageName: string;
 }
 
+const MEADOW_PROTOCOL = 'meadow:';
+const FIND_IN_SITES_HOST = 'find-in-sites';
+
+const isAbsoluteFileSystemPath = (value: string): boolean =>
+  value.startsWith('/') ||
+  /^[A-Za-z]:[\\/]/.test(value) ||
+  value.startsWith('\\\\');
+
+const isValidFolderPath = (value: string): boolean => {
+  if (value.includes('\0') || value.includes('\\') || value.startsWith('/')) {
+    return false;
+  }
+  if (!value) return true;
+  return value
+    .split('/')
+    .every(component => component.length > 0 && component !== '.' && component !== '..');
+};
+
+/**
+ * Parses the public deep-link contract used to open Meadow's Find in Sites view.
+ * Invalid or incomplete links are ignored rather than partially applied.
+ */
+export const parseFindInSitesDeepLink = (value: string): FindInSitesOptions | null => {
+  const url = (() => {
+    try {
+      return new globalThis.URL(value);
+    } catch {
+      return null;
+    }
+  })();
+
+  if (
+    !url ||
+    url.protocol !== MEADOW_PROTOCOL ||
+    url.hostname !== FIND_IN_SITES_HOST ||
+    (url.pathname !== '' && url.pathname !== '/') ||
+    url.username !== '' ||
+    url.password !== '' ||
+    url.port !== '' ||
+    url.hash !== ''
+  ) {
+    return null;
+  }
+
+  const vaultPath = url.searchParams.get('vaultPath');
+  const folderPath = url.searchParams.get('folderPath');
+  const pageName = url.searchParams.get('pageName');
+
+  if (
+    vaultPath === null ||
+    folderPath === null ||
+    pageName === null ||
+    vaultPath.length === 0 ||
+    vaultPath.length > 4_096 ||
+    vaultPath.includes('\0') ||
+    !isAbsoluteFileSystemPath(vaultPath) ||
+    folderPath.length > 4_096 ||
+    !isValidFolderPath(folderPath) ||
+    pageName.length === 0 ||
+    pageName.length > 512 ||
+    pageName.includes('\0') ||
+    pageName.includes('/') ||
+    pageName.includes('\\') ||
+    pageName.toLocaleLowerCase().endsWith('.md')
+  ) {
+    return null;
+  }
+
+  return { vaultPath, folderPath, pageName };
+};

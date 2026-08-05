@@ -23,6 +23,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getFrontendPort: () => ipcRenderer.invoke('get-frontend-port'),
   getTargetPageInfo: () => ipcRenderer.invoke('get-target-page-info'),
 
+  onOpenFindInSites: (callback: (options: {
+    vaultPath: string;
+    folderPath: string;
+    pageName: string;
+  }) => void) => {
+    ipcRenderer.on('open-find-in-sites', (_event, options) => callback(options));
+  },
+  offOpenFindInSites: () => {
+    ipcRenderer.removeAllListeners('open-find-in-sites');
+  },
+
   showOpenDialog: (options: OpenDialogOptions) =>
     ipcRenderer.invoke('show-open-dialog', options),
 
@@ -68,6 +79,12 @@ declare global {
         folderPath: string;
         pageName: string;
       } | null>;
+      onOpenFindInSites: (callback: (options: {
+        vaultPath: string;
+        folderPath: string;
+        pageName: string;
+      }) => void) => void;
+      offOpenFindInSites: () => void;
       showOpenDialog: (options: OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>;
       showSaveDialog: (options: SaveDialogOptions) => Promise<Electron.SaveDialogReturnValue>;
       openExternal: (url: string) => Promise<void>;

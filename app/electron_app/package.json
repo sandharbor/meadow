@@ -30,6 +30,12 @@
   "build": {
     "appId": "com.meadow.desktop",
     "productName": "Meadow",
+    "protocols": [
+      {
+        "name": "Meadow Find in Sites",
+        "schemes": ["meadow"]
+      }
+    ],
     "directories": {
       "output": "build"
     },

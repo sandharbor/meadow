@@ -16,14 +16,33 @@ limitations under the License.
 
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SiteEditor from './components/SiteEditor'
 import SiteList from '../../areas/sites/components/SiteList'
 import TitleBar from './components/TitleBar'
 import UpdateModal from './components/UpdateModal'
 import { initializeApiConfig } from '../utils/apiConfig'
 import { logger } from '../utils/logger'
+import { FindInSitesOptions } from '../../../../shared_code/types/findInSitesOptions'
 import './index.css'
+
+const FindInSitesDeepLinkListener: React.FC = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!window.electronAPI) return;
+
+    window.electronAPI.onOpenFindInSites((findInSitesOptions: FindInSitesOptions) => {
+      navigate('/', { state: { findInSitesOptions } });
+    });
+
+    return () => {
+      window.electronAPI.offOpenFindInSites();
+    };
+  }, [navigate]);
+
+  return null;
+};
 
 const App: React.FC = () => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -42,6 +61,7 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <FindInSitesDeepLinkListener />
       <TitleBar />
 
       <div className="h-[calc(100vh-28px)] mt-[28px] overflow-hidden">

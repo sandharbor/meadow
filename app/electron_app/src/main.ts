@@ -18,7 +18,10 @@ import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import { FindInSitesOptions } from '../../shared_code/types/findInSitesOptions';
+import {
+  FindInSitesOptions,
+  parseFindInSitesDeepLink,
+} from '../../shared_code/types/findInSitesOptions';
 import { ensureResourcesConfigInitialized, loadResourcesConfig } from '../../shared_code/utils/resourcesConfigUtils';
 import { getDefaultConfigDirectory } from '../../shared_code/utils/appConfigUtils';
 import { resolveNativeRustBinaryPathFromNativeUtilsParent } from '../../shared_code/utils/nativeRustBinaryPath';
@@ -82,7 +85,7 @@ class MeadowApp {
     });
     
     // Parse command line arguments for find in sites options
-    this.parseFindInSitesArgs();
+    this.parseFindInSitesArgs(process.argv);
     
     if (isTestMode) {
       // Clear previous test log
@@ -100,24 +103,51 @@ class MeadowApp {
     log('SUCCESS', 'MeadowApp initialization completed');
   }
   
-  private parseFindInSitesArgs(): void {
-    const args = process.argv;
+  private parseFindInSitesArgs(args: string[]): void {
     log('INFO', 'Parsing command line arguments', { args });
+
+    const deepLinkOptions = args
+      .map(argument => parseFindInSitesDeepLink(argument))
+      .find((options): options is FindInSitesOptions => options !== null);
+    if (deepLinkOptions) {
+      this.applyFindInSitesOptions(deepLinkOptions, 'deep link argument');
+      return;
+    }
     
     const vaultPathIndex = args.indexOf('--vault-path');
     const folderPathIndex = args.indexOf('--folder-path');
     const pageNameIndex = args.indexOf('--page-name');
 
     if (vaultPathIndex !== -1 && folderPathIndex !== -1 && pageNameIndex !== -1) {
-      this.findInSitesOptions = {
+      this.applyFindInSitesOptions({
         vaultPath: args[vaultPathIndex + 1],
         folderPath: args[folderPathIndex + 1],
         pageName: args[pageNameIndex + 1]
-      };
-      log('SUCCESS', 'Find in sites options parsed from CLI', this.findInSitesOptions);
+      }, 'CLI');
     } else {
       log('INFO', 'No find in sites arguments found, running in normal mode');
     }
+  }
+
+  private applyFindInSitesOptions(options: FindInSitesOptions, source: string): void {
+    this.findInSitesOptions = options;
+    log('SUCCESS', `Find in sites options received from ${source}`, options);
+
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send('open-find-in-sites', options);
+      if (this.mainWindow.isMinimized()) this.mainWindow.restore();
+      this.mainWindow.show();
+      this.mainWindow.focus();
+    }
+  }
+
+  private handleFindInSitesDeepLink(url: string): void {
+    const options = parseFindInSitesDeepLink(url);
+    if (!options) {
+      log('WARN', 'Ignoring invalid Meadow deep link', { url });
+      return;
+    }
+    this.applyFindInSitesOptions(options, 'deep link');
   }
 
   private setupPaths(): void {
@@ -199,9 +229,27 @@ class MeadowApp {
 
   private setupAppEvents(): void {
     log('INFO', 'Setting up application events');
+
+    app.on('open-url', (event, url) => {
+      event.preventDefault();
+      this.handleFindInSitesDeepLink(url);
+    });
+
+    app.on('second-instance', (_event, commandLine) => {
+      this.parseFindInSitesArgs(commandLine);
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        if (this.mainWindow.isMinimized()) this.mainWindow.restore();
+        this.mainWindow.show();
+        this.mainWindow.focus();
+      }
+    });
     
     app.whenReady().then(async () => {
       log('SUCCESS', 'Electron app is ready');
+
+      if (app.isPackaged) {
+        app.setAsDefaultProtocolClient('meadow');
+      }
 
       // Set version in About panel now that app.getVersion() is available
       app.setAboutPanelOptions({
@@ -847,5 +895,10 @@ class MeadowApp {
   }
 }
 
-// Create and start the app
-new MeadowApp(); 
+// Keep one process responsible for CLI and deep-link requests. Subsequent
+// launches forward their arguments to the existing Meadow window.
+if (app.requestSingleInstanceLock()) {
+  new MeadowApp();
+} else {
+  app.quit();
+}
