@@ -44,7 +44,81 @@ describe('filter expression language', () => {
     const terms = [solo('alpha'), solo('beta'), hide('charlie')];
     const expression = createDefaultFilterExpression(terms);
 
+    expect(expression).toEqual({
+      type: 'group',
+      id: 'filter-expression-visible',
+      operator: 'intersection',
+      children: [
+        {
+          type: 'group',
+          id: 'filter-expression-hides',
+          operator: 'intersection',
+          children: [{ type: 'filter', filterId: 'charlie', mode: 'hide' }]
+        },
+        {
+          type: 'group',
+          id: 'filter-expression-solos',
+          operator: 'union',
+          children: [
+            { type: 'filter', filterId: 'alpha', mode: 'solo' },
+            { type: 'filter', filterId: 'beta', mode: 'solo' }
+          ]
+        }
+      ]
+    });
     expect(evaluateFilterExpression(expression, terms, matches, allPages)).toEqual(new Set(['a', 'c']));
+  });
+
+  it('uses the same canonical hide-then-solo groups regardless of activation order', () => {
+    const hideThenSolo = reconcileFilterExpression(
+      createDefaultFilterExpression([hide('alpha')]),
+      [hide('alpha'), solo('beta')]
+    );
+    const soloThenHide = reconcileFilterExpression(
+      createDefaultFilterExpression([solo('beta')]),
+      [solo('beta'), hide('alpha')]
+    );
+    const expected = createDefaultFilterExpression([hide('alpha'), solo('beta')]);
+
+    expect(hideThenSolo).toEqual(expected);
+    expect(soloThenHide).toEqual(expected);
+    expect(evaluateFilterExpression(expected, [hide('alpha'), solo('beta')], matches, allPages))
+      .toEqual(new Set(['c']));
+  });
+
+  it('adds further hides and solos to their default groups', () => {
+    const initial = createDefaultFilterExpression([hide('alpha'), solo('beta')]);
+    const terms = [hide('alpha'), solo('beta'), hide('charlie'), solo('delta')];
+
+    expect(reconcileFilterExpression(initial, terms)).toEqual(createDefaultFilterExpression(terms));
+  });
+
+  it.each([
+    [[hide('alpha'), hide('charlie')]],
+    [[solo('alpha'), solo('beta')]],
+    [[solo('alpha'), solo('beta'), hide('charlie')]],
+    [[hide('alpha'), hide('charlie'), solo('beta')]],
+  ])('keeps each incremental default activation canonical: %j', terms => {
+    let expression: FilterExpression | null = null;
+    for (let index = 0; index < terms.length; index += 1) {
+      expression = reconcileFilterExpression(expression, terms.slice(0, index + 1));
+    }
+
+    expect(expression).toEqual(createDefaultFilterExpression(terms));
+  });
+
+  it('retains inactive default terms while regrouping a new term', () => {
+    const initialTerms = [hide('alpha'), solo('beta')];
+    const initial = createDefaultFilterExpression(initialTerms);
+    const withSoloInactive = reconcileFilterExpression(initial, [hide('alpha')]);
+    const withNewHide = reconcileFilterExpression(withSoloInactive, [hide('alpha'), hide('charlie')]);
+
+    expect(withSoloInactive).toBe(initial);
+    expect(withNewHide).toEqual(createDefaultFilterExpression([
+      hide('alpha'),
+      solo('beta'),
+      hide('charlie')
+    ]));
   });
 
   it('starts from all pages when only hide terms are active', () => {
@@ -142,6 +216,28 @@ describe('filter expression language', () => {
     expect(reconciled?.type).toBe('group');
     expect(reconciled?.type === 'group' && reconciled.operator).toBe('union');
     expect(evaluateFilterExpression(reconciled, terms, matches, allPages)).toEqual(new Set(['b', 'd']));
+  });
+
+  it('does not mistake a customized expression for a default after one term is disabled', () => {
+    const customExpression: FilterExpression = {
+      type: 'group',
+      id: 'custom-intersection',
+      operator: 'intersection',
+      children: [
+        { type: 'filter', filterId: 'alpha', mode: 'solo' },
+        { type: 'filter', filterId: 'beta', mode: 'solo' }
+      ]
+    };
+    const reconciled = reconcileFilterExpression(customExpression, [solo('alpha'), solo('charlie')]);
+
+    expect(reconciled).toMatchObject({
+      type: 'group',
+      operator: 'union',
+      children: [
+        { id: 'custom-intersection', operator: 'intersection' },
+        { filterId: 'charlie', mode: 'solo' }
+      ]
+    });
   });
 
   it('subtracts a newly hidden filter from the current expression', () => {

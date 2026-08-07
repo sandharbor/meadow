@@ -370,7 +370,7 @@ const FilterExpressionComposer: React.FC<FilterExpressionComposerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`mt-3 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium ${
+        className={`sticky top-0 z-10 mb-4 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium ${
           usesCustomizedMix
             ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400 hover:bg-amber-100'
             : 'border-main-200 bg-main-50 text-main-700 hover:border-main-300 hover:bg-main-100'

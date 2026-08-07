@@ -179,6 +179,22 @@ export class FilterPanelComponent {
     }
   }
 
+  async expectMixViewBelowSearchAndAboveFilter(filterName: string) {
+    await this.expect(this.mixViewBtn).toBeInViewport();
+
+    const [searchBox, mixBox, filterBox] = await Promise.all([
+      this.searchInput.boundingBox(),
+      this.mixViewBtn.boundingBox(),
+      this.filterCheckbox(filterName).boundingBox(),
+    ]);
+    if (!searchBox || !mixBox || !filterBox) {
+      throw new Error("Filter panel geometry is unavailable");
+    }
+
+    this.expect(mixBox.y).toBeGreaterThanOrEqual(searchBox.y + searchBox.height);
+    this.expect(mixBox.y + mixBox.height).toBeLessThanOrEqual(filterBox.y);
+  }
+
   async chooseMixOperator(operator: "Any" | "All" | "Without") {
     const button = this.mixViewModal.getByRole("button", { name: operator, exact: true });
     await this.expect(button).toBeVisible();
@@ -198,6 +214,39 @@ export class FilterPanelComponent {
     for (const [index, termName] of termNames.entries()) {
       await this.expect(cards.nth(index)).toContainText(termName);
     }
+  }
+
+  async expectDefaultHideAndSoloMix({
+    hides,
+    solos,
+  }: {
+    hides: string[];
+    solos: string[];
+  }) {
+    const expectGroup = async (
+      groupId: string,
+      operator: "Any" | "All",
+      termNames: string[],
+    ) => {
+      const group = this.mixViewModal.getByTestId(groupId);
+      await this.expect(group).toBeVisible();
+      await this.expect(
+        group.locator(":scope > div").first().getByRole("button", { name: operator, exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      const cards = group.locator('[data-testid^="filter:"]');
+      await this.expect(cards).toHaveCount(termNames.length);
+      for (const [index, termName] of termNames.entries()) {
+        await this.expect(cards.nth(index)).toContainText(termName);
+      }
+    };
+
+    const root = this.mixViewModal.getByTestId("filter-expression-visible");
+    await this.expect(root).toBeVisible();
+    await this.expect(
+      root.locator(":scope > div").first().getByRole("button", { name: "All", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expectGroup("filter-expression-hides", "All", hides);
+    await expectGroup("filter-expression-solos", "Any", solos);
   }
 
   async dragMixTermOnto(sourceName: string, targetName: string) {

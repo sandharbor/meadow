@@ -110,7 +110,20 @@ export function createDefaultFilterExpression(
     type: 'group',
     id: 'filter-expression-visible',
     operator: 'intersection',
-    children: [soloExpression, hideExpression]
+    children: [
+      {
+        type: 'group',
+        id: 'filter-expression-hides',
+        operator: 'intersection',
+        children: hides
+      },
+      {
+        type: 'group',
+        id: 'filter-expression-solos',
+        operator: 'union',
+        children: solos
+      }
+    ]
   };
 }
 
@@ -151,6 +164,19 @@ function collectTermIds(expression: FilterExpression | null, result = new Set<st
     result.add(filterExpressionTermId(expression));
   } else if (expression.type === 'group') {
     expression.children.forEach(child => collectTermIds(child, result));
+  }
+  return result;
+}
+
+function collectTerms(
+  expression: FilterExpression | null,
+  result: ActiveFilterExpressionTerm[] = []
+): ActiveFilterExpressionTerm[] {
+  if (!expression) return result;
+  if (expression.type === 'filter') {
+    result.push({ filterId: expression.filterId, mode: expression.mode });
+  } else if (expression.type === 'group') {
+    expression.children.forEach(child => collectTerms(child, result));
   }
   return result;
 }
@@ -199,12 +225,18 @@ export function reconcileFilterExpression(
   if (!expression) return createDefaultFilterExpression(activeTerms);
 
   const knownTermIds = collectTermIds(expression);
+  const newTerms = activeTerms.filter(term => !knownTermIds.has(filterExpressionTermId(term)));
+  if (newTerms.length === 0) return expression;
+
+  const retainedTerms = collectTerms(expression);
+  if (isDefaultFilterExpression(expression, retainedTerms)) {
+    return createDefaultFilterExpression([...retainedTerms, ...newTerms]);
+  }
+
   let next = expression;
 
-  activeTerms.forEach(term => {
+  newTerms.forEach(term => {
     const termId = filterExpressionTermId(term);
-    if (knownTermIds.has(termId)) return;
-
     const termExpression = asTerm(term);
     if (term.mode === 'solo') {
       next = appendWithOperator(next, termExpression, 'union');

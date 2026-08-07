@@ -375,6 +375,15 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           </div>
         )}
 
+        {filterExpression && onFilterExpressionChange && (
+          <FilterExpressionComposer
+            expression={filterExpression}
+            activeTerms={activeExpressionTerms}
+            filterNames={expressionFilterNames}
+            onChange={onFilterExpressionChange}
+          />
+        )}
+
         <div className="flex items-center justify-end mb-4">
           <button
             onClick={handleCreateCustomFilter}
@@ -581,15 +590,6 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           })}
         </div>
       </div>
-
-      {filterExpression && onFilterExpressionChange && (
-        <FilterExpressionComposer
-          expression={filterExpression}
-          activeTerms={activeExpressionTerms}
-          filterNames={expressionFilterNames}
-          onChange={onFilterExpressionChange}
-        />
-      )}
 
       {/* Custom Filter Modal */}
       <CustomFilterModal
