@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"certainty, probability, and confidence","p":"ai/certainty%2C%20probability%2C%20and%20confidence.html","b":"These are all related ideas: certainty link not tracked and link not tracked"}]);

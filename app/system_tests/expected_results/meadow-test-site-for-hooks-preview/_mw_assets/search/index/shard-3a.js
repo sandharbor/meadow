@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"dim - model size","p":"ai/dim%20-%20model%20size.html","b":"concept - maybe we should train smaller models for longer When related to dim - model capacity that means dim - capacity density"},{"t":"diminishing returns","p":"ai/diminishing%20returns.html","b":""}]);

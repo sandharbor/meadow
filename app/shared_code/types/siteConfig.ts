@@ -51,6 +51,7 @@ export interface SiteConfig {
   generationBreadcrumbsEnabled?: boolean; // Whether to render breadcrumbs (default: true)
   generationBacklinksEnabled?: boolean; // Whether to render backlinks (default: true)
   generationTagsEnabled?: boolean; // Whether to generate tag pages + convert #tags to links (default: true; requires backlinks)
+  generationSearchEnabled?: boolean; // Whether to generate site search UI + index (default: true)
   generationHoverPreviewEnabled?: boolean; // Whether to render hover previews on links (overrides app setting)
   allowImagesToExtendToFrontier?: boolean; // Whether images linked from frontier-edge pages should be included (overrides app setting)
   generationMarkdownZipEnabled?: boolean; // Whether to generate a downloadable sources ZIP (default: false)

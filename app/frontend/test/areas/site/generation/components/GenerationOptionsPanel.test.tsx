@@ -24,6 +24,7 @@ describe('GenerationOptionsPanel', () => {
       breadcrumbsEnabled: true,
       backlinksEnabled: true,
       tagsEnabled: true,
+      searchEnabled: true,
       hoverPreviewEnabled: false,
       sourcesExportEnabled: false,
       openKnowledgeFormatEnabled: false,
@@ -33,6 +34,7 @@ describe('GenerationOptionsPanel', () => {
       breadcrumbsSetting: 'inherit' as const,
       backlinksSetting: 'inherit' as const,
       tagsSetting: 'inherit' as const,
+      searchSetting: 'inherit' as const,
       hoverPreviewSetting: 'inherit' as const,
       sourcesExportSetting: 'inherit' as const,
       openKnowledgeFormatSetting: 'inherit' as const,
@@ -195,6 +197,17 @@ describe('GenerationOptionsPanel', () => {
 
     expect(screen.getByText('Open Knowledge Format (OKF)')).toBeInTheDocument();
     expect(screen.getByText('Site only')).toBeInTheDocument();
+  });
+
+  it('renders search as enabled by default with a site override control', () => {
+    const props = buildProps();
+    render(<GenerationOptionsPanel {...props} />);
+
+    const searchRow = screen.getByText('Search').closest('div')!.parentElement!;
+    const comboboxes = within(searchRow).getAllByRole('combobox');
+    expect(comboboxes).toHaveLength(2);
+    expect(comboboxes[0]).toHaveTextContent('On');
+    expect(comboboxes[1]).toHaveTextContent('—');
   });
 
   it('shows the OKF reserved rename indicator beside the OKF generation option', () => {

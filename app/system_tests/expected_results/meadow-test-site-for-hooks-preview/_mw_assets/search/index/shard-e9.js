@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"concept - in most places, AI is about as good as an intern","p":"ai/concept%20-%20in%20most%20places%2C%20AI%20is%20about%20as%20good%20as%20an%20intern.html","b":""}]);

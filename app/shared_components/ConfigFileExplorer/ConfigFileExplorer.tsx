@@ -124,6 +124,8 @@ export interface ConfigFileExplorerProps {
   initialShowChangedOnly?: boolean;
   autoSelectFirstChangedFile?: boolean;
   autoExpandFolders?: boolean;
+  /** Optional filter applied only to the initial automatic folder expansion. */
+  shouldAutoExpandFolder?: (node: FileNode) => boolean;
   height?: string;
   readOnly?: boolean;
   onFileSelect?: (path: string) => void;
@@ -313,13 +315,18 @@ const filterChangedNodes = (nodes: FileNode[]): FileNode[] => {
 };
 
 // Collect all directory paths from a tree
-const collectDirectoryPaths = (nodes: FileNode[]): string[] => {
+export const collectDirectoryPaths = (
+  nodes: FileNode[],
+  shouldInclude?: (node: FileNode) => boolean,
+): string[] => {
   const paths: string[] = [];
   for (const node of nodes) {
     if (node.type === 'directory') {
-      paths.push(node.path);
+      if (!shouldInclude || shouldInclude(node)) {
+        paths.push(node.path);
+      }
       if (node.children) {
-        paths.push(...collectDirectoryPaths(node.children));
+        paths.push(...collectDirectoryPaths(node.children, shouldInclude));
       }
     }
   }
@@ -351,6 +358,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   initialShowChangedOnly = false,
   autoSelectFirstChangedFile = false,
   autoExpandFolders = false,
+  shouldAutoExpandFolder,
   height = 'calc(100vh-57px)',
   readOnly = false,
   onFileSelect,
@@ -681,7 +689,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
     fetchTree(showChangedOnly).then((loadedTree) => {
       // Auto-expand folders if requested
       if (autoExpandFolders && loadedTree.length > 0) {
-        const allPaths = collectDirectoryPaths(loadedTree);
+        const allPaths = collectDirectoryPaths(loadedTree, shouldAutoExpandFolder);
         setExpandedPaths(new Set(allPaths));
       }
       
@@ -702,7 +710,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
         }
       }
     });
-  }, [fetchTree, autoExpandFolders, autoSelectFirstChangedFile, hasAutoSelected, selectFile, initialSelectedFile, showChangedOnly, mode]);
+  }, [fetchTree, autoExpandFolders, shouldAutoExpandFolder, autoSelectFirstChangedFile, hasAutoSelected, selectFile, initialSelectedFile, showChangedOnly, mode]);
 
   const handleSave = async () => {
     if (!selectedPath || !api.saveContent) return;

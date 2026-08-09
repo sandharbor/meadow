@@ -218,6 +218,21 @@ export class ChangesTab {
     await htmlFile.click();
   }
 
+  /** Assert that a named folder is visible and initially collapsed. */
+  async expectFolderCollapsed(name: string) {
+    const folderRow = this.page.getByText(name, { exact: true }).first().locator('..');
+    await this.expect(folderRow).toBeVisible({ timeout: 15_000 });
+    await this.expect(folderRow.locator('span').first()).toHaveText('▶');
+  }
+
+  /** Expand a named folder in the changed-files tree. */
+  async expandFolder(name: string) {
+    const folderLabel = this.page.getByText(name, { exact: true }).first();
+    await this.expect(folderLabel).toBeVisible({ timeout: 15_000 });
+    await folderLabel.click();
+    await this.expect(folderLabel.locator('..').locator('span').first()).toHaveText('▼');
+  }
+
   /** Assert that no file matching the given name appears in the changes list. */
   async expectFileNotInChanges(filename: string) {
     const match = this.page.locator(`span:has-text("${filename}")`);

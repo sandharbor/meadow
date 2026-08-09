@@ -171,6 +171,11 @@ class GenerationOptionsSection {
     await this.selectHoverOption("Backlinks", "Off");
   }
 
+  /** Set the generated-site Search setting to "Off" for this site. */
+  async disableSearch() {
+    await this.selectHoverOption("Search", "Off");
+  }
+
   /** Set the Sources ZIP site-level setting to "On" (enabled). */
   async enableSourcesExport() {
     await this.selectHoverOption("Sources ZIP", "On");

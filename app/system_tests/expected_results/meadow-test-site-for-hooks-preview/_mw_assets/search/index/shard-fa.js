@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"concept - smaller models cost less to run inference on","p":"ai/concept%20-%20smaller%20models%20cost%20less%20to%20run%20inference%20on.html","b":"concept - maybe we should train smaller models for longer dim - model size -- smaller dim - inference cost -- lower"}]);

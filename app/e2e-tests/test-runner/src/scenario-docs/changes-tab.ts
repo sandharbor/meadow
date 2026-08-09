@@ -22,5 +22,5 @@ export const changesTab: ScenarioDoc = {
   description:
     "Tests the Changes tab within the Preview/Publish modal, including " +
     "the file change lifecycle (new, modified, deleted), change type filters, " +
-    "HTML section change filters, and diff viewing.",
+    "HTML section change filters, diff viewing, and collapsed internal asset folders.",
 };

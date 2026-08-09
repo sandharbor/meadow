@@ -162,6 +162,7 @@ const SiteEditor: React.FC = () => {
   const [globalGenerationBreadcrumbsEnabled, setGlobalGenerationBreadcrumbsEnabled] = useState(true);
   const [globalGenerationBacklinksEnabled, setGlobalGenerationBacklinksEnabled] = useState(true);
   const [globalGenerationTagsEnabled, setGlobalGenerationTagsEnabled] = useState(true);
+  const [globalGenerationSearchEnabled, setGlobalGenerationSearchEnabled] = useState(true);
   const [globalGenerationHoverPreviewEnabled, setGlobalGenerationHoverPreviewEnabled] = useState(false);
   const [globalGenerationSourcesExportEnabled, setGlobalGenerationSourcesExportEnabled] = useState(false);
   const [globalGenerationOpenKnowledgeFormatEnabled, setGlobalGenerationOpenKnowledgeFormatEnabled] = useState(false);
@@ -172,6 +173,7 @@ const SiteEditor: React.FC = () => {
   const [siteGenerationBreadcrumbsSetting, setSiteGenerationBreadcrumbsSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationBacklinksSetting, setSiteGenerationBacklinksSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationTagsSetting, setSiteGenerationTagsSetting] = useState<OverrideSetting>('inherit');
+  const [siteGenerationSearchSetting, setSiteGenerationSearchSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationHoverPreviewSetting, setSiteGenerationHoverPreviewSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationSourcesExportSetting, setSiteGenerationSourcesExportSetting] = useState<OverrideSetting>('inherit');
   const [siteGenerationOpenKnowledgeFormatSetting, setSiteGenerationOpenKnowledgeFormatSetting] = useState<OverrideSetting>('inherit');
@@ -301,6 +303,7 @@ const SiteEditor: React.FC = () => {
         setSiteGenerationBreadcrumbsSetting(toSetting(config.generationBreadcrumbsEnabled));
         setSiteGenerationBacklinksSetting(toSetting(config.generationBacklinksEnabled));
         setSiteGenerationTagsSetting(toSetting(config.generationTagsEnabled));
+        setSiteGenerationSearchSetting(toSetting(config.generationSearchEnabled));
         setSiteGenerationHoverPreviewSetting(toSetting(config.generationHoverPreviewEnabled));
         setSiteGenerationSourcesExportSetting(toSetting(config.generationMarkdownZipEnabled));
         setSiteGenerationOpenKnowledgeFormatSetting(toSetting(config.generationOpenKnowledgeFormatEnabled));
@@ -327,6 +330,7 @@ const SiteEditor: React.FC = () => {
         generationBreadcrumbsEnabled?: boolean;
         generationBacklinksEnabled?: boolean;
         generationTagsEnabled?: boolean;
+        generationSearchEnabled?: boolean;
         generationHoverPreviewEnabled?: boolean;
         generationMarkdownZipEnabled?: boolean;
         generationOpenKnowledgeFormatEnabled?: boolean;
@@ -336,6 +340,7 @@ const SiteEditor: React.FC = () => {
         setGlobalGenerationBreadcrumbsEnabled(cfg.generationBreadcrumbsEnabled !== false);
         setGlobalGenerationBacklinksEnabled(cfg.generationBacklinksEnabled !== false);
         setGlobalGenerationTagsEnabled(cfg.generationTagsEnabled !== false);
+        setGlobalGenerationSearchEnabled(cfg.generationSearchEnabled !== false);
         setGlobalGenerationHoverPreviewEnabled(cfg.generationHoverPreviewEnabled === true);
         setGlobalGenerationSourcesExportEnabled(cfg.generationMarkdownZipEnabled === true);
         setGlobalGenerationOpenKnowledgeFormatEnabled(cfg.generationOpenKnowledgeFormatEnabled === true);
@@ -783,7 +788,7 @@ const SiteEditor: React.FC = () => {
   };
 
   // Update a site-level override (inherit/enable/disable) - just persist to server
-  const handleSiteGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => {
+  const handleSiteGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => {
     if (!slug) return;
 
     // Update local state immediately
@@ -796,6 +801,8 @@ const SiteEditor: React.FC = () => {
       }
     } else if (option === 'tags') {
       setSiteGenerationTagsSetting(setting);
+    } else if (option === 'search') {
+      setSiteGenerationSearchSetting(setting);
     } else if (option === 'sourcesExport') {
       setSiteGenerationSourcesExportSetting(setting);
     } else if (option === 'openKnowledgeFormat') {
@@ -813,6 +820,7 @@ const SiteEditor: React.FC = () => {
         ...(setting === 'disabled' ? { generationTagsEnabled: false } : {})
       },
       tags: { generationTagsEnabled: settingToPayload(setting) },
+      search: { generationSearchEnabled: settingToPayload(setting) },
       hoverPreview: { generationHoverPreviewEnabled: settingToPayload(setting) },
       sourcesExport: { generationMarkdownZipEnabled: settingToPayload(setting) },
       openKnowledgeFormat: { generationOpenKnowledgeFormatEnabled: settingToPayload(setting) },
@@ -832,11 +840,12 @@ const SiteEditor: React.FC = () => {
   };
 
   // Update a global default - just persist to server
-  const handleGlobalGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => {
+  const handleGlobalGenerationOptionChange = async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => {
     // Update local state immediately
     if (option === 'breadcrumbs') setGlobalGenerationBreadcrumbsEnabled(enabled);
     if (option === 'backlinks') setGlobalGenerationBacklinksEnabled(enabled);
     if (option === 'tags') setGlobalGenerationTagsEnabled(enabled);
+    if (option === 'search') setGlobalGenerationSearchEnabled(enabled);
     if (option === 'hoverPreview') setGlobalGenerationHoverPreviewEnabled(enabled);
     if (option === 'sourcesExport') setGlobalGenerationSourcesExportEnabled(enabled);
     if (option === 'openKnowledgeFormat') setGlobalGenerationOpenKnowledgeFormatEnabled(enabled);
@@ -846,6 +855,7 @@ const SiteEditor: React.FC = () => {
       breadcrumbs: { generationBreadcrumbsEnabled: enabled },
       backlinks: { generationBacklinksEnabled: enabled, ...(enabled ? {} : { generationTagsEnabled: false }) },
       tags: { generationTagsEnabled: enabled },
+      search: { generationSearchEnabled: enabled },
       hoverPreview: { generationHoverPreviewEnabled: enabled },
       sourcesExport: { generationMarkdownZipEnabled: enabled },
       openKnowledgeFormat: { generationOpenKnowledgeFormatEnabled: enabled },
@@ -865,6 +875,7 @@ const SiteEditor: React.FC = () => {
           generationBreadcrumbsEnabled?: boolean;
           generationBacklinksEnabled?: boolean;
           generationTagsEnabled?: boolean;
+          generationSearchEnabled?: boolean;
           generationHoverPreviewEnabled?: boolean;
           generationMarkdownZipEnabled?: boolean;
           generationOpenKnowledgeFormatEnabled?: boolean;
@@ -874,6 +885,7 @@ const SiteEditor: React.FC = () => {
         setGlobalGenerationBreadcrumbsEnabled(cfg.generationBreadcrumbsEnabled !== false);
         setGlobalGenerationBacklinksEnabled(cfg.generationBacklinksEnabled !== false);
         setGlobalGenerationTagsEnabled(cfg.generationTagsEnabled !== false);
+        setGlobalGenerationSearchEnabled(cfg.generationSearchEnabled !== false);
         setGlobalGenerationHoverPreviewEnabled(cfg.generationHoverPreviewEnabled === true);
         setGlobalGenerationSourcesExportEnabled(cfg.generationMarkdownZipEnabled === true);
         setGlobalGenerationOpenKnowledgeFormatEnabled(cfg.generationOpenKnowledgeFormatEnabled === true);
@@ -1155,6 +1167,7 @@ const SiteEditor: React.FC = () => {
           breadcrumbsEnabled: globalGenerationBreadcrumbsEnabled,
           backlinksEnabled: globalGenerationBacklinksEnabled,
           tagsEnabled: globalGenerationTagsEnabled,
+          searchEnabled: globalGenerationSearchEnabled,
           hoverPreviewEnabled: globalGenerationHoverPreviewEnabled,
           sourcesExportEnabled: globalGenerationSourcesExportEnabled,
           openKnowledgeFormatEnabled: globalGenerationOpenKnowledgeFormatEnabled,
@@ -1164,6 +1177,7 @@ const SiteEditor: React.FC = () => {
           breadcrumbsSetting: siteGenerationBreadcrumbsSetting,
           backlinksSetting: siteGenerationBacklinksSetting,
           tagsSetting: siteGenerationTagsSetting,
+          searchSetting: siteGenerationSearchSetting,
           hoverPreviewSetting: siteGenerationHoverPreviewSetting,
           sourcesExportSetting: siteGenerationSourcesExportSetting,
           openKnowledgeFormatSetting: siteGenerationOpenKnowledgeFormatSetting,

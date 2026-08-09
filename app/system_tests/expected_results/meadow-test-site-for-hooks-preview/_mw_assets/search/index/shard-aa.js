@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"concept - Geo Hotz somehow knew the GPT4 architecture","p":"ai/concept%20-%20Geo%20Hotz%20somehow%20knew%20the%20GPT4%20architecture.html","b":"tweet - Geo Hotz what GPT-4 is person - Geo Hotz"}]);

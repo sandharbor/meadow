@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"input sequence","p":"ai/input%20sequence.html","b":""},{"t":"person - Andrej Karpathy","p":"ai/person%20-%20Andrej%20Karpathy.html","b":""},{"t":"reasoning model","p":"ai/reasoning%20model.html","b":"link not tracked model like link not tracked. Like, using test-time compute"}]);

@@ -27,6 +27,7 @@ interface GenerationOptionsPanelProps {
     breadcrumbsEnabled: boolean;
     backlinksEnabled: boolean;
     tagsEnabled: boolean;
+    searchEnabled: boolean;
     hoverPreviewEnabled: boolean;
     sourcesExportEnabled: boolean;
     openKnowledgeFormatEnabled: boolean;
@@ -36,6 +37,7 @@ interface GenerationOptionsPanelProps {
     breadcrumbsSetting: OverrideSetting;
     backlinksSetting: OverrideSetting;
     tagsSetting: OverrideSetting;
+    searchSetting: OverrideSetting;
     hoverPreviewSetting: OverrideSetting;
     sourcesExportSetting: OverrideSetting;
     openKnowledgeFormatSetting: OverrideSetting;
@@ -44,8 +46,8 @@ interface GenerationOptionsPanelProps {
   globalSrsTags: string[];
   siteSrsTagsOverride: string[] | null;
   siteSlug: string;
-  onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
-  onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
+  onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
+  onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
   onGlobalSrsEnable: (tags: string[]) => Promise<void>;
@@ -525,6 +527,13 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
               dimmed: !effectiveBacklinksEnabled,
               tooltip: !effectiveBacklinksEnabled ? 'Tags require backlinks' : undefined,
             },
+          )}
+          {renderRow(
+            'Search',
+            globalOptions.searchEnabled,
+            siteOptions.searchSetting,
+            (enabled) => onGlobalOptionChange('search', enabled),
+            (setting) => onSiteOptionChange('search', setting),
           )}
           {renderRow(
             'Hover Preview',

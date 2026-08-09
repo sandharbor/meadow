@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"training with inference efficiency as the goal","p":"ai/training%20with%20inference%20efficiency%20as%20the%20goal.html","b":"dim - inference speed -- faster dim - inference cost -- lower inference ... Why? because inference might cost more than training ... One way you can do this is dim - training time -- long"}]);

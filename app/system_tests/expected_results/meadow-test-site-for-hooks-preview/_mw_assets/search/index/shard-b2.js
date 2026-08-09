@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"project - mamba","p":"ai/project%20-%20mamba.html","b":"person - Albert Gu school - CMU person - Tri Dao school - Princeton ref - mamba the hard way ref - mamba the easy way alternative attention mechanisms"},{"t":"simulation","p":"ai/simulation.html","b":""}]);

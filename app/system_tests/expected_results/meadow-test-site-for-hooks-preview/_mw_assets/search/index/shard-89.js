@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"diff - empiricist vs. theoretician","p":"ai/diff%20-%20empiricist%20vs.%20theoretician.html","b":""},{"t":"empiricist","p":"ai/empiricist.html","b":"diff - empiricist vs. theoretician"},{"t":"true AGI","p":"ai/true%20AGI.html","b":"Artificial general intelligence - AGI"}]);

@@ -78,6 +78,7 @@ import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js'
 import { getEffectivePresetIdForSiteDirectory, getPresetAssetsPath } from '../utils/stylePresetsLoader.js';
 import { resolveCustomAssets } from '../utils/customAssetsLoader.js';
 import { recordTimingMetric, timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
+import { copyPublishedSiteSearchAssets, writePublishedSiteSearchIndex } from './searchIndex.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -755,6 +756,10 @@ export async function generateHtmlForSite(
     logger.warn(`callouts.css not found at ${calloutsSrc}`);
   }
 
+  if (generationOptions.searchEnabled) {
+    copyPublishedSiteSearchAssets(sharedDirectory, assetsDirectory);
+  }
+
   // Excalidraw assets — only copied for sites that include at least one Excalidraw drawing.
   const siteHasExcalidraw = Object.values(sitePageConfs).some(
     conf => conf.file_type === 'excalidraw' && conf.config.list_type === 'whitelist'
@@ -1225,6 +1230,7 @@ export async function generateHtmlForSite(
       staticAssetNames,
       siteConfig,
       siteSlug: siteSlug || undefined,
+      searchEnabled: generationOptions.searchEnabled,
     });
 
     if (!startPageRenderedEmitted) {
@@ -1340,6 +1346,7 @@ export async function generateHtmlForSite(
         sourcesExportEnabled,
         openKnowledgeFormatEnabled,
         srsEnabled: generationOptions.spacedRepetitionEnabled,
+        searchEnabled: generationOptions.searchEnabled,
       },
       siteSlug || undefined,
       subdir,  // current page's source directory (for relative path calculations)
@@ -1429,6 +1436,17 @@ export async function generateHtmlForSite(
         JSON.stringify({ version: 1, siteGuid, cards: globalCards })
       );
     });
+  }
+
+  if (generationOptions.searchEnabled) {
+    const searchIndexResult = timeSync(
+      'site.generation.stage',
+      { ...timingLabels, stage: 'write_search_index' },
+      () => writePublishedSiteSearchIndex(previewHtmlDirectory, assetsDirectory)
+    );
+    logger.info(
+      `Generated search index for ${searchIndexResult.documentCount} pages in ${searchIndexResult.shardCount} shards`
+    );
   }
 
   emitProgress({ stage: 'complete', message: 'HTML render complete', current: renderedOrSkipped, total: totalToRender, percent: 100 });

@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"practical issue - it was hard to get data for robotics","p":"ai/practical%20issue%20-%20it%20was%20hard%20to%20get%20data%20for%20robotics.html","b":"robotics"}]);

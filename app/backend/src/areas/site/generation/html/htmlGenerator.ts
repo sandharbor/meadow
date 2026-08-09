@@ -181,6 +181,7 @@ export function renderPageToHtml(
     sourcesExportEnabled,
     openKnowledgeFormatEnabled,
     srsEnabled = false,
+    searchEnabled = false,
   } = options;
 
   const mdPath = Page.findFullFilesystemPath(directory, pageName);
@@ -711,6 +712,8 @@ export function renderPageToHtml(
   const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
   const srsCss = staticAssetNames?.srsCss ?? 'srs.css';
   const srsJs = staticAssetNames?.srsJs ?? 'srs.js';
+  const searchCss = staticAssetNames?.searchCss ?? 'search/search.css';
+  const searchJs = staticAssetNames?.searchJs ?? 'search/search.js';
   const globalStyleCss = staticAssetNames?.globalStyleCss;
   const siteStyleCss = staticAssetNames?.siteStyleCss;
   const globalJavascriptJs = staticAssetNames?.globalJavascriptJs;
@@ -756,12 +759,16 @@ export function renderPageToHtml(
     excalidraw_js: excalidrawJs,
     srs_css: srsCss,
     srs_js: srsJs,
+    search_css: searchCss,
+    search_js: searchJs,
     srs_enabled: srsEnabled,
     srs_site_guid: siteConfig.siteGuid || '',
     srs_page_id: srsPageId,
     include_hover_preview: showHoverPreview,
     downloadable_artifacts_enabled: downloadArtifacts.length > 0,
+    header_actions_enabled: downloadArtifacts.length > 0 || searchEnabled,
     download_artifacts: downloadArtifacts,
+    search_enabled: searchEnabled,
   });
 
   let htmlPath: string | null = null;
@@ -838,6 +845,7 @@ export function renderExcalidrawPageToHtml(args: {
   staticAssetNames?: import('./types.js').StaticAssetNames;
   siteConfig: SiteConfig;
   siteSlug?: string;
+  searchEnabled: boolean;
 }): string | null {
   const {
     sourceMdPath,
@@ -855,6 +863,7 @@ export function renderExcalidrawPageToHtml(args: {
     staticAssetNames,
     siteConfig,
     siteSlug,
+    searchEnabled,
   } = args;
 
   if (!fs.existsSync(sourceMdPath)) {
@@ -888,6 +897,8 @@ export function renderExcalidrawPageToHtml(args: {
   const excalidrawCss = staticAssetNames?.excalidrawCss ?? 'meadow-excalidraw.css';
   const excalidrawVendorJs = staticAssetNames?.excalidrawVendorJs ?? 'excalidraw-vendor.js';
   const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
+  const searchCss = staticAssetNames?.searchCss ?? 'search/search.css';
+  const searchJs = staticAssetNames?.searchJs ?? 'search/search.js';
   const globalStyleCss = staticAssetNames?.globalStyleCss;
   const siteStyleCss = staticAssetNames?.siteStyleCss;
   const globalJavascriptJs = staticAssetNames?.globalJavascriptJs;
@@ -915,8 +926,12 @@ export function renderExcalidrawPageToHtml(args: {
     excalidraw_css: excalidrawCss,
     excalidraw_vendor_js: excalidrawVendorJs,
     excalidraw_js: excalidrawJs,
+    search_css: searchCss,
+    search_js: searchJs,
     srs_enabled: false,
     include_hover_preview: false,
+    header_actions_enabled: searchEnabled,
+    search_enabled: searchEnabled,
   });
 
   const htmlPath = path.join(outputFolder, `${outputFilename}.html`);

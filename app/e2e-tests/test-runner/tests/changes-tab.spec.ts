@@ -34,6 +34,9 @@ test("Changes tab lifecycle: new files, save, modify via config, verify diff hea
   // Go to Changes tab — assert only new files (A indicators, no M or D)
   await modal.clickChangesTab();
   await changesTab.expectOnlyNewFiles();
+  await changesTab.expectFolderCollapsed("_mw_assets");
+  await changesTab.expandFolder("_mw_assets");
+  await changesTab.expectFolderCollapsed("index");
   await snapshot("only new files in changes tab");
 
   // Click the first HTML file

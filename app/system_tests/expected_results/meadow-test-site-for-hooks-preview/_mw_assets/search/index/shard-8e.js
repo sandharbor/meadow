@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"diff - fundamental theory vs. practical issue","p":"ai/diff%20-%20fundamental%20theory%20vs.%20practical%20issue.html","b":"practical issue - running out of data practical issues"}]);

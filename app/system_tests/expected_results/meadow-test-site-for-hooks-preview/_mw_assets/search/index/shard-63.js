@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"grokking","p":"ai/grokking.html","b":"slang - groks"},{"t":"The OpenAI leadership drama and board turnover","p":"ai/The%20OpenAI%20leadership%20drama%20and%20board%20turnover.html","b":"company - OpenAI Company Goverance"}]);

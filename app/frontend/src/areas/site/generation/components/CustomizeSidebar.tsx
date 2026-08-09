@@ -37,6 +37,7 @@ interface CustomizeSidebarProps {
     breadcrumbsEnabled: boolean;
     backlinksEnabled: boolean;
     tagsEnabled: boolean;
+    searchEnabled: boolean;
     hoverPreviewEnabled: boolean;
     sourcesExportEnabled: boolean;
     openKnowledgeFormatEnabled: boolean;
@@ -46,6 +47,7 @@ interface CustomizeSidebarProps {
     breadcrumbsSetting: OverrideSetting;
     backlinksSetting: OverrideSetting;
     tagsSetting: OverrideSetting;
+    searchSetting: OverrideSetting;
     hoverPreviewSetting: OverrideSetting;
     sourcesExportSetting: OverrideSetting;
     openKnowledgeFormatSetting: OverrideSetting;
@@ -53,8 +55,8 @@ interface CustomizeSidebarProps {
   };
   globalSrsTags: string[];
   siteSrsTagsOverride: string[] | null;
-  onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
-  onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
+  onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
+  onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
   onGlobalSrsEnable: (tags: string[]) => Promise<void>;

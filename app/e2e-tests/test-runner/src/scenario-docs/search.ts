@@ -20,6 +20,6 @@ export const search: ScenarioDoc = {
   id: "search",
   name: "Search",
   description:
-    "Tests the search-by-title functionality in the filter panel, " +
-    "verifying that typing in the search input filters and highlights matching pages on the graph.",
+    "Tests search in both the editor and generated sites: title filtering in the graph, " +
+    "and generated-site page-title/content results, ranking, navigation, and customization.",
 };

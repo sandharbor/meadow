@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"t002 ---- points to root png dup","p":"t002/t002%20----%20points%20to%20root%20png%20dup.html","b":"Here we link to a png in the root with the same name as the dup page ."}]);

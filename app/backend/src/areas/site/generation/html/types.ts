@@ -59,6 +59,7 @@ export interface RenderOptions {
   sourcesExportEnabled?: boolean;
   openKnowledgeFormatEnabled?: boolean;
   srsEnabled?: boolean;
+  searchEnabled?: boolean;
 }
 
 export interface StaticAssetNames {
@@ -71,6 +72,8 @@ export interface StaticAssetNames {
   excalidrawJs: string;
   srsCss?: string;
   srsJs?: string;
+  searchCss?: string;
+  searchJs?: string;
   globalStyleCss?: string;
   siteStyleCss?: string;
   globalJavascriptJs?: string;

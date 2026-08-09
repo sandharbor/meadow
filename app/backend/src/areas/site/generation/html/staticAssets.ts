@@ -131,8 +131,9 @@ function isFontFile(filePath: string): boolean {
 /**
  * Hashes and renames the "static" assets in a rendered site folder.
  *
- * - Renames `style.css`, `javascript.js`, `mermaid.min.js` and all font files under `fonts/`
- *   by inserting `.<sha256_8>` before the extension.
+ * - Renames shared CSS/JS assets (including nested SRS and search runtime assets),
+ *   `mermaid.min.js`, and all font files under `fonts/` by inserting
+ *   `.<sha256_8>` before the extension.
  * - Rewrites `style.css` font URLs to point at the renamed font files using a **relative**
  *   `fonts/<font>.<hash>.<ext>` path.
  *
@@ -219,6 +220,12 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
   const srsCss = srsCssBase ? `srs/${srsCssBase}` : undefined;
   const srsJs = srsJsBase ? `srs/${srsJsBase}` : undefined;
 
+  const searchDir = path.join(outputDir, 'search');
+  const searchCssBase = renameWithHashIfExists(path.join(searchDir, 'search.css'));
+  const searchJsBase = renameWithHashIfExists(path.join(searchDir, 'search.js'));
+  const searchCss = searchCssBase ? `search/${searchCssBase}` : undefined;
+  const searchJs = searchJsBase ? `search/${searchJsBase}` : undefined;
+
   // Hash extra files first so we can rewrite references in custom CSS
   const extraDir = path.join(outputDir, 'extra');
   const extraRenameMap: Map<string, string> = new Map();
@@ -264,5 +271,5 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
     writeCompressionManifest(outputDir, { gzip: gzipPaths });
   }
 
-  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
+  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, searchCss, searchJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
 }

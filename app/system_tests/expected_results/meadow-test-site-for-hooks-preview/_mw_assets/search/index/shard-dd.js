@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"dim - model size -- smaller","p":"ai/dim%20-%20model%20size%20--%20smaller.html","b":"dim - model size"},{"t":"slang - groks","p":"ai/slang%20-%20groks.html","b":"switch to grokking instead"},{"t":"create relevance and force curiosity","p":"create%20relevance%20and%20force%20curiosity.html","b":""}]);

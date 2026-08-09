@@ -699,6 +699,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     generationBreadcrumbsEnabled,
     generationBacklinksEnabled,
     generationTagsEnabled,
+    generationSearchEnabled,
     generationHoverPreviewEnabled,
     generationMarkdownZipEnabled,
     generationOpenKnowledgeFormatEnabled,
@@ -712,6 +713,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     generationBreadcrumbsEnabled?: boolean | null;
     generationBacklinksEnabled?: boolean | null;
     generationTagsEnabled?: boolean | null;
+    generationSearchEnabled?: boolean | null;
     generationHoverPreviewEnabled?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
     generationOpenKnowledgeFormatEnabled?: boolean | null;
@@ -747,6 +749,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
       !validateBoolOrNullOrUndef(generationBreadcrumbsEnabled) ||
       !validateBoolOrNullOrUndef(generationBacklinksEnabled) ||
       !validateBoolOrNullOrUndef(generationTagsEnabled) ||
+      !validateBoolOrNullOrUndef(generationSearchEnabled) ||
       !validateBoolOrNullOrUndef(generationHoverPreviewEnabled) ||
       !validateBoolOrNullOrUndef(generationMarkdownZipEnabled) ||
       !validateBoolOrNullOrUndef(generationOpenKnowledgeFormatEnabled) ||
@@ -780,7 +783,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     const existingConfig = YAML.parse(yamlContent) as SiteConfig;
     const updatedConfig: SiteConfig = { ...existingConfig, siteUpdatedAt: new Date().toISOString() };
 
-    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationHoverPreviewEnabled' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationOpenKnowledgeFormatIndexMode' | 'generationOpenKnowledgeFormatIndexSourcePath' | 'generationOpenKnowledgeFormatLogMode' | 'generationOpenKnowledgeFormatLogSourcePath' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
+    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationSearchEnabled' | 'generationHoverPreviewEnabled' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationOpenKnowledgeFormatIndexMode' | 'generationOpenKnowledgeFormatIndexSourcePath' | 'generationOpenKnowledgeFormatLogMode' | 'generationOpenKnowledgeFormatLogSourcePath' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
       key: K,
       value: SiteConfig[K] | null | undefined
     ) => {
@@ -795,6 +798,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     setOrDelete('generationBreadcrumbsEnabled', generationBreadcrumbsEnabled);
     setOrDelete('generationBacklinksEnabled', generationBacklinksEnabled);
     setOrDelete('generationTagsEnabled', generationTagsEnabled);
+    setOrDelete('generationSearchEnabled', generationSearchEnabled);
     setOrDelete('generationHoverPreviewEnabled', generationHoverPreviewEnabled);
     setOrDelete('generationMarkdownZipEnabled', generationMarkdownZipEnabled);
     setOrDelete('generationOpenKnowledgeFormatEnabled', generationOpenKnowledgeFormatEnabled);

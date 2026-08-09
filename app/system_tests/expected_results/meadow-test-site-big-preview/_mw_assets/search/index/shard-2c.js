@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"t018 ---- shared tags page 2","p":"t018/t018%20----%20shared%20tags%20page%202.html","b":"This page also shares the same two tags. This sentence has the first shared tag embedded: tag--t018-shared-1 in the middle. tag--t018-shared-2"}]);

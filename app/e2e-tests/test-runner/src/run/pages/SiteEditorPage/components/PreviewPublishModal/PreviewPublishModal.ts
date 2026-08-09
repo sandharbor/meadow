@@ -55,7 +55,15 @@ export class PreviewPublishModal {
   }
 
   private get previewIframeH1() {
-    return this.previewIframe.locator("h1").first();
+    return this.previewIframe.locator("main h1").first();
+  }
+
+  private get generatedSiteSearchButton() {
+    return this.previewIframe.getByRole("button", { name: "Search this site", exact: true });
+  }
+
+  private get generatedSiteSearchInput() {
+    return this.previewIframe.getByRole("searchbox", { name: "Search this site" });
   }
 
   private get changesTab() {
@@ -170,6 +178,59 @@ export class PreviewPublishModal {
    */
   async expectPreviewLinkNotVisible(href: string) {
     await this.expect(this.previewIframe.locator(`a[href="${href}"]`)).not.toBeVisible();
+  }
+
+  /** Open search inside the generated-site preview iframe. */
+  async openGeneratedSiteSearch() {
+    await this.expect(this.generatedSiteSearchButton).toBeVisible({ timeout: 30_000 });
+    await this.generatedSiteSearchButton.click();
+    await this.expect(this.generatedSiteSearchInput).toBeVisible();
+  }
+
+  /** Assert the generated-site Search and Sources controls render at exactly the same height. */
+  async expectGeneratedSiteHeaderControlsSameHeight() {
+    const sourcesControl = this.previewIframe.locator('.sources-export-download').first();
+    await this.expect(sourcesControl).toBeVisible({ timeout: 30_000 });
+    await this.expect(this.generatedSiteSearchButton).toBeVisible({ timeout: 30_000 });
+
+    const [sourcesBox, searchBox] = await Promise.all([
+      sourcesControl.boundingBox(),
+      this.generatedSiteSearchButton.boundingBox(),
+    ]);
+    this.expect(sourcesBox).not.toBeNull();
+    this.expect(searchBox).not.toBeNull();
+    this.expect(searchBox!.height).toBe(sourcesBox!.height);
+  }
+
+  /** Search the generated site after opening its search panel. */
+  async searchGeneratedSite(query: string) {
+    await this.generatedSiteSearchInput.fill(query);
+  }
+
+  /** Assert every page-title result, including its order and complete visible text. */
+  async expectGeneratedSiteTitleResults(titles: string[]) {
+    const section = this.previewIframe.locator('[data-search-results-kind="title"]');
+    await this.expect(section.getByRole("heading", { name: "Page titles" })).toBeVisible();
+    await this.expect(section.locator('[data-search-result-kind="title"] > .meadow-search-result-title')).toHaveText(titles);
+  }
+
+  async expectGeneratedSiteContentResult(title: string, snippetText: string) {
+    const section = this.previewIframe.locator('[data-search-results-kind="content"]');
+    await this.expect(section.getByRole("heading", { name: "Page contents" })).toBeVisible();
+    const result = section.locator('[data-search-result-kind="content"]', { hasText: snippetText });
+    await this.expect(result).toBeVisible();
+    await this.expect(result.locator('.meadow-search-result-title')).toHaveText(title);
+    await this.expect(result.locator('.meadow-search-result-snippet')).toContainText(snippetText);
+  }
+
+  async clickGeneratedSiteSearchResult(kind: "title" | "content", title: string) {
+    const result = this.previewIframe.locator(`[data-search-result-kind="${kind}"]`, { hasText: title });
+    await this.expect(result).toBeVisible();
+    await result.click();
+  }
+
+  async expectGeneratedSiteSearchUnavailable() {
+    await this.expect(this.generatedSiteSearchButton).not.toBeVisible({ timeout: 30_000 });
   }
 
   // ---------------------------------------------------------------------------

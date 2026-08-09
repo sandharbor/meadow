@@ -237,6 +237,14 @@ th {
 
 /* Header actions */
 .site-header-row {
+  --meadow-header-action-size: 2.25rem;
+  --meadow-header-action-border-color: #ddd;
+  --meadow-header-action-border-radius: 4px;
+  --meadow-header-action-background: #fafafa;
+  --meadow-header-action-color: #444;
+  --meadow-header-action-hover-border-color: #bbb;
+  --meadow-header-action-hover-background: #f5f5f5;
+  --meadow-header-action-hover-color: #000;
   display: flex;
   align-items: flex-start;
   gap: 0.75em;

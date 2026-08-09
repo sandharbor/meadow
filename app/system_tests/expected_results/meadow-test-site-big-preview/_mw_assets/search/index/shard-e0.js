@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"t019 ---- typescript","p":"t019/t019%20----%20typescript.html","b":"This tests a fenced TypeScript code block (baseline: render without syntax highlighting is OK). const x: number = 1;"}]);

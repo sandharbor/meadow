@@ -17,7 +17,7 @@ limitations under the License.
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import PreviewChangesTab from '../../../../../src/areas/site/review/components/PreviewChangesTab';
+import PreviewChangesTab, { shouldAutoExpandPreviewFolder } from '../../../../../src/areas/site/review/components/PreviewChangesTab';
 
 vi.mock('../../../../../../shared_components/ConfigFileExplorer/index', async () => {
   const ReactModule = await import('react');
@@ -37,6 +37,29 @@ describe('PreviewChangesTab', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('keeps generated assets and the search index collapsed during automatic expansion', () => {
+    expect(shouldAutoExpandPreviewFolder({
+      name: '_mw_assets',
+      path: '/repo/preview/_mw_assets',
+      type: 'directory',
+    })).toBe(false);
+    expect(shouldAutoExpandPreviewFolder({
+      name: 'index',
+      path: '/repo/preview/_mw_assets/search/index',
+      type: 'directory',
+    })).toBe(false);
+    expect(shouldAutoExpandPreviewFolder({
+      name: 'search',
+      path: '/repo/preview/_mw_assets/search',
+      type: 'directory',
+    })).toBe(true);
+    expect(shouldAutoExpandPreviewFolder({
+      name: 'pages',
+      path: '/repo/preview/pages',
+      type: 'directory',
+    })).toBe(true);
   });
 
   it('shows only HTML sections contributed by the visible change types', async () => {

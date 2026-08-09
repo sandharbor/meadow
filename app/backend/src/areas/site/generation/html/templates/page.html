@@ -22,6 +22,10 @@
     {{#if srs_enabled}}
     <link rel="stylesheet" href="{{ assets_prefix }}{{ srs_css }}">
     {{/if}}
+    {{#if search_enabled}}
+    <link rel="stylesheet" href="{{ assets_prefix }}{{ search_css }}">
+    <script src="{{ assets_prefix }}{{ search_js }}" defer></script>
+    {{/if}}
     {{#if include_mermaid}}
     <script src="{{ assets_prefix }}{{ mermaid_min_js }}"></script>
     {{/if}}
@@ -142,9 +146,10 @@
 <body{{#if srs_enabled}} data-meadow-srs-site-guid="{{ srs_site_guid }}" data-meadow-srs-page-id="{{ srs_page_id }}"{{/if}}>
     <header>
         <div id="new-version-pointer" style="display:none"></div>
-        {{#if downloadable_artifacts_enabled}}
+        {{#if header_actions_enabled}}
         <div class="site-header-row">
-            {{{ breadcrumbs }}}
+            <div class="site-header-navigation">{{{ breadcrumbs }}}</div>
+            <div class="site-header-actions">
             {{#each download_artifacts}}
             {{#if browse_url}}
             <details class="download-artifact-menu">
@@ -160,11 +165,33 @@
             <a href="#" data-sources-export-manifest-url="{{ manifest_url }}" download class="sources-export-download" title="{{ title }}">&#8681; {{ label }}</a>
             {{/if}}
             {{/each}}
+            {{#if search_enabled}}
+            <button type="button" class="meadow-search-open" data-meadow-search-open aria-label="Search this site" title="Search this site (Ctrl/Command+K)">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m20 20-4.5-4.5"></path>
+                </svg>
+            </button>
+            {{/if}}
+            </div>
         </div>
         {{else}}
         {{{ breadcrumbs }}}
         {{/if}}
     </header>
+    {{#if search_enabled}}
+    <div class="meadow-search-panel" data-meadow-search-panel role="dialog" aria-modal="true" aria-labelledby="meadow-search-title" hidden>
+        <div class="meadow-search-dialog">
+            <div class="meadow-search-input-row">
+                <input class="meadow-search-input" data-meadow-search-input type="search" aria-label="Search this site" placeholder="Search page titles and contents" autocomplete="off">
+                <button type="button" class="meadow-search-close" data-meadow-search-close aria-label="Close search">&times;</button>
+            </div>
+            <span id="meadow-search-title" hidden>Search this site</span>
+            <p class="meadow-search-status" data-meadow-search-status aria-live="polite">Enter at least two characters.</p>
+            <div class="meadow-search-results" data-meadow-search-results></div>
+        </div>
+    </div>
+    {{/if}}
     <main>
         <h1>{{ page_title }}</h1>
         {{{ content }}}

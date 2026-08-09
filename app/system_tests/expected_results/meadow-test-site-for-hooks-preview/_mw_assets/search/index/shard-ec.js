@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"blog post - evals in phoenix","p":"ai/blog%20post%20-%20evals%20in%20phoenix.html","b":"https://docs.arize.com/phoenix/evaluation/llm-evals evals"},{"t":"person - David Friedberg","p":"person%20-%20David%20Friedberg.html","b":""}]);
