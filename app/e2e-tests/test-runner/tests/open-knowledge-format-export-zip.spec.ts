@@ -78,6 +78,8 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await modal.closeOkfRenameDetails();
 
   await modal.clickChangesTab();
+  await changesTab.expectFolderCollapsed("_mw_assets");
+  await changesTab.expandFolder("_mw_assets");
   await changesTab.expectFileInChanges("okf-download-manifest.json");
   await changesTab.expectFileInChanges("index-original.md");
   await addKeyFrame(changesTabDoc);

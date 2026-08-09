@@ -199,6 +199,11 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     onBusyChange(isRegeneratingPreview || providerBusy);
   }, [isRegeneratingPreview, providerBusy, onBusyChange]);
 
+  // The preview iframe can become usable before generation has completely
+  // finished. If the modal is closed during that window, make sure the busy
+  // state it reported to the still-mounted editor does not remain latched.
+  useEffect(() => () => onBusyChange(false), [onBusyChange]);
+
   // Notify parent of tab changes
   useEffect(() => {
     const combinedTab: PreviewModalTab = topLevelTab === 'share' ? shareSubTab : previewSubTab;

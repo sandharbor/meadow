@@ -118,15 +118,16 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   await modal.clickChangesTab();
   await page.waitForTimeout(500);
 
-  // Open filter — should see 1 added and 1 modified
+  // Tracking the page adds its HTML and a search shard. It also modifies the
+  // main page plus the search manifest and the main page's search shard.
   await changesTab.openHtmlSectionChangesFilter();
-  await changesTab.expectChangeTypeCount("Added", 1);
-  await changesTab.expectChangeTypeCount("Modified", 1);
+  await changesTab.expectChangeTypeCount("Added", 2);
+  await changesTab.expectChangeTypeCount("Modified", 3);
 
   // Should see 2 changes in the <main> section
   await changesTab.expectSectionCount("<main>", 2);
   await addKeyFrame(htmlGeneration);
-  await snapshot("1 added 1 modified and 2 main section changes");
+  await snapshot("search-aware file totals and 2 main section changes");
 
   // Uncheck Modified — main section should drop to 1
   await changesTab.uncheckChangeType("Modified");
