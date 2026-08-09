@@ -49,6 +49,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSitePreview();
   const modal = new PreviewPublishModal(page, expect);
+  const generatedSite = modal.generatedSite;
   await snapshot("preview loaded");
 
   await modal.openCustomizeSidebar();
@@ -70,10 +71,12 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await snapshot("okf generation complete with reserved rename indicator");
 
   await customizeTab.generationOptions.openOpenKnowledgeFormatRenameDetails(2);
-  await expect(page.getByText("index.md").first()).toBeVisible();
-  await expect(page.getByText("index-original.md").first()).toBeVisible();
-  await expect(page.getByText("t001/log.md").first()).toBeVisible();
-  await expect(page.getByText("t001/log-original.md").first()).toBeVisible();
+  await modal.expectOkfRenameDetails([
+    "index.md",
+    "index-original.md",
+    "t001/log.md",
+    "t001/log-original.md",
+  ]);
   await snapshot("okf reserved rename details");
   await modal.closeOkfRenameDetails();
 
@@ -97,35 +100,13 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
 
   await modal.clickStep1Review();
   await modal.clickSitePreviewTab();
-  const previewFrame = page.frameLocator('iframe[title="Preview"]');
-  const sourcesDownloadButton = previewFrame.locator("a.sources-export-download", { hasText: "sources" });
-  const okfPackageButton = previewFrame.locator("summary.sources-export-download", { hasText: "OKF" });
-  const previewHeading = previewFrame.locator("h1").first();
-  await expect(sourcesDownloadButton).toBeVisible({ timeout: 15_000 });
-  await expect(okfPackageButton).toBeVisible({ timeout: 15_000 });
-  const sourcesButtonBox = await sourcesDownloadButton.boundingBox();
-  const okfButtonBox = await okfPackageButton.boundingBox();
-  expect(sourcesButtonBox).not.toBeNull();
-  expect(okfButtonBox).not.toBeNull();
-  expect(Math.abs(okfButtonBox!.y - sourcesButtonBox!.y)).toBeLessThan(1);
-  expect(Math.abs(okfButtonBox!.height - sourcesButtonBox!.height)).toBeLessThan(1);
-  const headingBoxBeforeMenuOpen = await previewHeading.boundingBox();
-  expect(headingBoxBeforeMenuOpen).not.toBeNull();
-  await okfPackageButton.click();
-  const okfZipDownloadLink = previewFrame.getByRole("link", { name: "Download ZIP" });
-  await expect(okfZipDownloadLink).toBeVisible();
-  const headingBoxAfterMenuOpen = await previewHeading.boundingBox();
-  expect(headingBoxAfterMenuOpen).not.toBeNull();
-  expect(Math.abs(headingBoxAfterMenuOpen!.y - headingBoxBeforeMenuOpen!.y)).toBeLessThan(1);
-  await previewFrame.locator("body").click({ position: { x: 8, y: 140 } });
-  await expect(okfZipDownloadLink).not.toBeVisible();
-  await okfPackageButton.click();
-  await expect(okfZipDownloadLink).toBeVisible();
+  await generatedSite.sources.expectControlsAligned();
+  await generatedSite.sources.openOkfMenuWithoutShiftingPage();
+  await generatedSite.sources.dismissOkfMenu();
+  await generatedSite.sources.openOkfMenu();
   await snapshot("okf website package menu open");
 
-  const downloadPromise = page.waitForEvent("download");
-  await okfZipDownloadLink.click();
-  const download = await downloadPromise;
+  const download = await generatedSite.sources.downloadOkfZip();
   expect(download.suggestedFilename()).toBe("meadow-test-site-big-okf.zip");
   const okfZipPath = await download.path();
   expect(okfZipPath).toBeTruthy();
@@ -137,8 +118,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   expect(zipContents).toContain("meadow-test-site-big/log.md");
   expect(zipContents).toContain("meadow-test-site-big/t001/log-original.md");
 
-  await okfPackageButton.click();
-  await previewFrame.getByRole("link", { name: "Bundle index" }).click();
+  await generatedSite.sources.openOkfBundleIndex();
   await modal.expectPreviewIframeUrlContains("_mw_assets/okf/bundle/index.md");
   await snapshot("okf bundle index browsed from website button");
   void bigSite;

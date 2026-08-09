@@ -28,3 +28,9 @@ export { LinksModal } from "./SiteEditorPage/components/LinksModal.js";
 export { OrphansModal } from "./SiteEditorPage/components/OrphansModal.js";
 export { PublishedSitePage } from "./shared/PublishedSitePage.js";
 export { DeleteSiteModal } from "./shared/DeleteSiteModal.js";
+export {
+  GeneratedSite,
+  GeneratedSiteSearch,
+  GeneratedSiteSources,
+  GeneratedSiteExcalidraw,
+} from "./shared/GeneratedSite.js";

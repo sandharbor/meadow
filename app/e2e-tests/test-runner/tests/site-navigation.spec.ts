@@ -28,8 +28,7 @@ test("navigate from site list to site and see graph view", async ({ page, snapsh
   const editor = new SiteEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-site-big");
 
-  const graphViewButton = page.locator("button", { hasText: "Graph View" });
-  await expect(graphViewButton).toHaveClass(/border-main-500/);
+  await editor.expectGraphViewActive();
   await snapshot("graph view visible");
   void bigSite;
   void sites;

@@ -51,6 +51,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   const wf = new Workflows(page, expect);
   const editor = new SiteEditorPage(page, expect);
   const modal = new PreviewPublishModal(page, expect);
+  const generatedSite = modal.generatedSite;
 
   await wf.navigateToBigSite();
   await editor.switchToListView();
@@ -59,26 +60,19 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   // Find the excalidraw row. The big site also has a same-title `.svg` page
   // (`t006 --- meadow-flower.svg`); narrow on the file-type cell to pick the
   // excalidraw entry specifically.
-  const excalidrawRow = page
-    .locator("table tbody tr")
-    .filter({ hasText: "t006 --- meadow-flower" })
-    .filter({ has: page.locator('td:text-is(".excalidraw")') })
-    .first();
-
   // The list-view thumbnail renders lazily on intersection — scroll it in.
-  await excalidrawRow.scrollIntoViewIfNeeded();
-
-  // Wait for the rendered SVG to land inside the row's thumbnail container.
   // First fetch + lz-string decompress + exportToSvg can take a couple of
   // seconds the first time the vendor bundle loads.
-  const inlineThumbSvg = excalidrawRow.locator('[role="img"] svg').first();
-  await expect(inlineThumbSvg).toBeVisible({ timeout: 30_000 });
+  await editor.expectListViewThumbnailVisible(
+    "t006 --- meadow-flower",
+    "excalidraw",
+  );
   await snapshot("excalidraw thumbnail rendered inline in list view");
 
   // Hover the thumbnail to trigger the hover-preview popup. The popup is a
   // fixed-position div outside the row; we don't bind to it directly — the
   // keyframe screenshot captures it, and we just give it a moment to render.
-  await inlineThumbSvg.hover();
+  await editor.hoverListViewThumbnail("t006 --- meadow-flower", "excalidraw");
   await page.waitForTimeout(750);
   await addKeyFrame(excalidraw);
   await snapshot("excalidraw hover preview visible");
@@ -92,208 +86,123 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   await snapshot("preview modal opened");
 
   // Navigate inside the iframe to the page that embeds the drawing.
-  const previewFrame = page.frameLocator('iframe[title="Preview"]');
-  await previewFrame
-    .getByRole("link", { name: "t006 - embedded media" })
-    .first()
-    .click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 - embedded media",
-    { timeout: 15_000 },
-  );
+  await generatedSite.clickPageLink("t006 - embedded media");
+  await generatedSite.expectHeading("t006 - embedded media");
 
-  const implicitExcalidrawEmbedPageLink = previewFrame
-    .getByRole("link", {
-      name: "t006 --- page that embeds Excalidraw in another directory",
-    })
-    .first();
-  await implicitExcalidrawEmbedPageLink.scrollIntoViewIfNeeded();
-  await implicitExcalidrawEmbedPageLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
+  await generatedSite.clickPageLink(
     "t006 --- page that embeds Excalidraw in another directory",
-    { timeout: 15_000 },
+  );
+  await generatedSite.expectHeading(
+    "t006 --- page that embeds Excalidraw in another directory",
   );
 
-  const implicitExcalidrawEmbedLink = previewFrame
-    .locator(
-      'a.meadow-excalidraw-embed-link[href*="embedded%20in%20page%20in%20other%20t006%20directory.html"]',
-    )
-    .first();
-  await implicitExcalidrawEmbedLink.scrollIntoViewIfNeeded();
-  await expect(
-    implicitExcalidrawEmbedLink.locator("svg").first(),
-  ).toBeVisible({ timeout: 30_000 });
+  const implicitEmbedHref =
+    "embedded%20in%20page%20in%20other%20t006%20directory.html";
+  await generatedSite.excalidraw.expectEmbedVisible(implicitEmbedHref);
 
-  await implicitExcalidrawEmbedLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
+  await generatedSite.excalidraw.clickEmbed(implicitEmbedHref);
+  await generatedSite.expectHeading(
     "embedded in page in other t006 directory",
-    { timeout: 15_000 },
   );
-  await expect(
-    previewFrame.locator(".meadow-excalidraw-page svg").first(),
-  ).toBeVisible({ timeout: 30_000 });
+  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
 
-  await previewFrame
-    .getByRole("link", { name: "t006 - embedded media" })
-    .first()
-    .click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 - embedded media",
-    { timeout: 15_000 },
-  );
+  await generatedSite.clickPageLink("t006 - embedded media");
+  await generatedSite.expectHeading("t006 - embedded media");
 
   // Scroll the embed into view (it's near the bottom of the page) so the
   // client renderer kicks in if it hadn't already.
-  const embedLink = previewFrame.locator("a.meadow-excalidraw-embed-link").first();
-  await embedLink.scrollIntoViewIfNeeded();
-
   // Wait for the SVG to land inside the embed placeholder.
-  await expect(embedLink.locator("svg").first()).toBeVisible({ timeout: 30_000 });
+  await generatedSite.excalidraw.expectEmbedVisible();
   await snapshot("excalidraw drawing rendered inline in preview page");
   await addKeyFrame(excalidraw);
 
-  const directedEmbedFrame = previewFrame
-    .locator(".meadow-excalidraw-embed-frame")
-    .first();
-  await directedEmbedFrame.scrollIntoViewIfNeeded();
-  const directedEmbed = directedEmbedFrame
-    .locator(".meadow-excalidraw-can-fullscreen")
-    .first();
-  await expect(directedEmbed.locator("svg").first()).toBeVisible({
-    timeout: 30_000,
-  });
-  const directedDrawingLink = directedEmbed.locator(
-    'svg a[href="t006/t006%20---%20linked-from-excalidraw.html"]',
-  );
-  await expect(directedDrawingLink).toHaveCount(1);
-  await expect(
-    directedEmbed.locator(
-      'svg a[href="t006/page%20linked%20from%20Excalidraw%20from%20a%20non-text%20element.html"]',
-    ),
-  ).toHaveCount(1);
-  await expect(
-    directedEmbed.locator(
-      'svg a[href="t006/page%20linked%20from%20tracked%20sunflower%20image%20in%20Excalidraw.html"]',
-    ),
-  ).toHaveCount(1);
-  await expect(
-    directedEmbedFrame.locator(".meadow-excalidraw-open-link"),
-  ).toHaveCount(0);
+  const directedDrawingHref =
+    "t006/t006%20---%20linked-from-excalidraw.html";
+  const directedNonTextHref =
+    "t006/page%20linked%20from%20Excalidraw%20from%20a%20non-text%20element.html";
+  const directedSunflowerHref =
+    "t006/page%20linked%20from%20tracked%20sunflower%20image%20in%20Excalidraw.html";
+  await generatedSite.excalidraw.expectDirectedEmbedVisible();
+  await generatedSite.excalidraw.expectDirectedDrawingLink(directedDrawingHref);
+  await generatedSite.excalidraw.expectDirectedDrawingLink(directedNonTextHref);
+  await generatedSite.excalidraw.expectDirectedDrawingLink(directedSunflowerHref);
+  await generatedSite.excalidraw.expectDirectedStandaloneLinkAbsent();
   await snapshot("directed excalidraw embed rendered with live links");
   await addKeyFrame(excalidraw);
 
-  const directedFullscreenButton = directedEmbed
-    .locator(".meadow-excalidraw-fullscreen-btn")
-    .first();
-  await expect(directedFullscreenButton).toBeVisible();
-  await directedFullscreenButton.click({ force: true });
-  await expect(directedEmbed).toHaveClass(/is-fullscreen/);
+  await generatedSite.excalidraw.openDirectedFullscreen();
   await page.waitForTimeout(750);
   await snapshot("directed excalidraw embed fullscreen open");
   await addKeyFrame(excalidraw);
-  await directedFullscreenButton.press("Escape");
-  await expect(directedEmbed).not.toHaveClass(/is-fullscreen/);
+  await generatedSite.excalidraw.closeDirectedFullscreen();
 
-  await directedDrawingLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- linked-from-excalidraw",
-    { timeout: 15_000 },
-  );
+  await generatedSite.excalidraw.clickDirectedDrawingLink(directedDrawingHref);
+  await generatedSite.expectHeading("t006 --- linked-from-excalidraw");
   await snapshot("directed excalidraw embed link opened target");
   await addKeyFrame(excalidraw);
 
-  await previewFrame
-    .getByRole("link", { name: "t006 - embedded media" })
-    .first()
-    .click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 - embedded media",
-    { timeout: 15_000 },
-  );
+  await generatedSite.clickPageLink("t006 - embedded media");
+  await generatedSite.expectHeading("t006 - embedded media");
 
   // Click the embed thumbnail — it's an `<a>` link to the standalone page.
-  await embedLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- meadow-flower",
-    { timeout: 15_000 },
-  );
+  await generatedSite.excalidraw.clickEmbed();
+  await generatedSite.expectHeading("t006 --- meadow-flower");
 
   // Wait for the standalone page's drawing to render.
-  const standaloneSvg = previewFrame
-    .locator(".meadow-excalidraw-page svg")
-    .first();
-  await expect(standaloneSvg).toBeVisible({ timeout: 30_000 });
+  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
   await snapshot("standalone excalidraw page with full drawing");
   await addKeyFrame(excalidraw);
 
-  const standaloneDrawingLink = previewFrame.locator(
-    '.meadow-excalidraw-page svg a[href="t006%20---%20linked-from-excalidraw.html"]',
+  const standaloneDrawingHref =
+    "t006%20---%20linked-from-excalidraw.html";
+  const nonTextElementHref =
+    "page%20linked%20from%20Excalidraw%20from%20a%20non-text%20element.html";
+  const sunflowerImageHref =
+    "page%20linked%20from%20tracked%20sunflower%20image%20in%20Excalidraw.html";
+  await generatedSite.excalidraw.expectStandaloneDrawingLink(
+    standaloneDrawingHref,
   );
-  await expect(standaloneDrawingLink).toHaveCount(1);
-
-  const nonTextElementDrawingLink = previewFrame.locator(
-    '.meadow-excalidraw-page svg a[href="page%20linked%20from%20Excalidraw%20from%20a%20non-text%20element.html"]',
+  await generatedSite.excalidraw.expectStandaloneDrawingLink(
+    nonTextElementHref,
   );
-  await expect(nonTextElementDrawingLink).toHaveCount(1);
-
-  const sunflowerImageDrawingLink = previewFrame.locator(
-    '.meadow-excalidraw-page svg a[href="page%20linked%20from%20tracked%20sunflower%20image%20in%20Excalidraw.html"]',
+  await generatedSite.excalidraw.expectStandaloneDrawingLink(
+    sunflowerImageHref,
   );
-  await expect(sunflowerImageDrawingLink).toHaveCount(1);
-  await expect(sunflowerImageDrawingLink).toBeVisible({ timeout: 30_000 });
-  await sunflowerImageDrawingLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
+  await generatedSite.excalidraw.clickStandaloneDrawingLink(sunflowerImageHref);
+  await generatedSite.expectHeading(
     "page linked from tracked sunflower image in Excalidraw",
-    { timeout: 15_000 },
   );
   await snapshot("standalone excalidraw tracked image link opened target");
   await addKeyFrame(excalidraw);
 
-  await previewFrame
-    .getByRole("link", { name: "t006 --- meadow-flower" })
-    .first()
-    .click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- meadow-flower",
-    { timeout: 15_000 },
-  );
-  await expect(standaloneSvg).toBeVisible({ timeout: 30_000 });
+  await generatedSite.clickPageLink("t006 --- meadow-flower");
+  await generatedSite.expectHeading("t006 --- meadow-flower");
+  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
 
-  const [nonTextLinkedTab] = await Promise.all([
-    page.context().waitForEvent("page"),
-    nonTextElementDrawingLink.click({ modifiers: ["Meta"] }),
-  ]);
-  await nonTextLinkedTab.waitForLoadState("domcontentloaded");
-  await expect(nonTextLinkedTab.locator("h1").first()).toContainText(
+  const nonTextLinkedSite =
+    await generatedSite.excalidraw.openStandaloneDrawingLinkInNewTab(
+      nonTextElementHref,
+    );
+  await nonTextLinkedSite.expectHeading(
     "page linked from Excalidraw from a non-text element",
-    { timeout: 15_000 },
   );
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- meadow-flower",
-    { timeout: 15_000 },
-  );
-  await nonTextLinkedTab.close();
+  await generatedSite.expectHeading("t006 --- meadow-flower");
+  await nonTextLinkedSite.close();
 
-  const [linkedTab] = await Promise.all([
-    page.context().waitForEvent("page"),
-    standaloneDrawingLink.click({ modifiers: ["Meta"] }),
-  ]);
-  await linkedTab.waitForLoadState("domcontentloaded");
-  await expect(linkedTab.locator("h1").first()).toContainText(
+  const linkedSite =
+    await generatedSite.excalidraw.openStandaloneDrawingLinkInNewTab(
+      standaloneDrawingHref,
+    );
+  await linkedSite.expectHeading(
     "t006 --- linked-from-excalidraw",
-    { timeout: 15_000 },
   );
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- meadow-flower",
-    { timeout: 15_000 },
-  );
-  await linkedTab.close();
+  await generatedSite.expectHeading("t006 --- meadow-flower");
+  await linkedSite.close();
 
-  await standaloneDrawingLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- linked-from-excalidraw",
-    { timeout: 15_000 },
+  await generatedSite.excalidraw.clickStandaloneDrawingLink(
+    standaloneDrawingHref,
   );
+  await generatedSite.expectHeading("t006 --- linked-from-excalidraw");
 
   releaseWorkerWarning();
   void bigSite;

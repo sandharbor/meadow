@@ -143,6 +143,10 @@ export class SiteEditorPage {
     await this.expect(this.graphViewBtn).toBeVisible();
   }
 
+  async expectGraphViewActive() {
+    await this.expect(this.graphViewBtn).toHaveClass(/border-main-500/);
+  }
+
   getSelectedPageRoot() {
     return this.page.locator('[data-testid^="selected-page-"]').first();
   }
@@ -191,11 +195,33 @@ export class SiteEditorPage {
    * Excalidraw drawing, for instance).
    */
   async expectListViewRowByTitleAndFileTypePresent(title: string, fileType: string) {
-    const row = this.listViewRows
+    const row = this.listViewRowByTitleAndFileType(title, fileType);
+    await this.expect(row).toBeVisible();
+  }
+
+  private listViewRowByTitleAndFileType(title: string, fileType: string) {
+    return this.listViewRows
       .filter({ has: this.page.locator(`td >> text="${title}"`) })
       .filter({ has: this.page.locator(`td:text-is(".${fileType}")`) })
       .first();
-    await this.expect(row).toBeVisible();
+  }
+
+  private listViewThumbnail(title: string, fileType: string) {
+    return this.listViewRowByTitleAndFileType(title, fileType)
+      .locator('[role="img"] svg')
+      .first();
+  }
+
+  async expectListViewThumbnailVisible(title: string, fileType: string) {
+    const row = this.listViewRowByTitleAndFileType(title, fileType);
+    await row.scrollIntoViewIfNeeded();
+    await this.expect(this.listViewThumbnail(title, fileType)).toBeVisible({
+      timeout: 30_000,
+    });
+  }
+
+  async hoverListViewThumbnail(title: string, fileType: string) {
+    await this.listViewThumbnail(title, fileType).hover();
   }
 
   async clickTrackAll() {

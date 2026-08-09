@@ -17,7 +17,12 @@ limitations under the License.
 import path from "path";
 import { pathToFileURL } from "url";
 import { test, expect } from "../src/run/test-fixtures.js";
-import { ChangesTab, CustomizeTab, PreviewPublishModal } from "../src/run/pages/index.js";
+import {
+  ChangesTab,
+  CustomizeTab,
+  GeneratedSite,
+  PreviewPublishModal,
+} from "../src/run/pages/index.js";
 import { Site, Workflows } from "../src/run/workflows.js";
 import { customize, search } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
@@ -32,16 +37,17 @@ test("generated site search finds titles and contents, navigates, and can be dis
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigSitePreview();
   const modal = new PreviewPublishModal(page, expect);
+  const generatedSite = modal.generatedSite;
   const customizeTab = new CustomizeTab(page, expect);
 
   await modal.openCustomizeSidebar();
   await customizeTab.generationOptions.enableSourcesExport();
-  await modal.expectGeneratedSiteHeaderControlsSameHeight();
+  await generatedSite.search.expectSameHeightAsSources();
   await snapshot("generated site search and sources controls align");
 
-  await modal.openGeneratedSiteSearch();
-  await modal.searchGeneratedSite("t021");
-  await modal.expectGeneratedSiteTitleResults([
+  await generatedSite.search.open();
+  await generatedSite.search.search("t021");
+  await generatedSite.search.expectTitleResults([
     "t021 - link gaps",
     "t021 ---- inlink gap",
     "t021 ---- outlink gap",
@@ -49,16 +55,19 @@ test("generated site search finds titles and contents, navigates, and can be dis
   await addKeyFrame(search);
   await snapshot("generated site title search results");
 
-  await modal.clickGeneratedSiteSearchResult("title", "t021 ---- outlink gap");
-  await modal.expectPreviewIframeHeading("t021 ---- outlink gap");
+  await generatedSite.search.clickResult("title", "t021 ---- outlink gap");
+  await generatedSite.expectHeading("t021 ---- outlink gap");
 
-  await modal.openGeneratedSiteSearch();
-  await modal.searchGeneratedSite("Animated GIF");
-  await modal.expectGeneratedSiteContentResult("t006 - embedded media", "Animated GIF");
+  await generatedSite.search.open();
+  await generatedSite.search.search("Animated GIF");
+  await generatedSite.search.expectContentResult(
+    "t006 - embedded media",
+    "Animated GIF",
+  );
   await snapshot("generated site content search results");
 
-  await modal.clickGeneratedSiteSearchResult("content", "t006 - embedded media");
-  await modal.expectPreviewIframeHeading("t006 - embedded media");
+  await generatedSite.search.clickResult("content", "t006 - embedded media");
+  await generatedSite.expectHeading("t006 - embedded media");
   await snapshot("navigated from generated site search");
 
   // The same script-shard loader works when the self-contained HTML is opened
@@ -73,20 +82,21 @@ test("generated site search finds titles and contents, navigates, and can be dis
     "main page.html",
   );
   await localPage.goto(pathToFileURL(localMainPage).href);
-  await localPage.getByRole("button", { name: "Search this site", exact: true }).click();
-  await localPage.getByRole("searchbox", { name: "Search this site" }).fill("t021");
-  await expect(localPage.locator('[data-search-result-kind="title"] > .meadow-search-result-title')).toHaveText([
+  const localGeneratedSite = GeneratedSite.onPage(localPage, expect);
+  await localGeneratedSite.search.open();
+  await localGeneratedSite.search.search("t021");
+  await localGeneratedSite.search.expectTitleResults([
     "t021 - link gaps",
     "t021 ---- inlink gap",
     "t021 ---- outlink gap",
   ]);
-  await localPage.close();
+  await localGeneratedSite.close();
 
   await modal.openCustomizeSidebar();
   await customizeTab.generationOptions.disableSearch();
   const changesTab = new ChangesTab(page, expect);
   await changesTab.waitForRegenerationComplete();
-  await modal.expectGeneratedSiteSearchUnavailable();
+  await generatedSite.search.expectUnavailable();
   await addKeyFrame(customize);
   await snapshot("generated site search disabled");
   void bigSite;

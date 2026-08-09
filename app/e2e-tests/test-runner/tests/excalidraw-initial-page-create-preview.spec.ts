@@ -44,6 +44,7 @@ test("create a custom site with an excalidraw initial page and follow a drawing 
   const editor = new SiteEditorPage(page, expect);
   const createModal = new CreateAndEditSiteModal(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
+  const generatedSite = previewModal.generatedSite;
 
   await siteList.goto();
   await siteList.expectCalloutVisible("Turn your notes into sites");
@@ -74,27 +75,19 @@ test("create a custom site with an excalidraw initial page and follow a drawing 
   await editor.clickPreview();
   await previewModal.waitForPreviewCompleteAllTracked();
 
-  const previewFrame = page.frameLocator('iframe[title="Preview"]');
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- meadow-flower",
-    { timeout: 30_000 },
-  );
-  await expect(previewFrame.locator(".meadow-excalidraw-page svg").first()).toBeVisible({
-    timeout: 30_000,
-  });
+  await generatedSite.expectHeading("t006 --- meadow-flower", 30_000);
+  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
   await snapshot("preview shows excalidraw initial page");
   await addKeyFrame(excalidraw);
 
-  const firstDrawingLink = previewFrame.locator(
-    '.meadow-excalidraw-page svg a[href="t006%20---%20linked-from-excalidraw.html"]',
+  const firstDrawingLinkHref =
+    "t006%20---%20linked-from-excalidraw.html";
+  await generatedSite.excalidraw.expectStandaloneDrawingLink(
+    firstDrawingLinkHref,
   );
-  await expect(firstDrawingLink).toHaveCount(1);
-  await firstDrawingLink.click();
+  await generatedSite.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref);
 
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- linked-from-excalidraw",
-    { timeout: 15_000 },
-  );
+  await generatedSite.expectHeading("t006 --- linked-from-excalidraw");
   await snapshot("preview after clicking first excalidraw link");
   await addKeyFrame(excalidraw);
 

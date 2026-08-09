@@ -58,6 +58,7 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   const wf = new Workflows(page, expect);
   const editor = new SiteEditorPage(page, expect);
   const modal = new PreviewPublishModal(page, expect);
+  const generatedSite = modal.generatedSite;
 
   await wf.navigateToBigSite();
   await editor.clickPreview();
@@ -91,49 +92,27 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   // to settle before navigating, otherwise we could click a stale link.
   await modal.expectPreviewIframeHeading("myprefix main page");
 
-  const previewFrame = page.frameLocator('iframe[title="Preview"]');
-  await previewFrame
-    .getByRole("link", { name: "myprefix t006 - embedded media" })
-    .first()
-    .click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "myprefix t006 - embedded media",
-    { timeout: 15_000 },
-  );
+  await generatedSite.clickPageLink("myprefix t006 - embedded media");
+  await generatedSite.expectHeading("myprefix t006 - embedded media");
   await snapshot("embedding page rendered with myprefix heading");
 
   // Click the embed thumbnail. The embed `<a>` href must use the normalized
   // drawing title — otherwise this navigates to a 404 page.
-  const embedLink = previewFrame
-    .locator("a.meadow-excalidraw-embed-link")
-    .first();
-  await embedLink.scrollIntoViewIfNeeded();
-  await expect(embedLink.locator("svg").first()).toBeVisible({
-    timeout: 30_000,
-  });
-  await embedLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "myprefix t006 --- meadow-flower",
-    { timeout: 15_000 },
-  );
+  await generatedSite.excalidraw.expectEmbedVisible();
+  await generatedSite.excalidraw.clickEmbed();
+  await generatedSite.expectHeading("myprefix t006 --- meadow-flower");
   await snapshot("standalone excalidraw page rendered with myprefix heading");
   await addKeyFrame(excalidraw);
 
-  const standaloneSvg = previewFrame
-    .locator(".meadow-excalidraw-page svg")
-    .first();
-  await expect(standaloneSvg).toBeVisible({ timeout: 30_000 });
+  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
 
   // The first non-aliased wikilink in the drawing points at
   // `t006 --- linked-from-excalidraw`. After the hook, both the rendered text
   // and the href on the surrounding `<a>` should reflect the prefix.
   const renamedHref =
     "myprefix%20t006%20---%20linked-from-excalidraw.html";
-  const renamedLink = previewFrame.locator(
-    `.meadow-excalidraw-page svg a[href="${renamedHref}"]`,
-  );
-  await expect(renamedLink).toHaveCount(1);
-  await expect(renamedLink).toContainText(
+  await generatedSite.excalidraw.expectStandaloneDrawingLink(
+    renamedHref,
     "myprefix t006 --- linked-from-excalidraw",
   );
   await snapshot("in-drawing link reflects myprefix in both text and href");
@@ -141,17 +120,14 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   await addKeyFrame(hooks);
 
   // Sanity: the un-prefixed forms must not appear as link targets in the SVG.
-  await expect(
-    previewFrame.locator(
-      '.meadow-excalidraw-page svg a[href="t006%20---%20linked-from-excalidraw.html"]',
-    ),
-  ).toHaveCount(0);
+  await generatedSite.excalidraw.expectNoStandaloneDrawingLink(
+    "t006%20---%20linked-from-excalidraw.html",
+  );
 
   // Following the link should land on the renamed page.
-  await renamedLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
+  await generatedSite.excalidraw.clickStandaloneDrawingLink(renamedHref);
+  await generatedSite.expectHeading(
     "myprefix t006 --- linked-from-excalidraw",
-    { timeout: 15_000 },
   );
   await snapshot("navigated to renamed link target page");
 

@@ -59,7 +59,7 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
   await page.waitForTimeout(250);
 
   // Get the selected page detail card from the sidebar
-  const selectedPageRoot = page.locator('[data-testid^="selected-page-"]').first();
+  const selectedPageRoot = editor.getSelectedPageRoot();
   const detail = new SelectedPageDetailComponent(selectedPageRoot, expect);
   await detail.openDetails();
   await page.waitForTimeout(250);

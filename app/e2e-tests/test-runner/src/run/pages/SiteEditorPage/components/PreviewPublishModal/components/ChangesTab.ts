@@ -289,6 +289,20 @@ export class ChangesTab {
     if (num !== expected) throw new Error(`Expected ${label} count ${expected} but got ${num}`);
   }
 
+  /** Return the numeric count for a change type in the filter dropdown. */
+  async getChangeTypeCount(label: string): Promise<number> {
+    const countEl = this.changeTypeFilterCount(label);
+    await this.expect(countEl).toBeVisible();
+    return Number(await countEl.textContent());
+  }
+
+  /** Check a change type filter checkbox (Added/Modified/Deleted). */
+  async checkChangeType(label: string) {
+    const checkbox = this.changeTypeCheckbox(label);
+    await this.expect(checkbox).toBeVisible();
+    await checkbox.check();
+  }
+
   /** Uncheck a change type filter checkbox (Added/Modified/Deleted). */
   async uncheckChangeType(label: string) {
     const checkbox = this.changeTypeCheckbox(label);

@@ -47,9 +47,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
 
   // Open filter and verify change type counts
   await changesTab.openHtmlSectionChangesFilter();
-  const addedCountEl = page.locator("label").filter({ hasText: "Added" }).locator("span.tabular-nums");
-  const addedCountText = await addedCountEl.textContent();
-  const addedCount = Number(addedCountText);
+  const addedCount = await changesTab.getChangeTypeCount("Added");
   expect(addedCount).toBeGreaterThan(0);
   await changesTab.expectChangeTypeCount("Modified", 0);
   await changesTab.expectChangeTypeCount("Deleted", 0);
@@ -64,8 +62,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   await snapshot("unchecked added - html sections hidden and hidden count matches");
 
   // Re-check Added to restore state before saving
-  const addedCheckbox = page.locator("label").filter({ hasText: "Added" }).locator('input[type="checkbox"]');
-  await addedCheckbox.check();
+  await changesTab.checkChangeType("Added");
 
   // ── Phase 2: Save and verify zero counts ──
 

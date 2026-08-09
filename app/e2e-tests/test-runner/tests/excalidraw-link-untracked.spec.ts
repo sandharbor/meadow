@@ -47,59 +47,33 @@ test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
   const wf = new Workflows(page, expect);
   const editor = new SiteEditorPage(page, expect);
   const modal = new PreviewPublishModal(page, expect);
+  const generatedSite = modal.generatedSite;
 
   await wf.navigateToBigSite();
   await editor.clickPreview();
   await modal.waitForPreviewComplete();
   await snapshot("preview completed");
 
-  const previewFrame = page.frameLocator('iframe[title="Preview"]');
-  await previewFrame
-    .getByRole("link", { name: "t006 - embedded media" })
-    .first()
-    .click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 - embedded media",
-    { timeout: 15_000 },
-  );
+  await generatedSite.clickPageLink("t006 - embedded media");
+  await generatedSite.expectHeading("t006 - embedded media");
 
-  const embedLink = previewFrame
-    .locator("a.meadow-excalidraw-embed-link")
-    .first();
-  await embedLink.scrollIntoViewIfNeeded();
-  await expect(embedLink.locator("svg").first()).toBeVisible({
-    timeout: 30_000,
-  });
-  await embedLink.click();
-  await expect(previewFrame.locator("h1").first()).toContainText(
-    "t006 --- meadow-flower",
-    { timeout: 15_000 },
-  );
+  await generatedSite.excalidraw.expectEmbedVisible();
+  await generatedSite.excalidraw.clickEmbed();
+  await generatedSite.expectHeading("t006 --- meadow-flower");
 
-  const standaloneSvg = previewFrame
-    .locator(".meadow-excalidraw-page svg")
-    .first();
-  await expect(standaloneSvg).toBeVisible({ timeout: 30_000 });
+  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
 
   // The untracked target should never be wrapped in an anchor — the original
   // page-title text is replaced with "link not tracked" before rendering.
   const untrackedHref =
     "page%20linked%20from%20Excalidraw%20that%20is%20not%20tracked.html";
-  await expect(
-    previewFrame.locator(
-      `.meadow-excalidraw-page svg a[href="${untrackedHref}"]`,
-    ),
-  ).toHaveCount(0);
-  await expect(
-    previewFrame.locator(`.meadow-excalidraw-page svg a[href*="not%20tracked"]`),
-  ).toHaveCount(0);
+  await generatedSite.excalidraw.expectNoStandaloneDrawingLink(untrackedHref);
+  await generatedSite.excalidraw.expectNoStandaloneDrawingLinkContaining(
+    "not%20tracked",
+  );
 
   // The replacement text shows up in the rendered SVG.
-  await expect(
-    previewFrame.locator(".meadow-excalidraw-page svg text", {
-      hasText: "link not tracked",
-    }),
-  ).toHaveCount(1);
+  await generatedSite.excalidraw.expectStandaloneDrawingText("link not tracked");
   await snapshot("excalidraw untracked link rendered as 'link not tracked'");
   await addKeyFrame(excalidraw);
 
