@@ -775,7 +775,7 @@ export function renderPageToHtml(
     srs_page_id: srsPageId,
     include_hover_preview: showHoverPreview,
     downloadable_artifacts_enabled: downloadArtifacts.length > 0,
-    header_actions_enabled: downloadArtifacts.length > 0 || searchEnabled,
+    header_actions_enabled: downloadArtifacts.length > 0 || searchEnabled || Boolean(folderNavigation),
     download_artifacts: downloadArtifacts,
     search_enabled: searchEnabled,
   });
@@ -949,7 +949,7 @@ export function renderExcalidrawPageToHtml(args: {
     folder_navigation_storage_key: folderNavigation?.storageKey ?? '',
     srs_enabled: false,
     include_hover_preview: false,
-    header_actions_enabled: searchEnabled,
+    header_actions_enabled: searchEnabled || Boolean(folderNavigation),
     search_enabled: searchEnabled,
   });
 

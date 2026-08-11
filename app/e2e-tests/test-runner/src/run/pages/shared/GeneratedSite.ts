@@ -330,6 +330,10 @@ export class GeneratedSiteFolderNavigation {
     return this.root.locator("[data-meadow-folder-nav]");
   }
 
+  private get openButton() {
+    return this.root.getByRole("button", { name: "Open folder navigation" });
+  }
+
   private folder(folderPath: string) {
     return this.root.locator(`details[data-folder-path="${folderPath}"]`);
   }
@@ -372,6 +376,55 @@ export class GeneratedSiteFolderNavigation {
       "margin-left",
       "0px",
     );
+  }
+
+  async expectMobileHeaderControlsAligned() {
+    const sources = this.root.locator(".sources-export-download").first();
+    const search = this.root.getByRole("button", {
+      name: "Search this site",
+      exact: true,
+    });
+    await this.expect(this.openButton).toBeVisible({ timeout: 30_000 });
+    await this.expect(sources).toBeVisible({ timeout: 30_000 });
+    await this.expect(search).toBeVisible({ timeout: 30_000 });
+
+    const boxes = await Promise.all([
+      this.openButton.boundingBox(),
+      sources.boundingBox(),
+      search.boundingBox(),
+    ]);
+    this.expect(boxes.every(box => box !== null)).toBe(true);
+    const verticalCenters = boxes.map(box => box!.y + box!.height / 2);
+    this.expect(Math.max(...verticalCenters) - Math.min(...verticalCenters))
+      .toBeLessThan(1);
+  }
+
+  async expectNoBreadcrumbs() {
+    await this.expect(
+      this.root.locator(".site-header-navigation .breadcrumbs"),
+    ).toHaveCount(0);
+  }
+
+  async expectBreadcrumbsBelowHeaderControls() {
+    const breadcrumbs = this.root.locator(
+      ".site-header-navigation .breadcrumbs",
+    );
+    const actions = this.root.locator(".site-header-actions");
+    await this.expect(breadcrumbs).toBeVisible({ timeout: 30_000 });
+
+    const [openButtonBox, actionsBox, breadcrumbsBox] = await Promise.all([
+      this.openButton.boundingBox(),
+      actions.boundingBox(),
+      breadcrumbs.boundingBox(),
+    ]);
+    this.expect(openButtonBox).not.toBeNull();
+    this.expect(actionsBox).not.toBeNull();
+    this.expect(breadcrumbsBox).not.toBeNull();
+    const controlBottom = Math.max(
+      openButtonBox!.y + openButtonBox!.height,
+      actionsBox!.y + actionsBox!.height,
+    );
+    this.expect(breadcrumbsBox!.y).toBeGreaterThanOrEqual(controlBottom);
   }
 
   async openFolder(folderPath: string) {
@@ -424,6 +477,11 @@ export class GeneratedSiteFolderNavigation {
   async close() {
     await this.root.getByRole("button", { name: "Close folder navigation" }).click();
     await this.expectClosed();
+  }
+
+  async open() {
+    await this.openButton.click();
+    await this.expectOpen();
   }
 
   async reload() {

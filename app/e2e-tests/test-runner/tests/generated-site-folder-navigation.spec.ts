@@ -97,16 +97,25 @@ test("generated-site folder navigation uses normalized filenames and persists it
   await pageTitleHook.close();
   await generatedSite.expectHeading("normalized main page", 60_000);
 
+  const sourcesPreviewDone = page.waitForResponse(response =>
+    response.url().includes("/preview-stream"),
+  );
+  await customizeTab.generationOptions.enableSourcesExport();
+  await sourcesPreviewDone;
+
   const navigationPreviewDone = page.waitForResponse(response =>
     response.url().includes("/preview-stream"),
   );
   await customizeTab.generationOptions.enableFolderNavigation();
   await navigationPreviewDone;
-  await addKeyFrame(customize);
 
   // The narrow embedded preview uses the mobile default until the outer
   // Customize panel closes and gives the generated page desktop width.
   await folderNavigation.expectClosed();
+  await folderNavigation.expectMobileHeaderControlsAligned();
+  await folderNavigation.expectNoBreadcrumbs();
+  await addKeyFrame(customize);
+  await snapshot("mobile generated site header without breadcrumbs");
   await modal.closeCustomizeSidebar();
 
   // Desktop defaults open. Direct files in each folder are sorted by their
@@ -172,6 +181,24 @@ test("generated-site folder navigation uses normalized filenames and persists it
     "normalized t001 ---- child 3 in same dir as child 1.html",
   );
   await snapshot("folder navigation remains closed after refresh");
+
+  // Reopen the Customize panel to exercise the mobile layout on a child page.
+  // The controls share one row, breadcrumbs sit beneath without overlap, and
+  // selecting a page closes the overlay before the next page loads.
+  await modal.openCustomizeSidebar();
+  await folderNavigation.expectMobileHeaderControlsAligned();
+  await folderNavigation.expectBreadcrumbsBelowHeaderControls();
+  await snapshot("mobile generated site header with breadcrumbs");
+  await folderNavigation.open();
+  await folderNavigation.openFolder("t001");
+  await folderNavigation.clickFile(
+    "t001",
+    "normalized t001 ---- child 1.html",
+  );
+  await generatedSite.expectHeading("normalized t001 ---- child 1");
+  await folderNavigation.expectClosed();
+  await folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html");
+  await snapshot("mobile folder navigation closes after page selection");
 
   void bigSite;
   await skipMeadowHomeStateCheck();

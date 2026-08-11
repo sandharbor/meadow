@@ -184,21 +184,23 @@
             aria-valuenow="280"
         ></div>
     </aside>
-    <button
-        type="button"
-        class="meadow-folder-nav-open"
-        data-meadow-folder-nav-open
-        aria-controls="meadow-folder-nav"
-        aria-expanded="false"
-        aria-label="Open folder navigation"
-        title="Open folder navigation"
-    >&#9776;</button>
     <div class="meadow-site-content">
     {{/if}}
     <header>
         <div id="new-version-pointer" style="display:none"></div>
         {{#if header_actions_enabled}}
         <div class="site-header-row">
+            {{#if folder_navigation_enabled}}
+            <button
+                type="button"
+                class="meadow-folder-nav-open"
+                data-meadow-folder-nav-open
+                aria-controls="meadow-folder-nav"
+                aria-expanded="false"
+                aria-label="Open folder navigation"
+                title="Open folder navigation"
+            >&#9776;</button>
+            {{/if}}
             <div class="site-header-navigation">{{{ breadcrumbs }}}</div>
             <div class="site-header-actions">
             {{#each download_artifacts}}

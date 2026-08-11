@@ -213,6 +213,13 @@
       openButton.addEventListener('click', function() { setSidebarOpen(true, true); });
     }
 
+    var pageLinks = sidebar.querySelectorAll('a.meadow-folder-nav-link');
+    for (var pageLinkIndex = 0; pageLinkIndex < pageLinks.length; pageLinkIndex++) {
+      pageLinks[pageLinkIndex].addEventListener('click', function() {
+        if (mobileMedia.matches) setSidebarOpen(false, true);
+      });
+    }
+
     for (var i = 0; i < folderDetails.length; i++) {
       (function(details) {
         var folderPath = details.getAttribute('data-folder-path') || '';
