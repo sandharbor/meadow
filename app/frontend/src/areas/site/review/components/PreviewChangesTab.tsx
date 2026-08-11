@@ -41,7 +41,7 @@ export const shouldAutoExpandPreviewFolder = (node: FileNode): boolean => {
   if (node.name === '_mw_assets') return false;
 
   const pathSegments = node.path.replace(/\\/g, '/').split('/').filter(Boolean);
-  return pathSegments.slice(-3).join('/') !== '_mw_assets/search/index';
+  return pathSegments.slice(-4).join('/') !== '_mw_assets/cust/search/index';
 };
 
 // Error boundary for catching rendering errors in changes tab

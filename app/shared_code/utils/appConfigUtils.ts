@@ -139,6 +139,10 @@ export function ensureAppConfigInitialized(
     settings.generationHoverPreviewEnabled = false;
     changed = true;
   }
+  if (settings.generationFolderNavigationEnabled === undefined) {
+    settings.generationFolderNavigationEnabled = false;
+    changed = true;
+  }
   if (settings.generationMarkdownZipEnabled === undefined) {
     settings.generationMarkdownZipEnabled = false;
     changed = true;
@@ -256,6 +260,7 @@ export function updateGenerationOptions(
     generationTagsEnabled?: boolean | null;
     generationSearchEnabled?: boolean | null;
     generationHoverPreviewEnabled?: boolean | null;
+    generationFolderNavigationEnabled?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
     generationOpenKnowledgeFormatEnabled?: boolean | null;
     generationSpacedRepetitionEnabled?: boolean | null;
@@ -280,6 +285,7 @@ export function updateGenerationOptions(
   setOrDelete('generationTagsEnabled', updates.generationTagsEnabled);
   setOrDelete('generationSearchEnabled', updates.generationSearchEnabled);
   setOrDelete('generationHoverPreviewEnabled', updates.generationHoverPreviewEnabled);
+  setOrDelete('generationFolderNavigationEnabled', updates.generationFolderNavigationEnabled);
   setOrDelete('generationMarkdownZipEnabled', updates.generationMarkdownZipEnabled);
   setOrDelete('generationOpenKnowledgeFormatEnabled', updates.generationOpenKnowledgeFormatEnabled);
   setOrDelete('generationSpacedRepetitionEnabled', updates.generationSpacedRepetitionEnabled);

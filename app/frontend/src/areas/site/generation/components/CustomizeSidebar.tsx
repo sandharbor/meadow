@@ -39,6 +39,7 @@ interface CustomizeSidebarProps {
     tagsEnabled: boolean;
     searchEnabled: boolean;
     hoverPreviewEnabled: boolean;
+    folderNavigationEnabled: boolean;
     sourcesExportEnabled: boolean;
     openKnowledgeFormatEnabled: boolean;
     spacedRepetitionEnabled: boolean;
@@ -49,14 +50,15 @@ interface CustomizeSidebarProps {
     tagsSetting: OverrideSetting;
     searchSetting: OverrideSetting;
     hoverPreviewSetting: OverrideSetting;
+    folderNavigationSetting: OverrideSetting;
     sourcesExportSetting: OverrideSetting;
     openKnowledgeFormatSetting: OverrideSetting;
     spacedRepetitionSetting: OverrideSetting;
   };
   globalSrsTags: string[];
   siteSrsTagsOverride: string[] | null;
-  onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
-  onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
+  onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
+  onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
   onGlobalSrsEnable: (tags: string[]) => Promise<void>;

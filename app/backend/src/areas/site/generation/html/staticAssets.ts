@@ -137,7 +137,7 @@ function isFontFile(filePath: string): boolean {
  * - Rewrites `style.css` font URLs to point at the renamed font files using a **relative**
  *   `fonts/<font>.<hash>.<ext>` path.
  *
- * Returns the new basenames for the top-level shared assets so HTML rendering can reference them.
+ * Returns the new relative paths for shared assets so HTML rendering can reference them.
  */
 export function hashAndRenameStaticAssets(outputDir: string, options: HashStaticAssetsOptions = {}): StaticAssetNames {
   const fontsDir = path.join(outputDir, 'fonts');
@@ -220,11 +220,19 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
   const srsCss = srsCssBase ? `srs/${srsCssBase}` : undefined;
   const srsJs = srsJsBase ? `srs/${srsJsBase}` : undefined;
 
-  const searchDir = path.join(outputDir, 'search');
+  const searchDir = path.join(outputDir, 'cust', 'search');
   const searchCssBase = renameWithHashIfExists(path.join(searchDir, 'search.css'));
   const searchJsBase = renameWithHashIfExists(path.join(searchDir, 'search.js'));
-  const searchCss = searchCssBase ? `search/${searchCssBase}` : undefined;
-  const searchJs = searchJsBase ? `search/${searchJsBase}` : undefined;
+  const searchCss = searchCssBase ? `cust/search/${searchCssBase}` : undefined;
+  const searchJs = searchJsBase ? `cust/search/${searchJsBase}` : undefined;
+
+  const folderNavigationDir = path.join(outputDir, 'cust', 'folder_nav');
+  const folderNavigationCssBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav.css'));
+  const folderNavigationDataJsBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav-data.js'));
+  const folderNavigationJsBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav.js'));
+  const folderNavigationCss = folderNavigationCssBase ? `cust/folder_nav/${folderNavigationCssBase}` : undefined;
+  const folderNavigationDataJs = folderNavigationDataJsBase ? `cust/folder_nav/${folderNavigationDataJsBase}` : undefined;
+  const folderNavigationJs = folderNavigationJsBase ? `cust/folder_nav/${folderNavigationJsBase}` : undefined;
 
   // Hash extra files first so we can rewrite references in custom CSS
   const extraDir = path.join(outputDir, 'extra');
@@ -271,5 +279,5 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
     writeCompressionManifest(outputDir, { gzip: gzipPaths });
   }
 
-  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, searchCss, searchJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
+  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, searchCss, searchJs, folderNavigationCss, folderNavigationDataJs, folderNavigationJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
 }

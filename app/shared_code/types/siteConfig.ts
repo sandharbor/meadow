@@ -53,6 +53,7 @@ export interface SiteConfig {
   generationTagsEnabled?: boolean; // Whether to generate tag pages + convert #tags to links (default: true; requires backlinks)
   generationSearchEnabled?: boolean; // Whether to generate site search UI + index (default: true)
   generationHoverPreviewEnabled?: boolean; // Whether to render hover previews on links (overrides app setting)
+  generationFolderNavigationEnabled?: boolean; // Whether to render the generated-site folder navigation sidebar (default: false)
   allowImagesToExtendToFrontier?: boolean; // Whether images linked from frontier-edge pages should be included (overrides app setting)
   generationMarkdownZipEnabled?: boolean; // Whether to generate a downloadable sources ZIP (default: false)
   generationOpenKnowledgeFormatEnabled?: boolean; // Whether to generate an Open Knowledge Format bundle (default: false)

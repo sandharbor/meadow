@@ -35,6 +35,7 @@ export interface AppConfig {
   generationTagsEnabled?: boolean; // Default for whether to generate tag pages + convert #tags to links (default: true; requires backlinks)
   generationSearchEnabled?: boolean; // Default for whether to generate site search UI + index (default: true)
   generationHoverPreviewEnabled?: boolean; // Default for whether to render hover previews on links (default: false)
+  generationFolderNavigationEnabled?: boolean; // Default for whether to render the generated-site folder navigation sidebar (default: false)
   generationMarkdownZipEnabled?: boolean; // Default for whether to generate a downloadable sources ZIP (default: false)
   generationOpenKnowledgeFormatEnabled?: boolean; // Default for whether to generate an Open Knowledge Format bundle (default: false)
   generationSpacedRepetitionEnabled?: boolean; // Default for whether to render client-side spaced repetition widgets (default: false)

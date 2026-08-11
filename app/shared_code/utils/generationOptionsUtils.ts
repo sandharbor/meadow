@@ -23,6 +23,7 @@ export interface EffectiveGenerationOptions {
   tagsEnabled: boolean;
   searchEnabled: boolean;
   hoverPreviewEnabled: boolean;
+  folderNavigationEnabled: boolean;
   sourcesExportEnabled: boolean;
   openKnowledgeFormatEnabled: boolean;
   spacedRepetitionEnabled: boolean;
@@ -50,6 +51,7 @@ export function resolveEffectiveGenerationOptions(
   const tagsEnabled = rawTagsEnabled && backlinksEnabled;
   const searchEnabled = (siteConfig?.generationSearchEnabled ?? appConfig?.generationSearchEnabled) !== false;
   const hoverPreviewEnabled = (siteConfig?.generationHoverPreviewEnabled ?? appConfig?.generationHoverPreviewEnabled) === true;
+  const folderNavigationEnabled = (siteConfig?.generationFolderNavigationEnabled ?? appConfig?.generationFolderNavigationEnabled) === true;
   const sourcesExportEnabled = (siteConfig?.generationMarkdownZipEnabled ?? appConfig?.generationMarkdownZipEnabled) === true;
   const openKnowledgeFormatEnabled = siteConfig?.generationOpenKnowledgeFormatEnabled === true;
   const spacedRepetitionEnabled = (siteConfig?.generationSpacedRepetitionEnabled ?? appConfig?.generationSpacedRepetitionEnabled) === true;
@@ -60,5 +62,5 @@ export function resolveEffectiveGenerationOptions(
   const baseStyleCssDisabled = (siteConfig?.disableBaseStyleCss ?? appConfig?.disableBaseStyleCss) === true;
   const baseJavascriptJsDisabled = (siteConfig?.disableBaseJavascriptJs ?? appConfig?.disableBaseJavascriptJs) === true;
 
-  return { breadcrumbsEnabled, backlinksEnabled, tagsEnabled, searchEnabled, hoverPreviewEnabled, sourcesExportEnabled, openKnowledgeFormatEnabled, spacedRepetitionEnabled, spacedRepetitionTags, baseStyleCssDisabled, baseJavascriptJsDisabled };
+  return { breadcrumbsEnabled, backlinksEnabled, tagsEnabled, searchEnabled, hoverPreviewEnabled, folderNavigationEnabled, sourcesExportEnabled, openKnowledgeFormatEnabled, spacedRepetitionEnabled, spacedRepetitionTags, baseStyleCssDisabled, baseJavascriptJsDisabled };
 }

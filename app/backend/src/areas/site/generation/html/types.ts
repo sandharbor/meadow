@@ -52,7 +52,7 @@ export interface RenderOptions {
   breadcrumbPath?: string[]; // Array of page titles representing the path from initial page
   initialPageTitle?: string; // The initial/root page title
   /**
-   * The hashed basenames for shared/static assets (css/js/mermaid) that should be referenced by
+   * The hashed relative paths for shared/static assets (css/js/mermaid) that should be referenced by
    * rendered HTML pages. When omitted, defaults to the legacy filenames (style.css, javascript.js, mermaid.min.js).
    */
   staticAssetNames?: StaticAssetNames;
@@ -60,6 +60,17 @@ export interface RenderOptions {
   openKnowledgeFormatEnabled?: boolean;
   srsEnabled?: boolean;
   searchEnabled?: boolean;
+  folderNavigation?: FolderNavigationRenderOptions;
+}
+
+export interface FolderNavigationPage {
+  directory: string;
+  normalizedTitle: string;
+  outputPath: string;
+}
+
+export interface FolderNavigationRenderOptions {
+  storageKey: string;
 }
 
 export interface StaticAssetNames {
@@ -74,6 +85,9 @@ export interface StaticAssetNames {
   srsJs?: string;
   searchCss?: string;
   searchJs?: string;
+  folderNavigationCss?: string;
+  folderNavigationDataJs?: string;
+  folderNavigationJs?: string;
   globalStyleCss?: string;
   siteStyleCss?: string;
   globalJavascriptJs?: string;

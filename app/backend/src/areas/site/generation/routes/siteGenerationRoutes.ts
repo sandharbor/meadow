@@ -701,6 +701,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     generationTagsEnabled,
     generationSearchEnabled,
     generationHoverPreviewEnabled,
+    generationFolderNavigationEnabled,
     generationMarkdownZipEnabled,
     generationOpenKnowledgeFormatEnabled,
     generationOpenKnowledgeFormatIndexMode,
@@ -715,6 +716,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     generationTagsEnabled?: boolean | null;
     generationSearchEnabled?: boolean | null;
     generationHoverPreviewEnabled?: boolean | null;
+    generationFolderNavigationEnabled?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
     generationOpenKnowledgeFormatEnabled?: boolean | null;
     generationOpenKnowledgeFormatIndexMode?: 'generated' | 'trackedPage' | null;
@@ -751,6 +753,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
       !validateBoolOrNullOrUndef(generationTagsEnabled) ||
       !validateBoolOrNullOrUndef(generationSearchEnabled) ||
       !validateBoolOrNullOrUndef(generationHoverPreviewEnabled) ||
+      !validateBoolOrNullOrUndef(generationFolderNavigationEnabled) ||
       !validateBoolOrNullOrUndef(generationMarkdownZipEnabled) ||
       !validateBoolOrNullOrUndef(generationOpenKnowledgeFormatEnabled) ||
       !validateOkfIndexModeOrNullOrUndef(generationOpenKnowledgeFormatIndexMode) ||
@@ -783,7 +786,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     const existingConfig = YAML.parse(yamlContent) as SiteConfig;
     const updatedConfig: SiteConfig = { ...existingConfig, siteUpdatedAt: new Date().toISOString() };
 
-    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationSearchEnabled' | 'generationHoverPreviewEnabled' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationOpenKnowledgeFormatIndexMode' | 'generationOpenKnowledgeFormatIndexSourcePath' | 'generationOpenKnowledgeFormatLogMode' | 'generationOpenKnowledgeFormatLogSourcePath' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
+    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationSearchEnabled' | 'generationHoverPreviewEnabled' | 'generationFolderNavigationEnabled' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationOpenKnowledgeFormatIndexMode' | 'generationOpenKnowledgeFormatIndexSourcePath' | 'generationOpenKnowledgeFormatLogMode' | 'generationOpenKnowledgeFormatLogSourcePath' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
       key: K,
       value: SiteConfig[K] | null | undefined
     ) => {
@@ -800,6 +803,7 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     setOrDelete('generationTagsEnabled', generationTagsEnabled);
     setOrDelete('generationSearchEnabled', generationSearchEnabled);
     setOrDelete('generationHoverPreviewEnabled', generationHoverPreviewEnabled);
+    setOrDelete('generationFolderNavigationEnabled', generationFolderNavigationEnabled);
     setOrDelete('generationMarkdownZipEnabled', generationMarkdownZipEnabled);
     setOrDelete('generationOpenKnowledgeFormatEnabled', generationOpenKnowledgeFormatEnabled);
     setOrDelete('generationOpenKnowledgeFormatIndexMode', generationOpenKnowledgeFormatIndexMode);

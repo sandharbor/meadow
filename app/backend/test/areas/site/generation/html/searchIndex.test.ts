@@ -101,7 +101,7 @@ describe('published site search index', () => {
     fs.writeFileSync(path.join(siteDirectory, 'Page two.html'), pageHtml('Page two', 'second body'));
 
     writePublishedSiteSearchIndex(siteDirectory, assetsDirectory);
-    const indexDirectory = path.join(assetsDirectory, 'search', 'index');
+    const indexDirectory = path.join(assetsDirectory, 'cust', 'search', 'index');
     const before = new Map(
       fs.readdirSync(indexDirectory).map(filename => [
         filename,

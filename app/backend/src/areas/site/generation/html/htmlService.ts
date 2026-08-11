@@ -24,6 +24,7 @@ import { renderPageToHtml, renderExcalidrawPageToHtml, renderSimpleBacklinksHtml
 import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
 import { markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
 import {
+  FolderNavigationPage,
   SitePageConfigs,
   InverseLinks,
   PageNameToPage,
@@ -79,6 +80,7 @@ import { getEffectivePresetIdForSiteDirectory, getPresetAssetsPath } from '../ut
 import { resolveCustomAssets } from '../utils/customAssetsLoader.js';
 import { recordTimingMetric, timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
 import { copyPublishedSiteSearchAssets, writePublishedSiteSearchIndex } from './searchIndex.js';
+import { renderFolderNavigationDataScript } from './folderNavigation.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -756,6 +758,24 @@ export async function generateHtmlForSite(
     logger.warn(`callouts.css not found at ${calloutsSrc}`);
   }
 
+  if (generationOptions.folderNavigationEnabled) {
+    const folderNavigationDirectory = path.join(assetsDirectory, 'cust', 'folder_nav');
+    fs.mkdirSync(folderNavigationDirectory, { recursive: true });
+    for (const asset of [
+      { source: 'folder-nav.css', target: 'folder-nav.css' },
+      { source: 'folder-nav.js', target: 'folder-nav.js' },
+    ]) {
+      const sourcePath = path.join(sharedDirectory, asset.source);
+      const targetPath = path.join(folderNavigationDirectory, asset.target);
+      if (fs.existsSync(sourcePath)) {
+        fs.copyFileSync(sourcePath, targetPath);
+        logger.debug(`Copied ${asset.source} to ${targetPath}`);
+      } else {
+        logger.warn(`${asset.source} not found at ${sourcePath}`);
+      }
+    }
+  }
+
   if (generationOptions.searchEnabled) {
     copyPublishedSiteSearchAssets(sharedDirectory, assetsDirectory);
   }
@@ -815,18 +835,6 @@ export async function generateHtmlForSite(
   }
   recordStageTiming('copy_assets', copyAssetsStart, { has_excalidraw: siteHasExcalidraw });
 
-  // Hash+rename static assets (css/js/mermaid/fonts) so they can be cached immutably in browsers/CDNs.
-  // IMPORTANT: This must happen BEFORE pages are rendered so HTML references the new basenames.
-  let staticAssetNames: StaticAssetNames | undefined;
-  try {
-    staticAssetNames = timeSync('site.generation.stage', { ...timingLabels, stage: 'hash_static_assets' }, () =>
-      hashAndRenameStaticAssets(assetsDirectory, { precompressedSourceAssets: precompressedStaticAssetSources })
-    );
-  } catch (error) {
-    logger.error(`Error hashing/renaming shared assets: ${String(error)}`);
-    staticAssetNames = undefined;
-  }
-  
   // Key breadcrumbPaths by pageKey (title|directory|file_type) to handle duplicate titles correctly
   let breadcrumbPaths: { [pageKey: string]: string[] } = {};
   let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
@@ -1055,6 +1063,42 @@ export async function generateHtmlForSite(
     return conf.config.list_type === 'whitelist' && conf.file_type === 'excalidraw' && traversablePageKeys.has(key);
   });
   const traversableRenderablePageKeys = [...traversableMdPageKeys, ...traversableExcalidrawPageKeys];
+  const folderNavigationPages: FolderNavigationPage[] = generationOptions.folderNavigationEnabled
+    ? [...new Map(traversableRenderablePageKeys.map(pageKey => {
+        const conf = sitePageConfs[pageKey];
+        const directory = conf.source_graph_subdirectory || '';
+        const normalizedTitle = normalizePageTitle(conf.title, siteConfig, siteSlug || undefined);
+        const outputPath = directory ? `${directory}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
+        return [outputPath, { directory, normalizedTitle, outputPath }] as const;
+      })).values()]
+    : [];
+  const folderNavigationStorageKey = `meadow-folder-nav:${siteConfig.siteGuid || siteSlug || 'site'}`;
+
+  if (generationOptions.folderNavigationEnabled) {
+    const folderNavigationDataPath = path.join(
+      assetsDirectory,
+      'cust',
+      'folder_nav',
+      'folder-nav-data.js'
+    );
+    fs.writeFileSync(
+      folderNavigationDataPath,
+      renderFolderNavigationDataScript(folderNavigationPages),
+      'utf8'
+    );
+  }
+
+  // Hash+rename static assets after the shared folder-nav data exists
+  // and before pages are rendered, so every page references the same immutable files.
+  let staticAssetNames: StaticAssetNames | undefined;
+  try {
+    staticAssetNames = timeSync('site.generation.stage', { ...timingLabels, stage: 'hash_static_assets' }, () =>
+      hashAndRenameStaticAssets(assetsDirectory, { precompressedSourceAssets: precompressedStaticAssetSources })
+    );
+  } catch (error) {
+    logger.error(`Error hashing/renaming shared assets: ${String(error)}`);
+    staticAssetNames = undefined;
+  }
 
   // Determine which page to render first (for fast preview UX)
   const requestedStartTitle = options.startPage?.title;
@@ -1231,6 +1275,9 @@ export async function generateHtmlForSite(
       siteConfig,
       siteSlug: siteSlug || undefined,
       searchEnabled: generationOptions.searchEnabled,
+      folderNavigation: generationOptions.folderNavigationEnabled ? {
+        storageKey: folderNavigationStorageKey,
+      } : undefined,
     });
 
     if (!startPageRenderedEmitted) {
@@ -1347,6 +1394,9 @@ export async function generateHtmlForSite(
         openKnowledgeFormatEnabled,
         srsEnabled: generationOptions.spacedRepetitionEnabled,
         searchEnabled: generationOptions.searchEnabled,
+        folderNavigation: generationOptions.folderNavigationEnabled ? {
+          storageKey: folderNavigationStorageKey,
+        } : undefined,
       },
       siteSlug || undefined,
       subdir,  // current page's source directory (for relative path calculations)

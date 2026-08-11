@@ -20,6 +20,7 @@ import path from 'path';
 import { parseHTML } from 'linkedom';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
 
+export const CUSTOMIZATION_ASSETS_DIRECTORY = 'cust';
 export const SEARCH_ASSETS_DIRECTORY = 'search';
 export const SEARCH_INDEX_DIRECTORY = 'index';
 export const SEARCH_SHARD_COUNT = 256;
@@ -110,7 +111,11 @@ export function copyPublishedSiteSearchAssets(
   sharedAssetsDirectory: string,
   generatedAssetsDirectory: string
 ): void {
-  const searchAssetsDirectory = path.join(generatedAssetsDirectory, SEARCH_ASSETS_DIRECTORY);
+  const searchAssetsDirectory = path.join(
+    generatedAssetsDirectory,
+    CUSTOMIZATION_ASSETS_DIRECTORY,
+    SEARCH_ASSETS_DIRECTORY
+  );
   fs.mkdirSync(searchAssetsDirectory, { recursive: true });
 
   for (const assetName of ['search.js', 'search.css']) {
@@ -137,6 +142,7 @@ export function writePublishedSiteSearchIndex(
 
   const indexDirectory = path.join(
     generatedAssetsDirectory,
+    CUSTOMIZATION_ASSETS_DIRECTORY,
     SEARCH_ASSETS_DIRECTORY,
     SEARCH_INDEX_DIRECTORY
   );

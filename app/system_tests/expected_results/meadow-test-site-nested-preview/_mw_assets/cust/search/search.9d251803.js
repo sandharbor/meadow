@@ -21,7 +21,7 @@ limitations under the License.
   if (!runtimeScript || !runtimeScript.src) return;
 
   var searchAssetsUrl = new URL('./', runtimeScript.src);
-  var siteRootUrl = new URL('../../', runtimeScript.src);
+  var siteRootUrl = new URL('../../../', runtimeScript.src);
   var manifest = null;
   var documents = [];
   var documentsByPath = {};

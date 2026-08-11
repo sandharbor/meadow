@@ -315,11 +315,129 @@ export class GeneratedSiteExcalidraw {
   }
 }
 
+/** Folder navigation rendered inside a generated Meadow site. */
+export class GeneratedSiteFolderNavigation {
+  constructor(
+    private root: GeneratedSiteRoot,
+    private expect: Expect,
+  ) {}
+
+  private get html() {
+    return this.root.locator("html");
+  }
+
+  private get sidebar() {
+    return this.root.locator("[data-meadow-folder-nav]");
+  }
+
+  private folder(folderPath: string) {
+    return this.root.locator(`details[data-folder-path="${folderPath}"]`);
+  }
+
+  async expectUnavailable() {
+    await this.expect(this.sidebar).toHaveCount(0);
+  }
+
+  async expectOpen() {
+    await this.expect(this.sidebar).toHaveCount(1, { timeout: 30_000 });
+    await this.expect(this.html).toHaveAttribute(
+      "data-meadow-folder-nav-open",
+      "true",
+    );
+  }
+
+  async expectClosed() {
+    await this.expect(this.html).toHaveAttribute(
+      "data-meadow-folder-nav-open",
+      "false",
+    );
+  }
+
+  async expectContentAlignedWithSidebar() {
+    const content = this.root.locator(".meadow-site-content");
+    await this.expect
+      .poll(async () => {
+        const sidebarWidth = (await this.sidebar.boundingBox())?.width;
+        const marginLeft = await content.evaluate(element =>
+          Number.parseFloat(window.getComputedStyle(element).marginLeft),
+        );
+        if (sidebarWidth === undefined) return Number.NaN;
+        return Math.round(marginLeft - sidebarWidth);
+      })
+      .toBe(0);
+  }
+
+  async expectContentNotOffset() {
+    await this.expect(this.root.locator(".meadow-site-content")).toHaveCSS(
+      "margin-left",
+      "0px",
+    );
+  }
+
+  async openFolder(folderPath: string) {
+    const folder = this.folder(folderPath);
+    await this.expect(folder).toBeVisible();
+    if (!(await folder.evaluate(details => (details as HTMLDetailsElement).open))) {
+      await folder.locator(":scope > summary").click();
+    }
+    await this.expect(folder).toHaveJSProperty("open", true);
+  }
+
+  async expectFolderOpen(folderPath: string) {
+    await this.expect(this.folder(folderPath)).toHaveJSProperty("open", true);
+  }
+
+  async expectDirectFileNames(folderPath: string, fileNames: string[]) {
+    await this.expect(
+      this.folder(folderPath).locator(
+        ":scope > ul > li.meadow-folder-nav-file > a",
+      ),
+    ).toHaveText(fileNames);
+  }
+
+  async clickFile(folderPath: string, fileName: string, force = false) {
+    const link = this.folder(folderPath).getByRole("link", { name: fileName });
+    if (force) {
+      await link.evaluate(element => (element as HTMLAnchorElement).click());
+      return;
+    }
+    await link.click();
+  }
+
+  async expectSelectedFile(fileName: string) {
+    const selected = this.sidebar.locator('a[aria-current="page"]');
+    await this.expect(selected).toHaveText(fileName, { timeout: 30_000 });
+  }
+
+  async expectResizable() {
+    const resizeHandle = this.sidebar.getByRole("separator", {
+      name: "Resize folder navigation",
+    });
+    const widthBefore = (await this.sidebar.boundingBox())?.width;
+    this.expect(widthBefore).toBeDefined();
+    await resizeHandle.focus();
+    await resizeHandle.press("ArrowRight");
+    await this.expect.poll(async () => (await this.sidebar.boundingBox())?.width)
+      .toBeGreaterThan(widthBefore!);
+  }
+
+  async close() {
+    await this.root.getByRole("button", { name: "Close folder navigation" }).click();
+    await this.expectClosed();
+  }
+
+  async reload() {
+    await this.root.locator("body").evaluate(() => window.location.reload());
+    await this.expect(this.root.locator("body")).toBeVisible({ timeout: 30_000 });
+  }
+}
+
 /** A generated site, either in Meadow's preview iframe or a standalone page. */
 export class GeneratedSite {
   readonly search: GeneratedSiteSearch;
   readonly sources: GeneratedSiteSources;
   readonly excalidraw: GeneratedSiteExcalidraw;
+  readonly folderNavigation: GeneratedSiteFolderNavigation;
 
   private constructor(
     private hostPage: Page,
@@ -329,6 +447,7 @@ export class GeneratedSite {
     this.search = new GeneratedSiteSearch(root, expect);
     this.sources = new GeneratedSiteSources(hostPage, root, expect);
     this.excalidraw = new GeneratedSiteExcalidraw(hostPage, root, expect);
+    this.folderNavigation = new GeneratedSiteFolderNavigation(root, expect);
   }
 
   static inPreview(page: Page, expect: Expect) {

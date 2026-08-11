@@ -181,6 +181,11 @@ class GenerationOptionsSection {
     await this.selectHoverOption("Sources ZIP", "On");
   }
 
+  /** Set generated-site Folder Navigation to "On" for this site. */
+  async enableFolderNavigation() {
+    await this.selectHoverOption("Folder Navigation", "On");
+  }
+
   /** Set the OKF site-level setting to "On" (enabled). */
   async enableOpenKnowledgeFormat() {
     const modal = await this.openOpenKnowledgeFormatSettings();

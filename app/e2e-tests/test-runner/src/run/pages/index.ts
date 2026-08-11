@@ -33,4 +33,5 @@ export {
   GeneratedSiteSearch,
   GeneratedSiteSources,
   GeneratedSiteExcalidraw,
+  GeneratedSiteFolderNavigation,
 } from "./shared/GeneratedSite.js";

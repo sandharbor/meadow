@@ -182,6 +182,7 @@ export function renderPageToHtml(
     openKnowledgeFormatEnabled,
     srsEnabled = false,
     searchEnabled = false,
+    folderNavigation,
   } = options;
 
   const mdPath = Page.findFullFilesystemPath(directory, pageName);
@@ -712,8 +713,11 @@ export function renderPageToHtml(
   const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
   const srsCss = staticAssetNames?.srsCss ?? 'srs.css';
   const srsJs = staticAssetNames?.srsJs ?? 'srs.js';
-  const searchCss = staticAssetNames?.searchCss ?? 'search/search.css';
-  const searchJs = staticAssetNames?.searchJs ?? 'search/search.js';
+  const searchCss = staticAssetNames?.searchCss ?? 'cust/search/search.css';
+  const searchJs = staticAssetNames?.searchJs ?? 'cust/search/search.js';
+  const folderNavigationCss = staticAssetNames?.folderNavigationCss ?? 'cust/folder_nav/folder-nav.css';
+  const folderNavigationDataJs = staticAssetNames?.folderNavigationDataJs ?? 'cust/folder_nav/folder-nav-data.js';
+  const folderNavigationJs = staticAssetNames?.folderNavigationJs ?? 'cust/folder_nav/folder-nav.js';
   const globalStyleCss = staticAssetNames?.globalStyleCss;
   const siteStyleCss = staticAssetNames?.siteStyleCss;
   const globalJavascriptJs = staticAssetNames?.globalJavascriptJs;
@@ -761,6 +765,11 @@ export function renderPageToHtml(
     srs_js: srsJs,
     search_css: searchCss,
     search_js: searchJs,
+    folder_navigation_enabled: Boolean(folderNavigation),
+    folder_navigation_css: folderNavigationCss,
+    folder_navigation_data_js: folderNavigationDataJs,
+    folder_navigation_js: folderNavigationJs,
+    folder_navigation_storage_key: folderNavigation?.storageKey ?? '',
     srs_enabled: srsEnabled,
     srs_site_guid: siteConfig.siteGuid || '',
     srs_page_id: srsPageId,
@@ -846,6 +855,7 @@ export function renderExcalidrawPageToHtml(args: {
   siteConfig: SiteConfig;
   siteSlug?: string;
   searchEnabled: boolean;
+  folderNavigation?: import('./types.js').FolderNavigationRenderOptions;
 }): string | null {
   const {
     sourceMdPath,
@@ -864,6 +874,7 @@ export function renderExcalidrawPageToHtml(args: {
     siteConfig,
     siteSlug,
     searchEnabled,
+    folderNavigation,
   } = args;
 
   if (!fs.existsSync(sourceMdPath)) {
@@ -897,8 +908,11 @@ export function renderExcalidrawPageToHtml(args: {
   const excalidrawCss = staticAssetNames?.excalidrawCss ?? 'meadow-excalidraw.css';
   const excalidrawVendorJs = staticAssetNames?.excalidrawVendorJs ?? 'excalidraw-vendor.js';
   const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
-  const searchCss = staticAssetNames?.searchCss ?? 'search/search.css';
-  const searchJs = staticAssetNames?.searchJs ?? 'search/search.js';
+  const searchCss = staticAssetNames?.searchCss ?? 'cust/search/search.css';
+  const searchJs = staticAssetNames?.searchJs ?? 'cust/search/search.js';
+  const folderNavigationCss = staticAssetNames?.folderNavigationCss ?? 'cust/folder_nav/folder-nav.css';
+  const folderNavigationDataJs = staticAssetNames?.folderNavigationDataJs ?? 'cust/folder_nav/folder-nav-data.js';
+  const folderNavigationJs = staticAssetNames?.folderNavigationJs ?? 'cust/folder_nav/folder-nav.js';
   const globalStyleCss = staticAssetNames?.globalStyleCss;
   const siteStyleCss = staticAssetNames?.siteStyleCss;
   const globalJavascriptJs = staticAssetNames?.globalJavascriptJs;
@@ -928,6 +942,11 @@ export function renderExcalidrawPageToHtml(args: {
     excalidraw_js: excalidrawJs,
     search_css: searchCss,
     search_js: searchJs,
+    folder_navigation_enabled: Boolean(folderNavigation),
+    folder_navigation_css: folderNavigationCss,
+    folder_navigation_data_js: folderNavigationDataJs,
+    folder_navigation_js: folderNavigationJs,
+    folder_navigation_storage_key: folderNavigation?.storageKey ?? '',
     srs_enabled: false,
     include_hover_preview: false,
     header_actions_enabled: searchEnabled,

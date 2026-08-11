@@ -127,6 +127,12 @@ export class PreviewPublishModal {
     await this.customizeSidebarLabel.click();
   }
 
+  async closeCustomizeSidebar() {
+    if (await this.collapseSidebarBtn.isVisible()) {
+      await this.collapseSidebarBtn.click();
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Preview iframe
   // ---------------------------------------------------------------------------

@@ -47,12 +47,12 @@ describe('PreviewChangesTab', () => {
     })).toBe(false);
     expect(shouldAutoExpandPreviewFolder({
       name: 'index',
-      path: '/repo/preview/_mw_assets/search/index',
+      path: '/repo/preview/_mw_assets/cust/search/index',
       type: 'directory',
     })).toBe(false);
     expect(shouldAutoExpandPreviewFolder({
       name: 'search',
-      path: '/repo/preview/_mw_assets/search',
+      path: '/repo/preview/_mw_assets/cust/search',
       type: 'directory',
     })).toBe(true);
     expect(shouldAutoExpandPreviewFolder({

@@ -98,7 +98,7 @@ describe('html preview', () => {
     await generateHtmlForSite(sitePath, { preview: true });
 
     const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const searchDirectory = path.join(previewFolderPath, '_mw_assets', 'search');
+    const searchDirectory = path.join(previewFolderPath, '_mw_assets', 'cust', 'search');
     const indexDirectory = path.join(searchDirectory, 'index');
     const searchFiles = fs.readdirSync(searchDirectory);
     const searchJs = searchFiles.find(filename => /^search\.[a-f0-9]{8}\.js$/.test(filename));
@@ -125,8 +125,9 @@ describe('html preview', () => {
     expect(mainPageHtml).toContain('aria-label="Search this site"');
     expect(mainPageHtml).toContain('<svg viewBox="0 0 24 24"');
     expect(mainPageHtml).not.toContain('>Search</button>');
-    expect(mainPageHtml).toContain(`_mw_assets/search/${searchJs}`);
-    expect(mainPageHtml).toContain(`_mw_assets/search/${searchCss}`);
+    expect(mainPageHtml).toContain(`_mw_assets/cust/search/${searchJs}`);
+    expect(mainPageHtml).toContain(`_mw_assets/cust/search/${searchCss}`);
+    expect(mainPageHtml).not.toContain('_mw_assets/search/');
 
     const shardContents = fs.readdirSync(indexDirectory)
       .filter(filename => filename.startsWith('shard-'))
@@ -146,10 +147,88 @@ describe('html preview', () => {
     await generateHtmlForSite(sitePath, { preview: true });
 
     const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    expect(fs.existsSync(path.join(previewFolderPath, '_mw_assets', 'search'))).toBe(false);
+    expect(fs.existsSync(path.join(previewFolderPath, '_mw_assets', 'cust', 'search'))).toBe(false);
     const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).not.toContain('data-meadow-search-open');
     expect(mainPageHtml).not.toMatch(/search\/search(?:\.[a-f0-9]{8})?\.js/);
+  });
+
+  it('omits folder navigation by default', async () => {
+    await generateHtmlForSite(sitePath, { preview: true });
+
+    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
+    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    expect(mainPageHtml).not.toContain('data-meadow-folder-nav');
+    expect(fs.existsSync(path.join(previewFolderPath, '_mw_assets', 'cust', 'folder_nav'))).toBe(false);
+  });
+
+  it('generates the folder navigation shell and hashed assets when enabled', async () => {
+    fs.appendFileSync(
+      path.join(sitePath, 'conf', 'site_config.yaml'),
+      '\ngenerationFolderNavigationEnabled: true\n',
+      'utf8'
+    );
+
+    await generateHtmlForSite(sitePath, { preview: true });
+
+    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
+    const folderNavigationDirectory = path.join(previewFolderPath, '_mw_assets', 'cust', 'folder_nav');
+    const assetFiles = fs.readdirSync(folderNavigationDirectory);
+    const folderNavigationCss = assetFiles.find(filename => /^folder-nav\.[a-f0-9]{8}\.css$/.test(filename));
+    const folderNavigationDataJs = assetFiles.find(filename => /^folder-nav-data\.[a-f0-9]{8}\.js$/.test(filename));
+    const folderNavigationJs = assetFiles.find(filename => /^folder-nav\.[a-f0-9]{8}\.js$/.test(filename));
+    expect(assetFiles).toHaveLength(3);
+    expect(folderNavigationCss).toBeDefined();
+    expect(folderNavigationDataJs).toBeDefined();
+    expect(folderNavigationJs).toBeDefined();
+
+    const folderNavigationData = fs.readFileSync(
+      path.join(folderNavigationDirectory, folderNavigationDataJs!),
+      'utf8'
+    );
+    const folderNavigationDataDigest = createHash('sha256')
+      .update(folderNavigationData)
+      .digest('hex')
+      .slice(0, 8);
+    expect(folderNavigationDataJs).toBe(`folder-nav-data.${folderNavigationDataDigest}.js`);
+    expect(folderNavigationData).toContain('window.MeadowFolderNavData=');
+    expect(folderNavigationData).toContain('"main page.html"');
+    expect(fs.readdirSync(path.join(previewFolderPath, '_mw_assets'))).not.toEqual(
+      expect.arrayContaining([
+        'folder_nav',
+        'search',
+        expect.stringMatching(/^folder-navigation/),
+        expect.stringMatching(/^folder-nav/),
+      ])
+    );
+
+    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    expect(mainPageHtml).toContain('data-meadow-folder-nav');
+    expect(mainPageHtml).toContain('data-storage-key="meadow-folder-nav:x3d9p0k"');
+    expect(mainPageHtml).toContain('data-meadow-folder-nav-storage-key="meadow-folder-nav:x3d9p0k"');
+    expect(mainPageHtml).not.toContain('meadow-folder-nav-tree');
+    expect(mainPageHtml).not.toContain('window.MeadowFolderNavData=');
+    expect(mainPageHtml).not.toContain('folder-navigation');
+    expect(mainPageHtml).toContain(`_mw_assets/cust/folder_nav/${folderNavigationCss}`);
+    expect(mainPageHtml).toContain(`_mw_assets/cust/folder_nav/${folderNavigationDataJs}`);
+    expect(mainPageHtml).toContain(`_mw_assets/cust/folder_nav/${folderNavigationJs}`);
+
+    const navigationStylesheetIndex = mainPageHtml.indexOf(`_mw_assets/cust/folder_nav/${folderNavigationCss}`);
+    const navigationDataIndex = mainPageHtml.indexOf(`_mw_assets/cust/folder_nav/${folderNavigationDataJs}`);
+    const navigationControllerIndex = mainPageHtml.indexOf(`_mw_assets/cust/folder_nav/${folderNavigationJs}`);
+    expect(navigationControllerIndex).toBeGreaterThan(-1);
+    expect(navigationControllerIndex).toBeLessThan(navigationStylesheetIndex);
+    expect(navigationStylesheetIndex).toBeLessThan(navigationDataIndex);
+    expect(mainPageHtml).not.toContain('data-meadow-folder-nav-bootstrap');
+    expect(mainPageHtml).not.toContain('Apply persisted layout state');
+
+    const folderNavigationController = fs.readFileSync(
+      path.join(folderNavigationDirectory, folderNavigationJs!),
+      'utf8'
+    );
+    expect(folderNavigationController).toContain('function applyInitialLayout()');
+    expect(folderNavigationController).toContain("root.setAttribute('data-meadow-folder-nav-open', isOpen ? 'true' : 'false')");
+    expect(folderNavigationController).not.toContain('folder-navigation');
   });
 
   it('emits an Excalidraw initial page as the first rendered preview page', async () => {

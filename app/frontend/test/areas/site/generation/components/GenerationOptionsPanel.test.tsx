@@ -26,6 +26,7 @@ describe('GenerationOptionsPanel', () => {
       tagsEnabled: true,
       searchEnabled: true,
       hoverPreviewEnabled: false,
+      folderNavigationEnabled: false,
       sourcesExportEnabled: false,
       openKnowledgeFormatEnabled: false,
       spacedRepetitionEnabled: false,
@@ -36,6 +37,7 @@ describe('GenerationOptionsPanel', () => {
       tagsSetting: 'inherit' as const,
       searchSetting: 'inherit' as const,
       hoverPreviewSetting: 'inherit' as const,
+      folderNavigationSetting: 'inherit' as const,
       sourcesExportSetting: 'inherit' as const,
       openKnowledgeFormatSetting: 'inherit' as const,
       spacedRepetitionSetting: 'inherit' as const,
@@ -207,6 +209,17 @@ describe('GenerationOptionsPanel', () => {
     const comboboxes = within(searchRow).getAllByRole('combobox');
     expect(comboboxes).toHaveLength(2);
     expect(comboboxes[0]).toHaveTextContent('On');
+    expect(comboboxes[1]).toHaveTextContent('—');
+  });
+
+  it('renders folder navigation as disabled by default with a site override control', () => {
+    const props = buildProps();
+    render(<GenerationOptionsPanel {...props} />);
+
+    const folderNavigationRow = screen.getByText('Folder Navigation').closest('div')!.parentElement!;
+    const comboboxes = within(folderNavigationRow).getAllByRole('combobox');
+    expect(comboboxes).toHaveLength(2);
+    expect(comboboxes[0]).toHaveTextContent('Off');
     expect(comboboxes[1]).toHaveTextContent('—');
   });
 

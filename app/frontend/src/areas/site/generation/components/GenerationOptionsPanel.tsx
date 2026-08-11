@@ -29,6 +29,7 @@ interface GenerationOptionsPanelProps {
     tagsEnabled: boolean;
     searchEnabled: boolean;
     hoverPreviewEnabled: boolean;
+    folderNavigationEnabled: boolean;
     sourcesExportEnabled: boolean;
     openKnowledgeFormatEnabled: boolean;
     spacedRepetitionEnabled: boolean;
@@ -39,6 +40,7 @@ interface GenerationOptionsPanelProps {
     tagsSetting: OverrideSetting;
     searchSetting: OverrideSetting;
     hoverPreviewSetting: OverrideSetting;
+    folderNavigationSetting: OverrideSetting;
     sourcesExportSetting: OverrideSetting;
     openKnowledgeFormatSetting: OverrideSetting;
     spacedRepetitionSetting: OverrideSetting;
@@ -46,8 +48,8 @@ interface GenerationOptionsPanelProps {
   globalSrsTags: string[];
   siteSrsTagsOverride: string[] | null;
   siteSlug: string;
-  onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
-  onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
+  onGlobalOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
+  onSiteOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
   onGlobalSrsEnable: (tags: string[]) => Promise<void>;
@@ -541,6 +543,13 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
             siteOptions.hoverPreviewSetting,
             (enabled) => onGlobalOptionChange('hoverPreview', enabled),
             (setting) => onSiteOptionChange('hoverPreview', setting),
+          )}
+          {renderRow(
+            'Folder Navigation',
+            globalOptions.folderNavigationEnabled,
+            siteOptions.folderNavigationSetting,
+            (enabled) => onGlobalOptionChange('folderNavigation', enabled),
+            (setting) => onSiteOptionChange('folderNavigation', setting),
           )}
           {renderRow(
             'Sources ZIP',

@@ -58,6 +58,7 @@ interface PreviewPublishModalProps {
     tagsEnabled: boolean;
     searchEnabled: boolean;
     hoverPreviewEnabled: boolean;
+    folderNavigationEnabled: boolean;
     sourcesExportEnabled: boolean;
     openKnowledgeFormatEnabled: boolean;
     spacedRepetitionEnabled: boolean;
@@ -68,14 +69,15 @@ interface PreviewPublishModalProps {
     tagsSetting: OverrideSetting;
     searchSetting: OverrideSetting;
     hoverPreviewSetting: OverrideSetting;
+    folderNavigationSetting: OverrideSetting;
     sourcesExportSetting: OverrideSetting;
     openKnowledgeFormatSetting: OverrideSetting;
     spacedRepetitionSetting: OverrideSetting;
   };
   globalSrsTags: string[];
   siteSrsTagsOverride: string[] | null;
-  onGlobalGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
-  onSiteGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
+  onGlobalGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
+  onSiteGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
   onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
   onSiteOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
@@ -705,12 +707,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   }, []);
 
   // Wrappers for option changes that trigger regeneration
-  const handleGlobalOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => {
+  const handleGlobalOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => {
     await onGlobalGenerationOptionChange(option, enabled);
     await regeneratePreviewAndReload();
   }, [onGlobalGenerationOptionChange, regeneratePreviewAndReload]);
 
-  const handleSiteOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => {
+  const handleSiteOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => {
     await onSiteGenerationOptionChange(option, setting);
     await regeneratePreviewAndReload();
   }, [onSiteGenerationOptionChange, regeneratePreviewAndReload]);
