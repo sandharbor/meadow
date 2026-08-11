@@ -17,7 +17,10 @@ limitations under the License.
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import PreviewChangesTab, { shouldAutoExpandPreviewFolder } from '../../../../../src/areas/site/review/components/PreviewChangesTab';
+import PreviewChangesTab, {
+  shouldAutoExpandPreviewFolder,
+  shouldShowHtmlForSectionFilters,
+} from '../../../../../src/areas/site/review/components/PreviewChangesTab';
 
 vi.mock('../../../../../../shared_components/ConfigFileExplorer/index', async () => {
   const ReactModule = await import('react');
@@ -62,6 +65,74 @@ describe('PreviewChangesTab', () => {
     })).toBe(true);
   });
 
+  it('routes unclassified HTML changes through the Other filter', () => {
+    expect(shouldShowHtmlForSectionFilters(
+      { head: false, aside: false, header: false, main: false, footer: false, other: true },
+      { head: true, aside: true, header: true, main: true, footer: true, other: true },
+    )).toBe(true);
+
+    expect(shouldShowHtmlForSectionFilters(
+      { head: false, aside: false, header: false, main: false, footer: false, other: true },
+      { head: true, aside: true, header: true, main: true, footer: true, other: false },
+    )).toBe(false);
+
+    expect(shouldShowHtmlForSectionFilters(
+      { head: false, aside: false, header: true, main: false, footer: false, other: false },
+      { head: true, aside: true, header: false, main: true, footer: true, other: true },
+    )).toBe(false);
+
+    expect(shouldShowHtmlForSectionFilters(
+      { head: false, aside: false, header: true, main: false, footer: false, other: true },
+      { head: true, aside: true, header: false, main: true, footer: true, other: true },
+    )).toBe(true);
+  });
+
+  it('shows unclassified HTML changes as Other in the filter dropdown', async () => {
+    const modifiedPath = '/repo/preview/index.html';
+    const fetchTree = vi.fn().mockResolvedValue({
+      root: '/repo/preview',
+      tree: [
+        { name: 'index.html', path: modifiedPath, type: 'file', gitStatus: 'modified' },
+      ],
+    });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        files: [
+          {
+            path: modifiedPath,
+            sections: { head: false, aside: false, header: false, main: false, footer: false, other: true },
+          },
+        ],
+      }),
+    }));
+
+    render(
+      <PreviewChangesTab
+        slug="test-site"
+        isActive={true}
+        isRegeneratingPreview={false}
+        publishSuccess={true}
+        baseApi={{
+          fetchTree,
+          fetchContent: vi.fn(),
+          fetchOriginal: vi.fn(),
+        }}
+        refreshKey={0}
+      />
+    );
+
+    await waitFor(() => {
+      expect(fetchTree.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    fireEvent.click(screen.getByTitle('Filter changes'));
+
+    const otherFilter = await screen.findByText('Other');
+    expect(otherFilter.closest('label')?.querySelector('span.tabular-nums')).toHaveTextContent('1');
+  });
+
   it('shows only HTML sections contributed by the visible change types', async () => {
     const modifiedPath = '/repo/preview/index.html';
     const deletedPath = '/repo/preview/about.html';
@@ -77,8 +148,8 @@ describe('PreviewChangesTab', () => {
       ok: true,
       json: async () => ({
         files: [
-          { path: modifiedPath, sections: { head: false, header: false, main: false, footer: true } },
-          { path: deletedPath, sections: { head: true, header: true, main: true, footer: true } },
+          { path: modifiedPath, sections: { head: false, aside: false, header: false, main: false, footer: true, other: false } },
+          { path: deletedPath, sections: { head: true, aside: true, header: true, main: true, footer: true, other: true } },
         ],
       }),
     }));
@@ -106,6 +177,7 @@ describe('PreviewChangesTab', () => {
 
     await waitFor(() => {
       expect(screen.getByText('<head>')).toBeInTheDocument();
+      expect(screen.getByText('<aside>')).toBeInTheDocument();
       expect(screen.getByText('<header>')).toBeInTheDocument();
       expect(screen.getByText('<main>')).toBeInTheDocument();
       expect(screen.getByText('<footer>')).toBeInTheDocument();
@@ -117,6 +189,7 @@ describe('PreviewChangesTab', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('<head>')).not.toBeInTheDocument();
+      expect(screen.queryByText('<aside>')).not.toBeInTheDocument();
       expect(screen.queryByText('<header>')).not.toBeInTheDocument();
       expect(screen.queryByText('<main>')).not.toBeInTheDocument();
       expect(screen.getByText('<footer>')).toBeInTheDocument();

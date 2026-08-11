@@ -72,9 +72,11 @@ interface HtmlSectionDiffResult {
     status: 'A' | 'M' | 'D';
     sections: {
       head: boolean;
+      aside: boolean;
       header: boolean;
       main: boolean;
       footer: boolean;
+      other: boolean;
     };
   }>;
 }
@@ -348,12 +350,18 @@ test('fast_git_ops html-section-diff: preserves caller path prefix and reports c
     await git.init({ fs, dir: repoRoot });
 
     const pagePath = path.join(repoRoot, 'pages', 'index.html');
+    const wrappedPagePath = path.join(repoRoot, 'pages', 'wrapped.html');
     createFile(
       pagePath,
       '<html><head><title>Test</title></head><body><main>Body</main><footer>Old footer</footer></body></html>'
     );
+    createFile(
+      wrappedPagePath,
+      '<html><head><title>Wrapped</title></head><body><aside>Old navigation</aside><div class="meadow-site-content"><header>Old action</header><section>Old auxiliary content</section><main>Body</main><footer>Footer</footer></div></body></html>'
+    );
 
     await git.add({ fs, dir: repoRoot, filepath: 'pages/index.html' });
+    await git.add({ fs, dir: repoRoot, filepath: 'pages/wrapped.html' });
     await git.commit({
       fs,
       dir: repoRoot,
@@ -365,19 +373,34 @@ test('fast_git_ops html-section-diff: preserves caller path prefix and reports c
       pagePath,
       '<html><head><title>Test</title></head><body><main>Body</main><footer>Updated footer copy</footer></body></html>'
     );
+    createFile(
+      wrappedPagePath,
+      '<html><head><title>Wrapped</title></head><body><aside>Updated navigation</aside><div class="meadow-site-content"><header>Updated action</header><section>Updated auxiliary content</section><main>Body</main><footer>Footer</footer></div></body></html>'
+    );
 
     fs.symlinkSync(repoRoot, aliasRoot, 'dir');
 
     const result = runHtmlSectionDiff(aliasRoot);
-    t.equal(result.files.length, 1, `Expected 1 changed HTML file, got ${result.files.length}`);
+    t.equal(result.files.length, 2, `Expected 2 changed HTML files, got ${result.files.length}`);
 
-    const [file] = result.files;
+    const file = result.files.find(candidate => candidate.repo_path === 'pages/index.html');
+    t.ok(file, 'Reports the direct-child page');
+    if (!file) throw new Error('Missing direct-child page diff');
     t.equal(file.path, path.join(aliasRoot, 'pages', 'index.html'), 'Preserves the caller path prefix');
     t.equal(file.status, 'M', 'Modified HTML file is reported as modified');
     t.deepEqual(
       file.sections,
-      { head: false, header: false, main: false, footer: true },
+      { head: false, aside: false, header: false, main: false, footer: true, other: false },
       'Reports only the changed footer section'
+    );
+
+    const wrappedFile = result.files.find(candidate => candidate.repo_path === 'pages/wrapped.html');
+    t.ok(wrappedFile, 'Reports the Meadow content-wrapper page');
+    if (!wrappedFile) throw new Error('Missing wrapped page diff');
+    t.deepEqual(
+      wrappedFile.sections,
+      { head: false, aside: true, header: true, main: false, footer: false, other: true },
+      'Reports known and Other changes independently in Meadow content wrapper'
     );
   } finally {
     fs.rmSync(aliasRoot, { recursive: true, force: true });

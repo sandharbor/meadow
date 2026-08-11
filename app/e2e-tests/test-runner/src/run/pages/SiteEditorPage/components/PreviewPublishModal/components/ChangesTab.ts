@@ -268,7 +268,7 @@ export class ChangesTab {
       if (num <= 0) throw new Error(`Expected ${section} to have changes but count was ${num}`);
     }
     // Verify sections NOT in the list are not visible.
-    for (const section of ["<head>", "<header>", "<main>", "<footer>"]) {
+    for (const section of ["<head>", "<aside>", "<header>", "<main>", "<footer>", "Other"]) {
       if (!sections.includes(section)) {
         const countEl = this.sectionFilterCount(section);
         await this.expect(countEl).not.toBeVisible();
@@ -318,6 +318,18 @@ export class ChangesTab {
   /** Assert the hidden-by-filter count. */
   async expectHiddenCount(expected: number) {
     await this.expect(this.page.getByText(`${expected} hidden by filter`)).toBeVisible();
+  }
+
+  /** Assert that the active filters leave every changed file visible. */
+  async expectNoHiddenFilesByFilter() {
+    await this.expect(this.hiddenByFilter).toHaveCount(0);
+  }
+
+  /** Assert the given change type filters are checked. */
+  async expectChangeTypesChecked(labels: string[]) {
+    for (const label of labels) {
+      await this.expect(this.changeTypeCheckbox(label)).toBeChecked();
+    }
   }
 
   /** Assert a specific HTML section has the given count in the filter dropdown. */

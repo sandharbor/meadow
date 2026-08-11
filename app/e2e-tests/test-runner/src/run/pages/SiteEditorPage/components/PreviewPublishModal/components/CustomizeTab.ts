@@ -181,6 +181,11 @@ class GenerationOptionsSection {
     await this.selectHoverOption("Sources ZIP", "On");
   }
 
+  /** Set the Sources ZIP site-level setting to "Off" (disabled). */
+  async disableSourcesExport() {
+    await this.selectHoverOption("Sources ZIP", "Off");
+  }
+
   /** Set generated-site Folder Navigation to "On" for this site. */
   async enableFolderNavigation() {
     await this.selectHoverOption("Folder Navigation", "On");

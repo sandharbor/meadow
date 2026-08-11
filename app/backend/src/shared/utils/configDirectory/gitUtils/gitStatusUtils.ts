@@ -80,9 +80,11 @@ export interface FileLogResult {
 
 export interface HtmlSectionChanges {
   head: boolean;
+  aside: boolean;
   header: boolean;
   main: boolean;
   footer: boolean;
+  other: boolean;
 }
 
 export interface HtmlSectionDiffFile {

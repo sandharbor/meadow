@@ -21,9 +21,25 @@ import { ToolbarIconButton } from '../../../../../../shared_components/ToolbarIc
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { logger } from '../../../../shared/utils/logger';
 
-type HtmlSectionKey = 'head' | 'header' | 'main' | 'footer';
-type HtmlSectionChanges = Record<HtmlSectionKey, boolean>;
+type HtmlSectionKey = 'head' | 'aside' | 'header' | 'main' | 'footer';
+type HtmlSectionFilterKey = HtmlSectionKey | 'other';
+type HtmlSectionChanges = Record<HtmlSectionFilterKey, boolean>;
+type HtmlSectionFilters = Record<HtmlSectionFilterKey, boolean>;
 type ChangeTypeKey = 'added' | 'modified' | 'deleted';
+
+export const shouldShowHtmlForSectionFilters = (
+  changes: HtmlSectionChanges,
+  filters: HtmlSectionFilters,
+): boolean => {
+  return (
+    (filters.head && changes.head) ||
+    (filters.aside && changes.aside) ||
+    (filters.header && changes.header) ||
+    (filters.main && changes.main) ||
+    (filters.footer && changes.footer) ||
+    (filters.other && changes.other)
+  );
+};
 
 interface PreviewChangesTabProps {
   slug: string;
@@ -88,11 +104,13 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   refreshKey,
 }) => {
   // HTML section filtering state
-  const [htmlSectionFilters, setHtmlSectionFilters] = useState<HtmlSectionChanges>({
+  const [htmlSectionFilters, setHtmlSectionFilters] = useState<HtmlSectionFilters>({
     head: true,
+    aside: true,
     header: true,
     main: true,
     footer: true,
+    other: true,
   });
   const [htmlSectionChangesMap, setHtmlSectionChangesMap] = useState<Record<string, HtmlSectionChanges>>({});
   const [htmlSectionChangesLoading, setHtmlSectionChangesLoading] = useState(false);
@@ -114,8 +132,8 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   });
 
   // Visible HTML section counts (reflects only files passing change type filter)
-  const [visibleHtmlSectionCounts, setVisibleHtmlSectionCounts] = useState<Record<HtmlSectionKey, number>>({
-    head: 0, header: 0, main: 0, footer: 0,
+  const [visibleHtmlSectionCounts, setVisibleHtmlSectionCounts] = useState<Record<HtmlSectionFilterKey, number>>({
+    head: 0, aside: 0, header: 0, main: 0, footer: 0, other: 0,
   });
 
   // Close dropdown when clicking outside
@@ -160,7 +178,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
       });
   }, [slug, publishSuccess, isRegeneratingPreview, isActive]);
 
-  const toggleHtmlSectionFilter = useCallback((key: HtmlSectionKey) => {
+  const toggleHtmlSectionFilter = useCallback((key: HtmlSectionFilterKey) => {
     setHtmlSectionFilters((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
@@ -171,9 +189,11 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   const sectionFilterKey = useMemo(() => {
     return [
       htmlSectionFilters.head ? '1' : '0',
+      htmlSectionFilters.aside ? '1' : '0',
       htmlSectionFilters.header ? '1' : '0',
       htmlSectionFilters.main ? '1' : '0',
       htmlSectionFilters.footer ? '1' : '0',
+      htmlSectionFilters.other ? '1' : '0',
     ].join('');
   }, [htmlSectionFilters]);
 
@@ -186,12 +206,15 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   }, [changeTypeFilters]);
 
   const displayedHtmlSections = useMemo(() => {
-    return ([
-      { key: 'head' as HtmlSectionKey, label: '<head>' },
-      { key: 'header' as HtmlSectionKey, label: '<header>' },
-      { key: 'main' as HtmlSectionKey, label: '<main>' },
-      { key: 'footer' as HtmlSectionKey, label: '<footer>' },
-    ]).filter(({ key }) => visibleHtmlSectionCounts[key] > 0);
+    const sections: Array<{ key: HtmlSectionFilterKey; label: string }> = [
+      { key: 'head', label: '<head>' },
+      { key: 'aside', label: '<aside>' },
+      { key: 'header', label: '<header>' },
+      { key: 'main', label: '<main>' },
+      { key: 'footer', label: '<footer>' },
+      { key: 'other', label: 'Other' },
+    ];
+    return sections.filter(({ key }) => visibleHtmlSectionCounts[key] > 0);
   }, [visibleHtmlSectionCounts]);
 
   // Tree filtering helpers
@@ -267,7 +290,14 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
       const afterChangeTypeFilter = filterTree(rawTree, passesChangeTypeFilter);
 
       // 3. Compute visible HTML section counts (from files passing change type filter)
-      const visCounts: Record<HtmlSectionKey, number> = { head: 0, header: 0, main: 0, footer: 0 };
+      const visCounts: Record<HtmlSectionFilterKey, number> = {
+        head: 0,
+        aside: 0,
+        header: 0,
+        main: 0,
+        footer: 0,
+        other: 0,
+      };
       if (htmlSectionChangesMap && Object.keys(htmlSectionChangesMap).length > 0) {
         const countSections = (nodes: FileNode[]) => {
           for (const node of nodes) {
@@ -275,9 +305,11 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
               const changes = htmlSectionChangesMap[node.path];
               if (changes) {
                 if (changes.head) visCounts.head++;
+                if (changes.aside) visCounts.aside++;
                 if (changes.header) visCounts.header++;
                 if (changes.main) visCounts.main++;
                 if (changes.footer) visCounts.footer++;
+                if (changes.other) visCounts.other++;
               }
             }
             if (node.children) countSections(node.children);
@@ -294,12 +326,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
           if (!node.name.toLowerCase().endsWith('.html')) return true;
           const changes = htmlSectionChangesMap[node.path];
           if (!changes) return true;
-          return (
-            (htmlSectionFilters.head && changes.head) ||
-            (htmlSectionFilters.header && changes.header) ||
-            (htmlSectionFilters.main && changes.main) ||
-            (htmlSectionFilters.footer && changes.footer)
-          );
+          return shouldShowHtmlForSectionFilters(changes, htmlSectionFilters);
         });
       }
 

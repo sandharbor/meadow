@@ -179,9 +179,11 @@ struct FileLogResult {
 #[derive(Serialize, Debug, Clone)]
 struct HtmlSectionChanges {
     head: bool,
+    aside: bool,
     header: bool,
     main: bool,
     footer: bool,
+    other: bool,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -276,16 +278,26 @@ fn read_blob_by_oid(
     Ok(obj.data.to_vec())
 }
 
-fn extract_sections(html: &str) -> (String, String, String, String) {
-    let doc = Html::parse_document(html);
+fn extract_sections(html: &str) -> (String, String, String, String, String, String) {
+    let mut doc = Html::parse_document(html);
     // Selector::parse only fails for invalid selector strings; ours are constant.
     let sel_head = Selector::parse("head").unwrap();
-    let sel_header = Selector::parse("body > header").unwrap();
-    let sel_main = Selector::parse("body > main").unwrap();
-    let sel_footer = Selector::parse("body > footer").unwrap();
+    let sel_aside = Selector::parse("body > aside").unwrap();
+    let sel_header =
+        Selector::parse("body > header, body > .meadow-site-content > header").unwrap();
+    let sel_main = Selector::parse("body > main, body > .meadow-site-content > main").unwrap();
+    let sel_footer =
+        Selector::parse("body > footer, body > .meadow-site-content > footer").unwrap();
 
     let head = doc
         .select(&sel_head)
+        .next()
+        .map(|e| e.inner_html())
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let aside = doc
+        .select(&sel_aside)
         .next()
         .map(|e| e.inner_html())
         .unwrap_or_default()
@@ -313,27 +325,45 @@ fn extract_sections(html: &str) -> (String, String, String, String) {
         .trim()
         .to_string();
 
-    (head, header, main, footer)
+    // Compare the serialized document after removing every known structural
+    // element. This independently detects changes in future or intentionally
+    // unclassified regions, even when a known section changed at the same time.
+    let known_node_ids = [&sel_head, &sel_aside, &sel_header, &sel_main, &sel_footer]
+        .into_iter()
+        .flat_map(|selector| doc.select(selector).map(|element| element.id()))
+        .collect::<Vec<_>>();
+    for node_id in known_node_ids {
+        if let Some(mut node) = doc.tree.get_mut(node_id) {
+            node.detach();
+        }
+    }
+    let other = doc.html().trim().to_string();
+
+    (head, aside, header, main, footer, other)
 }
 
 fn compute_section_changes(old_html: Option<&str>, new_html: Option<&str>) -> HtmlSectionChanges {
     match (old_html, new_html) {
         (Some(o), Some(n)) => {
-            let (oh, ohr, om, of) = extract_sections(o);
-            let (nh, nhr, nm, nf) = extract_sections(n);
+            let (oh, oa, ohr, om, of, oo) = extract_sections(o);
+            let (nh, na, nhr, nm, nf, no) = extract_sections(n);
             HtmlSectionChanges {
                 head: oh != nh,
+                aside: oa != na,
                 header: ohr != nhr,
                 main: om != nm,
                 footer: of != nf,
+                other: oo != no,
             }
         }
         // Added or deleted file: treat everything as changed so it shows up under any active section.
         _ => HtmlSectionChanges {
             head: true,
+            aside: true,
             header: true,
             main: true,
             footer: true,
+            other: true,
         },
     }
 }

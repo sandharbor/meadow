@@ -15,31 +15,41 @@ limitations under the License.
 */
 
 import path from "path";
+import type { Page } from "@playwright/test";
 import { test, expect } from "../src/run/test-fixtures.js";
-import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
+import { SiteEditorPage, PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Site } from "../src/run/workflows.js";
 import { MeadowHomeGit } from "../src/run/utils/index.js";
-import { customize, sourcesExport, git } from "../src/scenario-docs/index.js";
+import { customize, sourcesExport, changesTab as changesTabDoc, filters, git } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
-test("Sources export ZIP: enable, preview, save, and verify MeadowHome is fully committed", async ({
-  page, snapshot, assertMeadowHomeState, addKeyFrame, testServer,
+async function applyGenerationOptionAndWait(page: Page, action: () => Promise<void>) {
+  const previewResponse = page.waitForResponse(response => response.url().includes("/preview-stream"));
+  await action();
+  await (await previewResponse).finished();
+}
+
+test("Sources export ZIP: saved export can be disabled without hiding changed HTML", async ({
+  page, snapshot, skipMeadowHomeStateCheck, addKeyFrame, testServer,
 }) => {
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSitePreview();
   const modal = new PreviewPublishModal(page, expect);
+  const editor = new SiteEditorPage(page, expect);
   await snapshot("preview loaded");
 
-  // Open Customize sidebar and enable Sources ZIP at site level
+  // Use the wrapped generated-page layout that exposed the section-diff bug,
+  // then enable Sources ZIP at site level.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
-  await customizeTab.generationOptions.enableSourcesExport();
+  const changesTab = new ChangesTab(page, expect);
+  await applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.enableFolderNavigation());
+  await changesTab.waitForRegenerationComplete();
+  await applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.enableSourcesExport());
+  await changesTab.waitForRegenerationComplete();
   await addKeyFrame(customize);
   await snapshot("sources zip enabled");
 
-  // Wait for preview regeneration with sources export
-  const changesTab = new ChangesTab(page, expect);
-  await changesTab.waitForRegenerationComplete();
   await addKeyFrame(sourcesExport);
   await snapshot("regeneration complete with sources export");
 
@@ -56,7 +66,30 @@ test("Sources export ZIP: enable, preview, save, and verify MeadowHome is fully 
   await meadowGit.expectDirFullyCommitted(siteDir);
   await addKeyFrame(git);
   await snapshot("site directory fully committed");
+
+  // Reopen Review, disable the saved Sources ZIP setting, and inspect the
+  // resulting HTML changes through the filter dropdown.
+  await modal.closeModal();
+  await editor.clickPreview();
+  await modal.waitForPreviewComplete();
+  await modal.openCustomizeSidebar();
+  await applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.disableSourcesExport());
+  await changesTab.waitForRegenerationComplete();
+  await modal.clickChangesTab();
+  await changesTab.openHtmlSectionChangesFilter();
+
+  const modifiedCount = await changesTab.getChangeTypeCount("Modified");
+  expect(modifiedCount).toBeGreaterThan(0);
+  await changesTab.expectChangeTypeCount("Added", 0);
+  await changesTab.expectChangeTypeCount("Deleted", 2);
+  await changesTab.expectChangeTypesChecked(["Added", "Modified", "Deleted"]);
+  await changesTab.expectOnlySectionsWithChanges(["<header>"]);
+  await changesTab.expectSectionCount("<header>", modifiedCount);
+  await changesTab.expectNoHiddenFilesByFilter();
+  await addKeyFrame(changesTabDoc);
+  await addKeyFrame(filters);
+  await snapshot("all sources zip HTML changes remain visible");
   void bigSite;
 
-  await assertMeadowHomeState();
+  await skipMeadowHomeStateCheck();
 });
