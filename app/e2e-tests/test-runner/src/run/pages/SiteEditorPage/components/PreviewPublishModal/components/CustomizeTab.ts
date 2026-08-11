@@ -176,6 +176,11 @@ class GenerationOptionsSection {
     await this.selectHoverOption("Search", "Off");
   }
 
+  /** Set generated-site Hover Preview to "On" for this site. */
+  async enableHoverPreview() {
+    await this.selectHoverOption("Hover Preview", "On");
+  }
+
   /** Set the Sources ZIP site-level setting to "On" (enabled). */
   async enableSourcesExport() {
     await this.selectHoverOption("Sources ZIP", "On");

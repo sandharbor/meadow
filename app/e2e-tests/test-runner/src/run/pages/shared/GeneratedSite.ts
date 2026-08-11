@@ -18,10 +18,73 @@ import type {
   Download,
   Expect,
   FrameLocator,
+  Locator,
   Page,
 } from "@playwright/test";
 
 type GeneratedSiteRoot = Page | FrameLocator;
+
+/** Hover preview behavior rendered inside a generated Meadow site. */
+export class GeneratedSiteHoverPreview {
+  constructor(
+    private root: GeneratedSiteRoot,
+    private expect: Expect,
+  ) {}
+
+  private get popup() {
+    return this.root.locator(".hover-preview");
+  }
+
+  private popupLink(name: string) {
+    return this.popup.getByRole("link", { name, exact: true });
+  }
+
+  async expectAvailable() {
+    await this.expect(
+      this.root.locator('script[src*="cust/hover_preview/hover-preview."]'),
+    ).toHaveCount(1, { timeout: 60_000 });
+  }
+
+  async hoverFooterLink(name: string) {
+    const sourceLink = this.root.locator("footer").getByRole("link", {
+      name,
+      exact: true,
+    }).first();
+    await this.expect(sourceLink).toBeVisible();
+    await sourceLink.hover();
+    await this.expect(this.popup).toBeVisible();
+  }
+
+  async expectLinkHref(name: string, href: RegExp) {
+    await this.expect(this.popupLink(name)).toHaveAttribute("href", href);
+  }
+
+  async expectLinkDecorationMatchesFooterLink(
+    previewLinkName: string,
+    footerLinkName: string,
+  ) {
+    const footerLink = this.root.locator("footer").getByRole("link", {
+      name: footerLinkName,
+      exact: true,
+    }).first();
+    const decoration = async (link: Locator) =>
+      link.evaluate(element => {
+        const style = window.getComputedStyle(element);
+        return {
+          line: style.textDecorationLine,
+          style: style.textDecorationStyle,
+        };
+      });
+
+    await this.expect(
+      await decoration(this.popupLink(previewLinkName)),
+    ).toEqual(await decoration(footerLink));
+  }
+
+  async clickLink(name: string) {
+    await this.popupLink(name).click();
+  }
+}
 
 /** Search controls and results rendered inside a generated Meadow site. */
 export class GeneratedSiteSearch {
@@ -507,6 +570,7 @@ export class GeneratedSiteFolderNavigation {
 
 /** A generated site, either in Meadow's preview iframe or a standalone page. */
 export class GeneratedSite {
+  readonly hoverPreview: GeneratedSiteHoverPreview;
   readonly search: GeneratedSiteSearch;
   readonly sources: GeneratedSiteSources;
   readonly excalidraw: GeneratedSiteExcalidraw;
@@ -517,6 +581,7 @@ export class GeneratedSite {
     private root: GeneratedSiteRoot,
     private expect: Expect,
   ) {
+    this.hoverPreview = new GeneratedSiteHoverPreview(root, expect);
     this.search = new GeneratedSiteSearch(root, expect);
     this.sources = new GeneratedSiteSources(hostPage, root, expect);
     this.excalidraw = new GeneratedSiteExcalidraw(hostPage, root, expect);

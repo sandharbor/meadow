@@ -715,6 +715,8 @@ export function renderPageToHtml(
   const srsJs = staticAssetNames?.srsJs ?? 'srs.js';
   const searchCss = staticAssetNames?.searchCss ?? 'cust/search/search.css';
   const searchJs = staticAssetNames?.searchJs ?? 'cust/search/search.js';
+  const hoverPreviewCss = staticAssetNames?.hoverPreviewCss ?? 'cust/hover_preview/hover-preview.css';
+  const hoverPreviewJs = staticAssetNames?.hoverPreviewJs ?? 'cust/hover_preview/hover-preview.js';
   const folderNavigationCss = staticAssetNames?.folderNavigationCss ?? 'cust/folder_nav/folder-nav.css';
   const folderNavigationDataJs = staticAssetNames?.folderNavigationDataJs ?? 'cust/folder_nav/folder-nav-data.js';
   const folderNavigationJs = staticAssetNames?.folderNavigationJs ?? 'cust/folder_nav/folder-nav.js';
@@ -765,6 +767,8 @@ export function renderPageToHtml(
     srs_js: srsJs,
     search_css: searchCss,
     search_js: searchJs,
+    hover_preview_css: hoverPreviewCss,
+    hover_preview_js: hoverPreviewJs,
     folder_navigation_enabled: Boolean(folderNavigation),
     folder_navigation_css: folderNavigationCss,
     folder_navigation_data_js: folderNavigationDataJs,

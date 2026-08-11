@@ -780,6 +780,21 @@ export async function generateHtmlForSite(
     copyPublishedSiteSearchAssets(sharedDirectory, assetsDirectory);
   }
 
+  if (generationOptions.hoverPreviewEnabled) {
+    const hoverPreviewDirectory = path.join(assetsDirectory, 'cust', 'hover_preview');
+    fs.mkdirSync(hoverPreviewDirectory, { recursive: true });
+    for (const asset of ['hover-preview.css', 'hover-preview.js']) {
+      const sourcePath = path.join(sharedDirectory, asset);
+      const targetPath = path.join(hoverPreviewDirectory, asset);
+      if (fs.existsSync(sourcePath)) {
+        fs.copyFileSync(sourcePath, targetPath);
+        logger.debug(`Copied ${asset} to ${targetPath}`);
+      } else {
+        logger.warn(`${asset} not found at ${sourcePath}`);
+      }
+    }
+  }
+
   // Excalidraw assets — only copied for sites that include at least one Excalidraw drawing.
   const siteHasExcalidraw = Object.values(sitePageConfs).some(
     conf => conf.file_type === 'excalidraw' && conf.config.list_type === 'whitelist'

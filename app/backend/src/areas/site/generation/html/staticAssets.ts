@@ -226,6 +226,12 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
   const searchCss = searchCssBase ? `cust/search/${searchCssBase}` : undefined;
   const searchJs = searchJsBase ? `cust/search/${searchJsBase}` : undefined;
 
+  const hoverPreviewDir = path.join(outputDir, 'cust', 'hover_preview');
+  const hoverPreviewCssBase = renameWithHashIfExists(path.join(hoverPreviewDir, 'hover-preview.css'));
+  const hoverPreviewJsBase = renameWithHashIfExists(path.join(hoverPreviewDir, 'hover-preview.js'));
+  const hoverPreviewCss = hoverPreviewCssBase ? `cust/hover_preview/${hoverPreviewCssBase}` : undefined;
+  const hoverPreviewJs = hoverPreviewJsBase ? `cust/hover_preview/${hoverPreviewJsBase}` : undefined;
+
   const folderNavigationDir = path.join(outputDir, 'cust', 'folder_nav');
   const folderNavigationCssBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav.css'));
   const folderNavigationDataJsBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav-data.js'));
@@ -279,5 +285,5 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
     writeCompressionManifest(outputDir, { gzip: gzipPaths });
   }
 
-  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, searchCss, searchJs, folderNavigationCss, folderNavigationDataJs, folderNavigationJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
+  return { styleCss, javascriptJs, mermaidMinJs, calloutsCss, excalidrawCss, excalidrawVendorJs, excalidrawJs, srsCss, srsJs, searchCss, searchJs, hoverPreviewCss, hoverPreviewJs, folderNavigationCss, folderNavigationDataJs, folderNavigationJs, globalStyleCss, siteStyleCss, globalJavascriptJs, siteJavascriptJs };
 }

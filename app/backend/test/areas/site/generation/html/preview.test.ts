@@ -162,6 +162,48 @@ describe('html preview', () => {
     expect(fs.existsSync(path.join(previewFolderPath, '_mw_assets', 'cust', 'folder_nav'))).toBe(false);
   });
 
+  it('generates hashed hover preview assets instead of inline behavior when enabled', async () => {
+    fs.appendFileSync(
+      path.join(sitePath, 'conf', 'site_config.yaml'),
+      '\ngenerationHoverPreviewEnabled: true\n',
+      'utf8'
+    );
+
+    await generateHtmlForSite(sitePath, { preview: true });
+
+    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
+    const hoverPreviewDirectory = path.join(previewFolderPath, '_mw_assets', 'cust', 'hover_preview');
+    const assetFiles = fs.readdirSync(hoverPreviewDirectory);
+    const hoverPreviewCss = assetFiles.find(filename => /^hover-preview\.[a-f0-9]{8}\.css$/.test(filename));
+    const hoverPreviewJs = assetFiles.find(filename => /^hover-preview\.[a-f0-9]{8}\.js$/.test(filename));
+    expect(assetFiles).toHaveLength(2);
+    expect(hoverPreviewCss).toBeDefined();
+    expect(hoverPreviewJs).toBeDefined();
+
+    for (const asset of [hoverPreviewCss!, hoverPreviewJs!]) {
+      const digest = createHash('sha256')
+        .update(fs.readFileSync(path.join(hoverPreviewDirectory, asset)))
+        .digest('hex')
+        .slice(0, 8);
+      expect(asset).toContain(`.${digest}.`);
+    }
+
+    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    expect(mainPageHtml).toContain(`_mw_assets/cust/hover_preview/${hoverPreviewCss}`);
+    expect(mainPageHtml).toContain(`_mw_assets/cust/hover_preview/${hoverPreviewJs}`);
+    expect(mainPageHtml).not.toContain("document.addEventListener('DOMContentLoaded'");
+    expect(mainPageHtml).not.toContain("el.className = 'hover-preview'");
+  });
+
+  it('omits hover preview assets when hover preview is disabled', async () => {
+    await generateHtmlForSite(sitePath, { preview: true });
+
+    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
+    expect(fs.existsSync(path.join(previewFolderPath, '_mw_assets', 'cust', 'hover_preview'))).toBe(false);
+    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    expect(mainPageHtml).not.toMatch(/hover_preview\/hover-preview(?:\.[a-f0-9]{8})?\.(?:css|js)/);
+  });
+
   it('generates the folder navigation shell and hashed assets when enabled', async () => {
     fs.appendFileSync(
       path.join(sitePath, 'conf', 'site_config.yaml'),

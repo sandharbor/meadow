@@ -85,6 +85,8 @@ export interface StaticAssetNames {
   srsJs?: string;
   searchCss?: string;
   searchJs?: string;
+  hoverPreviewCss?: string;
+  hoverPreviewJs?: string;
   folderNavigationCss?: string;
   folderNavigationDataJs?: string;
   folderNavigationJs?: string;
