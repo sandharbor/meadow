@@ -157,6 +157,8 @@ test("generated-site folder navigation uses normalized filenames and persists it
   // An explicit close is also applied before hydration on the next generated
   // page, then remains durable across refreshes.
   await folderNavigation.close();
+  await folderNavigation.expectDesktopTriggerFixedAtViewportEdge();
+  await snapshot("desktop folder navigation trigger at viewport edge");
   await navigateWithFolderNavigationHydrationPaused(
     page,
     () => folderNavigation.clickFile(

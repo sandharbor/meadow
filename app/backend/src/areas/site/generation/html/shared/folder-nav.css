@@ -225,6 +225,16 @@ html[data-meadow-folder-nav-open="false"] .meadow-folder-nav-open {
 }
 
 @media (min-width: 768px) {
+  body.meadow-folder-nav-enabled .meadow-folder-nav-open {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 90;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+  }
+
   html:not([data-meadow-folder-nav-open]) .meadow-folder-nav {
     transform: translateX(0);
   }

@@ -378,6 +378,21 @@ export class GeneratedSiteFolderNavigation {
     );
   }
 
+  async expectDesktopTriggerFixedAtViewportEdge() {
+    await this.expect(this.openButton).toBeVisible({ timeout: 30_000 });
+    const placement = await this.openButton.evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      return {
+        position: window.getComputedStyle(element).position,
+        x: bounds.x,
+        y: bounds.y,
+      };
+    });
+    this.expect(placement.position).toBe("fixed");
+    this.expect(Math.abs(placement.x - 12)).toBeLessThan(1);
+    this.expect(Math.abs(placement.y - 12)).toBeLessThan(1);
+  }
+
   async expectMobileHeaderControlsAligned() {
     const sources = this.root.locator(".sources-export-download").first();
     const search = this.root.getByRole("button", {
