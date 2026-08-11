@@ -19,8 +19,8 @@ import fs from 'fs';
 import path from 'path';
 import { parseHTML } from 'linkedom';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
+import { CUSTOMIZATION_ASSETS_DIRECTORY } from '../customizationAssets.js';
 
-export const CUSTOMIZATION_ASSETS_DIRECTORY = 'cust';
 export const SEARCH_ASSETS_DIRECTORY = 'search';
 export const SEARCH_INDEX_DIRECTORY = 'index';
 export const SEARCH_SHARD_COUNT = 256;

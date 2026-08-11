@@ -59,6 +59,11 @@ import { renderTransclusionToHtml } from './transclusion.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { SOURCES_EXPORT_MANIFEST_FILENAME } from '../../../../shared/utils/zipUtils.js';
 import {
+  CUSTOMIZATION_ASSETS_DIRECTORY,
+  SOURCES_EXPORT_ASSETS_DIRECTORY,
+  SPACED_REPETITION_ASSETS_DIRECTORY,
+} from '../customizationAssets.js';
+import {
   OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR,
   OPEN_KNOWLEDGE_FORMAT_BUNDLE_DIR,
   OPEN_KNOWLEDGE_FORMAT_MANIFEST_FILENAME
@@ -711,8 +716,10 @@ export function renderPageToHtml(
   const excalidrawCss = staticAssetNames?.excalidrawCss ?? 'meadow-excalidraw.css';
   const excalidrawVendorJs = staticAssetNames?.excalidrawVendorJs ?? 'excalidraw-vendor.js';
   const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
-  const srsCss = staticAssetNames?.srsCss ?? 'srs.css';
-  const srsJs = staticAssetNames?.srsJs ?? 'srs.js';
+  const srsCss = staticAssetNames?.srsCss
+    ?? `${CUSTOMIZATION_ASSETS_DIRECTORY}/${SPACED_REPETITION_ASSETS_DIRECTORY}/srs.css`;
+  const srsJs = staticAssetNames?.srsJs
+    ?? `${CUSTOMIZATION_ASSETS_DIRECTORY}/${SPACED_REPETITION_ASSETS_DIRECTORY}/srs.js`;
   const searchCss = staticAssetNames?.searchCss ?? 'cust/search/search.css';
   const searchJs = staticAssetNames?.searchJs ?? 'cust/search/search.js';
   const hoverPreviewCss = staticAssetNames?.hoverPreviewCss ?? 'cust/hover_preview/hover-preview.css';
@@ -732,15 +739,15 @@ export function renderPageToHtml(
     downloadArtifacts.push({
       label: 'sources',
       title: 'Download source files as ZIP',
-      manifest_url: `${assetsPrefix}sources-export/${SOURCES_EXPORT_MANIFEST_FILENAME}`,
+      manifest_url: `${assetsPrefix}${CUSTOMIZATION_ASSETS_DIRECTORY}/${SOURCES_EXPORT_ASSETS_DIRECTORY}/${SOURCES_EXPORT_MANIFEST_FILENAME}`,
     });
   }
   if (openKnowledgeFormatEnabled) {
     downloadArtifacts.push({
       label: 'OKF',
       title: 'Open Knowledge Format package',
-      manifest_url: `${assetsPrefix}${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_MANIFEST_FILENAME}`,
-      browse_url: `${assetsPrefix}${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_BUNDLE_DIR}/index.md`,
+      manifest_url: `${assetsPrefix}${CUSTOMIZATION_ASSETS_DIRECTORY}/${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_MANIFEST_FILENAME}`,
+      browse_url: `${assetsPrefix}${CUSTOMIZATION_ASSETS_DIRECTORY}/${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_BUNDLE_DIR}/index.md`,
     });
   }
   const fullPageContent = template({

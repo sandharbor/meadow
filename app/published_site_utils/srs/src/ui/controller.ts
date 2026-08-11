@@ -311,7 +311,7 @@ export function initializeMeadowSrs(options: InitializeSrsOptions): MeadowSrsCon
     if (globalDefinitions !== null) return;
     try {
       const depth = options.pageId.split('/').filter(Boolean).length - 1;
-      const prefix = '../'.repeat(depth) + '_mw_assets/srs/';
+      const prefix = '../'.repeat(depth) + '_mw_assets/cust/srs/';
       const response = await fetch(`${prefix}srs-all-cards.json`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();

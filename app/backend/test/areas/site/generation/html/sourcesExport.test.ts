@@ -43,10 +43,10 @@ describe('sources export filtering', () => {
   function getSourcesExportZipPath(): string {
     const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(previewDir, '_mw_assets', 'sources-export', 'sources-export-manifest.json'), 'utf8')
+      fs.readFileSync(path.join(previewDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json'), 'utf8')
     ) as { zipFilename: string; downloadFilename: string };
     expect(manifest.downloadFilename).toBe('sources-export-test-sources.zip');
-    return path.join(previewDir, '_mw_assets', 'sources-export', manifest.zipFilename);
+    return path.join(previewDir, '_mw_assets', 'cust', 'sources-export', manifest.zipFilename);
   }
 
   function addReachableExcalidrawDrawing() {

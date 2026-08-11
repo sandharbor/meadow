@@ -69,12 +69,13 @@ describe('html publish', () => {
 
     const firstHtmlPath = path.join(previewDir, htmlFiles[0]);
     const firstHtml = fs.readFileSync(firstHtmlPath, 'utf8');
-    const manifestPath = path.join(previewDir, '_mw_assets', 'sources-export', 'sources-export-manifest.json');
+    const manifestPath = path.join(previewDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json');
 
     expect(fs.existsSync(manifestPath)).toBe(true);
+    expect(fs.existsSync(path.join(previewDir, '_mw_assets', 'sources-export'))).toBe(false);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { downloadFilename: string };
     expect(manifest.downloadFilename).toBe('minimal-test-site-sources.zip');
-    expect(firstHtml).toContain('data-sources-export-manifest-url="_mw_assets/sources-export/sources-export-manifest.json"');
+    expect(firstHtml).toContain('data-sources-export-manifest-url="_mw_assets/cust/sources-export/sources-export-manifest.json"');
     expect(firstHtml).toContain('>&#8681; sources</a>');
     expect(firstHtml).not.toMatch(/sources-export-[a-f0-9]{12}\.zip/);
 
@@ -97,8 +98,26 @@ describe('html publish', () => {
     const firstHtml = fs.readFileSync(path.join(previewDir, htmlFiles[0]), 'utf8');
     expect(firstHtml).toContain('data-meadow-srs-site-guid="x3d9p0k"');
     expect(firstHtml).toContain('data-meadow-srs-page-id=');
-    expect(firstHtml).toMatch(/srs\/srs\.[a-f0-9]{8}\.css/);
-    expect(firstHtml).toMatch(/srs\/srs\.[a-f0-9]{8}\.js/);
+    expect(firstHtml).toMatch(/cust\/srs\/srs\.[a-f0-9]{8}\.css/);
+    expect(firstHtml).toMatch(/cust\/srs\/srs\.[a-f0-9]{8}\.js/);
+    expect(fs.existsSync(path.join(previewDir, '_mw_assets', 'srs'))).toBe(false);
+  });
+
+  it('should keep OKF artifacts under the customization assets directory', async () => {
+    const siteConfigPath = path.join(sitePath, 'conf/site_config.yaml');
+    fs.appendFileSync(siteConfigPath, '\ngenerationOpenKnowledgeFormatEnabled: true\n', 'utf8');
+
+    await createPreviewFolder();
+
+    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
+    const okfDirectory = path.join(previewDir, '_mw_assets', 'cust', 'okf');
+    expect(fs.existsSync(path.join(okfDirectory, 'okf-download-manifest.json'))).toBe(true);
+    expect(fs.existsSync(path.join(okfDirectory, 'bundle', 'index.md'))).toBe(true);
+    expect(fs.existsSync(path.join(previewDir, '_mw_assets', 'okf'))).toBe(false);
+
+    const mainPageHtml = fs.readFileSync(path.join(previewDir, 'main page.html'), 'utf8');
+    expect(mainPageHtml).toContain('_mw_assets/cust/okf/okf-download-manifest.json');
+    expect(mainPageHtml).toContain('_mw_assets/cust/okf/bundle/index.md');
   });
 
   it('should render SRS cards from render source markdown and export original markdown in zip', async () => {
@@ -139,9 +158,9 @@ describe('html publish', () => {
     expect(previewHtml).not.toContain('<!--SR:!2026-03-12,3,250-->');
 
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(previewDir, '_mw_assets', 'sources-export', 'sources-export-manifest.json'), 'utf8')
+      fs.readFileSync(path.join(previewDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json'), 'utf8')
     ) as { zipFilename: string };
-    const zipPath = path.join(previewDir, '_mw_assets', 'sources-export', manifest.zipFilename);
+    const zipPath = path.join(previewDir, '_mw_assets', 'cust', 'sources-export', manifest.zipFilename);
     const zippedMarkdown = execFileSync('unzip', ['-p', zipPath, 'minimal-test-site/main page.md'], {
       encoding: 'utf8',
     });

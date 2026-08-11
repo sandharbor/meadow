@@ -308,7 +308,7 @@ function He(e) {
   const Y = async () => {
     if (R === null)
       try {
-        const i = e.pageId.split("/").filter(Boolean).length - 1, l = "../".repeat(i) + "_mw_assets/srs/", u = await fetch(`${l}srs-all-cards.json`);
+        const i = e.pageId.split("/").filter(Boolean).length - 1, l = "../".repeat(i) + "_mw_assets/cust/srs/", u = await fetch(`${l}srs-all-cards.json`);
         if (!u.ok) throw new Error(`HTTP ${u.status}`);
         R = (await u.json()).cards.flatMap((c) => {
           const _ = {

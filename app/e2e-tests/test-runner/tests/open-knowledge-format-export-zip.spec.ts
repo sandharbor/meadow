@@ -119,7 +119,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   expect(zipContents).toContain("meadow-test-site-big/t001/log-original.md");
 
   await generatedSite.sources.openOkfBundleIndex();
-  await modal.expectPreviewIframeUrlContains("_mw_assets/okf/bundle/index.md");
+  await modal.expectPreviewIframeUrlContains("_mw_assets/cust/okf/bundle/index.md");
   await snapshot("okf bundle index browsed from website button");
   void bigSite;
 

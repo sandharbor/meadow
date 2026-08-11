@@ -81,6 +81,11 @@ import { resolveCustomAssets } from '../utils/customAssetsLoader.js';
 import { recordTimingMetric, timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
 import { copyPublishedSiteSearchAssets, writePublishedSiteSearchIndex } from './searchIndex.js';
 import { renderFolderNavigationDataScript } from './folderNavigation.js';
+import {
+  CUSTOMIZATION_ASSETS_DIRECTORY,
+  SOURCES_EXPORT_ASSETS_DIRECTORY,
+  SPACED_REPETITION_ASSETS_DIRECTORY,
+} from '../customizationAssets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -759,7 +764,7 @@ export async function generateHtmlForSite(
   }
 
   if (generationOptions.folderNavigationEnabled) {
-    const folderNavigationDirectory = path.join(assetsDirectory, 'cust', 'folder_nav');
+    const folderNavigationDirectory = path.join(assetsDirectory, CUSTOMIZATION_ASSETS_DIRECTORY, 'folder_nav');
     fs.mkdirSync(folderNavigationDirectory, { recursive: true });
     for (const asset of [
       { source: 'folder-nav.css', target: 'folder-nav.css' },
@@ -781,7 +786,7 @@ export async function generateHtmlForSite(
   }
 
   if (generationOptions.hoverPreviewEnabled) {
-    const hoverPreviewDirectory = path.join(assetsDirectory, 'cust', 'hover_preview');
+    const hoverPreviewDirectory = path.join(assetsDirectory, CUSTOMIZATION_ASSETS_DIRECTORY, 'hover_preview');
     fs.mkdirSync(hoverPreviewDirectory, { recursive: true });
     for (const asset of ['hover-preview.css', 'hover-preview.js']) {
       const sourcePath = path.join(sharedDirectory, asset);
@@ -833,7 +838,11 @@ export async function generateHtmlForSite(
 
   if (generationOptions.spacedRepetitionEnabled) {
     const srsAssetsDirectory = getPublishedSiteSrsAssetsPath();
-    const srsOutputDirectory = path.join(assetsDirectory, 'srs');
+    const srsOutputDirectory = path.join(
+      assetsDirectory,
+      CUSTOMIZATION_ASSETS_DIRECTORY,
+      SPACED_REPETITION_ASSETS_DIRECTORY
+    );
     fs.mkdirSync(srsOutputDirectory, { recursive: true });
     const srsAssetNames = ['srs.js', 'srs.css'];
 
@@ -917,7 +926,11 @@ export async function generateHtmlForSite(
         }
         prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, sourcesExportDir);
 
-        const sourcesExportOutputDir = path.join(assetsDirectory, 'sources-export');
+        const sourcesExportOutputDir = path.join(
+          assetsDirectory,
+          CUSTOMIZATION_ASSETS_DIRECTORY,
+          SOURCES_EXPORT_ASSETS_DIRECTORY
+        );
         fs.mkdirSync(sourcesExportOutputDir, { recursive: true });
         const sourcesExportSlug = getArtifactArchiveSlug(siteDirectory, siteConfig);
         const zipResult = await createSourcesExportZip(sourcesExportDir, sourcesExportOutputDir, {
@@ -936,7 +949,11 @@ export async function generateHtmlForSite(
     }
   } else {
     timeSync('site.generation.stage', { ...timingLabels, stage: 'sources_export_cleanup' }, () => {
-      const sourcesExportOutputDir = path.join(assetsDirectory, 'sources-export');
+      const sourcesExportOutputDir = path.join(
+        assetsDirectory,
+        CUSTOMIZATION_ASSETS_DIRECTORY,
+        SOURCES_EXPORT_ASSETS_DIRECTORY
+      );
       if (fs.existsSync(sourcesExportOutputDir)) {
         fs.rmSync(sourcesExportOutputDir, { recursive: true, force: true });
       }
@@ -1092,7 +1109,7 @@ export async function generateHtmlForSite(
   if (generationOptions.folderNavigationEnabled) {
     const folderNavigationDataPath = path.join(
       assetsDirectory,
-      'cust',
+      CUSTOMIZATION_ASSETS_DIRECTORY,
       'folder_nav',
       'folder-nav-data.js'
     );
@@ -1494,7 +1511,11 @@ export async function generateHtmlForSite(
         pageId: c.pageId,
         pageTitle: c.pageTitle,
       }));
-      const srsOutputDirectory = path.join(assetsDirectory, 'srs');
+      const srsOutputDirectory = path.join(
+        assetsDirectory,
+        CUSTOMIZATION_ASSETS_DIRECTORY,
+        SPACED_REPETITION_ASSETS_DIRECTORY
+      );
       fs.mkdirSync(srsOutputDirectory, { recursive: true });
       fs.writeFileSync(
         path.join(srsOutputDirectory, 'srs-all-cards.json'),

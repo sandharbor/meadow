@@ -35,6 +35,7 @@ import {
   removeOpenKnowledgeFormatGenerationManifest,
   writeOpenKnowledgeFormatGenerationManifest
 } from './openKnowledgeFormatGenerationManifest.js';
+import { CUSTOMIZATION_ASSETS_DIRECTORY } from '../customizationAssets.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
 type AllLinkResolutionMaps = Map<string, LinkResolutionMap>;
@@ -80,7 +81,11 @@ export async function generatePublishedOpenKnowledgeFormatArtifacts(
   );
   writeOpenKnowledgeFormatGenerationManifest(options.siteDirectory, result);
 
-  const okfOutputDir = path.join(options.assetsDirectory, OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR);
+  const okfOutputDir = path.join(
+    options.assetsDirectory,
+    CUSTOMIZATION_ASSETS_DIRECTORY,
+    OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR
+  );
   if (fs.existsSync(okfOutputDir)) {
     fs.rmSync(okfOutputDir, { recursive: true, force: true });
   }
@@ -106,7 +111,11 @@ export function cleanupPublishedOpenKnowledgeFormatArtifacts(options: {
   siteDirectory: string;
   assetsDirectory: string;
 }): void {
-  const okfOutputDir = path.join(options.assetsDirectory, OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR);
+  const okfOutputDir = path.join(
+    options.assetsDirectory,
+    CUSTOMIZATION_ASSETS_DIRECTORY,
+    OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR
+  );
   if (fs.existsSync(okfOutputDir)) {
     fs.rmSync(okfOutputDir, { recursive: true, force: true });
   }

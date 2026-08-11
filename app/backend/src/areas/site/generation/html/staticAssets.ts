@@ -21,6 +21,10 @@ import { performance } from 'perf_hooks';
 import type { StaticAssetNames } from './types.js';
 import { recordTimingMetric } from '../../../../shared/telemetry/timingMetrics.js';
 import { deterministicGzip, writeCompressionManifest } from '../../../../../../shared_code/utils/compressionManifestUtils.js';
+import {
+  CUSTOMIZATION_ASSETS_DIRECTORY,
+  SPACED_REPETITION_ASSETS_DIRECTORY,
+} from '../customizationAssets.js';
 
 /**
  * Pre-gzip these shared assets at generation time. The excalidraw vendor
@@ -214,25 +218,33 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
       gzipPaths.push(excalidrawVendorJs);
     }
   }
-  const srsDir = path.join(outputDir, 'srs');
+  const srsDir = path.join(
+    outputDir,
+    CUSTOMIZATION_ASSETS_DIRECTORY,
+    SPACED_REPETITION_ASSETS_DIRECTORY
+  );
   const srsCssBase = renameWithHashIfExists(path.join(srsDir, 'srs.css'));
   const srsJsBase = renameWithHashIfExists(path.join(srsDir, 'srs.js'));
-  const srsCss = srsCssBase ? `srs/${srsCssBase}` : undefined;
-  const srsJs = srsJsBase ? `srs/${srsJsBase}` : undefined;
+  const srsCss = srsCssBase
+    ? `${CUSTOMIZATION_ASSETS_DIRECTORY}/${SPACED_REPETITION_ASSETS_DIRECTORY}/${srsCssBase}`
+    : undefined;
+  const srsJs = srsJsBase
+    ? `${CUSTOMIZATION_ASSETS_DIRECTORY}/${SPACED_REPETITION_ASSETS_DIRECTORY}/${srsJsBase}`
+    : undefined;
 
-  const searchDir = path.join(outputDir, 'cust', 'search');
+  const searchDir = path.join(outputDir, CUSTOMIZATION_ASSETS_DIRECTORY, 'search');
   const searchCssBase = renameWithHashIfExists(path.join(searchDir, 'search.css'));
   const searchJsBase = renameWithHashIfExists(path.join(searchDir, 'search.js'));
   const searchCss = searchCssBase ? `cust/search/${searchCssBase}` : undefined;
   const searchJs = searchJsBase ? `cust/search/${searchJsBase}` : undefined;
 
-  const hoverPreviewDir = path.join(outputDir, 'cust', 'hover_preview');
+  const hoverPreviewDir = path.join(outputDir, CUSTOMIZATION_ASSETS_DIRECTORY, 'hover_preview');
   const hoverPreviewCssBase = renameWithHashIfExists(path.join(hoverPreviewDir, 'hover-preview.css'));
   const hoverPreviewJsBase = renameWithHashIfExists(path.join(hoverPreviewDir, 'hover-preview.js'));
   const hoverPreviewCss = hoverPreviewCssBase ? `cust/hover_preview/${hoverPreviewCssBase}` : undefined;
   const hoverPreviewJs = hoverPreviewJsBase ? `cust/hover_preview/${hoverPreviewJsBase}` : undefined;
 
-  const folderNavigationDir = path.join(outputDir, 'cust', 'folder_nav');
+  const folderNavigationDir = path.join(outputDir, CUSTOMIZATION_ASSETS_DIRECTORY, 'folder_nav');
   const folderNavigationCssBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav.css'));
   const folderNavigationDataJsBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav-data.js'));
   const folderNavigationJsBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav.js'));

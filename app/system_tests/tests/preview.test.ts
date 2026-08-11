@@ -451,7 +451,7 @@ describe('Preview System Tests', () => {
 
       expect(response.ok).toBe(true);
 
-      const okfBundlePath = testSetup!.getPathInSite('html/preview/_mw_assets/okf/bundle');
+      const okfBundlePath = testSetup!.getPathInSite('html/preview/_mw_assets/cust/okf/bundle');
       expect(fs.existsSync(okfBundlePath)).toBe(true);
 
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-okf-preview');
