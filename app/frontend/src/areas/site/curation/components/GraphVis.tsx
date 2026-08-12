@@ -26,6 +26,7 @@ import DepthCallout, { useDepthCalloutDismissal, useHasFrontierOutlinks } from '
 import { computeLabelPlacements } from '../utils/graphSearchLabels';
 import GraphSearchLabels from './GraphSearchLabels';
 import SiteNodeGlyph, { SITE_NODE_RADIUS } from './SiteNodeGlyph';
+import { calculateGraphLayout, type GraphLayoutGuide } from '../utils/graphLayout';
 import {
   DEFAULT_VIEWBOX,
   MAX_ZOOM,
@@ -61,6 +62,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
   sitePreviewHover,
 }) => {
   const [positions, setPositions] = useState<Map<string, NodePosition>>(new Map());
+  const [layoutGuides, setLayoutGuides] = useState<GraphLayoutGuide[]>([]);
   const [showSemanticEdges, setShowSemanticEdges] = useState(true);
   const [showStructuralEdges, setShowStructuralEdges] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,83 +108,9 @@ const GraphVis: React.FC<GraphVisProps> = ({
   const isAnimatingRef = useRef(false);
   const pendingAnimationRef = useRef(false);
 
-  const calculatePositions = useCallback((nodes: DisplayNode[], includeHidden: boolean = false) => {
-    // Determine the drawing area dimensions
-    const width = 300;
-    const height = 200;
-
-    // Padding around the tree
-    const horizontalPadding = 20;
-    const verticalPadding = 20;
-
-    // Group pages by distance (treat undefined distance as a special group)
-    const levelMap = new Map<number, DisplayNode[]>();
-    const undefinedDistance: DisplayNode[] = [];
-
-    nodes.forEach((node) => {
-      if (!includeHidden && !node.isVisible) return;
-      if (node.distance === undefined) {
-        undefinedDistance.push(node);
-        return;
-      }
-      const list = levelMap.get(node.distance) ?? [];
-      list.push(node);
-      levelMap.set(node.distance, list);
-    });
-
-    // Sort levels by ascending distance
-    const sortedLevels = Array.from(levelMap.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([, levelNodes]) => levelNodes);
-
-    // Append pages with undefined distance as the last level (if any)
-    if (undefinedDistance.length > 0) {
-      sortedLevels.push(undefinedDistance);
-    }
-
-    // Calculate vertical spacing between levels
-    const levelCount = sortedLevels.length;
-    const availableHeight = height - verticalPadding * 2;
-    const levelSpacing = levelCount > 1 ? availableHeight / (levelCount - 1) : 0;
-
-    const newPositions = new Map<string, NodePosition>();
-
-    sortedLevels.forEach((levelNodes, levelIndex) => {
-      // Filter visibility per autoRearrange setting
-      const visibleInLevel = levelNodes.filter((node) => node.isVisible);
-      const hiddenInLevel = levelNodes.filter((node) => !node.isVisible);
-
-      const processNodes = (nodesAtLevel: DisplayNode[], y: number) => {
-        if (nodesAtLevel.length === 0) return;
-        const availableWidth = width - horizontalPadding * 2;
-        const step = availableWidth / (nodesAtLevel.length + 1);
-        nodesAtLevel.forEach((node, idx) => {
-          const position: NodePosition = {
-            x: horizontalPadding + step * (idx + 1),
-            y,
-          };
-          newPositions.set(node.siteNodeKey, position);
-        });
-      };
-
-      const yPos = verticalPadding + levelSpacing * levelIndex;
-
-      // Place visible pages for this level
-      processNodes(visibleInLevel, yPos);
-
-      // Optionally cluster hidden pages (if includeHidden === true)
-      if (includeHidden && hiddenInLevel.length > 0) {
-        // Place them slightly below the level in a tighter cluster
-        const clusterY = yPos + 10; // small offset
-        processNodes(hiddenInLevel, clusterY);
-      }
-    });
-
-    // If autoRearrange is false we still honour the new tree layout; the flag previously
-    // controlled an alternative circular layout which users found confusing.
-
-    return newPositions;
-  }, []);
+  const calculateLayout = useCallback((nodes: DisplayNode[], includeHidden: boolean = false) => (
+    calculateGraphLayout(nodes, graph.getAllEdges(), includeHidden)
+  ), [graph]);
 
   // Calculate page positions
   useEffect(() => {
@@ -195,7 +123,9 @@ const GraphVis: React.FC<GraphVisProps> = ({
       return;
     }
 
-    const newPositions = calculatePositions(displayGraph.allDisplayNodes, true);
+    const layout = calculateLayout(displayGraph.allDisplayNodes, true);
+    const newPositions = layout.positions;
+    setLayoutGuides(layout.guides);
 
     if (positions.size === 0) {
       // Initial position setup - no animation
@@ -251,7 +181,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
       requestAnimationFrame(animate);
     }
-  }, [displayGraph, positions, calculatePositions]);
+  // graphUpdateTrigger forces recompute when graph is mutated in-place.
+  }, [displayGraph, positions, calculateLayout, graphUpdateTrigger]);
 
   // Convert screen coordinates to SVG coordinates
   const screenToSVGCoords = useCallback((clientX: number, clientY: number): { x: number; y: number } | null => {
@@ -784,6 +715,43 @@ const GraphVis: React.FC<GraphVisProps> = ({
               <polygon points="4 0, 0 1.5, 4 3" fill="#d1d5db" />
             </marker>
           </defs>
+
+          {/* Folder-derived sites use a structural band followed by ordinary depth rows. */}
+          <g aria-hidden="true" pointerEvents="none">
+            {layoutGuides.map((guide, index) => (
+              guide.kind === 'section' ? (
+                <g key={`${guide.kind}-${guide.label}-${index}`}>
+                  <text
+                    x="5"
+                    y={guide.y}
+                    fill="#64748b"
+                    fontSize="3.2"
+                    fontWeight="600"
+                  >
+                    {guide.label}
+                  </text>
+                  <line
+                    x1="5"
+                    x2="295"
+                    y1={guide.y + 2}
+                    y2={guide.y + 2}
+                    stroke="#e2e8f0"
+                    strokeWidth="0.4"
+                  />
+                </g>
+              ) : (
+                <text
+                  key={`${guide.kind}-${guide.label}-${index}`}
+                  x="5"
+                  y={guide.y + 1}
+                  fill="#94a3b8"
+                  fontSize="2.7"
+                >
+                  {guide.label}
+                </text>
+              )
+            ))}
+          </g>
 
           {/* Draw edges */}
           {graph.getAllEdges().map((edge, index) => {
