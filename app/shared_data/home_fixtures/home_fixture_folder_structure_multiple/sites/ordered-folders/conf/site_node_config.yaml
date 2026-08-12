@@ -1,0 +1,18 @@
+nodes:
+  - siteNodeName: Alpha
+    sourceGraphSubdirectory: Alpha
+    siteNodeKind: folder
+    siteNodeId: alpha0000002
+    listType: whitelist
+  - siteNodeName: Beta
+    sourceGraphSubdirectory: Beta
+    siteNodeKind: folder
+    siteNodeId: beta00000003
+    listType: whitelist
+  - siteNodeName: Ordered Folders
+    siteNodeKind: collection
+    siteNodeId: sitehome0001
+    listType: whitelist
+    memberSiteNodeIds:
+      - beta00000003
+      - alpha0000002

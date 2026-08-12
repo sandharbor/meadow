@@ -27,6 +27,7 @@ import { IMAGE_FILE_TYPES } from '../../../shared_code/utils/fileTypeUtils.js';
 export const pagespecSourceGraphDirs = [
   path.join(getSourceGraphsPath(), 'meadow-test-sites-data'),
   path.join(getSourceGraphsPath(), 'example-site-data'),
+  path.join(getSourceGraphsPath(), 'folder-structure-test'),
 ];
 
 /**
@@ -175,29 +176,47 @@ export interface PagespecSiteToCheck {
   sourceGraphDir: string;
 }
 
+export interface PagespecSiteSetups {
+  big: SystemTestSiteSetup;
+  small: SystemTestSiteSetup;
+  example: SystemTestSiteSetup;
+  folderStructureSingle: SystemTestSiteSetup;
+  folderStructureMultiple: SystemTestSiteSetup;
+}
+
 export function getPagespecSitesToCheck(
-  bigSiteSetup: SystemTestSiteSetup,
-  smallSiteSetup: SystemTestSiteSetup,
-  exampleSiteSetup: SystemTestSiteSetup
+  setups: PagespecSiteSetups,
 ): PagespecSiteToCheck[] {
   return [
     {
       name: 'meadow-test-site-big',
-      setup: bigSiteSetup,
+      setup: setups.big,
       initialPage: 'main page',
       sourceGraphDir: path.join(getSourceGraphsPath(), 'meadow-test-sites-data'),
     },
     {
       name: 'meadow-test-site-small',
-      setup: smallSiteSetup,
+      setup: setups.small,
       initialPage: 't001 - deeply nested',
       sourceGraphDir: path.join(getSourceGraphsPath(), 'meadow-test-sites-data'),
     },
     {
       name: 'example-site',
-      setup: exampleSiteSetup,
+      setup: setups.example,
       initialPage: 'Notable Mental Models',
       sourceGraphDir: path.join(getSourceGraphsPath(), 'example-site-data'),
+    },
+    {
+      name: 'single-folder-site',
+      setup: setups.folderStructureSingle,
+      initialPage: 'Alpha note',
+      sourceGraphDir: path.join(getSourceGraphsPath(), 'folder-structure-test'),
+    },
+    {
+      name: 'ordered-folders',
+      setup: setups.folderStructureMultiple,
+      initialPage: 'Alpha note',
+      sourceGraphDir: path.join(getSourceGraphsPath(), 'folder-structure-test'),
     },
   ];
 }

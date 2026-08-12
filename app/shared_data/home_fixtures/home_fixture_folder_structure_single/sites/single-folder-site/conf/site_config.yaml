@@ -1,0 +1,13 @@
+siteGuid: fldr001
+sourceDirectory: ./source_graphs/folder-structure-test
+entrySiteNodeId: alpha0000001
+defaultTraversalSiteNodeId: alpha0000001
+defaultOutlinksDepth: 2
+defaultInlinksDepth: 0
+generationFolderNavigationEnabled: true
+generatedSiteVersions: []
+archivedAt: null
+siteCreatedAt: 2026-08-12T20:30:28.078Z
+siteUpdatedAt: 2026-08-12T20:30:28.078Z
+siteLastPublishedAt: null
+siteNotes: ""

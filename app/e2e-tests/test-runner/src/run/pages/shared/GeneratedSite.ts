@@ -405,8 +405,12 @@ export class GeneratedSiteFolderNavigation {
     await this.expect(this.sidebar).toHaveCount(0);
   }
 
-  async expectOpen() {
+  async expectAvailable() {
     await this.expect(this.sidebar).toHaveCount(1, { timeout: 30_000 });
+  }
+
+  async expectOpen() {
+    await this.expectAvailable();
     await this.expect(this.html).toHaveAttribute(
       "data-meadow-folder-nav-open",
       "true",

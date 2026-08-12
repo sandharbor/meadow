@@ -740,6 +740,7 @@ router.post('/sites/folders', (req, res, next) => {
         defaultTraversalSiteNodeId: verified.plan.entrySiteNodeId,
         defaultOutlinksDepth: verified.plan.defaultOutlinksDepth,
         defaultInlinksDepth: verified.plan.defaultInlinksDepth,
+        generationFolderNavigationEnabled: true,
         generatedSiteVersions: [],
         archivedAt: null,
         siteCreatedAt: now,

@@ -552,6 +552,8 @@ describe('Runtime Pagespec Curation Validation', () => {
   let bigSiteSetup: SystemTestSiteSetup | undefined;
   let smallSiteSetup: SystemTestSiteSetup | undefined;
   let exampleSiteSetup: SystemTestSiteSetup | undefined;
+  let folderStructureSingleSetup: SystemTestSiteSetup | undefined;
+  let folderStructureMultipleSetup: SystemTestSiteSetup | undefined;
 
   beforeAll(async () => {
     await startServer();
@@ -582,19 +584,43 @@ describe('Runtime Pagespec Curation Validation', () => {
       { siteFolderName: 'example-site' }
     );
     exampleSiteSetup.setUp();
+
+    folderStructureSingleSetup = new SystemTestSiteSetup(
+      'home_fixture_folder_structure_single',
+      'pagespec-curation-validation-folder-single',
+      { siteFolderName: 'single-folder-site' }
+    );
+    folderStructureSingleSetup.setUp();
+
+    folderStructureMultipleSetup = new SystemTestSiteSetup(
+      'home_fixture_folder_structure_multiple',
+      'pagespec-curation-validation-folder-multiple',
+      { siteFolderName: 'ordered-folders' }
+    );
+    folderStructureMultipleSetup.setUp();
   });
 
   afterEach(() => {
     bigSiteSetup?.tearDown();
     smallSiteSetup?.tearDown();
     exampleSiteSetup?.tearDown();
+    folderStructureSingleSetup?.tearDown();
+    folderStructureMultipleSetup?.tearDown();
+  });
+
+  const sitesToCheck = () => getPagespecSitesToCheck({
+    big: bigSiteSetup!,
+    small: smallSiteSetup!,
+    example: exampleSiteSetup!,
+    folderStructureSingle: folderStructureSingleSetup!,
+    folderStructureMultiple: folderStructureMultipleSetup!,
   });
 
   it('should validate pagespec curation links match actual working graph links', async () => {
-    const sitesToCheck = getPagespecSitesToCheck(bigSiteSetup!, smallSiteSetup!, exampleSiteSetup!);
+    const configuredSites = sitesToCheck();
 
     const results = await Promise.all(
-      sitesToCheck.map(({ name, setup, initialPage, sourceGraphDir }) =>
+      configuredSites.map(({ name, setup, initialPage, sourceGraphDir }) =>
         validatePagespecLinksForSite(setup.getSiteSlug(), name, sourceGraphDir, initialPage)
       )
     );
@@ -610,11 +636,11 @@ describe('Runtime Pagespec Curation Validation', () => {
   });
 
   it('should validate isInWorkingGraph claims for pages declaring false', async () => {
-    const sitesToCheck = getPagespecSitesToCheck(bigSiteSetup!, smallSiteSetup!, exampleSiteSetup!);
+    const configuredSites = sitesToCheck();
     const allErrors: string[] = [];
     let totalValidated = 0;
 
-    for (const { name: siteName, setup: siteSetup, initialPage, sourceGraphDir } of sitesToCheck) {
+    for (const { name: siteName, setup: siteSetup, initialPage, sourceGraphDir } of configuredSites) {
       const response = await fetch(
         `${TEST_BASE_URL}/api/sites/${siteSetup.getSiteSlug()}/curation/working-graph?initialPageTitle=${encodeURIComponent(initialPage)}`
       );
@@ -655,11 +681,11 @@ describe('Runtime Pagespec Curation Validation', () => {
   });
 
   it('should validate isTracked matches site_node_config.yaml', () => {
-    const sitesToCheck = getPagespecSitesToCheck(bigSiteSetup!, smallSiteSetup!, exampleSiteSetup!);
+    const configuredSites = sitesToCheck();
     const errors: string[] = [];
     let pagesValidated = 0;
 
-    for (const { name: siteName, setup: siteSetup, sourceGraphDir } of sitesToCheck) {
+    for (const { name: siteName, setup: siteSetup, sourceGraphDir } of configuredSites) {
       const siteConfigPath = path.join(siteSetup.getSitePath(), 'conf', 'site_node_config.yaml');
       const siteNodeConfigs = fs.existsSync(siteConfigPath)
         ? parseSiteNodeConfig(fs.readFileSync(siteConfigPath, 'utf-8'))
@@ -695,11 +721,11 @@ describe('Runtime Pagespec Curation Validation', () => {
   });
 
   it('should validate frontierDepthOrNullForOrphan matches actual frontier depth', async () => {
-    const sitesToCheck = getPagespecSitesToCheck(bigSiteSetup!, smallSiteSetup!, exampleSiteSetup!);
+    const configuredSites = sitesToCheck();
     const allErrors: string[] = [];
     let totalValidated = 0;
 
-    for (const { name: siteName, setup: siteSetup, initialPage, sourceGraphDir } of sitesToCheck) {
+    for (const { name: siteName, setup: siteSetup, initialPage, sourceGraphDir } of configuredSites) {
       const response = await fetch(
         `${TEST_BASE_URL}/api/sites/${siteSetup.getSiteSlug()}/curation/working-graph?initialPageTitle=${encodeURIComponent(initialPage)}&frontierDepth=10`
       );

@@ -78,6 +78,12 @@ export class SiteEditorPage {
     await btn.click();
   }
 
+  async switchToStructuralListView() {
+    const btn = this.page.getByRole("button", { name: "Structure", exact: true });
+    await this.expect(btn).toBeVisible();
+    await btn.click();
+  }
+
   async switchToGraphView() {
     await this.expect(this.graphViewBtn).toBeVisible();
     await this.graphViewBtn.click();

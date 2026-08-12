@@ -28,6 +28,8 @@ import {
 /** Home fixture names (used with `test.use({ fixtureHome: ... })`). */
 export enum Fixture {
   BigAndSmall = "home_fixture_big_and_small",
+  FolderStructureMultiple = "home_fixture_folder_structure_multiple",
+  FolderStructureSingle = "home_fixture_folder_structure_single",
   Hooks = "home_fixture_hooks",
   Nested = "home_fixture_nested",
   None = "none",
@@ -36,6 +38,8 @@ export enum Fixture {
 /** Site names available in fixtures. */
 export enum Site {
   Big = "meadow-test-site-big",
+  FolderStructureMultiple = "ordered-folders",
+  FolderStructureSingle = "single-folder-site",
   Small = "meadow-test-site-small",
   Hooks = "meadow-test-site-for-hooks",
   Nested = "meadow-test-site-nested",

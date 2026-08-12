@@ -156,6 +156,8 @@ describe('Runtime Pagespec Generation Validation', () => {
   let bigSiteSetup: SystemTestSiteSetup | undefined;
   let smallSiteSetup: SystemTestSiteSetup | undefined;
   let exampleSiteSetup: SystemTestSiteSetup | undefined;
+  let folderStructureSingleSetup: SystemTestSiteSetup | undefined;
+  let folderStructureMultipleSetup: SystemTestSiteSetup | undefined;
 
   beforeAll(async () => {
     await startServer();
@@ -186,16 +188,38 @@ describe('Runtime Pagespec Generation Validation', () => {
       { siteFolderName: 'example-site' }
     );
     exampleSiteSetup.setUp();
+
+    folderStructureSingleSetup = new SystemTestSiteSetup(
+      'home_fixture_folder_structure_single',
+      'pagespec-generation-validation-folder-single',
+      { siteFolderName: 'single-folder-site' }
+    );
+    folderStructureSingleSetup.setUp();
+
+    folderStructureMultipleSetup = new SystemTestSiteSetup(
+      'home_fixture_folder_structure_multiple',
+      'pagespec-generation-validation-folder-multiple',
+      { siteFolderName: 'ordered-folders' }
+    );
+    folderStructureMultipleSetup.setUp();
   });
 
   afterEach(() => {
     bigSiteSetup?.tearDown();
     smallSiteSetup?.tearDown();
     exampleSiteSetup?.tearDown();
+    folderStructureSingleSetup?.tearDown();
+    folderStructureMultipleSetup?.tearDown();
   });
 
   it('should validate htmlRenderedLinks match actual rendered HTML', async () => {
-    const sitesToCheck = getPagespecSitesToCheck(bigSiteSetup!, smallSiteSetup!, exampleSiteSetup!);
+    const sitesToCheck = getPagespecSitesToCheck({
+      big: bigSiteSetup!,
+      small: smallSiteSetup!,
+      example: exampleSiteSetup!,
+      folderStructureSingle: folderStructureSingleSetup!,
+      folderStructureMultiple: folderStructureMultipleSetup!,
+    });
 
     await Promise.all(
       sitesToCheck.map(async ({ setup }) => {
