@@ -28,6 +28,9 @@ export {
   createSensitiveNodeSelector,
   createFrontierNodeSelector,
   createFolderNodeSelector,
+  createSiteNodeKindSelector,
+  createSelectedScopeRootSelector,
+  createEffectiveBlacklistSelector,
   createSearchByTitleSelector,
   createNodeWithOverrideSelector,
   createOutlinkDiscrepancySelector,
@@ -47,6 +50,9 @@ import {
   createOutlinkDiscrepancySelector,
   createInlinkDiscrepancySelector,
   createFrontierNodeSelector,
+  createSiteNodeKindSelector,
+  createSelectedScopeRootSelector,
+  createEffectiveBlacklistSelector,
   createCustomSiteNodeSelector as createCustomSiteNodeSelectorBase
 } from '../utils/filterSelectors';
 import type { CustomSiteNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
@@ -192,6 +198,41 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       enabled: false,
       isSolo: false,
       isHidden: false
+    },
+    ...(['file', 'folder', 'collection'] as const).map(siteNodeKind => ({
+      id: `node-kind-${siteNodeKind}-filter`,
+      name: siteNodeKind === 'collection'
+        ? 'Site Homes'
+        : `${siteNodeKind[0].toUpperCase()}${siteNodeKind.slice(1)} Nodes`,
+      description: `Select ${siteNodeKind === 'collection' ? 'site home' : siteNodeKind} nodes`,
+      siteNodeSelectors: [createSiteNodeKindSelector(siteNodeKind)],
+      selectorApplicationCriteria: 'union' as const,
+      actions: [{ type: 'highlight' as const, color: siteNodeKind === 'folder' ? '#3B82F6' : siteNodeKind === 'collection' ? '#8B5CF6' : '#64748B', isDashed: false }],
+      enabled: false,
+      isSolo: false,
+      isHidden: false,
+    })),
+    {
+      id: 'selected-scope-root-filter',
+      name: 'Selected Scope Roots',
+      description: 'Folders explicitly selected when the site was created',
+      siteNodeSelectors: [createSelectedScopeRootSelector()],
+      selectorApplicationCriteria: 'union',
+      actions: [{ type: 'highlight', color: '#0EA5E9', isDashed: false }],
+      enabled: false,
+      isSolo: false,
+      isHidden: false,
+    },
+    {
+      id: 'effective-folder-blacklist-filter',
+      name: 'Excluded by Folder',
+      description: 'Nodes below a hard folder blacklist boundary',
+      siteNodeSelectors: [createEffectiveBlacklistSelector()],
+      selectorApplicationCriteria: 'union',
+      actions: [{ type: 'highlight', color: '#DC2626', isDashed: true }],
+      enabled: false,
+      isSolo: false,
+      isHidden: false,
     },
     {
       id: 'sensitive-filter',

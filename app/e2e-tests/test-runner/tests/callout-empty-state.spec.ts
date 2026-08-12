@@ -19,6 +19,8 @@ import { SiteListPage } from "../src/run/pages/index.js";
 import { callout } from "../src/scenario-docs/index.js";
 import { sites } from "../src/app-area-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: "none" });
 
 test("Callout turn your notes into sites shown on empty state", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {

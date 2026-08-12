@@ -27,6 +27,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { filters, htmlGeneration, changesTab as changesTabDoc, tracking } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("Change type filter shows correct counts and interacts with HTML section filter", async ({
   page,
   snapshot,

@@ -18,29 +18,17 @@ limitations under the License.
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../shared/components/Modal';
 import { API_BASE_URL } from '../../../shared/utils/apiConfig';
-import { FindInSitesOptions } from '../../../../../shared_code/types/findInSitesOptions';
 import type { SourcePageFileInfo } from '../../../../../shared_code/types/sourcePageFileInfo';
 import { logger } from '../../../shared/utils/logger';
-
-interface CreateSiteForm {
-  slug: string;
-  sourceDirectory: string;
-  entrySiteNodeName: string;
-  entrySourceGraphSubdirectory: string;
-  entryFileType: string;
-  siteNotes: string;
-}
-
-type SiteModalMode = 'create' | 'edit';
-
-interface EditSiteDefaults {
-  slug: string;
-  sourceDirectory: string;
-  entrySiteNodeName: string;
-  entrySourceGraphSubdirectory?: string;
-  entryFileType?: string;
-  siteNotes?: string;
-}
+import FolderSiteFields, { type FolderSitePreflight } from './FolderSiteFields';
+import {
+  EntryStrategyPicker,
+  MoreSiteDetails,
+  SourceDirectoryField,
+  type CreateOrEditSiteModalProps,
+  type CreateSiteForm,
+  type EntryStrategy,
+} from './SiteCreationBasics';
 
 interface MatchingPage {
   title: string;
@@ -57,18 +45,6 @@ const sourcePageFallbackPath = (page: { title: string; directory: string; file_t
   return page.directory ? `${page.directory}/${filename}` : filename;
 };
 
-interface CreateOrEditSiteModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  mode: SiteModalMode;
-  onSuccess: (slug: string) => void;
-  directories: string[];
-  existingSlugs?: string[];
-  findInSitesOptions?: FindInSitesOptions | null;
-  editSite?: EditSiteDefaults | null;
-}
-
-// Find a unique slug by appending -1, -2, etc. if the base slug already exists
 const findUniqueSlug = (baseSlug: string, existingSlugs: string[]): string => {
   const slugSet = new Set(existingSlugs);
   if (!slugSet.has(baseSlug)) return baseSlug;
@@ -79,7 +55,6 @@ const findUniqueSlug = (baseSlug: string, existingSlugs: string[]): string => {
   return `${baseSlug}-${counter}`;
 };
 
-// Normalize directory path: "/" and "" both represent the root directory
 const normalizeDirectory = (dir: string): string => {
   return dir === '/' ? '' : dir;
 };
@@ -148,6 +123,10 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
 
   // More details toggle
   const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [entryStrategy, setEntryStrategy] = useState<EntryStrategy>('page');
+  const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
+  const [folderPreflight, setFolderPreflight] = useState<FolderSitePreflight | null>(null);
+  const [confirmHighImpact, setConfirmHighImpact] = useState(false);
 
   // Reset and initialize form when modal opens
   useEffect(() => {
@@ -228,6 +207,10 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       setIsEditingInitialPage(false);
       setInitialPageEditBackup(null);
       setShowMoreDetails(mode === 'edit');
+      setEntryStrategy('page');
+      setSelectedFolders([]);
+      setFolderPreflight(null);
+      setConfirmHighImpact(false);
 
       if (mode === 'create' && findInSitesOptions) {
         const pageName = findInSitesOptions.pageName || findInSitesOptions.pageName || '';
@@ -254,7 +237,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
 
   // Server-side typeahead: query source pages by title (debounced).
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || entryStrategy === 'folders') return;
     
     // If the initial page is already locked in, no need to fetch suggestions.
     if (selectedInitialPage && !isEditingInitialPage) return;
@@ -310,7 +293,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [isOpen, form.sourceDirectory, form.entrySiteNodeName, selectedInitialPage, isEditingInitialPage]);
+  }, [isOpen, form.sourceDirectory, form.entrySiteNodeName, selectedInitialPage, isEditingInitialPage, entryStrategy]);
 
   const handleFormChange = (field: keyof CreateSiteForm, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -335,6 +318,11 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       setSelectedInitialPage(null);
       setIsEditingInitialPage(false);
       setInitialPageEditBackup(null);
+      setSelectedFolders([]);
+    }
+    if (field === 'sourceDirectory' || field === 'entrySiteNodeName') {
+      setFolderPreflight(null);
+      setConfirmHighImpact(false);
     }
   };
 
@@ -361,6 +349,8 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     setDuplicatePages([]);
     setShowDuplicatePicker(false);
     setSelectedInitialPage(null);
+    setFolderPreflight(null);
+    setConfirmHighImpact(false);
     // Note: Don't clear typeaheadCandidates here - let them remain visible until
     // the debounced fetch returns new results to avoid flickering
 
@@ -380,6 +370,49 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     } catch (err) {
       logger.error('Failed to open folder dialog:', err);
     }
+  };
+
+  const handleAddSelectedFolders = async () => {
+    try {
+      const result = await window.electronAPI?.showOpenDialog({
+        properties: ['openDirectory', 'multiSelections'],
+        title: 'Select folders for this site'
+      });
+      if (!result || result.canceled || result.filePaths.length === 0) return;
+      setSelectedFolders(previous => [...previous, ...result.filePaths]);
+      setFolderPreflight(null);
+      setConfirmHighImpact(false);
+      if (!form.entrySiteNodeName) {
+        const name = result.filePaths[0].split(/[\\/]/).filter(Boolean).pop() || 'Folder site';
+        setForm(previous => ({
+          ...previous,
+          entrySiteNodeName: name,
+          ...(!isSlugManuallyEdited && {
+            slug: findUniqueSlug(slugFromTitle(name), existingSlugs),
+          }),
+        }));
+      }
+    } catch (err) {
+      logger.error('Failed to select site folders:', err);
+    }
+  };
+
+  const removeSelectedFolder = (index: number) => {
+    setSelectedFolders(previous => previous.filter((_folder, candidateIndex) => candidateIndex !== index));
+    setFolderPreflight(null);
+    setConfirmHighImpact(false);
+  };
+
+  const moveSelectedFolder = (index: number, direction: -1 | 1) => {
+    setSelectedFolders(previous => {
+      const target = index + direction;
+      if (target < 0 || target >= previous.length) return previous;
+      const next = [...previous];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+    setFolderPreflight(null);
+    setConfirmHighImpact(false);
   };
 
   // Search for pages in source directory
@@ -594,6 +627,48 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     }
   };
 
+  const runFolderPreflight = async (): Promise<FolderSitePreflight> => {
+    const response = await fetch(`${API_BASE_URL}/sites/folders/preflight`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sourceDirectory: form.sourceDirectory,
+        selectedFolders,
+        siteName: form.entrySiteNodeName,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Folder-site preflight failed');
+    setFolderPreflight(result as FolderSitePreflight);
+    setConfirmHighImpact(false);
+    return result as FolderSitePreflight;
+  };
+
+  const createFolderSite = async (preflight: FolderSitePreflight) => {
+    const response = await fetch(`${API_BASE_URL}/sites/folders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug: form.slug,
+        sourceDirectory: form.sourceDirectory,
+        selectedFolders,
+        siteName: form.entrySiteNodeName,
+        siteNotes: form.siteNotes,
+        fingerprint: preflight.fingerprint,
+        plan: preflight.plan,
+        confirmHighImpact,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      if (response.status === 409 && result.preflight) {
+        setFolderPreflight(result.preflight as FolderSitePreflight);
+      }
+      throw new Error(result.error || 'Failed to create folder site');
+    }
+    onSuccess(result.slug);
+  };
+
   const updateSiteWithForm = async (formData: CreateSiteForm) => {
     if (!editSite?.slug) {
       alert('No site selected to edit');
@@ -647,6 +722,24 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     setIsValidating(true);
     
     try {
+      if (mode === 'create' && entryStrategy === 'folders') {
+        if (!form.sourceDirectory) throw new Error('Please choose a source directory.');
+        if (selectedFolders.length === 0) throw new Error('Please choose at least one folder.');
+        if (!form.entrySiteNodeName.trim()) throw new Error('Please enter a site name.');
+        if (!form.slug) throw new Error('Please enter a site config folder name.');
+        if (!folderPreflight) {
+          await runFolderPreflight();
+          setIsValidating(false);
+          return;
+        }
+        if (folderPreflight.highImpactWarning && !confirmHighImpact) {
+          throw new Error('Confirm the high-impact warning before creating this site.');
+        }
+        await createFolderSite(folderPreflight);
+        setIsValidating(false);
+        return;
+      }
+
       if (!selectedInitialPage && !form.entrySiteNodeName.trim()) {
         setValidationError('Please choose an initial site page.');
         setIsValidating(false);
@@ -741,77 +834,43 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
           </div>
         )}
 
-        {/* Primary Fields */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Source Directory *
-          </label>
-          {!isSourceDirectoryManuallyEdited && form.sourceDirectory ? (
-            <div className="flex items-center space-x-2">
-              <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700 truncate" title={form.sourceDirectory}>
-                {form.sourceDirectory}
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsSourceDirectoryManuallyEdited(true);
-                }}
-                className="text-blue-600 hover:text-blue-900"
-                title="Edit manually"
-              >
-                ✏️
-              </button>
-            </div>
-          ) : (
-            <div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={form.sourceDirectory}
-                  onChange={(e) => handleFormChange('sourceDirectory', e.target.value)}
-                  placeholder="Enter a custom directory path"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelectFolder();
-                  }}
-                  className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 text-gray-700 text-sm whitespace-nowrap"
-                  title="Browse for folder"
-                >
-                  📁 Select
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Path to the directory containing your source files
-              </p>
-              {directories.length > 1 && (
-                <div className="mt-2">
-                  <label className="block text-xs text-gray-500 mb-1">
-                    Or pick from existing directories:
-                  </label>
-                  <select
-                    value=""
-                    onChange={(e) => handleFormChange('sourceDirectory', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-                  >
-                    <option value="">Select an existing directory</option>
-                    {directories.map((dir) => (
-                      <option key={dir} value={dir}>
-                        {dir}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {mode === 'create' && !findInSitesOptions && (
+          <EntryStrategyPicker
+            value={entryStrategy}
+            onChange={strategy => {
+              setEntryStrategy(strategy);
+              setFolderPreflight(null);
+              if (strategy === 'folders') {
+                setSelectedInitialPage(null);
+                setValidationError(null);
+              }
+            }}
+          />
+        )}
 
+        <SourceDirectoryField
+          value={form.sourceDirectory}
+          directories={directories}
+          isManuallyEdited={isSourceDirectoryManuallyEdited}
+          onStartManualEdit={() => setIsSourceDirectoryManuallyEdited(true)}
+          onChange={value => handleFormChange('sourceDirectory', value)}
+          onBrowse={handleSelectFolder}
+        />
+        {entryStrategy === 'folders' && (
+          <FolderSiteFields
+            siteName={form.entrySiteNodeName}
+            selectedFolders={selectedFolders}
+            preflight={folderPreflight}
+            confirmHighImpact={confirmHighImpact}
+            onSiteNameChange={handleInitialTitleChange}
+            onAddFolders={handleAddSelectedFolders}
+            onMoveFolder={moveSelectedFolder}
+            onRemoveFolder={removeSelectedFolder}
+            onConfirmHighImpactChange={setConfirmHighImpact}
+          />
+        )}
+
+        {entryStrategy === 'page' && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Initial Site Page *
@@ -894,79 +953,20 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
             </div>
           )}
         </div>
-
-        {/* More Details Toggle */}
-        <button
-          type="button"
-          onClick={() => setShowMoreDetails(!showMoreDetails)}
-          className="flex items-center text-sm text-blue-600 hover:text-blue-800"
-        >
-          <span className="mr-1">{showMoreDetails ? '▼' : '▶'}</span>
-          {showMoreDetails ? 'Hide details' : 'More details'}
-        </button>
-
-        {/* Collapsible Details Section */}
-        {showMoreDetails && (
-          <div className="space-y-4 pl-4 border-l-2 border-gray-200">
-            {mode === 'create' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Site Config Folder Name *
-                </label>
-                {!isSlugManuallyEdited ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
-                      {form.slug || 'will-be-auto-generated-from-title'}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsSlugManuallyEdited(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-900"
-                      title="Edit manually"
-                    >
-                      ✏️
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <input
-                      type="text"
-                      value={form.slug}
-                      onChange={(e) => handleFormChange('slug', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-inset ${slugConflictError ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
-                      required
-                      pattern="[a-z0-9\-]+"
-                      title="Only lowercase letters, numbers, and dashes allowed"
-                    />
-                    {slugConflictError ? (
-                      <p className="text-xs text-red-600 mt-1">{slugConflictError}</p>
-                    ) : (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Only lowercase letters, numbers, and dashes allowed
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                value={form.siteNotes}
-                onChange={(e) => handleFormChange('siteNotes', e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-                placeholder="Enter any notes about this site..."
-              />
-            </div>
-          </div>
         )}
+
+        <MoreSiteDetails
+          expanded={showMoreDetails}
+          isCreate={mode === 'create'}
+          slug={form.slug}
+          notes={form.siteNotes}
+          isSlugManuallyEdited={isSlugManuallyEdited}
+          slugConflictError={slugConflictError}
+          onToggle={() => setShowMoreDetails(!showMoreDetails)}
+          onStartSlugEdit={() => setIsSlugManuallyEdited(true)}
+          onSlugChange={value => handleFormChange('slug', value)}
+          onNotesChange={value => handleFormChange('siteNotes', value)}
+        />
 
         <div className="flex justify-end space-x-3 pt-4">
           <button
@@ -985,7 +985,11 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
             className="px-4 py-2 bg-btn-confirm-normal text-btn-confirm-text rounded hover:bg-btn-confirm-hover disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isValidating || !!slugConflictError}
           >
-            {isValidating ? 'Validating...' : (mode === 'edit' ? 'Update Site' : 'Create Site')}
+            {isValidating
+              ? 'Validating...'
+              : (mode === 'edit'
+                ? 'Update Site'
+                : (entryStrategy === 'folders' && !folderPreflight ? 'Review Folders' : 'Create Site'))}
           </button>
         </div>
       </form>

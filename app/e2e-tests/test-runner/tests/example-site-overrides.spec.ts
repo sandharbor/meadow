@@ -20,6 +20,8 @@ import { Fixture } from "../src/run/workflows.js";
 import { filters, overrides, initialPage } from "../src/scenario-docs/index.js";
 import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 test("overrides filter on example site does not include the initial page", async ({

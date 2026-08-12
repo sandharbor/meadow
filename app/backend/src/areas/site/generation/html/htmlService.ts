@@ -20,9 +20,9 @@ import { fileURLToPath } from 'url';
 import { performance } from 'perf_hooks';
 import { setTimeout as delay } from 'timers/promises';
 import { Page } from './page.js';
-import { renderPageToHtml, renderExcalidrawPageToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
+import { renderPageToHtml, renderExcalidrawPageToHtml, renderGeneratedSiteNodeToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
 import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
-import { markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
+import { calculateRelativePath, markdownContentToPageLinkFilenames, normalizePageTitle } from './shared.js';
 import {
   FolderNavigationPage,
   SiteNodeConfigMap,
@@ -41,6 +41,10 @@ import { loadAppConfig } from '../../../../../../shared_code/utils/appConfigUtil
 import { resolveEffectiveGenerationOptions } from '../../../../../../shared_code/utils/generationOptionsUtils.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISiteNode.js';
+import type { ISiteNode } from '../../../../../../shared_code/types/ISiteNode.js';
+import type { IEdge } from '../../../../../../shared_code/types/graph.js';
+import type { SiteNodeId, SiteNodeKey } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { buildVisibleStructuralProjection, type VisibleStructuralProjection } from '../../../../../../shared_code/utils/structuralProjection.js';
 import { hashAndRenameStaticAssets, type PrecompressedAssetSource } from './staticAssets.js';
 import { createRequire } from 'module';
 
@@ -86,6 +90,7 @@ import {
   SOURCES_EXPORT_ASSETS_DIRECTORY,
   SPACED_REPETITION_ASSETS_DIRECTORY,
 } from '../customizationAssets.js';
+import { planSiteRoutes, routeForSiteNode } from './siteRoutePlanner.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -357,8 +362,26 @@ export function loadSiteNodeConfigMap(siteNodeConfigFile: string): SiteNodeConfi
 }
 
 type RustLinkResolvedInfo = { link_resolved_target_directory: string; link_resolved_target_path: string | null };
-type RustNode = { siteNodeKey: string; path?: string[] };
-type RustOutput = { nodes: RustNode[]; allLinkResolutionMaps?: Record<string, Record<string, RustLinkResolvedInfo>> };
+type RustNode = {
+  siteNodeKey: string;
+  siteNodeId?: string;
+  siteNodeKind: 'file' | 'folder' | 'collection';
+  siteNodeName: string;
+  sourceGraphSubdirectory?: string;
+  fileType?: FileType;
+  memberSiteNodeIds?: string[];
+  effectiveBlacklistingSiteNodeId?: string;
+  depth: number;
+  remaining_depth: number;
+  remaining_inlinks_depth?: number;
+  path?: string[];
+};
+type RustEdge = { source: string; target: string; siteEdgeKind: IEdge['siteEdgeKind']; isBidirectional?: boolean };
+type RustOutput = {
+  nodes: RustNode[];
+  edges: RustEdge[];
+  allLinkResolutionMaps?: Record<string, Record<string, RustLinkResolvedInfo>>;
+};
 
 async function loadWorkingGraphData(options: {
   graphRoot: string;
@@ -369,6 +392,8 @@ async function loadWorkingGraphData(options: {
   breadcrumbPaths: { [pageKey: string]: string[] };
   allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>>;
   traversablePageKeys: Set<string>;
+  graphNodes: ISiteNode[];
+  graphEdges: IEdge[];
 }> {
   const {
     graphRoot,
@@ -380,9 +405,11 @@ async function loadWorkingGraphData(options: {
   const breadcrumbPaths: { [pageKey: string]: string[] } = {};
   let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
   const traversablePageKeys: Set<string> = new Set();
+  let graphNodes: ISiteNode[] = [];
+  let graphEdges: IEdge[] = [];
 
   if (!siteConfig.entrySiteNodeId || !siteConfig.defaultTraversalSiteNodeId) {
-    return { breadcrumbPaths, allLinkResolutionMaps, traversablePageKeys };
+    return { breadcrumbPaths, allLinkResolutionMaps, traversablePageKeys, graphNodes, graphEdges };
   }
 
   const raw = await runWorkingGraphRaw({
@@ -397,6 +424,30 @@ async function loadWorkingGraphData(options: {
     allowLowerDepths: false,
   });
   const output = JSON.parse(raw) as RustOutput;
+
+  graphNodes = output.nodes.map(node => {
+    const common = {
+      siteNodeKey: node.siteNodeKey as SiteNodeKey,
+      ...(node.siteNodeId && { siteNodeId: node.siteNodeId as SiteNodeId }),
+      label: node.siteNodeName,
+      siteNodeName: node.siteNodeName,
+      depth: node.depth,
+      remaining_depth: node.remaining_depth,
+      remaining_inlinks_depth: node.remaining_inlinks_depth,
+      path: node.path,
+      ...(node.effectiveBlacklistingSiteNodeId && { effectiveBlacklistingSiteNodeId: node.effectiveBlacklistingSiteNodeId as SiteNodeId }),
+      getIdent: () => node.siteNodeKey,
+    };
+    if (node.siteNodeKind === 'collection') {
+      return { ...common, siteNodeKind: 'collection', memberSiteNodeIds: (node.memberSiteNodeIds ?? []) as SiteNodeId[] };
+    }
+    if (node.siteNodeKind === 'folder') {
+      return { ...common, siteNodeKind: 'folder', sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '' };
+    }
+    if (!node.fileType) throw new Error(`Working graph file node ${node.siteNodeKey} has no fileType`);
+    return { ...common, siteNodeKind: 'file', sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '', fileType: node.fileType };
+  });
+  graphEdges = (output.edges ?? []).map(edge => ({ ...edge }));
 
   allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
 
@@ -414,7 +465,7 @@ async function loadWorkingGraphData(options: {
     }
   }
 
-  return { breadcrumbPaths, allLinkResolutionMaps, traversablePageKeys };
+  return { breadcrumbPaths, allLinkResolutionMaps, traversablePageKeys, graphNodes, graphEdges };
 }
 
 export async function generateHtmlForSite(
@@ -511,6 +562,7 @@ export async function generateHtmlForSite(
     siteConfig,
     SiteConfigPaths.getSiteConfigFile(siteDirectory),
   );
+  const routePlan = planSiteRoutes(siteNodeConfigsArray, siteConfig, siteSlug || undefined);
 
   if (generationOptions.spacedRepetitionEnabled) {
     try {
@@ -543,7 +595,7 @@ export async function generateHtmlForSite(
   // Filter for whitelisted markdown pages only (we only render HTML for markdown files)
   const whitelistedMdPageKeys = Object.keys(siteNodeConfs).filter(key => {
     const conf = siteNodeConfs[key];
-    return conf.listType === 'whitelist' && (conf.fileType === 'md' || !conf.fileType);
+    return conf.siteNodeKind === 'file' && conf.listType === 'whitelist' && conf.fileType === 'md';
   });
 
   const entryNodeName = entryNode.siteNodeName;
@@ -555,6 +607,8 @@ export async function generateHtmlForSite(
   // which contains only publishable traversable files with unsafe links removed.
   let scrubbedTraversablePageKeys: Set<string> = new Set();
   let scrubbedAllLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
+  let sourceStructuralProjection: VisibleStructuralProjection | null = null;
+  let sourceGraphNodes: ISiteNode[] = [];
   try {
     emitProgress({ stage: 'preparing', message: 'Preparing scrubbed source content...' });
     const sourceGraphData = await timeAsync(
@@ -569,10 +623,19 @@ export async function generateHtmlForSite(
     );
     scrubbedTraversablePageKeys = sourceGraphData.traversablePageKeys;
     scrubbedAllLinkResolutionMaps = sourceGraphData.allLinkResolutionMaps;
+    sourceGraphNodes = sourceGraphData.graphNodes;
+    if (routePlan.folderDerived) {
+      sourceStructuralProjection = buildVisibleStructuralProjection(
+        sourceGraphData.graphNodes,
+        sourceGraphData.graphEdges,
+        siteNodeConfigsArray,
+        siteConfig.entrySiteNodeId!,
+      );
+    }
 
     const siteNodeConfigsArrayForScrubbing = siteNodeConfigsArray.filter(conf => {
       const key = siteNodeConfigToKey(conf);
-      return scrubbedTraversablePageKeys.has(key);
+      return conf.siteNodeKind === 'file' && scrubbedTraversablePageKeys.has(key);
     });
 
     timeSync('site.generation.stage', { ...timingLabels, stage: 'prepare_scrubbed_source' }, () => {
@@ -587,6 +650,7 @@ export async function generateHtmlForSite(
     });
     logger.debug(`Prepared scrubbed source content at ${scrubbedSourceContentDirectory}`);
   } catch (err) {
+    if (routePlan.folderDerived) throw err;
     logger.warn(`Could not prepare scrubbed source content (will render an empty publishable set): ${err instanceof Error ? err.message : String(err)}`);
     timeSync('site.generation.stage', { ...timingLabels, stage: 'prepare_empty_scrubbed_source' }, () => {
       prepareScrubbedSourceDirectory(
@@ -845,6 +909,8 @@ export async function generateHtmlForSite(
   let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
   // Track which pages are reachable via traversal - only these should have HTML generated
   let traversablePageKeys: Set<string> = new Set();
+  let renderGraphNodes: ISiteNode[] = [];
+  let structuralProjection: VisibleStructuralProjection | null = sourceStructuralProjection;
 
   // Generation only reads the scrubbed source directory from here on.
   // Re-run traversal after scrubbing so breadcrumbs, rendering, and exports
@@ -867,6 +933,20 @@ export async function generateHtmlForSite(
     breadcrumbPaths = renderGraphData.breadcrumbPaths;
     allLinkResolutionMaps = renderGraphData.allLinkResolutionMaps;
     traversablePageKeys = renderGraphData.traversablePageKeys;
+    renderGraphNodes = renderGraphData.graphNodes;
+    if (routePlan.folderDerived) {
+      structuralProjection = buildVisibleStructuralProjection(
+        renderGraphData.graphNodes,
+        renderGraphData.graphEdges,
+        siteNodeConfigsArray,
+        siteConfig.entrySiteNodeId!,
+      );
+      for (const [nodeKey, structuralPath] of structuralProjection.breadcrumbNodeKeysByNodeKey) {
+        breadcrumbPaths[nodeKey] = structuralPath
+          .map(key => renderGraphData.graphNodes.find(node => node.siteNodeKey === key)?.siteNodeName)
+          .filter((name): name is string => Boolean(name));
+      }
+    }
 
     logger.debug(`Loaded link resolution maps for ${allLinkResolutionMaps.size} pages from working_graph`);
     if (breadcrumbsEnabled) {
@@ -874,6 +954,7 @@ export async function generateHtmlForSite(
     }
     logger.debug(`Found ${traversablePageKeys.size} traversable pages (only these will have HTML generated)`);
   } catch (err) {
+    if (routePlan.folderDerived) throw err;
     logger.warn(`Could not load working_graph data for link resolution and breadcrumbs (will proceed without it): ${err instanceof Error ? err.message : String(err)}`);
   }
 
@@ -956,6 +1037,15 @@ export async function generateHtmlForSite(
   if (generationOptions.openKnowledgeFormatEnabled) {
     try {
       await timeAsync('site.generation.stage', { ...timingLabels, stage: 'open_knowledge_format' }, async () => {
+        const entryRuntimeKey = siteNodeConfigToKey(entryNode);
+        const entryChildren = sourceStructuralProjection?.childrenByNodeKey.get(entryRuntimeKey as SiteNodeKey) ?? [];
+        const generatedIndexMarkdown = entryNode.siteNodeKind === 'file'
+          ? undefined
+          : `---\nokf_version: "0.1"\n---\n\n# ${entryNode.siteNodeName}\n\n${entryChildren
+              .map(childKey => sourceGraphNodes.find(node => node.siteNodeKey === childKey))
+              .filter((node): node is ISiteNode => Boolean(node))
+              .map(node => `- ${node.siteNodeName}`)
+              .join('\n')}\n`;
         const result = await generatePublishedOpenKnowledgeFormatArtifacts({
           siteDirectory,
           assetsDirectory,
@@ -966,6 +1056,7 @@ export async function generateHtmlForSite(
           entrySourceGraphSubdirectory: entryNodeSourceGraphSubdirectory,
           indexSource: openKnowledgeFormatIndexSourceFromSiteConfig(siteConfig),
           logSource: openKnowledgeFormatLogSourceFromSiteConfig(siteConfig),
+          generatedIndexMarkdown,
           archiveRootDirectory: getArtifactArchiveSlug(siteDirectory, siteConfig),
         });
         if (result.enabled) {
@@ -994,7 +1085,7 @@ export async function generateHtmlForSite(
   const traversableLinkScanPageKeys = Object.keys(siteNodeConfs).filter(pageKey => {
     const conf = siteNodeConfs[pageKey];
     const ft = conf.fileType;
-    const isScannable = ft === 'md' || ft === undefined || ft === 'excalidraw';
+    const isScannable = conf.siteNodeKind === 'file' && (ft === 'md' || ft === 'excalidraw');
     return isScannable && conf.listType === 'whitelist' && traversablePageKeys.has(pageKey);
   });
   for (const pageKey of traversableLinkScanPageKeys) {
@@ -1073,14 +1164,42 @@ export async function generateHtmlForSite(
     const conf = siteNodeConfs[key];
     return conf.listType === 'whitelist' && conf.fileType === 'excalidraw' && traversablePageKeys.has(key);
   });
-  const traversableRenderablePageKeys = [...traversableMdPageKeys, ...traversableExcalidrawPageKeys];
+  const traversableStructuralPageKeys = Object.keys(siteNodeConfs).filter(key => {
+    const conf = siteNodeConfs[key];
+    return conf.siteNodeKind !== 'file' && conf.listType === 'whitelist' && traversablePageKeys.has(key);
+  });
+  const traversableRenderablePageKeys = [
+    ...traversableStructuralPageKeys,
+    ...traversableMdPageKeys,
+    ...traversableExcalidrawPageKeys,
+  ];
   const folderNavigationPages: FolderNavigationPage[] = generationOptions.folderNavigationEnabled
     ? [...new Map(traversableRenderablePageKeys.map(pageKey => {
         const conf = siteNodeConfs[pageKey];
-        const directory = conf.sourceGraphSubdirectory || '';
         const normalizedTitle = normalizePageTitle(conf.siteNodeName, siteConfig, siteSlug || undefined);
-        const outputPath = directory ? `${directory}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
-        return [outputPath, { directory, normalizedTitle, outputPath }] as const;
+        if (!routePlan.folderDerived) {
+          const directory = conf.sourceGraphSubdirectory || '';
+          const outputPath = directory ? `${directory}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
+          return [outputPath, { directory, normalizedTitle, outputPath }] as const;
+        }
+        const outputPath = routeForSiteNode(conf, routePlan.routes);
+        const directory = path.posix.dirname(outputPath) === '.' ? '' : path.posix.dirname(outputPath);
+        const runtimeNode = renderGraphNodes.find(node => node.siteNodeId === conf.siteNodeId);
+        const parentKey = runtimeNode && structuralProjection
+          ? structuralProjection.parentByNodeKey.get(runtimeNode.siteNodeKey)
+          : undefined;
+        const parentSiteNodeId = parentKey
+          ? renderGraphNodes.find(node => node.siteNodeKey === parentKey)?.siteNodeId
+          : undefined;
+        return [outputPath, {
+          directory,
+          normalizedTitle,
+          outputPath,
+          siteNodeId: conf.siteNodeId,
+          parentSiteNodeId,
+          siteNodeKind: conf.siteNodeKind,
+          isEntry: conf.siteNodeId === entryNode.siteNodeId,
+        }] as const;
       })).values()]
     : [];
   const folderNavigationStorageKey = `meadow-folder-nav:${siteConfig.siteGuid || siteSlug || 'site'}`;
@@ -1126,10 +1245,7 @@ export async function generateHtmlForSite(
     const targetPath = decodeURIComponent(options.startPagePath);
     startPageKey = traversableRenderablePageKeys.find(k => {
       const c = siteNodeConfs[k];
-      const normalizedName = normalizePageTitle(c.siteNodeName, siteConfig, siteSlug || undefined);
-      const subdir = c.sourceGraphSubdirectory || '';
-      const expectedPath = subdir ? `${subdir}/${normalizedName}.html` : `${normalizedName}.html`;
-      return expectedPath === targetPath;
+      return routeForSiteNode(c, routePlan.routes) === targetPath;
     });
   }
 
@@ -1147,8 +1263,11 @@ export async function generateHtmlForSite(
   const excalidrawRenderOrder: string[] = startPageKey && traversableExcalidrawPageKeys.includes(startPageKey)
     ? [startPageKey, ...traversableExcalidrawPageKeys.filter(k => k !== startPageKey)]
     : [...traversableExcalidrawPageKeys];
+  const structuralRenderOrder: string[] = startPageKey && traversableStructuralPageKeys.includes(startPageKey)
+    ? [startPageKey, ...traversableStructuralPageKeys.filter(key => key !== startPageKey)]
+    : [...traversableStructuralPageKeys];
 
-  const totalToRender = mdRenderOrder.length + excalidrawRenderOrder.length;
+  const totalToRender = structuralRenderOrder.length + mdRenderOrder.length + excalidrawRenderOrder.length;
   let renderedOrSkipped = 0;
   let lastPercent = -1;
   emitProgress({ stage: 'rendering-pages', message: `Rendering HTML pages...`, current: 0, total: totalToRender, percent: 0 });
@@ -1156,6 +1275,31 @@ export async function generateHtmlForSite(
   const allCollectedSrsCards: Array<CollectedSrsCard & { pageId: string; pageTitle: string }> = [];
 
   let startPageRenderedEmitted = false;
+  const renderNodeByKey = new Map(renderGraphNodes.map(node => [node.siteNodeKey, node]));
+  const configById = new Map(siteNodeConfigsArray.map(config => [config.siteNodeId, config]));
+
+  const outputDirectoryForRoute = (route: string): string => {
+    const directory = path.posix.dirname(route);
+    return directory === '.' ? '' : directory;
+  };
+
+  const structuralBreadcrumbHtml = (siteNodeKey: SiteNodeKey, currentRoute: string): string => {
+    if (!breadcrumbsEnabled || !structuralProjection) return '';
+    const keys = structuralProjection.breadcrumbNodeKeysByNodeKey.get(siteNodeKey) ?? [];
+    if (keys.length <= 1) return '';
+    const currentDirectory = outputDirectoryForRoute(currentRoute);
+    const items = keys.map((key, index) => {
+      const node = renderNodeByKey.get(key);
+      if (!node) return '';
+      const label = escapeHtml(node.siteNodeName);
+      if (index === keys.length - 1) return `<span class="breadcrumb-current">${label}</span>`;
+      const config = node.siteNodeId ? configById.get(node.siteNodeId) : undefined;
+      if (!config) return '';
+      const href = encodePathForUrl(calculateRelativePath(currentDirectory, routeForSiteNode(config, routePlan.routes)));
+      return `<a href="${href}" class="breadcrumb-link">${label}</a>`;
+    }).filter(Boolean);
+    return `<nav class="breadcrumbs" aria-label="Breadcrumb">${items.join('<span class="breadcrumb-separator">→</span>')}</nav>`;
+  };
 
   const emitRenderProgressIfChanged = () => {
     const percent = totalToRender > 0 ? Math.floor((renderedOrSkipped / totalToRender) * 100) : 100;
@@ -1171,27 +1315,81 @@ export async function generateHtmlForSite(
     }
   };
 
+  for (const pageKey of structuralRenderOrder) {
+    if (options.shouldCancel?.()) break;
+    const config = siteNodeConfs[pageKey];
+    const node = renderNodeByKey.get(pageKey as SiteNodeKey);
+    if (!node || !structuralProjection) {
+      throw new Error(`Cannot render structural site node ${pageKey}: visible projection is unavailable`);
+    }
+    const outputRoute = routeForSiteNode(config, routePlan.routes);
+    const outputDirectory = outputDirectoryForRoute(outputRoute);
+    const children = (structuralProjection.childrenByNodeKey.get(node.siteNodeKey) ?? [])
+      .map(childKey => renderNodeByKey.get(childKey))
+      .filter((child): child is ISiteNode => Boolean(child?.siteNodeId && configById.has(child.siteNodeId)));
+    const childItems = children.map(child => {
+      const childConfig = configById.get(child.siteNodeId!)!;
+      const href = encodePathForUrl(calculateRelativePath(outputDirectory, routeForSiteNode(childConfig, routePlan.routes)));
+      const kind = child.siteNodeKind === 'folder' ? 'folder' : child.siteNodeKind === 'collection' ? 'site home' : 'page';
+      return `<li class="structural-child structural-child-${child.siteNodeKind}"><a href="${href}">${escapeHtml(child.siteNodeName)}</a><span class="structural-child-kind">${kind}</span></li>`;
+    });
+    const bodyHtml = `<h1>${escapeHtml(config.siteNodeName)}</h1>`
+      + (childItems.length > 0
+        ? `<ul class="structural-children">${childItems.join('')}</ul>`
+        : '<p class="structural-empty">This folder is empty.</p>');
+    const htmlPath = renderGeneratedSiteNodeToHtml({
+      outputRoot: previewHtmlDirectory,
+      outputRoute,
+      pageTitle: config.siteNodeName,
+      bodyHtml,
+      breadcrumbHtml: structuralBreadcrumbHtml(pageKey as SiteNodeKey, outputRoute),
+      staticAssetNames,
+      siteConfig,
+      siteSlug: siteSlug || undefined,
+      sourcesExportEnabled,
+      openKnowledgeFormatEnabled,
+      searchEnabled: generationOptions.searchEnabled,
+      hoverPreviewEnabled: generationOptions.hoverPreviewEnabled,
+      folderNavigation: generationOptions.folderNavigationEnabled ? { storageKey: folderNavigationStorageKey } : undefined,
+    });
+    if (!startPageRenderedEmitted) {
+      const isStart = startPageKey ? pageKey === startPageKey : renderedOrSkipped === 0;
+      if (isStart && await waitForFileExists(htmlPath)) {
+        startPageRenderedEmitted = true;
+        options.onStartPageRendered?.({
+          title: config.siteNodeName,
+          directory: config.sourceGraphSubdirectory ?? '',
+          relativeHtmlPath: outputRoute,
+        });
+      }
+    }
+    renderedOrSkipped += 1;
+    emitRenderProgressIfChanged();
+    await delay(AFTER_HTML_GENERATION_PAUSE_MS);
+  }
+
   const renderStandaloneExcalidrawPage = async (pageKey: string) => {
     const conf = siteNodeConfs[pageKey];
     const subdir = conf.sourceGraphSubdirectory || '';
+    const outputRoute = routeForSiteNode(conf, routePlan.routes);
+    const outputDirectory = outputDirectoryForRoute(outputRoute);
     // Obsidian Excalidraw drawings live on disk as `<title>.excalidraw.md`.
     const sourceMdPath = subdir
       ? path.join(renderContentDirectory, subdir, `${conf.siteNodeName}.excalidraw.md`)
       : path.join(renderContentDirectory, `${conf.siteNodeName}.excalidraw.md`);
 
-    const outputSubdir = subdir
-      ? path.join(previewHtmlDirectory, subdir)
+    const outputSubdir = outputDirectory
+      ? path.join(previewHtmlDirectory, ...outputDirectory.split('/'))
       : previewHtmlDirectory;
-    if (subdir && !fs.existsSync(outputSubdir)) {
+    if (outputDirectory && !fs.existsSync(outputSubdir)) {
       fs.mkdirSync(outputSubdir, { recursive: true });
     }
 
-    const normalizedOutputFilename = normalizePageTitle(conf.siteNodeName, siteConfig, siteSlug || undefined);
+    const normalizedOutputFilename = path.posix.basename(outputRoute, '.html');
 
     // Build breadcrumb HTML inline using the same lookup as renderPageToHtml.
     const breadcrumbPath = breadcrumbPaths[pageKey] || [];
-    const isEntryNode = conf.siteNodeName === entryNodeName &&
-      (conf.sourceGraphSubdirectory || '') === entryNodeSourceGraphSubdirectory;
+    const isEntryNode = conf.siteNodeId === entryNode.siteNodeId;
     const showBreadcrumbs = breadcrumbsEnabled && !isEntryNode && breadcrumbPath.length > 1;
     let breadcrumbHtml = '';
     if (showBreadcrumbs) {
@@ -1203,12 +1401,18 @@ export async function generateHtmlForSite(
         if (isLast) {
           items.push(`<span class="breadcrumb-current">${normTitle}</span>`);
         } else {
-          const bcConf = siteNodeConfigsArrayForLinks.find(c => c.siteNodeName === t);
+          const structuralKey = structuralProjection?.breadcrumbNodeKeysByNodeKey.get(pageKey as SiteNodeKey)?.[i];
+          const structuralNodeId = structuralKey ? renderNodeByKey.get(structuralKey)?.siteNodeId : undefined;
+          const bcConf = structuralNodeId
+            ? siteNodeConfigsArrayForLinks.find(c => c.siteNodeId === structuralNodeId)
+            : siteNodeConfigsArrayForLinks.find(c => c.siteNodeName === t);
           const bcDir = bcConf?.sourceGraphSubdirectory || '';
           const encoded = encodeURIComponent(normTitle);
-          const targetPath = bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`;
+          const targetPath = routePlan.folderDerived && bcConf && routePlan.routes.has(bcConf.siteNodeId)
+            ? routeForSiteNode(bcConf, routePlan.routes)
+            : (bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`);
           // Compute a relative href from this excalidraw page's directory.
-          const fromDir = subdir;
+          const fromDir = outputDirectory;
           const fromParts = fromDir ? fromDir.split('/').filter(Boolean) : [];
           const toParts = targetPath.split('/');
           let common = 0;
@@ -1229,6 +1433,8 @@ export async function generateHtmlForSite(
           siteNodeConfigsArrayForLinks,
           siteConfig,
           siteSlug || undefined,
+          routePlan.folderDerived ? routePlan.routes : undefined,
+          outputDirectory,
         )
       : '';
 
@@ -1249,11 +1455,13 @@ export async function generateHtmlForSite(
     const excalidrawIdent = subdir ? `${subdir}/${conf.siteNodeName}.excalidraw` : `/${conf.siteNodeName}.excalidraw`;
     const { tracked: clientLinkMap, untracked: clientUntrackedLinks } = buildExcalidrawClientLinkData({
       excalidrawPageIdent: excalidrawIdent,
-      hostPageDirectory: subdir,
+      hostPageDirectory: outputDirectory,
       siteNodeConfigs: siteNodeConfigsArrayForLinks,
       allLinkResolutionMaps,
       siteConfig,
       siteSlug: siteSlug || undefined,
+      routeTable: routePlan.folderDerived ? routePlan.routes : undefined,
+      hostOutputDirectory: routePlan.folderDerived ? outputDirectory : undefined,
     });
     const { tracked: clientEmbeddedFileMap, untracked: clientUntrackedEmbeddedFiles } = buildExcalidrawClientEmbeddedFileData({
       excalidrawPageIdent: excalidrawIdent,
@@ -1274,7 +1482,7 @@ export async function generateHtmlForSite(
       outputFolder: outputSubdir,
       outputFilename: normalizedOutputFilename,
       pageTitle: normalizedOutputFilename,
-      currentPageDirectory: subdir,
+      currentPageDirectory: outputDirectory,
       drawingMdHref,
       clientLinkMap,
       clientUntrackedLinks,
@@ -1297,7 +1505,7 @@ export async function generateHtmlForSite(
         const fileExists = await waitForFileExists(htmlPath);
         if (fileExists) {
           startPageRenderedEmitted = true;
-          const relativeHtmlPath = subdir ? `${subdir}/${normalizedOutputFilename}.html` : `${normalizedOutputFilename}.html`;
+          const relativeHtmlPath = outputRoute;
           try {
             options.onStartPageRendered?.({ title: conf.siteNodeName, directory: subdir, relativeHtmlPath });
           } catch (err) {
@@ -1336,6 +1544,8 @@ export async function generateHtmlForSite(
     
     const conf = siteNodeConfs[pageKey];
     const subdir = conf.sourceGraphSubdirectory || '';
+    const outputRoute = routeForSiteNode(conf, routePlan.routes);
+    const outputDirectory = outputDirectoryForRoute(outputRoute);
     const pageContentPath = subdir 
       ? path.join(renderContentDirectory, subdir, `${conf.siteNodeName}.md`)
       : path.join(renderContentDirectory, `${conf.siteNodeName}.md`);
@@ -1348,13 +1558,13 @@ export async function generateHtmlForSite(
     }
     
     // Normalize the output filename to match how links are normalized
-    const normalizedOutputFilename = normalizePageTitle(conf.siteNodeName, siteConfig, siteSlug || undefined);
+    const normalizedOutputFilename = path.posix.basename(outputRoute, '.html');
     
     // Create output subdirectory if needed
-    const outputSubdir = subdir 
-      ? path.join(previewHtmlDirectory, subdir)
+    const outputSubdir = outputDirectory
+      ? path.join(previewHtmlDirectory, ...outputDirectory.split('/'))
       : previewHtmlDirectory;
-    if (subdir && !fs.existsSync(outputSubdir)) {
+    if (outputDirectory && !fs.existsSync(outputSubdir)) {
       fs.mkdirSync(outputSubdir, { recursive: true });
     }
     
@@ -1370,8 +1580,7 @@ export async function generateHtmlForSite(
 
     // Determine if this is the initial page (no breadcrumbs for initial page)
     // Match by title AND directory to handle duplicate titles correctly
-    const isEntryNode = conf.siteNodeName === entryNodeName &&
-      (conf.sourceGraphSubdirectory || '') === entryNodeSourceGraphSubdirectory;
+    const isEntryNode = conf.siteNodeId === entryNode.siteNodeId;
     // Look up breadcrumb path by pageKey to handle duplicate titles correctly
     const breadcrumbPath = breadcrumbPaths[pageKey] || [];
     
@@ -1399,6 +1608,11 @@ export async function generateHtmlForSite(
         showBreadcrumbs,
         showHoverPreview: generationOptions.hoverPreviewEnabled,
         breadcrumbPath,
+        breadcrumbSiteNodeIds: routePlan.folderDerived ? structuralProjection?.breadcrumbNodeKeysByNodeKey.get(pageKey as SiteNodeKey)
+          ?.map(key => renderNodeByKey.get(key)?.siteNodeId)
+          .filter((id): id is SiteNodeId => Boolean(id)) ?? [] : [],
+        routeTable: routePlan.folderDerived ? routePlan.routes : undefined,
+        currentOutputDirectory: outputDirectory,
         entryNodeName,
         staticAssetNames,
         sourcesExportEnabled,
@@ -1410,7 +1624,7 @@ export async function generateHtmlForSite(
         } : undefined,
       },
       siteSlug || undefined,
-      subdir,  // current page's source directory (for relative path calculations)
+      subdir,  // current page's source directory
       renderContentDirectory,  // base content directory for image lookups
       previewHtmlDirectory,  // base output directory for image output
       linkResolutionMap,
@@ -1422,7 +1636,7 @@ export async function generateHtmlForSite(
     }
 
     if (generationOptions.spacedRepetitionEnabled && srsCards.length > 0) {
-      const srsPageId = subdir ? `${subdir}/${normalizedOutputFilename}.html` : `${normalizedOutputFilename}.html`;
+      const srsPageId = outputRoute;
       for (const card of srsCards) {
         allCollectedSrsCards.push({
           ...card,
@@ -1441,7 +1655,7 @@ export async function generateHtmlForSite(
         const fileExists = await waitForFileExists(htmlPath);
         if (fileExists) {
           startPageRenderedEmitted = true;
-          const relativeHtmlPath = subdir ? `${subdir}/${normalizedOutputFilename}.html` : `${normalizedOutputFilename}.html`;
+          const relativeHtmlPath = outputRoute;
           try {
             options.onStartPageRendered?.({ title: conf.siteNodeName, directory: subdir, relativeHtmlPath });
           } catch (err) {

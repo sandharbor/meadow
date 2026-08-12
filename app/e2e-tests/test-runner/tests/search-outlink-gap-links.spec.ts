@@ -25,6 +25,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { search, labels, linkGap, callout, links } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("search for outlink gap page, inspect links, and navigate via inlink", async ({
   page,
   snapshot,

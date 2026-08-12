@@ -23,6 +23,8 @@ import { bigSite } from "../src/site-docs/index.js";
 const EXPECTED_ORPHAN_COUNT = 13;
 const CHILD_OF_BLACKLISTED = "t007 ---- child of blacklisted page";
 
+test.use({ siteMode: "single-file" });
+
 test("Callout banner warns about orphaned pages in site config", async ({
   page,
   snapshot,

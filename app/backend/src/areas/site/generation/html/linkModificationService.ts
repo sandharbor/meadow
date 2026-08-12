@@ -25,6 +25,7 @@ import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.j
 import { extractContentWithoutPagespecs, hasPagespecsBlock } from '../../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { IMAGE_FILE_TYPES } from './constants.js';
+import type { SiteRouteTable } from './siteRoutePlanner.js';
 
 interface ResolvedTarget {
   directory: string;
@@ -58,6 +59,8 @@ export function resolveTrackedLinkHref(args: {
   siteConfig?: SiteConfig;
   siteSlug?: string;
   targetUrlMode?: 'rendered-page' | 'source-file';
+  routeTable?: SiteRouteTable;
+  hostOutputDirectory?: string;
 }): string | null {
   const { resolved, hostPageDirectory, siteNodeConfigs, siteConfig, siteSlug } = args;
   const targetUrlMode = args.targetUrlMode ?? 'rendered-page';
@@ -73,11 +76,15 @@ export function resolveTrackedLinkHref(args: {
   const targetExt = targetFilename.slice(dotIdx + 1).toLowerCase();
 
   const cfg = siteNodeConfigs.find(c =>
-    c.siteNodeName === targetTitle &&
+    c.siteNodeKind === 'file' && c.siteNodeName === targetTitle &&
     (c.sourceGraphSubdirectory || '') === targetDir &&
     (c.fileType || 'md') === targetExt
   );
   if (!cfg || cfg.listType !== 'whitelist') return null;
+
+  if (targetUrlMode === 'rendered-page' && args.routeTable?.has(cfg.siteNodeId)) {
+    return encodePathForUrl(calculateRelativePath(args.hostOutputDirectory ?? hostPageDirectory, args.routeTable.get(cfg.siteNodeId)!));
+  }
 
   let urlFilename: string;
   if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'excalidraw')) {
@@ -175,6 +182,8 @@ export function buildExcalidrawClientLinkData(args: {
   allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
   siteConfig?: SiteConfig;
   siteSlug?: string;
+  routeTable?: SiteRouteTable;
+  hostOutputDirectory?: string;
 }): { tracked: Record<string, ExcalidrawTrackedLink>; untracked: string[] } {
   const { excalidrawPageIdent, hostPageDirectory, siteNodeConfigs, allLinkResolutionMaps, siteConfig, siteSlug } = args;
   const tracked: Record<string, ExcalidrawTrackedLink> = {};
@@ -195,6 +204,8 @@ export function buildExcalidrawClientLinkData(args: {
       siteNodeConfigs,
       siteConfig,
       siteSlug,
+      routeTable: args.routeTable,
+      hostOutputDirectory: args.hostOutputDirectory,
     });
     if (href) {
       const entry: ExcalidrawTrackedLink = { href };
@@ -352,7 +363,7 @@ export function isLinkTracked(
     const imageNameWithoutExt = imageName.replace(/\.[^.]+$/, '');
     const imageExt = imageName.replace(/^.*\./, '');
     let imageConfig = siteNodeConfigs.find(siteNodeConfig =>
-      siteNodeConfig.siteNodeName === imageNameWithoutExt &&
+      siteNodeConfig.siteNodeKind === 'file' && siteNodeConfig.siteNodeName === imageNameWithoutExt &&
       siteNodeConfig.fileType === imageExt &&
       (siteNodeConfig.sourceGraphSubdirectory || '') === (imageSourceDir || '')
     );
@@ -364,7 +375,7 @@ export function isLinkTracked(
       const lastSlash = originalImageFilename.lastIndexOf('/');
       const explicitDir = originalImageFilename.substring(0, lastSlash);
       imageConfig = siteNodeConfigs.find(siteNodeConfig =>
-        siteNodeConfig.siteNodeName === imageNameWithoutExt &&
+        siteNodeConfig.siteNodeKind === 'file' && siteNodeConfig.siteNodeName === imageNameWithoutExt &&
         siteNodeConfig.fileType === imageExt &&
         (siteNodeConfig.sourceGraphSubdirectory || '') === explicitDir
       );
@@ -375,7 +386,7 @@ export function isLinkTracked(
     // Mirrors the page-link fallback logic.
     if (!imageConfig && !originalImageFilename.includes('/')) {
       imageConfig = siteNodeConfigs.find(siteNodeConfig =>
-        siteNodeConfig.siteNodeName === imageNameWithoutExt &&
+        siteNodeConfig.siteNodeKind === 'file' && siteNodeConfig.siteNodeName === imageNameWithoutExt &&
         siteNodeConfig.fileType === imageExt
       );
     }
@@ -390,7 +401,7 @@ export function isLinkTracked(
     );
 
     let linkConfig = siteNodeConfigs.find(siteNodeConfig =>
-      siteNodeConfig.siteNodeName === resolvedTitle &&
+      siteNodeConfig.siteNodeKind === 'file' && siteNodeConfig.siteNodeName === resolvedTitle &&
       (siteNodeConfig.sourceGraphSubdirectory || '') === targetPageDirectory &&
       (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
     );
@@ -404,7 +415,7 @@ export function isLinkTracked(
       const lastSlash = originalLinkFilename.lastIndexOf('/');
       const explicitDir = originalLinkFilename.substring(0, lastSlash);
       linkConfig = siteNodeConfigs.find(siteNodeConfig =>
-        siteNodeConfig.siteNodeName === resolvedTitle &&
+        siteNodeConfig.siteNodeKind === 'file' && siteNodeConfig.siteNodeName === resolvedTitle &&
         (siteNodeConfig.sourceGraphSubdirectory || '') === explicitDir &&
         (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
       );
@@ -414,7 +425,7 @@ export function isLinkTracked(
     // may live in a subdirectory).
     if (!linkConfig && !linkHasExplicitPath) {
       linkConfig = siteNodeConfigs.find(siteNodeConfig =>
-        siteNodeConfig.siteNodeName === resolvedTitle &&
+        siteNodeConfig.siteNodeKind === 'file' && siteNodeConfig.siteNodeName === resolvedTitle &&
         (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
       );
     }
@@ -440,6 +451,8 @@ export interface LinkOrImageHtmlOptions {
   linkResolutionMap?: Record<string, LinkResolvedInfo>;  // Pre-computed link resolution map
   allLinkResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>;
   excalidrawEmbedOptions?: ExcalidrawEmbedOptions;
+  routeTable?: SiteRouteTable;
+  currentOutputDirectory?: string;
 }
 
 export function linkOrImageHtml(
@@ -462,6 +475,8 @@ export function linkOrImageHtml(
     linkResolutionMap,
     allLinkResolutionMaps,
     excalidrawEmbedOptions,
+    routeTable,
+    currentOutputDirectory = currentPageDirectory,
   } = options;
 
   const linkInfo = linkInfoWithResolvedTargetType(linkText, linkResolutionMap);
@@ -629,6 +644,8 @@ export function linkOrImageHtml(
           allLinkResolutionMaps,
           siteConfig,
           siteSlug,
+          routeTable,
+          hostOutputDirectory: currentOutputDirectory,
         });
         if (Object.keys(tracked).length > 0) {
           linksAttr = ` data-meadow-excalidraw-links="${escapeHtmlAttribute(JSON.stringify(tracked))}"`;
@@ -668,7 +685,7 @@ export function linkOrImageHtml(
 
     // Find the target page's config for rendering (need linkConfig for title normalization etc.)
     let linkConfig = siteNodeConfigs.find(siteNodeConfig =>
-      siteNodeConfig.siteNodeName === resolvedTitle &&
+      siteNodeConfig.siteNodeKind === 'file' && siteNodeConfig.siteNodeName === resolvedTitle &&
       (siteNodeConfig.sourceGraphSubdirectory || '') === targetPageDirectory &&
       (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
     );
@@ -676,7 +693,7 @@ export function linkOrImageHtml(
     const linkHasExplicitPath = originalLinkFilename.includes('/');
     if (!linkConfig && !linkHasExplicitPath) {
       linkConfig = siteNodeConfigs.find(siteNodeConfig =>
-        siteNodeConfig.siteNodeName === resolvedTitle &&
+        siteNodeConfig.siteNodeKind === 'file' && siteNodeConfig.siteNodeName === resolvedTitle &&
         (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
       );
     }
@@ -721,6 +738,8 @@ export function linkOrImageHtml(
           siteNodeConfigs,
           siteConfig,
           siteSlug,
+          routeTable,
+          hostOutputDirectory: currentOutputDirectory,
         });
       }
       if (relativeUrl === null) {
@@ -730,7 +749,7 @@ export function linkOrImageHtml(
         const targetPath = effectiveTargetDirectory
           ? encodePathForUrl(`${effectiveTargetDirectory}/${normalizedLinkFilename}.html`)
           : encodePathForUrl(`${normalizedLinkFilename}.html`);
-        relativeUrl = calculateRelativePath(currentPageDirectory, targetPath);
+        relativeUrl = calculateRelativePath(currentOutputDirectory, targetPath);
       }
       return `[${textToDisplayInHyperlink}](${relativeUrl})`;
     } else if (processingMode === 'single-page') {

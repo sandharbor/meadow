@@ -23,6 +23,8 @@ import {
 } from "../src/scenario-docs/index.js";
 import { exampleSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 test("Track All on example site untracked pages auto-saves without a save click", async ({

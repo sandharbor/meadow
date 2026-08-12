@@ -20,6 +20,8 @@ import { SiteListPage, SiteEditorPage, CreateAndEditSiteModal } from "../src/run
 import { callout } from "../src/scenario-docs/index.js";
 import { customSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: "none" });
 
 test("Callout depth limit shown on new site and dismissed permanently", async ({

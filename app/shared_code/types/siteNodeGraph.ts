@@ -21,5 +21,10 @@ export type SiteNodeTraversalDetails = {
   inlinks_depth_set_first_time?: number;
   inlinks_depth_inherited?: number;
   inlinks_depth_overridden?: number;
-  link_type?: 'start' | 'outlink' | 'inlink' | 'bidirectional';
+  link_type?: 'start' | 'outlink' | 'inlink' | 'bidirectional' | 'directoryContainment' | 'collectionMembership';
+};
+
+export type SiteNodeTraversalStateSummary = {
+  remaining_outlinks_depth: number;
+  remaining_inlinks_depth: number;
 };

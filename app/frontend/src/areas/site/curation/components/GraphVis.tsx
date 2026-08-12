@@ -26,6 +26,14 @@ import DepthCallout, { useDepthCalloutDismissal, useHasFrontierOutlinks } from '
 import { computeLabelPlacements } from '../utils/graphSearchLabels';
 import GraphSearchLabels from './GraphSearchLabels';
 import SiteNodeGlyph, { SITE_NODE_RADIUS } from './SiteNodeGlyph';
+import {
+  DEFAULT_VIEWBOX,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  type NodePosition,
+  type SelectionBox,
+  type ViewBox,
+} from '../types/graphViewport';
 
 interface GraphVisProps {
   graph: Graph;
@@ -40,29 +48,6 @@ interface GraphVisProps {
   sitePreviewHover?: boolean;
 }
 
-interface NodePosition {
-  x: number;
-  y: number;
-}
-
-interface SelectionBox {
-  startX: number;
-  startY: number;
-  currentX: number;
-  currentY: number;
-}
-
-interface ViewBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-const DEFAULT_VIEWBOX: ViewBox = { x: 0, y: 0, width: 300, height: 200 };
-const MIN_ZOOM = 0.1; // Can zoom out to see 10x the original area
-const MAX_ZOOM = 10; // Can zoom in to 10x magnification
-
 const GraphVis: React.FC<GraphVisProps> = ({
   graph,
   displayGraph,
@@ -76,6 +61,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
   sitePreviewHover,
 }) => {
   const [positions, setPositions] = useState<Map<string, NodePosition>>(new Map());
+  const [showSemanticEdges, setShowSemanticEdges] = useState(true);
+  const [showStructuralEdges, setShowStructuralEdges] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNode, setHoveredNode] = useState<{
     id: string;
@@ -620,6 +607,24 @@ const GraphVis: React.FC<GraphVisProps> = ({
     <div className="w-full relative bg-white min-h-[300px] h-full">
       {/* View control buttons */}
       <div className="absolute top-10 right-2 z-10 flex gap-1">
+        <button
+          type="button"
+          onClick={() => setShowSemanticEdges(value => !value)}
+          aria-pressed={showSemanticEdges}
+          className={`px-2 py-1 text-xs rounded border ${showSemanticEdges ? 'bg-neutral-100 border-neutral-300' : 'bg-white text-neutral-400 border-neutral-200'}`}
+          title="Toggle semantic-link edges"
+        >
+          Links
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowStructuralEdges(value => !value)}
+          aria-pressed={showStructuralEdges}
+          className={`px-2 py-1 text-xs rounded border ${showStructuralEdges ? 'bg-blue-50 border-blue-300' : 'bg-white text-neutral-400 border-neutral-200'}`}
+          title="Toggle folder and site-home structure"
+        >
+          Structure
+        </button>
         {/* Fit to selection button - shown when pages are selected */}
         {hasSelection && (
           <button
@@ -782,6 +787,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
           {/* Draw edges */}
           {graph.getAllEdges().map((edge, index) => {
+            const isStructural = edge.siteEdgeKind !== 'semanticLink';
+            if ((isStructural && !showStructuralEdges) || (!isStructural && !showSemanticEdges)) return null;
             const sourcePage = displayGraph.getDisplayNode(edge.source);
             const targetPage = displayGraph.getDisplayNode(edge.target);
             if (!sourcePage || !targetPage) return null;
@@ -823,7 +830,10 @@ const GraphVis: React.FC<GraphVisProps> = ({
             const gradientId = `edge-gradient-${index}`;
 
             // Uniform color when both ends have same tracked status
-            const uniformStrokeColor = isSelected ? selectedEdgeColor : (sourceTracked ? trackedEdgeColor : untrackedEdgeColor);
+            const structuralColor = edge.siteEdgeKind === 'collectionMembership' ? '#8b5cf6' : '#60a5fa';
+            const uniformStrokeColor = isStructural
+              ? structuralColor
+              : (isSelected ? selectedEdgeColor : (sourceTracked ? trackedEdgeColor : untrackedEdgeColor));
 
             // Move the start and end
             const pageRadius = SITE_NODE_RADIUS;
@@ -871,8 +881,9 @@ const GraphVis: React.FC<GraphVisProps> = ({
                   y1={y1}
                   x2={x2}
                   y2={y2}
-                  stroke={needsGradient ? `url(#${gradientId})` : uniformStrokeColor}
-                  strokeWidth={0.5}
+                  stroke={!isStructural && needsGradient ? `url(#${gradientId})` : uniformStrokeColor}
+                  strokeWidth={isStructural ? 0.8 : 0.5}
+                  strokeDasharray={isStructural ? '2,1' : undefined}
                   markerEnd={`url(#arrowhead-end${endMarkerSuffix})`}
                   markerStart={isBidirectional ? `url(#arrowhead-start${startMarkerSuffix})` : undefined}
                 />
@@ -946,6 +957,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
                   isFrontierImageExtension={page.isFrontierImageExtension}
                   tracked={page.tracked}
                   fileType={page.fileType}
+                  siteNodeKind={page.siteNodeKind}
                   highlights={page.highlights}
                   showLabel={page.showLabel}
                   label={page.label}

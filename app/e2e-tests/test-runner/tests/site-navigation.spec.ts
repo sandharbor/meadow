@@ -19,6 +19,8 @@ import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 import { sites } from "../src/app-area-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("navigate from site list to site and see graph view", async ({ page, snapshot, assertMeadowHomeState }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();

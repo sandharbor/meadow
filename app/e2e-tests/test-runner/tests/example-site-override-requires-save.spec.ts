@@ -28,6 +28,8 @@ import {
 } from "../src/scenario-docs/index.js";
 import { exampleSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 test("adding a depth override on a child page requires an explicit save", async ({

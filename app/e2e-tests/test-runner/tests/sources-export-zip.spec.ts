@@ -29,6 +29,8 @@ async function applyGenerationOptionAndWait(page: Page, action: () => Promise<vo
   await (await previewResponse).finished();
 }
 
+test.use({ siteMode: "single-file" });
+
 test("Sources export ZIP: saved export can be disabled without hiding changed HTML", async ({
   page, snapshot, skipMeadowHomeStateCheck, addKeyFrame, testServer,
 }) => {

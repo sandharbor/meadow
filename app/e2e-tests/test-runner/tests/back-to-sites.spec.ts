@@ -20,6 +20,8 @@ import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 import { sites } from "../src/app-area-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("navigate back to sites list from big site view", async ({ page, snapshot, assertMeadowHomeState }) => {
   const wf = new Workflows(page, expect);
   const siteList = new SiteListPage(page, expect);

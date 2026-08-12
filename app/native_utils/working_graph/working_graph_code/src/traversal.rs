@@ -1,7 +1,7 @@
 use crate::site_node_config::{find_matching_config, SiteNodeConfig};
 use crate::types::{
     is_image_file_type, BasicEdge, FileSiteNode, LinkType, SiteEdgeKind, TraversalDetails,
-    WorkingEdge, WorkingNode,
+    TraversalStateSummary, WorkingEdge, WorkingNode,
 };
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -50,10 +50,10 @@ impl SiteNodeGraph {
             &f.source_graph_subdirectory,
             &f.file_type,
         ) {
-            f.site_node_id = Some(conf.site_node_id.clone());
-            f.conf_outlinks_depth = conf.outlinks_depth;
-            f.conf_inlinks_depth = conf.inlinks_depth;
-            f.conf_is_blacklisted = Some(conf.list_type == "blacklist");
+            f.site_node_id = Some(conf.site_node_id().to_string());
+            f.conf_outlinks_depth = conf.outlinks_depth();
+            f.conf_inlinks_depth = conf.inlinks_depth();
+            f.conf_is_blacklisted = Some(conf.list_type() == "blacklist");
         }
     }
 
@@ -127,6 +127,7 @@ impl SiteNodeGraph {
             }),
             is_frontier_node: None,
             is_frontier_image_extension: None,
+            traversal_states: None,
         };
         self.nodes.insert(start_id.clone(), start_node);
 
@@ -263,6 +264,7 @@ impl SiteNodeGraph {
                             traversal_details: Some(traversal_details),
                             is_frontier_node: Some(is_frontier_node),
                             is_frontier_image_extension: Some(is_frontier_image_extension_case),
+                            traversal_states: None,
                         };
                         self.nodes.insert(target_key.to_string(), target_page);
                         needs_update_and_queue = true;
@@ -412,6 +414,291 @@ impl SiteNodeGraph {
         );
         result
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct MultiSeed {
+    pub file: FileSiteNode,
+    pub outlinks_depth: i32,
+    pub inlinks_depth: i32,
+    pub structural_path: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct MultiTraversalState {
+    key: String,
+    remaining_outlinks_depth: i32,
+    remaining_inlinks_depth: i32,
+    semantic_depth: i32,
+    path: Vec<String>,
+    link_type: LinkType,
+    is_frontier_image_extension: bool,
+}
+
+fn state_path_is_better(candidate: &MultiTraversalState, existing: &MultiTraversalState) -> bool {
+    candidate.path.len() < existing.path.len()
+        || (candidate.path.len() == existing.path.len() && candidate.path < existing.path)
+}
+
+fn display_state_cmp(a: &MultiTraversalState, b: &MultiTraversalState) -> std::cmp::Ordering {
+    b.remaining_outlinks_depth
+        .cmp(&a.remaining_outlinks_depth)
+        .then_with(|| b.remaining_inlinks_depth.cmp(&a.remaining_inlinks_depth))
+        .then_with(|| a.path.len().cmp(&b.path.len()))
+        .then_with(|| a.path.cmp(&b.path))
+        .then_with(|| a.key.cmp(&b.key))
+}
+
+/// Traverse semantic links independently from every contained file seed. Per-node Pareto
+/// frontiers retain independently useful outlink/inlink budgets while emitted nodes stay unique.
+pub fn get_multi_seed_working_nodes(
+    edges: &[BasicEdge],
+    site_node_configs: &[SiteNodeConfig],
+    seeds: &[MultiSeed],
+    blocked_file_keys: &HashSet<String>,
+    frontier_depth: i32,
+    allow_images_to_extend_to_frontier: bool,
+) -> Vec<WorkingNode> {
+    let mut file_map: HashMap<String, FileSiteNode> = HashMap::new();
+    let mut outgoing: HashMap<String, Vec<(String, bool)>> = HashMap::new();
+    let mut incoming: HashMap<String, Vec<(String, bool)>> = HashMap::new();
+    for edge in edges {
+        let source = edge.source.site_node_key();
+        let target = edge.target.site_node_key();
+        file_map.entry(source.clone()).or_insert_with(|| edge.source.clone());
+        file_map.entry(target.clone()).or_insert_with(|| edge.target.clone());
+        outgoing
+            .entry(source.clone())
+            .or_default()
+            .push((target.clone(), edge.is_bidirectional));
+        incoming
+            .entry(target)
+            .or_default()
+            .push((source, edge.is_bidirectional));
+    }
+    for seed in seeds {
+        file_map
+            .entry(seed.file.site_node_key())
+            .or_insert_with(|| seed.file.clone());
+    }
+    for adjacent in outgoing.values_mut() {
+        adjacent.sort();
+        adjacent.dedup();
+    }
+    for adjacent in incoming.values_mut() {
+        adjacent.sort();
+        adjacent.dedup();
+    }
+
+    let apply_file_config = |file: &mut FileSiteNode| {
+        if let Some(config) = find_matching_config(
+            site_node_configs,
+            &file.site_node_name,
+            &file.source_graph_subdirectory,
+            &file.file_type,
+        ) {
+            file.site_node_id = Some(config.site_node_id().to_string());
+            file.conf_outlinks_depth = config.outlinks_depth();
+            file.conf_inlinks_depth = config.inlinks_depth();
+            file.conf_is_blacklisted = Some(config.list_type() == "blacklist");
+        }
+    };
+    for file in file_map.values_mut() {
+        apply_file_config(file);
+    }
+
+    let mut frontiers: HashMap<String, Vec<MultiTraversalState>> = HashMap::new();
+    let mut queue: VecDeque<MultiTraversalState> = VecDeque::new();
+
+    let enqueue = |candidate: MultiTraversalState,
+                   frontiers: &mut HashMap<String, Vec<MultiTraversalState>>,
+                   queue: &mut VecDeque<MultiTraversalState>| {
+        let states = frontiers.entry(candidate.key.clone()).or_default();
+        if let Some(equal_index) = states.iter().position(|state| {
+            state.remaining_outlinks_depth == candidate.remaining_outlinks_depth
+                && state.remaining_inlinks_depth == candidate.remaining_inlinks_depth
+        }) {
+            if !state_path_is_better(&candidate, &states[equal_index]) {
+                return;
+            }
+            states.remove(equal_index);
+        }
+        if states.iter().any(|state| {
+            state.remaining_outlinks_depth >= candidate.remaining_outlinks_depth
+                && state.remaining_inlinks_depth >= candidate.remaining_inlinks_depth
+        }) {
+            return;
+        }
+        states.retain(|state| {
+            !(candidate.remaining_outlinks_depth >= state.remaining_outlinks_depth
+                && candidate.remaining_inlinks_depth >= state.remaining_inlinks_depth)
+        });
+        states.push(candidate.clone());
+        queue.push_back(candidate);
+    };
+
+    let mut sorted_seeds = seeds.to_vec();
+    sorted_seeds.sort_by(|a, b| {
+        a.file
+            .site_node_key()
+            .cmp(&b.file.site_node_key())
+            .then_with(|| a.structural_path.cmp(&b.structural_path))
+    });
+    for seed in sorted_seeds {
+        let key = seed.file.site_node_key();
+        let file = file_map.get(&key).expect("seed file exists");
+        let mut path = seed.structural_path;
+        if path.last() != Some(&key) {
+            path.push(key.clone());
+        }
+        enqueue(
+            MultiTraversalState {
+                key,
+                remaining_outlinks_depth: file
+                    .conf_outlinks_depth
+                    .unwrap_or(seed.outlinks_depth),
+                remaining_inlinks_depth: file
+                    .conf_inlinks_depth
+                    .unwrap_or(seed.inlinks_depth),
+                semantic_depth: 0,
+                path,
+                link_type: LinkType::Start,
+                is_frontier_image_extension: false,
+            },
+            &mut frontiers,
+            &mut queue,
+        );
+    }
+
+    while let Some(current) = queue.pop_front() {
+        let still_current = frontiers.get(&current.key).is_some_and(|states| {
+            states.iter().any(|state| state == &current)
+        });
+        if !still_current {
+            continue;
+        }
+        let current_file = file_map.get(&current.key).expect("queued file exists");
+        if blocked_file_keys.contains(&current.key)
+            || current_file.conf_is_blacklisted.unwrap_or(false)
+        {
+            continue;
+        }
+
+        let mut visit = |target_key: &str, link_type: LinkType, is_bidirectional: bool| {
+            let target_file = match file_map.get(target_key) {
+                Some(file) => file,
+                None => return,
+            };
+            let traversing_inlink = link_type == LinkType::Inlink && !is_bidirectional;
+            let next_outlinks = if traversing_inlink {
+                current.remaining_outlinks_depth
+            } else {
+                current.remaining_outlinks_depth - 1
+            };
+            let next_inlinks = if traversing_inlink {
+                current.remaining_inlinks_depth - 1
+            } else {
+                current.remaining_inlinks_depth
+            };
+            let is_image_extension = !traversing_inlink
+                && next_outlinks < -frontier_depth
+                && allow_images_to_extend_to_frontier
+                && matches!(link_type, LinkType::Outlink | LinkType::Bidirectional)
+                && is_image_file_type(&target_file.file_type)
+                && current.remaining_outlinks_depth == 0;
+            if !traversing_inlink
+                && next_outlinks < -frontier_depth
+                && !is_image_extension
+            {
+                return;
+            }
+            let mut path = current.path.clone();
+            path.push(target_key.to_string());
+            enqueue(
+                MultiTraversalState {
+                    key: target_key.to_string(),
+                    remaining_outlinks_depth: target_file
+                        .conf_outlinks_depth
+                        .unwrap_or(next_outlinks),
+                    remaining_inlinks_depth: target_file.conf_inlinks_depth.unwrap_or(
+                        next_inlinks.max(0),
+                    ),
+                    semantic_depth: current.semantic_depth + 1,
+                    path,
+                    link_type: if is_bidirectional {
+                        LinkType::Bidirectional
+                    } else {
+                        link_type
+                    },
+                    is_frontier_image_extension: is_image_extension,
+                },
+                &mut frontiers,
+                &mut queue,
+            );
+        };
+
+        if let Some(targets) = outgoing.get(&current.key) {
+            for (target, is_bidirectional) in targets {
+                visit(target, LinkType::Outlink, *is_bidirectional);
+            }
+        }
+        if current.remaining_inlinks_depth > 0 {
+            if let Some(sources) = incoming.get(&current.key) {
+                for (source, is_bidirectional) in sources {
+                    visit(source, LinkType::Inlink, *is_bidirectional);
+                }
+            }
+        }
+    }
+
+    let mut keys: Vec<String> = frontiers.keys().cloned().collect();
+    keys.sort();
+    keys.into_iter()
+        .filter_map(|key| {
+            let mut states = frontiers.remove(&key)?;
+            states.sort_by(display_state_cmp);
+            let display = states.first()?.clone();
+            let file = file_map.get(&key)?.clone();
+            let mut summaries: Vec<TraversalStateSummary> = states
+                .iter()
+                .map(|state| TraversalStateSummary {
+                    remaining_outlinks_depth: state.remaining_outlinks_depth,
+                    remaining_inlinks_depth: state.remaining_inlinks_depth,
+                })
+                .collect();
+            summaries.sort_by(|a, b| {
+                b.remaining_outlinks_depth
+                    .cmp(&a.remaining_outlinks_depth)
+                    .then_with(|| {
+                        b.remaining_inlinks_depth
+                            .cmp(&a.remaining_inlinks_depth)
+                    })
+            });
+            Some(WorkingNode {
+                file,
+                depth: display.semantic_depth,
+                remaining_depth: display.remaining_outlinks_depth,
+                remaining_inlinks_depth: display.remaining_inlinks_depth,
+                path: display.path,
+                traversal_details: Some(TraversalDetails {
+                    outlinks_depth_set_first_time: (display.link_type == LinkType::Start)
+                        .then_some(display.remaining_outlinks_depth),
+                    outlinks_depth_inherited: (display.link_type != LinkType::Start)
+                        .then_some(display.remaining_outlinks_depth),
+                    outlinks_depth_overridden: None,
+                    inlinks_depth_set_first_time: (display.link_type == LinkType::Start)
+                        .then_some(display.remaining_inlinks_depth),
+                    inlinks_depth_inherited: (display.link_type != LinkType::Start)
+                        .then_some(display.remaining_inlinks_depth),
+                    inlinks_depth_overridden: None,
+                    link_type: Some(display.link_type),
+                }),
+                is_frontier_node: Some(display.remaining_outlinks_depth < 0),
+                is_frontier_image_extension: Some(display.is_frontier_image_extension),
+                traversal_states: Some(summaries),
+            })
+        })
+        .collect()
 }
 
 pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
@@ -639,20 +926,107 @@ mod tests {
         outlinks_depth: Option<i32>,
         inlinks_depth: Option<i32>,
     ) -> SiteNodeConfig {
-        SiteNodeConfig {
-            site_node_name: site_node_name.to_string(),
-            source_graph_subdirectory: None,
-            site_node_kind: "file".to_string(),
-            file_type: "md".to_string(),
-            site_node_id: format!("{:0<12}", site_node_name.to_ascii_lowercase()),
-            list_type: list_type.to_string(),
+        SiteNodeConfig::file(
+            site_node_name.to_string(),
+            None,
+            "md".to_string(),
+            format!("{:0<12}", site_node_name.to_ascii_lowercase()),
+            list_type.to_string(),
             outlinks_depth,
             inlinks_depth,
-        }
+        )
     }
 
     fn default_confs() -> Vec<SiteNodeConfig> {
         vec![conf("A", "whitelist", None, None)]
+    }
+
+    #[test]
+    fn multi_seed_traversal_retains_non_dominated_budget_states() {
+        let a = file("A", "md");
+        let b = file("B", "md");
+        let d = file("D", "md");
+        let e = file("E", "md");
+        let edges = vec![
+            BasicEdge { source: a.clone(), target: b.clone(), is_bidirectional: false },
+            BasicEdge { source: b.clone(), target: d, is_bidirectional: false },
+            BasicEdge { source: e, target: b.clone(), is_bidirectional: false },
+        ];
+        let nodes = get_multi_seed_working_nodes(
+            &edges,
+            &[],
+            &[
+                MultiSeed {
+                    file: a,
+                    outlinks_depth: 2,
+                    inlinks_depth: 0,
+                    structural_path: vec!["folder:".to_string()],
+                },
+                MultiSeed {
+                    file: b,
+                    outlinks_depth: 0,
+                    inlinks_depth: 2,
+                    structural_path: vec!["folder:".to_string()],
+                },
+            ],
+            &HashSet::new(),
+            0,
+            false,
+        );
+        let names: HashSet<&str> = nodes.iter().map(|node| node.file.site_node_name.as_str()).collect();
+        assert!(names.contains("D"), "outlink-useful state must be explored");
+        assert!(names.contains("E"), "inlink-useful state must be explored");
+        let b_node = nodes.iter().find(|node| node.file.site_node_name == "B").unwrap();
+        assert_eq!(
+            b_node.traversal_states.as_ref().unwrap(),
+            &vec![
+                TraversalStateSummary { remaining_outlinks_depth: 1, remaining_inlinks_depth: 0 },
+                TraversalStateSummary { remaining_outlinks_depth: 0, remaining_inlinks_depth: 2 },
+            ]
+        );
+    }
+
+    #[test]
+    fn multi_seed_traversal_discards_dominated_states_and_suppresses_cycles() {
+        let a = file("A", "md");
+        let b = file("B", "md");
+        let edges = vec![
+            BasicEdge { source: a.clone(), target: b.clone(), is_bidirectional: false },
+            BasicEdge { source: b.clone(), target: a, is_bidirectional: false },
+        ];
+        let nodes = get_multi_seed_working_nodes(
+            &edges,
+            &[],
+            &[
+                MultiSeed {
+                    file: b.clone(),
+                    outlinks_depth: 2,
+                    inlinks_depth: 0,
+                    structural_path: vec![],
+                },
+                MultiSeed {
+                    file: b.clone(),
+                    outlinks_depth: 0,
+                    inlinks_depth: 2,
+                    structural_path: vec![],
+                },
+                MultiSeed {
+                    file: b,
+                    outlinks_depth: 2,
+                    inlinks_depth: 2,
+                    structural_path: vec![],
+                },
+            ],
+            &HashSet::new(),
+            0,
+            false,
+        );
+        assert_eq!(nodes.len(), 2);
+        let b_node = nodes.iter().find(|node| node.file.site_node_name == "B").unwrap();
+        assert_eq!(
+            b_node.traversal_states.as_ref().unwrap(),
+            &vec![TraversalStateSummary { remaining_outlinks_depth: 2, remaining_inlinks_depth: 2 }]
+        );
     }
 
     fn default_conf_with_overrides(
@@ -660,11 +1034,18 @@ mod tests {
         inlinks_depth: Option<i32>,
     ) -> SiteNodeConfig {
         let mut c = default_confs()[0].clone();
-        if outlinks_depth.is_some() {
-            c.outlinks_depth = outlinks_depth;
-        }
-        if inlinks_depth.is_some() {
-            c.inlinks_depth = inlinks_depth;
+        if let SiteNodeConfig::File {
+            outlinks_depth: configured_outlinks_depth,
+            inlinks_depth: configured_inlinks_depth,
+            ..
+        } = &mut c
+        {
+            if outlinks_depth.is_some() {
+                *configured_outlinks_depth = outlinks_depth;
+            }
+            if inlinks_depth.is_some() {
+                *configured_inlinks_depth = inlinks_depth;
+            }
         }
         c
     }

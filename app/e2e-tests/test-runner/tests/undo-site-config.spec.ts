@@ -20,6 +20,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { siteConfig } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("Undo reverts site page config changes without leaving the site", async ({
   page,
   snapshot,

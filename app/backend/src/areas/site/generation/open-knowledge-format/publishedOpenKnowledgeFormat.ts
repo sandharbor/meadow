@@ -50,6 +50,7 @@ export interface GeneratePublishedOpenKnowledgeFormatOptions {
   entrySourceGraphSubdirectory?: string;
   indexSource?: OpenKnowledgeFormatIndexSource;
   logSource?: OpenKnowledgeFormatLogSource;
+  generatedIndexMarkdown?: string;
   archiveRootDirectory: string;
 }
 
@@ -77,6 +78,7 @@ export async function generatePublishedOpenKnowledgeFormatArtifacts(
       entrySourceGraphSubdirectory: options.entrySourceGraphSubdirectory,
       indexSource: options.indexSource,
       logSource: options.logSource,
+      generatedIndexMarkdown: options.generatedIndexMarkdown,
     }
   );
   writeOpenKnowledgeFormatGenerationManifest(options.siteDirectory, result);

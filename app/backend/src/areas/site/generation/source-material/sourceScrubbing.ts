@@ -94,6 +94,7 @@ function pageFileInfoForRelativePath(relativePath: string): PageFileInfo | null 
 }
 
 function configMatchesFileInfo(config: SiteNodeConfig, info: PageFileInfo): boolean {
+  if (config.siteNodeKind !== 'file') return false;
   const configFileType = config.fileType || 'md';
   return config.siteNodeName === info.title &&
     (config.sourceGraphSubdirectory || '') === info.sourceGraphSubdirectory &&
@@ -108,6 +109,7 @@ function findMatchingConfig(
 }
 
 function pageIdentForConfig(config: SiteNodeConfig): string {
+  if (config.siteNodeKind !== 'file') throw new Error(`Cannot create a source page identifier for ${config.siteNodeKind} node ${config.siteNodeId}`);
   const fileType = config.fileType || 'md';
   const sourceGraphSubdirectory = config.sourceGraphSubdirectory || '';
   const filename = `${config.siteNodeName}.${fileType}`;
@@ -455,6 +457,19 @@ export function prepareScrubbedSourceDirectory(
     fs.rmSync(scrubbedContentDir, { recursive: true, force: true });
   }
   fs.mkdirSync(scrubbedContentDir, { recursive: true });
+
+  for (const config of Object.values(siteNodeConfs)) {
+    if (config.siteNodeKind !== 'folder' || config.listType !== 'whitelist') continue;
+    if (!traversablePageKeys.has(siteNodeConfigToKey(config))) continue;
+    const sourceFolder = config.sourceGraphSubdirectory
+      ? path.join(sourceContentDir, ...config.sourceGraphSubdirectory.split('/'))
+      : sourceContentDir;
+    if (!fs.existsSync(sourceFolder) || !fs.statSync(sourceFolder).isDirectory()) continue;
+    const outputFolder = config.sourceGraphSubdirectory
+      ? path.join(scrubbedContentDir, ...config.sourceGraphSubdirectory.split('/'))
+      : scrubbedContentDir;
+    fs.mkdirSync(outputFolder, { recursive: true });
+  }
 
   const allFiles = walkFilesRecursively(sourceContentDir);
 

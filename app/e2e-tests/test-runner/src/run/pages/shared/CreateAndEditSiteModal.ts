@@ -59,6 +59,66 @@ export class CreateAndEditSiteModal {
     await suggestion.click();
   }
 
+  async selectFolderEntryStrategy() {
+    const option = this.page.getByRole("radio", { name: /One or more folders/ });
+    await this.expect(option).toBeVisible();
+    await option.click();
+    await this.expect(option).toHaveAttribute("aria-checked", "true");
+  }
+
+  async addFolders(folderPaths: string[]) {
+    await this.page.evaluate((paths) => {
+      const target = window as unknown as {
+        electronAPI?: Record<string, unknown>;
+      };
+      target.electronAPI = {
+        ...(target.electronAPI || {}),
+        showOpenDialog: async () => ({ canceled: false, filePaths: paths }),
+      };
+    }, folderPaths);
+    const button = this.page.getByRole("button", { name: "Add folders" });
+    await this.expect(button).toBeVisible();
+    await button.click();
+  }
+
+  async fillFolderSiteName(name: string) {
+    const input = this.page.locator('input[placeholder="Research site"]');
+    await this.expect(input).toBeVisible();
+    await input.fill(name);
+  }
+
+  async expectSelectedFolderOrder(folderPaths: string[]) {
+    const rows = this.page.getByRole("list", {
+      name: "Selected folders in site-home order",
+    }).locator("li span[title]");
+    await this.expect(rows).toHaveCount(folderPaths.length);
+    this.expect(await rows.evaluateAll(elements => elements.map(element => element.getAttribute("title"))))
+      .toEqual(folderPaths);
+  }
+
+  async moveFolderEarlier(folderPath: string) {
+    const button = this.page.getByRole("button", {
+      name: `Move ${folderPath} earlier`,
+    });
+    await this.expect(button).toBeEnabled();
+    await button.click();
+  }
+
+  async clickReviewFolders() {
+    const button = this.page.getByRole("button", {
+      name: "Review Folders",
+      exact: true,
+    });
+    await this.expect(button).toBeVisible();
+    await button.click();
+  }
+
+  async expectFolderPrediction() {
+    await this.expect(
+      this.page.getByRole("region", { name: "Folder site prediction" }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
   async showDetails() {
     const toggle = this.page.locator("button", { hasText: "More details" });
     await this.expect(toggle).toBeVisible();

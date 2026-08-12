@@ -31,6 +31,13 @@ import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.j
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { FrontmatterUtils } from '../../../../shared/utils/frontmatterUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { getFolderSiteRepairStatus } from '../../../../shared/site-config/folderSiteRepair.js';
+import {
+  explainFolderScopeChanges,
+  loadFolderScopeSnapshot,
+  writeFolderScopeSnapshot,
+} from '../../../../shared/site-config/folderScopeChanges.js';
+import type { FolderScopeGraphSnapshot } from '../../../../../../shared_code/types/folderScopeChanges.js';
 
 const router = express.Router();
 
@@ -166,6 +173,15 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
       return res.status(500).json({ error: `Could not determine the notes directory for site ${siteSlug}. Ensure site_config.yaml exists and contains a 'sourceDirectory' property.` });
     }
 
+    const repairStatus = getFolderSiteRepairStatus(getSiteDirectory(siteSlug));
+    if (repairStatus.repairRequired) {
+      return res.status(409).json({
+        error: 'Selected folder repair required',
+        repairRequired: true,
+        missingSelectedFolders: repairStatus.missingSelectedFolders,
+      });
+    }
+
     // Load committed and optional draft configurations together so identity and
     // strong role invariants are checked before graph construction.
     let committedNodes: SiteNodeConfig[];
@@ -208,35 +224,45 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
     type RustNode = {
       siteNodeKey: string;
       siteNodeId?: string;
-      siteNodeKind: 'file';
+      siteNodeKind: 'file' | 'folder' | 'collection';
       siteNodeName: string;
-      sourceGraphSubdirectory: string;
-      fileType: FileType;
+      sourceGraphSubdirectory?: string;
+      fileType?: FileType;
+      memberSiteNodeIds?: string[];
+      effectiveBlacklistingSiteNodeId?: string;
+      effectiveFolderPolicySiteNodeId?: string;
       depth: number;
       remaining_depth: number;
       remaining_inlinks_depth: number;
       path: string[];
       traversal_details?: SiteNodeTraversalDetails;
+      traversal_states?: Array<{ remaining_outlinks_depth: number; remaining_inlinks_depth: number }>;
       isFrontierNode?: boolean;
       isFrontierImageExtension?: boolean;
       is_sensitive: boolean;
       source_page_outlink_count?: number;
       source_page_inlink_count?: number;
     };
-    type RustEdge = { source: string; target: string; siteEdgeKind: 'semanticLink'; isBidirectional: boolean };
+    type RustEdge = {
+      source: string;
+      target: string;
+      siteEdgeKind: 'semanticLink' | 'directoryContainment' | 'collectionMembership';
+      isBidirectional: boolean;
+    };
     type RustOutput = {
       nodes: RustNode[];
       edges: (RustEdge & { link_original_text: string })[];
       allLinkResolutionMaps: Record<string, Record<string, RustLinkResolvedInfo>>;
       allInlinkSources: Record<string, string[]>;
       allOutlinkTargets: Record<string, string[]>;
+      folderScope?: FolderScopeGraphSnapshot['folderScope'];
     };
 
     let rustOutput: RustOutput;
-    try {
+    const runGraph = async (configFile: string): Promise<RustOutput> => {
       const raw = await runWorkingGraphRaw({
         graphRoot: notesDir,
-        siteNodeConfigPath,
+        siteNodeConfigPath: configFile,
         entrySiteNodeId: siteConfig.entrySiteNodeId!,
         defaultTraversalSiteNodeId: siteConfig.defaultTraversalSiteNodeId!,
         defaultOutlinksDepth: siteConfig.defaultOutlinksDepth,
@@ -245,56 +271,128 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
         allowImagesToExtendToFrontier,
         allowLowerDepths: false,
       });
-      rustOutput = JSON.parse(raw) as RustOutput;
+      return JSON.parse(raw) as RustOutput;
+    };
+    try {
+      rustOutput = await runGraph(siteNodeConfigPath);
     } catch (err) {
       return next(new Error(`Failed to run working_graph for site ${siteSlug}: ${err instanceof Error ? err.message : String(err)}`));
+    }
+
+    const snapshotFor = (output: RustOutput): FolderScopeGraphSnapshot => ({
+      nodes: output.nodes.map(node => ({
+        siteNodeKey: node.siteNodeKey,
+        ...(node.siteNodeId && { siteNodeId: node.siteNodeId }),
+        siteNodeKind: node.siteNodeKind,
+        siteNodeName: node.siteNodeName,
+        ...(node.sourceGraphSubdirectory !== undefined && { sourceGraphSubdirectory: node.sourceGraphSubdirectory }),
+        ...(node.fileType && { fileType: node.fileType }),
+        ...(node.effectiveBlacklistingSiteNodeId && { effectiveBlacklistingSiteNodeId: node.effectiveBlacklistingSiteNodeId }),
+        ...(node.effectiveFolderPolicySiteNodeId && { effectiveFolderPolicySiteNodeId: node.effectiveFolderPolicySiteNodeId }),
+        remaining_depth: node.remaining_depth,
+        remaining_inlinks_depth: node.remaining_inlinks_depth,
+      })),
+      edges: output.edges.map(edge => ({ source: edge.source, target: edge.target, siteEdgeKind: edge.siteEdgeKind })),
+      ...(output.folderScope && { folderScope: output.folderScope }),
+    });
+    let changeExplanations;
+    if (rustOutput.folderScope) {
+      const currentSnapshot = snapshotFor(rustOutput);
+      const snapshotPath = join(getSiteRawDirectory(siteSlug), 'folder_scope_snapshot.json');
+      if (draftNodes) {
+        const committedOutput = await runGraph(getSiteConfigPath(siteSlug, 'site_node_config.yaml'));
+        const committedSnapshot = snapshotFor(committedOutput);
+        changeExplanations = explainFolderScopeChanges({
+          previous: committedSnapshot,
+          current: currentSnapshot,
+          previousConfigs: committedNodes,
+          currentConfigs: draftNodes,
+          basis: 'committedDraft',
+        });
+        writeFolderScopeSnapshot(snapshotPath, committedSnapshot);
+      } else {
+        const previous = loadFolderScopeSnapshot(snapshotPath);
+        changeExplanations = explainFolderScopeChanges({
+          previous,
+          current: currentSnapshot,
+          previousConfigs: committedNodes,
+          currentConfigs: committedNodes,
+          basis: previous ? 'priorRebuild' : 'initial',
+        });
+        writeFolderScopeSnapshot(snapshotPath, currentSnapshot);
+      }
     }
 
     const nodeDepthMap = new Map<string, number>(rustOutput.nodes.map(node => [node.siteNodeKey, node.depth]));
     const linkResolutionMaps = rustOutput.allLinkResolutionMaps || {};
 
-    const nodes: ISiteNode[] = rustOutput.nodes.map(node => ({
-      siteNodeKey: node.siteNodeKey as ISiteNode['siteNodeKey'],
-      ...(node.siteNodeId && { siteNodeId: node.siteNodeId as ISiteNode['siteNodeId'] }),
-      siteNodeKind: node.siteNodeKind,
-      label: node.siteNodeName,
-      siteNodeName: node.siteNodeName,
-      sourceGraphSubdirectory: node.sourceGraphSubdirectory,
-      fileType: node.fileType,
-
-      depth: node.depth,
-      remaining_depth: node.remaining_depth,
-      remaining_inlinks_depth: node.remaining_inlinks_depth,
-      path: node.path,
-      traversal_details: node.traversal_details,
-      linkResolutionMap: linkResolutionMaps[node.siteNodeKey],
-      isFrontierNode: node.isFrontierNode,
-      isFrontierImageExtension: node.isFrontierImageExtension,
-      source_page_outlink_count: node.source_page_outlink_count,
-      source_page_inlink_count: node.source_page_inlink_count,
-
-      data: {
+    const nodes: ISiteNode[] = rustOutput.nodes.map(node => {
+      const common = {
+        siteNodeKey: node.siteNodeKey as ISiteNode['siteNodeKey'],
+        ...(node.siteNodeId && { siteNodeId: node.siteNodeId as ISiteNode['siteNodeId'] }),
+        label: node.siteNodeName,
         siteNodeName: node.siteNodeName,
-        sourceGraphSubdirectory: node.sourceGraphSubdirectory,
+        depth: node.depth,
+        remaining_depth: node.remaining_depth,
+        remaining_inlinks_depth: node.remaining_inlinks_depth,
+        path: node.path,
+        traversal_details: node.traversal_details,
+        traversal_states: node.traversal_states,
+        ...(node.effectiveBlacklistingSiteNodeId && {
+          effectiveBlacklistingSiteNodeId: node.effectiveBlacklistingSiteNodeId as ISiteNode['siteNodeId'],
+        }),
+        ...(node.effectiveFolderPolicySiteNodeId && {
+          effectiveFolderPolicySiteNodeId: node.effectiveFolderPolicySiteNodeId as ISiteNode['siteNodeId'],
+        }),
+        linkResolutionMap: linkResolutionMaps[node.siteNodeKey],
+        isFrontierNode: node.isFrontierNode,
+        isFrontierImageExtension: node.isFrontierImageExtension,
+        source_page_outlink_count: node.source_page_outlink_count,
+        source_page_inlink_count: node.source_page_inlink_count,
+        data: {
+          siteNodeName: node.siteNodeName,
+          sourceGraphSubdirectory: node.sourceGraphSubdirectory,
+          fileType: node.fileType,
+          is_sensitive: node.is_sensitive
+        },
+        getIdent: () => node.siteNodeKey
+      };
+      if (node.siteNodeKind === 'collection') {
+        return {
+          ...common,
+          siteNodeKind: 'collection',
+          memberSiteNodeIds: (node.memberSiteNodeIds ?? []) as NonNullable<ISiteNode['siteNodeId']>[],
+        };
+      }
+      if (node.siteNodeKind === 'folder') {
+        return {
+          ...common,
+          siteNodeKind: 'folder',
+          sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
+        };
+      }
+      if (!node.fileType) throw new Error(`File node ${node.siteNodeKey} has no fileType`);
+      return {
+        ...common,
+        siteNodeKind: 'file',
+        sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
         fileType: node.fileType,
-        is_sensitive: node.is_sensitive
-      },
-      getIdent: () => node.siteNodeKey
-    }));
+      };
+    });
 
     // Deduplicate edges to match existing API: one edge per page pair, mark bidirectional if reverse exists.
-    const edgeMap = new Map<string, { source: string; target: string; isBidirectional: boolean }>();
+    const edgeMap = new Map<string, RustEdge>();
     for (const e of rustOutput.edges) {
-      const forwardKey = `${e.source}->${e.target}`;
-      const reverseKey = `${e.target}->${e.source}`;
-      if (edgeMap.has(reverseKey)) {
+      const forwardKey = `${e.siteEdgeKind}:${e.source}->${e.target}`;
+      const reverseKey = `${e.siteEdgeKind}:${e.target}->${e.source}`;
+      if (e.siteEdgeKind === 'semanticLink' && edgeMap.has(reverseKey)) {
         const existing = edgeMap.get(reverseKey)!;
         existing.isBidirectional = existing.isBidirectional || e.isBidirectional || true;
       } else if (edgeMap.has(forwardKey)) {
         const existing = edgeMap.get(forwardKey)!;
         existing.isBidirectional = existing.isBidirectional || e.isBidirectional;
       } else {
-        edgeMap.set(forwardKey, { source: e.source, target: e.target, isBidirectional: e.isBidirectional });
+        edgeMap.set(forwardKey, { ...e });
       }
     }
 
@@ -302,7 +400,7 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
       .map(e => ({
         source: e.source,
         target: e.target,
-        siteEdgeKind: 'semanticLink' as const,
+        siteEdgeKind: e.siteEdgeKind,
         isBidirectional: e.isBidirectional ?? false,
         data: { fromDepth: nodeDepthMap.get(e.source) ?? 0, toDepth: nodeDepthMap.get(e.target) ?? 0 }
       }))
@@ -313,6 +411,8 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
       edges: resultEdges,
       allInlinkSources: rustOutput.allInlinkSources || {},
       allOutlinkTargets: rustOutput.allOutlinkTargets || {},
+      folderScope: rustOutput.folderScope,
+      changeExplanations,
     });
   })().catch(next);
 });

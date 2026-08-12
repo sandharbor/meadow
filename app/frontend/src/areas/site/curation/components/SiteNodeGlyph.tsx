@@ -18,6 +18,7 @@ import React from 'react';
 import { Highlight } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils';
 import { FileType } from '../../../../../../shared_code/types/FileType';
+import type { SiteNodeKind } from '../../../../../../shared_code/types/siteNodeConfig';
 
 export const SITE_NODE_RADIUS = 3;
 
@@ -40,6 +41,7 @@ interface SiteNodeGlyphProps {
   isFrontierImageExtension: boolean;
   tracked: boolean;
   fileType: FileType;
+  siteNodeKind: SiteNodeKind;
   highlights: Highlight[];
   showLabel: boolean;
   label: string;
@@ -59,6 +61,7 @@ const SiteNodeGlyph: React.FC<SiteNodeGlyphProps> = ({
   isFrontierImageExtension,
   tracked,
   fileType,
+  siteNodeKind,
   highlights,
   showLabel,
   label,
@@ -80,17 +83,37 @@ const SiteNodeGlyph: React.FC<SiteNodeGlyphProps> = ({
         />
       ))}
 
-      {/* Page circle */}
-      <circle
-        r={SITE_NODE_RADIUS}
-        fill="#fff"
-        stroke={strokeColor}
-        strokeWidth={1}
-        strokeDasharray={isFrontierImageExtension ? '2,1' : 'none'}
-      />
+      <title>{siteNodeKind === 'collection' ? 'Site home' : siteNodeKind}</title>
+      {siteNodeKind === 'folder' ? (
+        <rect
+          x={-SITE_NODE_RADIUS}
+          y={-SITE_NODE_RADIUS + 0.5}
+          width={SITE_NODE_RADIUS * 2}
+          height={SITE_NODE_RADIUS * 1.7}
+          rx={0.5}
+          fill="#fff"
+          stroke={strokeColor}
+          strokeWidth={1}
+        />
+      ) : siteNodeKind === 'collection' ? (
+        <path
+          d="M -3 0 L 0 -3 L 3 0 L 3 3 L -3 3 Z"
+          fill="#fff"
+          stroke={strokeColor}
+          strokeWidth={1}
+        />
+      ) : (
+        <circle
+          r={SITE_NODE_RADIUS}
+          fill="#fff"
+          stroke={strokeColor}
+          strokeWidth={1}
+          strokeDasharray={isFrontierImageExtension ? '2,1' : 'none'}
+        />
+      )}
 
       {/* Image indicator icon for image file types */}
-      {isImageFileType(fileType) && (
+      {siteNodeKind === 'file' && isImageFileType(fileType) && (
         <g transform="translate(-1.5, -1.5) scale(0.75)">
           <rect x="0" y="0" width="4" height="3" fill="none" stroke="#6366f1" strokeWidth="0.5" rx="0.3" />
           <circle cx="1" cy="1" r="0.4" fill="#6366f1" />

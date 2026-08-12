@@ -476,12 +476,12 @@ const SiteNodeSelectionSidebar: React.FC<SiteNodeSelectionSidebarProps> = ({
                 {/* For untracked pages, show Track + Blacklist as the primary quick-actions */}
                 {!page!.tracked && (
                   <div className="mt-2 flex gap-2">
-                    <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Cannot track frontier pages" className="flex-1">
+                    <DisabledTooltip disabled={page!.isFrontierNode || Boolean(page!.effectiveBlacklistingSiteNodeId) || page!.siteNodeKind === 'collection'} tooltip={page!.effectiveBlacklistingSiteNodeId ? 'Cannot track below a folder blacklist' : 'Cannot track this node'} className="flex-1">
                       <button
                         onClick={() => onTrackPage(page!.siteNodeKey)}
-                        disabled={page!.isFrontierNode}
+                        disabled={page!.isFrontierNode || Boolean(page!.effectiveBlacklistingSiteNodeId) || page!.siteNodeKind === 'collection'}
                         className={`w-full px-2 py-1 text-xs rounded ${
-                          page!.isFrontierNode
+                          page!.isFrontierNode || page!.effectiveBlacklistingSiteNodeId || page!.siteNodeKind === 'collection'
                             ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                             : 'bg-success-100 text-success-700 hover:bg-success-200'
                         }`}
@@ -490,12 +490,12 @@ const SiteNodeSelectionSidebar: React.FC<SiteNodeSelectionSidebarProps> = ({
                       </button>
                     </DisabledTooltip>
                     {!page!.blacklisted && (
-                      <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Cannot blacklist frontier pages" align="right" className="flex-1">
+                      <DisabledTooltip disabled={page!.isFrontierNode || page!.siteNodeKind === 'collection'} tooltip="Cannot blacklist this node" align="right" className="flex-1">
                         <button
                           onClick={() => onBlacklistPage(page!.siteNodeKey)}
-                          disabled={page!.isFrontierNode}
+                          disabled={page!.isFrontierNode || page!.siteNodeKind === 'collection'}
                           className={`w-full px-2 py-1 text-xs rounded ${
-                            page!.isFrontierNode
+                            page!.isFrontierNode || page!.siteNodeKind === 'collection'
                               ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                               : 'bg-danger-100 text-danger-700 hover:bg-danger-200'
                           }`}

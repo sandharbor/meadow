@@ -30,7 +30,7 @@ type DepthEvent = 'set_first_time' | 'overridden' | 'inherited';
 
 interface StepInfo {
   node: ISiteNode;
-  linkType: 'start' | 'outlink' | 'inlink' | 'bidirectional';
+  linkType: 'start' | 'outlink' | 'inlink' | 'bidirectional' | 'directoryContainment' | 'collectionMembership';
   outlinksDepthEvent: DepthEvent;
   outlinksDepthValue: number | undefined;
   outlinksDepthInherited: number | undefined;
@@ -39,6 +39,8 @@ interface StepInfo {
   inlinksDepthInherited: number | undefined;
   remainingDepth: number;
   remainingInlinksDepth: number;
+  isSemanticSeed: boolean;
+  effectivePolicyName?: string;
 }
 
 function getDepthInfo(
@@ -55,11 +57,13 @@ function getDepthInfo(
   return { event: 'inherited', value: inherited, inheritedFrom: undefined };
 }
 
-const LinkConnector: React.FC<{ linkType: 'outlink' | 'inlink' | 'bidirectional' }> = ({ linkType }) => {
+const LinkConnector: React.FC<{ linkType: Exclude<StepInfo['linkType'], 'start'> }> = ({ linkType }) => {
   const labels: Record<string, { arrow: string; label: string }> = {
     outlink: { arrow: '↓', label: 'outlink' },
     inlink: { arrow: '↑', label: 'inlink' },
     bidirectional: { arrow: '↕', label: 'bidirectional' },
+    directoryContainment: { arrow: '↓', label: 'contained in folder' },
+    collectionMembership: { arrow: '↓', label: 'selected folder' },
   };
   const { arrow, label } = labels[linkType];
 
@@ -149,9 +153,21 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
         details?.inlinks_depth_inherited
       );
 
+      const previousKey = selectedNode.path?.[index - 1];
+      const incomingEdge = previousKey
+        ? graph.getOutgoingEdges(previousKey).find(edge => edge.target === siteNodeKey)
+        : undefined;
+      const linkType = index === 0
+        ? 'start'
+        : incomingEdge?.siteEdgeKind !== 'semanticLink'
+          ? incomingEdge?.siteEdgeKind ?? 'outlink'
+          : details?.link_type ?? 'outlink';
+      const effectivePolicyName = node.effectiveFolderPolicySiteNodeId
+        ? graph.getAllNodes().find(candidate => candidate.siteNodeId === node.effectiveFolderPolicySiteNodeId)?.siteNodeName
+        : undefined;
       return {
         node,
-        linkType: index === 0 ? 'start' : (details?.link_type ?? 'outlink'),
+        linkType,
         outlinksDepthEvent: outlinksInfo.event,
         outlinksDepthValue: outlinksInfo.value,
         outlinksDepthInherited: outlinksInfo.inheritedFrom,
@@ -160,6 +176,10 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
         inlinksDepthInherited: inlinksInfo.inheritedFrom,
         remainingDepth: node.remaining_depth,
         remainingInlinksDepth: node.remaining_inlinks_depth ?? 0,
+        isSemanticSeed: node.siteNodeKind === 'file'
+          && (linkType === 'directoryContainment' || linkType === 'collectionMembership' || index === 0)
+          && details?.link_type === 'start',
+        effectivePolicyName,
       };
     })
     .filter((s): s is StepInfo => s !== null);
@@ -173,14 +193,14 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
     >
       <div className="flex flex-col h-full">
         <div className="mb-4 text-xs text-neutral-500">
-          How the traversal reached <span className="font-medium text-neutral-700">{selectedNode.siteNodeName}</span> — showing depth configuration at each step.
+          How Meadow reached <span className="font-medium text-neutral-700">{selectedNode.siteNodeName}</span> through selected-folder structure and seeded semantic traversal.
         </div>
 
         <div className="flex-1 overflow-y-auto pr-2">
           {steps.map((step, index) => (
             <React.Fragment key={step.node.siteNodeKey}>
               {/* Connector between steps */}
-              {index > 0 && <LinkConnector linkType={step.linkType as 'outlink' | 'inlink' | 'bidirectional'} />}
+              {index > 0 && <LinkConnector linkType={step.linkType as Exclude<StepInfo['linkType'], 'start'>} />}
 
               {/* Step card */}
               <div className={`rounded-lg border p-3 ${
@@ -209,6 +229,11 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                         start
                       </span>
                     )}
+                    {step.isSemanticSeed && (
+                      <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                        semantic seed
+                      </span>
+                    )}
                     {step.node.isFrontierImageExtension && (
                       <span className="text-[10px] text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded">
                         frontier image
@@ -227,8 +252,13 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                   </div>
                 )}
 
-                {/* Depth tracks */}
-                <div className="flex flex-col gap-1">
+                {step.node.siteNodeKind === 'file' && (
+                  <div className="mb-2 rounded bg-emerald-50 px-2.5 py-1.5 text-[11px] text-emerald-800">
+                    Effective folder policy: {step.effectivePolicyName ?? 'site defaults'}.
+                    {step.isSemanticSeed ? ' Structural steps cost zero; semantic budgets begin here.' : ''}
+                  </div>
+                )}
+                {step.node.siteNodeKind === 'file' && <div className="flex flex-col gap-1">
                   <DepthBadge
                     label="outlinks"
                     event={step.outlinksDepthEvent}
@@ -251,7 +281,14 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                     overrideBgClass="bg-amber-100/80"
                     overrideBorderClass="border-amber-300"
                   />
-                </div>
+                </div>}
+                {(step.node.traversal_states?.length ?? 0) > 1 && (
+                  <div className="mt-2 text-[11px] text-neutral-500">
+                    Non-dominated remaining states: {step.node.traversal_states!
+                      .map(state => `out ${state.remaining_outlinks_depth} / in ${state.remaining_inlinks_depth}`)
+                      .join(', ')}
+                  </div>
+                )}
               </div>
             </React.Fragment>
           ))}

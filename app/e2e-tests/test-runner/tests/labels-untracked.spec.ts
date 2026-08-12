@@ -20,6 +20,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { labels } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("enabling show titles on untracked filter displays page title labels", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const wf = new Workflows(page, expect);
   await wf.navigateToBigSite();

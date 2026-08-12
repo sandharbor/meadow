@@ -19,6 +19,8 @@ import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/p
 import { linkGap } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("inlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();

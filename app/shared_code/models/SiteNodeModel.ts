@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { ISiteNode, LinkResolvedInfo } from '../types/ISiteNode.js';
-import type { SiteNodeConfig, SiteNodeId, SiteNodeKey } from '../types/siteNodeConfig.js';
+import type { FileSiteNode, LinkResolvedInfo } from '../types/ISiteNode.js';
+import type { FileSiteNodeConfig, SiteNodeId, SiteNodeKey } from '../types/siteNodeConfig.js';
 import type { FileType } from '../types/FileType.js';
 
-export class SiteNodeModel implements ISiteNode {
+export class SiteNodeModel implements FileSiteNode {
   siteNodeKey: SiteNodeKey;
   siteNodeId?: SiteNodeId;
   siteNodeKind = 'file' as const;
@@ -31,7 +31,7 @@ export class SiteNodeModel implements ISiteNode {
   offTopic?: boolean;
   sourceGraphSubdirectory: string;
   fileType: FileType;
-  conf?: SiteNodeConfig;
+  conf?: FileSiteNodeConfig;
   depth: number;
   remaining_depth: number;
   path?: string[];
@@ -50,7 +50,7 @@ export class SiteNodeModel implements ISiteNode {
     blacklisted?: boolean,
     sensitive?: boolean,
     offTopic?: boolean,
-    conf?: SiteNodeConfig,
+    conf?: FileSiteNodeConfig,
     sourceGraphSubdirectory?: string,
     fileType?: FileType,
     depth: number = 0,

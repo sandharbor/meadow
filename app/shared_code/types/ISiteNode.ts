@@ -14,23 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { SiteNodeConfig, SiteNodeId, SiteNodeKey } from './siteNodeConfig.js';
+import type {
+  CollectionSiteNodeConfig,
+  FileSiteNodeConfig,
+  FolderSiteNodeConfig,
+  SiteNodeConfig,
+  SiteNodeId,
+  SiteNodeKey,
+} from './siteNodeConfig.js';
 import type { FileType } from './FileType.js';
-import type { SiteNodeTraversalDetails } from './siteNodeGraph.js';
+import type { SiteNodeTraversalDetails, SiteNodeTraversalStateSummary } from './siteNodeGraph.js';
 
 export interface LinkResolvedInfo {
   link_resolved_target_directory: string;
   link_resolved_target_path: string | null;
 }
 
-export interface ISiteNode {
+interface BaseSiteNode {
   siteNodeKey: SiteNodeKey;
   siteNodeId?: SiteNodeId;
-  siteNodeKind: 'file';
   label: string; // Auto-generated short identifier (A, B, C, ... Z, AA, AB, etc)
-  siteNodeName: string; // The main title of this file node
-  sourceGraphSubdirectory: string; // The directory path within the source graph
-  fileType: FileType;
+  siteNodeName: string;
   body?: string; // The content/body of the note
   tracked?: boolean;
   blacklisted?: boolean;
@@ -43,6 +47,9 @@ export interface ISiteNode {
   remaining_inlinks_depth?: number;
   path?: string[]; // Traversal path from the start node to this node
   traversal_details?: SiteNodeTraversalDetails;
+  traversal_states?: SiteNodeTraversalStateSummary[];
+  effectiveBlacklistingSiteNodeId?: SiteNodeId;
+  effectiveFolderPolicySiteNodeId?: SiteNodeId;
   isFrontierNode?: boolean; // True if this node is beyond the normal working area boundary
   isFrontierImageExtension?: boolean; // True if this image was included because it was linked from a frontier-edge page
 
@@ -54,4 +61,40 @@ export interface ISiteNode {
   data?: Record<string, any>;
 
   getIdent(): string;
+}
+
+export interface FileSiteNode extends BaseSiteNode {
+  siteNodeKind: 'file';
+  sourceGraphSubdirectory: string;
+  fileType: FileType;
+  conf?: FileSiteNodeConfig;
+}
+
+export interface FolderSiteNode extends BaseSiteNode {
+  siteNodeKind: 'folder';
+  sourceGraphSubdirectory: string;
+  fileType?: never;
+  conf?: FolderSiteNodeConfig;
+}
+
+export interface CollectionSiteNode extends BaseSiteNode {
+  siteNodeKind: 'collection';
+  sourceGraphSubdirectory?: never;
+  fileType?: never;
+  memberSiteNodeIds: SiteNodeId[];
+  conf?: CollectionSiteNodeConfig;
+}
+
+export type ISiteNode = FileSiteNode | FolderSiteNode | CollectionSiteNode;
+
+export function isFileSiteNode(node: ISiteNode): node is FileSiteNode {
+  return node.siteNodeKind === 'file';
+}
+
+export function isFolderSiteNode(node: ISiteNode): node is FolderSiteNode {
+  return node.siteNodeKind === 'folder';
+}
+
+export function isCollectionSiteNode(node: ISiteNode): node is CollectionSiteNode {
+  return node.siteNodeKind === 'collection';
 }

@@ -20,6 +20,8 @@ import { Fixture } from "../src/run/workflows.js";
 import { initialPage } from "../src/scenario-docs/index.js";
 import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 test("a publisher should not be able to blacklist the initial page", async ({

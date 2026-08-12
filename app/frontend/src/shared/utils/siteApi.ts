@@ -28,6 +28,15 @@ export interface SiteConfigWithSlug extends SiteConfig {
   entrySourceGraphSubdirectory?: string;
   entryFileType?: string;
   error?: string;
+  folderDerived?: boolean;
+  repairRequired?: boolean;
+  missingSelectedFolders?: Array<{
+    siteNodeId: string;
+    siteNodeName: string;
+    sourceGraphSubdirectory: string;
+    role: 'entry' | 'collectionMember';
+    reason: 'missing' | 'notDirectory' | 'symlinkOrEscape';
+  }>;
 }
 
 /**

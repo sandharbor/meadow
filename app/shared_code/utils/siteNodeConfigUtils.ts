@@ -17,9 +17,13 @@ limitations under the License.
 import YAML from 'yaml';
 import { FILE_TYPES, type FileType } from '../types/FileType.js';
 import type {
+  CollectionSiteNodeConfig,
+  FileSiteNodeConfig,
+  FolderSiteNodeConfig,
   SiteNodeConfig,
   SiteNodeConfigDocument,
   SiteNodeId,
+  SiteNodeKind,
 } from '../types/siteNodeConfig.js';
 import type { SiteConfig } from '../types/siteConfig.js';
 import type { ISiteNode } from '../types/ISiteNode.js';
@@ -37,6 +41,7 @@ const canonicalNodeFields = new Set([
   'listType',
   'outlinksDepth',
   'inlinksDepth',
+  'memberSiteNodeIds',
 ]);
 
 export class SiteNodeConfigValidationError extends Error {
@@ -68,24 +73,30 @@ function validateDepth(value: unknown, filePath: string, recordIndex: number | n
   return value;
 }
 
-function parseNodeRecord(value: unknown, index: number, filePath: string): SiteNodeConfig {
-  if (!isRecord(value)) fail(filePath, index, 'record', 'must be a mapping');
-  for (const field of Object.keys(value)) {
-    if (!canonicalNodeFields.has(field)) {
-      fail(filePath, index, field, 'is not part of canonical node configuration');
-    }
+function hasOwn(value: Record<string, unknown>, field: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, field);
+}
+
+/** Canonical source-root-relative folder locator. The empty string denotes the source root. */
+export function normalizeFolderSourceGraphSubdirectory(value: string): string {
+  if (value.includes('\\')) throw new Error("must use '/' separators");
+  if (value.startsWith('/') || /^[A-Za-z]:\//.test(value)) throw new Error('must be relative');
+  const segments: string[] = [];
+  for (const segment of value.split('/')) {
+    if (segment === '' || segment === '.') continue;
+    if (segment === '..') throw new Error("must not contain '..'");
+    segments.push(segment);
   }
+  return segments.join('/');
+}
+
+function parseCommonNodeFields(
+  value: Record<string, unknown>,
+  index: number,
+  filePath: string,
+): { siteNodeName: string; siteNodeId: SiteNodeId; listType: 'blacklist' | 'whitelist' } {
   if (typeof value.siteNodeName !== 'string' || value.siteNodeName.trim().length === 0) {
     fail(filePath, index, 'siteNodeName', 'must be a non-empty string');
-  }
-  if (value.sourceGraphSubdirectory !== undefined && typeof value.sourceGraphSubdirectory !== 'string') {
-    fail(filePath, index, 'sourceGraphSubdirectory', 'must be a string when present');
-  }
-  if (value.siteNodeKind !== 'file') {
-    fail(filePath, index, 'siteNodeKind', "must be exactly 'file' in Phase 1");
-  }
-  if (typeof value.fileType !== 'string' || !fileTypes.has(value.fileType)) {
-    fail(filePath, index, 'fileType', `must be one of: ${FILE_TYPES.join(', ')}`);
   }
   if (typeof value.siteNodeId !== 'string' || !SITE_NODE_ID_PATTERN.test(value.siteNodeId)) {
     fail(filePath, index, 'siteNodeId', 'must match [a-z0-9]{12}');
@@ -93,32 +104,125 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): SiteN
   if (value.listType !== 'whitelist' && value.listType !== 'blacklist') {
     fail(filePath, index, 'listType', "must be exactly 'whitelist' or 'blacklist'");
   }
-
   return {
     siteNodeName: value.siteNodeName,
-    ...(value.sourceGraphSubdirectory !== undefined && {
-      sourceGraphSubdirectory: value.sourceGraphSubdirectory,
-    }),
-    siteNodeKind: 'file',
-    fileType: value.fileType as FileType,
     siteNodeId: value.siteNodeId as SiteNodeId,
-    listType: value.listType,
-    ...(value.outlinksDepth !== undefined && {
-      outlinksDepth: validateDepth(value.outlinksDepth, filePath, index, 'outlinksDepth'),
-    }),
-    ...(value.inlinksDepth !== undefined && {
-      inlinksDepth: validateDepth(value.inlinksDepth, filePath, index, 'inlinksDepth'),
-    }),
+    listType: value.listType as 'blacklist' | 'whitelist',
   };
 }
 
-export function siteNodeLocatorKey(node: Pick<SiteNodeConfig, 'siteNodeName' | 'sourceGraphSubdirectory' | 'siteNodeKind' | 'fileType'>): string {
-  return [
-    node.siteNodeName,
-    node.sourceGraphSubdirectory ?? '',
-    node.siteNodeKind,
-    node.fileType,
-  ].join('\0');
+function parseNodeRecord(value: unknown, index: number, filePath: string): SiteNodeConfig {
+  if (!isRecord(value)) fail(filePath, index, 'record', 'must be a mapping');
+  for (const field of Object.keys(value)) {
+    if (!canonicalNodeFields.has(field)) {
+      fail(filePath, index, field, 'is not part of canonical node configuration');
+    }
+  }
+  const common = parseCommonNodeFields(value, index, filePath);
+  switch (value.siteNodeKind) {
+    case 'file': {
+      if (value.sourceGraphSubdirectory !== undefined && typeof value.sourceGraphSubdirectory !== 'string') {
+        fail(filePath, index, 'sourceGraphSubdirectory', 'must be a string when present');
+      }
+      if (typeof value.fileType !== 'string' || !fileTypes.has(value.fileType)) {
+        fail(filePath, index, 'fileType', `must be one of: ${FILE_TYPES.join(', ')}`);
+      }
+      if (hasOwn(value, 'memberSiteNodeIds')) {
+        fail(filePath, index, 'memberSiteNodeIds', 'is only valid for collection nodes');
+      }
+      return {
+        ...common,
+        ...(value.sourceGraphSubdirectory !== undefined && {
+          sourceGraphSubdirectory: value.sourceGraphSubdirectory,
+        }),
+        siteNodeKind: 'file',
+        fileType: value.fileType as FileType,
+        ...(value.outlinksDepth !== undefined && {
+          outlinksDepth: validateDepth(value.outlinksDepth, filePath, index, 'outlinksDepth'),
+        }),
+        ...(value.inlinksDepth !== undefined && {
+          inlinksDepth: validateDepth(value.inlinksDepth, filePath, index, 'inlinksDepth'),
+        }),
+      };
+    }
+    case 'folder': {
+      if (typeof value.sourceGraphSubdirectory !== 'string') {
+        fail(filePath, index, 'sourceGraphSubdirectory', 'is required and must be a string');
+      }
+      let normalized: string;
+      try {
+        normalized = normalizeFolderSourceGraphSubdirectory(value.sourceGraphSubdirectory);
+      } catch (error) {
+        fail(filePath, index, 'sourceGraphSubdirectory', error instanceof Error ? error.message : String(error));
+      }
+      if (normalized !== value.sourceGraphSubdirectory) {
+        fail(filePath, index, 'sourceGraphSubdirectory', `must be normalized as '${normalized}'`);
+      }
+      if (normalized !== '' && common.siteNodeName !== normalized.slice(normalized.lastIndexOf('/') + 1)) {
+        fail(filePath, index, 'siteNodeName', 'must equal the basename of sourceGraphSubdirectory');
+      }
+      if (hasOwn(value, 'fileType')) fail(filePath, index, 'fileType', 'is not valid for folder nodes');
+      if (hasOwn(value, 'memberSiteNodeIds')) {
+        fail(filePath, index, 'memberSiteNodeIds', 'is only valid for collection nodes');
+      }
+      return {
+        ...common,
+        sourceGraphSubdirectory: normalized,
+        siteNodeKind: 'folder',
+        ...(value.outlinksDepth !== undefined && {
+          outlinksDepth: validateDepth(value.outlinksDepth, filePath, index, 'outlinksDepth'),
+        }),
+        ...(value.inlinksDepth !== undefined && {
+          inlinksDepth: validateDepth(value.inlinksDepth, filePath, index, 'inlinksDepth'),
+        }),
+      };
+    }
+    case 'collection': {
+      if (hasOwn(value, 'sourceGraphSubdirectory')) {
+        fail(filePath, index, 'sourceGraphSubdirectory', 'is not valid for collection nodes');
+      }
+      if (hasOwn(value, 'fileType')) fail(filePath, index, 'fileType', 'is not valid for collection nodes');
+      if (hasOwn(value, 'outlinksDepth') || hasOwn(value, 'inlinksDepth')) {
+        fail(filePath, index, 'outlinksDepth', 'depth overrides are not valid for collection nodes');
+      }
+      if (common.listType !== 'whitelist') {
+        fail(filePath, index, 'listType', 'collection nodes must be whitelisted');
+      }
+      if (!Array.isArray(value.memberSiteNodeIds) || value.memberSiteNodeIds.length < 2) {
+        fail(filePath, index, 'memberSiteNodeIds', 'must contain at least two folder-node IDs');
+      }
+      const memberSiteNodeIds = value.memberSiteNodeIds.map((member, memberIndex) => {
+        if (typeof member !== 'string' || !SITE_NODE_ID_PATTERN.test(member)) {
+          fail(filePath, index, 'memberSiteNodeIds', `member ${memberIndex + 1} must match [a-z0-9]{12}`);
+        }
+        return member as SiteNodeId;
+      });
+      if (new Set(memberSiteNodeIds).size !== memberSiteNodeIds.length) {
+        fail(filePath, index, 'memberSiteNodeIds', 'must contain unique IDs');
+      }
+      return {
+        ...common,
+        siteNodeKind: 'collection',
+        memberSiteNodeIds,
+      };
+    }
+    default:
+      fail(filePath, index, 'siteNodeKind', "must be exactly 'file', 'folder', or 'collection'");
+  }
+}
+
+type SiteNodeLocatorInput =
+  | Pick<FileSiteNodeConfig, 'siteNodeName' | 'sourceGraphSubdirectory' | 'siteNodeKind' | 'fileType'>
+  | Pick<FolderSiteNodeConfig, 'sourceGraphSubdirectory' | 'siteNodeKind'>
+  | Pick<CollectionSiteNodeConfig, 'siteNodeKind'>;
+
+/** Logical configured-node identity. The file format is intentionally unchanged from Phase 1. */
+export function siteNodeLocatorKey(node: SiteNodeLocatorInput): string {
+  if (node.siteNodeKind === 'file') {
+    return [node.siteNodeName, node.sourceGraphSubdirectory ?? '', node.siteNodeKind, node.fileType].join('\0');
+  }
+  if (node.siteNodeKind === 'folder') return `folder:${node.sourceGraphSubdirectory}`;
+  return 'collection';
 }
 
 export function parseSiteNodeConfig(
@@ -162,6 +266,19 @@ function validateNodeSet(nodes: SiteNodeConfig[], filePath: string): void {
     }
     locators.set(locator, index);
   });
+
+  const collections = nodes.filter((node): node is CollectionSiteNodeConfig => node.siteNodeKind === 'collection');
+  if (collections.length > 1) fail(filePath, nodes.indexOf(collections[1]), 'siteNodeKind', 'only one collection is permitted');
+  for (const collection of collections) {
+    const collectionIndex = nodes.indexOf(collection);
+    for (const memberId of collection.memberSiteNodeIds) {
+      const member = nodes.find(node => node.siteNodeId === memberId);
+      if (!member) fail(filePath, collectionIndex, 'memberSiteNodeIds', `does not resolve (${memberId})`);
+      if (member.siteNodeKind !== 'folder' || member.listType !== 'whitelist') {
+        fail(filePath, collectionIndex, 'memberSiteNodeIds', `must resolve to a whitelisted folder (${memberId})`);
+      }
+    }
+  }
 }
 
 export function stringifySiteNodeConfig(nodes: SiteNodeConfig[]): string {
@@ -171,22 +288,30 @@ export function stringifySiteNodeConfig(nodes: SiteNodeConfig[]): string {
     a.siteNodeName.localeCompare(b.siteNodeName)
     || (a.sourceGraphSubdirectory ?? '').localeCompare(b.sourceGraphSubdirectory ?? '')
     || a.siteNodeKind.localeCompare(b.siteNodeKind)
-    || a.fileType.localeCompare(b.fileType)
+    || (a.fileType ?? '').localeCompare(b.fileType ?? '')
     || a.siteNodeId.localeCompare(b.siteNodeId));
 
   const document: SiteNodeConfigDocument = {
-    nodes: sorted.map(node => ({
-      siteNodeName: node.siteNodeName,
-      ...(node.sourceGraphSubdirectory !== undefined && {
-        sourceGraphSubdirectory: node.sourceGraphSubdirectory,
-      }),
-      siteNodeKind: node.siteNodeKind,
-      fileType: node.fileType,
-      siteNodeId: node.siteNodeId,
-      listType: node.listType,
-      ...(node.outlinksDepth !== undefined && { outlinksDepth: node.outlinksDepth }),
-      ...(node.inlinksDepth !== undefined && { inlinksDepth: node.inlinksDepth }),
-    })),
+    nodes: sorted.map(node => {
+      const common = {
+        siteNodeName: node.siteNodeName,
+        ...(node.siteNodeKind !== 'collection' && {
+          sourceGraphSubdirectory: node.sourceGraphSubdirectory,
+        }),
+        siteNodeKind: node.siteNodeKind,
+        ...(node.siteNodeKind === 'file' && { fileType: node.fileType }),
+        siteNodeId: node.siteNodeId,
+        listType: node.listType,
+        ...(node.siteNodeKind !== 'collection' && node.outlinksDepth !== undefined && {
+          outlinksDepth: node.outlinksDepth,
+        }),
+        ...(node.siteNodeKind !== 'collection' && node.inlinksDepth !== undefined && {
+          inlinksDepth: node.inlinksDepth,
+        }),
+        ...(node.siteNodeKind === 'collection' && { memberSiteNodeIds: node.memberSiteNodeIds }),
+      };
+      return common as SiteNodeConfig;
+    }),
   };
   return YAML.stringify(document);
 }
@@ -237,9 +362,57 @@ export function validateCanonicalSiteConfiguration(options: {
 
   validateDepth(options.siteConfig.defaultOutlinksDepth, siteConfigPath, null, 'defaultOutlinksDepth');
   validateDepth(options.siteConfig.defaultInlinksDepth, siteConfigPath, null, 'defaultInlinksDepth');
-  resolveSiteNodeRoles(options.committedNodes, options.siteConfig, siteConfigPath);
+  validateSiteNodeStrategy(options.committedNodes, options.siteConfig, siteConfigPath);
   if (options.draftNodes) {
-    resolveSiteNodeRoles(options.draftNodes, options.siteConfig, siteConfigPath);
+    validateSiteNodeStrategy(options.draftNodes, options.siteConfig, siteConfigPath);
+  }
+}
+
+function nodeSourceDirectory(node: SiteNodeConfig): string | undefined {
+  return node.siteNodeKind === 'collection' ? undefined : (node.sourceGraphSubdirectory ?? '');
+}
+
+function nearestBlacklistedAncestor(node: SiteNodeConfig, nodes: SiteNodeConfig[]): FolderSiteNodeConfig | undefined {
+  const locator = nodeSourceDirectory(node);
+  if (locator === undefined) return undefined;
+  return nodes
+    .filter((candidate): candidate is FolderSiteNodeConfig =>
+      candidate.siteNodeKind === 'folder'
+      && candidate.listType === 'blacklist'
+      && (candidate.sourceGraphSubdirectory === ''
+        || locator === candidate.sourceGraphSubdirectory
+        || locator.startsWith(`${candidate.sourceGraphSubdirectory}/`)))
+    .sort((a, b) => b.sourceGraphSubdirectory.length - a.sourceGraphSubdirectory.length)[0];
+}
+
+function validateSiteNodeStrategy(nodes: SiteNodeConfig[], siteConfig: SiteConfig, siteConfigPath: string): void {
+  const roles = resolveSiteNodeRoles(nodes, siteConfig, siteConfigPath);
+  const collection = nodes.find((node): node is CollectionSiteNodeConfig => node.siteNodeKind === 'collection');
+  if (collection && roles.entryNode.siteNodeId !== collection.siteNodeId) {
+    fail(siteConfigPath, null, 'entrySiteNodeId', 'the site collection must be the entry node');
+  }
+  if (roles.entryNode.siteNodeKind === 'collection' && roles.entryNode !== collection) {
+    fail(siteConfigPath, null, 'entrySiteNodeId', 'must reference the site collection');
+  }
+
+  const sourceRootName = siteConfig.sourceDirectory?.replace(/[\\/]+$/, '').split(/[\\/]/).pop();
+  for (const [index, node] of nodes.entries()) {
+    if (node.siteNodeKind === 'folder' && node.sourceGraphSubdirectory === ''
+      && sourceRootName && node.siteNodeName !== sourceRootName) {
+      fail(siteConfigPath, index, 'siteNodeName', `source-root folder must be named '${sourceRootName}'`);
+    }
+  }
+
+  const strongNodes: SiteNodeConfig[] = [roles.entryNode, roles.defaultTraversalNode];
+  if (collection) {
+    strongNodes.push(...collection.memberSiteNodeIds.map(memberId =>
+      nodes.find(node => node.siteNodeId === memberId)!).filter(Boolean));
+  }
+  for (const strongNode of strongNodes) {
+    const boundary = nearestBlacklistedAncestor(strongNode, nodes);
+    if (boundary) {
+      fail(siteConfigPath, null, 'strong roles', `node ${strongNode.siteNodeId} lies below blacklisted folder ${boundary.siteNodeId}`);
+    }
   }
 }
 
@@ -271,12 +444,14 @@ export function nodeConfigMatchesNode(
   config: SiteNodeConfig,
   siteNodeName: string,
   sourceGraphSubdirectory: string | undefined,
-  fileType: FileType,
+  fileType: FileType | undefined,
+  siteNodeKind: SiteNodeKind = 'file',
+  siteNodeId?: SiteNodeId,
 ): boolean {
-  return config.siteNodeName === siteNodeName
-    && (config.sourceGraphSubdirectory ?? '') === (sourceGraphSubdirectory ?? '')
-    && config.siteNodeKind === 'file'
-    && config.fileType === fileType;
+  if (config.siteNodeKind !== siteNodeKind || config.siteNodeName !== siteNodeName) return false;
+  if (config.siteNodeKind === 'collection') return siteNodeId === undefined || config.siteNodeId === siteNodeId;
+  if ((config.sourceGraphSubdirectory ?? '') !== (sourceGraphSubdirectory ?? '')) return false;
+  return config.siteNodeKind === 'folder' || config.fileType === fileType;
 }
 
 export function applySensitiveFromApiData(nodes: ISiteNode[]): ISiteNode[] {
@@ -305,6 +480,8 @@ export function applyNodeConfigsToNodes(
       candidate.siteNodeName,
       candidate.sourceGraphSubdirectory,
       candidate.fileType,
+      candidate.siteNodeKind,
+      candidate.siteNodeId,
     ));
     if (!node) continue;
     node.conf = config;
@@ -319,18 +496,27 @@ export function applyNodeConfigsToNodes(
 export function buildNodeConfigs(nodes: ISiteNode[]): SiteNodeConfig[] {
   return nodes
     .filter(node => node.tracked === true && node.conf !== undefined)
-    .map(node => ({
-      siteNodeName: node.siteNodeName,
-      ...(node.sourceGraphSubdirectory !== undefined && {
+    .map(node => {
+      if (node.siteNodeKind === 'collection') {
+        return {
+          siteNodeName: node.siteNodeName,
+          siteNodeKind: 'collection',
+          siteNodeId: node.conf!.siteNodeId,
+          listType: 'whitelist',
+          memberSiteNodeIds: node.memberSiteNodeIds,
+        } satisfies CollectionSiteNodeConfig;
+      }
+      const common = {
+        siteNodeName: node.siteNodeName,
         sourceGraphSubdirectory: node.sourceGraphSubdirectory,
-      }),
-      siteNodeKind: 'file',
-      fileType: node.fileType,
-      siteNodeId: node.conf!.siteNodeId,
-      listType: node.blacklisted ? 'blacklist' : 'whitelist',
-      ...(node.conf!.outlinksDepth !== undefined && { outlinksDepth: node.conf!.outlinksDepth }),
-      ...(node.conf!.inlinksDepth !== undefined && { inlinksDepth: node.conf!.inlinksDepth }),
-    }));
+        siteNodeId: node.conf!.siteNodeId,
+        listType: node.blacklisted ? 'blacklist' as const : 'whitelist' as const,
+        ...(node.conf!.outlinksDepth !== undefined && { outlinksDepth: node.conf!.outlinksDepth }),
+        ...(node.conf!.inlinksDepth !== undefined && { inlinksDepth: node.conf!.inlinksDepth }),
+      };
+      if (node.siteNodeKind === 'folder') return { ...common, siteNodeKind: 'folder' } satisfies FolderSiteNodeConfig;
+      return { ...common, siteNodeKind: 'file', fileType: node.fileType } satisfies FileSiteNodeConfig;
+    });
 }
 
 /** Configured whitelist nodes that are no longer reachable in the working graph. */
@@ -344,5 +530,7 @@ export function getOrphanNodeConfigs(
       node.siteNodeName,
       node.sourceGraphSubdirectory,
       node.fileType,
+      node.siteNodeKind,
+      node.siteNodeId,
     )));
 }

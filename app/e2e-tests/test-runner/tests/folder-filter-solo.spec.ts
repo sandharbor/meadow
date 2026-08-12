@@ -20,6 +20,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { filters, folderFilter } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("folder filter expands recursive counts and solos a nested folder", async ({
   page,
   snapshot,

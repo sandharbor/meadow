@@ -19,6 +19,8 @@ import { SiteListPage, SiteEditorPage, PreviewPublishModal, CustomizeTab } from 
 import { htmlGeneration, hooks } from "../src/scenario-docs/index.js";
 import { hooksSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: "home_fixture_hooks" });
 
 test("Hooks preview shows normalized title and editing hook updates it", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {

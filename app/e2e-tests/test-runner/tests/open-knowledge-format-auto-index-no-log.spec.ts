@@ -25,6 +25,8 @@ import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
 
 const sourceIndexPageName = "index";
 
+test.use({ siteMode: "single-file" });
+
 test.use({
   _preSpawnSeed: async ({}, use) => {
     await use(async ({ configDir }) => {

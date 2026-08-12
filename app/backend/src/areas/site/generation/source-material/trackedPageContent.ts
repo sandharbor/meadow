@@ -19,7 +19,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { parseSiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../shared_code/utils/fileTypeUtils.js';
-import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { FileSiteNodeConfig, SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import type { SiteNodeId } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import { stringifySiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
@@ -100,8 +100,11 @@ export async function ensureTrackedPageContent(
   }
 
   // Build expected file paths with subdirectories (excluding generated tag pages, which do not exist in sourceDirectory)
-  const expectedFilePaths = new Map<string, SiteNodeConfig>();
-  const sourceBackedTrackedPages = trackedPages.filter(c => (c.sourceGraphSubdirectory || '') !== tagPagesSubdirName);
+  const expectedFilePaths = new Map<string, FileSiteNodeConfig>();
+  const sourceBackedTrackedPages = trackedPages.filter(
+    (config): config is FileSiteNodeConfig => config.siteNodeKind === 'file'
+      && config.sourceGraphSubdirectory !== tagPagesSubdirName
+  );
   for (const siteNodeConfig of sourceBackedTrackedPages) {
     const subdir = siteNodeConfig.sourceGraphSubdirectory || '';
     const filename = canonicalPageFilename(siteNodeConfig.siteNodeName, siteNodeConfig.fileType);
@@ -160,6 +163,20 @@ export async function ensureTrackedPageContent(
   // Create target directory if needed
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
+  }
+
+  // Folder nodes have no source body. Recreate only their directory shape so
+  // selected/configured empty folders remain materialized for graph building.
+  for (const config of trackedPages) {
+    if (config.siteNodeKind !== 'folder') continue;
+    const sourceFolder = config.sourceGraphSubdirectory
+      ? path.join(sourceDirectory, ...config.sourceGraphSubdirectory.split('/'))
+      : sourceDirectory;
+    if (!fs.existsSync(sourceFolder) || !fs.statSync(sourceFolder).isDirectory()) continue;
+    const targetFolder = config.sourceGraphSubdirectory
+      ? path.join(targetDir, ...config.sourceGraphSubdirectory.split('/'))
+      : targetDir;
+    fs.mkdirSync(targetFolder, { recursive: true });
   }
 
   // Copy tracked pages from source to target, preserving directory structure

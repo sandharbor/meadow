@@ -6,11 +6,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+use working_graph::folder_scope::{
+    build_folder_scope_projection, classify_directory_for_selected_roots,
+    ScopePathClassification,
+};
 use working_graph::site_node_config::{
     find_config_by_id, parse_site_node_config_yaml, SiteNodeConfig,
 };
-use working_graph::traversal::{get_working_graph, TraverseOpts};
-use working_graph::types::{BasicEdge, FileSiteNode, TraversalDetails};
+use working_graph::traversal::{get_multi_seed_working_nodes, get_working_graph, TraverseOpts};
+use working_graph::types::{
+    BasicEdge, FileSiteNode, TraversalDetails, TraversalStateSummary, WorkingNode,
+};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -93,8 +99,16 @@ struct OutputNode {
     siteNodeId: Option<String>,
     siteNodeKind: &'static str,
     siteNodeName: String,
-    sourceGraphSubdirectory: String,
-    fileType: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sourceGraphSubdirectory: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fileType: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    memberSiteNodeIds: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    effectiveBlacklistingSiteNodeId: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    effectiveFolderPolicySiteNodeId: Option<String>,
     depth: i32,
     remaining_depth: i32,
     remaining_inlinks_depth: i32,
@@ -105,6 +119,8 @@ struct OutputNode {
     isFrontierNode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     isFrontierImageExtension: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    traversal_states: Option<Vec<TraversalStateSummary>>,
     is_sensitive: bool,
 }
 
@@ -136,6 +152,27 @@ struct OutputGraph {
     allLinkResolutionMaps: HashMap<String, HashMap<String, LinkResolvedInfo>>,
     allInlinkSources: HashMap<String, Vec<String>>,
     allOutlinkTargets: HashMap<String, Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    folderScope: Option<FolderScopeReport>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Clone, Serialize)]
+struct FolderScopeReport {
+    normalizedSelectedFolders: Vec<String>,
+    supportedSeedFileCount: usize,
+    requiredRawFolderNodeCount: usize,
+    skippedCounts: HashMap<String, usize>,
+    skippedPaths: Vec<SkippedPath>,
+    skippedPathCount: usize,
+    predictedRawNodeCount: usize,
+    predictedTypedEdgeCount: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SkippedPath {
+    path: String,
+    reason: &'static str,
 }
 
 #[derive(Serialize, Clone)]
@@ -694,6 +731,96 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
     Ok(results)
 }
 
+fn scan_source_directories(graph_root: &Path) -> HashSet<String> {
+    WalkDir::new(graph_root)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_dir() && !entry.path_is_symlink())
+        .filter_map(|entry| {
+            entry
+                .path()
+                .strip_prefix(graph_root)
+                .ok()
+                .map(|path| path.to_string_lossy().replace('\\', "/"))
+        })
+        .collect()
+}
+
+fn build_folder_scope_report(
+    graph_root: &Path,
+    selected_roots: Vec<String>,
+    supported_seed_file_count: usize,
+    required_raw_folder_node_count: usize,
+) -> FolderScopeReport {
+    let mut skipped: Vec<SkippedPath> = WalkDir::new(graph_root)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path() != graph_root && !entry.file_type().is_dir())
+        .filter_map(|entry| {
+            let relative = entry.path().strip_prefix(graph_root).ok()?;
+            let relative_path = relative.to_string_lossy().replace('\\', "/");
+            let directory = relative
+                .parent()
+                .map(|parent| parent.to_string_lossy().replace('\\', "/"))
+                .unwrap_or_default();
+            let classification = classify_directory_for_selected_roots(&directory, &selected_roots);
+            if classification == ScopePathClassification::OutsideScope {
+                return None;
+            }
+            let reason = if entry.path_is_symlink() {
+                "symlink"
+            } else {
+                match classification {
+                    ScopePathClassification::HiddenDescendant => "hiddenDescendant",
+                    ScopePathClassification::HardExcluded => "hardExcluded",
+                    ScopePathClassification::OutsideScope => return None,
+                    ScopePathClassification::Included => {
+                        if is_pagespec_sidecar(entry.path()) {
+                            "pagespecSidecar"
+                        } else {
+                            let extension = entry
+                                .path()
+                                .extension()
+                                .and_then(|value| value.to_str())
+                                .unwrap_or("")
+                                .to_ascii_lowercase();
+                            if extension == "md"
+                                || IMAGE_EXTENSIONS_MAIN.contains(&extension.as_str())
+                            {
+                                return None;
+                            }
+                            "unsupportedFile"
+                        }
+                    }
+                }
+            };
+            Some(SkippedPath {
+                path: relative_path,
+                reason,
+            })
+        })
+        .collect();
+    skipped.sort_by(|a, b| a.path.cmp(&b.path).then_with(|| a.reason.cmp(b.reason)));
+    let mut skipped_counts = HashMap::new();
+    for path in &skipped {
+        *skipped_counts.entry(path.reason.to_string()).or_insert(0) += 1;
+    }
+    let skipped_path_count = skipped.len();
+    skipped.truncate(100);
+    FolderScopeReport {
+        normalizedSelectedFolders: selected_roots,
+        supportedSeedFileCount: supported_seed_file_count,
+        requiredRawFolderNodeCount: required_raw_folder_node_count,
+        skippedCounts: skipped_counts,
+        skippedPaths: skipped,
+        skippedPathCount: skipped_path_count,
+        predictedRawNodeCount: 0,
+        predictedTypedEdgeCount: 0,
+    }
+}
+
 fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
     let mut file_index_map_for_resolution: HashMap<(String, String, String), usize> =
         HashMap::new();
@@ -903,14 +1030,14 @@ fn file_site_node_from_identifier(file: &FileIdentifier, is_sensitive: bool) -> 
 
 fn file_site_node_from_config(config: &SiteNodeConfig) -> FileSiteNode {
     FileSiteNode {
-        source_graph_subdirectory: config.source_graph_subdirectory.clone().unwrap_or_default(),
-        site_node_name: config.site_node_name.clone(),
-        file_type: config.file_type.clone(),
-        site_node_id: Some(config.site_node_id.clone()),
+        source_graph_subdirectory: config.source_graph_subdirectory().unwrap_or("").to_string(),
+        site_node_name: config.site_node_name().to_string(),
+        file_type: config.file_type().unwrap_or("").to_string(),
+        site_node_id: Some(config.site_node_id().to_string()),
         is_sensitive: false,
-        conf_outlinks_depth: config.outlinks_depth,
-        conf_inlinks_depth: config.inlinks_depth,
-        conf_is_blacklisted: Some(config.list_type == "blacklist"),
+        conf_outlinks_depth: config.outlinks_depth(),
+        conf_inlinks_depth: config.inlinks_depth(),
+        conf_is_blacklisted: Some(config.list_type() == "blacklist"),
     }
 }
 
@@ -1016,7 +1143,7 @@ fn main() -> anyhow::Result<()> {
             )
         })?;
     anyhow::ensure!(
-        entry_config.list_type == "whitelist",
+        entry_config.list_type() == "whitelist",
         "entrySiteNodeId must reference a whitelisted node"
     );
     let traversal_config =
@@ -1029,25 +1156,121 @@ fn main() -> anyhow::Result<()> {
             },
         )?;
     anyhow::ensure!(
-        traversal_config.list_type == "whitelist",
+        traversal_config.list_type() == "whitelist",
         "defaultTraversalSiteNodeId must reference a whitelisted node"
     );
-    let entry_node = file_site_node_from_config(entry_config);
-    let traversal_node = file_site_node_from_config(traversal_config);
-
-    let (working_nodes, _working_edges) = get_working_graph(
-        &basic_edges,
-        &site_node_configs,
-        &entry_node,
-        &traversal_node,
-        args.default_outlinks_depth,
-        args.default_inlinks_depth,
-        TraverseOpts {
-            allow_lower_depths: args.allow_lower_depths,
-        },
-        args.frontier_depth,
-        args.allow_images_to_extend_to_frontier,
-    )?;
+    let mut structural_output_nodes: Vec<OutputNode> = Vec::new();
+    let mut structural_output_edges: Vec<OutputEdge> = Vec::new();
+    let mut effective_policy_site_node_ids: HashMap<String, String> = HashMap::new();
+    let mut folder_scope_report: Option<FolderScopeReport> = None;
+    let working_nodes: Vec<WorkingNode> = if matches!(entry_config, SiteNodeConfig::File { .. }) {
+        let entry_node = file_site_node_from_config(entry_config);
+        anyhow::ensure!(
+            matches!(traversal_config, SiteNodeConfig::File { .. }),
+            "file-entry sites require a file default traversal node"
+        );
+        let traversal_node = file_site_node_from_config(traversal_config);
+        get_working_graph(
+            &basic_edges,
+            &site_node_configs,
+            &entry_node,
+            &traversal_node,
+            args.default_outlinks_depth,
+            args.default_inlinks_depth,
+            TraverseOpts {
+                allow_lower_depths: args.allow_lower_depths,
+            },
+            args.frontier_depth,
+            args.allow_images_to_extend_to_frontier,
+        )?
+        .0
+    } else {
+        let supported_files: Vec<FileSiteNode> = scans
+            .iter()
+            .map(|scan| file_site_node_from_identifier(&scan.source_file, scan.is_sensitive))
+            .collect();
+        let projection = build_folder_scope_projection(
+            &site_node_configs,
+            &args.entry_site_node_id,
+            &supported_files,
+            &scan_source_directories(&graph_root),
+            args.default_outlinks_depth.unwrap_or(1),
+            args.default_inlinks_depth.unwrap_or(0),
+        )?;
+        anyhow::ensure!(
+            projection.missing_selected_roots.is_empty(),
+            "repair required: selected folder(s) missing: {}",
+            projection.missing_selected_roots.join(", ")
+        );
+        folder_scope_report = Some(build_folder_scope_report(
+            &graph_root,
+            projection.selected_roots.clone(),
+            projection.seeds.len(),
+            projection
+                .structural_nodes
+                .iter()
+                .filter(|node| node.site_node_kind == "folder")
+                .count(),
+        ));
+        effective_policy_site_node_ids = projection.effective_policy_site_node_ids.clone();
+        structural_output_nodes = projection
+            .structural_nodes
+            .iter()
+            .map(|node| OutputNode {
+                siteNodeKey: node.site_node_key.clone(),
+                siteNodeId: node.site_node_id.clone(),
+                siteNodeKind: node.site_node_kind,
+                siteNodeName: node.site_node_name.clone(),
+                sourceGraphSubdirectory: node.source_graph_subdirectory.clone(),
+                fileType: None,
+                memberSiteNodeIds: node.member_site_node_ids.clone(),
+                effectiveBlacklistingSiteNodeId: node
+                    .effective_blacklisting_site_node_id
+                    .clone(),
+                effectiveFolderPolicySiteNodeId: node
+                    .effective_folder_policy_site_node_id
+                    .clone(),
+                depth: node.path.len().saturating_sub(1) as i32,
+                remaining_depth: 0,
+                remaining_inlinks_depth: 0,
+                path: node.path.clone(),
+                traversal_details: None,
+                isFrontierNode: None,
+                isFrontierImageExtension: None,
+                traversal_states: None,
+                is_sensitive: false,
+            })
+            .collect();
+        structural_output_edges = projection
+            .structural_edges
+            .iter()
+            .map(|edge| OutputEdge {
+                source: edge.source.clone(),
+                target: edge.target.clone(),
+                siteEdgeKind: edge.site_edge_kind,
+                isBidirectional: false,
+                link_source_page_path: String::new(),
+                link_original_text: String::new(),
+                link_parsed_directory: String::new(),
+                link_parsed_title: String::new(),
+                link_parsed_file_type: String::new(),
+                link_parsed_anchor: None,
+                link_parsed_anchor_type: None,
+                link_parsed_alias: None,
+                link_parsed_media_size: None,
+                link_resolved_target_directory: String::new(),
+                link_resolved_target_path: String::new(),
+            })
+            .collect();
+        get_multi_seed_working_nodes(
+            &basic_edges,
+            &site_node_configs,
+            &projection.seeds,
+            &projection.blocked_file_keys,
+            args.frontier_depth,
+            args.allow_images_to_extend_to_frontier,
+        )
+    };
 
     let working_node_keys: HashSet<String> = working_nodes
         .iter()
@@ -1073,15 +1296,20 @@ fn main() -> anyhow::Result<()> {
             .insert(source_id);
     }
 
-    let out_nodes: Vec<OutputNode> = working_nodes
+    let mut out_nodes: Vec<OutputNode> = working_nodes
         .iter()
         .map(|n| OutputNode {
             siteNodeKey: n.file.site_node_key(),
             siteNodeId: n.file.site_node_id.clone(),
             siteNodeKind: "file",
             siteNodeName: n.file.site_node_name.clone(),
-            sourceGraphSubdirectory: n.file.source_graph_subdirectory.clone(),
-            fileType: n.file.file_type.clone(),
+            sourceGraphSubdirectory: Some(n.file.source_graph_subdirectory.clone()),
+            fileType: Some(n.file.file_type.clone()),
+            memberSiteNodeIds: None,
+            effectiveBlacklistingSiteNodeId: None,
+            effectiveFolderPolicySiteNodeId: effective_policy_site_node_ids
+                .get(&n.file.site_node_key())
+                .cloned(),
             depth: n.depth,
             remaining_depth: n.remaining_depth,
             remaining_inlinks_depth: n.remaining_inlinks_depth,
@@ -1089,14 +1317,21 @@ fn main() -> anyhow::Result<()> {
             traversal_details: n.traversal_details.clone(),
             isFrontierNode: n.is_frontier_node,
             isFrontierImageExtension: n.is_frontier_image_extension,
+            traversal_states: n.traversal_states.clone(),
             is_sensitive: n.file.is_sensitive,
         })
         .collect();
+    out_nodes.extend(structural_output_nodes);
 
-    let out_edges: Vec<OutputEdge> = per_link_edges
+    let mut out_edges: Vec<OutputEdge> = per_link_edges
         .into_iter()
         .filter(|e| working_node_keys.contains(&e.source) && working_node_keys.contains(&e.target))
         .collect();
+    out_edges.extend(structural_output_edges);
+    if let Some(report) = &mut folder_scope_report {
+        report.predictedRawNodeCount = out_nodes.len();
+        report.predictedTypedEdgeCount = out_edges.len();
+    }
 
     // Convert HashSets to sorted Vecs for JSON output
     let all_inlink_sources: HashMap<String, Vec<String>> = inlink_sources
@@ -1123,6 +1358,7 @@ fn main() -> anyhow::Result<()> {
         allLinkResolutionMaps: all_link_resolution_maps,
         allInlinkSources: all_inlink_sources,
         allOutlinkTargets: all_outlink_targets,
+        folderScope: folder_scope_report,
     };
 
     println!("{}", serde_json::to_string_pretty(&output)?);

@@ -21,6 +21,8 @@ import { siteConfig, callout } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 import { sites } from "../src/app-area-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("creating a second site from the same source page auto-increments the folder name", async ({
   page,
   snapshot,

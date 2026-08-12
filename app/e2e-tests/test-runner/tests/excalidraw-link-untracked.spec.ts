@@ -20,6 +20,8 @@ import { SiteEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { excalidraw } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ trackBigSiteExcalidrawPages: true });
 
 /**

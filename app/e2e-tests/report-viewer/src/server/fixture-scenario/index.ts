@@ -112,6 +112,7 @@ export async function generateFixtureScenario(): Promise<string> {
   writeFileSync(path.join(FIXTURE_DIR, "start-time.txt"), builder.ticker.startIso());
   writeFileSync(path.join(FIXTURE_DIR, "end-time.txt"), builder.ticker.endIso());
   writeFileSync(path.join(FIXTURE_DIR, "status.txt"), "passed");
+  writeFileSync(path.join(FIXTURE_DIR, "site-mode.txt"), "single-file");
   // Point test-file.txt at the scenario script so the viewer's source view
   // shows the very factories that produced this artifact — the most
   // self-documenting choice.

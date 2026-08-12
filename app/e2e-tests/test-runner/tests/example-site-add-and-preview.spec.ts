@@ -21,6 +21,8 @@ import { htmlGeneration } from "../src/scenario-docs/index.js";
 import { exampleSite } from "../src/site-docs/index.js";
 import { sites } from "../src/app-area-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 test("add example site from empty state and preview it", async ({

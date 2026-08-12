@@ -19,6 +19,8 @@ import { SiteListPage, SiteEditorPage, FilterPanelComponent, SelectedPageDetailC
 import { frontier } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("frontier nodes show filtered pages and respond to depth changes", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();

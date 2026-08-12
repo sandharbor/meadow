@@ -20,17 +20,18 @@ import test from 'tape';
 type WorkingGraphNode = {
   siteNodeKey: string;
   siteNodeId?: string;
-  siteNodeKind: 'file';
+  siteNodeKind: 'file' | 'folder' | 'collection';
   siteNodeName: string;
-  sourceGraphSubdirectory: string;
-  fileType: string;
+  sourceGraphSubdirectory?: string;
+  fileType?: string;
+  memberSiteNodeIds?: string[];
   depth: number;
 };
 
 type WorkingGraphEdge = {
   source: string;
   target: string;
-  siteEdgeKind: 'semanticLink';
+  siteEdgeKind: 'semanticLink' | 'directoryContainment' | 'collectionMembership';
   link_original_text: string;
   link_resolved_target_directory: string;
   link_resolved_target_path: string | null;
@@ -49,10 +50,12 @@ function runWorkingGraph(args: {
   defaultOutlinksDepth?: number;
   defaultInlinksDepth?: number;
   frontierDepth?: number;
+  graphRoot?: string;
+  siteNodeConfig?: string;
 }): WorkingGraphOutput {
   // Path relative to working_graph_code working directory
-  const graphRoot = "../../../shared_data/source_graphs/meadow-test-sites-data";
-  const siteNodeConfig = "../../../shared_data/home_fixtures/home_fixture_big_and_small/sites/meadow-test-site-big/conf/site_node_config.yaml";
+  const graphRoot = args.graphRoot ?? "../../../shared_data/source_graphs/meadow-test-sites-data";
+  const siteNodeConfig = args.siteNodeConfig ?? "../../../shared_data/home_fixtures/home_fixture_big_and_small/sites/meadow-test-site-big/conf/site_node_config.yaml";
 
   const cmd = [
     `cargo run --quiet --bin working_graph_bin --`,
@@ -83,6 +86,24 @@ const resultDepth0 = runWorkingGraph({
   defaultOutlinksDepth: 4,
   defaultInlinksDepth: 100,
   frontierDepth: 0
+});
+
+const singleFolder = runWorkingGraph({
+  entrySiteNodeId: 'p1b2c3d4e5f6',
+  defaultTraversalSiteNodeId: 'p1b2c3d4e5f6',
+  defaultOutlinksDepth: 1,
+  defaultInlinksDepth: 0,
+  graphRoot: '../working_graph_integration_test/fixtures/folder-scope/source',
+  siteNodeConfig: '../working_graph_integration_test/fixtures/folder-scope/single-folder.yaml',
+});
+
+const multipleFolders = runWorkingGraph({
+  entrySiteNodeId: 'c1b2c3d4e5f6',
+  defaultTraversalSiteNodeId: 'c1b2c3d4e5f6',
+  defaultOutlinksDepth: 1,
+  defaultInlinksDepth: 0,
+  graphRoot: '../working_graph_integration_test/fixtures/folder-scope/source',
+  siteNodeConfig: '../working_graph_integration_test/fixtures/folder-scope/multiple-folders.yaml',
 });
 
 function nodeByNameAndDir(nodes: WorkingGraphNode[], name: string, dir: string): WorkingGraphNode | undefined {
@@ -128,6 +149,26 @@ test('working_graph integration', (t) => {
     st.end();
   });
 
+  t.test('single-folder scope recursively seeds supported files and retains typed structure', (st) => {
+    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'folder:Projects'), 'selected folder is present');
+    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'folder:Projects/Sub'), 'required nested folder is present');
+    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'Projects/A.md'), 'direct file seed is present');
+    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'Projects/Sub/B.md'), 'nested file seed is present');
+    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'Elsewhere/Outside.md'), 'semantic expansion outside scope is present');
+    st.notOk(singleFolder.nodes.some(node => node.siteNodeName === 'Hidden'), 'hidden descendant is omitted');
+    st.ok(singleFolder.edges.some(edge => edge.siteEdgeKind === 'directoryContainment'
+      && edge.source === 'folder:Projects/Sub' && edge.target === 'Projects/Sub/B.md'), 'typed containment edge is present');
+    st.end();
+  });
+
+  t.test('multiple-folder scope has one collection entry and preserves empty selected members', (st) => {
+    const home = multipleFolders.nodes.find(node => node.siteNodeKey === 'collection:c1b2c3d4e5f6');
+    st.deepEqual(home?.memberSiteNodeIds, ['p1b2c3d4e5f6', 'e1b2c3d4e5f6'], 'member order is preserved');
+    st.ok(multipleFolders.nodes.some(node => node.siteNodeKey === 'folder:Empty'), 'selected empty folder is present');
+    const memberships = multipleFolders.edges.filter(edge => edge.siteEdgeKind === 'collectionMembership');
+    st.deepEqual(memberships.map(edge => edge.target), ['folder:Projects', 'folder:Empty'], 'membership edges preserve selection order');
+    st.end();
+  });
+
   t.end();
 });
-

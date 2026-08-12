@@ -22,6 +22,7 @@ import path from "path";
 import { allDocs } from "../../../test-runner/src/scenario-docs/index.ts";
 import { allSiteDocs } from "../../../test-runner/src/site-docs/index.ts";
 import { allAppAreaDocs } from "../../../test-runner/src/app-area-docs/index.ts";
+import { isSiteMode, type SiteMode } from "../siteModes.ts";
 import {
   generateFixtureScenario,
   FIXTURE_RUN_ID,
@@ -374,6 +375,7 @@ app.get("/api/runs/:runId", (req, res) => {
       let status = "unknown";
       let testName = slug;
       let duration: number | null = null;
+      let siteMode: SiteMode | null = null;
       let scenarioDocIds: string[] = [];
       let siteDocIds: string[] = [];
       let appAreaDocIds: string[] = [];
@@ -394,6 +396,9 @@ app.get("/api/runs/:runId", (req, res) => {
           if (meta.version === 1 && meta.scenarioInfo) {
             testName = meta.scenarioInfo.testName || slug;
             duration = meta.scenarioInfo.duration ?? null;
+            siteMode = isSiteMode(meta.scenarioInfo.siteMode)
+              ? meta.scenarioInfo.siteMode
+              : null;
             scenarioDocIds = meta.scenarioInfo.scenarioDocIds || [];
             siteDocIds = meta.scenarioInfo.siteDocIds || [];
             appAreaDocIds = meta.scenarioInfo.appAreaDocIds || [];
@@ -414,6 +419,7 @@ app.get("/api/runs/:runId", (req, res) => {
           try {
             const manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
             testName = manifest.testName || slug;
+            siteMode = isSiteMode(manifest.siteMode) ? manifest.siteMode : null;
             scenarioDocIds = manifest.scenarioDocIds || [];
             siteDocIds = manifest.siteDocIds || [];
             appAreaDocIds = manifest.appAreaDocIds || [];
@@ -452,7 +458,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, testBasename, status, duration, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { slug, testName, testBasename, status, duration, siteMode, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read targeted-scenarios metadata (written when --scenarios flag was used)

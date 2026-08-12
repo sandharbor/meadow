@@ -120,7 +120,7 @@ function findPageConfig(
   // Exact match first (title + directory)
   const exact = siteNodeConfigs.find(
     (c) =>
-      c.siteNodeName === resolvedTitle &&
+      c.siteNodeKind === 'file' && c.siteNodeName === resolvedTitle &&
       (c.sourceGraphSubdirectory || '') === (resolvedDirectory || '') &&
       (c.fileType === 'md' || !c.fileType)
   );
@@ -130,7 +130,7 @@ function findPageConfig(
 
   // Fallback: if caller didn't specify an explicit path, allow title-only lookup
   if (!linkHasExplicitPath) {
-    return siteNodeConfigs.find((c) => c.siteNodeName === resolvedTitle && (c.fileType === 'md' || !c.fileType));
+    return siteNodeConfigs.find((c) => c.siteNodeKind === 'file' && c.siteNodeName === resolvedTitle && c.fileType === 'md');
   }
 
   return undefined;

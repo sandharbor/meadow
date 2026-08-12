@@ -20,6 +20,8 @@ import { Workflows, Site } from "../src/run/workflows.js";
 import { findInSites, archived, multiSite } from "../src/scenario-docs/index.js";
 import { bigSite, smallSite, exampleSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("find in sites shows archived match indicator and archived tab", async ({
   page,
   snapshot,

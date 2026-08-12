@@ -15,16 +15,23 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import type { SiteNodeConfig, SiteNodeId } from '../../../../shared_code/types/siteNodeConfig.js';
+import type {
+  CollectionSiteNodeConfig,
+  FileSiteNodeConfig,
+  FolderSiteNodeConfig,
+  SiteNodeConfig,
+  SiteNodeId,
+} from '../../../../shared_code/types/siteNodeConfig.js';
 import {
   generateSiteNodeId,
+  normalizeFolderSourceGraphSubdirectory,
   parseSiteNodeConfig,
   stringifySiteNodeConfig,
   validateCanonicalSiteConfiguration,
 } from '../../../../shared_code/utils/siteNodeConfigUtils.js';
 
 const id = (value: string) => value as SiteNodeId;
-const node = (overrides: Partial<SiteNodeConfig> = {}): SiteNodeConfig => ({
+const node = (overrides: Partial<FileSiteNodeConfig> = {}): FileSiteNodeConfig => ({
   siteNodeName: 'Example',
   sourceGraphSubdirectory: 'Projects',
   siteNodeKind: 'file',
@@ -33,6 +40,22 @@ const node = (overrides: Partial<SiteNodeConfig> = {}): SiteNodeConfig => ({
   listType: 'whitelist',
   outlinksDepth: 3,
   inlinksDepth: 1,
+  ...overrides,
+});
+const folder = (overrides: Partial<FolderSiteNodeConfig> = {}): FolderSiteNodeConfig => ({
+  siteNodeName: 'Projects',
+  sourceGraphSubdirectory: 'Projects',
+  siteNodeKind: 'folder',
+  siteNodeId: id('f1b2c3d4e5f6'),
+  listType: 'whitelist',
+  ...overrides,
+});
+const collection = (overrides: Partial<CollectionSiteNodeConfig> = {}): CollectionSiteNodeConfig => ({
+  siteNodeName: 'Research site',
+  siteNodeKind: 'collection',
+  siteNodeId: id('c1b2c3d4e5f6'),
+  listType: 'whitelist',
+  memberSiteNodeIds: [id('f1b2c3d4e5f6'), id('g1b2c3d4e5f6')],
   ...overrides,
 });
 
@@ -46,9 +69,59 @@ describe('canonical site node configuration', () => {
     expect(stringifySiteNodeConfig(parseSiteNodeConfig(first))).toBe(first);
   });
 
+  it('parses and canonically serializes folder and ordered collection records', () => {
+    const firstFolder = folder();
+    const secondFolder = folder({
+      siteNodeName: 'Writing',
+      sourceGraphSubdirectory: 'Writing',
+      siteNodeId: id('g1b2c3d4e5f6'),
+      outlinksDepth: 2,
+      inlinksDepth: 0,
+    });
+    const content = stringifySiteNodeConfig([secondFolder, collection(), firstFolder]);
+    expect(content).toBe(`nodes:\n  - siteNodeName: Projects\n    sourceGraphSubdirectory: Projects\n    siteNodeKind: folder\n    siteNodeId: f1b2c3d4e5f6\n    listType: whitelist\n  - siteNodeName: Research site\n    siteNodeKind: collection\n    siteNodeId: c1b2c3d4e5f6\n    listType: whitelist\n    memberSiteNodeIds:\n      - f1b2c3d4e5f6\n      - g1b2c3d4e5f6\n  - siteNodeName: Writing\n    sourceGraphSubdirectory: Writing\n    siteNodeKind: folder\n    siteNodeId: g1b2c3d4e5f6\n    listType: whitelist\n    outlinksDepth: 2\n    inlinksDepth: 0\n`);
+    expect(stringifySiteNodeConfig(parseSiteNodeConfig(content))).toBe(content);
+    expect(parseSiteNodeConfig(content).find(candidate => candidate.siteNodeKind === 'collection'))
+      .toMatchObject({ memberSiteNodeIds: ['f1b2c3d4e5f6', 'g1b2c3d4e5f6'] });
+  });
+
+  it('normalizes directory locators and rejects non-canonical or escaping folder records', () => {
+    expect(normalizeFolderSourceGraphSubdirectory('Projects/./Meadow/')).toBe('Projects/Meadow');
+    expect(() => normalizeFolderSourceGraphSubdirectory('../Projects')).toThrow(/must not contain/);
+    expect(() => stringifySiteNodeConfig([folder({ sourceGraphSubdirectory: 'Projects/./Meadow', siteNodeName: 'Meadow' })]))
+      .toThrow(/must be normalized/);
+    expect(() => stringifySiteNodeConfig([folder({ sourceGraphSubdirectory: '../Projects' })]))
+      .toThrow(/must not contain/);
+    expect(() => stringifySiteNodeConfig([folder({ sourceGraphSubdirectory: '/Projects' })]))
+      .toThrow(/must be relative/);
+    expect(() => stringifySiteNodeConfig([folder({ sourceGraphSubdirectory: 'Projects/Meadow', siteNodeName: 'Wrong' })]))
+      .toThrow(/must equal the basename/);
+  });
+
+  it('enforces kind-specific fields and collection membership', () => {
+    expect(() => stringifySiteNodeConfig([{ ...folder(), fileType: 'md' } as SiteNodeConfig]))
+      .toThrow(/fileType.*not valid for folder/);
+    expect(() => stringifySiteNodeConfig([{ ...collection(), outlinksDepth: 1 } as SiteNodeConfig]))
+      .toThrow(/depth overrides.*not valid for collection/);
+    expect(() => stringifySiteNodeConfig([{ ...collection(), listType: 'blacklist' }]))
+      .toThrow(/collection nodes must be whitelisted/);
+    expect(() => stringifySiteNodeConfig([folder(), collection()]))
+      .toThrow(/does not resolve \(g1b2c3d4e5f6\)/);
+    expect(() => stringifySiteNodeConfig([
+      folder(),
+      folder({ siteNodeName: 'Writing', sourceGraphSubdirectory: 'Writing', siteNodeId: id('g1b2c3d4e5f6'), listType: 'blacklist' }),
+      collection(),
+    ])).toThrow(/whitelisted folder/);
+    expect(() => stringifySiteNodeConfig([
+      folder(),
+      folder({ siteNodeName: 'Writing', sourceGraphSubdirectory: 'Writing', siteNodeId: id('g1b2c3d4e5f6') }),
+      collection({ memberSiteNodeIds: [id('f1b2c3d4e5f6'), id('f1b2c3d4e5f6')] }),
+    ])).toThrow(/unique IDs/);
+  });
+
   it.each([
     ['siteNodeId', 'siteNodeId: a1b2c3d4e5f6', 'siteNodeId: invalid', /siteNodeId.*must match/],
-    ['siteNodeKind', 'siteNodeKind: file', 'siteNodeKind: folder', /siteNodeKind.*exactly 'file'/],
+    ['siteNodeKind', 'siteNodeKind: file', 'siteNodeKind: nope', /siteNodeKind.*file.*folder.*collection/],
     ['fileType', 'fileType: md', 'fileType: nope', /fileType.*must be one of/],
     ['listType', 'listType: whitelist', 'listType: maybe', /listType.*exactly/],
     ['tracked', 'listType: whitelist', 'listType: whitelist\n    tracked: true', /tracked.*not part of canonical node configuration/],
@@ -111,6 +184,41 @@ describe('canonical site node configuration', () => {
         defaultTraversalSiteNodeId: 'a1b2c3d4e5f6',
       },
     })).toThrow(/entrySiteNodeId.*does not resolve/);
+  });
+
+  it('enforces entry strategy, collection entry, source-root naming, and blacklist boundaries', () => {
+    const folders = [
+      folder(),
+      folder({ siteNodeName: 'Writing', sourceGraphSubdirectory: 'Writing', siteNodeId: id('g1b2c3d4e5f6') }),
+    ];
+    expect(() => validateCanonicalSiteConfiguration({
+      committedNodes: [...folders, collection()],
+      siteConfig: {
+        sourceDirectory: '/vault',
+        entrySiteNodeId: id('f1b2c3d4e5f6'),
+        defaultTraversalSiteNodeId: id('f1b2c3d4e5f6'),
+      },
+    })).toThrow(/collection must be the entry/);
+
+    expect(() => validateCanonicalSiteConfiguration({
+      committedNodes: [folder({ siteNodeName: 'Wrong', sourceGraphSubdirectory: '' })],
+      siteConfig: {
+        sourceDirectory: '/sources/vault',
+        entrySiteNodeId: id('f1b2c3d4e5f6'),
+        defaultTraversalSiteNodeId: id('f1b2c3d4e5f6'),
+      },
+    })).toThrow(/source-root folder must be named 'vault'/);
+
+    expect(() => validateCanonicalSiteConfiguration({
+      committedNodes: [
+        folder({ listType: 'blacklist' }),
+        node({ siteNodeName: 'Entry', sourceGraphSubdirectory: 'Projects', siteNodeId: id('e1b2c3d4e5f6') }),
+      ],
+      siteConfig: {
+        entrySiteNodeId: id('e1b2c3d4e5f6'),
+        defaultTraversalSiteNodeId: id('e1b2c3d4e5f6'),
+      },
+    })).toThrow(/lies below blacklisted folder/);
   });
 
   it('retries collisions in the site-wide ID namespace', () => {

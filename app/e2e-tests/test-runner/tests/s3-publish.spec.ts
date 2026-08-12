@@ -20,6 +20,8 @@ import { Workflows, Site } from "../src/run/workflows.js";
 import { publishing, s3, deletion } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("S3 provider publishes and deletes a site via MinIO", async ({
   page,
   snapshot,

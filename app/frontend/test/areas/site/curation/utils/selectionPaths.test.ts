@@ -16,9 +16,10 @@ limitations under the License.
 
 import { describe, it, expect } from 'vitest';
 import { Graph, ISiteNode } from '../../../../../../shared_code/types/graph';
+import type { FileSiteNode } from '../../../../../../shared_code/types/ISiteNode';
 import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../../../../../src/areas/site/curation/utils/selectionPaths';
 
-function makePage(id: string, overrides: Partial<ISiteNode> = {}): ISiteNode {
+function makePage(id: string, overrides: Partial<FileSiteNode> = {}): ISiteNode {
   return {
     siteNodeKey: id as ISiteNode['siteNodeKey'],
     siteNodeKind: 'file',
@@ -173,4 +174,3 @@ describe('selectionPaths', () => {
     });
   });
 });
-

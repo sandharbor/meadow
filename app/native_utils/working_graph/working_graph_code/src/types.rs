@@ -68,6 +68,14 @@ pub struct WorkingNode {
     pub is_frontier_node: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_frontier_image_extension: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub traversal_states: Option<Vec<TraversalStateSummary>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TraversalStateSummary {
+    pub remaining_outlinks_depth: i32,
+    pub remaining_inlinks_depth: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -27,6 +27,8 @@ const reservedIndexPageName = "index";
 const rootLogPageName = "log";
 const nestedLogDirectory = "t001";
 
+test.use({ siteMode: "single-file" });
+
 test.use({
   _preSpawnSeed: async ({}, use) => {
     await use(async ({ configDir }) => {

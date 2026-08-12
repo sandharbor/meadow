@@ -27,6 +27,7 @@ import CreateOrEditSiteModal from './CreateOrEditSiteModal';
 import DeleteSiteModal from '../../../shared/site-management/DeleteSiteModal';
 import { logger } from '../../../shared/utils/logger';
 import { openExternal } from '../../../shared/utils/openExternal';
+import SelectedFolderRepairModal from './SelectedFolderRepairModal';
 
 type SiteConfig = SiteConfigWithSlug;
 
@@ -171,6 +172,7 @@ const SiteList: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
+  const [siteToRepair, setSiteToRepair] = useState<SiteConfig | null>(null);
   const [siteToDelete, setSiteToDelete] = useState<SiteConfig | null>(null);
   const [siteToEdit, setSiteToEdit] = useState<{
     slug: string;
@@ -462,6 +464,11 @@ const SiteList: React.FC = () => {
   };
 
   const handleOpenSite = (slug: string) => {
+    const site = sites.find(candidate => candidate.slug === slug);
+    if (site?.repairRequired) {
+      setSiteToRepair(site);
+      return;
+    }
     // Store find in sites page name in sessionStorage for auto-selection
     if (findInSitesOptions && isFindInSitesFilterActive) {
       sessionStorage.setItem('autoSelectPageName', findInSitesOptions.pageName);
@@ -869,14 +876,16 @@ const SiteList: React.FC = () => {
                   const updatedDate = formatSiteDate(site.siteUpdatedAt);
                   const createdDate = formatSiteDate(site.siteCreatedAt);
                   const archivedDate = formatSiteDate(site.archivedAt);
-                  const status = site.error
+                  const status = site.error || site.repairRequired
                     ? { label: 'Needs attention', classes: 'bg-danger-50 text-danger-700 ring-danger-200' }
                     : site.archivedAt
                       ? { label: 'Archived', classes: 'bg-neutral-100 text-neutral-600 ring-neutral-200' }
                       : site.siteLastPublishedAt
                         ? { label: 'Published', classes: 'bg-main-50 text-main-700 ring-main-200' }
                         : { label: 'Draft', classes: 'bg-neutral-100 text-neutral-600 ring-neutral-200' };
-                  const activityText = site.error
+                  const activityText = site.repairRequired
+                    ? `Missing selected folder: ${site.missingSelectedFolders?.[0]?.sourceGraphSubdirectory || '(source root)'}`
+                    : site.error
                     ? 'Site details are unavailable'
                     : archivedDate
                       ? `Archived ${archivedDate}`
@@ -976,7 +985,7 @@ const SiteList: React.FC = () => {
                             }}
                             className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm hover:border-neutral-400 hover:bg-neutral-50"
                           >
-                            Open
+                            {site.repairRequired ? 'Repair' : 'Open'}
                           </button>
                           <button
                             onClick={(e) => toggleSiteActionMenu(e, site.slug)}
@@ -1063,16 +1072,22 @@ const SiteList: React.FC = () => {
               Manage versions
             </button>
           )}
-          <button
-            onClick={() => {
-              setSiteActionMenu(null);
-              handleEdit(actionMenuSite);
-            }}
-            className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-            title="Edit site"
-          >
-            Edit site
-          </button>
+          {actionMenuSite.repairRequired ? (
+            <button
+              onClick={() => { setSiteActionMenu(null); setSiteToRepair(actionMenuSite); }}
+              className="w-full px-3 py-2 text-left text-sm text-danger-700 hover:bg-danger-50"
+            >
+              Relink selected folder
+            </button>
+          ) : (
+            <button
+              onClick={() => { setSiteActionMenu(null); handleEdit(actionMenuSite); }}
+              className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+              title="Edit site"
+            >
+              Edit site
+            </button>
+          )}
           <button
             onClick={() => {
               setSiteActionMenu(null);
@@ -1163,6 +1178,18 @@ const SiteList: React.FC = () => {
         onClose={handleCloseVersions}
         siteSlug={siteForVersions || ''}
         onVersionUpdate={handleVersionUpdate}
+      />
+
+      <SelectedFolderRepairModal
+        isOpen={siteToRepair !== null}
+        siteSlug={siteToRepair?.slug ?? ''}
+        sourceDirectory={siteToRepair?.sourceDirectory ?? ''}
+        missingFolders={siteToRepair?.missingSelectedFolders ?? []}
+        onClose={() => setSiteToRepair(null)}
+        onSuccess={() => {
+          setSiteToRepair(null);
+          void loadSites();
+        }}
       />
 
       {/* Example Site Confirmation Modal */}

@@ -18,6 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import { SiteConfigPaths } from '../../../../shared_code/paths/siteConfigPaths.js';
 import { parseSiteNodeConfig } from '../../../../shared_code/utils/siteNodeConfigUtils.js';
+import { planSiteRoutes, routeForSiteNode } from '../../areas/site/generation/html/siteRoutePlanner.js';
 import { normalizePageTitle } from '../../areas/site/generation/html/shared.js';
 import { loadSiteConfig } from './siteConfigUtils.js';
 import { logger } from './logging/backendLoggingUtils.js';
@@ -49,24 +50,28 @@ export function getHtmlPathForPage(
       siteNodeConfig.siteNodeName === title &&
       (pageDirectory === undefined || (siteNodeConfig.sourceGraphSubdirectory || '') === (pageDirectory || ''))
     );
-    const siteNodeConfig =
-      matchingPageConfigs.find(siteNodeConfig => siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
+    const siteConfig = loadSiteConfig(siteDirectory);
+    const roleMatch = matchingPageConfigs.find(config => config.siteNodeId === siteConfig.defaultTraversalSiteNodeId);
+    const siteNodeConfig = roleMatch
+      ?? matchingPageConfigs.find(config => config.siteNodeKind === 'file' && config.fileType === 'md')
       ?? matchingPageConfigs[0];
 
     if (!siteNodeConfig) {
       return null;
     }
 
-    const siteConfig = loadSiteConfig(siteDirectory);
     const inferredSiteSlug = path.basename(siteDirectory);
     const siteSlug = path.resolve(getSiteDirectory(inferredSiteSlug)) === path.resolve(siteDirectory)
       ? inferredSiteSlug
       : undefined;
 
-    const normalizedTitle = normalizePageTitle(title, siteConfig, siteSlug);
-
-    const subdir = siteNodeConfig.sourceGraphSubdirectory || '';
-    return subdir ? `${subdir}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
+    if (!siteConfig.entrySiteNodeId) {
+      const normalizedTitle = normalizePageTitle(title, siteConfig, siteSlug);
+      const subdir = siteNodeConfig.sourceGraphSubdirectory || '';
+      return subdir ? `${subdir}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
+    }
+    const plan = planSiteRoutes(siteNodeConfigs, siteConfig, siteSlug);
+    return routeForSiteNode(siteNodeConfig, plan.routes);
   } catch (error) {
     logger.warn('Error looking up page path:', error);
     return null;

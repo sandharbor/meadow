@@ -27,6 +27,8 @@ import {
 } from "../src/scenario-docs/index.js";
 import { exampleSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 test("blacklisting a single page removes it from the rendered preview", async ({

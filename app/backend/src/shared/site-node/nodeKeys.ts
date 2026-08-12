@@ -29,5 +29,7 @@ export function makeSiteNodeKey(siteNodeName: string, fileType: string = 'md', d
 }
 
 export function siteNodeConfigToKey(conf: SiteNodeConfig): string {
+  if (conf.siteNodeKind === 'folder') return `folder:${conf.sourceGraphSubdirectory}`;
+  if (conf.siteNodeKind === 'collection') return `collection:${conf.siteNodeId}`;
   return makeSiteNodeKey(conf.siteNodeName, conf.fileType, conf.sourceGraphSubdirectory || '');
 }

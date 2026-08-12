@@ -19,6 +19,8 @@ import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/p
 import { filters, callout } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("empty solo callout appears when solo filter hides all pages", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
   const siteList = new SiteListPage(page, expect);
   await siteList.goto();

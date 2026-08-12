@@ -25,21 +25,46 @@ export type SiteNodeId = string & { readonly [siteNodeIdBrand]: true };
 /** Locator-derived key used by the current working graph and its edges. */
 export type SiteNodeKey = string & { readonly [siteNodeKeyBrand]: true };
 
-export interface FileSiteNodeConfig {
+interface BaseSiteNodeConfig {
   siteNodeName: string;
-  sourceGraphSubdirectory?: string;
-  siteNodeKind: 'file';
-  fileType: FileType;
   siteNodeId: SiteNodeId;
   listType: 'blacklist' | 'whitelist';
+}
+
+interface TraversalSiteNodeConfig {
   outlinksDepth?: number;
   inlinksDepth?: number;
 }
 
-/** Phase 1 accepts only file nodes at runtime. */
-export type SiteNodeConfig = FileSiteNodeConfig;
+export interface FileSiteNodeConfig extends BaseSiteNodeConfig, TraversalSiteNodeConfig {
+  sourceGraphSubdirectory?: string;
+  siteNodeKind: 'file';
+  fileType: FileType;
+}
+
+export interface FolderSiteNodeConfig extends BaseSiteNodeConfig, TraversalSiteNodeConfig {
+  sourceGraphSubdirectory: string;
+  siteNodeKind: 'folder';
+  fileType?: never;
+  memberSiteNodeIds?: never;
+}
+
+export interface CollectionSiteNodeConfig extends BaseSiteNodeConfig {
+  siteNodeKind: 'collection';
+  sourceGraphSubdirectory?: never;
+  fileType?: never;
+  outlinksDepth?: never;
+  inlinksDepth?: never;
+  memberSiteNodeIds: SiteNodeId[];
+}
+
+export type SiteNodeConfig =
+  | FileSiteNodeConfig
+  | FolderSiteNodeConfig
+  | CollectionSiteNodeConfig;
+
+export type SiteNodeKind = SiteNodeConfig['siteNodeKind'];
 
 export interface SiteNodeConfigDocument {
   nodes: SiteNodeConfig[];
 }
-

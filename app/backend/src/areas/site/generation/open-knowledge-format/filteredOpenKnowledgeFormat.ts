@@ -136,6 +136,15 @@ export async function buildFilteredOpenKnowledgeFormatForSite(siteDirectory: str
       entrySourceGraphSubdirectory: entryNode.sourceGraphSubdirectory || '',
       indexSource: openKnowledgeFormatIndexSourceFromSiteConfig(siteConfig),
       logSource: openKnowledgeFormatLogSourceFromSiteConfig(siteConfig),
+      generatedIndexMarkdown: entryNode.siteNodeKind === 'file'
+        ? undefined
+        : `---\nokf_version: "0.1"\n---\n\n# ${entryNode.siteNodeName}\n\n${entryNode.siteNodeKind === 'collection'
+            ? entryNode.memberSiteNodeIds
+              .map(memberId => nodes.find(node => node.siteNodeId === memberId)?.siteNodeName)
+              .filter((name): name is string => Boolean(name))
+              .map(name => `- ${name}`)
+              .join('\n')
+            : ''}\n`,
     }
   );
   writeOpenKnowledgeFormatGenerationManifest(siteDirectory, result);

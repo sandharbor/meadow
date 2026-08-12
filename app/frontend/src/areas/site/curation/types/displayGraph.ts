@@ -17,6 +17,7 @@ limitations under the License.
 import { Graph } from '../../../../../../shared_code/types/graph';
 import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode.js';
 import { FileType } from '../../../../../../shared_code/types/FileType.js';
+import type { SiteNodeKind } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import { IFilter, ISiteNodeSelector } from './filters';
 import { logger } from '../../../../shared/utils/logger';
 import { calculateHighlightDetail } from '../utils/highlightDetailCalculators';
@@ -63,11 +64,15 @@ export class DisplayNode {
   }
 
   get fileType(): FileType {
-    return this._node.fileType;
+    return this._node.fileType ?? 'other';
+  }
+
+  get siteNodeKind(): SiteNodeKind {
+    return this._node.siteNodeKind;
   }
 
   get sourceGraphSubdirectory(): string {
-    return this._node.sourceGraphSubdirectory;
+    return this._node.sourceGraphSubdirectory ?? '';
   }
 
   get isVisible(): boolean {
@@ -181,6 +186,10 @@ export class DisplayGraph {
 
   get visibleDisplayNodes(): DisplayNode[] {
     return this.allDisplayNodes.filter(node => node.isVisible);
+  }
+
+  get underlyingGraph(): Graph {
+    return this._graph;
   }
 
   getDisplayNode(id: string): DisplayNode | undefined {

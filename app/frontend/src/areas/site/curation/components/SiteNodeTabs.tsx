@@ -36,6 +36,8 @@ import Modal from '../../../../shared/components/Modal';
 import { AppConfig } from '../../../../../../shared_code/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
 import { useDisplayFilters } from '../utils/useDisplayFilters';
+import FolderScopeChangesBanner from './FolderScopeChangesBanner';
+import type { FolderScopeChangeExplanation } from '../../../../../../shared_code/types/folderScopeChanges';
 
 interface SiteNodeTabsProps {
   graph: Graph;
@@ -60,6 +62,7 @@ interface SiteNodeTabsProps {
   protectedSiteNodeIds: Set<string>;
   onRemoveOrphanConfig: (config: SiteNodeConfig) => Promise<void>;
   onRemoveAllOrphanConfigs: () => Promise<void>;
+  folderScopeChanges?: FolderScopeChangeExplanation;
 }
 
 type ViewType = 'graph' | 'list';
@@ -87,6 +90,7 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
   protectedSiteNodeIds,
   onRemoveOrphanConfig,
   onRemoveAllOrphanConfigs,
+  folderScopeChanges,
 }) => {
   const [activeView, setActiveView] = useState<ViewType>(() => {
     const stored = sessionStorage.getItem('graphActiveView');
@@ -113,15 +117,69 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
     }
   }, [orphanConfigs.length]);
 
-  // State for selection solo and hide features
+  const allProtectedSiteNodeIds = useMemo(() => {
+    const ids = new Set(protectedSiteNodeIds);
+    for (const config of siteNodeConfigs ?? []) {
+      if (config.siteNodeKind === 'collection') {
+        for (const memberId of config.memberSiteNodeIds) ids.add(memberId);
+        ids.add(config.siteNodeId);
+      }
+    }
+    return ids;
+  }, [protectedSiteNodeIds, siteNodeConfigs]);
+
+  const structuralDescendants = useCallback((siteNodeKey: string): ISiteNode[] => {
+    const result: ISiteNode[] = [];
+    const pending = [siteNodeKey];
+    const seen = new Set(pending);
+    while (pending.length > 0) {
+      const current = pending.shift()!;
+      for (const edge of graph.getOutgoingEdges(current)) {
+        if (edge.siteEdgeKind === 'semanticLink' || seen.has(edge.target)) continue;
+        seen.add(edge.target);
+        const child = graph.getNode(edge.target);
+        if (child) {
+          result.push(child);
+          pending.push(child.siteNodeKey);
+        }
+      }
+    }
+    return result;
+  }, [graph]);
+
+  const canBlacklistNode = useCallback((node: ISiteNode): boolean => {
+    if (node.siteNodeKind === 'collection') return false;
+    if (node.siteNodeId && allProtectedSiteNodeIds.has(node.siteNodeId)) return false;
+    if (node.siteNodeKind === 'folder') {
+      return !structuralDescendants(node.siteNodeKey)
+        .some(descendant => descendant.siteNodeId && allProtectedSiteNodeIds.has(descendant.siteNodeId));
+    }
+    return true;
+  }, [allProtectedSiteNodeIds, structuralDescendants]);
+
+  const confirmFolderBlacklist = useCallback((nodes: ISiteNode[]): boolean => {
+    const folders = nodes.filter(node => node.siteNodeKind === 'folder' && !node.blacklisted);
+    if (folders.length === 0) return true;
+    const affected = new Map<string, ISiteNode>();
+    for (const folder of folders) {
+      for (const descendant of structuralDescendants(folder.siteNodeKey)) affected.set(descendant.siteNodeKey, descendant);
+    }
+    const configuredCount = [...affected.values()].filter(node => Boolean(node.conf)).length;
+    const predictedRemovalCount = [...affected.values()].filter(node => node.tracked && !node.blacklisted).length;
+    return window.confirm(
+      `Blacklist ${folders.length} folder${folders.length === 1 ? '' : 's'} as a hard subtree boundary?\n\n`
+      + `${affected.size} descendant nodes are in the raw graph, including ${configuredCount} configured nodes. `
+      + `${predictedRemovalCount} currently publishable nodes are predicted to leave the final graph.\n\n`
+      + 'Existing descendant curation will be preserved and restored if the folder blacklist is removed.'
+    );
+  }, [structuralDescendants]);
+
   const [hiddenNodeKeys, setHiddenNodeKeys] = useState<Set<string>>(new Set());
   const [soloNodeKeys, setSoloNodeKeys] = useState<Set<string>>(new Set());
   const [selectionShowTitles, setSelectionShowTitles] = useState(false);
 
-  // State for right-click context menu on pages
   const [contextMenuPage, setContextMenuPage] = useState<{ siteNodeKey: string; x: number; y: number } | null>(null);
 
-  // Obsidian info (shared between sidebar and context menu)
   const [obsidianInfo, setObsidianInfo] = useState<ObsidianInfo | null>(null);
 
   useEffect(() => {
@@ -326,23 +384,36 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
   }, []);
 
   const ensurePageConfigForPersistence = (page: ISiteNode, listType: 'whitelist' | 'blacklist') => {
-    if (!page.conf) {
+    let config = page.conf;
+    if (!config) {
       const existingIds = [
         ...(siteNodeConfigs ?? []).map(config => config.siteNodeId),
         ...graph.getAllNodes().flatMap(node => node.siteNodeId ? [node.siteNodeId] : []),
       ];
       const siteNodeId = generateSiteNodeId(existingIds);
       page.siteNodeId = siteNodeId;
-      page.conf = {
-        siteNodeName: page.siteNodeName,
-        sourceGraphSubdirectory: page.sourceGraphSubdirectory,
-        siteNodeKind: 'file',
-        fileType: page.fileType,
-        siteNodeId,
-        listType,
-      };
+      if (page.siteNodeKind === 'collection') {
+        throw new Error('The site home cannot be configured through generic curation actions');
+      }
+      config = page.siteNodeKind === 'folder'
+        ? {
+            siteNodeName: page.siteNodeName,
+            sourceGraphSubdirectory: page.sourceGraphSubdirectory,
+            siteNodeKind: 'folder',
+            siteNodeId,
+            listType,
+          }
+        : {
+            siteNodeName: page.siteNodeName,
+            sourceGraphSubdirectory: page.sourceGraphSubdirectory,
+            siteNodeKind: 'file',
+            fileType: page.fileType,
+            siteNodeId,
+            listType,
+          };
+      page.conf = config;
     }
-    page.conf.listType = listType;
+    config.listType = listType;
   };
 
   // Persist the full config array as a draft
@@ -369,8 +440,9 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
   const handleTrackPage = async (siteNodeKey: string) => {
     const page = graph.getNode(siteNodeKey);
     if (page) {
+      if (page.siteNodeKind === 'collection' || page.effectiveBlacklistingSiteNodeId) return;
       const newTracked = !page.tracked;
-      if (!newTracked && page.siteNodeId && protectedSiteNodeIds.has(page.siteNodeId)) return;
+      if (!newTracked && page.siteNodeId && allProtectedSiteNodeIds.has(page.siteNodeId)) return;
       page.tracked = newTracked;
 
       if (page.tracked) {
@@ -402,7 +474,8 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
   const handleBlacklistPage = async (siteNodeKey: string) => {
     const page = graph.getNode(siteNodeKey);
     if (page) {
-      if (!page.blacklisted && page.siteNodeId && protectedSiteNodeIds.has(page.siteNodeId)) return;
+      if (!page.blacklisted && !canBlacklistNode(page)) return;
+      if (!confirmFolderBlacklist([page])) return;
       page.blacklisted = !page.blacklisted;
 
       if (page.blacklisted) {
@@ -432,7 +505,7 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
 
   const handleUpdatePageConfig = (siteNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth', value: number) => {
     const page = graph.getNode(siteNodeKey);
-    if (page) {
+    if (page && page.siteNodeKind !== 'collection' && !page.effectiveBlacklistingSiteNodeId) {
       ensurePageConfigForPersistence(page, page.blacklisted ? 'blacklist' : 'whitelist');
       page.conf![key] = value;
 
@@ -457,7 +530,7 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
     let anyChanged = false;
     selectedNodeKeys.forEach(siteNodeKey => {
       const page = graph.getNode(siteNodeKey);
-      if (page && !currentDisplayGraph.getDisplayNode(siteNodeKey)?.isEffectivelySensitive) {
+      if (page && page.siteNodeKind !== 'collection' && !page.effectiveBlacklistingSiteNodeId && !currentDisplayGraph.getDisplayNode(siteNodeKey)?.isEffectivelySensitive) {
         page.tracked = true;
         ensurePageConfigForPersistence(page, 'whitelist');
         anyChanged = true;
@@ -488,9 +561,13 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
   };
 
   const handleBlacklistSelected = () => {
+    const candidates = [...selectedNodeKeys]
+      .map(siteNodeKey => graph.getNode(siteNodeKey))
+      .filter((page): page is ISiteNode => Boolean(page) && !page!.blacklisted && canBlacklistNode(page!));
+    if (!confirmFolderBlacklist(candidates)) return;
     selectedNodeKeys.forEach(siteNodeKey => {
       const page = graph.getNode(siteNodeKey);
-      if (page && (!page.siteNodeId || !protectedSiteNodeIds.has(page.siteNodeId))) {
+      if (page && canBlacklistNode(page)) {
         page.blacklisted = true;
         page.tracked = true;
         ensurePageConfigForPersistence(page, 'blacklist');
@@ -502,7 +579,7 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
   // Core function that actually performs the sensitive marking operation
   const performMarkSensitive = async (siteNodeKey: string, isSensitive: boolean) => {
     const page = graph.getNode(siteNodeKey);
-    if (!page) return;
+    if (!page || page.siteNodeKind !== 'file') return;
 
     try {
       // Call the API to update the file
@@ -604,7 +681,6 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
 
   return (
     <div className="flex h-full min-w-0">
-      {/* Left sidebar with filter panel */}
       <ResizableSidebar
         side="left"
         defaultWidth={310}
@@ -632,13 +708,12 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
           onFilterExpressionChange={handleFilterExpressionChange}
         />
       </ResizableSidebar>
-      {/* Main content area */}
       <div className="flex min-w-0 flex-1 flex-col">
         <OrphansBanner
           orphanCount={orphanConfigs.length}
           onReview={() => setIsOrphansModalOpen(true)}
         />
-        {/* View selection tabs in the right area */}
+        <FolderScopeChangesBanner explanation={folderScopeChanges} />
         <div className="border-b bg-white">
           <nav className="flex items-center justify-between">
             <div className="flex">
@@ -760,7 +835,6 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
           </nav>
         </div>
 
-        {/* Main view content */}
         <div className="flex-1 relative overflow-hidden">
           {activeView === 'graph' ? (
             <div className="absolute inset-0">
@@ -781,6 +855,7 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
             <div className="absolute inset-0">
               <ListView
                 displayGraph={currentDisplayGraph}
+                entrySiteNodeId={entrySiteNodeId}
                 onPageClick={handlePageClick}
                 siteSlug={siteSlug}
                 onSiteNodeContextMenu={handleSiteNodeContextMenu}
@@ -802,7 +877,6 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
           )}
         </div>
       </div>
-      {/* Right panel for selection management */}
       {isSelectionPanelCollapsed ? (
         <div className="flex w-[40px] flex-shrink-0 border-l bg-white">
           <button

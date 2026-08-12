@@ -20,6 +20,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { callout, sensitive } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("Callout tooltip shown when hovering sensitive filter question mark", async ({
   page,
   snapshot,

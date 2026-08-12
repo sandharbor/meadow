@@ -23,6 +23,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { tracking, callout } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("Preview reopens on Review step after tracking pages via Check Them link", async ({
   page,
   snapshot,

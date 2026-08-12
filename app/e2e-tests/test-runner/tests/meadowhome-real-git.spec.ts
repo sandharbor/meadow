@@ -21,6 +21,8 @@ import { Fixture } from "../src/run/workflows.js";
 import { git } from "../src/scenario-docs/index.js";
 import { exampleSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 test("MeadowHome is a real (non-bare) git repo after creating the example site", async ({

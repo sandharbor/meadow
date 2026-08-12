@@ -30,6 +30,7 @@ import * as scenarioDocExports from "../scenario-docs/index.ts";
 import * as siteDocExports from "../site-docs/index.ts";
 import * as appAreaDocExports from "../app-area-docs/index.ts";
 import { deriveAppAreaDocIds } from "../app-area-docs/index.ts";
+import { isSiteMode, type SiteMode } from "../run/siteMode.ts";
 
 // Build a map from export name (e.g. "htmlGeneration") to doc ID (e.g. "html-generation")
 const exportNameToDocId = new Map<string, string>();
@@ -236,6 +237,7 @@ interface Manifest {
   uncommittedEntries: UncommittedEntry[];
   testSourceFile: string;
   testSource: string;
+  siteMode: SiteMode | null;
   scenarioDocIds: string[];
   siteDocIds: string[];
   appAreaDocIds: string[];
@@ -317,6 +319,7 @@ interface ScenarioReportMeta {
   scenarioInfo: {
     testName: string;
     duration: number | null;
+    siteMode: SiteMode | null;
     scenarioDocIds: string[];
     siteDocIds: string[];
     appAreaDocIds: string[];
@@ -1016,7 +1019,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, startTime, endTime, logs, uncommittedEntries, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames } = manifest;
+  const { testName, startTime, endTime, logs, uncommittedEntries, siteMode, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1029,7 +1032,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { testName, duration, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { testName, duration, siteMode, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1271,6 +1274,16 @@ export function assembleTestArtifacts(testDir: string): void {
     }
   });
 
+  const siteMode = measured(assemblySteps, "read site mode", () => {
+    const siteModePath = path.join(testDir, "site-mode.txt");
+    if (!existsSync(siteModePath)) return null;
+    const value = readFileSync(siteModePath, "utf8").trim();
+    if (!isSiteMode(value)) {
+      throw new Error(`Invalid site mode in ${siteModePath}: ${JSON.stringify(value)}`);
+    }
+    return value;
+  });
+
   // Extract scenario doc IDs, app area doc IDs, and site doc IDs from test source imports.
   const { scenarioDocIds, siteDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
     const scenarioIds = extractScenarioDocIds(testSource);
@@ -1298,7 +1311,7 @@ export function assembleTestArtifacts(testDir: string): void {
   );
 
   // Write manifest
-  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, siteMode, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...tickData };
   const manifestJson = measured(assemblySteps, "manifest stringify", () =>
     JSON.stringify(manifest, null, 2)
   );

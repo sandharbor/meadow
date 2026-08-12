@@ -38,6 +38,7 @@ import path from "path";
 import YAML from "yaml";
 import { resolveFastGitOpsBinary } from "./utils/MeadowHomeGit.js";
 import { MinioS3 } from "./utils/MinioS3.js";
+import type { SiteMode } from "./siteMode.js";
 // assembleTestArtifacts is called in assembleRun() post-run, not during fixture teardown
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -489,6 +490,8 @@ export type PreSpawnSeed = (deps: {
 // ---------------------------------------------------------------------------
 
 export const test = base.extend<{
+  /** How the scenario's site was originally seeded. Required in every spec. */
+  siteMode: SiteMode;
   fixtureHome: string;
   trackBigSiteExcalidrawPages: boolean;
   /**
@@ -557,6 +560,7 @@ export const test = base.extend<{
    */
   _preSpawnSeed: PreSpawnSeed;
 }>({
+  siteMode: ["single-file", { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   trackBigSiteExcalidrawPages: [false, { option: true }],
   migrationBeforePath: [null, { option: true }],
@@ -867,7 +871,7 @@ export const test = base.extend<{
   ],
 
   artifactDir: [
-    async ({ page, testServer, minioS3, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
+    async ({ page, testServer, minioS3, siteMode, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
       const { configDir } = testServer;
 
       // Create artifact directory
@@ -896,6 +900,10 @@ export const test = base.extend<{
         path.join(artifactDir, "test-file.txt"),
         testInfo.file
       );
+
+      // Keep the site-origin classification beside the other scalar inputs
+      // so assembly and the report viewer never have to infer it from names.
+      writeFileSync(path.join(artifactDir, "site-mode.txt"), siteMode);
 
       // --- Tick recording ---
       const tickLogPath = path.join(artifactDir, "ticks.jsonl");

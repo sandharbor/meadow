@@ -26,6 +26,8 @@ import { Fixture } from "../src/run/workflows.js";
 import { excalidraw, images, initialPage } from "../src/scenario-docs/index.js";
 import { customSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 /**

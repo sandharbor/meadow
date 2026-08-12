@@ -26,6 +26,8 @@ import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
 const releaseNotesPageName = "OKF custom release notes";
 const orphanLogChoicePageName = "OKF orphan log choice";
 
+test.use({ siteMode: "single-file" });
+
 test.use({
   _preSpawnSeed: async ({}, use) => {
     await use(async ({ configDir }) => {

@@ -20,6 +20,8 @@ import { Fixture } from "../src/run/workflows.js";
 import { frontier, filters } from "../src/scenario-docs/index.js";
 import { exampleSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: Fixture.None });
 
 test("example site frontier pages show in graph view with frontier filter", async ({

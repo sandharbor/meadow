@@ -23,6 +23,7 @@ import { Graph } from '../../../../../../shared_code/types/graph.js';
 import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode.js';
 import { CustomSiteNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
 import { nodeIsInFolder } from './folderFilterUtils.js';
+import type { SiteNodeKind } from '../../../../../../shared_code/types/siteNodeConfig.js';
 
 export interface SelectorBase {
   id: string;
@@ -54,6 +55,43 @@ export const createTrackedNodeSelector = (): INormalSiteNodeSelector => ({
     });
     return selectedNodeKeys;
   }
+});
+
+export const createSiteNodeKindSelector = (siteNodeKind: SiteNodeKind): INormalSiteNodeSelector => ({
+  id: `node-kind-${siteNodeKind}`,
+  name: siteNodeKind === 'collection' ? 'Site Homes' : `${siteNodeKind[0].toUpperCase()}${siteNodeKind.slice(1)} Nodes`,
+  type: 'normal',
+  select: (graph: Graph) => new Set(
+    graph.getAllNodes().filter(node => node.siteNodeKind === siteNodeKind).map(node => node.siteNodeKey)
+  ),
+});
+
+export const createSelectedScopeRootSelector = (): INormalSiteNodeSelector => ({
+  id: 'selected-scope-roots',
+  name: 'Selected Scope Roots',
+  type: 'normal',
+  select: (graph: Graph) => {
+    const membershipTargets = new Set(
+      graph.getAllEdges().filter(edge => edge.siteEdgeKind === 'collectionMembership').map(edge => edge.target)
+    );
+    const result = new Set<string>(membershipTargets);
+    for (const node of graph.getAllNodes()) {
+      if (node.siteNodeKind !== 'folder') continue;
+      const hasStructuralParent = graph.getIncomingEdges(node.siteNodeKey)
+        .some(edge => edge.siteEdgeKind !== 'semanticLink');
+      if (!hasStructuralParent && node.tracked) result.add(node.siteNodeKey);
+    }
+    return result;
+  },
+});
+
+export const createEffectiveBlacklistSelector = (): INormalSiteNodeSelector => ({
+  id: 'effective-folder-blacklist',
+  name: 'Excluded by Folder',
+  type: 'normal',
+  select: (graph: Graph) => new Set(
+    graph.getAllNodes().filter(node => Boolean(node.effectiveBlacklistingSiteNodeId)).map(node => node.siteNodeKey)
+  ),
 });
 
 export const createNodeWithOverrideSelector = (): INormalSiteNodeSelector => ({

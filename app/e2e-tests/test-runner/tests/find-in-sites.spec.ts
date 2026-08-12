@@ -20,6 +20,8 @@ import { Workflows, Site } from "../src/run/workflows.js";
 import { multiSite, findInSites } from "../src/scenario-docs/index.js";
 import { bigSite, smallSite, exampleSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("find in sites navigates from small site to big site with page auto-selected", async ({
   page,
   snapshot,

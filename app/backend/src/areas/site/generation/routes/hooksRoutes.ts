@@ -502,7 +502,7 @@ router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req
       const allPages = Object.values(siteNodeConfs);
       for (const pageConf of allPages) {
         // Only test markdown pages
-        if (pageConf.fileType === 'md' || !pageConf.fileType) {
+        if (pageConf.siteNodeKind === 'file' && pageConf.fileType === 'md') {
           // Read the page's markdown content
           const trackedPageContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
           const sourceDir = pageConf.sourceGraphSubdirectory

@@ -73,4 +73,27 @@ describe('getHtmlPathForPage', () => {
       't006/shared title.html',
     );
   });
+
+  it('uses the central route plan for folder defaults and collisions', () => {
+    const folderId = 'f1b2c3d4e5f6';
+    const fileId = 'p1b2c3d4e5f6';
+    fs.writeFileSync(
+      SiteConfigPaths.getSiteConfigFile(siteDirectory),
+      `entrySiteNodeId: ${folderId}\ndefaultTraversalSiteNodeId: ${folderId}\n`,
+      'utf8',
+    );
+    fs.writeFileSync(
+      SiteConfigPaths.getSiteNodeConfigFile(siteDirectory),
+      stringifySiteNodeConfig([{
+        siteNodeName: 'Project', sourceGraphSubdirectory: 'Project', siteNodeKind: 'folder',
+        siteNodeId: folderId as never, listType: 'whitelist',
+      }, {
+        siteNodeName: 'index', sourceGraphSubdirectory: 'Project', siteNodeKind: 'file', fileType: 'md',
+        siteNodeId: fileId as never, listType: 'whitelist',
+      }]),
+      'utf8',
+    );
+    expect(getHtmlPathForPage(siteDirectory, 'Project', 'Project')).toBe('index.html');
+    expect(getHtmlPathForPage(siteDirectory, 'index', 'Project')).toBe('Project/index.html');
+  });
 });

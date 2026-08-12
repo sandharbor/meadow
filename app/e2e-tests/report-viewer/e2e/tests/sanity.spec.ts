@@ -70,7 +70,11 @@ test("cached publish-flow artifact has multiple ticks and multiple snapshots", a
   //    assert on the counter directly.
   await page.goto(`/${runId}/${testSlug}`);
   await expect(page.getByText(testSlug)).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Tick/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Single file" })).toHaveAttribute(
+    "href",
+    `/${runId}?mode=single-file`
+  );
+  await expect(page.getByRole("button", { name: /^Tick(?::| \d+\/)/ })).toBeVisible();
 });
 
 test("playback speed cannot reach an unsupported rate", async ({ page }) => {
@@ -93,4 +97,27 @@ test("playback speed cannot reach an unsupported rate", async ({ page }) => {
   );
   expect(playbackRate).toBeCloseTo(0.07);
   await expect(page.getByRole("heading", { name: "E2E Report Viewer" })).toBeVisible();
+});
+
+test("run detail filters scenarios by site-origin mode", async ({ page }) => {
+  const { runId } = fixture;
+
+  await page.goto(`/${runId}`);
+
+  const singleFile = page.getByRole("button", { name: "Single file (1)" });
+  const singleFolder = page.getByRole("button", { name: "Single folder (0)" });
+  const multipleFolders = page.getByRole("button", { name: "Multiple folders (0)" });
+  await expect(singleFile).toBeVisible();
+  await expect(singleFolder).toBeVisible();
+  await expect(multipleFolders).toBeVisible();
+  const scenarioCard = page.getByText("publish-flow-uploads-files-to-minio", { exact: true }).first();
+  await expect(scenarioCard).toBeVisible();
+
+  await multipleFolders.click();
+  await expect(page).toHaveURL(new RegExp(`[?&]mode=multiple-folders(?:&|$)`));
+  await expect(multipleFolders).toHaveAttribute("aria-pressed", "true");
+  await expect(scenarioCard).toHaveCount(0);
+
+  await singleFile.click();
+  await expect(page.getByText("publish-flow-uploads-files-to-minio", { exact: true }).first()).toBeVisible();
 });

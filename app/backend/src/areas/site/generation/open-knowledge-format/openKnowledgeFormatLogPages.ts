@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import type { FileSiteNodeConfig, SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import type { SourcePageFileInfo } from '../../../../../../shared_code/types/sourcePageFileInfo.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 import {
@@ -66,7 +66,7 @@ function buildSiteNodeConfigMap(nodes: SiteNodeConfig[]): SiteNodeConfigMap {
   return result;
 }
 
-function sourcePathForConfig(config: SiteNodeConfig): string {
+function sourcePathForConfig(config: FileSiteNodeConfig): string {
   const fileType = config.fileType || 'md';
   const filename = fileType === 'excalidraw'
     ? `${config.siteNodeName}.excalidraw.md`
@@ -75,7 +75,7 @@ function sourcePathForConfig(config: SiteNodeConfig): string {
   return dir ? `${dir}/${filename}` : filename;
 }
 
-function pageInfoForConfig(config: SiteNodeConfig, trackedContentDir: string): SourcePageFileInfo {
+function pageInfoForConfig(config: FileSiteNodeConfig, trackedContentDir: string): SourcePageFileInfo {
   const fullPath = sourcePathForConfig(config);
   const absolutePath = path.join(trackedContentDir, ...fullPath.split('/'));
   let modifiedTimeMs = 0;
@@ -114,7 +114,7 @@ async function reachableMarkdownPages(siteDirectory: string): Promise<SourcePage
   }
 
   return Object.values(siteNodeConfs)
-    .filter(config => (config.fileType || 'md') === 'md')
+    .filter((config): config is FileSiteNodeConfig => config.siteNodeKind === 'file' && config.fileType === 'md')
     .filter(config => reachableKeys.has(siteNodeConfigToKey(config)))
     .map(config => pageInfoForConfig(config, trackedContentDir));
 }
@@ -127,7 +127,7 @@ export async function getOpenKnowledgeFormatLogPageOptions(
   const allPages = await reachableMarkdownPages(siteDirectory);
   const byPath = new Map(allPages.map(page => [page.fullPath, page]));
   const markdownPaths = allPages.map(page => page.fullPath);
-  const entrySourcePath = sourcePathForConfig(entryNode);
+  const entrySourcePath = entryNode.siteNodeKind === 'file' ? sourcePathForConfig(entryNode) : null;
   const defaultIndexPath = selectAutoOpenKnowledgeFormatIndexSource(
     markdownPaths,
     entrySourcePath

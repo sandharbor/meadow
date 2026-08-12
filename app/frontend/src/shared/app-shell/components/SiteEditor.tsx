@@ -37,11 +37,13 @@ import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import DeleteSiteModal from '../../site-management/DeleteSiteModal';
+import type { FolderScopeChangeExplanation } from '../../../../../shared_code/types/folderScopeChanges';
 
 const SiteEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [graph, setGraph] = useState<Graph | null>(null);
+  const [folderScopeChanges, setFolderScopeChanges] = useState<FolderScopeChangeExplanation | undefined>();
   const [filters, setFilters, reloadCustomFilters] = useFilterState(slug || '');
   const [updateTrigger, setUpdateTrigger] = useState(0);
 
@@ -397,6 +399,7 @@ const SiteEditor: React.FC = () => {
           data.allOutlinkTargets || {}
         );
         setGraph(g);
+        setFolderScopeChanges(data.changeExplanations as FolderScopeChangeExplanation | undefined);
         setGraphError(null); // Clear error on success
       })
       .catch(err => {
@@ -1251,6 +1254,7 @@ const SiteEditor: React.FC = () => {
           protectedSiteNodeIds={new Set([entrySiteNodeId, defaultTraversalSiteNodeId].filter((id): id is string => id !== null))}
           onRemoveOrphanConfig={handleRemoveOrphanConfig}
           onRemoveAllOrphanConfigs={handleRemoveAllOrphanConfigs}
+          folderScopeChanges={folderScopeChanges}
         />
       </div>
     </div>

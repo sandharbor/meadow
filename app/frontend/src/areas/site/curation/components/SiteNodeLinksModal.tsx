@@ -149,6 +149,14 @@ const SiteNodeLinksModal: React.FC<SiteNodeLinksModalProps> = ({
 
   // Get inlinks from graph's allInlinkSources
   const inlinkSourceNodeKeys = graph.getAllInlinkSources(currentSiteNodeKey);
+  const structuralChildren = graph.getOutgoingEdges(currentSiteNodeKey)
+    .filter(edge => edge.siteEdgeKind !== 'semanticLink')
+    .map(edge => ({ edge, node: graph.getNode(edge.target) }))
+    .filter((item): item is typeof item & { node: ISiteNode } => item.node !== undefined);
+  const structuralParents = graph.getIncomingEdges(currentSiteNodeKey)
+    .filter(edge => edge.siteEdgeKind !== 'semanticLink')
+    .map(edge => ({ edge, node: graph.getNode(edge.source) }))
+    .filter((item): item is typeof item & { node: ISiteNode } => item.node !== undefined);
 
   // Helper to render the page path with directory in lighter color
   const renderNodePath = (siteNodeKey: string) => {
@@ -306,7 +314,51 @@ const SiteNodeLinksModal: React.FC<SiteNodeLinksModalProps> = ({
           </div>
         )}
 
-        {/* Outlinks Section */}
+        {(structuralChildren.length > 0 || structuralParents.length > 0 || currentNode.siteNodeKind !== 'file') && (
+          <section className="mb-6 p-3 border border-blue-200 bg-blue-50 rounded-md" aria-label="Structural relationships">
+            <h3 className="text-sm font-semibold text-blue-900">Structure</h3>
+            <p className="text-xs text-blue-700 mt-1">
+              {currentNode.siteNodeKind === 'collection'
+                ? 'This is the generated site home.'
+                : currentNode.siteNodeKind === 'folder'
+                  ? 'This node represents source-folder containment.'
+                  : 'This file is included beneath a selected folder.'}
+            </p>
+            {structuralParents.length > 0 && (
+              <div className="mt-2 text-sm">
+                <span className="font-medium">Contained by: </span>
+                {structuralParents.map(({ edge, node }, index) => (
+                  <React.Fragment key={`${edge.source}-${edge.target}`}>
+                    {index > 0 && ', '}
+                    <button className="text-blue-700 hover:underline" onClick={() => handleNavigateToNode(node.siteNodeKey)}>
+                      {node.siteNodeName}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+            {structuralChildren.length > 0 && (
+              <div className="mt-1 text-sm">
+                <span className="font-medium">Contains: </span>
+                {structuralChildren.map(({ edge, node }, index) => (
+                  <React.Fragment key={`${edge.source}-${edge.target}`}>
+                    {index > 0 && ', '}
+                    <button className="text-blue-700 hover:underline" onClick={() => handleNavigateToNode(node.siteNodeKey)}>
+                      {node.siteNodeName}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+            {currentNode.effectiveBlacklistingSiteNodeId && (
+              <p className="mt-2 text-xs text-red-700">
+                Excluded by folder blacklist {currentNode.effectiveBlacklistingSiteNodeId}.
+              </p>
+            )}
+          </section>
+        )}
+
+        {/* Outlinks Section (semantic links only) */}
         <div className="mb-6">
           {(() => {
             const notInGraphCount = outlinkEntries.filter(([, info]) =>

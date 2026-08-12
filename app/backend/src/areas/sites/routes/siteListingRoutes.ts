@@ -40,8 +40,19 @@ import { logger } from '../../../shared/utils/logging/backendLoggingUtils.js';
 import { findUniqueName } from '../../../shared/utils/uniqueNameUtils.js';
 import { listMarkdownSourcePages } from '../../../shared/utils/sourcePageFileUtils.js';
 import { loadValidatedSiteNodeConfiguration } from '../../../shared/site-node/siteNodeConfigLoader.js';
+import {
+  preflightFolderSite,
+  verifyFolderSitePreflight,
+  type FolderSiteCreationPlan,
+} from '../services/folderSiteCreation.js';
+import { persistFolderSiteAtomically } from '../services/folderSitePersistence.js';
+import {
+  getFolderSiteRepairStatus,
+} from '../../../shared/site-config/folderSiteRepair.js';
+import selectedFolderRepairRoutes from './selectedFolderRepairRoutes.js';
 
 const router = express.Router();
+router.use(selectedFolderRepairRoutes);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -146,12 +157,14 @@ router.get('/sites/detailed', (req, res, next) => {
         const siteDirectory = join(sitesDir, slug);
         const config = loadSiteConfig(siteDirectory);
         const { entryNode } = loadValidatedSiteNodeConfiguration(siteDirectory);
+        const repairStatus = getFolderSiteRepairStatus(siteDirectory);
         return {
           slug,
           ...config,
           entrySiteNodeName: entryNode.siteNodeName,
           entrySourceGraphSubdirectory: entryNode.sourceGraphSubdirectory || '',
           entryFileType: entryNode.fileType,
+          ...repairStatus,
           generatedSiteVersions: getGeneratedSiteVersionsWithFallback(siteDirectory, config)
         };
       } catch {
@@ -646,7 +659,116 @@ router.post('/sites/add-example', (req, res, next) => {
   }
 });
 
-// Create a new site
+router.post('/sites/folders/preflight', (req, res, next) => {
+  void (async () => {
+    const {
+      sourceDirectory,
+      selectedFolders,
+      siteName,
+      defaultOutlinksDepth,
+      defaultInlinksDepth,
+    } = req.body as {
+      sourceDirectory?: string;
+      selectedFolders?: string[];
+      siteName?: string;
+      defaultOutlinksDepth?: number;
+      defaultInlinksDepth?: number;
+    };
+    const result = await preflightFolderSite({
+      sourceDirectory: sourceDirectory ?? '',
+      selectedFolders: selectedFolders ?? [],
+      siteName: siteName ?? 'Folder site',
+      defaultOutlinksDepth,
+      defaultInlinksDepth,
+    });
+    res.json(result);
+  })().catch(next);
+});
+
+router.post('/sites/folders', (req, res, next) => {
+  void (async () => {
+    const {
+      slug,
+      sourceDirectory,
+      selectedFolders,
+      siteName,
+      siteNotes,
+      fingerprint,
+      plan,
+      confirmHighImpact,
+    } = req.body as {
+      slug?: string;
+      sourceDirectory?: string;
+      selectedFolders?: string[];
+      siteName?: string;
+      siteNotes?: string;
+      fingerprint?: string;
+      plan?: FolderSiteCreationPlan;
+      confirmHighImpact?: boolean;
+    };
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+      return res.status(400).json({ error: 'Site slug must contain only lowercase letters, numbers, and dashes' });
+    }
+    if (!fingerprint || !plan) {
+      return res.status(400).json({ error: 'A confirmed folder-site preflight is required' });
+    }
+    const verified = await verifyFolderSitePreflight({
+      sourceDirectory: sourceDirectory ?? '',
+      selectedFolders: selectedFolders ?? [],
+      siteName: siteName ?? slug,
+      defaultOutlinksDepth: plan.defaultOutlinksDepth,
+      defaultInlinksDepth: plan.defaultInlinksDepth,
+      plannedFolderSiteNodeIds: plan.folderSiteNodeIds,
+      plannedCollectionSiteNodeId: plan.collectionSiteNodeId,
+    }, fingerprint);
+    if (verified.highImpactWarning && confirmHighImpact !== true) {
+      return res.status(409).json({
+        error: 'This folder site requires explicit high-impact confirmation',
+        preflight: verified,
+      });
+    }
+
+    const actualSlug = findUniqueName(slug, name => fs.existsSync(getSiteDirectory(name)));
+    const siteDir = getSiteDirectory(actualSlug);
+    const stagingDir = join(getSitesDirectory(), `.${actualSlug}.creating-${generateSiteGuid()}`);
+    try {
+      const now = new Date().toISOString();
+      const siteConfig: SiteConfig = {
+        siteGuid: generateSiteGuid(),
+        sourceDirectory: verified.plan.sourceDirectory,
+        entrySiteNodeId: verified.plan.entrySiteNodeId,
+        defaultTraversalSiteNodeId: verified.plan.entrySiteNodeId,
+        defaultOutlinksDepth: verified.plan.defaultOutlinksDepth,
+        defaultInlinksDepth: verified.plan.defaultInlinksDepth,
+        generatedSiteVersions: [],
+        archivedAt: null,
+        siteCreatedAt: now,
+        siteUpdatedAt: now,
+        siteLastPublishedAt: null,
+        siteNotes: siteNotes ?? '',
+      };
+      const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
+      await persistFolderSiteAtomically({
+        siteDirectory: siteDir,
+        stagingDirectory: stagingDir,
+        siteConfig,
+        nodes: verified.nodes,
+        commit: () => gitUtils.commitFiles([
+          AppConfigPaths.relative.siteConfigFile(actualSlug),
+          AppConfigPaths.relative.siteNodeConfigFile(actualSlug),
+        ], `initial folder site config for ${actualSlug}`),
+      });
+      clearSiteGuidCache(actualSlug);
+      logSiteInfo(actualSlug, 'Folder site created');
+      res.json({ success: true, message: 'Site created successfully', slug: actualSlug });
+    } catch (error) {
+      clearSiteGuidCache(actualSlug);
+      throw error;
+    }
+  })().catch(next);
+});
+
+// Create a new page-derived site
 router.post('/sites', (req, res, _next) => {
   const {
     slug,
@@ -767,6 +889,12 @@ router.put('/sites/:slug', (req, res, next) => {
     const existingConfig = YAML.parse(yamlContent) as SiteConfig;
     const nodeConfigPath = getSiteConfigPath(slug, 'site_node_config.yaml');
     const existingNodes = parseSiteNodeConfig(fs.readFileSync(nodeConfigPath, 'utf8'), nodeConfigPath);
+    const currentEntryNode = existingNodes.find(node => node.siteNodeId === existingConfig.entrySiteNodeId);
+    if (!currentEntryNode || currentEntryNode.siteNodeKind !== 'file') {
+      return res.status(409).json({
+        error: 'Folder-derived site scope cannot be changed in the page-oriented site editor',
+      });
+    }
     const entryDirectory = entrySourceGraphSubdirectory || '';
     const resolvedEntryFileType = entryFileType || 'md';
     let entryNode = existingNodes.find(node =>

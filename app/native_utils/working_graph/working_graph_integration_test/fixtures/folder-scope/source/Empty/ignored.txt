@@ -1,0 +1,1 @@
+This unsupported file keeps the explicitly selected empty folder in the fixture.

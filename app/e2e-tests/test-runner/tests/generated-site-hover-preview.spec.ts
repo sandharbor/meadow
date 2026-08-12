@@ -23,6 +23,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { customize, htmlGeneration } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("generated-site hover preview links navigate from nested pages", async ({
   page,
   snapshot,

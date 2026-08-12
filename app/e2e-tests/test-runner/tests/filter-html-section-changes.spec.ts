@@ -20,6 +20,8 @@ import { Workflows } from "../src/run/workflows.js";
 import { htmlGeneration, customize, changesTab as changesTabDoc } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("HTML section changes filter correctly reflects changes after save and customization", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // Navigate to big site preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);

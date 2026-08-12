@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import type { SiteRouteTable } from './siteRoutePlanner.js';
 export { makeSiteNodeKey, siteNodeConfigToKey } from '../../../../shared/site-node/nodeKeys.js';
 
 export interface SiteNodeConfigMap {
@@ -50,6 +51,9 @@ export interface RenderOptions {
   showBreadcrumbs?: boolean;
   showHoverPreview?: boolean;
   breadcrumbPath?: string[]; // Array of rendered page titles representing the traversal path
+  breadcrumbSiteNodeIds?: string[];
+  routeTable?: SiteRouteTable;
+  currentOutputDirectory?: string;
   entryNodeName?: string;
   /**
    * The hashed relative paths for shared/static assets (css/js/mermaid) that should be referenced by
@@ -67,6 +71,10 @@ export interface FolderNavigationPage {
   directory: string;
   normalizedTitle: string;
   outputPath: string;
+  siteNodeId?: string;
+  parentSiteNodeId?: string;
+  siteNodeKind?: 'file' | 'folder' | 'collection';
+  isEntry?: boolean;
 }
 
 export interface FolderNavigationRenderOptions {

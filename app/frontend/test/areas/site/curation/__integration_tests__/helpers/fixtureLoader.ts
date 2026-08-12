@@ -215,6 +215,9 @@ export function loadSiteNodeConfig(fixtureName: string, siteFolderName: string):
  * @returns A mock ISiteNode object
  */
 export function createMockPage(config: SiteNodeConfig, id: string, label: string): ISiteNode {
+  if (config.siteNodeKind !== 'file') {
+    throw new Error('The legacy curation fixture loader accepts file nodes only');
+  }
   const page: ISiteNode = {
     siteNodeKey: id as SiteNodeKey,
     siteNodeId: config.siteNodeId,

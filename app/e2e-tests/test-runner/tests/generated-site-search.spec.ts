@@ -27,6 +27,8 @@ import { Site, Workflows } from "../src/run/workflows.js";
 import { customize, search } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("generated site search finds titles and contents, navigates, and can be disabled", async ({
   page,
   snapshot,

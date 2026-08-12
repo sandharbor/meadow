@@ -20,6 +20,8 @@ import { SiteListPage, SiteEditorPage, CreateAndEditSiteModal } from "../src/run
 import { callout } from "../src/scenario-docs/index.js";
 import { customSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test.use({ fixtureHome: "none" });
 
 test("Callout warns when previewing with only one tracked page", async ({

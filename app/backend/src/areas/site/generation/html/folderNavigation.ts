@@ -88,6 +88,41 @@ function dataFolder(node: FolderNode): FolderNavigationDataFolder {
 }
 
 export function buildFolderNavigationData(pages: FolderNavigationPage[]): FolderNavigationData {
+  const entry = pages.find(page => page.isEntry && page.siteNodeId);
+  if (entry) {
+    const childrenByParent = new Map<string, FolderNavigationPage[]>();
+    for (const page of pages) {
+      if (!page.parentSiteNodeId) continue;
+      const children = childrenByParent.get(page.parentSiteNodeId) ?? [];
+      children.push(page);
+      childrenByParent.set(page.parentSiteNodeId, children);
+    }
+    const directChildren = (parentId: string): FolderNavigationPage[] =>
+      [...(childrenByParent.get(parentId) ?? [])].sort((left, right) => {
+        const rank = (page: FolderNavigationPage) => page.siteNodeKind === 'folder' ? 0 : 1;
+        return rank(left) - rank(right) || compareNames(left.normalizedTitle, right.normalizedTitle) || left.outputPath.localeCompare(right.outputPath);
+      });
+    const structuralFolder = (page: FolderNavigationPage): FolderNavigationDataFolder => ({
+      name: page.normalizedTitle,
+      path: page.outputPath,
+      folders: directChildren(page.siteNodeId!)
+        .filter(child => child.siteNodeKind === 'folder')
+        .map(structuralFolder),
+      files: directChildren(page.siteNodeId!)
+        .filter(child => child.siteNodeKind === 'file')
+        .map(dataFile),
+    });
+    const rootChildren = entry.siteNodeKind === 'collection' || entry.siteNodeKind === 'folder'
+      ? directChildren(entry.siteNodeId!)
+      : [];
+    const semanticOnly = pages
+      .filter(page => page.siteNodeKind === 'file' && !page.parentSiteNodeId && page.siteNodeId !== entry.siteNodeId)
+      .sort((left, right) => compareNames(left.normalizedTitle, right.normalizedTitle));
+    return {
+      folders: rootChildren.filter(page => page.siteNodeKind === 'folder').map(structuralFolder),
+      files: [...rootChildren.filter(page => page.siteNodeKind === 'file'), ...semanticOnly].map(dataFile),
+    };
+  }
   const root = buildTree(pages);
   return {
     folders: [...root.folders.values()]

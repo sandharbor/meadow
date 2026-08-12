@@ -182,6 +182,9 @@ export function renderPageToHtml(
     showBreadcrumbs = false,
     showHoverPreview = false,
     breadcrumbPath = [],
+    breadcrumbSiteNodeIds = [],
+    routeTable,
+    currentOutputDirectory = currentPageDirectory ?? '',
     staticAssetNames,
     sourcesExportEnabled,
     openKnowledgeFormatEnabled,
@@ -231,6 +234,8 @@ export function renderPageToHtml(
       linkResolutionMap: overrides?.linkResolutionMapOverride ?? linkResolutionMap,
       allLinkResolutionMaps,
       excalidrawEmbedOptions: overrides?.excalidrawEmbedOptions,
+      routeTable,
+      currentOutputDirectory,
     });
   }
 
@@ -387,14 +392,14 @@ export function renderPageToHtml(
       const resolvedTitle = fileName.replace(/\.md$/, '');
 
       let linkConfig = siteNodeConfigs.find(c =>
-        c.siteNodeName === resolvedTitle &&
+        c.siteNodeKind === 'file' && c.siteNodeName === resolvedTitle &&
         (c.sourceGraphSubdirectory || '') === targetDir &&
         (c.fileType === 'md' || !c.fileType) &&
         c.listType === 'whitelist'
       );
       if (!linkConfig) {
         linkConfig = siteNodeConfigs.find(c =>
-          c.siteNodeName === resolvedTitle &&
+          c.siteNodeKind === 'file' && c.siteNodeName === resolvedTitle &&
           (c.fileType === 'md' || !c.fileType) &&
           c.listType === 'whitelist'
         );
@@ -422,6 +427,8 @@ export function renderPageToHtml(
         siteNodeConfigs,
         siteConfig,
         siteSlug,
+        routeTable,
+        hostOutputDirectory: currentOutputDirectory,
       });
       if (relativeUrl === null) {
         return '<span class="link-not-tracked">link not tracked</span>';
@@ -623,10 +630,10 @@ export function renderPageToHtml(
                 
                 // Calculate relative path for "see in context" link
                 const encodedBacklinkName = encodeURIComponent(normalizedBacklinkName);
-                const targetPath = backlinkSourceDir 
+                const targetPath = routeTable?.get(backlinkConfig!.siteNodeId) ?? (backlinkSourceDir
                   ? `${backlinkSourceDir}/${encodedBacklinkName}.html`
-                  : `${encodedBacklinkName}.html`;
-                const relativeContextUrl = calculateRelativePath(currentPageDirectory || '', targetPath);
+                  : `${encodedBacklinkName}.html`);
+                const relativeContextUrl = calculateRelativePath(currentOutputDirectory, targetPath);
                 
                 backlinkContextHtml += `
               <div class="backlink-context-container">
@@ -642,10 +649,10 @@ export function renderPageToHtml(
           if (processingMode === 'each-page') {
             // Calculate relative path from current page to backlink page
             const encodedBacklinkName = encodeURIComponent(normalizedBacklinkName);
-            const targetPath = backlinkSourceDir 
+            const targetPath = routeTable?.get(backlinkConfig!.siteNodeId) ?? (backlinkSourceDir
               ? `${backlinkSourceDir}/${encodedBacklinkName}.html`
-              : `${encodedBacklinkName}.html`;
-            const relativeUrl = calculateRelativePath(currentPageDirectory || '', targetPath);
+              : `${encodedBacklinkName}.html`);
+            const relativeUrl = calculateRelativePath(currentOutputDirectory, targetPath);
             backlinksHtml += `<li class="backlink"><a href="${relativeUrl}">${normalizedBacklinkName}</a>${backlinkContextHtml}</li>\n`;
           } else if (processingMode === 'single-page') {
             const anchor = anchorNameFor(normalizedBacklinkName);
@@ -669,7 +676,7 @@ export function renderPageToHtml(
 
   // Calculate assets prefix based on current directory depth
   // Pages in subdirectories need to go up to find the shared assets
-  const depth = currentPageDirectory ? currentPageDirectory.split('/').filter(p => p).length : 0;
+  const depth = currentOutputDirectory ? currentOutputDirectory.split('/').filter(p => p).length : 0;
   const assetsPrefix = '../'.repeat(depth) + '_mw_assets/';
 
   // Generate breadcrumb HTML if enabled
@@ -688,13 +695,15 @@ export function renderPageToHtml(
         breadcrumbItems.push(`<span class="breadcrumb-current">${normalizedTitle}</span>`);
       } else {
         // Find the source directory of this breadcrumb page to compute relative path
-        const breadcrumbSiteNodeConfig = siteNodeConfigs.find(c => c.siteNodeName === pathPageTitle);
+        const breadcrumbSiteNodeConfig = breadcrumbSiteNodeIds[i]
+          ? siteNodeConfigs.find(c => c.siteNodeId === breadcrumbSiteNodeIds[i])
+          : siteNodeConfigs.find(c => c.siteNodeName === pathPageTitle);
         const breadcrumbSourceDir = breadcrumbSiteNodeConfig?.sourceGraphSubdirectory || '';
         const encodedBreadcrumbName = encodeURIComponent(normalizedTitle);
-        const targetPath = breadcrumbSourceDir 
+        const targetPath = (breadcrumbSiteNodeConfig && routeTable?.get(breadcrumbSiteNodeConfig.siteNodeId)) ?? (breadcrumbSourceDir
           ? `${breadcrumbSourceDir}/${encodedBreadcrumbName}.html`
-          : `${encodedBreadcrumbName}.html`;
-        const relativeUrl = calculateRelativePath(currentPageDirectory || '', targetPath);
+          : `${encodedBreadcrumbName}.html`);
+        const relativeUrl = calculateRelativePath(currentOutputDirectory, targetPath);
         breadcrumbItems.push(`<a href="${relativeUrl}" class="breadcrumb-link">${normalizedTitle}</a>`);
       }
     }
@@ -731,8 +740,8 @@ export function renderPageToHtml(
   const siteStyleCss = staticAssetNames?.siteStyleCss;
   const globalJavascriptJs = staticAssetNames?.globalJavascriptJs;
   const siteJavascriptJs = staticAssetNames?.siteJavascriptJs;
-  const srsPageId = currentPageDirectory
-    ? `${currentPageDirectory}/${outputFilename}.html`
+  const srsPageId = currentOutputDirectory
+    ? `${currentOutputDirectory}/${outputFilename}.html`
     : `${outputFilename}.html`;
   const downloadArtifacts: Array<{ label: string; title: string; manifest_url: string; browse_url?: string }> = [];
   if (sourcesExportEnabled) {
@@ -808,6 +817,83 @@ export function renderPageToHtml(
   return { htmlPath, htmlContent, srsCards: collectedSrsCards };
 }
 
+export function renderGeneratedSiteNodeToHtml(args: {
+  outputRoot: string;
+  outputRoute: string;
+  pageTitle: string;
+  bodyHtml: string;
+  breadcrumbHtml: string;
+  staticAssetNames?: RenderOptions['staticAssetNames'];
+  siteConfig: SiteConfig;
+  siteSlug?: string;
+  sourcesExportEnabled?: boolean;
+  openKnowledgeFormatEnabled?: boolean;
+  searchEnabled?: boolean;
+  hoverPreviewEnabled?: boolean;
+  folderNavigation?: RenderOptions['folderNavigation'];
+}): string {
+  const outputDirectory = path.posix.dirname(args.outputRoute) === '.' ? '' : path.posix.dirname(args.outputRoute);
+  const assetsPrefix = '../'.repeat(outputDirectory.split('/').filter(Boolean).length) + '_mw_assets/';
+  const assets = args.staticAssetNames;
+  const downloadArtifacts: Array<{ label: string; title: string; manifest_url: string; browse_url?: string }> = [];
+  if (args.sourcesExportEnabled) {
+    downloadArtifacts.push({
+      label: 'sources',
+      title: 'Download source files as ZIP',
+      manifest_url: `${assetsPrefix}${CUSTOMIZATION_ASSETS_DIRECTORY}/${SOURCES_EXPORT_ASSETS_DIRECTORY}/${SOURCES_EXPORT_MANIFEST_FILENAME}`,
+    });
+  }
+  if (args.openKnowledgeFormatEnabled) {
+    downloadArtifacts.push({
+      label: 'OKF',
+      title: 'Open Knowledge Format package',
+      manifest_url: `${assetsPrefix}${CUSTOMIZATION_ASSETS_DIRECTORY}/${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_MANIFEST_FILENAME}`,
+      browse_url: `${assetsPrefix}${CUSTOMIZATION_ASSETS_DIRECTORY}/${OPEN_KNOWLEDGE_FORMAT_ASSETS_DIR}/${OPEN_KNOWLEDGE_FORMAT_BUNDLE_DIR}/index.md`,
+    });
+  }
+  const fullPageContent = getPageTemplate()({
+    content: args.bodyHtml,
+    page_title: args.pageTitle,
+    assets_prefix: assetsPrefix,
+    breadcrumbs: args.breadcrumbHtml,
+    backlinks: '',
+    include_mermaid: false,
+    include_callouts: false,
+    include_excalidraw: false,
+    style_css: assets?.styleCss ?? 'style.css',
+    javascript_js: assets?.javascriptJs ?? 'javascript.js',
+    global_style_css: assets?.globalStyleCss,
+    site_style_css: assets?.siteStyleCss,
+    global_javascript_js: assets?.globalJavascriptJs,
+    site_javascript_js: assets?.siteJavascriptJs,
+    mermaid_min_js: assets?.mermaidMinJs ?? 'mermaid.min.js',
+    callouts_css: assets?.calloutsCss ?? 'callouts.css',
+    search_css: assets?.searchCss ?? 'cust/search/search.css',
+    search_js: assets?.searchJs ?? 'cust/search/search.js',
+    hover_preview_css: assets?.hoverPreviewCss ?? 'cust/hover_preview/hover-preview.css',
+    hover_preview_js: assets?.hoverPreviewJs ?? 'cust/hover_preview/hover-preview.js',
+    folder_navigation_enabled: Boolean(args.folderNavigation),
+    folder_navigation_css: assets?.folderNavigationCss ?? 'cust/folder_nav/folder-nav.css',
+    folder_navigation_data_js: assets?.folderNavigationDataJs ?? 'cust/folder_nav/folder-nav-data.js',
+    folder_navigation_js: assets?.folderNavigationJs ?? 'cust/folder_nav/folder-nav.js',
+    folder_navigation_storage_key: args.folderNavigation?.storageKey ?? '',
+    srs_enabled: false,
+    include_hover_preview: args.hoverPreviewEnabled === true,
+    downloadable_artifacts_enabled: downloadArtifacts.length > 0,
+    header_actions_enabled: downloadArtifacts.length > 0 || args.searchEnabled || Boolean(args.folderNavigation),
+    download_artifacts: downloadArtifacts,
+    search_enabled: args.searchEnabled === true,
+  });
+  const outputPath = path.join(args.outputRoot, ...args.outputRoute.split('/'));
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  const finalContent = args.siteSlug
+    ? HooksLoader.tryExecuteHtmlPostProcessing(args.siteSlug, fullPageContent, args.pageTitle)
+    : fullPageContent;
+  fs.writeFileSync(outputPath, finalContent);
+  void args.siteConfig;
+  return outputPath;
+}
+
 /**
  * Builds the simple backlinks `<h2>Backlinks</h2><ul>...` block used by the
  * standalone Excalidraw page. Only includes whitelisted sources; no context
@@ -820,6 +906,8 @@ export function renderSimpleBacklinksHtml(
   siteNodeConfigs: SiteNodeConfig[],
   siteConfig: SiteConfig,
   siteSlug?: string,
+  routeTable?: RenderOptions['routeTable'],
+  currentOutputDirectory: string = currentPageDirectory,
 ): string {
   const pathPrefixedKey = currentPageDirectory ? `${currentPageDirectory}/${pageTitle}` : null;
   const list = (pathPrefixedKey && inverseLinks[pathPrefixedKey])
@@ -835,8 +923,8 @@ export function renderSimpleBacklinksHtml(
     const sourceDir = cfg.sourceGraphSubdirectory || '';
     const normName = normalizePageTitle(backlink, siteConfig, siteSlug);
     const encoded = encodeURIComponent(normName);
-    const targetPath = sourceDir ? `${sourceDir}/${encoded}.html` : `${encoded}.html`;
-    const relUrl = calculateRelativePath(currentPageDirectory || '', targetPath);
+    const targetPath = routeTable?.get(cfg.siteNodeId) ?? (sourceDir ? `${sourceDir}/${encoded}.html` : `${encoded}.html`);
+    const relUrl = calculateRelativePath(currentOutputDirectory, targetPath);
     html += `<li class="backlink"><a href="${relUrl}">${normName}</a></li>\n`;
   }
   html += '</ul>\n';

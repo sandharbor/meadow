@@ -26,6 +26,7 @@ import {
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
+import { isSiteMode, SITE_MODE_OPTIONS, type SiteMode } from '../../siteModes.ts'
 
 interface ScenarioDoc {
   id: string
@@ -58,6 +59,7 @@ interface Scenario {
   testBasename?: string
   status: string
   duration: number | null
+  siteMode: SiteMode | null
   scenarioDocIds: string[]
   siteDocIds: string[]
   appAreaDocIds: string[]
@@ -96,6 +98,7 @@ export default function RunDetail() {
   const selectedDocs = docs.filter((d) => selectedDocIds.includes(d.id))
   const selectedSiteIds = searchParams.getAll('site')
   const selectedSites = siteDocs.filter((d) => selectedSiteIds.includes(d.id))
+  const selectedSiteModes = searchParams.getAll('mode').filter(isSiteMode)
 
   // Track which scenario doc IDs appear in this run's data
   const presentDocIds = new Set(
@@ -115,11 +118,13 @@ export default function RunDetail() {
       .flatMap((s) => s.scenarioDocIds)
   )
 
-  const setFilters = (next: { areaIds?: string[]; docIds?: string[]; siteIds?: string[] }) => {
+  const setFilters = (next: { areaIds?: string[]; docIds?: string[]; siteIds?: string[]; siteModes?: SiteMode[] }) => {
     const areaIds = next.areaIds ?? selectedAreaIds
     const docIds = next.docIds ?? selectedDocIds
     const siteIds = next.siteIds ?? selectedSiteIds
+    const siteModes = next.siteModes ?? selectedSiteModes
     setSearchParams([
+      ...siteModes.map((mode): [string, string] => ['mode', mode]),
       ...areaIds.map((id): [string, string] => ['area', id]),
       ...docIds.map((id): [string, string] => ['doc', id]),
       ...siteIds.map((id): [string, string] => ['site', id]),
@@ -214,11 +219,15 @@ export default function RunDetail() {
   // Sort scenarios by slug descending (higher t-numbers = newer scenarios first)
   const sortedScenarios = [...data.scenarios].sort((a, b) => b.slug.localeCompare(a.slug))
 
+  const modeFiltered = selectedSiteModes.length > 0
+    ? sortedScenarios.filter((s) => s.siteMode && selectedSiteModes.includes(s.siteMode))
+    : sortedScenarios
+
   const areaFiltered = selectedAreas.length > 0
-    ? sortedScenarios.filter((s) =>
+    ? modeFiltered.filter((s) =>
         selectedAreas.some((area) => s.appAreaDocIds.includes(area.id))
       )
-    : sortedScenarios
+    : modeFiltered
 
   const docFiltered = selectedDocs.length > 0
     ? areaFiltered.filter((s) =>
@@ -276,6 +285,45 @@ export default function RunDetail() {
         <p className="text-sm text-neutral-500 mb-4">{notes}</p>
       )}
       {!notes && <div className="mb-3" />}
+
+      {/* Site-origin mode filter */}
+      <div className="mb-3">
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-xs text-neutral-400 font-medium mr-1">Starts with:</span>
+          <button
+            className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+              selectedSiteModes.length === 0
+                ? 'bg-violet-500 text-white'
+                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+            }`}
+            onClick={() => setFilters({ siteModes: [] })}
+          >
+            All
+          </button>
+          {SITE_MODE_OPTIONS.map((mode) => {
+            const isSelected = selectedSiteModes.includes(mode.id)
+            const count = data.scenarios.filter((scenario) => scenario.siteMode === mode.id).length
+            return (
+              <button
+                key={mode.id}
+                className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                  isSelected
+                    ? 'bg-violet-500 text-white'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                }`}
+                aria-pressed={isSelected}
+                onClick={() => setFilters({
+                  siteModes: isSelected
+                    ? selectedSiteModes.filter((selected) => selected !== mode.id)
+                    : [...selectedSiteModes, mode.id],
+                })}
+              >
+                {mode.label} ({count})
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {/* App area filter chips */}
       {appAreaDocs.length > 0 && (() => {

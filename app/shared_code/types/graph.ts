@@ -20,10 +20,12 @@ limitations under the License.
 import type { ISiteNode } from './ISiteNode.js';
 export type { ISiteNode } from './ISiteNode.js';
 
+export type SiteEdgeKind = 'semanticLink' | 'directoryContainment' | 'collectionMembership';
+
 export interface IEdge {
   source: string;
   target: string;
-  siteEdgeKind: 'semanticLink';
+  siteEdgeKind: SiteEdgeKind;
   label?: string;
   isBidirectional?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -54,6 +54,7 @@ export interface PrepareOpenKnowledgeFormatOptions {
   entrySourceGraphSubdirectory?: string;
   indexSource?: OpenKnowledgeFormatIndexSource;
   logSource?: OpenKnowledgeFormatLogSource;
+  generatedIndexMarkdown?: string;
 }
 
 export interface PrepareOpenKnowledgeFormatResult {
@@ -289,6 +290,7 @@ function selectConfiguredIndexSource(
 function buildSourcePathByTitleAndDir(siteNodeConfigs: SiteNodeConfig[]): Map<string, string> {
   const result = new Map<string, string>();
   for (const config of siteNodeConfigs) {
+    if (config.siteNodeKind !== 'file') continue;
     const fileType = config.fileType || 'md';
     if (fileType !== 'md' && fileType !== 'excalidraw') continue;
     const dir = config.sourceGraphSubdirectory || '';
@@ -538,7 +540,11 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
 
   const initialOutputPath = initialSourcePath ? outputPathBySourcePath.get(initialSourcePath) ?? null : null;
   if (!indexSourcePath) {
-    writeTextFile(outputDir, ROOT_INDEX_PATH, rootIndexMarkdown(initialOutputPath, options.entryNodeName));
+    writeTextFile(
+      outputDir,
+      ROOT_INDEX_PATH,
+      options.generatedIndexMarkdown ?? rootIndexMarkdown(initialOutputPath, options.entryNodeName),
+    );
   }
 
   return {

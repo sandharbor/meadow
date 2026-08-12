@@ -65,6 +65,8 @@ async function navigateWithFolderNavigationHydrationPaused(
   }
 }
 
+test.use({ siteMode: "single-file" });
+
 test("generated-site folder navigation uses normalized filenames and persists its UI state", async ({
   page,
   snapshot,

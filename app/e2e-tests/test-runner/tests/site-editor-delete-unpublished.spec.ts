@@ -20,6 +20,8 @@ import { Workflows, Site } from "../src/run/workflows.js";
 import { deletion, callout } from "../src/scenario-docs/index.js";
 import { bigSite } from "../src/site-docs/index.js";
 
+test.use({ siteMode: "single-file" });
+
 test("Delete unpublished site from within site editor", async ({
   page,
   snapshot,

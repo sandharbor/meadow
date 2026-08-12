@@ -1,0 +1,46 @@
+nodes:
+  - siteNodeName: Project
+    sourceGraphSubdirectory: Project
+    siteNodeKind: folder
+    siteNodeId: '111111111111'
+    listType: whitelist
+  - siteNodeName: Empty
+    sourceGraphSubdirectory: Empty
+    siteNodeKind: folder
+    siteNodeId: '222222222222'
+    listType: whitelist
+  - siteNodeName: Folder Test
+    siteNodeKind: collection
+    siteNodeId: cccccccccccc
+    listType: whitelist
+    memberSiteNodeIds:
+      - '111111111111'
+      - '222222222222'
+  - siteNodeName: Deep
+    sourceGraphSubdirectory: Project/Middle
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: dddddddddddd
+    listType: whitelist
+  - siteNodeName: Stop
+    sourceGraphSubdirectory: Project/Stop
+    siteNodeKind: folder
+    siteNodeId: ssssssssssss
+    listType: whitelist
+  - siteNodeName: Child
+    sourceGraphSubdirectory: Project/Stop
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: aaaaaaaaaaaa
+    listType: whitelist
+  - siteNodeName: index
+    sourceGraphSubdirectory: Project
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: iiiiiiiiiiii
+    listType: whitelist
+  - siteNodeName: Outside
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: oooooooooooo
+    listType: whitelist

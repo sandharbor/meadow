@@ -55,4 +55,18 @@ describe('folder navigation', () => {
     expect(script).toContain('"Normalized Current.html"');
     expect(script).toContain('"alpha\/deeper\/Normalized Current.html"');
   });
+
+  it('uses the visible structural projection for a folder-derived site', () => {
+    const data = buildFolderNavigationData([
+      { directory: '', normalizedTitle: 'Home', outputPath: 'index.html', siteNodeId: 'home', siteNodeKind: 'collection', isEntry: true },
+      { directory: 'B', normalizedTitle: 'B', outputPath: 'B/index.html', siteNodeId: 'b', parentSiteNodeId: 'home', siteNodeKind: 'folder' },
+      { directory: 'A', normalizedTitle: 'A', outputPath: 'A/index.html', siteNodeId: 'a', parentSiteNodeId: 'home', siteNodeKind: 'folder' },
+      { directory: 'A', normalizedTitle: 'Direct', outputPath: 'A/Direct.html', siteNodeId: 'direct', parentSiteNodeId: 'a', siteNodeKind: 'file' },
+      { directory: '', normalizedTitle: 'Outside', outputPath: 'Outside.html', siteNodeId: 'outside', siteNodeKind: 'file' },
+    ]);
+    expect(data.folders.map(folder => folder.name)).toEqual(['A', 'B']);
+    expect(data.folders[0].files).toEqual([{ name: 'Direct.html', path: 'A/Direct.html' }]);
+    expect(data.files).toEqual([{ name: 'Outside.html', path: 'Outside.html' }]);
+    expect(JSON.stringify(data)).not.toContain('index.html","path":"index.html');
+  });
 });
