@@ -24,6 +24,9 @@ import type { SiteConfig } from '../../../../shared_code/types/siteConfig';
  */
 export interface SiteConfigWithSlug extends SiteConfig {
   slug: string;
+  entrySiteNodeName?: string;
+  entrySourceGraphSubdirectory?: string;
+  entryFileType?: string;
   error?: string;
 }
 
@@ -33,8 +36,8 @@ export interface SiteConfigWithSlug extends SiteConfig {
 export interface SiteEditData {
   slug: string;
   sourceDirectory: string;
-  initialSitePageTitle: string;
-  initialSitePageDirectory: string;
+  entrySiteNodeName: string;
+  entrySourceGraphSubdirectory: string;
   siteNotes: string;
 }
 
@@ -89,8 +92,8 @@ export async function fetchSiteEditData(slug: string): Promise<{
     siteEditData: {
       slug: site.slug,
       sourceDirectory: site.sourceDirectory || '',
-      initialSitePageTitle: site.initialSitePageTitle || '',
-      initialSitePageDirectory: site.initialSitePageDirectory || '',
+      entrySiteNodeName: site.entrySiteNodeName || '',
+      entrySourceGraphSubdirectory: site.entrySourceGraphSubdirectory || '',
       siteNotes: site.siteNotes || ''
     },
     directories

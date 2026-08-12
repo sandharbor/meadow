@@ -15,12 +15,12 @@ limitations under the License.
 */
 
 import React, { useState } from 'react';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig';
-import { getPageKey } from '../../../../../../shared_code/utils/sitePageConfigUtils';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig';
+import { siteNodeLocatorKey } from '../../../../../../shared_code/utils/siteNodeConfigUtils';
 
 interface OrphansViewProps {
-  orphanConfigs: SitePageConfig[];
-  onRemoveConfig: (config: SitePageConfig) => Promise<void>;
+  orphanConfigs: SiteNodeConfig[];
+  onRemoveConfig: (config: SiteNodeConfig) => Promise<void>;
   onRemoveAllConfigs: () => Promise<void>;
 }
 
@@ -32,8 +32,8 @@ const OrphansView: React.FC<OrphansViewProps> = ({
   const [removingKey, setRemovingKey] = useState<string | null>(null);
   const [removingAll, setRemovingAll] = useState(false);
 
-  const handleRemove = async (config: SitePageConfig) => {
-    const key = getPageKey(config.title, config.source_graph_subdirectory, config.file_type);
+  const handleRemove = async (config: SiteNodeConfig) => {
+    const key = siteNodeLocatorKey(config);
     setRemovingKey(key);
     try {
       await onRemoveConfig(config);
@@ -100,30 +100,28 @@ const OrphansView: React.FC<OrphansViewProps> = ({
           </thead>
           <tbody className="divide-y divide-gray-200">
             {orphanConfigs.map(config => {
-              const key = getPageKey(config.title, config.source_graph_subdirectory, config.file_type);
+              const key = siteNodeLocatorKey(config);
               const isRemoving = removingKey === key;
-              const tracked = config.config.tracked !== false;
-
               return (
-                <tr key={key} data-testid={`orphan-row-${config.title}`}>
+                <tr key={key} data-testid={`orphan-row-${config.siteNodeName}`}>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                    {config.title}
+                    {config.siteNodeName}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {config.source_graph_subdirectory || '(root)'}
+                    {config.sourceGraphSubdirectory || '(root)'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {config.file_type || 'md'}
+                    {config.fileType}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {tracked ? 'Yes' : 'No'}
+                    Yes
                   </td>
                   <td className="px-4 py-3 text-sm text-right">
                     <button
                       onClick={() => handleRemove(config)}
                       disabled={isRemoving || removingAll}
                       className="px-3 py-1 text-xs rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50"
-                      data-testid={`remove-orphan-${config.title}`}
+                      data-testid={`remove-orphan-${config.siteNodeName}`}
                     >
                       {isRemoving ? 'Removing…' : 'Remove from config'}
                     </button>

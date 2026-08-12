@@ -6,9 +6,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-use working_graph::site_page_config::{parse_site_page_config_yaml, SitePageConfig};
+use working_graph::site_node_config::{
+    find_config_by_id, parse_site_node_config_yaml, SiteNodeConfig,
+};
 use working_graph::traversal::{get_working_graph, TraverseOpts};
-use working_graph::types::{BasicEdge, TraversalDetails, TraversalFile};
+use working_graph::types::{BasicEdge, FileSiteNode, TraversalDetails};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -17,21 +19,19 @@ struct Args {
     graph_root: PathBuf,
 
     #[arg(long)]
-    site_page_config: PathBuf,
+    site_node_config: PathBuf,
 
     #[arg(long)]
-    initial_title: String,
-    #[arg(long)]
-    initial_directory: String,
-    #[arg(long)]
-    initial_file_type: String,
+    entry_site_node_id: String,
 
     #[arg(long)]
-    traversal_title: String,
+    default_traversal_site_node_id: String,
+
     #[arg(long)]
-    traversal_directory: String,
+    default_outlinks_depth: Option<i32>,
+
     #[arg(long)]
-    traversal_file_type: String,
+    default_inlinks_depth: Option<i32>,
 
     #[arg(long, default_value_t = 0)]
     frontier_depth: i32,
@@ -44,7 +44,7 @@ struct Args {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct PageIdentifier {
+struct FileIdentifier {
     directory: String,
     title: String,
     file_type: String,
@@ -80,18 +80,21 @@ enum ExtractedLink {
 
 #[derive(Debug, Clone)]
 struct ScanResult {
-    source_file: PageIdentifier,
+    source_file: FileIdentifier,
     is_sensitive: bool,
     outgoing_links: Vec<LinkOut>,
 }
 
 #[allow(non_snake_case)]
 #[derive(Serialize)]
-struct OutputPage {
-    id: String,
-    title: String,
+struct OutputNode {
+    siteNodeKey: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    siteNodeId: Option<String>,
+    siteNodeKind: &'static str,
+    siteNodeName: String,
     sourceGraphSubdirectory: String,
-    file_type: String,
+    fileType: String,
     depth: i32,
     remaining_depth: i32,
     remaining_inlinks_depth: i32,
@@ -99,7 +102,7 @@ struct OutputPage {
     #[serde(skip_serializing_if = "Option::is_none")]
     traversal_details: Option<TraversalDetails>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    isFrontierPage: Option<bool>,
+    isFrontierNode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     isFrontierImageExtension: Option<bool>,
     is_sensitive: bool,
@@ -110,6 +113,7 @@ struct OutputPage {
 struct OutputEdge {
     source: String,
     target: String,
+    siteEdgeKind: &'static str,
     isBidirectional: bool,
     link_source_page_path: String,
     link_original_text: String,
@@ -127,7 +131,7 @@ struct OutputEdge {
 #[allow(non_snake_case)]
 #[derive(Serialize)]
 struct OutputGraph {
-    pages: Vec<OutputPage>,
+    nodes: Vec<OutputNode>,
     edges: Vec<OutputEdge>,
     allLinkResolutionMaps: HashMap<String, HashMap<String, LinkResolvedInfo>>,
     allInlinkSources: HashMap<String, Vec<String>>,
@@ -168,7 +172,7 @@ fn is_excalidraw_markdown(content: &str) -> bool {
     frontmatter.contains("excalidraw-plugin: parsed")
 }
 
-fn extract_page_identifier(path: &std::path::Path, base_dir: &std::path::Path) -> PageIdentifier {
+fn extract_page_identifier(path: &std::path::Path, base_dir: &std::path::Path) -> FileIdentifier {
     let mut directory = path
         .parent()
         .unwrap_or_else(|| std::path::Path::new(""))
@@ -211,7 +215,7 @@ fn extract_page_identifier(path: &std::path::Path, base_dir: &std::path::Path) -
         format!("{}/{}.{}", directory, title, file_type_str)
     };
 
-    PageIdentifier {
+    FileIdentifier {
         directory,
         title,
         file_type: file_type_str,
@@ -219,10 +223,15 @@ fn extract_page_identifier(path: &std::path::Path, base_dir: &std::path::Path) -
     }
 }
 
-fn calculate_normalized_directory(source_dir_path_str: &str, link_path_prefix_opt: Option<&String>) -> String {
+fn calculate_normalized_directory(
+    source_dir_path_str: &str,
+    link_path_prefix_opt: Option<&String>,
+) -> String {
     let initial_path_to_normalize: std::path::PathBuf = match link_path_prefix_opt {
         None => std::path::PathBuf::from(source_dir_path_str),
-        Some(prefix_str) => std::path::PathBuf::from(prefix_str.strip_prefix('/').unwrap_or(prefix_str)),
+        Some(prefix_str) => {
+            std::path::PathBuf::from(prefix_str.strip_prefix('/').unwrap_or(prefix_str))
+        }
     };
 
     let mut normalized_components = Vec::new();
@@ -402,15 +411,18 @@ fn try_extract_markdown_link(content: &str, start: usize) -> Option<ExtractedMar
     })
 }
 
-fn make_source_page_path(source_page: &PageIdentifier) -> String {
+fn make_source_page_path(source_page: &FileIdentifier) -> String {
     if source_page.directory.is_empty() {
         format!("{}.{}", source_page.title, source_page.file_type)
     } else {
-        format!("{}/{}.{}", source_page.directory, source_page.title, source_page.file_type)
+        format!(
+            "{}/{}.{}",
+            source_page.directory, source_page.title, source_page.file_type
+        )
     }
 }
 
-fn parse_out_link(inner_link_text: &str, source_page: &PageIdentifier) -> LinkOut {
+fn parse_out_link(inner_link_text: &str, source_page: &FileIdentifier) -> LinkOut {
     let semantics = parse_link_text(inner_link_text);
 
     LinkOut {
@@ -429,7 +441,11 @@ fn parse_out_link(inner_link_text: &str, source_page: &PageIdentifier) -> LinkOu
     }
 }
 
-fn parse_out_markdown_link(display_text: &str, href: &str, source_page: &PageIdentifier) -> LinkOut {
+fn parse_out_markdown_link(
+    display_text: &str,
+    href: &str,
+    source_page: &FileIdentifier,
+) -> LinkOut {
     let mut semantics = parse_markdown_link_href(href);
 
     // Resolve the relative path against the source file's directory.
@@ -528,7 +544,10 @@ fn wiki_link_has_explicit_file_type(link: &LinkOut) -> bool {
     }
 
     let target_text = target_text_without_alias_or_size(&link.link_original_text);
-    let filename = target_text.rsplit('/').next().unwrap_or(target_text.as_str());
+    let filename = target_text
+        .rsplit('/')
+        .next()
+        .unwrap_or(target_text.as_str());
     let filename_without_anchor = strip_anchor_markers_for_extension_check(filename);
     Path::new(filename_without_anchor)
         .extension()
@@ -549,14 +568,24 @@ fn file_type_sort_rank(file_type: &str) -> usize {
 
 fn sort_resolution_candidates(candidates: &mut Vec<(String, String)>) {
     candidates.sort_by(|(dir_a, ft_a), (dir_b, ft_b)| {
-        let depth_a = if dir_a.is_empty() { 0 } else { dir_a.matches('/').count() + 1 };
-        let depth_b = if dir_b.is_empty() { 0 } else { dir_b.matches('/').count() + 1 };
+        let depth_a = if dir_a.is_empty() {
+            0
+        } else {
+            dir_a.matches('/').count() + 1
+        };
+        let depth_b = if dir_b.is_empty() {
+            0
+        } else {
+            dir_b.matches('/').count() + 1
+        };
         match depth_a.cmp(&depth_b) {
             std::cmp::Ordering::Equal => match dir_a.cmp(dir_b) {
-                std::cmp::Ordering::Equal => match file_type_sort_rank(ft_a).cmp(&file_type_sort_rank(ft_b)) {
-                    std::cmp::Ordering::Equal => ft_a.cmp(ft_b),
-                    other => other,
-                },
+                std::cmp::Ordering::Equal => {
+                    match file_type_sort_rank(ft_a).cmp(&file_type_sort_rank(ft_b)) {
+                        std::cmp::Ordering::Equal => ft_a.cmp(ft_b),
+                        other => other,
+                    }
+                }
                 other => other,
             },
             other => other,
@@ -564,7 +593,11 @@ fn sort_resolution_candidates(candidates: &mut Vec<(String, String)>) {
     });
 }
 
-fn exact_any_file_type_candidate(file_index_map: &HashMap<(String, String, String), usize>, directory: &str, title: &str) -> Option<(String, String)> {
+fn exact_any_file_type_candidate(
+    file_index_map: &HashMap<(String, String, String), usize>,
+    directory: &str,
+    title: &str,
+) -> Option<(String, String)> {
     let mut candidates: Vec<(String, String)> = Vec::new();
     for (key_dir, key_title, key_ft) in file_index_map.keys() {
         if key_dir == directory && key_title == title {
@@ -587,7 +620,11 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
         if is_pagespec_sidecar(path) {
             continue;
         }
-        let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+        let ext = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_lowercase();
         let include = ext == "md" || IMAGE_EXTENSIONS_MAIN.contains(&ext.as_str());
         if !include {
             continue;
@@ -604,11 +641,15 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
                     // `.excalidraw` from the title so links like `[[name.excalidraw]]`
                     // resolve to title=`name`, file_type=`excalidraw` (mirroring SVG).
                     source_page_identifier.file_type = "excalidraw".to_string();
-                    if let Some(stripped) = source_page_identifier.title.strip_suffix(".excalidraw") {
+                    if let Some(stripped) = source_page_identifier.title.strip_suffix(".excalidraw")
+                    {
                         source_page_identifier.title = stripped.to_string();
                     }
                     let path_str = if source_page_identifier.directory.is_empty() {
-                        format!("{}.{}", source_page_identifier.title, source_page_identifier.file_type)
+                        format!(
+                            "{}.{}",
+                            source_page_identifier.title, source_page_identifier.file_type
+                        )
                     } else {
                         format!(
                             "{}/{}.{}",
@@ -628,7 +669,11 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
                             outgoing_links.push(parse_out_link(&inner, &source_page_identifier));
                         }
                         ExtractedLink::Markdown { text, href } => {
-                            outgoing_links.push(parse_out_markdown_link(&text, &href, &source_page_identifier));
+                            outgoing_links.push(parse_out_markdown_link(
+                                &text,
+                                &href,
+                                &source_page_identifier,
+                            ));
                         }
                     }
                 }
@@ -650,7 +695,8 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
 }
 
 fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
-    let mut file_index_map_for_resolution: HashMap<(String, String, String), usize> = HashMap::new();
+    let mut file_index_map_for_resolution: HashMap<(String, String, String), usize> =
+        HashMap::new();
     for (idx, res) in scans.iter().enumerate() {
         let key = (
             res.source_file.directory.clone(),
@@ -670,11 +716,7 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
                 let d = link.link_parsed_directory.trim_end_matches('/').to_string();
                 // If the normalized path still contains `..` it means the link escapes the
                 // source graph root. Treat it as unresolvable by clearing the directory.
-                let dir = if d.contains("..") {
-                    String::new()
-                } else {
-                    d
-                };
+                let dir = if d.contains("..") { String::new() } else { d };
                 (dir, link.link_parsed_file_type.clone())
             } else if !link.link_parsed_directory.is_empty() {
                 let raw_dir = calculate_normalized_directory("", Some(&link.link_parsed_directory));
@@ -699,79 +741,132 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
                     };
                     let mut potential_dirs: Vec<String> = Vec::new();
                     for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
-                        if key_title != &link.link_parsed_title || key_ft != &link.link_parsed_file_type {
+                        if key_title != &link.link_parsed_title
+                            || key_ft != &link.link_parsed_file_type
+                        {
                             continue;
                         }
-                        if key_dir == &raw_dir || (!suffix.is_empty() && key_dir.ends_with(&suffix)) {
+                        if key_dir == &raw_dir || (!suffix.is_empty() && key_dir.ends_with(&suffix))
+                        {
                             potential_dirs.push(key_dir.clone());
                         }
                     }
                     if !potential_dirs.is_empty() {
                         potential_dirs.sort_by(|a, b| {
-                            let depth_a = if a.is_empty() { 0 } else { a.matches('/').count() + 1 };
-                            let depth_b = if b.is_empty() { 0 } else { b.matches('/').count() + 1 };
+                            let depth_a = if a.is_empty() {
+                                0
+                            } else {
+                                a.matches('/').count() + 1
+                            };
+                            let depth_b = if b.is_empty() {
+                                0
+                            } else {
+                                b.matches('/').count() + 1
+                            };
                             match depth_a.cmp(&depth_b) {
                                 std::cmp::Ordering::Equal => a.cmp(b),
                                 other => other,
                             }
                         });
-                        (potential_dirs[0].clone(), link.link_parsed_file_type.clone())
+                        (
+                            potential_dirs[0].clone(),
+                            link.link_parsed_file_type.clone(),
+                        )
                     } else if implicit_wiki_file_type {
                         let mut candidates: Vec<(String, String)> = Vec::new();
                         for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
                             if key_title != &link.link_parsed_title {
                                 continue;
                             }
-                            if key_dir == &raw_dir || (!suffix.is_empty() && key_dir.ends_with(&suffix)) {
+                            if key_dir == &raw_dir
+                                || (!suffix.is_empty() && key_dir.ends_with(&suffix))
+                            {
                                 candidates.push((key_dir.clone(), key_ft.clone()));
                             }
                         }
                         sort_resolution_candidates(&mut candidates);
-                        candidates.into_iter().next().unwrap_or((raw_dir, link.link_parsed_file_type.clone()))
+                        candidates
+                            .into_iter()
+                            .next()
+                            .unwrap_or((raw_dir, link.link_parsed_file_type.clone()))
                     } else {
                         (raw_dir, link.link_parsed_file_type.clone())
                     }
                 }
             } else {
-                let root_key = (String::new(), link.link_parsed_title.clone(), link.link_parsed_file_type.clone());
+                let root_key = (
+                    String::new(),
+                    link.link_parsed_title.clone(),
+                    link.link_parsed_file_type.clone(),
+                );
                 if file_index_map_for_resolution.contains_key(&root_key) {
                     (String::new(), link.link_parsed_file_type.clone())
                 } else {
                     let source_dir = &scan.source_file.directory;
-                    let same_dir_key = (source_dir.clone(), link.link_parsed_title.clone(), link.link_parsed_file_type.clone());
+                    let same_dir_key = (
+                        source_dir.clone(),
+                        link.link_parsed_title.clone(),
+                        link.link_parsed_file_type.clone(),
+                    );
                     if file_index_map_for_resolution.contains_key(&same_dir_key) {
                         (source_dir.clone(), link.link_parsed_file_type.clone())
                     } else {
                         let mut potential_dirs: Vec<String> = Vec::new();
                         for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
-                            if key_title == &link.link_parsed_title && key_ft == &link.link_parsed_file_type {
+                            if key_title == &link.link_parsed_title
+                                && key_ft == &link.link_parsed_file_type
+                            {
                                 potential_dirs.push(key_dir.clone());
                             }
                         }
                         if !potential_dirs.is_empty() {
                             potential_dirs.sort_by(|a, b| {
-                                let depth_a = if a.is_empty() { 0 } else { a.matches('/').count() + 1 };
-                                let depth_b = if b.is_empty() { 0 } else { b.matches('/').count() + 1 };
+                                let depth_a = if a.is_empty() {
+                                    0
+                                } else {
+                                    a.matches('/').count() + 1
+                                };
+                                let depth_b = if b.is_empty() {
+                                    0
+                                } else {
+                                    b.matches('/').count() + 1
+                                };
                                 match depth_a.cmp(&depth_b) {
                                     std::cmp::Ordering::Equal => a.cmp(b),
                                     other => other,
                                 }
                             });
-                            (potential_dirs[0].clone(), link.link_parsed_file_type.clone())
+                            (
+                                potential_dirs[0].clone(),
+                                link.link_parsed_file_type.clone(),
+                            )
                         } else if implicit_wiki_file_type {
-                            if let Some(root_candidate) = exact_any_file_type_candidate(&file_index_map_for_resolution, "", &link.link_parsed_title) {
+                            if let Some(root_candidate) = exact_any_file_type_candidate(
+                                &file_index_map_for_resolution,
+                                "",
+                                &link.link_parsed_title,
+                            ) {
                                 root_candidate
-                            } else if let Some(same_dir_candidate) = exact_any_file_type_candidate(&file_index_map_for_resolution, source_dir, &link.link_parsed_title) {
+                            } else if let Some(same_dir_candidate) = exact_any_file_type_candidate(
+                                &file_index_map_for_resolution,
+                                source_dir,
+                                &link.link_parsed_title,
+                            ) {
                                 same_dir_candidate
                             } else {
                                 let mut candidates: Vec<(String, String)> = Vec::new();
-                                for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
+                                for (key_dir, key_title, key_ft) in
+                                    file_index_map_for_resolution.keys()
+                                {
                                     if key_title == &link.link_parsed_title {
                                         candidates.push((key_dir.clone(), key_ft.clone()));
                                     }
                                 }
                                 sort_resolution_candidates(&mut candidates);
-                                candidates.into_iter().next().unwrap_or((String::new(), link.link_parsed_file_type.clone()))
+                                candidates
+                                    .into_iter()
+                                    .next()
+                                    .unwrap_or((String::new(), link.link_parsed_file_type.clone()))
                             }
                         } else {
                             (String::new(), link.link_parsed_file_type.clone())
@@ -793,11 +888,12 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
     scans
 }
 
-fn traversal_file_from_page(p: &PageIdentifier, is_sensitive: bool) -> TraversalFile {
-    TraversalFile {
-        directory: p.directory.clone(),
-        title: p.title.clone(),
-        file_type: p.file_type.clone(),
+fn file_site_node_from_identifier(file: &FileIdentifier, is_sensitive: bool) -> FileSiteNode {
+    FileSiteNode {
+        source_graph_subdirectory: file.directory.clone(),
+        site_node_name: file.title.clone(),
+        file_type: file.file_type.clone(),
+        site_node_id: None,
         is_sensitive,
         conf_outlinks_depth: None,
         conf_inlinks_depth: None,
@@ -805,20 +901,33 @@ fn traversal_file_from_page(p: &PageIdentifier, is_sensitive: bool) -> Traversal
     }
 }
 
+fn file_site_node_from_config(config: &SiteNodeConfig) -> FileSiteNode {
+    FileSiteNode {
+        source_graph_subdirectory: config.source_graph_subdirectory.clone().unwrap_or_default(),
+        site_node_name: config.site_node_name.clone(),
+        file_type: config.file_type.clone(),
+        site_node_id: Some(config.site_node_id.clone()),
+        is_sensitive: false,
+        conf_outlinks_depth: config.outlinks_depth,
+        conf_inlinks_depth: config.inlinks_depth,
+        conf_is_blacklisted: Some(config.list_type == "blacklist"),
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let graph_root = args.graph_root.canonicalize()?;
-    let config_content = fs::read_to_string(&args.site_page_config)?;
-    let site_page_configs: Vec<SitePageConfig> = parse_site_page_config_yaml(&config_content)?;
+    let config_content = fs::read_to_string(&args.site_node_config)?;
+    let site_node_configs: Vec<SiteNodeConfig> = parse_site_node_config_yaml(&config_content)?;
 
     // Scan and resolve links
     let scans = resolve_links(scan_graph(&graph_root)?);
 
-    // Build page lookup by (dir,title,file_type)
-    let mut page_lookup: HashMap<(String, String, String), (PageIdentifier, bool)> = HashMap::new();
+    // Build file lookup by source locator.
+    let mut file_lookup: HashMap<(String, String, String), (FileIdentifier, bool)> = HashMap::new();
     for s in &scans {
-        page_lookup.insert(
+        file_lookup.insert(
             (
                 s.source_file.directory.clone(),
                 s.source_file.title.clone(),
@@ -831,12 +940,15 @@ fn main() -> anyhow::Result<()> {
     // Build per-link edges + basic edges for traversal
     let mut per_link_edges: Vec<OutputEdge> = Vec::new();
     let mut basic_edges: Vec<BasicEdge> = Vec::new();
-    let mut all_link_resolution_maps: HashMap<String, HashMap<String, LinkResolvedInfo>> = HashMap::new();
+    let mut all_link_resolution_maps: HashMap<String, HashMap<String, LinkResolvedInfo>> =
+        HashMap::new();
 
     for s in &scans {
-        let source_tf = traversal_file_from_page(&s.source_file, s.is_sensitive);
-        let source_id = source_tf.ident();
-        let entry = all_link_resolution_maps.entry(source_id.clone()).or_default();
+        let source_tf = file_site_node_from_identifier(&s.source_file, s.is_sensitive);
+        let source_id = source_tf.site_node_key();
+        let entry = all_link_resolution_maps
+            .entry(source_id.clone())
+            .or_default();
         for l in &s.outgoing_links {
             // Store link resolution map for outgoing links even if the target file is missing.
             // This matches the historical fs_search behavior and is important for the HTML layer
@@ -855,8 +967,8 @@ fn main() -> anyhow::Result<()> {
                 l.link_parsed_title.clone(),
                 l.link_parsed_file_type.clone(),
             );
-            if let Some((target_page, target_sensitive)) = page_lookup.get(&target_key) {
-                let target_tf = traversal_file_from_page(target_page, *target_sensitive);
+            if let Some((target_file, target_sensitive)) = file_lookup.get(&target_key) {
+                let target_tf = file_site_node_from_identifier(target_file, *target_sensitive);
 
                 basic_edges.push(BasicEdge {
                     source: source_tf.clone(),
@@ -865,8 +977,9 @@ fn main() -> anyhow::Result<()> {
                 });
 
                 per_link_edges.push(OutputEdge {
-                    source: source_tf.ident(),
-                    target: target_tf.ident(),
+                    source: source_tf.site_node_key(),
+                    target: target_tf.site_node_key(),
+                    siteEdgeKind: "semanticLink",
                     isBidirectional: false, // filled in after we build the full set
                     link_source_page_path: l.link_source_page_path.clone(),
                     link_original_text: l.link_original_text.clone(),
@@ -895,30 +1008,40 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    let initial_page = TraversalFile {
-        directory: args.initial_directory.clone(),
-        title: args.initial_title.clone(),
-        file_type: args.initial_file_type.clone(),
-        is_sensitive: false,
-        conf_outlinks_depth: None,
-        conf_inlinks_depth: None,
-        conf_is_blacklisted: None,
-    };
-    let traversal_page = TraversalFile {
-        directory: args.traversal_directory.clone(),
-        title: args.traversal_title.clone(),
-        file_type: args.traversal_file_type.clone(),
-        is_sensitive: false,
-        conf_outlinks_depth: None,
-        conf_inlinks_depth: None,
-        conf_is_blacklisted: None,
-    };
+    let entry_config =
+        find_config_by_id(&site_node_configs, &args.entry_site_node_id).ok_or_else(|| {
+            anyhow::anyhow!(
+                "entrySiteNodeId does not resolve: {}",
+                args.entry_site_node_id
+            )
+        })?;
+    anyhow::ensure!(
+        entry_config.list_type == "whitelist",
+        "entrySiteNodeId must reference a whitelisted node"
+    );
+    let traversal_config =
+        find_config_by_id(&site_node_configs, &args.default_traversal_site_node_id).ok_or_else(
+            || {
+                anyhow::anyhow!(
+                    "defaultTraversalSiteNodeId does not resolve: {}",
+                    args.default_traversal_site_node_id
+                )
+            },
+        )?;
+    anyhow::ensure!(
+        traversal_config.list_type == "whitelist",
+        "defaultTraversalSiteNodeId must reference a whitelisted node"
+    );
+    let entry_node = file_site_node_from_config(entry_config);
+    let traversal_node = file_site_node_from_config(traversal_config);
 
-    let (working_pages, _working_edges) = get_working_graph(
+    let (working_nodes, _working_edges) = get_working_graph(
         &basic_edges,
-        &site_page_configs,
-        &initial_page,
-        &traversal_page,
+        &site_node_configs,
+        &entry_node,
+        &traversal_node,
+        args.default_outlinks_depth,
+        args.default_inlinks_depth,
         TraverseOpts {
             allow_lower_depths: args.allow_lower_depths,
         },
@@ -926,7 +1049,10 @@ fn main() -> anyhow::Result<()> {
         args.allow_images_to_extend_to_frontier,
     )?;
 
-    let working_page_ids: HashSet<String> = working_pages.iter().map(|n| n.file.ident()).collect();
+    let working_node_keys: HashSet<String> = working_nodes
+        .iter()
+        .map(|n| n.file.site_node_key())
+        .collect();
 
     // Build source graph link count maps from basic_edges
     // Count unique target pages per source (for outlinks)
@@ -935,35 +1061,41 @@ fn main() -> anyhow::Result<()> {
     let mut inlink_sources: HashMap<String, HashSet<String>> = HashMap::new();
 
     for e in &basic_edges {
-        let source_id = e.source.ident();
-        let target_id = e.target.ident();
-        outlink_targets.entry(source_id.clone()).or_default().insert(target_id.clone());
-        inlink_sources.entry(target_id).or_default().insert(source_id);
+        let source_id = e.source.site_node_key();
+        let target_id = e.target.site_node_key();
+        outlink_targets
+            .entry(source_id.clone())
+            .or_default()
+            .insert(target_id.clone());
+        inlink_sources
+            .entry(target_id)
+            .or_default()
+            .insert(source_id);
     }
 
-    let out_pages: Vec<OutputPage> = working_pages
+    let out_nodes: Vec<OutputNode> = working_nodes
         .iter()
-        .map(|n| {
-            OutputPage {
-                id: n.file.ident(),
-                title: n.file.title.clone(),
-                sourceGraphSubdirectory: n.file.directory.clone(),
-                file_type: n.file.file_type.clone(),
-                depth: n.depth,
-                remaining_depth: n.remaining_depth,
-                remaining_inlinks_depth: n.remaining_inlinks_depth,
-                path: n.path.clone(),
-                traversal_details: n.traversal_details.clone(),
-                isFrontierPage: n.is_frontier_page,
-                isFrontierImageExtension: n.is_frontier_image_extension,
-                is_sensitive: n.file.is_sensitive,
-            }
+        .map(|n| OutputNode {
+            siteNodeKey: n.file.site_node_key(),
+            siteNodeId: n.file.site_node_id.clone(),
+            siteNodeKind: "file",
+            siteNodeName: n.file.site_node_name.clone(),
+            sourceGraphSubdirectory: n.file.source_graph_subdirectory.clone(),
+            fileType: n.file.file_type.clone(),
+            depth: n.depth,
+            remaining_depth: n.remaining_depth,
+            remaining_inlinks_depth: n.remaining_inlinks_depth,
+            path: n.path.clone(),
+            traversal_details: n.traversal_details.clone(),
+            isFrontierNode: n.is_frontier_node,
+            isFrontierImageExtension: n.is_frontier_image_extension,
+            is_sensitive: n.file.is_sensitive,
         })
         .collect();
 
     let out_edges: Vec<OutputEdge> = per_link_edges
         .into_iter()
-        .filter(|e| working_page_ids.contains(&e.source) && working_page_ids.contains(&e.target))
+        .filter(|e| working_node_keys.contains(&e.source) && working_node_keys.contains(&e.target))
         .collect();
 
     // Convert HashSets to sorted Vecs for JSON output
@@ -986,7 +1118,7 @@ fn main() -> anyhow::Result<()> {
         .collect();
 
     let output = OutputGraph {
-        pages: out_pages,
+        nodes: out_nodes,
         edges: out_edges,
         allLinkResolutionMaps: all_link_resolution_maps,
         allInlinkSources: all_inlink_sources,
@@ -1005,10 +1137,13 @@ mod tests {
     fn test_extract_links_wiki_basic() {
         let content = "Hello [[page one]] and [[page two]]";
         let links = extract_links(content);
-        assert_eq!(links, vec![
-            ExtractedLink::Wiki("page one".to_string()),
-            ExtractedLink::Wiki("page two".to_string()),
-        ]);
+        assert_eq!(
+            links,
+            vec![
+                ExtractedLink::Wiki("page one".to_string()),
+                ExtractedLink::Wiki("page two".to_string()),
+            ]
+        );
     }
 
     #[test]
@@ -1058,73 +1193,94 @@ mod tests {
     fn test_extract_links_markdown_basic() {
         let content = "See [my page](./path/to/file.md) for details.";
         let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Markdown {
-            text: "my page".to_string(),
-            href: "./path/to/file.md".to_string(),
-        }]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Markdown {
+                text: "my page".to_string(),
+                href: "./path/to/file.md".to_string(),
+            }]
+        );
     }
 
     #[test]
     fn test_extract_links_markdown_image_embed() {
         let content = "An image: ![alt text](./images/photo.png)";
         let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Markdown {
-            text: "alt text".to_string(),
-            href: "./images/photo.png".to_string(),
-        }]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Markdown {
+                text: "alt text".to_string(),
+                href: "./images/photo.png".to_string(),
+            }]
+        );
     }
 
     #[test]
     fn test_extract_links_markdown_skips_external() {
         let content = "Visit [Google](https://google.com) and [local](./page.md)";
         let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Markdown {
-            text: "local".to_string(),
-            href: "./page.md".to_string(),
-        }]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Markdown {
+                text: "local".to_string(),
+                href: "./page.md".to_string(),
+            }]
+        );
     }
 
     #[test]
     fn test_extract_links_markdown_skips_anchor_only() {
         let content = "See [section](#heading) and [file](./file.md)";
         let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Markdown {
-            text: "file".to_string(),
-            href: "./file.md".to_string(),
-        }]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Markdown {
+                text: "file".to_string(),
+                href: "./file.md".to_string(),
+            }]
+        );
     }
 
     #[test]
     fn test_extract_links_markdown_skips_code_block() {
         let content = "Before\n```\n[hidden](./hidden.md)\n```\nAfter [visible](./visible.md)";
         let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Markdown {
-            text: "visible".to_string(),
-            href: "./visible.md".to_string(),
-        }]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Markdown {
+                text: "visible".to_string(),
+                href: "./visible.md".to_string(),
+            }]
+        );
     }
 
     #[test]
     fn test_extract_links_markdown_skips_inline_code() {
         let content = "Code `[hidden](./hidden.md)` and [visible](./visible.md)";
         let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Markdown {
-            text: "visible".to_string(),
-            href: "./visible.md".to_string(),
-        }]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Markdown {
+                text: "visible".to_string(),
+                href: "./visible.md".to_string(),
+            }]
+        );
     }
 
     #[test]
     fn test_extract_links_mixed_wiki_and_markdown() {
         let content = "Wiki [[page one]] and markdown [page two](./page-two.md)";
         let links = extract_links(content);
-        assert_eq!(links, vec![
-            ExtractedLink::Wiki("page one".to_string()),
-            ExtractedLink::Markdown {
-                text: "page two".to_string(),
-                href: "./page-two.md".to_string(),
-            },
-        ]);
+        assert_eq!(
+            links,
+            vec![
+                ExtractedLink::Wiki("page one".to_string()),
+                ExtractedLink::Markdown {
+                    text: "page two".to_string(),
+                    href: "./page-two.md".to_string(),
+                },
+            ]
+        );
     }
 
     #[test]
@@ -1138,31 +1294,41 @@ mod tests {
             "```compressed-json",
             "[[hidden inside compressed scene text]]",
             "```",
-        ].join("\n");
+        ]
+        .join("\n");
         let links = extract_links(&content);
-        assert_eq!(links, vec![
-            ExtractedLink::Wiki("page linked from a non-text element".to_string()),
-        ]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Wiki(
+                "page linked from a non-text element".to_string()
+            ),]
+        );
     }
 
     #[test]
     fn test_extract_links_markdown_with_anchor() {
         let content = "See [section](./file.md#heading)";
         let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Markdown {
-            text: "section".to_string(),
-            href: "./file.md#heading".to_string(),
-        }]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Markdown {
+                text: "section".to_string(),
+                href: "./file.md#heading".to_string(),
+            }]
+        );
     }
 
     #[test]
     fn test_extract_links_markdown_relative_parent() {
         let content = "Go [up](../parent/file.md)";
         let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Markdown {
-            text: "up".to_string(),
-            href: "../parent/file.md".to_string(),
-        }]);
+        assert_eq!(
+            links,
+            vec![ExtractedLink::Markdown {
+                text: "up".to_string(),
+                href: "../parent/file.md".to_string(),
+            }]
+        );
     }
 
     // --- resolve_links: wiki link with directory prefix ---
@@ -1173,13 +1339,13 @@ mod tests {
     // covers the simple unwrapped case; the suffix fallback covers the case
     // where the user pointed `sourceDirectory` one level above the actual data.
 
-    fn make_page(directory: &str, title: &str, file_type: &str) -> PageIdentifier {
+    fn make_page(directory: &str, title: &str, file_type: &str) -> FileIdentifier {
         let path = if directory.is_empty() {
             format!("{}.{}", title, file_type)
         } else {
             format!("{}/{}.{}", directory, title, file_type)
         };
-        PageIdentifier {
+        FileIdentifier {
             directory: directory.to_string(),
             title: title.to_string(),
             file_type: file_type.to_string(),
@@ -1187,7 +1353,7 @@ mod tests {
         }
     }
 
-    fn wiki_link(prefix: &str, title: &str, file_type: &str, source: &PageIdentifier) -> LinkOut {
+    fn wiki_link(prefix: &str, title: &str, file_type: &str, source: &FileIdentifier) -> LinkOut {
         LinkOut {
             link_original_text: format!("{}{}.{}", prefix, title, file_type),
             link_source_page_path: source.path.clone(),
@@ -1204,7 +1370,7 @@ mod tests {
         }
     }
 
-    fn extensionless_wiki_link(prefix: &str, title: &str, source: &PageIdentifier) -> LinkOut {
+    fn extensionless_wiki_link(prefix: &str, title: &str, source: &FileIdentifier) -> LinkOut {
         LinkOut {
             link_original_text: format!("{}{}", prefix, title),
             link_source_page_path: source.path.clone(),
@@ -1221,12 +1387,20 @@ mod tests {
         }
     }
 
-    fn page_only(p: PageIdentifier) -> ScanResult {
-        ScanResult { source_file: p, is_sensitive: false, outgoing_links: vec![] }
+    fn page_only(p: FileIdentifier) -> ScanResult {
+        ScanResult {
+            source_file: p,
+            is_sensitive: false,
+            outgoing_links: vec![],
+        }
     }
 
-    fn page_with_link(p: PageIdentifier, link: LinkOut) -> ScanResult {
-        ScanResult { source_file: p, is_sensitive: false, outgoing_links: vec![link] }
+    fn page_with_link(p: FileIdentifier, link: LinkOut) -> ScanResult {
+        ScanResult {
+            source_file: p,
+            is_sensitive: false,
+            outgoing_links: vec![link],
+        }
     }
 
     #[test]
@@ -1234,10 +1408,7 @@ mod tests {
         let source = make_page("", "embedded media", "md");
         let target = make_page("t006", "foo", "png");
         let link = wiki_link("t006/", "foo", "png", &source);
-        let out = resolve_links(vec![
-            page_with_link(source, link),
-            page_only(target),
-        ]);
+        let out = resolve_links(vec![page_with_link(source, link), page_only(target)]);
         let resolved = &out[0].outgoing_links[0];
         assert_eq!(resolved.link_resolved_target_directory, "t006");
         assert_eq!(resolved.link_resolved_target_path, "t006/foo.png");
@@ -1251,10 +1422,7 @@ mod tests {
         let source = make_page("data", "embedded media", "md");
         let target = make_page("data/t006", "foo", "png");
         let link = wiki_link("t006/", "foo", "png", &source);
-        let out = resolve_links(vec![
-            page_with_link(source, link),
-            page_only(target),
-        ]);
+        let out = resolve_links(vec![page_with_link(source, link), page_only(target)]);
         let resolved = &out[0].outgoing_links[0];
         assert_eq!(resolved.link_resolved_target_directory, "data/t006");
         assert_eq!(resolved.link_resolved_target_path, "data/t006/foo.png");
@@ -1302,10 +1470,7 @@ mod tests {
         let source = make_page("", "src", "md");
         let unrelated = make_page("other", "different", "png");
         let link = wiki_link("t006/", "foo", "png", &source);
-        let out = resolve_links(vec![
-            page_with_link(source, link),
-            page_only(unrelated),
-        ]);
+        let out = resolve_links(vec![page_with_link(source, link), page_only(unrelated)]);
         let resolved = &out[0].outgoing_links[0];
         assert_eq!(resolved.link_resolved_target_directory, "t006");
         assert_eq!(resolved.link_resolved_target_path, "t006/foo.png");
@@ -1316,14 +1481,17 @@ mod tests {
         let source = make_page("t006", "embedding page", "md");
         let target = make_page("t006 - second directory", "embedded drawing", "excalidraw");
         let link = extensionless_wiki_link("", "embedded drawing", &source);
-        let out = resolve_links(vec![
-            page_with_link(source, link),
-            page_only(target),
-        ]);
+        let out = resolve_links(vec![page_with_link(source, link), page_only(target)]);
         let resolved = &out[0].outgoing_links[0];
         assert_eq!(resolved.link_parsed_file_type, "excalidraw");
-        assert_eq!(resolved.link_resolved_target_directory, "t006 - second directory");
-        assert_eq!(resolved.link_resolved_target_path, "t006 - second directory/embedded drawing.excalidraw");
+        assert_eq!(
+            resolved.link_resolved_target_directory,
+            "t006 - second directory"
+        );
+        assert_eq!(
+            resolved.link_resolved_target_path,
+            "t006 - second directory/embedded drawing.excalidraw"
+        );
     }
 
     #[test]
@@ -1331,10 +1499,7 @@ mod tests {
         let source = make_page("t006", "embedding page", "md");
         let target = make_page("t006 - second directory", "embedded drawing", "excalidraw");
         let link = wiki_link("", "embedded drawing", "md", &source);
-        let out = resolve_links(vec![
-            page_with_link(source, link),
-            page_only(target),
-        ]);
+        let out = resolve_links(vec![page_with_link(source, link), page_only(target)]);
         let resolved = &out[0].outgoing_links[0];
         assert_eq!(resolved.link_parsed_file_type, "md");
         assert_eq!(resolved.link_resolved_target_directory, "");

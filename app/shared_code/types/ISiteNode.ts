@@ -14,34 +14,36 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { SitePageConfig } from './sitePageConfig.js';
-import { FileType } from './FileType.js';
-import { PageTraversalDetails } from '../../backend/types/pageFileGraph.js';
+import type { SiteNodeConfig, SiteNodeId, SiteNodeKey } from './siteNodeConfig.js';
+import type { FileType } from './FileType.js';
+import type { SiteNodeTraversalDetails } from './siteNodeGraph.js';
 
 export interface LinkResolvedInfo {
   link_resolved_target_directory: string;
   link_resolved_target_path: string | null;
 }
 
-export interface ISitePage {
-  id: string;
+export interface ISiteNode {
+  siteNodeKey: SiteNodeKey;
+  siteNodeId?: SiteNodeId;
+  siteNodeKind: 'file';
   label: string; // Auto-generated short identifier (A, B, C, ... Z, AA, AB, etc)
-  title: string; // The main title of the note
+  siteNodeName: string; // The main title of this file node
   sourceGraphSubdirectory: string; // The directory path within the source graph
-  file_type: FileType;
+  fileType: FileType;
   body?: string; // The content/body of the note
   tracked?: boolean;
   blacklisted?: boolean;
   sensitive?: boolean;
   offTopic?: boolean; // Whether the AI has marked this page as potentially off topic
-  conf?: SitePageConfig; // Configuration for the page
+  conf?: SiteNodeConfig; // Configuration for the node
 
   depth: number;
   remaining_depth: number;
   remaining_inlinks_depth?: number;
-  path?: string[]; // Traversal path from the root page to this page
-  traversal_details?: PageTraversalDetails;
-  isFrontierPage?: boolean; // True if this page is beyond the normal working area boundary
+  path?: string[]; // Traversal path from the start node to this node
+  traversal_details?: SiteNodeTraversalDetails;
+  isFrontierNode?: boolean; // True if this node is beyond the normal working area boundary
   isFrontierImageExtension?: boolean; // True if this image was included because it was linked from a frontier-edge page
 
   // Map from link_original_text to resolved target info

@@ -19,7 +19,7 @@ export type CustomFilterScope = 'global' | 'site';
 export type SelectorField = 'title' | 'path' | 'content';
 export type SelectorMatchType = 'substring' | 'regex';
 
-export interface CustomPageSelectorConfig {
+export interface CustomSiteNodeSelectorConfig {
   field: SelectorField;
   matchType: SelectorMatchType;
   value: string;
@@ -31,7 +31,7 @@ export interface CustomFilterConfig {
   name: string;
   note?: string;
   scope: CustomFilterScope;
-  selectors: CustomPageSelectorConfig[];
+  selectors: CustomSiteNodeSelectorConfig[];
   selectorApplicationCriteria: 'union' | 'intersection';
   actions: CustomFilterAction[];
   enabled: boolean;

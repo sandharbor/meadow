@@ -23,7 +23,7 @@ export interface FilterExpressionTerm {
   mode: FilterExpressionMode;
 }
 
-export interface FilterExpressionAllPages {
+export interface FilterExpressionAllNodes {
   type: 'all';
 }
 
@@ -39,7 +39,7 @@ export interface FilterExpressionGroup {
  * filter UI. Group nodes are parentheses; their operator combines their child
  * page sets. A term's mode records which filter control activated it.
  */
-export type FilterExpression = FilterExpressionTerm | FilterExpressionAllPages | FilterExpressionGroup;
+export type FilterExpression = FilterExpressionTerm | FilterExpressionAllNodes | FilterExpressionGroup;
 
 export interface ActiveFilterExpressionTerm {
   filterId: string;
@@ -265,19 +265,19 @@ export function evaluateFilterExpression(
   expression: FilterExpression | null,
   activeTerms: ActiveFilterExpressionTerm[],
   filterMatches: ReadonlyMap<string, Set<string>>,
-  allPageIds: Set<string>
+  allSiteNodeKeys: Set<string>
 ): Set<string> {
-  if (!expression || activeTerms.length === 0) return new Set(allPageIds);
+  if (!expression || activeTerms.length === 0) return new Set(allSiteNodeKeys);
   const activeTermIds = new Set(activeTerms.map(filterExpressionTermId));
 
   const evaluate = (node: FilterExpression): Set<string> | null => {
-    if (node.type === 'all') return new Set(allPageIds);
+    if (node.type === 'all') return new Set(allSiteNodeKeys);
     if (node.type === 'filter') {
       if (!activeTermIds.has(filterExpressionTermId(node))) return null;
       const matches = new Set(filterMatches.get(node.filterId) || []);
       return node.mode === 'solo'
         ? matches
-        : new Set([...allPageIds].filter(pageId => !matches.has(pageId)));
+        : new Set([...allSiteNodeKeys].filter(siteNodeKey => !matches.has(siteNodeKey)));
     }
 
     if (node.operator === 'difference') {
@@ -293,7 +293,7 @@ export function evaluateFilterExpression(
     return node.operator === 'union' ? union(childSets) : intersection(childSets);
   };
 
-  return evaluate(expression) || new Set(allPageIds);
+  return evaluate(expression) || new Set(allSiteNodeKeys);
 }
 
 function updateGroup(

@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
-export { makePageKey, pageConfigToKey } from '../../../../shared/site-page/pageKeys.js';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+export { makeSiteNodeKey, siteNodeConfigToKey } from '../../../../shared/site-node/nodeKeys.js';
 
-export interface SitePageConfigs {
-  [pageKey: string]: SitePageConfig;
+export interface SiteNodeConfigMap {
+  [pageKey: string]: SiteNodeConfig;
 }
 
 export interface LinkInfo {
@@ -49,8 +49,8 @@ export interface RenderOptions {
   preserveFrontmatter?: boolean;
   showBreadcrumbs?: boolean;
   showHoverPreview?: boolean;
-  breadcrumbPath?: string[]; // Array of page titles representing the path from initial page
-  initialPageTitle?: string; // The initial/root page title
+  breadcrumbPath?: string[]; // Array of rendered page titles representing the traversal path
+  entryNodeName?: string;
   /**
    * The hashed relative paths for shared/static assets (css/js/mermaid) that should be referenced by
    * rendered HTML pages. When omitted, defaults to the legacy filenames (style.css, javascript.js, mermaid.min.js).

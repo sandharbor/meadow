@@ -1,0 +1,27 @@
+nodes:
+  - siteNodeName: blacklisted page
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: e19327a3da5b
+    listType: blacklist
+    outlinksDepth: 0
+    inlinksDepth: 0
+  - siteNodeName: connected page
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: 390bfbf00196
+    listType: whitelist
+    outlinksDepth: 1
+    inlinksDepth: 0
+  - siteNodeName: main page
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: c4ad5f89900d
+    listType: whitelist
+  - siteNodeName: orphaned page
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: b95c5b451569
+    listType: whitelist
+    outlinksDepth: 1
+    inlinksDepth: 0

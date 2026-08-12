@@ -90,7 +90,7 @@ describe('html preview', () => {
     expect(assetFiles).toContain('fonts');
 
     // Verify specific expected HTML files based on the test data
-    // (the 'main page' should be generated since it's the defaultTraversalSitePageTitle)
+    // (the 'main page' should be generated because it holds the default traversal role)
     expect(htmlFiles).toContain('main page.html');
   });
 

@@ -14,20 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { PageFile } from '../models/pageFile.js';
-
-export type PageFilePage = {
-  file: PageFile;
-  depth: number;
-  remaining_depth: number;
-  remaining_inlinks_depth: number;
-  path: string[];
-  traversal_details?: PageTraversalDetails;
-  isFrontierPage?: boolean;
-  isFrontierImageExtension?: boolean; // True if this image was included because it was linked from a frontier-edge page
-};
-
-export type PageTraversalDetails = {
+export type SiteNodeTraversalDetails = {
   outlinks_depth_set_first_time?: number;
   outlinks_depth_inherited?: number;
   outlinks_depth_overridden?: number;
@@ -36,16 +23,3 @@ export type PageTraversalDetails = {
   inlinks_depth_overridden?: number;
   link_type?: 'start' | 'outlink' | 'inlink' | 'bidirectional';
 };
-
-export type PageFileEdge = {
-  from: PageFilePage;
-  to: PageFilePage;
-  isBidirectional?: boolean;
-  isTraversalOnly?: boolean; // True for edges created for inlink traversal (not real source links)
-};
-
-export type PageFileGraph = {
-  pages: PageFilePage[];
-  edges: PageFileEdge[];
-  traverse(from: PageFile): PageFilePage[];
-}; 

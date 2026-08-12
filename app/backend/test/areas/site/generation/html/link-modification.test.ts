@@ -16,23 +16,14 @@ limitations under the License.
 
 import { describe, it, expect } from 'vitest';
 import { buildExcalidrawClientEmbeddedFileData, linkOrImageHtml } from '../../../../../src/areas/site/generation/html/linkModificationService.js';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { makeSiteNodeConfig } from '../../../../shared/support/siteNodeConfigTestUtils.js';
 
 describe('html link modification', () => {
   it('should not show the name of blacklisted links', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'my normal page',
-        config: {
-          list_type: 'whitelist',
-        },
-      },
-      {
-        title: 'my sensitive page',
-        config: {
-          list_type: 'blacklist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('my normal page'),
+      makeSiteNodeConfig('my sensitive page', 'blacklist'),
     ];
 
     // Test whitelisted link - should create proper link
@@ -49,13 +40,8 @@ describe('html link modification', () => {
   });
 
   it('should handle alternative link names for whitelisted pages', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'my normal page',
-        config: {
-          list_type: 'whitelist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('my normal page'),
     ];
 
     // Test whitelisted link with alternative name
@@ -66,14 +52,8 @@ describe('html link modification', () => {
   it('should find whitelisted page in subdirectory when linkResolutionMap is unavailable', () => {
     // This tests the fallback behavior: when there's no linkResolutionMap entry,
     // the system should still find the page by title alone and use its subdirectory
-    const confs: SitePageConfig[] = [
-      {
-        title: 'my subdirectory page',
-        source_graph_subdirectory: 'ai',
-        config: {
-          list_type: 'whitelist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('my subdirectory page', 'whitelist', { sourceGraphSubdirectory: 'ai' }),
     ];
 
     // Without linkResolutionMap, should fall back to title-only search
@@ -84,14 +64,8 @@ describe('html link modification', () => {
   });
 
   it('should find whitelisted page in subdirectory even when linkResolutionMap is empty object', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'nested page',
-        source_graph_subdirectory: 'some/nested/path',
-        config: {
-          list_type: 'whitelist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('nested page', 'whitelist', { sourceGraphSubdirectory: 'some/nested/path' }),
     ];
 
     // Pass empty linkResolutionMap (entry not found for this link)
@@ -103,21 +77,9 @@ describe('html link modification', () => {
   });
 
   it('should prefer exact match with linkResolutionMap over fallback', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'duplicate title',
-        source_graph_subdirectory: '',  // Root level
-        config: {
-          list_type: 'whitelist',
-        },
-      },
-      {
-        title: 'duplicate title',
-        source_graph_subdirectory: 'subdir',
-        config: {
-          list_type: 'whitelist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('duplicate title'),
+      makeSiteNodeConfig('duplicate title', 'whitelist', { sourceGraphSubdirectory: 'subdir' }),
     ];
 
     // With linkResolutionMap pointing to subdir, should use that
@@ -144,14 +106,8 @@ describe('html link modification', () => {
   });
 
   it('should not whitelist page in subdirectory if it is blacklisted', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'blacklisted subdirectory page',
-        source_graph_subdirectory: 'ai',
-        config: {
-          list_type: 'blacklist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('blacklisted subdirectory page', 'blacklist', { sourceGraphSubdirectory: 'ai' }),
     ];
 
     // Without linkResolutionMap, should fall back to title-only search
@@ -161,14 +117,8 @@ describe('html link modification', () => {
   });
 
   it('should NOT use fallback when link has explicit path prefix', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'some page',
-        source_graph_subdirectory: 'other-dir',  // Different from explicit path
-        config: {
-          list_type: 'whitelist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('some page', 'whitelist', { sourceGraphSubdirectory: 'other-dir' }),
     ];
 
     // Link has explicit path "nonexistent/some page" - should NOT fall back
@@ -178,14 +128,8 @@ describe('html link modification', () => {
   });
 
   it('should use fallback when link has NO explicit path', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'some page',
-        source_graph_subdirectory: 'ai',
-        config: {
-          list_type: 'whitelist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('some page', 'whitelist', { sourceGraphSubdirectory: 'ai' }),
     ];
 
     // Link has no explicit path - should fall back to title-only search
@@ -194,15 +138,11 @@ describe('html link modification', () => {
   });
 
   it('should resolve Excalidraw embedded file hrefs separately from page links', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'tracked-sunflower',
-        file_type: 'png',
-        source_graph_subdirectory: 't006/images-used-in-excalidraw',
-        config: {
-          list_type: 'whitelist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('tracked-sunflower', 'whitelist', {
+        fileType: 'png',
+        sourceGraphSubdirectory: 't006/images-used-in-excalidraw',
+      }),
     ];
     const maps = new Map([
       ['t006/drawing.excalidraw', {
@@ -224,7 +164,7 @@ describe('html link modification', () => {
     const result = buildExcalidrawClientEmbeddedFileData({
       excalidrawPageIdent: 't006/drawing.excalidraw',
       hostPageDirectory: 't006',
-      sitePageConfigs: confs,
+      siteNodeConfigs: confs,
       allLinkResolutionMaps: maps,
     });
 
@@ -235,15 +175,11 @@ describe('html link modification', () => {
   });
 
   it('should render an extensionless embed resolved to an Excalidraw drawing', () => {
-    const confs: SitePageConfig[] = [
-      {
-        title: 'embedded drawing',
-        file_type: 'excalidraw',
-        source_graph_subdirectory: 'drawings',
-        config: {
-          list_type: 'whitelist',
-        },
-      },
+    const confs: SiteNodeConfig[] = [
+      makeSiteNodeConfig('embedded drawing', 'whitelist', {
+        fileType: 'excalidraw',
+        sourceGraphSubdirectory: 'drawings',
+      }),
     ];
 
     const result = linkOrImageHtml('embedded drawing|500', confs, {

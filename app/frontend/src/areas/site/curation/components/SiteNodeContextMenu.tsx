@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Graph, IPage } from '../../../../../../shared_code/types/graph';
+import { Graph, ISiteNode } from '../../../../../../shared_code/types/graph';
 import { FindInSitesOptions } from '../../../../../../shared_code/types/findInSitesOptions';
 import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../utils/selectionPaths';
 import { logger } from '../../../../shared/utils/logger';
@@ -29,17 +29,17 @@ export interface ObsidianInfo {
   vaultNameGuess: string | null;
 }
 
-interface PageContextMenuProps {
-  page: IPage;
+interface SiteNodeContextMenuProps {
+  page: ISiteNode;
   graph: Graph;
   position: { x: number; y: number };
   onClose: () => void;
-  onTrackPage: (pageId: string) => void;
-  onBlacklistPage: (pageId: string) => void;
-  onPreviewPage: (pageId: string) => void;
+  onTrackPage: (siteNodeKey: string) => void;
+  onBlacklistPage: (siteNodeKey: string) => void;
+  onPreviewPage: (siteNodeKey: string) => void;
   hasDraftChanges?: boolean;
-  onSelectedPagesChange: (pages: Set<string>) => void;
-  onMarkSensitive?: (pageId: string, isSensitive: boolean) => void;
+  onSelectedNodeKeysChange: (pages: Set<string>) => void;
+  onMarkSensitive?: (siteNodeKey: string, isSensitive: boolean) => void;
   obsidianInfo: ObsidianInfo | null;
 }
 
@@ -52,15 +52,15 @@ const joinFsPath = (...parts: Array<string | null | undefined>): string => {
   return hasLeadingSlash ? `/${joined}` : joined;
 };
 
-const getPageRelativePath = (page: IPage): string => {
-  const filename = `${page.title}.${page.file_type}`;
+const getPageRelativePath = (page: ISiteNode): string => {
+  const filename = `${page.siteNodeName}.${page.fileType}`;
   if (page.sourceGraphSubdirectory && page.sourceGraphSubdirectory.trim().length > 0) {
     return joinFsPath(page.sourceGraphSubdirectory, filename);
   }
   return filename;
 };
 
-const PageContextMenu: React.FC<PageContextMenuProps> = ({
+const SiteNodeContextMenu: React.FC<SiteNodeContextMenuProps> = ({
   page,
   graph,
   position,
@@ -69,7 +69,7 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
   onBlacklistPage,
   onPreviewPage,
   hasDraftChanges,
-  onSelectedPagesChange,
+  onSelectedNodeKeysChange,
   onMarkSensitive,
   obsidianInfo,
 }) => {
@@ -113,7 +113,7 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
   }, [onClose]);
 
   const handleFindInSites = () => {
-    const pathParts = page.id.split('/');
+    const pathParts = page.siteNodeKey.split('/');
     const pageName = page.data?.title || page.label || pathParts[pathParts.length - 1];
 
     const findInSitesOptions: FindInSitesOptions = {
@@ -150,7 +150,7 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
       style={{ left: position.x, top: adjustedTop }}
     >
       {/* Untrack option if already tracked */}
-      {page.tracked && !page.isFrontierPage && page.depth === 0 && (
+      {page.tracked && !page.isFrontierNode && page.depth === 0 && (
         <button
           disabled
           className={disabledClass}
@@ -159,44 +159,44 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
           Untrack
         </button>
       )}
-      {page.tracked && !page.isFrontierPage && page.depth !== 0 && (
+      {page.tracked && !page.isFrontierNode && page.depth !== 0 && (
         <button
-          onClick={() => { onTrackPage(page.id); onClose(); }}
+          onClick={() => { onTrackPage(page.siteNodeKey); onClose(); }}
           className={buttonClass}
         >
           Untrack
         </button>
       )}
       {/* Add to blacklist option */}
-      {page.tracked && !page.blacklisted && !page.isFrontierPage && page.depth !== 0 && (
+      {page.tracked && !page.blacklisted && !page.isFrontierNode && page.depth !== 0 && (
         <button
-          onClick={() => { onBlacklistPage(page.id); onClose(); }}
+          onClick={() => { onBlacklistPage(page.siteNodeKey); onClose(); }}
           className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 text-danger-700"
         >
           Blacklist
         </button>
       )}
       {/* Remove from blacklist option */}
-      {page.blacklisted && !page.isFrontierPage && (
+      {page.blacklisted && !page.isFrontierNode && (
         <button
-          onClick={() => { onBlacklistPage(page.id); onClose(); }}
+          onClick={() => { onBlacklistPage(page.siteNodeKey); onClose(); }}
           className={buttonClass}
         >
           Remove from Blacklist
         </button>
       )}
       {/* Separator if there are top items */}
-      {!page.isFrontierPage && (
+      {!page.isFrontierNode && (
         <div className="border-t border-neutral-200" />
       )}
       {/* Preview HTML */}
       {(() => {
-        const previewDisabled = !page.tracked || page.isFrontierPage || hasDraftChanges;
-        const tooltipText = hasDraftChanges ? 'Save your unsaved changes before previewing' : page.isFrontierPage ? 'Cannot preview frontier pages' : !page.tracked ? 'Track this page first to preview it' : undefined;
+        const previewDisabled = !page.tracked || page.isFrontierNode || hasDraftChanges;
+        const tooltipText = hasDraftChanges ? 'Save your unsaved changes before previewing' : page.isFrontierNode ? 'Cannot preview frontier pages' : !page.tracked ? 'Track this page first to preview it' : undefined;
         return (
           <DisabledTooltip disabled={previewDisabled} tooltip={tooltipText} className="block">
             <button
-              onClick={() => { onPreviewPage(page.id); onClose(); }}
+              onClick={() => { onPreviewPage(page.siteNodeKey); onClose(); }}
               disabled={previewDisabled}
               className={previewDisabled ? disabledClass : buttonClass}
             >
@@ -209,7 +209,7 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
       <button
         onClick={() => {
           const ordered = getSelectionPathToHereOrdered(page);
-          onSelectedPagesChange(new Set(ordered));
+          onSelectedNodeKeysChange(new Set(ordered));
           onClose();
         }}
         className={buttonClass}
@@ -220,8 +220,8 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
       {/* Select children */}
       <button
         onClick={() => {
-          const ordered = getSelectionChildrenOrdered(graph, page.id);
-          onSelectedPagesChange(new Set(ordered));
+          const ordered = getSelectionChildrenOrdered(graph, page.siteNodeKey);
+          onSelectedNodeKeysChange(new Set(ordered));
           onClose();
         }}
         className={buttonClass}
@@ -232,8 +232,8 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
       {/* Select all paths from here */}
       <button
         onClick={() => {
-          const ordered = getSelectionPathFromHereOrdered(graph, page.id);
-          onSelectedPagesChange(new Set(ordered));
+          const ordered = getSelectionPathFromHereOrdered(graph, page.siteNodeKey);
+          onSelectedNodeKeysChange(new Set(ordered));
           onClose();
         }}
         className={buttonClass}
@@ -244,8 +244,8 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
       {/* Select deeper paths from here */}
       <button
         onClick={() => {
-          const ordered = getSelectionDeeperPathsFromHereOrdered(graph, page.id);
-          onSelectedPagesChange(new Set(ordered));
+          const ordered = getSelectionDeeperPathsFromHereOrdered(graph, page.siteNodeKey);
+          onSelectedNodeKeysChange(new Set(ordered));
           onClose();
         }}
         className={buttonClass}
@@ -256,7 +256,7 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
       {/* Mark sensitive / not sensitive */}
       {onMarkSensitive && (
         <button
-          onClick={() => { onMarkSensitive(page.id, !page.sensitive); onClose(); }}
+          onClick={() => { onMarkSensitive(page.siteNodeKey, !page.sensitive); onClose(); }}
           className={buttonClass}
         >
           {page.sensitive ? 'Mark Not Sensitive' : 'Mark Sensitive'}
@@ -292,4 +292,4 @@ const PageContextMenu: React.FC<PageContextMenuProps> = ({
   );
 };
 
-export default PageContextMenu;
+export default SiteNodeContextMenu;

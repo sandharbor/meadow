@@ -40,7 +40,7 @@ import {
   getSourceGraphsPath,
 } from '../helpers/serverManager.js';
 import { SystemTestSiteSetup } from '../helpers/testSetup.js';
-import { parsePageConfig } from '../../shared_code/utils/sitePageConfigUtils.js';
+import { parseSiteNodeConfig } from '../../shared_code/utils/siteNodeConfigUtils.js';
 import {
   extractMainSectionLinkPaths,
   extractBacklinkDetails,
@@ -100,7 +100,7 @@ async function main() {
     );
     if (!normalResp.ok) throw new Error(`Working graph API failed: ${normalResp.status}`);
     const normalGraph = (await normalResp.json()) as {
-      pages: { id: string; remaining_depth: number }[];
+      nodes: { siteNodeKey: string; remaining_depth: number }[];
       allOutlinkTargets: Record<string, string[]>;
       allInlinkSources: Record<string, string[]>;
     };
@@ -112,7 +112,7 @@ async function main() {
     );
     if (!frontierResp.ok) throw new Error(`Working graph frontier API failed: ${frontierResp.status}`);
     const frontierGraph = (await frontierResp.json()) as {
-      pages: { id: string; remaining_depth: number }[];
+      nodes: { siteNodeKey: string; remaining_depth: number }[];
     };
 
     // 3. Generate preview HTML
@@ -120,14 +120,14 @@ async function main() {
     const previewResp = await fetch(`${TEST_BASE_URL}/api/sites/${slug}/generation/preview`, { method: 'POST' });
     if (!previewResp.ok) throw new Error(`Preview API failed: ${previewResp.status}`);
 
-    // 4. Load site_page_config
-    const siteConfigPath = path.join(setup.getSitePath(), 'conf', 'site_page_config.yaml');
-    const sitePageConfigs = fs.existsSync(siteConfigPath)
-      ? parsePageConfig(fs.readFileSync(siteConfigPath, 'utf-8'))
+    // 4. Load site-node configuration
+    const siteConfigPath = path.join(setup.getSitePath(), 'conf', 'site_node_config.yaml');
+    const siteNodeConfigs = fs.existsSync(siteConfigPath)
+      ? parseSiteNodeConfig(fs.readFileSync(siteConfigPath, 'utf-8'))
       : [];
 
     // 5. Build lookup structures
-    const normalPageIds = new Set(normalGraph.pages.map(p => linkPathToPageId(p.id)));
+    const normalPageIds = new Set(normalGraph.nodes.map(node => linkPathToPageId(node.siteNodeKey)));
 
     const outlinkMap = new Map<string, string[]>();
     for (const [pathKey, targets] of Object.entries(normalGraph.allOutlinkTargets)) {
@@ -141,10 +141,10 @@ async function main() {
 
     // Frontier page remaining-depth map (only pages NOT in normal graph)
     const frontierRemainingDepth = new Map<string, number>();
-    for (const page of frontierGraph.pages) {
-      const pageId = linkPathToPageId(page.id);
+    for (const node of frontierGraph.nodes) {
+      const pageId = linkPathToPageId(node.siteNodeKey);
       if (!normalPageIds.has(pageId)) {
-        frontierRemainingDepth.set(pageId, page.remaining_depth);
+        frontierRemainingDepth.set(pageId, node.remaining_depth);
       }
     }
 
@@ -158,8 +158,8 @@ async function main() {
     for (const srcFile of sourceFiles) {
       const pageId = getPageIdFromPath(srcFile, SOURCE_GRAPH_DIR);
 
-      // Determine isTracked from site_page_config
-      const isTracked = computeIsTracked(pageId, sitePageConfigs, 'md');
+      // Determine isTracked from canonical node-record presence
+      const isTracked = computeIsTracked(pageId, siteNodeConfigs, 'md');
 
       const isInWorkingGraph = normalPageIds.has(pageId);
 
@@ -235,7 +235,7 @@ async function main() {
 
 function computeIsTracked(
   pageId: string,
-  sitePageConfigs: ReturnType<typeof parsePageConfig>,
+  siteNodeConfigs: ReturnType<typeof parseSiteNodeConfig>,
   fileType: string
 ): boolean {
   const lastSlashIndex = pageId.lastIndexOf('/');
@@ -245,18 +245,16 @@ function computeIsTracked(
   const titleForMatch = fileType !== 'md' ? title.replace(/\.\w+$/, '') : title;
   const subdirectory = lastSlashIndex >= 0 ? pageId.slice(0, lastSlashIndex) : '';
 
-  for (const config of sitePageConfigs) {
-    const configSubdir = config.source_graph_subdirectory || '';
-    const configFileType = config.file_type || 'md';
+  for (const config of siteNodeConfigs) {
+    const configSubdir = config.sourceGraphSubdirectory || '';
+    const configFileType = config.fileType;
 
     if (
-      config.title === titleForMatch &&
+      config.siteNodeName === titleForMatch &&
       configSubdir === subdirectory &&
       configFileType === fileType
     ) {
-      // Blacklisted pages are NOT considered tracked for pagespec purposes
-      if (config.config.list_type === 'blacklist') return false;
-      return config.config.tracked === true;
+      return true;
     }
   }
   return false;

@@ -19,7 +19,12 @@ import fs from 'fs';
 import path, { join } from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
-import { parsePageConfig, stringifyPageConfig } from '../../../../../shared_code/utils/sitePageConfigUtils.js';
+import {
+  generateSiteNodeId,
+  parseSiteNodeConfig,
+  stringifySiteNodeConfig,
+  validateCanonicalSiteConfiguration,
+} from '../../../../../shared_code/utils/siteNodeConfigUtils.js';
 import { SiteConfig } from '../../../../../shared_code/types/siteConfig.js';
 import { FileType } from '../../../../../shared_code/types/FileType.js';
 import { AppConfigPaths } from '../../../../../shared_code/paths/appConfigPaths.js';
@@ -34,6 +39,7 @@ import { clearSiteGuidCache, logSiteError, logSiteInfo } from '../../../shared/u
 import { logger } from '../../../shared/utils/logging/backendLoggingUtils.js';
 import { findUniqueName } from '../../../shared/utils/uniqueNameUtils.js';
 import { listMarkdownSourcePages } from '../../../shared/utils/sourcePageFileUtils.js';
+import { loadValidatedSiteNodeConfiguration } from '../../../shared/site-node/siteNodeConfigLoader.js';
 
 const router = express.Router();
 
@@ -139,9 +145,13 @@ router.get('/sites/detailed', (req, res, next) => {
       try {
         const siteDirectory = join(sitesDir, slug);
         const config = loadSiteConfig(siteDirectory);
+        const { entryNode } = loadValidatedSiteNodeConfiguration(siteDirectory);
         return {
           slug,
           ...config,
+          entrySiteNodeName: entryNode.siteNodeName,
+          entrySourceGraphSubdirectory: entryNode.sourceGraphSubdirectory || '',
+          entryFileType: entryNode.fileType,
           generatedSiteVersions: getGeneratedSiteVersionsWithFallback(siteDirectory, config)
         };
       } catch {
@@ -253,71 +263,37 @@ router.get('/sites/:siteSlug/tracks-page', (req, res, next) => {
 });
 
 // Helper function to check if a site tracks a specific page
-function checkIfSiteTracksPage(siteDirectory: string, pageName: string, config: SiteConfig): boolean {
+function checkIfSiteTracksPage(siteDirectory: string, pageName: string, _config: SiteConfig): boolean {
   const siteSlug = siteDirectory.split('/').pop() || 'unknown';
   logSiteInfo(siteSlug, `[checkIfSiteTracksPage] Checking for page: "${pageName}"`);
 
   try {
-    // Check if page is the initial page
-    if (config.initialSitePageTitle === pageName) {
-      logSiteInfo(siteSlug, `[checkIfSiteTracksPage] ✓ Found as initialSitePageTitle`);
-      return true;
-    }
+    // Check site_node_config.yaml for the page
+    const siteNodeConfPath = getSiteConfigPath(siteSlug, 'site_node_config.yaml');
+    logSiteInfo(siteSlug, `[checkIfSiteTracksPage] Checking site_node_config.yaml`);
 
-    // Check if page is in the default traversal page
-    if (config.defaultTraversalSitePageTitle === pageName) {
-      logSiteInfo(siteSlug, `[checkIfSiteTracksPage] ✓ Found as defaultTraversalSitePageTitle`);
-      return true;
-    }
-
-    // Check site_page_config.yaml for the page
-    const sitePageConfPath = getSiteConfigPath(siteSlug, 'site_page_config.yaml');
-    logSiteInfo(siteSlug, `[checkIfSiteTracksPage] Checking site_page_config.yaml`);
-
-    if (fs.existsSync(sitePageConfPath)) {
+    if (fs.existsSync(siteNodeConfPath)) {
       try {
-        const content = fs.readFileSync(sitePageConfPath, 'utf-8');
-        logSiteInfo(siteSlug, `[checkIfSiteTracksPage] site_page_config.yaml exists, size: ${content.length} bytes`);
+        const content = fs.readFileSync(siteNodeConfPath, 'utf-8');
+        logSiteInfo(siteSlug, `[checkIfSiteTracksPage] site_node_config.yaml exists, size: ${content.length} bytes`);
 
         // Parse the YAML and check for the page
-        const sitePageConfigs = parsePageConfig(content);
-        const titles = sitePageConfigs.map(sitePageConfig => sitePageConfig.title);
-        logSiteInfo(siteSlug, `[checkIfSiteTracksPage] Titles in site_page_config.yaml: ${titles.join(', ')}`);
+        const siteNodeConfigs = parseSiteNodeConfig(content);
+        const titles = siteNodeConfigs.map(siteNodeConfig => siteNodeConfig.siteNodeName);
+        logSiteInfo(siteSlug, `[checkIfSiteTracksPage] Titles in site_node_config.yaml: ${titles.join(', ')}`);
 
-        const found = sitePageConfigs.some(sitePageConfig => sitePageConfig.title.toLowerCase() === pageName.toLowerCase());
+        const found = siteNodeConfigs.some(siteNodeConfig => siteNodeConfig.siteNodeName.toLowerCase() === pageName.toLowerCase());
         if (found) {
-          logSiteInfo(siteSlug, `[checkIfSiteTracksPage] ✓ Found in site_page_config.yaml`);
+          logSiteInfo(siteSlug, `[checkIfSiteTracksPage] ✓ Found in site_node_config.yaml`);
           return true;
         } else {
-          logSiteInfo(siteSlug, `[checkIfSiteTracksPage] ✗ NOT found in site_page_config.yaml`);
+          logSiteInfo(siteSlug, `[checkIfSiteTracksPage] ✗ NOT found in site_node_config.yaml`);
         }
       } catch (error) {
-        logSiteError(siteSlug, `[checkIfSiteTracksPage] Error reading site_page_config.yaml: ${error instanceof Error ? error.message : String(error)}`);
+        logSiteError(siteSlug, `[checkIfSiteTracksPage] Error reading site_node_config.yaml: ${error instanceof Error ? error.message : String(error)}`);
       }
     } else {
-      logSiteInfo(siteSlug, `[checkIfSiteTracksPage] site_page_config.yaml does not exist`);
-    }
-
-    // Check working graph for the page
-    const workingGraphPath = join(siteDirectory, 'working-graph.json');
-    logSiteInfo(siteSlug, `[checkIfSiteTracksPage] Checking working-graph.json`);
-
-    if (fs.existsSync(workingGraphPath)) {
-      // Support both `pages` (new) and `nodes` (old) keys for backward compatibility
-      const workingGraph = JSON.parse(fs.readFileSync(workingGraphPath, 'utf8')) as { pages?: Array<{ title: string }>; nodes?: Array<{ title: string }> };
-      const graphPages = workingGraph.pages || workingGraph.nodes;
-
-      logSiteInfo(siteSlug, `[checkIfSiteTracksPage] working-graph.json has ${graphPages?.length || 0} pages`);
-
-      // Check if page exists in the graph
-      if (graphPages && graphPages.some((page) => page.title === pageName)) {
-        logSiteInfo(siteSlug, `[checkIfSiteTracksPage] ✓ Found in working-graph.json`);
-        return true;
-      } else {
-        logSiteInfo(siteSlug, `[checkIfSiteTracksPage] ✗ NOT found in working-graph.json`);
-      }
-    } else {
-      logSiteInfo(siteSlug, `[checkIfSiteTracksPage] working-graph.json does not exist`);
+      logSiteInfo(siteSlug, `[checkIfSiteTracksPage] site_node_config.yaml does not exist`);
     }
 
     logSiteInfo(siteSlug, `[checkIfSiteTracksPage] Final result: NOT FOUND`);
@@ -366,7 +342,7 @@ router.get('/sites/source-pages/exact-search', (req, res, next) => {
         .map(n => ({
           title: n.title,
           directory: n.directory,
-          file_type: n.file_type,
+          fileType: n.file_type,
           fullPath: n.fullPath,
           modifiedTimeMs: n.modifiedTimeMs
         }));
@@ -675,20 +651,20 @@ router.post('/sites', (req, res, _next) => {
   const {
     slug,
     sourceDirectory,
-    initialSitePageTitle,
-    initialSitePageDirectory,
-    initialSitePageFileType,
+    entrySiteNodeName,
+    entrySourceGraphSubdirectory,
+    entryFileType,
     siteNotes
   } = req.body as {
     slug: string;
     sourceDirectory: string;
-    initialSitePageTitle: string;
-    initialSitePageDirectory?: string;
-    initialSitePageFileType?: string;
+    entrySiteNodeName: string;
+    entrySourceGraphSubdirectory?: string;
+    entryFileType?: string;
     siteNotes?: string;
   };
 
-  if (!slug || !sourceDirectory || !initialSitePageTitle) {
+  if (!slug || !sourceDirectory || !entrySiteNodeName) {
     res.status(400).json({ error: 'All fields are required' });
     return;
   }
@@ -707,14 +683,16 @@ router.post('/sites', (req, res, _next) => {
   fs.mkdirSync(siteDir, { recursive: true });
   fs.mkdirSync(join(siteDir, 'conf'), { recursive: true });
 
+  const entrySiteNodeId = generateSiteNodeId([]);
+
   // Create site_config.yaml
   const siteConfig: SiteConfig = {
     siteGuid: generateSiteGuid(),
     sourceDirectory,
-    initialSitePageTitle,
-    initialSitePageDirectory: initialSitePageDirectory || '',
-    defaultTraversalSitePageTitle: initialSitePageTitle,
-    defaultTraversalSitePageDirectory: initialSitePageDirectory || '',
+    entrySiteNodeId,
+    defaultTraversalSiteNodeId: entrySiteNodeId,
+    defaultOutlinksDepth: 3,
+    defaultInlinksDepth: 1,
     generatedSiteVersions: [],
     archivedAt: null,
     siteCreatedAt: new Date().toISOString(),
@@ -729,14 +707,16 @@ router.post('/sites', (req, res, _next) => {
   clearSiteGuidCache(actualSlug);
   logSiteInfo(actualSlug, 'Site created');
 
-  // Create initial site_page_config.yaml with reasonable defaults
-  const sitePageConf = stringifyPageConfig([{
-    title: initialSitePageTitle,
-    ...(initialSitePageDirectory && { source_graph_subdirectory: initialSitePageDirectory }),
-    ...(initialSitePageFileType && { file_type: initialSitePageFileType as FileType }),
-    config: { list_type: 'whitelist', outlinks_depth: 3, inlinks_depth: 1 }
+  // Create initial site_node_config.yaml with reasonable defaults
+  const siteNodeConf = stringifySiteNodeConfig([{
+    siteNodeName: entrySiteNodeName,
+    ...(entrySourceGraphSubdirectory && { sourceGraphSubdirectory: entrySourceGraphSubdirectory }),
+    siteNodeKind: 'file',
+    fileType: (entryFileType || 'md') as FileType,
+    siteNodeId: entrySiteNodeId,
+    listType: 'whitelist',
   }]);
-  fs.writeFileSync(join(siteDir, 'conf/site_page_config.yaml'), sitePageConf, 'utf8');
+  fs.writeFileSync(join(siteDir, 'conf/site_node_config.yaml'), siteNodeConf, 'utf8');
 
   // Commit the initial site config files to git
   const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
@@ -744,7 +724,7 @@ router.post('/sites', (req, res, _next) => {
     try {
       await gitUtils.commitFiles([
         AppConfigPaths.relative.siteConfigFile(actualSlug),
-        AppConfigPaths.relative.sitePageConfigFile(actualSlug),
+        AppConfigPaths.relative.siteNodeConfigFile(actualSlug),
       ], `initial site config for ${actualSlug}`);
     } catch (error) {
       logger.error('[site creation] Error committing initial site config:', error);
@@ -759,17 +739,19 @@ router.put('/sites/:slug', (req, res, next) => {
   const { slug } = req.params;
   const {
     sourceDirectory,
-    initialSitePageTitle,
-    initialSitePageDirectory,
+    entrySiteNodeName,
+    entrySourceGraphSubdirectory,
+    entryFileType,
     siteNotes
   } = req.body as {
     sourceDirectory: string;
-    initialSitePageTitle: string;
-    initialSitePageDirectory?: string;
+    entrySiteNodeName: string;
+    entrySourceGraphSubdirectory?: string;
+    entryFileType?: FileType;
     siteNotes?: string;
   };
 
-  if (!sourceDirectory || !initialSitePageTitle) {
+  if (!sourceDirectory || !entrySiteNodeName) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
@@ -783,18 +765,40 @@ router.put('/sites/:slug', (req, res, next) => {
     // Read existing config to preserve internal/unknown fields
     const yamlContent = fs.readFileSync(configPath, 'utf8');
     const existingConfig = YAML.parse(yamlContent) as SiteConfig;
+    const nodeConfigPath = getSiteConfigPath(slug, 'site_node_config.yaml');
+    const existingNodes = parseSiteNodeConfig(fs.readFileSync(nodeConfigPath, 'utf8'), nodeConfigPath);
+    const entryDirectory = entrySourceGraphSubdirectory || '';
+    const resolvedEntryFileType = entryFileType || 'md';
+    let entryNode = existingNodes.find(node =>
+      node.siteNodeName === entrySiteNodeName
+      && (node.sourceGraphSubdirectory || '') === entryDirectory
+      && node.fileType === resolvedEntryFileType);
+    if (!entryNode) {
+      entryNode = {
+        siteNodeName: entrySiteNodeName,
+        ...(entryDirectory && { sourceGraphSubdirectory: entryDirectory }),
+        siteNodeKind: 'file',
+        fileType: resolvedEntryFileType,
+        siteNodeId: generateSiteNodeId(existingNodes.map(node => node.siteNodeId)),
+        listType: 'whitelist',
+      };
+      existingNodes.push(entryNode);
+    } else if (entryNode.listType === 'blacklist') {
+      entryNode.listType = 'whitelist';
+    }
 
     const siteGuid = isValidSiteGuid(existingConfig.siteGuid) ? existingConfig.siteGuid : generateSiteGuid();
+    const defaultTraversalSiteNodeId = existingConfig.defaultTraversalSiteNodeId === existingConfig.entrySiteNodeId
+      ? entryNode.siteNodeId
+      : existingConfig.defaultTraversalSiteNodeId;
 
     // Update config while preserving any unknown/internal fields (including siteGuid)
     const updatedConfig: SiteConfig = {
       ...existingConfig,
       siteGuid,
       sourceDirectory,
-      initialSitePageTitle,
-      initialSitePageDirectory: initialSitePageDirectory || '',
-      defaultTraversalSitePageTitle: initialSitePageTitle,
-      defaultTraversalSitePageDirectory: initialSitePageDirectory || '',
+      entrySiteNodeId: entryNode.siteNodeId,
+      defaultTraversalSiteNodeId,
       archivedAt: existingConfig.archivedAt ?? null,
       siteCreatedAt: existingConfig.siteCreatedAt || new Date().toISOString(),
       siteUpdatedAt: new Date().toISOString(),
@@ -802,6 +806,13 @@ router.put('/sites/:slug', (req, res, next) => {
       siteNotes: siteNotes !== undefined ? siteNotes : (existingConfig.siteNotes || "")
     };
 
+    validateCanonicalSiteConfiguration({
+      committedNodes: existingNodes,
+      committedPath: nodeConfigPath,
+      siteConfig: updatedConfig,
+      siteConfigPath: configPath,
+    });
+    fs.writeFileSync(nodeConfigPath, stringifySiteNodeConfig(existingNodes), 'utf8');
     const updatedYaml = YAML.stringify(updatedConfig);
     fs.writeFileSync(configPath, updatedYaml, 'utf8');
 

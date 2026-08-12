@@ -113,7 +113,7 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
       previewHtml: SiteConfigPaths.getPreviewDir(siteDir),
       openKnowledgeFormat: SiteConfigPaths.getOpenKnowledgeFormatDir(siteDir),
       siteConfigFile: SiteConfigPaths.getSiteConfigFile(siteDir),
-      sitePageConfigFile: SiteConfigPaths.getSitePageConfigFile(siteDir),
+      siteNodeConfigFile: SiteConfigPaths.getSiteNodeConfigFile(siteDir),
     });
   });
 

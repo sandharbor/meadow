@@ -16,41 +16,41 @@ limitations under the License.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Graph } from '../../../../../../shared_code/types/graph';
-import { IFilter, IPageSelector, createFolderPageSelector } from '../types/filters';
+import { IFilter, ISiteNodeSelector, createFolderNodeSelector } from '../types/filters';
 import {
   FilterExpression,
   getActiveFilterExpressionTerms,
   reconcileFilterExpression
 } from '../types/filterExpression';
-import { hasPagesInMultipleFolders } from './folderFilterUtils';
+import { hasNodesInMultipleFolders } from './folderFilterUtils';
 
 interface UseDisplayFiltersOptions {
   filters: IFilter[];
   graph: Graph;
   graphUpdateTrigger: number;
-  hiddenPages: Set<string>;
-  selectedPages: Set<string>;
+  hiddenNodeKeys: Set<string>;
+  selectedNodeKeys: Set<string>;
   selectionShowTitles: boolean;
   siteSlug: string;
-  soloPages: Set<string>;
+  soloNodeKeys: Set<string>;
 }
 
-const createPageIdSelector = (pageIds: Set<string>, name: string): IPageSelector => ({
-  id: `page-id-selector-${name}`,
+const createSiteNodeKeySelector = (siteNodeKeys: Set<string>, name: string): ISiteNodeSelector => ({
+  id: `site-node-key-selector-${name}`,
   name,
   type: 'normal',
-  select: () => new Set(pageIds)
+  select: () => new Set(siteNodeKeys)
 });
 
 export function useDisplayFilters({
   filters,
   graph,
   graphUpdateTrigger,
-  hiddenPages,
-  selectedPages,
+  hiddenNodeKeys,
+  selectedNodeKeys,
   selectionShowTitles,
   siteSlug,
-  soloPages
+  soloNodeKeys
 }: UseDisplayFiltersOptions) {
   const [expressionState, setExpressionState] = useState<{
     siteSlug: string;
@@ -63,13 +63,13 @@ export function useDisplayFilters({
     const result: IFilter[] = [...filters];
     const folderFilter = filters.find(filter => filter.isFolderFilter);
 
-    if (folderFilter?.enabled && hasPagesInMultipleFolders(graph.getAllPages())) {
+    if (folderFilter?.enabled && hasNodesInMultipleFolders(graph.getAllNodes())) {
       Object.entries(folderFilter.folderStates || {}).forEach(([folderPath, state]) => {
         if (!state.showTitles && !state.isSolo && !state.isHidden) return;
         result.push({
           id: `folder-filter-${folderPath || 'root'}`,
           name: folderPath ? `Folder: ${folderPath}` : 'Folder: Root',
-          pageSelectors: [createFolderPageSelector(folderPath)],
+          siteNodeSelectors: [createFolderNodeSelector(folderPath)],
           selectorApplicationCriteria: 'union',
           actions: state.showTitles ? [{ type: 'show_titles' }] : [],
           enabled: true,
@@ -80,11 +80,11 @@ export function useDisplayFilters({
       });
     }
 
-    if (soloPages.size > 0) {
+    if (soloNodeKeys.size > 0) {
       result.push({
         id: 'selection-solo-filter',
         name: 'Selection Solo',
-        pageSelectors: [createPageIdSelector(soloPages, 'solo-pages')],
+        siteNodeSelectors: [createSiteNodeKeySelector(soloNodeKeys, 'solo-nodes')],
         selectorApplicationCriteria: 'union',
         actions: [],
         enabled: true,
@@ -94,11 +94,11 @@ export function useDisplayFilters({
       });
     }
 
-    if (selectionShowTitles && selectedPages.size > 0) {
+    if (selectionShowTitles && selectedNodeKeys.size > 0) {
       result.push({
         id: 'selection-titles-filter',
         name: 'Selection Titles',
-        pageSelectors: [createPageIdSelector(selectedPages, 'title-pages')],
+        siteNodeSelectors: [createSiteNodeKeySelector(selectedNodeKeys, 'title-nodes')],
         selectorApplicationCriteria: 'union',
         actions: [
           { type: 'highlight', color: '#fbbf24', isDashed: false },
@@ -111,11 +111,11 @@ export function useDisplayFilters({
       });
     }
 
-    if (hiddenPages.size > 0) {
+    if (hiddenNodeKeys.size > 0) {
       result.push({
         id: 'selection-hide-filter',
         name: 'Hidden Selection',
-        pageSelectors: [createPageIdSelector(hiddenPages, 'hidden-pages')],
+        siteNodeSelectors: [createSiteNodeKeySelector(hiddenNodeKeys, 'hidden-nodes')],
         selectorApplicationCriteria: 'union',
         actions: [],
         enabled: true,
@@ -126,7 +126,7 @@ export function useDisplayFilters({
     }
 
     return result;
-  }, [filters, graph, graphUpdateTrigger, hiddenPages, selectedPages, selectionShowTitles, soloPages]);
+  }, [filters, graph, graphUpdateTrigger, hiddenNodeKeys, selectedNodeKeys, selectionShowTitles, soloNodeKeys]);
 
   const activeTerms = useMemo(() => getActiveFilterExpressionTerms(combinedFilters), [combinedFilters]);
   const storedExpression = expressionState.siteSlug === siteSlug ? expressionState.expression : null;

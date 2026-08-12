@@ -78,7 +78,7 @@ const siteMatchesSearch = (site: SiteConfig, query: string): boolean => {
 
   const lowerQuery = query.toLowerCase();
   const slug = (site.slug || '').toLowerCase();
-  const initialPage = (site.initialSitePageTitle || '').toLowerCase();
+  const initialPage = (site.entrySiteNodeName || '').toLowerCase();
   const notes = (site.siteNotes || '').toLowerCase();
 
   return slug.includes(lowerQuery) || initialPage.includes(lowerQuery) || notes.includes(lowerQuery);
@@ -175,8 +175,9 @@ const SiteList: React.FC = () => {
   const [siteToEdit, setSiteToEdit] = useState<{
     slug: string;
     sourceDirectory: string;
-    initialSitePageTitle: string;
-    initialSitePageDirectory?: string;
+    entrySiteNodeName: string;
+    entrySourceGraphSubdirectory?: string;
+    entryFileType?: string;
     siteNotes?: string;
   } | null>(null);
   const [siteForVersions, setSiteForVersions] = useState<string | null>(null);
@@ -434,8 +435,9 @@ const SiteList: React.FC = () => {
     setSiteToEdit({
       slug: site.slug,
       sourceDirectory: site.sourceDirectory || '',
-      initialSitePageTitle: site.initialSitePageTitle || '',
-      initialSitePageDirectory: site.initialSitePageDirectory || '',
+      entrySiteNodeName: site.entrySiteNodeName || '',
+      entrySourceGraphSubdirectory: site.entrySourceGraphSubdirectory || '',
+      entryFileType: site.entryFileType || 'md',
       siteNotes: site.siteNotes || ''
     });
     setIsEditModalOpen(true);
@@ -604,8 +606,8 @@ const SiteList: React.FC = () => {
     sitesToSort.sort((a, b) => {
       // Preserve existing behavior: exact page matches (Find in Sites) are pinned to the top.
       if (isFindInSitesFilterActive && findInSitesOptions) {
-        const aExactMatch = a.initialSitePageTitle === findInSitesOptions.pageName;
-        const bExactMatch = b.initialSitePageTitle === findInSitesOptions.pageName;
+        const aExactMatch = a.entrySiteNodeName === findInSitesOptions.pageName;
+        const bExactMatch = b.entrySiteNodeName === findInSitesOptions.pageName;
         if (aExactMatch && !bExactMatch) return -1;
         if (!aExactMatch && bExactMatch) return 1;
       }
@@ -862,7 +864,7 @@ const SiteList: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {displaySites.map((site) => {
-                  const isExactMatch = isFindInSitesFilterActive && findInSitesOptions && site.initialSitePageTitle === findInSitesOptions.pageName;
+                  const isExactMatch = isFindInSitesFilterActive && findInSitesOptions && site.entrySiteNodeName === findInSitesOptions.pageName;
                   const publishedDate = formatSiteDate(site.siteLastPublishedAt);
                   const updatedDate = formatSiteDate(site.siteUpdatedAt);
                   const createdDate = formatSiteDate(site.siteCreatedAt);

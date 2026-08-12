@@ -17,18 +17,18 @@ limitations under the License.
 /* global alert */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Graph, IEdge } from '../../../../../shared_code/types/graph';
-import { ISitePage } from '../../../../../shared_code/types/ISitePage.js';
-import SitePageTabs from '../../../areas/site/curation/components/SitePageTabs';
+import { ISiteNode } from '../../../../../shared_code/types/ISiteNode.js';
+import SiteNodeTabs from '../../../areas/site/curation/components/SiteNodeTabs';
 import VersionsModal from '../../site-management/VersionsModal';
 import SiteLogsModal from './SiteLogsModal';
 import SinglePagePreviewCallout, { useSinglePagePreviewCallout } from '../../../areas/site/review/components/calloutModals/SinglePagePreviewCallout';
 import CreateOrEditSiteModal from '../../../areas/sites/components/CreateOrEditSiteModal';
 import PreviewPublishModal from './PreviewPublishModal';
 import type { OpenKnowledgeFormatSettings } from '../../../areas/site/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
-import { useFilterState, createUntrackedPageSelector } from '../../../areas/site/curation/types/filters';
-import type { SitePageConfig } from '../../../../../shared_code/types/sitePageConfig';
-import { configMatchesPage, getPageKey, getOrphanPageConfigs } from '../../../../../shared_code/utils/sitePageConfigUtils';
-import { applySensitiveFromApiData, applyPageConfigsToPages, buildPageConfigs } from '../../../../../shared_code/utils/sitePageConfigUtils';
+import { useFilterState, createUntrackedNodeSelector } from '../../../areas/site/curation/types/filters';
+import type { SiteNodeConfig } from '../../../../../shared_code/types/siteNodeConfig';
+import { nodeConfigMatchesNode, siteNodeLocatorKey, getOrphanNodeConfigs } from '../../../../../shared_code/utils/siteNodeConfigUtils';
+import { applySensitiveFromApiData, applyNodeConfigsToNodes, buildNodeConfigs } from '../../../../../shared_code/utils/siteNodeConfigUtils';
 import { API_BASE_URL } from '../../utils/apiConfig';
 import { getActiveFrontendProvider } from '../../publishing-provider-host/providerRegistry';
 import { fetchSiteEditData, SiteEditData } from '../../utils/siteApi';
@@ -45,16 +45,13 @@ const SiteEditor: React.FC = () => {
   const [filters, setFilters, reloadCustomFilters] = useFilterState(slug || '');
   const [updateTrigger, setUpdateTrigger] = useState(0);
 
-  // Helper function to create site-specific localStorage keys
-  const siteKey = useCallback((key: string) => `${slug || 'default'}_${key}`, [slug]);
-
-  const initialPageTitleFromLocalStorage = localStorage.getItem(siteKey('initialPageTitle')) || 'nothing';
-  const [initialPageTitle, setInitialPageTitle] = useState<string>(initialPageTitleFromLocalStorage);
-  const [sitePageConfigs, setSitePageConfigs] = useState<SitePageConfig[] | null>(null);
+  const [siteNodeConfigs, setSiteNodeConfigs] = useState<SiteNodeConfig[] | null>(null);
+  const [entrySiteNodeId, setEntrySiteNodeId] = useState<string | null>(null);
+  const [defaultTraversalSiteNodeId, setDefaultTraversalSiteNodeId] = useState<string | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [hasDraftChanges, setHasDraftChanges] = useState(false);
   const [isSelectionPanelCollapsed, setIsSelectionPanelCollapsed] = useState(true);
-  const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set());
+  const [selectedNodeKeys, setSelectedNodeKeys] = useState<Set<string>>(new Set());
   const [configChangeTrigger, setConfigChangeTrigger] = useState(0);
 
   // Preview/Publish modal state
@@ -291,12 +288,9 @@ const SiteEditor: React.FC = () => {
     fetch(`${API_BASE_URL}/sites/${slug}/config`)
       .then(res => res.json())
       .then(config => {
-        setSitePageConfigs(config.config);
         setSiteGuid(typeof config.siteGuid === 'string' ? config.siteGuid : null);
-        const initialPageTitleFromConfig = config.initialSitePageTitle || '';
-        if (localStorage.getItem(siteKey('initialPageTitle')) === null) {
-          setInitialPageTitle(initialPageTitleFromConfig); // this is the initial page title
-        }
+        setEntrySiteNodeId(typeof config.entrySiteNodeId === 'string' ? config.entrySiteNodeId : null);
+        setDefaultTraversalSiteNodeId(typeof config.defaultTraversalSiteNodeId === 'string' ? config.defaultTraversalSiteNodeId : null);
 
         // Load site publish option overrides (missing => inherit)
         const toSetting = (v: unknown): OverrideSetting =>
@@ -323,7 +317,7 @@ const SiteEditor: React.FC = () => {
         logger.error('Failed to load site config');
         setConfigLoaded(true);
       });
-  }, [slug, siteKey]);
+  }, [slug]);
 
   // Load global publish option defaults from app config
   useEffect(() => {
@@ -361,21 +355,12 @@ const SiteEditor: React.FC = () => {
       });
   }, []);
 
-  // tag-todo-remove-initial-page-from-local-storage: this is no longer needed
   useEffect(() => {
-    // Also save initialPageTitle to localStorage when it changes, if it's not the default 'nothing'
-    // This covers the case where it's set by config initially
-    if (initialPageTitle && initialPageTitle !== 'nothing') {
-      localStorage.setItem(siteKey('initialPageTitle'), initialPageTitle);
-    }
-  }, [initialPageTitle, slug, siteKey]);
-
-  useEffect(() => {
-    if (!initialPageTitle.trim() || !configLoaded) return;
+    if (!configLoaded) return;
     // Clear previous error when starting a new fetch
     setGraphError(null);
-    const frontierParam = viewFrontierEnabled ? `&frontierDepth=${frontierDepth}` : '';
-    const url = `${API_BASE_URL}/sites/${slug || ''}/curation/working-graph?initialPageTitle=${encodeURIComponent(initialPageTitle)}&traversalPageTitle=${encodeURIComponent(initialPageTitle)}${frontierParam}`;
+    const frontierParam = viewFrontierEnabled ? `?frontierDepth=${frontierDepth}` : '';
+    const url = `${API_BASE_URL}/sites/${slug || ''}/curation/working-graph${frontierParam}`;
     logger.debug('Fetching working graph from:', url);
     fetch(url)
       .then(res => {
@@ -397,14 +382,14 @@ const SiteEditor: React.FC = () => {
         return res.json();
       })
       .then(data => {
-        if (!data.pages || !data.edges) { // Add this check
-          logger.error('Received data does not contain pages or edges:', data);
+        if (!data.nodes || !data.edges) {
+          logger.error('Received data does not contain nodes or edges:', data);
           // Potentially set an error state or throw an error to be caught
           throw new Error('Invalid data structure received from server.');
         }
         const g = new Graph();
-        const pagesWithSensitive = applySensitiveFromApiData(data.pages as ISitePage[]);
-        pagesWithSensitive.forEach(page => g.addPage(page));
+        const nodesWithSensitive = applySensitiveFromApiData(data.nodes as ISiteNode[]);
+        nodesWithSensitive.forEach(node => g.addNode(node));
         (data.edges as IEdge[]).forEach(edge => g.addEdge(edge));
         // Store full source graph link data (including pages outside working graph)
         g.setLinkSourceData(
@@ -418,7 +403,7 @@ const SiteEditor: React.FC = () => {
         logger.error('Failed to load working graph:', err);
         setGraphError(err instanceof Error ? err.message : String(err));
       });
-  }, [initialPageTitle, slug, configLoaded, configChangeTrigger, viewFrontierEnabled, frontierDepth]);
+  }, [slug, configLoaded, configChangeTrigger, viewFrontierEnabled, frontierDepth]);
 
   useEffect(() => {
     if (!graph) return;
@@ -433,18 +418,18 @@ const SiteEditor: React.FC = () => {
 
   // Filter out selected pages that are no longer in the graph
   useEffect(() => {
-    if (!graph || selectedPages.size === 0) return;
+    if (!graph || selectedNodeKeys.size === 0) return;
 
-    const currentPageIds = new Set(graph.getAllPages().map(page => page.id));
+    const currentNodeKeys = new Set<string>(graph.getAllNodes().map(node => node.siteNodeKey));
     const filteredSelection = new Set(
-      Array.from(selectedPages).filter(pageId => currentPageIds.has(pageId))
+      Array.from(selectedNodeKeys).filter(siteNodeKey => currentNodeKeys.has(siteNodeKey))
     );
     
     // Only update if the selection actually changed
-    if (filteredSelection.size !== selectedPages.size) {
-      setSelectedPages(filteredSelection);
+    if (filteredSelection.size !== selectedNodeKeys.size) {
+      setSelectedNodeKeys(filteredSelection);
     }
-  }, [graph, updateTrigger, selectedPages]); // Include selectedPages in dependencies
+  }, [graph, updateTrigger, selectedNodeKeys]); // Include selectedNodeKeys in dependencies
 
   useEffect(() => {
     if (!graph) return;
@@ -452,47 +437,35 @@ const SiteEditor: React.FC = () => {
     fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`)
       .then(res => res.json())
       .then(data => {
-        const loadedSitePageConfigs: SitePageConfig[] = Array.isArray(data.configs)
-          ? data.configs.map((c: SitePageConfig) => ({
-              title: c.title,
-              ...(c.source_graph_subdirectory !== undefined && { source_graph_subdirectory: c.source_graph_subdirectory }),
-              ...(c.file_type !== undefined && { file_type: c.file_type }),
-              config: {
-                list_type: c.config?.list_type ?? 'whitelist',
-                outlinks_depth: typeof c.config?.outlinks_depth === 'number' ? c.config.outlinks_depth : undefined,
-                inlinks_depth: typeof c.config?.inlinks_depth === 'number' ? c.config.inlinks_depth : undefined,
-                tracked: typeof c.config?.tracked === 'boolean' ? c.config.tracked : undefined,
-              }
-            }))
-          : [];
-        setSitePageConfigs(loadedSitePageConfigs);
+        const loadedSiteNodeConfigs: SiteNodeConfig[] = Array.isArray(data.configs) ? data.configs : [];
+        setSiteNodeConfigs(loadedSiteNodeConfigs);
         // Check draft status after loading config
         checkDraftStatus();
       })
       .catch(err => {
         logger.error('Failed to load site-config:', err);
       });
-  }, [graph, slug, checkDraftStatus]);
+  }, [graph, slug, checkDraftStatus, entrySiteNodeId]);
 
   useEffect(() => {
-    if (!graph || !sitePageConfigs) return;
-    // Apply config to site pages using shared utility
-    const allPages = graph.getAllPages();
-    applyPageConfigsToPages(allPages, sitePageConfigs);
+    if (!graph || !siteNodeConfigs) return;
+    // Apply config to site nodes using the shared utility.
+    const allNodes = graph.getAllNodes();
+    applyNodeConfigsToNodes(allNodes, siteNodeConfigs);
 
-    // Update the graph instance for each page that has a config applied
+    // Update the graph instance for each node that has a config applied
     // This triggers graph change listeners
-    sitePageConfigs.forEach(cfg => {
-      const page = allPages.find(p =>
-        configMatchesPage(cfg, p.title, p.sourceGraphSubdirectory, p.file_type)
+    siteNodeConfigs.forEach(cfg => {
+      const node = allNodes.find(candidate =>
+        nodeConfigMatchesNode(cfg, candidate.siteNodeName, candidate.sourceGraphSubdirectory, candidate.fileType)
       );
-      if (page && cfg.config) {
-        graph.updatePage(page.id, page);
+      if (node) {
+        graph.updateNode(node.siteNodeKey, node);
       }
     });
     // Force update to reflect changes
     setUpdateTrigger(prev => prev + 1);
-  }, [graph, sitePageConfigs]);
+  }, [graph, siteNodeConfigs]);
 
   // Auto-select page from CLI target if available
   useEffect(() => {
@@ -501,10 +474,10 @@ const SiteEditor: React.FC = () => {
     const autoSelectPageName = sessionStorage.getItem('autoSelectPageName');
     if (autoSelectPageName) {
       // Find the page by title
-      const pageToSelect = graph.getAllPages().find(p => p.title === autoSelectPageName);
+      const pageToSelect = graph.getAllNodes().find(p => p.siteNodeName === autoSelectPageName);
       if (pageToSelect) {
         logger.debug(`Auto-selecting page: ${autoSelectPageName}`);
-        setSelectedPages(new Set([pageToSelect.id]));
+        setSelectedNodeKeys(new Set([pageToSelect.siteNodeKey]));
         // Clear the session storage after selection
         sessionStorage.removeItem('autoSelectPageName');
       }
@@ -513,52 +486,52 @@ const SiteEditor: React.FC = () => {
 
   // Build merged configs from current site pages + preserved configs for pages not in view
   // (for example if you have a different traversal page selected)
-  const buildMergedPageConfigs = useCallback((): SitePageConfig[] => {
+  const buildMergedNodeConfigs = useCallback((): SiteNodeConfig[] => {
     if (!graph) return [];
 
-    const allPages = graph.getAllPages();
-    const currentConfigs = buildPageConfigs(allPages);
+    const allNodes = graph.getAllNodes();
+    const currentConfigs = buildNodeConfigs(allNodes);
 
     // Preserve configs for pages not in current view
-    // Use configMatchesPage for comparison to handle the case where old configs don't have file_type
-    // (configMatchesPage treats undefined file_type as "match any", matching the backend's behavior)
-    const pagesWithConfig = allPages.filter(page => page.conf);
-    const preservedConfigs = (sitePageConfigs || []).filter(cfg => {
-      const hasMatchingPageInCurrentGraph = pagesWithConfig.some(page =>
-        configMatchesPage(cfg, page.title, page.sourceGraphSubdirectory, page.file_type)
+    // Use nodeConfigMatchesNode for comparison to handle the case where old configs don't have fileType
+    // (nodeConfigMatchesNode treats undefined fileType as "match any", matching the backend's behavior)
+    const nodesWithConfig = allNodes.filter(node => node.conf);
+    const preservedConfigs = (siteNodeConfigs || []).filter(cfg => {
+      const hasMatchingNodeInCurrentGraph = nodesWithConfig.some(node =>
+        nodeConfigMatchesNode(cfg, node.siteNodeName, node.sourceGraphSubdirectory, node.fileType)
       );
-      return !hasMatchingPageInCurrentGraph;
+      return !hasMatchingNodeInCurrentGraph;
     });
 
-    return [...currentConfigs, ...preservedConfigs].sort((a, b) => a.title.localeCompare(b.title));
-  }, [graph, sitePageConfigs]);
+    return [...currentConfigs, ...preservedConfigs].sort((a, b) => a.siteNodeName.localeCompare(b.siteNodeName));
+  }, [graph, siteNodeConfigs]);
 
-  const buildMergedPageConfigsFrom = useCallback((configs: SitePageConfig[]): SitePageConfig[] => {
+  const buildMergedNodeConfigsFrom = useCallback((configs: SiteNodeConfig[]): SiteNodeConfig[] => {
     if (!graph) return configs;
 
-    const allPages = graph.getAllPages();
-    const currentConfigs = buildPageConfigs(allPages);
-    const pagesWithConfig = allPages.filter(page => page.conf);
+    const allNodes = graph.getAllNodes();
+    const currentConfigs = buildNodeConfigs(allNodes);
+    const nodesWithConfig = allNodes.filter(node => node.conf);
     const preservedConfigs = configs.filter(cfg => {
-      const hasMatchingPageInCurrentGraph = pagesWithConfig.some(page =>
-        configMatchesPage(cfg, page.title, page.sourceGraphSubdirectory, page.file_type)
+      const hasMatchingNodeInCurrentGraph = nodesWithConfig.some(node =>
+        nodeConfigMatchesNode(cfg, node.siteNodeName, node.sourceGraphSubdirectory, node.fileType)
       );
-      return !hasMatchingPageInCurrentGraph;
+      return !hasMatchingNodeInCurrentGraph;
     });
 
-    return [...currentConfigs, ...preservedConfigs].sort((a, b) => a.title.localeCompare(b.title));
+    return [...currentConfigs, ...preservedConfigs].sort((a, b) => a.siteNodeName.localeCompare(b.siteNodeName));
   }, [graph]);
 
-  const persistUpdatedSitePageConfigs = useCallback(async (updatedSitePageConfigs: SitePageConfig[]) => {
-    setSitePageConfigs(updatedSitePageConfigs);
+  const persistUpdatedSiteNodeConfigs = useCallback(async (updatedSiteNodeConfigs: SiteNodeConfig[]) => {
+    setSiteNodeConfigs(updatedSiteNodeConfigs);
 
-    const pageConfigs = buildMergedPageConfigsFrom(updatedSitePageConfigs);
+    const nodeConfigs = buildMergedNodeConfigsFrom(updatedSiteNodeConfigs);
     try {
       if (!hasDraftChanges) {
         const response = await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ configs: pageConfigs, isDraft: false })
+          body: JSON.stringify({ configs: nodeConfigs, isDraft: false })
         });
         if (!response.ok) throw new Error('Failed to save configuration');
         checkDraftStatus();
@@ -566,68 +539,68 @@ const SiteEditor: React.FC = () => {
         await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ configs: pageConfigs, isDraft: true })
+          body: JSON.stringify({ configs: nodeConfigs, isDraft: true })
         });
         checkDraftStatus();
       }
     } catch (error) {
       logger.error('Error saving site page configuration:', error);
     }
-  }, [buildMergedPageConfigsFrom, hasDraftChanges, slug, checkDraftStatus]);
+  }, [buildMergedNodeConfigsFrom, hasDraftChanges, slug, checkDraftStatus]);
 
-  const handleRemoveOrphanConfig = useCallback(async (config: SitePageConfig) => {
-    if (!graph || !sitePageConfigs) return;
+  const handleRemoveOrphanConfig = useCallback(async (config: SiteNodeConfig) => {
+    if (!graph || !siteNodeConfigs) return;
 
-    const keyToRemove = getPageKey(config.title, config.source_graph_subdirectory, config.file_type);
-    const updatedSitePageConfigs = sitePageConfigs.filter(cfg =>
-      getPageKey(cfg.title, cfg.source_graph_subdirectory, cfg.file_type) !== keyToRemove
+    const keyToRemove = siteNodeLocatorKey(config);
+    const updatedSiteNodeConfigs = siteNodeConfigs.filter(cfg =>
+      siteNodeLocatorKey(cfg) !== keyToRemove
     );
-    await persistUpdatedSitePageConfigs(updatedSitePageConfigs);
-  }, [graph, sitePageConfigs, persistUpdatedSitePageConfigs]);
+    await persistUpdatedSiteNodeConfigs(updatedSiteNodeConfigs);
+  }, [graph, siteNodeConfigs, persistUpdatedSiteNodeConfigs]);
 
   const handleRemoveAllOrphanConfigs = useCallback(async () => {
-    if (!graph || !sitePageConfigs) return;
+    if (!graph || !siteNodeConfigs) return;
 
     const orphanKeys = new Set(
-      getOrphanPageConfigs(sitePageConfigs, graph.getAllPages()).map(cfg =>
-        getPageKey(cfg.title, cfg.source_graph_subdirectory, cfg.file_type)
+      getOrphanNodeConfigs(siteNodeConfigs, graph.getAllNodes()).map(cfg =>
+        siteNodeLocatorKey(cfg)
       )
     );
     if (orphanKeys.size === 0) return;
 
-    const updatedSitePageConfigs = sitePageConfigs.filter(cfg =>
-      !orphanKeys.has(getPageKey(cfg.title, cfg.source_graph_subdirectory, cfg.file_type))
+    const updatedSiteNodeConfigs = siteNodeConfigs.filter(cfg =>
+      !orphanKeys.has(siteNodeLocatorKey(cfg))
     );
-    await persistUpdatedSitePageConfigs(updatedSitePageConfigs);
-  }, [graph, sitePageConfigs, persistUpdatedSitePageConfigs]);
+    await persistUpdatedSiteNodeConfigs(updatedSiteNodeConfigs);
+  }, [graph, siteNodeConfigs, persistUpdatedSiteNodeConfigs]);
 
   // Save current configuration to draft
   const saveToDraft = useCallback(async () => {
     if (!graph) return;
-    const pageConfigs = buildMergedPageConfigs();
+    const nodeConfigs = buildMergedNodeConfigs();
     try {
       await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ configs: pageConfigs, isDraft: true })
+        body: JSON.stringify({ configs: nodeConfigs, isDraft: true })
       });
       checkDraftStatus();
       reloadWorkingGraph();
     } catch (error) {
       logger.error('Error saving draft configuration:', error);
     }
-  }, [graph, buildMergedPageConfigs, slug, checkDraftStatus, reloadWorkingGraph]);
+  }, [graph, buildMergedNodeConfigs, slug, checkDraftStatus, reloadWorkingGraph]);
 
   // Shared implementation for saving the full config and committing it.
   // When commitMessage is provided, it's used instead of the default ("auto-save" path).
   const saveAndCommitConfig = useCallback(async (commitMessage?: string) => {
     if (!graph) return;
-    const pageConfigs = buildMergedPageConfigs();
+    const nodeConfigs = buildMergedNodeConfigs();
     try {
       const response = await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ configs: pageConfigs, isDraft: false })
+        body: JSON.stringify({ configs: nodeConfigs, isDraft: false })
       });
       if (!response.ok) throw new Error('Failed to save configuration');
       logger.info('Configuration saved successfully!');
@@ -635,19 +608,19 @@ const SiteEditor: React.FC = () => {
 
       // Copy tracked pages and commit changes after saving configuration
       // This endpoint also commits both config and tracked content together
-      const trackedPages = graph.getAllPages()
+      const trackedNodes = graph.getAllNodes()
         .filter(page => page.tracked && !page.blacklisted)
         .map(page => ({
           sourceGraphSubdirectory: page.sourceGraphSubdirectory,
-          title: page.title,
-          file_type: page.file_type
+          title: page.siteNodeName,
+          fileType: page.fileType
         }));
 
       try {
         const copyResponse = await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/copy-tracked-pages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trackedPages, commitMessage })
+          body: JSON.stringify({ trackedNodes, commitMessage })
         });
 
         if (copyResponse.ok) {
@@ -665,7 +638,7 @@ const SiteEditor: React.FC = () => {
     } catch (error) {
       logger.error('Error saving configuration:', error);
     }
-  }, [graph, buildMergedPageConfigs, slug, checkDraftStatus]);
+  }, [graph, buildMergedNodeConfigs, slug, checkDraftStatus]);
 
   const handleSaveConfig = useCallback(async () => {
     await saveAndCommitConfig();
@@ -703,33 +676,21 @@ const SiteEditor: React.FC = () => {
       // This avoids a full graph reload which would cause a flash of 0-tracked state
       const response = await fetch(`${API_BASE_URL}/sites/${slug || ''}/curation/site-config`);
       const data = await response.json();
-      const committedConfigs: SitePageConfig[] = Array.isArray(data.configs)
-        ? data.configs.map((c: SitePageConfig) => ({
-            title: c.title,
-            ...(c.source_graph_subdirectory !== undefined && { source_graph_subdirectory: c.source_graph_subdirectory }),
-            ...(c.file_type !== undefined && { file_type: c.file_type }),
-            config: {
-              list_type: c.config?.list_type ?? 'whitelist',
-              outlinks_depth: typeof c.config?.outlinks_depth === 'number' ? c.config.outlinks_depth : undefined,
-              inlinks_depth: typeof c.config?.inlinks_depth === 'number' ? c.config.inlinks_depth : undefined,
-              tracked: typeof c.config?.tracked === 'boolean' ? c.config.tracked : undefined,
-            }
-          }))
-        : [];
+      const committedConfigs: SiteNodeConfig[] = Array.isArray(data.configs) ? data.configs : [];
 
       // Reset all pages to untracked/unblacklisted before applying committed config
       if (graph) {
-        const allPages = graph.getAllPages();
-        allPages.forEach(page => {
+        const allNodes = graph.getAllNodes();
+        allNodes.forEach(page => {
           page.tracked = false;
           page.blacklisted = false;
           page.conf = undefined;
         });
       }
 
-      // Setting sitePageConfigs triggers the config apply effect which will
+      // Setting siteNodeConfigs triggers the config apply effect which will
       // re-apply the committed config to the (now-reset) pages
-      setSitePageConfigs(committedConfigs);
+      setSiteNodeConfigs(committedConfigs);
       checkDraftStatus();
       // Reload the working graph so the backend re-traverses with the restored
       // config (e.g. restored outlinks_depth brings back pages that were removed).
@@ -739,40 +700,39 @@ const SiteEditor: React.FC = () => {
     }
   };
 
-  const handlePreviewPage = (pageId: string) => {
+  const handlePreviewPage = (siteNodeKey: string) => {
     if (!slug || !graph) return;
     if (isModalBusy) return;
 
-    const page = graph.getPage(pageId);
+    const page = graph.getNode(siteNodeKey);
     if (!page) return;
 
-    const pageTitle = page.data?.title || page.label || pageId;
+    const pageTitle = page.data?.title || page.label || siteNodeKey;
     setPreviewStartPage({ title: pageTitle, sourceGraphSubdirectory: page.sourceGraphSubdirectory });
     setIsPublishModalOpen(true);
   };
 
-  // Check if only the initial page is tracked (no other pages tracked)
-  // Note: updateTrigger is needed because graph object reference doesn't change when page data updates
-  const isOnlyInitialPageTracked = useMemo(() => {
+  // Check if only the traversal-start node is tracked. updateTrigger is needed
+  // because the graph object reference does not change when node data updates.
+  const isOnlyTraversalStartNodeTracked = useMemo(() => {
     if (!graph) return false;
-    const allPages = graph.getAllPages();
-    if (allPages.length === 0) return false;
+    const allNodes = graph.getAllNodes();
+    if (allNodes.length === 0) return false;
 
-    const initialPage = allPages.find(page => page.depth === 0);
-    if (!initialPage || !initialPage.tracked) return false;
+    const traversalStartNode = allNodes.find(node => node.depth === 0);
+    if (!traversalStartNode || !traversalStartNode.tracked) return false;
 
-    // Check that no other pages are tracked
-    const otherTrackedPages = allPages.filter(
-      page => page.depth !== 0 && page.tracked
+    const otherTrackedNodes = allNodes.filter(
+      node => node.depth !== 0 && node.tracked
     );
-    return otherTrackedPages.length === 0;
+    return otherTrackedNodes.length === 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graph, updateTrigger]);
 
   const handlePreview = () => {
     if (isModalBusy) return;
     // Show warning if only initial page is tracked and user hasn't dismissed the warning before
-    if (isOnlyInitialPageTracked && !calloutPreviewSinglePageDismissed) {
+    if (isOnlyTraversalStartNodeTracked && !calloutPreviewSinglePageDismissed) {
       setIsSinglePageWarningOpen(true);
       return;
     }
@@ -1001,15 +961,15 @@ const SiteEditor: React.FC = () => {
 
 
   // Helper function to count untracked pages
-  const getUntrackedPagesCount = useCallback(() => {
+  const getUntrackedNodeCount = useCallback(() => {
     if (!graph) return 0;
-    const untrackedSelector = createUntrackedPageSelector();
-    const untrackedPages = untrackedSelector.select(graph);
-    return untrackedPages.size;
+    const untrackedSelector = createUntrackedNodeSelector();
+    const untrackedNodeKeys = untrackedSelector.select(graph);
+    return untrackedNodeKeys.size;
   }, [graph]);
 
   // Handler to close modal and enable untracked pages filter in solo mode
-  const handleShowUntrackedPages = () => {
+  const handleShowUntrackedNodes = () => {
     // Enable untracked pages filter in solo mode with labels turned on
     const updatedFilters = filters.map(filter => {
       if (filter.id === 'untracked-filter') {
@@ -1213,8 +1173,8 @@ const SiteEditor: React.FC = () => {
         onBusyChange={setIsModalBusy}
         onAuthError={() => {/* Access code handling is now built into the modal */}}
         onPublishSuccess={checkPublishedVersions}
-        untrackedPagesCount={getUntrackedPagesCount()}
-        onShowUntrackedPages={handleShowUntrackedPages}
+        untrackedNodeCount={getUntrackedNodeCount()}
+        onShowUntrackedNodes={handleShowUntrackedNodes}
         onTabChange={setPreviewModalTab}
         initialTab={previewModalTab}
         hooksHaveErrors={hooksHaveErrors}
@@ -1268,9 +1228,9 @@ const SiteEditor: React.FC = () => {
       />
 
       <div className="flex-1 overflow-hidden">
-        <SitePageTabs
+        <SiteNodeTabs
           graph={graph}
-          initialPageId={initialPageTitle}
+          entrySiteNodeId={entrySiteNodeId ?? undefined}
           filters={filters}
           onFiltersChange={setFilters}
           onReloadCustomFilters={reloadCustomFilters}
@@ -1280,14 +1240,15 @@ const SiteEditor: React.FC = () => {
           onAutoSave={handleAutoSaveConfig}
           isSelectionPanelCollapsed={isSelectionPanelCollapsed}
           onSelectionPanelCollapseChange={setIsSelectionPanelCollapsed}
-          selectedPages={selectedPages}
-          onSelectedPagesChange={setSelectedPages}
+          selectedNodeKeys={selectedNodeKeys}
+          onSelectedNodeKeysChange={setSelectedNodeKeys}
           onPreviewPage={handlePreviewPage}
           hasDraftChanges={hasDraftChanges}
           siteSlug={slug || ''}
           onRefresh={() => setConfigChangeTrigger(prev => prev + 1)}
-          untrackedPagesCount={getUntrackedPagesCount()}
-          sitePageConfigs={sitePageConfigs}
+          untrackedNodeCount={getUntrackedNodeCount()}
+          siteNodeConfigs={siteNodeConfigs}
+          protectedSiteNodeIds={new Set([entrySiteNodeId, defaultTraversalSiteNodeId].filter((id): id is string => id !== null))}
           onRemoveOrphanConfig={handleRemoveOrphanConfig}
           onRemoveAllOrphanConfigs={handleRemoveAllOrphanConfigs}
         />

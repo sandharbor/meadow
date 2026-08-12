@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Graph, IPage } from '../../../../../../shared_code/types/graph';
+import { Graph, ISiteNode } from '../../../../../../shared_code/types/graph';
 import { IFilter, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
 import { DisplayGraph } from '../types/displayGraph';
 import GraphVis from './GraphVis';
@@ -23,23 +23,23 @@ import ListView from './ListView';
 import OrphansView from './OrphansView';
 import { OrphansBanner } from './OrphansBanner';
 import FilterPanel from './FilterPanel';
-import SitePageSelectionSidebar from './SitePageSelectionSidebar';
-import SitePageTabsDropdown from './SitePageTabsDropdown';
-import PageContextMenu, { ObsidianInfo } from './PageContextMenu';
+import SiteNodeSelectionSidebar from './SiteNodeSelectionSidebar';
+import SiteNodeTabsDropdown from './SiteNodeTabsDropdown';
+import SiteNodeContextMenu, { ObsidianInfo } from './SiteNodeContextMenu';
 import EmptySoloCallout from './EmptySoloCallout';
 import SitePagesToggle from './SitePagesToggle';
 import ResizableSidebar from './ResizableSidebar';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
-import { buildPageConfigs, getOrphanPageConfigs } from '../../../../../../shared_code/utils/sitePageConfigUtils';
+import { buildNodeConfigs, generateSiteNodeId, getOrphanNodeConfigs } from '../../../../../../shared_code/utils/siteNodeConfigUtils';
 import Modal from '../../../../shared/components/Modal';
 import { AppConfig } from '../../../../../../shared_code/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
 import { useDisplayFilters } from '../utils/useDisplayFilters';
 
-interface SitePageTabsProps {
+interface SiteNodeTabsProps {
   graph: Graph;
-  initialPageId?: string;
+  entrySiteNodeId?: string;
   filters: IFilter[];
   onFiltersChange: React.Dispatch<React.SetStateAction<IFilter[]>>;
   onReloadCustomFilters?: () => void;
@@ -48,24 +48,25 @@ interface SitePageTabsProps {
   onAutoSave?: () => Promise<void> | void;
   isSelectionPanelCollapsed: boolean;
   onSelectionPanelCollapseChange: (collapsed: boolean) => void;
-  selectedPages: Set<string>;
-  onSelectedPagesChange: (pages: Set<string>) => void;
-  onPreviewPage: (pageId: string) => void;
+  selectedNodeKeys: Set<string>;
+  onSelectedNodeKeysChange: (pages: Set<string>) => void;
+  onPreviewPage: (siteNodeKey: string) => void;
   hasDraftChanges: boolean;
   siteSlug: string;
   onRefresh: () => void;
-  untrackedPagesCount: number;
+  untrackedNodeCount: number;
   graphUpdateTrigger: number;
-  sitePageConfigs: SitePageConfig[] | null;
-  onRemoveOrphanConfig: (config: SitePageConfig) => Promise<void>;
+  siteNodeConfigs: SiteNodeConfig[] | null;
+  protectedSiteNodeIds: Set<string>;
+  onRemoveOrphanConfig: (config: SiteNodeConfig) => Promise<void>;
   onRemoveAllOrphanConfigs: () => Promise<void>;
 }
 
 type ViewType = 'graph' | 'list';
 
-const SitePageTabs: React.FC<SitePageTabsProps> = ({
+const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
   graph,
-  initialPageId,
+  entrySiteNodeId,
   filters,
   onFiltersChange,
   onReloadCustomFilters,
@@ -74,15 +75,16 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   onAutoSave,
   isSelectionPanelCollapsed,
   onSelectionPanelCollapseChange,
-  selectedPages,
-  onSelectedPagesChange,
+  selectedNodeKeys,
+  onSelectedNodeKeysChange,
   onPreviewPage,
   hasDraftChanges,
   siteSlug,
   onRefresh,
-  untrackedPagesCount,
+  untrackedNodeCount,
   graphUpdateTrigger,
-  sitePageConfigs,
+  siteNodeConfigs,
+  protectedSiteNodeIds,
   onRemoveOrphanConfig,
   onRemoveAllOrphanConfigs,
 }) => {
@@ -100,10 +102,10 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   }, [activeView]);
 
   const orphanConfigs = useMemo(() => {
-    if (!sitePageConfigs) return [];
-    return getOrphanPageConfigs(sitePageConfigs, graph.getAllPages());
+    if (!siteNodeConfigs) return [];
+    return getOrphanNodeConfigs(siteNodeConfigs, graph.getAllNodes());
   // eslint-disable-next-line react-hooks/exhaustive-deps -- graphUpdateTrigger forces recompute when graph is mutated in-place
-  }, [sitePageConfigs, graph, graphUpdateTrigger]);
+  }, [siteNodeConfigs, graph, graphUpdateTrigger]);
 
   useEffect(() => {
     if (orphanConfigs.length === 0) {
@@ -112,12 +114,12 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   }, [orphanConfigs.length]);
 
   // State for selection solo and hide features
-  const [hiddenPages, setHiddenPages] = useState<Set<string>>(new Set());
-  const [soloPages, setSoloPages] = useState<Set<string>>(new Set());
+  const [hiddenNodeKeys, setHiddenNodeKeys] = useState<Set<string>>(new Set());
+  const [soloNodeKeys, setSoloNodeKeys] = useState<Set<string>>(new Set());
   const [selectionShowTitles, setSelectionShowTitles] = useState(false);
 
   // State for right-click context menu on pages
-  const [contextMenuPage, setContextMenuPage] = useState<{ pageId: string; x: number; y: number } | null>(null);
+  const [contextMenuPage, setContextMenuPage] = useState<{ siteNodeKey: string; x: number; y: number } | null>(null);
 
   // Obsidian info (shared between sidebar and context menu)
   const [obsidianInfo, setObsidianInfo] = useState<ObsidianInfo | null>(null);
@@ -149,7 +151,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   // State for meadow-sensitive consent modal
   const [showSensitiveConsentModal, setShowSensitiveConsentModal] = useState(false);
   const [pendingSensitiveOperation, setPendingSensitiveOperation] = useState<{
-    pageId: string;
+    siteNodeKey: string;
     isSensitive: boolean;
   } | null>(null);
   const [hasSensitiveConsent, setHasSensitiveConsent] = useState<boolean | null>(null);
@@ -179,7 +181,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   // Auto-calculate optimal gap thresholds when graph changes
   useEffect(() => {
     // Create a simple identifier for the graph based on its pages
-    const graphId = `${graph.getAllPages().length}-${siteSlug}`;
+    const graphId = `${graph.getAllNodes().length}-${siteSlug}`;
 
     // Only calculate once per graph
     if (lastCalculatedGraphRef.current === graphId) {
@@ -196,14 +198,14 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
       if (filter.id === 'outlink-gap-filter') {
         return {
           ...filter,
-          pageSelectors: [createOutlinkDiscrepancySelector(outlinkThreshold)],
+          siteNodeSelectors: [createOutlinkDiscrepancySelector(outlinkThreshold)],
           thresholdValue: outlinkThreshold
         };
       }
       if (filter.id === 'inlink-gap-filter') {
         return {
           ...filter,
-          pageSelectors: [createInlinkDiscrepancySelector(inlinkThreshold)],
+          siteNodeSelectors: [createInlinkDiscrepancySelector(inlinkThreshold)],
           thresholdValue: inlinkThreshold
         };
       }
@@ -216,123 +218,136 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
     effectiveExpression: effectiveFilterExpression,
     setExpression: handleFilterExpressionChange
   } = useDisplayFilters({
-    filters, graph, graphUpdateTrigger, hiddenPages, selectedPages,
-    selectionShowTitles, siteSlug, soloPages
+    filters, graph, graphUpdateTrigger, hiddenNodeKeys, selectedNodeKeys,
+    selectionShowTitles, siteSlug, soloNodeKeys
   });
 
   // Create and manage the DisplayGraph using useMemo for immediate availability
   const currentDisplayGraph = useMemo(() => {
     const dg = new DisplayGraph(graph);
     dg.setFilters(combinedFilters, effectiveFilterExpression);
-    dg.setSelectedPages(selectedPages);
-    if (initialPageId) {
-      dg.setInitialPage(initialPageId);
+    dg.setSelectedNodeKeys(selectedNodeKeys);
+    if (entrySiteNodeId) {
+      dg.setEntryNode(entrySiteNodeId);
     }
     return dg;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- graphUpdateTrigger forces recompute when graph is mutated in-place
-  }, [graph, combinedFilters, effectiveFilterExpression, selectedPages, initialPageId, graphUpdateTrigger]);
+  }, [graph, combinedFilters, effectiveFilterExpression, selectedNodeKeys, entrySiteNodeId, graphUpdateTrigger]);
 
   // When pages are selected, expand the panel
   useEffect(() => {
-    if (selectedPages.size > 0) {
+    if (selectedNodeKeys.size > 0) {
       onSelectionPanelCollapseChange(false);
     }
-  }, [selectedPages.size, onSelectionPanelCollapseChange]);
+  }, [selectedNodeKeys.size, onSelectionPanelCollapseChange]);
 
   const forceReRender = () => {
-    onSelectedPagesChange(new Set(selectedPages));
+    onSelectedNodeKeysChange(new Set(selectedNodeKeys));
     onConfigChange?.(); // Notify parent of config change
   };
 
-  const handlePageClick = (pageId: string) => {
-    const page = graph.getPage(pageId);
+  const handlePageClick = (siteNodeKey: string) => {
+    const page = graph.getNode(siteNodeKey);
     if (page) {
-      if (selectedPages.has(pageId)) {
-        const newSelected = new Set(selectedPages);
-        newSelected.delete(pageId);
-        onSelectedPagesChange(newSelected);
+      if (selectedNodeKeys.has(siteNodeKey)) {
+        const newSelected = new Set(selectedNodeKeys);
+        newSelected.delete(siteNodeKey);
+        onSelectedNodeKeysChange(newSelected);
       } else {
         // New selections should float to the top of the selection list
-        onSelectedPagesChange(new Set([pageId, ...selectedPages]));
+        onSelectedNodeKeysChange(new Set([siteNodeKey, ...selectedNodeKeys]));
       }
     }
   };
 
   const handleSelectAllVisible = () => {
-    let visiblePages = currentDisplayGraph.visibleDisplayPages;
-    if (isSitePagesOnlyToggleActive) {
-      visiblePages = visiblePages.filter(page =>
-        page.underlyingPage.tracked && !page.underlyingPage.blacklisted && !page.underlyingPage.isFrontierPage
+    let visibleNodes = currentDisplayGraph.visibleDisplayNodes;
+    if (isSitePreviewOnlyActive) {
+      visibleNodes = visibleNodes.filter(page =>
+        page.underlyingNode.tracked && !page.underlyingNode.blacklisted && !page.underlyingNode.isFrontierNode
       );
     }
-    onSelectedPagesChange(new Set(visiblePages.map(page => page.id)));
+    onSelectedNodeKeysChange(new Set(visibleNodes.map(page => page.siteNodeKey)));
   };
 
   const handleSelectNone = () => {
-    onSelectedPagesChange(new Set());
+    onSelectedNodeKeysChange(new Set());
   };
 
   // Solo selection - show only selected pages
   const handleSoloSelection = () => {
-    if (soloPages.size > 0) {
+    if (soloNodeKeys.size > 0) {
       // If already in solo mode, exit it
-      setSoloPages(new Set());
+      setSoloNodeKeys(new Set());
     } else {
       // Enter solo mode with current selection
-      setSoloPages(new Set(selectedPages));
+      setSoloNodeKeys(new Set(selectedNodeKeys));
     }
   };
 
   // Hide selection - hide the selected pages
   const handleHideSelection = () => {
-    setHiddenPages(prev => {
+    setHiddenNodeKeys(prev => {
       const next = new Set(prev);
-      selectedPages.forEach(id => next.add(id));
+      selectedNodeKeys.forEach(id => next.add(id));
       return next;
     });
     // Clear selection after hiding
-    onSelectedPagesChange(new Set());
+    onSelectedNodeKeysChange(new Set());
   };
 
   // Clear hidden pages
   const handleClearHidden = () => {
-    setHiddenPages(new Set());
+    setHiddenNodeKeys(new Set());
   };
 
   // State for "Show Site" solo mode
-  const [isSitePagesOnlyToggleActive, setIsSitePagesOnlyToggleActive] = useState(false);
+  const [isSitePreviewOnlyActive, setIsSitePreviewOnlyActive] = useState(false);
   const [sitePreviewHover, setSitePreviewHover] = useState(false);
 
   // Check if we're in solo mode
-  const isSoloActive = soloPages.size > 0;
-  const hasHiddenPages = hiddenPages.size > 0;
+  const isSoloActive = soloNodeKeys.size > 0;
+  const hasHiddenPages = hiddenNodeKeys.size > 0;
 
   // Check if the view is empty due to active solos
   const hasSoloFilters = combinedFilters.some(f => f.isSolo && f.enabled);
-  const isEmptyDueToSolo = currentDisplayGraph.visibleDisplayPages.length === 0 && hasSoloFilters;
+  const isEmptyDueToSolo = currentDisplayGraph.visibleDisplayNodes.length === 0 && hasSoloFilters;
 
   const handleTurnOffSolos = () => {
     // Turn off solo on all filters
     onFiltersChange(prev => prev.map(f => f.isSolo ? { ...f, isSolo: false } : f));
     // Clear selection solo
-    setSoloPages(new Set());
+    setSoloNodeKeys(new Set());
   };
 
   // Handle "Show Only Site Pages" toggle
-  const handleSitePagesOnlyToggle = useCallback(() => {
-    setIsSitePagesOnlyToggleActive(prev => !prev);
+  const handleSitePreviewOnlyToggle = useCallback(() => {
+    setIsSitePreviewOnlyActive(prev => !prev);
   }, []);
 
-  const ensurePageConfigForPersistence = (page: IPage, listType: 'whitelist' | 'blacklist') => {
-    // Ensure conf and conf.config objects exist for persistence
-    page.conf = page.conf || { title: page.title, config: { list_type: listType } };
-    page.conf.config = page.conf.config || { list_type: listType };
-    page.conf.config.list_type = listType;
+  const ensurePageConfigForPersistence = (page: ISiteNode, listType: 'whitelist' | 'blacklist') => {
+    if (!page.conf) {
+      const existingIds = [
+        ...(siteNodeConfigs ?? []).map(config => config.siteNodeId),
+        ...graph.getAllNodes().flatMap(node => node.siteNodeId ? [node.siteNodeId] : []),
+      ];
+      const siteNodeId = generateSiteNodeId(existingIds);
+      page.siteNodeId = siteNodeId;
+      page.conf = {
+        siteNodeName: page.siteNodeName,
+        sourceGraphSubdirectory: page.sourceGraphSubdirectory,
+        siteNodeKind: 'file',
+        fileType: page.fileType,
+        siteNodeId,
+        listType,
+      };
+    }
+    page.conf.listType = listType;
   };
 
   // Persist the full config array as a draft
   const persistAllConfigs = async () => {
-    const configs = buildPageConfigs(graph.getAllPages());
+    const configs = buildNodeConfigs(graph.getAllNodes());
     await fetch(`${API_BASE_URL}/sites/${siteSlug || ''}/curation/site-config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -341,40 +356,28 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   };
 
   // Function to immediately persist tracking changes to prevent them from being overridden
-  const persistTrackingChange = async (page: IPage) => {
+  const persistTrackingChange = async (page: ISiteNode) => {
     try {
-      // Ensure the page has configuration for persistence
-      if (!page.conf) {
-        page.conf = { title: page.title, config: { list_type: 'whitelist' } };
-      }
-      if (!page.conf.config) {
-        page.conf.config = { list_type: 'whitelist' };
-      }
-
-      // Set the tracked state in the configuration
-      page.conf.config.tracked = page.tracked;
-
       await persistAllConfigs();
 
-      logger.debug(`Tracking state persisted for page: ${page.title} (subdirectory: ${page.sourceGraphSubdirectory || '(root)'}, tracked: ${page.tracked})`);
+      logger.debug(`Tracking state persisted for page: ${page.siteNodeName} (subdirectory: ${page.sourceGraphSubdirectory || '(root)'}, tracked: ${page.tracked})`);
     } catch (error) {
       logger.error('Error persisting tracking change:', error);
     }
   };
 
-  const handleTrackPage = async (pageId: string) => {
-    const page = graph.getPage(pageId);
+  const handleTrackPage = async (siteNodeKey: string) => {
+    const page = graph.getNode(siteNodeKey);
     if (page) {
       const newTracked = !page.tracked;
+      if (!newTracked && page.siteNodeId && protectedSiteNodeIds.has(page.siteNodeId)) return;
       page.tracked = newTracked;
 
       if (page.tracked) {
         ensurePageConfigForPersistence(page, 'whitelist');
-      }
-      // Keep conf.config.tracked in sync with the page state so the persisted
-      // config reflects the untrack as well as the track.
-      if (page.conf?.config) {
-        page.conf.config.tracked = page.tracked;
+      } else {
+        delete page.conf;
+        delete page.siteNodeId;
       }
 
       // Simple op: auto-save (commit) unless there are already draft changes
@@ -391,14 +394,15 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
       // temporarily show 0 tracked pages until configs are re-applied, causing
       // a visual flash.
       graph.notifyChange();
-      onSelectedPagesChange(new Set(selectedPages));
+      onSelectedNodeKeysChange(new Set(selectedNodeKeys));
       onCheckDraftStatus?.();
     }
   };
 
-  const handleBlacklistPage = async (pageId: string) => {
-    const page = graph.getPage(pageId);
+  const handleBlacklistPage = async (siteNodeKey: string) => {
+    const page = graph.getNode(siteNodeKey);
     if (page) {
+      if (!page.blacklisted && page.siteNodeId && protectedSiteNodeIds.has(page.siteNodeId)) return;
       page.blacklisted = !page.blacklisted;
 
       if (page.blacklisted) {
@@ -406,8 +410,8 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
         ensurePageConfigForPersistence(page, 'blacklist');
       } else {
         // Un-blacklisting a single page: restore whitelist list_type if config exists.
-        if (page.conf?.config) {
-          page.conf.config.list_type = 'whitelist';
+        if (page.conf) {
+          page.conf.listType = 'whitelist';
         }
       }
 
@@ -426,41 +430,36 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
     }
   };
 
-  const handleUpdatePageConfig = (pageId: string, key: keyof SitePageConfig['config'], value: number | boolean) => {
-    const page = graph.getPage(pageId);
+  const handleUpdatePageConfig = (siteNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth', value: number) => {
+    const page = graph.getNode(siteNodeKey);
     if (page) {
-      // Ensure conf and conf.config objects exist
-      page.conf = page.conf || { title: page.title, config: { list_type: page.blacklisted ? 'blacklist' : 'whitelist' } };
-      page.conf.config = page.conf.config || { list_type: page.blacklisted ? 'blacklist' : 'whitelist' };
-
-      // Update the specific config key
-      (page.conf.config[key] as number | boolean) = value;
+      ensurePageConfigForPersistence(page, page.blacklisted ? 'blacklist' : 'whitelist');
+      page.conf![key] = value;
 
       page.tracked = true;
-      if (!page.conf.config.list_type) {
-        page.conf.config.list_type = 'whitelist';
+      if (!page.conf!.listType) {
+        page.conf!.listType = 'whitelist';
       }
 
       forceReRender();
     }
   };
 
-  const handleDeletePageConfigKey = (pageId: string, key: keyof SitePageConfig['config']) => {
-    const page = graph.getPage(pageId);
-    if (page && page.conf && page.conf.config) {
-      delete page.conf.config[key];
+  const handleDeletePageConfigKey = (siteNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth') => {
+    const page = graph.getNode(siteNodeKey);
+    if (page?.conf) {
+      delete page.conf[key];
       forceReRender();
     }
   };
 
   const handleTrackSelected = async () => {
     let anyChanged = false;
-    selectedPages.forEach(pageId => {
-      const page = graph.getPage(pageId);
-      if (page && !currentDisplayGraph.getDisplayPage(pageId)?.isEffectivelySensitive) {
+    selectedNodeKeys.forEach(siteNodeKey => {
+      const page = graph.getNode(siteNodeKey);
+      if (page && !currentDisplayGraph.getDisplayNode(siteNodeKey)?.isEffectivelySensitive) {
         page.tracked = true;
         ensurePageConfigForPersistence(page, 'whitelist');
-        page.conf!.config.tracked = true;
         anyChanged = true;
       }
     });
@@ -482,16 +481,16 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
     // Skip onConfigChange (which reloads the graph from backend) since the
     // persist/auto-save above already saved the config. See handleTrackPage.
     graph.notifyChange();
-    onSelectedPagesChange(new Set(selectedPages));
+    onSelectedNodeKeysChange(new Set(selectedNodeKeys));
     if (hasDraftChanges) {
       onCheckDraftStatus?.();
     }
   };
 
   const handleBlacklistSelected = () => {
-    selectedPages.forEach(pageId => {
-      const page = graph.getPage(pageId);
-      if (page) {
+    selectedNodeKeys.forEach(siteNodeKey => {
+      const page = graph.getNode(siteNodeKey);
+      if (page && (!page.siteNodeId || !protectedSiteNodeIds.has(page.siteNodeId))) {
         page.blacklisted = true;
         page.tracked = true;
         ensurePageConfigForPersistence(page, 'blacklist');
@@ -501,13 +500,13 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   };
 
   // Core function that actually performs the sensitive marking operation
-  const performMarkSensitive = async (pageId: string, isSensitive: boolean) => {
-    const page = graph.getPage(pageId);
+  const performMarkSensitive = async (siteNodeKey: string, isSensitive: boolean) => {
+    const page = graph.getNode(siteNodeKey);
     if (!page) return;
 
     try {
       // Call the API to update the file
-      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug || ''}/curation/page/${encodeURIComponent(page.title)}/sensitive`, {
+      const response = await fetch(`${API_BASE_URL}/sites/${siteSlug || ''}/curation/page/${encodeURIComponent(page.siteNodeName)}/sensitive`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isSensitive, sourceGraphDirectory: page.sourceGraphSubdirectory })
@@ -533,16 +532,16 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   };
 
   // Handler that checks consent before marking sensitive
-  const handleMarkSensitive = async (pageId: string, isSensitive: boolean) => {
+  const handleMarkSensitive = async (siteNodeKey: string, isSensitive: boolean) => {
     // If marking as sensitive (not removing) and user hasn't consented yet, show modal
     if (isSensitive && !hasSensitiveConsent) {
-      setPendingSensitiveOperation({ pageId, isSensitive });
+      setPendingSensitiveOperation({ siteNodeKey, isSensitive });
       setShowSensitiveConsentModal(true);
       return;
     }
 
     // User has consented or is removing sensitive flag, proceed directly
-    await performMarkSensitive(pageId, isSensitive);
+    await performMarkSensitive(siteNodeKey, isSensitive);
   };
 
   // Handle user consent for adding meadow-sensitive property
@@ -569,7 +568,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
 
       // Proceed with the pending operation
       if (pendingSensitiveOperation) {
-        await performMarkSensitive(pendingSensitiveOperation.pageId, pendingSensitiveOperation.isSensitive);
+        await performMarkSensitive(pendingSensitiveOperation.siteNodeKey, pendingSensitiveOperation.isSensitive);
         setPendingSensitiveOperation(null);
       }
     } catch (error) {
@@ -583,8 +582,8 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
     setPendingSensitiveOperation(null);
   };
 
-  const handlePageContextMenu = useCallback((pageId: string, x: number, y: number) => {
-    setContextMenuPage({ pageId, x, y });
+  const handleSiteNodeContextMenu = useCallback((siteNodeKey: string, x: number, y: number) => {
+    setContextMenuPage({ siteNodeKey, x, y });
   }, []);
 
   // Update session storage when active view changes
@@ -626,8 +625,8 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
               onReloadCustomFilters();
             }
           }}
-          untrackedPagesCount={untrackedPagesCount}
-          pages={graph.getAllPages()}
+          untrackedNodeCount={untrackedNodeCount}
+          pages={graph.getAllNodes()}
           filterExpression={effectiveFilterExpression}
           filterExpressionFilters={combinedFilters}
           onFilterExpressionChange={handleFilterExpressionChange}
@@ -667,7 +666,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
               </button>
             </div>
             <div className="flex items-center gap-2 pr-3">
-              {selectedPages.size > 0 && (
+              {selectedNodeKeys.size > 0 && (
                 <div className="flex items-center space-x-1 mr-2 pr-2 border-r border-gray-200">
                   <span className="text-sm text-gray-700 mr-1">Selection</span>
                   <button
@@ -708,7 +707,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
                 </div>
               )}
               {/* Exit solo button - shown when in solo mode but no selection */}
-              {isSoloActive && selectedPages.size === 0 && (
+              {isSoloActive && selectedNodeKeys.size === 0 && (
                 <div className="flex items-center space-x-1 mr-2 pr-2 border-r border-gray-200">
                   <span className="text-sm text-gray-700 mr-1">Selection</span>
                   <button
@@ -725,11 +724,11 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
               {/* Clear hidden button - shown when pages are hidden */}
               {hasHiddenPages && (
                 <div className="flex items-center space-x-2 mr-2 pr-2 border-r border-gray-200">
-                  <span className="text-sm text-gray-700">Hidden ({hiddenPages.size})</span>
+                  <span className="text-sm text-gray-700">Hidden ({hiddenNodeKeys.size})</span>
                   <button
                     onClick={handleClearHidden}
                     className="px-2 py-1 text-xs rounded bg-red-500 text-white"
-                    title={`Show ${hiddenPages.size} hidden page${hiddenPages.size > 1 ? 's' : ''}`}
+                    title={`Show ${hiddenNodeKeys.size} hidden page${hiddenNodeKeys.size > 1 ? 's' : ''}`}
                   >
                     Show
                   </button>
@@ -743,17 +742,17 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
               </button>
               <button
                 onClick={handleSelectNone}
-                disabled={selectedPages.size === 0}
+                disabled={selectedNodeKeys.size === 0}
                 className={`px-3 py-1 text-sm rounded ${
-                  selectedPages.size === 0
+                  selectedNodeKeys.size === 0
                     ? 'text-neutral-300 cursor-default'
                     : 'text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100'
                 }`}
               >
                 Select None
               </button>
-              <SitePageTabsDropdown
-                selectedPages={selectedPages}
+              <SiteNodeTabsDropdown
+                selectedNodeKeys={selectedNodeKeys}
                 graph={graph}
                 onRefresh={onRefresh}
               />
@@ -769,12 +768,12 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
                 graph={graph}
                 displayGraph={currentDisplayGraph}
                 filters={combinedFilters}
-                selectedPages={selectedPages}
-                onSelectedPagesChange={onSelectedPagesChange}
+                selectedNodeKeys={selectedNodeKeys}
+                onSelectedNodeKeysChange={onSelectedNodeKeysChange}
                 siteSlug={siteSlug}
                 graphUpdateTrigger={graphUpdateTrigger}
-                onPageContextMenu={handlePageContextMenu}
-                isSitePagesOnlyToggleActive={isSitePagesOnlyToggleActive}
+                onSiteNodeContextMenu={handleSiteNodeContextMenu}
+                isSitePreviewOnlyActive={isSitePreviewOnlyActive}
                 sitePreviewHover={sitePreviewHover}
               />
             </div>
@@ -784,16 +783,16 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
                 displayGraph={currentDisplayGraph}
                 onPageClick={handlePageClick}
                 siteSlug={siteSlug}
-                onPageContextMenu={handlePageContextMenu}
-                selectedPages={selectedPages}
-                onSelectedPagesChange={onSelectedPagesChange}
+                onSiteNodeContextMenu={handleSiteNodeContextMenu}
+                selectedNodeKeys={selectedNodeKeys}
+                onSelectedNodeKeysChange={onSelectedNodeKeysChange}
               />
             </div>
           )}
           <div className="absolute top-2 right-2 z-10">
             <SitePagesToggle
-              isActive={isSitePagesOnlyToggleActive}
-              onToggle={handleSitePagesOnlyToggle}
+              isActive={isSitePreviewOnlyActive}
+              onToggle={handleSitePreviewOnlyToggle}
               onHoverStart={activeView === 'graph' ? () => setSitePreviewHover(true) : undefined}
               onHoverEnd={activeView === 'graph' ? () => setSitePreviewHover(false) : undefined}
             />
@@ -826,16 +825,16 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
           testId="selection-sidebar"
           className="flex bg-white"
         >
-          <SitePageSelectionSidebar
-            selectedPages={selectedPages}
+          <SiteNodeSelectionSidebar
+            selectedNodeKeys={selectedNodeKeys}
             graph={graph}
             onClose={() => onSelectionPanelCollapseChange(true)}
-            onSelectedPagesChange={onSelectedPagesChange}
+            onSelectedNodeKeysChange={onSelectedNodeKeysChange}
             onTrackPage={handleTrackPage}
             onBlacklistPage={handleBlacklistPage}
             onTrackSelected={handleTrackSelected}
             onBlacklistSelected={handleBlacklistSelected}
-            isEffectivelySensitive={page => currentDisplayGraph.getDisplayPage(page.id)?.isEffectivelySensitive ?? false}
+            isEffectivelySensitive={page => currentDisplayGraph.getDisplayNode(page.siteNodeKey)?.isEffectivelySensitive ?? false}
             onUpdatePageConfig={handleUpdatePageConfig}
             onDeletePageConfigKey={handleDeletePageConfigKey}
             onPreviewPage={onPreviewPage}
@@ -848,10 +847,10 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
 
       {/* Right-click context menu for pages */}
       {contextMenuPage && (() => {
-        const page = graph.getPage(contextMenuPage.pageId);
+        const page = graph.getNode(contextMenuPage.siteNodeKey);
         if (!page) return null;
         return (
-          <PageContextMenu
+          <SiteNodeContextMenu
             page={page}
             graph={graph}
             position={{ x: contextMenuPage.x, y: contextMenuPage.y }}
@@ -860,7 +859,7 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
             onBlacklistPage={handleBlacklistPage}
             onPreviewPage={onPreviewPage}
             hasDraftChanges={hasDraftChanges}
-            onSelectedPagesChange={onSelectedPagesChange}
+            onSelectedNodeKeysChange={onSelectedNodeKeysChange}
             onMarkSensitive={handleMarkSensitive}
             obsidianInfo={obsidianInfo}
           />
@@ -924,4 +923,4 @@ const SitePageTabs: React.FC<SitePageTabsProps> = ({
   );
 };
 
-export default SitePageTabs;
+export default SiteNodeTabs;

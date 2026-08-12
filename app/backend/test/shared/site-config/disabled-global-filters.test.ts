@@ -132,7 +132,7 @@ describe('Disabled Global Filters', () => {
     // Set up initial config with other fields
     const initialConf = {
       sourceDirectory: './test',
-      initialSitePageTitle: 'Main',
+      entrySiteNodeId: 'a1b2c3d4e5f6',
       publishSlug: 'test-site'
     };
     saveSiteConfig(siteDir, initialConf);
@@ -145,9 +145,8 @@ describe('Disabled Global Filters', () => {
     // Verify all fields are preserved
     const loadedConf = loadSiteConfig(siteDir);
     expect(loadedConf.sourceDirectory).toBe('./test');
-    expect(loadedConf.initialSitePageTitle).toBe('Main');
+    expect(loadedConf.entrySiteNodeId).toBe('a1b2c3d4e5f6');
     expect(loadedConf.publishSlug).toBe('test-site');
     expect(loadedConf.disabledGlobalFilters).toEqual(['global-filter-1']);
   });
 });
-

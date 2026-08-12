@@ -17,7 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { SiteConfigPaths } from '../../../../shared_code/paths/siteConfigPaths.js';
-import { parsePageConfig } from '../../../../shared_code/utils/sitePageConfigUtils.js';
+import { parseSiteNodeConfig } from '../../../../shared_code/utils/siteNodeConfigUtils.js';
 import { normalizePageTitle } from '../../areas/site/generation/html/shared.js';
 import { loadSiteConfig } from './siteConfigUtils.js';
 import { logger } from './logging/backendLoggingUtils.js';
@@ -25,7 +25,7 @@ import { getSiteDirectory } from '../site-config/siteConfigPaths.js';
 
 /**
  * Get the HTML file path for a page by looking up its subdirectory from
- * site_page_config.yaml. Returns a relative path (e.g. "subdir/title.html"
+ * site_node_config.yaml. Returns a relative path (e.g. "subdir/title.html"
  * or "title.html") or null if the page is not found.
  *
  * Provider-agnostic: any publishing provider that materializes pages as
@@ -37,23 +37,23 @@ export function getHtmlPathForPage(
   pageDirectory?: string,
 ): string | null {
   try {
-    const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-    if (!fs.existsSync(sitePageConfPath)) {
+    const siteNodeConfPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
+    if (!fs.existsSync(siteNodeConfPath)) {
       return null;
     }
 
-    const content = fs.readFileSync(sitePageConfPath, 'utf8');
-    const sitePageConfigs = parsePageConfig(content);
+    const content = fs.readFileSync(siteNodeConfPath, 'utf8');
+    const siteNodeConfigs = parseSiteNodeConfig(content);
 
-    const matchingPageConfigs = sitePageConfigs.filter(sitePageConfig =>
-      sitePageConfig.title === title &&
-      (pageDirectory === undefined || (sitePageConfig.source_graph_subdirectory || '') === (pageDirectory || ''))
+    const matchingPageConfigs = siteNodeConfigs.filter(siteNodeConfig =>
+      siteNodeConfig.siteNodeName === title &&
+      (pageDirectory === undefined || (siteNodeConfig.sourceGraphSubdirectory || '') === (pageDirectory || ''))
     );
-    const sitePageConfig =
-      matchingPageConfigs.find(sitePageConfig => sitePageConfig.file_type === 'md' || !sitePageConfig.file_type)
+    const siteNodeConfig =
+      matchingPageConfigs.find(siteNodeConfig => siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
       ?? matchingPageConfigs[0];
 
-    if (!sitePageConfig) {
+    if (!siteNodeConfig) {
       return null;
     }
 
@@ -65,7 +65,7 @@ export function getHtmlPathForPage(
 
     const normalizedTitle = normalizePageTitle(title, siteConfig, siteSlug);
 
-    const subdir = sitePageConfig.source_graph_subdirectory || '';
+    const subdir = siteNodeConfig.sourceGraphSubdirectory || '';
     return subdir ? `${subdir}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
   } catch (error) {
     logger.warn('Error looking up page path:', error);

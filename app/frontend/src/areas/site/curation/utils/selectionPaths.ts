@@ -14,28 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Graph, IPage } from '../../../../../../shared_code/types/graph';
+import { Graph, ISiteNode } from '../../../../../../shared_code/types/graph';
 
 /**
- * Returns an ordered list of page IDs representing the selection for "path to here".
+ * Returns an ordered list of node IDs representing the selection for "path to here".
  *
- * Ordering is optimized for the selection sidebar: the "here" page comes first,
+ * Ordering is optimized for the selection sidebar: the "here" node comes first,
  * followed by its ancestors walking back toward the root.
  */
-export function getSelectionPathToHereOrdered(page: IPage): string[] {
-  const pathIds = Array.isArray(page.path) ? page.path : [];
+export function getSelectionPathToHereOrdered(node: ISiteNode): string[] {
+  const pathNodeKeys = Array.isArray(node.path) ? node.path : [];
   const ordered: string[] = [];
 
-  // Always prioritize the clicked page at the top of selection
-  if (typeof page.id === 'string' && page.id.length > 0) {
-    ordered.push(page.id);
+  // Always prioritize the clicked node at the top of selection
+  if (typeof node.siteNodeKey === 'string' && node.siteNodeKey.length > 0) {
+    ordered.push(node.siteNodeKey);
   }
 
   // Walk ancestors back toward the root (reverse the root->...->here path)
-  for (let i = pathIds.length - 1; i >= 0; i--) {
-    const id = pathIds[i];
+  for (let i = pathNodeKeys.length - 1; i >= 0; i--) {
+    const id = pathNodeKeys[i];
     if (typeof id !== 'string' || id.length === 0) continue;
-    if (id === page.id) continue;
+    if (id === node.siteNodeKey) continue;
     ordered.push(id);
   }
 
@@ -49,30 +49,30 @@ export function getSelectionPathToHereOrdered(page: IPage): string[] {
 }
 
 /**
- * Returns an ordered list of page IDs representing the selection for "path from here".
+ * Returns an ordered list of node IDs representing the selection for "path from here".
  *
- * This is a DFS over graph edges starting at startId, following:
+ * This is a DFS over graph edges starting at startNodeKey, following:
  * - `edge.source -> edge.target` always
  * - and also `edge.target -> edge.source` when `edge.isBidirectional` is true
  *
- * Includes startId as the first element when present in the graph.
+ * Includes startNodeKey as the first element when present in the graph.
  */
 /**
- * Returns an ordered list of page IDs representing the selection for "select children".
+ * Returns an ordered list of node IDs representing the selection for "select children".
  *
- * Selects the page itself plus its direct children — pages connected by an
- * outgoing edge whose depth is exactly one more than the start page's depth.
+ * Selects the node itself plus its direct children — nodes connected by an
+ * outgoing edge whose depth is exactly one more than the start node's depth.
  */
-export function getSelectionChildrenOrdered(graph: Graph, startId: string): string[] {
-  const startPage = graph.getPage(startId);
+export function getSelectionChildrenOrdered(graph: Graph, startNodeKey: string): string[] {
+  const startPage = graph.getNode(startNodeKey);
   if (!startPage) return [];
 
-  const result: string[] = [startId];
+  const result: string[] = [startNodeKey];
   const startDepth = startPage.depth;
 
   for (const e of graph.getAllEdges()) {
-    if (e.source !== startId) continue;
-    const targetPage = graph.getPage(e.target);
+    if (e.source !== startNodeKey) continue;
+    const targetPage = graph.getNode(e.target);
     if (!targetPage) continue;
     if (targetPage.depth === startDepth + 1) {
       result.push(e.target);
@@ -83,11 +83,11 @@ export function getSelectionChildrenOrdered(graph: Graph, startId: string): stri
 }
 
 /**
- * Returns an ordered list of page IDs by DFS from startId, only following
- * edges to pages with a strictly higher depth number than the current page.
+ * Returns an ordered list of node IDs by DFS from startNodeKey, only following
+ * edges to nodes with a strictly higher depth number than the current node.
  */
-export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startId: string): string[] {
-  const startPage = graph.getPage(startId);
+export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startNodeKey: string): string[] {
+  const startPage = graph.getNode(startNodeKey);
   if (!startPage) return [];
 
   const adjacency = new Map<string, string[]>();
@@ -102,15 +102,15 @@ export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startId: st
 
   const visited = new Set<string>();
   const result: string[] = [];
-  const stack: Array<{ id: string; depth: number }> = [{ id: startId, depth: startPage.depth }];
+  const stack: Array<{ id: string; depth: number }> = [{ id: startNodeKey, depth: startPage.depth }];
 
   while (stack.length > 0) {
     const { id, depth } = stack.pop()!;
     if (visited.has(id)) continue;
     visited.add(id);
 
-    const page = graph.getPage(id);
-    if (page) {
+    const node = graph.getNode(id);
+    if (node) {
       result.push(id);
     }
 
@@ -120,7 +120,7 @@ export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startId: st
     for (let i = next.length - 1; i >= 0; i--) {
       const to = next[i];
       if (visited.has(to)) continue;
-      const neighborPage = graph.getPage(to);
+      const neighborPage = graph.getNode(to);
       if (neighborPage && neighborPage.depth > depth) {
         stack.push({ id: to, depth: neighborPage.depth });
       }
@@ -130,7 +130,7 @@ export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startId: st
   return result;
 }
 
-export function getSelectionPathFromHereOrdered(graph: Graph, startId: string): string[] {
+export function getSelectionPathFromHereOrdered(graph: Graph, startNodeKey: string): string[] {
   const adjacency = new Map<string, string[]>();
   for (const e of graph.getAllEdges()) {
     if (!adjacency.has(e.source)) adjacency.set(e.source, []);
@@ -143,15 +143,15 @@ export function getSelectionPathFromHereOrdered(graph: Graph, startId: string): 
 
   const visited = new Set<string>();
   const result: string[] = [];
-  const stack: string[] = [startId];
+  const stack: string[] = [startNodeKey];
 
   while (stack.length > 0) {
     const id = stack.pop()!;
     if (visited.has(id)) continue;
     visited.add(id);
 
-    // Only include pages that exist in the graph (defensive for stale IDs)
-    if (graph.getPage(id)) {
+    // Only include nodes that exist in the graph (defensive for stale IDs)
+    if (graph.getNode(id)) {
       result.push(id);
     }
 

@@ -54,7 +54,7 @@ const RESOURCES_FILE = 'resources.yaml';
 const RESOURCES_LOCAL_FILE = 'resources.local.yaml';
 const MIGRATIONS_FILE = 'migrations.yaml';
 const SITE_CONFIG_FILE = 'site_config.yaml';
-const SITE_PAGE_CONFIG_FILE = 'site_page_config.yaml';
+const SITE_NODE_CONFIG_FILE = 'site_node_config.yaml';
 const PAGE_TITLE_NORMALIZATION_HOOK_FILE = 'pageTitleNormalization.ts';
 const MARKDOWN_PROCESSING_HOOK_FILE = 'markdownProcessing.ts';
 const HTML_POST_PROCESSING_HOOK_FILE = 'htmlPostProcessing.ts';
@@ -142,9 +142,9 @@ export const AppConfigPaths = {
       return join(SITES_DIR, siteSlug, CONF_DIR, SITE_CONFIG_FILE);
     },
 
-    /** sites/{siteSlug}/conf/site_page_config.yaml */
-    sitePageConfigFile(siteSlug: string): string {
-      return join(SITES_DIR, siteSlug, CONF_DIR, SITE_PAGE_CONFIG_FILE);
+    /** sites/{siteSlug}/conf/site_node_config.yaml */
+    siteNodeConfigFile(siteSlug: string): string {
+      return join(SITES_DIR, siteSlug, CONF_DIR, SITE_NODE_CONFIG_FILE);
     },
   },
 
@@ -284,4 +284,3 @@ export const AppConfigPaths = {
     htmlPostProcessing: HTML_POST_PROCESSING_HOOK_FILE,
   } as const,
 };
-

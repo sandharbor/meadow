@@ -16,23 +16,23 @@ limitations under the License.
 
 import React, { useState, useCallback } from 'react';
 import Modal from '../../../../shared/components/Modal';
-import { ISitePage as IPage, LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage';
+import { ISiteNode, LinkResolvedInfo } from '../../../../../../shared_code/types/ISiteNode';
 import { Graph } from '../../../../../../shared_code/types/graph';
 
-interface SitePageLinksModalProps {
+interface SiteNodeLinksModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialPageId: string;
+  initialSiteNodeKey: string;
   graph: Graph;
-  onSelectPage: (pageId: string) => void;
-  onDeselectPage: (pageId: string) => void;
-  selectedPages: Set<string>;
-  isEffectivelySensitive: (page: IPage) => boolean;
+  onSelectNode: (siteNodeKey: string) => void;
+  onDeselectNode: (siteNodeKey: string) => void;
+  selectedNodeKeys: Set<string>;
+  isEffectivelySensitive: (page: ISiteNode) => boolean;
 }
 
-// Helper to parse a page ID into title (page IDs are in format: "directory/title.file_type" or "/title.file_type")
-function parsePageIdToTitle(pageId: string): string {
-  const parts = pageId.split('/');
+// Helper to parse a page ID into title (page IDs are in format: "directory/title.fileType" or "/title.fileType")
+function parseSiteNodeKeyToTitle(siteNodeKey: string): string {
+  const parts = siteNodeKey.split('/');
   const filename = parts[parts.length - 1];
   const dotIndex = filename.lastIndexOf('.');
   return dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
@@ -42,7 +42,7 @@ function parsePageIdToTitle(pageId: string): string {
 // Convert link_resolved_target_path to page ID format
 // link_resolved_target_path: "title.md" for root, "subdir/title.md" for subdirectory
 // page ID format: "/title.md" for root, "subdir/title.md" for subdirectory
-function pathToPageId(path: string): string {
+function pathToSiteNodeKey(path: string): string {
   if (!path.includes('/')) {
     // Root file - add leading slash
     return `/${path}`;
@@ -52,8 +52,8 @@ function pathToPageId(path: string): string {
 
 // Status pill component for consistency
 const StatusPills: React.FC<{
-  page: IPage;
-  isEffectivelySensitive: (page: IPage) => boolean;
+  page: ISiteNode;
+  isEffectivelySensitive: (page: ISiteNode) => boolean;
 }> = ({ page, isEffectivelySensitive }) => (
   <div className="flex flex-wrap gap-1">
     <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
@@ -73,7 +73,7 @@ const StatusPills: React.FC<{
         Sensitive
       </span>
     )}
-    {page.isFrontierPage && (
+    {page.isFrontierNode && (
       <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-pink-100 text-pink-800">
         Frontier
       </span>
@@ -86,31 +86,31 @@ const StatusPills: React.FC<{
   </div>
 );
 
-const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
+const SiteNodeLinksModal: React.FC<SiteNodeLinksModalProps> = ({
   isOpen,
   onClose,
-  initialPageId,
+  initialSiteNodeKey,
   graph,
-  onSelectPage,
-  onDeselectPage,
-  selectedPages,
+  onSelectNode,
+  onDeselectNode,
+  selectedNodeKeys,
   isEffectivelySensitive,
 }) => {
   // Navigation stack: allows navigating between pages and going back
-  const [viewStack, setViewStack] = useState<string[]>([initialPageId]);
+  const [viewStack, setViewStack] = useState<string[]>([initialSiteNodeKey]);
 
   // Reset stack when modal opens with a new initial page
   React.useEffect(() => {
     if (isOpen) {
-      setViewStack([initialPageId]);
+      setViewStack([initialSiteNodeKey]);
     }
-  }, [isOpen, initialPageId]);
+  }, [isOpen, initialSiteNodeKey]);
 
-  const currentPageId = viewStack[viewStack.length - 1];
-  const currentPage = graph.getPage(currentPageId);
+  const currentSiteNodeKey = viewStack[viewStack.length - 1];
+  const currentNode = graph.getNode(currentSiteNodeKey);
 
-  const handleNavigateToPage = useCallback((pageId: string) => {
-    setViewStack(prev => [...prev, pageId]);
+  const handleNavigateToNode = useCallback((siteNodeKey: string) => {
+    setViewStack(prev => [...prev, siteNodeKey]);
   }, []);
 
   const handleGoBack = useCallback(() => {
@@ -124,11 +124,11 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
   }, []);
 
   const handleClose = useCallback(() => {
-    setViewStack([initialPageId]);
+    setViewStack([initialSiteNodeKey]);
     onClose();
-  }, [initialPageId, onClose]);
+  }, [initialSiteNodeKey, onClose]);
 
-  if (!currentPage) {
+  if (!currentNode) {
     return (
       <Modal
         isOpen={isOpen}
@@ -144,21 +144,21 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
   }
 
   // Get outlinks from linkResolutionMap
-  const linkResolutionMap = currentPage.linkResolutionMap || {};
+  const linkResolutionMap = currentNode.linkResolutionMap || {};
   const outlinkEntries = Object.entries(linkResolutionMap) as [string, LinkResolvedInfo][];
 
   // Get inlinks from graph's allInlinkSources
-  const inlinkSourceIds = graph.getAllInlinkSources(currentPageId);
+  const inlinkSourceNodeKeys = graph.getAllInlinkSources(currentSiteNodeKey);
 
   // Helper to render the page path with directory in lighter color
-  const renderPagePath = (pageId: string) => {
-    const lastSlashIndex = pageId.lastIndexOf('/');
+  const renderNodePath = (siteNodeKey: string) => {
+    const lastSlashIndex = siteNodeKey.lastIndexOf('/');
     if (lastSlashIndex === -1) {
       // No directory part
-      return <span className="font-medium">{pageId}</span>;
+      return <span className="font-medium">{siteNodeKey}</span>;
     }
-    const dirPart = pageId.substring(0, lastSlashIndex + 1);
-    const filePart = pageId.substring(lastSlashIndex + 1);
+    const dirPart = siteNodeKey.substring(0, lastSlashIndex + 1);
+    const filePart = siteNodeKey.substring(lastSlashIndex + 1);
     return (
       <>
         <span className="text-gray-400">{dirPart}</span>
@@ -169,18 +169,18 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
 
   // Helper to render a link item
   const renderLinkItem = (
-    pageId: string,
+    siteNodeKey: string,
     _displayText: string,
     description: string,
     key: string,
     linkType: 'outlink' | 'inlink'
   ) => {
-    const linkedPage = graph.getPage(pageId);
-    const isInGraph = !!linkedPage;
-    const isSelected = selectedPages.has(pageId);
+    const linkedNode = graph.getNode(siteNodeKey);
+    const isInGraph = !!linkedNode;
+    const isSelected = selectedNodeKeys.has(siteNodeKey);
     const notInGraphTooltip = (() => {
       if (linkType === 'outlink') {
-        if (currentPage.blacklisted) {
+        if (currentNode.blacklisted) {
           return 'This page is blacklisted, so its outlinks are not traversed';
         }
         return 'The target page is beyond the outlinks depth';
@@ -192,8 +192,8 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
       <div key={key} className={`border rounded-lg p-3 bg-gray-50 ${!isInGraph ? 'opacity-60' : ''}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="text-sm truncate" title={pageId}>
-              {renderPagePath(pageId)}
+            <div className="text-sm truncate" title={siteNodeKey}>
+              {renderNodePath(siteNodeKey)}
             </div>
             {description && (
               <div className="text-xs text-gray-400 mt-0.5">
@@ -206,7 +206,7 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
             {isInGraph ? (
               <>
                 <button
-                  onClick={() => handleNavigateToPage(pageId)}
+                  onClick={() => handleNavigateToNode(siteNodeKey)}
                   className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
                   title="View links for this page"
                 >
@@ -214,14 +214,14 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
                 </button>
                 {isSelected ? (
                   <button
-                    onClick={() => onDeselectPage(pageId)}
+                    onClick={() => onDeselectNode(siteNodeKey)}
                     className="px-2 py-1 text-xs rounded bg-neutral-200 text-neutral-700 hover:bg-neutral-300"
                   >
                     Deselect
                   </button>
                 ) : (
                   <button
-                    onClick={() => onSelectPage(pageId)}
+                    onClick={() => onSelectNode(siteNodeKey)}
                     className="px-2 py-1 text-xs rounded bg-success-100 text-success-700 hover:bg-success-200"
                   >
                     Select
@@ -252,9 +252,9 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
           </div>
         </div>
 
-        {isInGraph && linkedPage && (
+        {isInGraph && linkedNode && (
           <div className="mt-2">
-            <StatusPills page={linkedPage} isEffectivelySensitive={isEffectivelySensitive} />
+            <StatusPills page={linkedNode} isEffectivelySensitive={isEffectivelySensitive} />
           </div>
         )}
       </div>
@@ -265,7 +265,7 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={`Links: ${currentPage.title}`}
+      title={`Links: ${currentNode.siteNodeName}`}
       className="w-4/5 max-w-4xl max-h-[85vh]"
     >
       <div className="flex flex-col h-full">
@@ -283,8 +283,8 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
             </button>
             <div className="text-sm text-gray-500 truncate">
               {viewStack.map((id, idx) => {
-                const page = graph.getPage(id);
-                const title = page?.title || parsePageIdToTitle(id);
+                const page = graph.getNode(id);
+                const title = page?.siteNodeName || parseSiteNodeKeyToTitle(id);
                 const isLast = idx === viewStack.length - 1;
                 return (
                   <span key={id}>
@@ -310,7 +310,7 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
         <div className="mb-6">
           {(() => {
             const notInGraphCount = outlinkEntries.filter(([, info]) =>
-              !info.link_resolved_target_path || !graph.getPage(pathToPageId(info.link_resolved_target_path))
+              !info.link_resolved_target_path || !graph.getNode(pathToSiteNodeKey(info.link_resolved_target_path))
             ).length;
             return (
               <h3 className="text-sm font-semibold text-gray-700 mb-2">
@@ -341,10 +341,10 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
                   );
                 }
 
-                const pageId = pathToPageId(targetPath);
-                const title = parsePageIdToTitle(pageId);
+                const siteNodeKey = pathToSiteNodeKey(targetPath);
+                const title = parseSiteNodeKeyToTitle(siteNodeKey);
                 return renderLinkItem(
-                  pageId,
+                  siteNodeKey,
                   title,
                   linkText !== title ? `Link text: ${linkText}` : '',
                   `outlink-${linkText}`,
@@ -358,10 +358,10 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
         {/* Inlinks Section */}
         <div className="flex-1 min-h-0">
           {(() => {
-            const notInGraphCount = inlinkSourceIds.filter(id => !graph.getPage(id)).length;
+            const notInGraphCount = inlinkSourceNodeKeys.filter(id => !graph.getNode(id)).length;
             return (
               <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                Inlinks ({inlinkSourceIds.length})
+                Inlinks ({inlinkSourceNodeKeys.length})
                 {notInGraphCount > 0 && (
                   <span className="font-normal text-gray-500 ml-1">
                     - {notInGraphCount} not in graph
@@ -371,12 +371,12 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
             );
           })()}
 
-          {inlinkSourceIds.length === 0 ? (
+          {inlinkSourceNodeKeys.length === 0 ? (
             <div className="text-sm text-gray-500 italic">No incoming links</div>
           ) : (
             <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-              {inlinkSourceIds.map(sourceId => {
-                const title = parsePageIdToTitle(sourceId);
+              {inlinkSourceNodeKeys.map(sourceId => {
+                const title = parseSiteNodeKeyToTitle(sourceId);
                 return renderLinkItem(
                   sourceId,
                   title,
@@ -403,4 +403,4 @@ const SitePageLinksModal: React.FC<SitePageLinksModalProps> = ({
   );
 };
 
-export default SitePageLinksModal;
+export default SiteNodeLinksModal;

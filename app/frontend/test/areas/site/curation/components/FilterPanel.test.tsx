@@ -24,7 +24,7 @@ describe('FilterPanel', () => {
     {
       id: 'test-filter-1',
       name: 'Test Filter 1',
-      pageSelectors: [
+      siteNodeSelectors: [
         {
           id: 'test-selector-1',
           name: 'Test Selector 1',
@@ -47,7 +47,7 @@ describe('FilterPanel', () => {
     {
       id: 'test-filter-2',
       name: 'Test Filter 2',
-      pageSelectors: [
+      siteNodeSelectors: [
         {
           id: 'test-selector-2',
           name: 'Test Selector 2',
@@ -70,7 +70,7 @@ describe('FilterPanel', () => {
     {
       id: 'search-by-title-filter',
       name: 'Search By Title',
-      pageSelectors: [
+      siteNodeSelectors: [
         {
           id: 'search-by-title',
           name: 'Search By Title',
@@ -195,7 +195,7 @@ describe('FilterPanel', () => {
 
     await waitFor(() => {
       expect(mockOnFilterChange).toHaveBeenCalledWith('search-by-title-filter', {
-        pageSelectors: [
+        siteNodeSelectors: [
           {
             id: 'search-by-title',
             name: 'Search By Title',
@@ -218,8 +218,8 @@ describe('FilterPanel', () => {
             enabled: true,
             isSolo: true,
             isHidden: true,
-            pageSelectors: [{
-              ...f.pageSelectors?.[0],
+            siteNodeSelectors: [{
+              ...f.siteNodeSelectors?.[0],
               searchInput: 'test'
             }]
           }
@@ -234,7 +234,7 @@ describe('FilterPanel', () => {
 
     await waitFor(() => {
       expect(mockOnFilterChange).toHaveBeenCalledWith('search-by-title-filter', {
-        pageSelectors: [
+        siteNodeSelectors: [
           {
             id: 'search-by-title',
             name: 'Search By Title',

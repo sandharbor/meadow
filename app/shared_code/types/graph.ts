@@ -17,13 +17,13 @@ limitations under the License.
 /*
   Shared Graph Types and Class
 */
-import { ISitePage } from './ISitePage.js';
-
-export type { ISitePage as IPage };
+import type { ISiteNode } from './ISiteNode.js';
+export type { ISiteNode } from './ISiteNode.js';
 
 export interface IEdge {
   source: string;
   target: string;
+  siteEdgeKind: 'semanticLink';
   label?: string;
   isBidirectional?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,14 +31,14 @@ export interface IEdge {
 }
 
 export class Graph {
-  private pages: Map<string, ISitePage>;
+  private nodes: Map<string, ISiteNode>;
   private edges: IEdge[];
   private changeListeners: Set<() => void>;
   private allInlinkSources: Record<string, string[]>;
   private allOutlinkTargets: Record<string, string[]>;
 
   constructor() {
-    this.pages = new Map();
+    this.nodes = new Map();
     this.edges = [];
     this.changeListeners = new Set();
     this.allInlinkSources = {};
@@ -57,59 +57,58 @@ export class Graph {
     this.changeListeners.delete(listener);
   }
 
-  addPage(page: ISitePage): void {
-    this.pages.set(page.id, page);
+  addNode(node: ISiteNode): void {
+    this.nodes.set(node.siteNodeKey, node);
     this.notifyChange();
   }
 
-  updatePage(id: string, page: ISitePage): void {
-    if (!this.pages.has(id)) {
-      throw new Error('Page does not exist');
+  updateNode(siteNodeKey: string, node: ISiteNode): void {
+    if (!this.nodes.has(siteNodeKey)) {
+      throw new Error('Node does not exist');
     }
-    this.pages.set(id, page);
+    this.nodes.set(siteNodeKey, node);
     this.notifyChange();
   }
 
-  addEdge(edge: IEdge): void {
-    if (!this.pages.has(edge.source) || !this.pages.has(edge.target)) {
-      throw new Error('Source or target page does not exist');
+  addEdge(edge: Omit<IEdge, 'siteEdgeKind'> & Partial<Pick<IEdge, 'siteEdgeKind'>>): void {
+    if (!this.nodes.has(edge.source) || !this.nodes.has(edge.target)) {
+      throw new Error('Source or target node does not exist');
     }
-    this.edges.push(edge);
+    this.edges.push({ ...edge, siteEdgeKind: edge.siteEdgeKind ?? 'semanticLink' });
     this.notifyChange();
   }
 
-  getPage(id: string): ISitePage | undefined {
-    return this.pages.get(id);
+  getNode(siteNodeKey: string): ISiteNode | undefined {
+    return this.nodes.get(siteNodeKey);
   }
 
-  getAllPages(): ISitePage[] {
-    return Array.from(this.pages.values());
+  getAllNodes(): ISiteNode[] {
+    return Array.from(this.nodes.values());
   }
 
   getAllEdges(): IEdge[] {
     return this.edges;
   }
 
-  getOutgoingEdges(pageId: string): IEdge[] {
-    return this.edges.filter(edge => edge.source === pageId);
+  getOutgoingEdges(siteNodeKey: string): IEdge[] {
+    return this.edges.filter(edge => edge.source === siteNodeKey);
   }
 
-  getIncomingEdges(pageId: string): IEdge[] {
-    return this.edges.filter(edge => edge.target === pageId);
+  getIncomingEdges(siteNodeKey: string): IEdge[] {
+    return this.edges.filter(edge => edge.target === siteNodeKey);
   }
 
   // tag-todo-depth: we don't really need to calculate distances here... we can just rely on the depth property
   // tag-todo-naming: we should just call this depth
   calculateDistances(): Map<string, number> {
     const distances = new Map<string, number>();
-    this.pages.forEach((page, _pageId) => {
-      const pageKey = `${page.sourceGraphSubdirectory}/${page.title}.${page.file_type}`;
-      distances.set(pageKey, page.depth);
+    this.nodes.forEach(node => {
+      distances.set(node.siteNodeKey, node.depth);
     });
     return distances;
   }
 
-  // Methods for accessing full source graph link data (including pages outside working graph)
+  // Methods for accessing full source-graph link data, including files outside the working graph.
   setLinkSourceData(
     inlinkSources: Record<string, string[]>,
     outlinkTargets: Record<string, string[]>
@@ -118,13 +117,13 @@ export class Graph {
     this.allOutlinkTargets = outlinkTargets;
   }
 
-  // Returns all source page IDs that link TO this page in the source graph
-  getAllInlinkSources(pageId: string): string[] {
-    return this.allInlinkSources[pageId] || [];
+  // Returns all source-node keys that link to this node in the source graph.
+  getAllInlinkSources(siteNodeKey: string): string[] {
+    return this.allInlinkSources[siteNodeKey] || [];
   }
 
-  // Returns all target page IDs that this page links TO in the source graph
-  getAllOutlinkTargets(pageId: string): string[] {
-    return this.allOutlinkTargets[pageId] || [];
+  // Returns all target-node keys that this node links to in the source graph.
+  getAllOutlinkTargets(siteNodeKey: string): string[] {
+    return this.allOutlinkTargets[siteNodeKey] || [];
   }
 }

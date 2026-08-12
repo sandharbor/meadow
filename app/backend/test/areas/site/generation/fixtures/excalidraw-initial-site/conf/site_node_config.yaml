@@ -1,0 +1,13 @@
+nodes:
+  - siteNodeName: embedded media
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: 8be9eee5814d
+    listType: whitelist
+    outlinksDepth: 1
+    inlinksDepth: 0
+  - siteNodeName: meadow flower
+    siteNodeKind: file
+    fileType: excalidraw
+    siteNodeId: 456175f97e4d
+    listType: whitelist

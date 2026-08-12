@@ -15,20 +15,21 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
 import {
   buildFolderTree,
-  hasPagesInMultipleFolders,
+  hasNodesInMultipleFolders,
   normalizeFolderPath,
-  pageIsInFolder
+  nodeIsInFolder
 } from '../../../../../src/areas/site/curation/utils/folderFilterUtils';
 
-const page = (id: string, sourceGraphSubdirectory: string): ISitePage => ({
-  id,
+const page = (id: string, sourceGraphSubdirectory: string): ISiteNode => ({
+  siteNodeKey: id as ISiteNode['siteNodeKey'],
+  siteNodeKind: 'file',
   label: id,
-  title: id,
+  siteNodeName: id,
   sourceGraphSubdirectory,
-  file_type: 'md',
+  fileType: 'md',
   depth: 0,
   remaining_depth: 0,
   getIdent: () => `${sourceGraphSubdirectory}/${id}.md`
@@ -44,28 +45,28 @@ describe('folderFilterUtils', () => {
       page('archive', 'Archive')
     ]);
 
-    expect(tree.map(node => [node.path, node.pageCount])).toEqual([
+    expect(tree.map(node => [node.path, node.nodeCount])).toEqual([
       ['', 1],
       ['Archive', 1],
       ['Projects', 3]
     ]);
-    expect(tree[2].directPageCount).toBe(1);
-    expect(tree[2].children.map(node => [node.path, node.pageCount])).toEqual([
+    expect(tree[2].directNodeCount).toBe(1);
+    expect(tree[2].children.map(node => [node.path, node.nodeCount])).toEqual([
       ['Projects/Notes', 2]
     ]);
   });
 
   it('normalizes separators and only enables the filter for multiple occupied folders', () => {
     expect(normalizeFolderPath('\\Projects//Notes/')).toBe('Projects/Notes');
-    expect(hasPagesInMultipleFolders([page('one', 'Projects'), page('two', 'Projects')])).toBe(false);
-    expect(hasPagesInMultipleFolders([page('one', 'Projects'), page('two', 'Projects/Notes')])).toBe(true);
+    expect(hasNodesInMultipleFolders([page('one', 'Projects'), page('two', 'Projects')])).toBe(false);
+    expect(hasNodesInMultipleFolders([page('one', 'Projects'), page('two', 'Projects/Notes')])).toBe(true);
   });
 
   it('matches a folder subtree while keeping the synthetic root exact', () => {
-    expect(pageIsInFolder('Projects', 'Projects')).toBe(true);
-    expect(pageIsInFolder('Projects/Notes', 'Projects')).toBe(true);
-    expect(pageIsInFolder('Projects-Old', 'Projects')).toBe(false);
-    expect(pageIsInFolder('', '')).toBe(true);
-    expect(pageIsInFolder('Projects', '')).toBe(false);
+    expect(nodeIsInFolder('Projects', 'Projects')).toBe(true);
+    expect(nodeIsInFolder('Projects/Notes', 'Projects')).toBe(true);
+    expect(nodeIsInFolder('Projects-Old', 'Projects')).toBe(false);
+    expect(nodeIsInFolder('', '')).toBe(true);
+    expect(nodeIsInFolder('Projects', '')).toBe(false);
   });
 });

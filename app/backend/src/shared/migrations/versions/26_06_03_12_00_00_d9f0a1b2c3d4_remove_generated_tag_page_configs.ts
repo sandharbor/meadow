@@ -51,7 +51,7 @@ function removeStaleGeneratedTagContent(siteDir: string): void {
   const paths = [
     SiteConfigPaths.getTrackedPageContentTagpagesDir(siteDir),
     SiteConfigPaths.getPreparedSourceContentDir(siteDir),
-    SiteConfigPaths.getPreparedSitePageConfigFile(siteDir),
+    path.join(siteDir, 'build', 'prepared_site_page_config.yaml'),
     SiteConfigPaths.getLegacyRenderSourceContentDir(siteDir),
   ];
 

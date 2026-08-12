@@ -16,36 +16,35 @@ limitations under the License.
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Graph } from '../../../../../../shared_code/types/graph';
-import { IPage } from '../../../../../../shared_code/types/graph';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig';
+import type { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
 import TraversalPathDetailsModal from './TraversalPathDetailsModal';
-import SitePageLinksModal from './SitePageLinksModal';
-import PageContextMenu, { ObsidianInfo } from './PageContextMenu';
+import SiteNodeLinksModal from './SiteNodeLinksModal';
+import SiteNodeContextMenu, { ObsidianInfo } from './SiteNodeContextMenu';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 
-interface SitePageSelectionSidebarProps {
-  selectedPages: Set<string>;
+interface SiteNodeSelectionSidebarProps {
+  selectedNodeKeys: Set<string>;
   graph: Graph;
   onClose: () => void;
-  onSelectedPagesChange: (pages: Set<string>) => void;
-  onTrackPage: (pageId: string) => void;
-  onBlacklistPage: (pageId: string) => void;
+  onSelectedNodeKeysChange: (pages: Set<string>) => void;
+  onTrackPage: (siteNodeKey: string) => void;
+  onBlacklistPage: (siteNodeKey: string) => void;
   onTrackSelected: () => void;
   onBlacklistSelected: () => void;
-  isEffectivelySensitive: (page: IPage) => boolean;
-  onUpdatePageConfig: (pageId: string, key: keyof SitePageConfig['config'], value: number | boolean) => void;
-  onDeletePageConfigKey: (pageId: string, key: keyof SitePageConfig['config']) => void;
-  onPreviewPage: (pageId: string) => void;
+  isEffectivelySensitive: (page: ISiteNode) => boolean;
+  onUpdatePageConfig: (siteNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth', value: number) => void;
+  onDeletePageConfigKey: (siteNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth') => void;
+  onPreviewPage: (siteNodeKey: string) => void;
   hasDraftChanges: boolean;
-  onMarkSensitive?: (pageId: string, isSensitive: boolean) => void;
+  onMarkSensitive?: (siteNodeKey: string, isSensitive: boolean) => void;
   obsidianInfo: ObsidianInfo | null;
 }
 
-const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
-  selectedPages,
+const SiteNodeSelectionSidebar: React.FC<SiteNodeSelectionSidebarProps> = ({
+  selectedNodeKeys,
   graph,
   onClose,
-  onSelectedPagesChange,
+  onSelectedNodeKeysChange,
   onTrackPage,
   onBlacklistPage,
   onTrackSelected,
@@ -58,61 +57,61 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
   onMarkSensitive,
   obsidianInfo,
 }) => {
-  const [openDropdownPageId, setOpenDropdownPageId] = useState<string | null>(null);
+  const [openDropdownSiteNodeKey, setOpenDropdownSiteNodeKey] = useState<string | null>(null);
   const [dropdownButtonRect, setDropdownButtonRect] = useState<{ x: number; y: number } | null>(null);
-  const [openDetailsPageIds, setOpenDetailsPageIds] = useState<Set<string>>(new Set());
-  const [outlinksDepthInputsByPageId, setOutlinksDepthInputsByPageId] = useState<Record<string, string>>({});
-  const [inlinksDepthInputsByPageId, setInlinksDepthInputsByPageId] = useState<Record<string, string>>({});
-  const [outlinksDepthOverrideOpenByPageId, setOutlinksDepthOverrideOpenByPageId] = useState<Record<string, boolean>>({});
-  const [inlinksDepthOverrideOpenByPageId, setInlinksDepthOverrideOpenByPageId] = useState<Record<string, boolean>>({});
+  const [openDetailsSiteNodeKeys, setOpenDetailsSiteNodeKeys] = useState<Set<string>>(new Set());
+  const [outlinksDepthInputsBySiteNodeKey, setOutlinksDepthInputsBySiteNodeKey] = useState<Record<string, string>>({});
+  const [inlinksDepthInputsBySiteNodeKey, setInlinksDepthInputsBySiteNodeKey] = useState<Record<string, string>>({});
+  const [outlinksDepthOverrideOpenBySiteNodeKey, setOutlinksDepthOverrideOpenBySiteNodeKey] = useState<Record<string, boolean>>({});
+  const [inlinksDepthOverrideOpenBySiteNodeKey, setInlinksDepthOverrideOpenBySiteNodeKey] = useState<Record<string, boolean>>({});
   const [isTraversalDetailsModalOpen, setIsTraversalDetailsModalOpen] = useState<boolean>(false);
-  const [traversalDetailsPageId, setTraversalDetailsPageId] = useState<string | null>(null);
+  const [traversalDetailsSiteNodeKey, setTraversalDetailsSiteNodeKey] = useState<string | null>(null);
   const [isLinksModalOpen, setIsLinksModalOpen] = useState<boolean>(false);
-  const [linksModalPageId, setLinksModalPageId] = useState<string | null>(null);
+  const [linksModalSiteNodeKey, setLinksModalSiteNodeKey] = useState<string | null>(null);
 
   // Path collapsing state
-  const [expandedPathPageIds, setExpandedPathPageIds] = useState<Set<string>>(new Set());
-  const [shouldCollapsePathByPageId, setShouldCollapsePathByPageId] = useState<Map<string, boolean>>(new Map());
+  const [expandedPathSiteNodeKeys, setExpandedPathSiteNodeKeys] = useState<Set<string>>(new Set());
+  const [shouldCollapsePathBySiteNodeKey, setShouldCollapsePathBySiteNodeKey] = useState<Map<string, boolean>>(new Map());
   const pathMeasureRefsMap = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
   // Clear depth input caches when the graph reloads (e.g. after undo) so the
   // inputs reflect the current config values rather than stale local edits.
   useEffect(() => {
-    setOutlinksDepthInputsByPageId({});
-    setInlinksDepthInputsByPageId({});
+    setOutlinksDepthInputsBySiteNodeKey({});
+    setInlinksDepthInputsBySiteNodeKey({});
   }, [graph]);
 
   // Auto-expand details when only the initial site page is selected
   useEffect(() => {
-    if (selectedPages.size === 1) {
-      const pageId = Array.from(selectedPages)[0];
-      const page = graph.getPage(pageId);
+    if (selectedNodeKeys.size === 1) {
+      const siteNodeKey = Array.from(selectedNodeKeys)[0];
+      const page = graph.getNode(siteNodeKey);
       if (page && page.depth === 0) {
-        setOpenDetailsPageIds(prev => {
-          if (prev.has(pageId)) return prev;
-          return new Set([...prev, pageId]);
+        setOpenDetailsSiteNodeKeys(prev => {
+          if (prev.has(siteNodeKey)) return prev;
+          return new Set([...prev, siteNodeKey]);
         });
       }
     }
-  }, [selectedPages, graph]);
+  }, [selectedNodeKeys, graph]);
 
   // Measure paths to determine if they should be collapsed
   useLayoutEffect(() => {
     // Get pages with paths that have 4+ components and are currently open in details
-    const pagesToMeasure = Array.from(selectedPages)
-      .map(id => graph.getPage(id))
-      .filter((page): page is IPage =>
+    const nodesToMeasure = Array.from(selectedNodeKeys)
+      .map(id => graph.getNode(id))
+      .filter((page): page is ISiteNode =>
         page !== null &&
         page !== undefined &&
-        openDetailsPageIds.has(page.id) &&
+        openDetailsSiteNodeKeys.has(page.siteNodeKey) &&
         Array.isArray(page.path) &&
         page.path.length >= 4
       );
 
-    if (pagesToMeasure.length === 0) return;
+    if (nodesToMeasure.length === 0) return;
 
-    const measurePath = (pageId: string) => {
-      const container = pathMeasureRefsMap.current.get(pageId);
+    const measurePath = (siteNodeKey: string) => {
+      const container = pathMeasureRefsMap.current.get(siteNodeKey);
       if (!container) return null;
 
       // Find all path items inside the measurement container
@@ -130,46 +129,46 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
     };
 
     // Initial measurement
-    const newCollapseMap = new Map(shouldCollapsePathByPageId);
-    pagesToMeasure.forEach(page => {
-      const shouldCollapse = measurePath(page.id);
+    const newCollapseMap = new Map(shouldCollapsePathBySiteNodeKey);
+    nodesToMeasure.forEach(page => {
+      const shouldCollapse = measurePath(page.siteNodeKey);
       if (shouldCollapse !== null) {
-        newCollapseMap.set(page.id, shouldCollapse);
+        newCollapseMap.set(page.siteNodeKey, shouldCollapse);
       }
     });
 
     // Only update if changed
-    const hasChanges = pagesToMeasure.some(page => {
-      const prev = shouldCollapsePathByPageId.get(page.id);
-      const next = newCollapseMap.get(page.id);
+    const hasChanges = nodesToMeasure.some(page => {
+      const prev = shouldCollapsePathBySiteNodeKey.get(page.siteNodeKey);
+      const next = newCollapseMap.get(page.siteNodeKey);
       return prev !== next;
     });
 
     if (hasChanges) {
-      setShouldCollapsePathByPageId(newCollapseMap);
+      setShouldCollapsePathBySiteNodeKey(newCollapseMap);
     }
 
     // Set up ResizeObserver for dynamic updates
     const resizeObserver = new ResizeObserver(() => {
-      const updatedCollapseMap = new Map(shouldCollapsePathByPageId);
+      const updatedCollapseMap = new Map(shouldCollapsePathBySiteNodeKey);
       let changed = false;
 
-      pagesToMeasure.forEach(page => {
-        const shouldCollapse = measurePath(page.id);
-        if (shouldCollapse !== null && updatedCollapseMap.get(page.id) !== shouldCollapse) {
-          updatedCollapseMap.set(page.id, shouldCollapse);
+      nodesToMeasure.forEach(page => {
+        const shouldCollapse = measurePath(page.siteNodeKey);
+        if (shouldCollapse !== null && updatedCollapseMap.get(page.siteNodeKey) !== shouldCollapse) {
+          updatedCollapseMap.set(page.siteNodeKey, shouldCollapse);
           changed = true;
         }
       });
 
       if (changed) {
-        setShouldCollapsePathByPageId(updatedCollapseMap);
+        setShouldCollapsePathBySiteNodeKey(updatedCollapseMap);
       }
     });
 
     // Observe all measurement containers
-    pagesToMeasure.forEach(page => {
-      const container = pathMeasureRefsMap.current.get(page.id);
+    nodesToMeasure.forEach(page => {
+      const container = pathMeasureRefsMap.current.get(page.siteNodeKey);
       if (container) {
         resizeObserver.observe(container);
       }
@@ -178,69 +177,69 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [selectedPages, graph, openDetailsPageIds, shouldCollapsePathByPageId]);
+  }, [selectedNodeKeys, graph, openDetailsSiteNodeKeys, shouldCollapsePathBySiteNodeKey]);
 
-  const toggleDetailsForPage = (pageId: string) => {
-    setOpenDetailsPageIds(prev => {
+  const toggleDetailsForPage = (siteNodeKey: string) => {
+    setOpenDetailsSiteNodeKeys(prev => {
       const next = new Set(prev);
-      if (next.has(pageId)) {
-        next.delete(pageId);
+      if (next.has(siteNodeKey)) {
+        next.delete(siteNodeKey);
         // Reset path expansion when details are closed
-        setExpandedPathPageIds(prevExpanded => {
-          if (prevExpanded.has(pageId)) {
+        setExpandedPathSiteNodeKeys(prevExpanded => {
+          if (prevExpanded.has(siteNodeKey)) {
             const nextExpanded = new Set(prevExpanded);
-            nextExpanded.delete(pageId);
+            nextExpanded.delete(siteNodeKey);
             return nextExpanded;
           }
           return prevExpanded;
         });
       } else {
-        next.add(pageId);
+        next.add(siteNodeKey);
       }
       return next;
     });
   };
 
-  const setOutlinksDepthInputForPage = (pageId: string, value: string) => {
-    setOutlinksDepthInputsByPageId(prev => ({ ...prev, [pageId]: value }));
+  const setOutlinksDepthInputForPage = (siteNodeKey: string, value: string) => {
+    setOutlinksDepthInputsBySiteNodeKey(prev => ({ ...prev, [siteNodeKey]: value }));
   };
 
-  const setInlinksDepthInputForPage = (pageId: string, value: string) => {
-    setInlinksDepthInputsByPageId(prev => ({ ...prev, [pageId]: value }));
+  const setInlinksDepthInputForPage = (siteNodeKey: string, value: string) => {
+    setInlinksDepthInputsBySiteNodeKey(prev => ({ ...prev, [siteNodeKey]: value }));
   };
 
-  const handleSetOutlinksDepthForPage = (pageId: string) => {
-    const raw = outlinksDepthInputsByPageId[pageId] ?? '';
+  const handleSetOutlinksDepthForPage = (siteNodeKey: string) => {
+    const raw = outlinksDepthInputsBySiteNodeKey[siteNodeKey] ?? '';
     if (raw === '') return;
     const depth = parseInt(raw, 10);
     if (!isNaN(depth) && depth >= 0) {
-      onUpdatePageConfig(pageId, 'outlinks_depth', depth);
-      setOutlinksDepthInputForPage(pageId, String(depth));
-      setOutlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [pageId]: false }));
+      onUpdatePageConfig(siteNodeKey, 'outlinksDepth', depth);
+      setOutlinksDepthInputForPage(siteNodeKey, String(depth));
+      setOutlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [siteNodeKey]: false }));
     }
   };
 
-  const handleClearOutlinksDepthForPage = (pageId: string) => {
-    onDeletePageConfigKey(pageId, 'outlinks_depth');
-    setOutlinksDepthInputForPage(pageId, '');
-    setOutlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [pageId]: false }));
+  const handleClearOutlinksDepthForPage = (siteNodeKey: string) => {
+    onDeletePageConfigKey(siteNodeKey, 'outlinksDepth');
+    setOutlinksDepthInputForPage(siteNodeKey, '');
+    setOutlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [siteNodeKey]: false }));
   };
 
-  const handleSetInlinksDepthForPage = (pageId: string) => {
-    const raw = inlinksDepthInputsByPageId[pageId] ?? '';
+  const handleSetInlinksDepthForPage = (siteNodeKey: string) => {
+    const raw = inlinksDepthInputsBySiteNodeKey[siteNodeKey] ?? '';
     if (raw === '') return;
     const depth = parseInt(raw, 10);
     if (!isNaN(depth) && depth >= 0) {
-      onUpdatePageConfig(pageId, 'inlinks_depth', depth);
-      setInlinksDepthInputForPage(pageId, String(depth));
-      setInlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [pageId]: false }));
+      onUpdatePageConfig(siteNodeKey, 'inlinksDepth', depth);
+      setInlinksDepthInputForPage(siteNodeKey, String(depth));
+      setInlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [siteNodeKey]: false }));
     }
   };
 
-  const handleClearInlinksDepthForPage = (pageId: string) => {
-    onDeletePageConfigKey(pageId, 'inlinks_depth');
-    setInlinksDepthInputForPage(pageId, '');
-    setInlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [pageId]: false }));
+  const handleClearInlinksDepthForPage = (siteNodeKey: string) => {
+    onDeletePageConfigKey(siteNodeKey, 'inlinksDepth');
+    setInlinksDepthInputForPage(siteNodeKey, '');
+    setInlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [siteNodeKey]: false }));
   };
 
   return (
@@ -261,25 +260,25 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
 
       {/* Content Section */}
       <div className="flex-none p-4 space-y-3 border-b">
-        {selectedPages.size === 0 ? (
+        {selectedNodeKeys.size === 0 ? (
           <p className="text-sm text-neutral-500 italic">Please select a page.</p>
         ) : (
           <div className="space-y-2">
-            {selectedPages.size > 2 && (
+            {selectedNodeKeys.size > 2 && (
               <div className="text-sm text-neutral-600">
-                {selectedPages.size} selected
+                {selectedNodeKeys.size} selected
               </div>
             )}
-            {selectedPages.size > 1 && (
+            {selectedNodeKeys.size > 1 && (
               <div className="space-y-2 pt-2 border-t border-neutral-200">
                 <div className="flex gap-2">
                   {(() => {
-                    const hasSensitiveOrFrontier = Array.from(selectedPages).some(id => {
-                      const page = graph.getPage(id);
-                      return page && (isEffectivelySensitive(page) || page.isFrontierPage);
+                    const hasSensitiveOrFrontier = Array.from(selectedNodeKeys).some(id => {
+                      const page = graph.getNode(id);
+                      return page && (isEffectivelySensitive(page) || page.isFrontierNode);
                     });
-                    const allAlreadyTracked = Array.from(selectedPages).every(id => {
-                      const page = graph.getPage(id);
+                    const allAlreadyTracked = Array.from(selectedNodeKeys).every(id => {
+                      const page = graph.getNode(id);
                       return page && page.tracked;
                     });
                     const isDisabled = hasSensitiveOrFrontier || allAlreadyTracked;
@@ -301,14 +300,14 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                   })()}
                   <button
                     onClick={onBlacklistSelected}
-                    disabled={Array.from(selectedPages).some(id => {
-                      const page = graph.getPage(id);
-                      return page && page.isFrontierPage;
+                    disabled={Array.from(selectedNodeKeys).some(id => {
+                      const page = graph.getNode(id);
+                      return page && page.isFrontierNode;
                     })}
                     className={`flex-1 px-4 py-2 text-sm rounded ${
-                      Array.from(selectedPages).some(id => {
-                        const page = graph.getPage(id);
-                        return page && page.isFrontierPage;
+                      Array.from(selectedNodeKeys).some(id => {
+                        const page = graph.getNode(id);
+                        return page && page.isFrontierNode;
                       })
                         ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                         : 'bg-danger-100 text-danger-700 hover:bg-danger-200'
@@ -317,8 +316,8 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                     Blacklist All
                   </button>
                 </div>
-                {Array.from(selectedPages)
-                  .map(id => graph.getPage(id))
+                {Array.from(selectedNodeKeys)
+                  .map(id => graph.getNode(id))
                   .some(page => page && isEffectivelySensitive(page)) && (
                   <div className="space-y-2">
                     <p className="text-sm text-neutral-500 italic">
@@ -326,13 +325,13 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                     </p>
                     <button
                       onClick={() => {
-                        const nonSensitivePages = Array.from(selectedPages).filter(
+                        const nonSensitiveNodeKeys = Array.from(selectedNodeKeys).filter(
                           id => {
-                            const page = graph.getPage(id);
+                            const page = graph.getNode(id);
                             return !(page && isEffectivelySensitive(page));
                           }
                         );
-                        onSelectedPagesChange(new Set(nonSensitivePages));
+                        onSelectedNodeKeysChange(new Set(nonSensitiveNodeKeys));
                       }}
                       className="text-sm text-main-600 hover:text-main-800 hover:underline"
                     >
@@ -340,22 +339,22 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                     </button>
                   </div>
                 )}
-                {Array.from(selectedPages)
-                  .map(id => graph.getPage(id))
-                  .some(page => page && page.isFrontierPage) && (
+                {Array.from(selectedNodeKeys)
+                  .map(id => graph.getNode(id))
+                  .some(page => page && page.isFrontierNode) && (
                   <div className="space-y-2">
                     <p className="text-sm text-neutral-500 italic">
                       Cannot track/blacklist frontier pages (they are outside the working area).
                     </p>
                     <button
                       onClick={() => {
-                        const nonFrontierPages = Array.from(selectedPages).filter(
+                        const nonFrontierNodeKeys = Array.from(selectedNodeKeys).filter(
                           id => {
-                            const page = graph.getPage(id);
-                            return !(page && page.isFrontierPage);
+                            const page = graph.getNode(id);
+                            return !(page && page.isFrontierNode);
                           }
                         );
-                        onSelectedPagesChange(new Set(nonFrontierPages));
+                        onSelectedNodeKeysChange(new Set(nonFrontierNodeKeys));
                       }}
                       className="text-sm text-main-600 hover:text-main-800 hover:underline"
                     >
@@ -372,9 +371,9 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
       {/* Scrollable Pages List Container */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="divide-y divide-neutral-200">
-          {Array.from(selectedPages)
-            .map((id, originalIndex) => ({ id, originalIndex, page: graph.getPage(id) }))
-            .filter((x): x is { id: string; originalIndex: number; page: IPage } => Boolean(x.page))
+          {Array.from(selectedNodeKeys)
+            .map((id, originalIndex) => ({ id, originalIndex, page: graph.getNode(id) }))
+            .filter((x): x is { id: string; originalIndex: number; page: ISiteNode } => Boolean(x.page))
             .sort((a, b) => {
               // Always order untracked + (effectively) sensitive pages to the top.
               // For all other pages, keep the existing selection order (newest-first insertion).
@@ -384,19 +383,19 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
               return a.originalIndex - b.originalIndex;
             })
             .map(({ page }) => (
-              <div key={page!.id} className="p-4 hover:bg-neutral-50" data-testid={`selected-page-${page!.id}`}>
+              <div key={page!.siteNodeKey} className="p-4 hover:bg-neutral-50" data-testid={`selected-page-${page!.siteNodeKey}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium truncate flex-1 mr-2">{page!.data?.title || page!.label}</span>
+                  <span className="text-sm font-medium truncate flex-1 mr-2">{page!.data?.siteNodeName || page!.label}</span>
                   <div className="flex items-center gap-1 flex-none">
                     {/* More options dropdown */}
                     <button
                       onClick={(e) => {
-                        if (openDropdownPageId === page!.id) {
-                          setOpenDropdownPageId(null);
+                        if (openDropdownSiteNodeKey === page!.siteNodeKey) {
+                          setOpenDropdownSiteNodeKey(null);
                           setDropdownButtonRect(null);
                         } else {
                           const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                          setOpenDropdownPageId(page!.id);
+                          setOpenDropdownSiteNodeKey(page!.siteNodeKey);
                           setDropdownButtonRect({ x: rect.right - 192, y: rect.bottom + 4 });
                         }
                       }}
@@ -405,25 +404,25 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                     >
                       ...
                     </button>
-                    {openDropdownPageId === page!.id && dropdownButtonRect && (
-                      <PageContextMenu
+                    {openDropdownSiteNodeKey === page!.siteNodeKey && dropdownButtonRect && (
+                      <SiteNodeContextMenu
                         page={page!}
                         graph={graph}
                         position={dropdownButtonRect}
-                        onClose={() => { setOpenDropdownPageId(null); setDropdownButtonRect(null); }}
+                        onClose={() => { setOpenDropdownSiteNodeKey(null); setDropdownButtonRect(null); }}
                         onTrackPage={onTrackPage}
                         onBlacklistPage={onBlacklistPage}
                         onPreviewPage={onPreviewPage}
                         hasDraftChanges={hasDraftChanges}
-                        onSelectedPagesChange={onSelectedPagesChange}
+                        onSelectedNodeKeysChange={onSelectedNodeKeysChange}
                         onMarkSensitive={onMarkSensitive}
                         obsidianInfo={obsidianInfo}
                       />
                     )}
                     <button
                       onClick={() => {
-                        onSelectedPagesChange(new Set(
-                          Array.from(selectedPages).filter(id => id !== page!.id)
+                        onSelectedNodeKeysChange(new Set(
+                          Array.from(selectedNodeKeys).filter(id => id !== page!.siteNodeKey)
                         ));
                       }}
                       className="p-1 rounded hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-200"
@@ -463,7 +462,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                       Sensitive
                     </span>
                   )}
-                  {page!.isFrontierPage && (
+                  {page!.isFrontierNode && (
                     <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-pink-100 text-pink-800">
                       Frontier
                     </span>
@@ -477,12 +476,12 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                 {/* For untracked pages, show Track + Blacklist as the primary quick-actions */}
                 {!page!.tracked && (
                   <div className="mt-2 flex gap-2">
-                    <DisabledTooltip disabled={page!.isFrontierPage} tooltip="Cannot track frontier pages" className="flex-1">
+                    <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Cannot track frontier pages" className="flex-1">
                       <button
-                        onClick={() => onTrackPage(page!.id)}
-                        disabled={page!.isFrontierPage}
+                        onClick={() => onTrackPage(page!.siteNodeKey)}
+                        disabled={page!.isFrontierNode}
                         className={`w-full px-2 py-1 text-xs rounded ${
-                          page!.isFrontierPage
+                          page!.isFrontierNode
                             ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                             : 'bg-success-100 text-success-700 hover:bg-success-200'
                         }`}
@@ -491,12 +490,12 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                       </button>
                     </DisabledTooltip>
                     {!page!.blacklisted && (
-                      <DisabledTooltip disabled={page!.isFrontierPage} tooltip="Cannot blacklist frontier pages" align="right" className="flex-1">
+                      <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Cannot blacklist frontier pages" align="right" className="flex-1">
                         <button
-                          onClick={() => onBlacklistPage(page!.id)}
-                          disabled={page!.isFrontierPage}
+                          onClick={() => onBlacklistPage(page!.siteNodeKey)}
+                          disabled={page!.isFrontierNode}
                           className={`w-full px-2 py-1 text-xs rounded ${
-                            page!.isFrontierPage
+                            page!.isFrontierNode
                               ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                               : 'bg-danger-100 text-danger-700 hover:bg-danger-200'
                           }`}
@@ -511,7 +510,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                 {/* Collapsed details: path + depth overrides */}
                 <div className="mt-2">
                   <button
-                    onClick={() => toggleDetailsForPage(page!.id)}
+                    onClick={() => toggleDetailsForPage(page!.siteNodeKey)}
                     className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-700"
                     title="Toggle details"
                   >
@@ -524,14 +523,14 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className={`transition-transform duration-200 ${openDetailsPageIds.has(page!.id) ? 'rotate-90' : ''}`}
+                      className={`transition-transform duration-200 ${openDetailsSiteNodeKeys.has(page!.siteNodeKey) ? 'rotate-90' : ''}`}
                     >
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
                     <span>Details</span>
                   </button>
 
-                  {openDetailsPageIds.has(page!.id) && (
+                  {openDetailsSiteNodeKeys.has(page!.siteNodeKey) && (
                     <div className="mt-2 p-2 bg-neutral-50 border border-neutral-200 rounded space-y-2">
                       {/* Path - only show for non-initial pages */}
                       {page!.depth !== 0 && Array.isArray(page!.path) && page!.path.length > 0 && (
@@ -540,7 +539,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                             <div className="text-xs font-semibold text-neutral-700">Path</div>
                             <button
                               onClick={() => {
-                                setTraversalDetailsPageId(page!.id);
+                                setTraversalDetailsSiteNodeKey(page!.siteNodeKey);
                                 setIsTraversalDetailsModalOpen(true);
                               }}
                               className="p-1 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
@@ -566,17 +565,17 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                           {/* Hidden measurement container for path wrapping detection */}
                           {page!.path.length >= 4 && (
                             <div
-                              ref={el => pathMeasureRefsMap.current.set(page!.id, el)}
+                              ref={el => pathMeasureRefsMap.current.set(page!.siteNodeKey, el)}
                               className="flex flex-wrap items-center gap-1"
                               style={{ visibility: 'hidden', position: 'absolute', left: 0, right: 0, pointerEvents: 'none' }}
                               aria-hidden="true"
                             >
-                              {page!.path.map((pathPageId, idx) => {
-                                const pathPage = graph.getPage(pathPageId);
-                                const label = pathPage?.title || pathPageId.split('/').pop() || 'Unknown';
+                              {page!.path.map((pathSiteNodeKey, idx) => {
+                                const pathPage = graph.getNode(pathSiteNodeKey);
+                                const label = pathPage?.siteNodeName || pathSiteNodeKey.split('/').pop() || 'Unknown';
                                 const isLast = idx === page!.path!.length - 1;
                                 return (
-                                  <div key={`${page!.id}-measure-${pathPageId}-${idx}`} className="flex items-center" data-path-item>
+                                  <div key={`${page!.siteNodeKey}-measure-${pathSiteNodeKey}-${idx}`} className="flex items-center" data-path-item>
                                     <span className="px-2 py-0.5 text-xs rounded border border-neutral-300 bg-white text-neutral-700">
                                       {label}
                                     </span>
@@ -590,25 +589,25 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                           <div className="flex flex-wrap items-center gap-1">
                             {(() => {
                               const pathLength = page!.path.length;
-                              const shouldCollapse = shouldCollapsePathByPageId.get(page!.id) ?? false;
-                              const isExpanded = expandedPathPageIds.has(page!.id);
+                              const shouldCollapse = shouldCollapsePathBySiteNodeKey.get(page!.siteNodeKey) ?? false;
+                              const isExpanded = expandedPathSiteNodeKeys.has(page!.siteNodeKey);
                               const showCollapsed = pathLength >= 4 && shouldCollapse && !isExpanded;
 
                               if (showCollapsed) {
                                 // Collapsed view: [first] -> [n more] -> [last]
-                                const firstPageId = page!.path[0];
-                                const lastPageId = page!.path[pathLength - 1];
-                                const firstPage = graph.getPage(firstPageId);
-                                const lastPage = graph.getPage(lastPageId);
-                                const firstLabel = firstPage?.title || firstPageId.split('/').pop() || 'Unknown';
-                                const lastLabel = lastPage?.title || lastPageId.split('/').pop() || 'Unknown';
+                                const firstSiteNodeKey = page!.path[0];
+                                const lastSiteNodeKey = page!.path[pathLength - 1];
+                                const firstPage = graph.getNode(firstSiteNodeKey);
+                                const lastPage = graph.getNode(lastSiteNodeKey);
+                                const firstLabel = firstPage?.siteNodeName || firstSiteNodeKey.split('/').pop() || 'Unknown';
+                                const lastLabel = lastPage?.siteNodeName || lastSiteNodeKey.split('/').pop() || 'Unknown';
                                 const middleCount = pathLength - 2;
 
                                 return (
                                   <>
                                     <div className="flex items-center">
                                       <button
-                                        onClick={() => onSelectedPagesChange(new Set([...selectedPages, firstPageId]))}
+                                        onClick={() => onSelectedNodeKeysChange(new Set([...selectedNodeKeys, firstSiteNodeKey]))}
                                         className="px-2 py-0.5 text-xs rounded border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 hover:border-neutral-400 cursor-pointer"
                                         title={`Select "${firstLabel}"`}
                                       >
@@ -617,7 +616,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                       <span className="mx-1 text-neutral-400 text-xs">-&gt;</span>
                                     </div>
                                     <button
-                                      onClick={() => setExpandedPathPageIds(prev => new Set([...prev, page!.id]))}
+                                      onClick={() => setExpandedPathSiteNodeKeys(prev => new Set([...prev, page!.siteNodeKey]))}
                                       className="px-2 py-0.5 text-xs rounded border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer"
                                       title="Click to expand full path"
                                     >
@@ -626,7 +625,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                     <span className="mx-1 text-neutral-400 text-xs">-&gt;</span>
                                     <div className="flex items-center">
                                       <button
-                                        onClick={() => onSelectedPagesChange(new Set([...selectedPages, lastPageId]))}
+                                        onClick={() => onSelectedNodeKeysChange(new Set([...selectedNodeKeys, lastSiteNodeKey]))}
                                         className="px-2 py-0.5 text-xs rounded border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 hover:border-neutral-400 cursor-pointer"
                                         title={`Select "${lastLabel}"`}
                                       >
@@ -637,14 +636,14 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                 );
                               } else {
                                 // Full path view
-                                return page!.path.map((pathPageId, idx) => {
-                                  const pathPage = graph.getPage(pathPageId);
-                                  const label = pathPage?.title || pathPageId.split('/').pop() || 'Unknown';
+                                return page!.path.map((pathSiteNodeKey, idx) => {
+                                  const pathPage = graph.getNode(pathSiteNodeKey);
+                                  const label = pathPage?.siteNodeName || pathSiteNodeKey.split('/').pop() || 'Unknown';
                                   const isLast = idx === page!.path!.length - 1;
                                   return (
-                                    <div key={`${page!.id}-path-${pathPageId}-${idx}`} className="flex items-center">
+                                    <div key={`${page!.siteNodeKey}-path-${pathSiteNodeKey}-${idx}`} className="flex items-center">
                                       <button
-                                        onClick={() => onSelectedPagesChange(new Set([...selectedPages, pathPageId]))}
+                                        onClick={() => onSelectedNodeKeysChange(new Set([...selectedNodeKeys, pathSiteNodeKey]))}
                                         className="px-2 py-0.5 text-xs rounded border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100 hover:border-neutral-400 cursor-pointer"
                                         title={`Select "${label}"`}
                                       >
@@ -667,7 +666,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-semibold text-neutral-700">Outlink Depth</div>
                               <div className="text-xs text-neutral-500">
-                                {page!.conf?.config?.outlinks_depth === undefined ? '(not set)' : page!.conf.config.outlinks_depth}
+                                {page!.conf?.outlinksDepth ?? page!.remaining_depth}
                               </div>
                             </div>
                             <div className="mt-1 flex items-center gap-2">
@@ -675,28 +674,28 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                 type="number"
                                 min="0"
                                 value={
-                                  outlinksDepthInputsByPageId[page!.id] ??
-                                  (page!.conf?.config?.outlinks_depth === undefined ? '' : String(page!.conf.config.outlinks_depth))
+                                  outlinksDepthInputsBySiteNodeKey[page!.siteNodeKey] ??
+                                  String(page!.conf?.outlinksDepth ?? page!.remaining_depth)
                                 }
-                                onChange={(e) => setOutlinksDepthInputForPage(page!.id, e.target.value)}
+                                onChange={(e) => setOutlinksDepthInputForPage(page!.siteNodeKey, e.target.value)}
                                 placeholder="depth"
                                 className="w-20 px-2 py-1 border border-neutral-300 rounded text-xs bg-white"
                               />
                               <button
-                                onClick={() => handleSetOutlinksDepthForPage(page!.id)}
-                                disabled={(outlinksDepthInputsByPageId[page!.id] ?? '') === ''}
+                                onClick={() => handleSetOutlinksDepthForPage(page!.siteNodeKey)}
+                                disabled={(outlinksDepthInputsBySiteNodeKey[page!.siteNodeKey] ?? '') === ''}
                                 className="px-2 py-1 text-xs rounded bg-btn-standard-normal text-btn-standard-text hover:bg-btn-standard-hover disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Set
                               </button>
                             </div>
                           </>
-                        ) : outlinksDepthOverrideOpenByPageId[page!.id] ? (
+                        ) : outlinksDepthOverrideOpenBySiteNodeKey[page!.siteNodeKey] ? (
                           <>
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-semibold text-neutral-700">Outlink Depth Override</div>
                               <div className="text-xs text-neutral-500">
-                                {page!.conf?.config?.outlinks_depth !== undefined ? (
+                                {page!.conf?.outlinksDepth !== undefined ? (
                                   <span className="flex items-center gap-1">
                                     {page!.traversal_details?.outlinks_depth_inherited !== undefined && (
                                       <>
@@ -704,7 +703,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                         <span className="text-amber-500">→</span>
                                       </>
                                     )}
-                                    <span className="font-semibold text-neutral-700">{page!.conf.config.outlinks_depth}</span>
+                                    <span className="font-semibold text-neutral-700">{page!.conf.outlinksDepth}</span>
                                   </span>
                                 ) : (
                                   <span className="text-neutral-400">inherited: {page!.remaining_depth}</span>
@@ -716,24 +715,24 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                 type="number"
                                 min="0"
                                 value={
-                                  outlinksDepthInputsByPageId[page!.id] ??
-                                  (page!.conf?.config?.outlinks_depth === undefined ? '' : String(page!.conf.config.outlinks_depth))
+                                  outlinksDepthInputsBySiteNodeKey[page!.siteNodeKey] ??
+                                  (page!.conf?.outlinksDepth === undefined ? '' : String(page!.conf.outlinksDepth))
                                 }
-                                onChange={(e) => setOutlinksDepthInputForPage(page!.id, e.target.value)}
+                                onChange={(e) => setOutlinksDepthInputForPage(page!.siteNodeKey, e.target.value)}
                                 placeholder="depth"
                                 className="w-20 px-2 py-1 border border-neutral-300 rounded text-xs bg-white"
                               />
                               <button
-                                onClick={() => handleSetOutlinksDepthForPage(page!.id)}
-                                disabled={(outlinksDepthInputsByPageId[page!.id] ?? '') === ''}
+                                onClick={() => handleSetOutlinksDepthForPage(page!.siteNodeKey)}
+                                disabled={(outlinksDepthInputsBySiteNodeKey[page!.siteNodeKey] ?? '') === ''}
                                 className="px-2 py-1 text-xs rounded bg-btn-standard-normal text-btn-standard-text hover:bg-btn-standard-hover disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Set
                               </button>
                               <button
                                 onClick={() => {
-                                  setOutlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [page!.id]: false }));
-                                  setOutlinksDepthInputForPage(page!.id, '');
+                                  setOutlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [page!.siteNodeKey]: false }));
+                                  setOutlinksDepthInputForPage(page!.siteNodeKey, '');
                                 }}
                                 className="px-2 py-1 text-xs rounded bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
                               >
@@ -741,7 +740,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                               </button>
                             </div>
                           </>
-                        ) : page!.conf?.config?.outlinks_depth !== undefined ? (
+                        ) : page!.conf?.outlinksDepth !== undefined ? (
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-semibold text-neutral-700">Outlink Depth</span>
@@ -753,28 +752,28 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                     <span className="text-amber-500">→</span>
                                   </>
                                 )}
-                                <span className="font-semibold text-neutral-700">{page!.conf.config.outlinks_depth}</span>
+                                <span className="font-semibold text-neutral-700">{page!.conf.outlinksDepth}</span>
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <DisabledTooltip disabled={page!.isFrontierPage} tooltip="Frontier pages cannot be edited" align="right">
+                              <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Frontier pages cannot be edited" align="right">
                                 <button
                                   title="Edit outlink depth override"
-                                  onClick={() => setOutlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [page!.id]: true }))}
-                                  disabled={page!.isFrontierPage}
-                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierPage ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
+                                  onClick={() => setOutlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [page!.siteNodeKey]: true }))}
+                                  disabled={page!.isFrontierNode}
+                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierNode ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
                                 >
                                   <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
                                     <path d="M12.1 1.5a1.5 1.5 0 012.1 2.1l-9.1 9.2-2.8.7.7-2.8 9.1-9.2zM11 3.4l1.6 1.6" />
                                   </svg>
                                 </button>
                               </DisabledTooltip>
-                              <DisabledTooltip disabled={page!.isFrontierPage} tooltip="Frontier pages cannot be edited" align="right">
+                              <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Frontier pages cannot be edited" align="right">
                                 <button
                                   title="Remove outlink depth override"
-                                  onClick={() => handleClearOutlinksDepthForPage(page!.id)}
-                                  disabled={page!.isFrontierPage}
-                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierPage ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-danger-100 hover:text-danger-600'}`}
+                                  onClick={() => handleClearOutlinksDepthForPage(page!.siteNodeKey)}
+                                  disabled={page!.isFrontierNode}
+                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierNode ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-danger-100 hover:text-danger-600'}`}
                                 >
                                   <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
                                     <path d="M6.5 1.75a.25.25 0 01.25-.25h2.5a.25.25 0 01.25.25V3h-3V1.75zm4.5 0V3h2.25a.75.75 0 010 1.5h-.32l-.95 10.22A1.75 1.75 0 0110.24 16H5.76a1.75 1.75 0 01-1.74-1.28L3.07 4.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.58 4.5l.92 9.92a.25.25 0 00.25.08h4.5a.25.25 0 00.25-.08l.92-9.92H4.58z" />
@@ -788,12 +787,12 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                             <div className="text-xs font-semibold text-neutral-700">Outlink Depth</div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-neutral-500">{page!.remaining_depth}</span>
-                              <DisabledTooltip disabled={page!.isFrontierPage} tooltip="Frontier pages cannot be edited" align="right">
+                              <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Frontier pages cannot be edited" align="right">
                                 <button
                                   title="Add outlink depth override"
-                                  onClick={() => setOutlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [page!.id]: true }))}
-                                  disabled={page!.isFrontierPage}
-                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierPage ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
+                                  onClick={() => setOutlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [page!.siteNodeKey]: true }))}
+                                  disabled={page!.isFrontierNode}
+                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierNode ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
                                 >
                                   <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
                                     <path d="M12.1 1.5a1.5 1.5 0 012.1 2.1l-9.1 9.2-2.8.7.7-2.8 9.1-9.2zM11 3.4l1.6 1.6" />
@@ -812,7 +811,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-semibold text-neutral-700">Inlink Depth</div>
                               <div className="text-xs text-neutral-500">
-                                {page!.conf?.config?.inlinks_depth === undefined ? '(not set)' : page!.conf.config.inlinks_depth}
+                                {page!.conf?.inlinksDepth ?? page!.remaining_inlinks_depth ?? 0}
                               </div>
                             </div>
                             <div className="mt-1 flex items-center gap-2">
@@ -820,28 +819,28 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                 type="number"
                                 min="0"
                                 value={
-                                  inlinksDepthInputsByPageId[page!.id] ??
-                                  (page!.conf?.config?.inlinks_depth === undefined ? '' : String(page!.conf.config.inlinks_depth))
+                                  inlinksDepthInputsBySiteNodeKey[page!.siteNodeKey] ??
+                                  String(page!.conf?.inlinksDepth ?? page!.remaining_inlinks_depth ?? 0)
                                 }
-                                onChange={(e) => setInlinksDepthInputForPage(page!.id, e.target.value)}
+                                onChange={(e) => setInlinksDepthInputForPage(page!.siteNodeKey, e.target.value)}
                                 placeholder="depth"
                                 className="w-20 px-2 py-1 border border-neutral-300 rounded text-xs bg-white"
                               />
                               <button
-                                onClick={() => handleSetInlinksDepthForPage(page!.id)}
-                                disabled={(inlinksDepthInputsByPageId[page!.id] ?? '') === ''}
+                                onClick={() => handleSetInlinksDepthForPage(page!.siteNodeKey)}
+                                disabled={(inlinksDepthInputsBySiteNodeKey[page!.siteNodeKey] ?? '') === ''}
                                 className="px-2 py-1 text-xs rounded bg-btn-standard-normal text-btn-standard-text hover:bg-btn-standard-hover disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Set
                               </button>
                             </div>
                           </>
-                        ) : inlinksDepthOverrideOpenByPageId[page!.id] ? (
+                        ) : inlinksDepthOverrideOpenBySiteNodeKey[page!.siteNodeKey] ? (
                           <>
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-semibold text-neutral-700">Inlink Depth Override</div>
                               <div className="text-xs text-neutral-500">
-                                {page!.conf?.config?.inlinks_depth !== undefined ? (
+                                {page!.conf?.inlinksDepth !== undefined ? (
                                   <span className="flex items-center gap-1">
                                     {page!.traversal_details?.inlinks_depth_inherited !== undefined && (
                                       <>
@@ -849,7 +848,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                         <span className="text-amber-500">→</span>
                                       </>
                                     )}
-                                    <span className="font-semibold text-neutral-700">{page!.conf.config.inlinks_depth}</span>
+                                    <span className="font-semibold text-neutral-700">{page!.conf.inlinksDepth}</span>
                                   </span>
                                 ) : (
                                   <span className="text-neutral-400">inherited: {page!.remaining_inlinks_depth ?? 0}</span>
@@ -861,24 +860,24 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                 type="number"
                                 min="0"
                                 value={
-                                  inlinksDepthInputsByPageId[page!.id] ??
-                                  (page!.conf?.config?.inlinks_depth === undefined ? '' : String(page!.conf.config.inlinks_depth))
+                                  inlinksDepthInputsBySiteNodeKey[page!.siteNodeKey] ??
+                                  (page!.conf?.inlinksDepth === undefined ? '' : String(page!.conf.inlinksDepth))
                                 }
-                                onChange={(e) => setInlinksDepthInputForPage(page!.id, e.target.value)}
+                                onChange={(e) => setInlinksDepthInputForPage(page!.siteNodeKey, e.target.value)}
                                 placeholder="depth"
                                 className="w-20 px-2 py-1 border border-neutral-300 rounded text-xs bg-white"
                               />
                               <button
-                                onClick={() => handleSetInlinksDepthForPage(page!.id)}
-                                disabled={(inlinksDepthInputsByPageId[page!.id] ?? '') === ''}
+                                onClick={() => handleSetInlinksDepthForPage(page!.siteNodeKey)}
+                                disabled={(inlinksDepthInputsBySiteNodeKey[page!.siteNodeKey] ?? '') === ''}
                                 className="px-2 py-1 text-xs rounded bg-btn-standard-normal text-btn-standard-text hover:bg-btn-standard-hover disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 Set
                               </button>
                               <button
                                 onClick={() => {
-                                  setInlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [page!.id]: false }));
-                                  setInlinksDepthInputForPage(page!.id, '');
+                                  setInlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [page!.siteNodeKey]: false }));
+                                  setInlinksDepthInputForPage(page!.siteNodeKey, '');
                                 }}
                                 className="px-2 py-1 text-xs rounded bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
                               >
@@ -886,7 +885,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                               </button>
                             </div>
                           </>
-                        ) : page!.conf?.config?.inlinks_depth !== undefined ? (
+                        ) : page!.conf?.inlinksDepth !== undefined ? (
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-semibold text-neutral-700">Inlink Depth</span>
@@ -898,28 +897,28 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                                     <span className="text-amber-500">→</span>
                                   </>
                                 )}
-                                <span className="font-semibold text-neutral-700">{page!.conf.config.inlinks_depth}</span>
+                                <span className="font-semibold text-neutral-700">{page!.conf.inlinksDepth}</span>
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <DisabledTooltip disabled={page!.isFrontierPage} tooltip="Frontier pages cannot be edited" align="right">
+                              <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Frontier pages cannot be edited" align="right">
                                 <button
                                   title="Edit inlink depth override"
-                                  onClick={() => setInlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [page!.id]: true }))}
-                                  disabled={page!.isFrontierPage}
-                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierPage ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
+                                  onClick={() => setInlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [page!.siteNodeKey]: true }))}
+                                  disabled={page!.isFrontierNode}
+                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierNode ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
                                 >
                                   <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
                                     <path d="M12.1 1.5a1.5 1.5 0 012.1 2.1l-9.1 9.2-2.8.7.7-2.8 9.1-9.2zM11 3.4l1.6 1.6" />
                                   </svg>
                                 </button>
                               </DisabledTooltip>
-                              <DisabledTooltip disabled={page!.isFrontierPage} tooltip="Frontier pages cannot be edited" align="right">
+                              <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Frontier pages cannot be edited" align="right">
                                 <button
                                   title="Remove inlink depth override"
-                                  onClick={() => handleClearInlinksDepthForPage(page!.id)}
-                                  disabled={page!.isFrontierPage}
-                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierPage ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-danger-100 hover:text-danger-600'}`}
+                                  onClick={() => handleClearInlinksDepthForPage(page!.siteNodeKey)}
+                                  disabled={page!.isFrontierNode}
+                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierNode ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-danger-100 hover:text-danger-600'}`}
                                 >
                                   <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
                                     <path d="M6.5 1.75a.25.25 0 01.25-.25h2.5a.25.25 0 01.25.25V3h-3V1.75zm4.5 0V3h2.25a.75.75 0 010 1.5h-.32l-.95 10.22A1.75 1.75 0 0110.24 16H5.76a1.75 1.75 0 01-1.74-1.28L3.07 4.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.58 4.5l.92 9.92a.25.25 0 00.25.08h4.5a.25.25 0 00.25-.08l.92-9.92H4.58z" />
@@ -933,11 +932,11 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                             <div className="text-xs font-semibold text-neutral-700">Inlink Depth</div>
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-neutral-500">{page!.remaining_inlinks_depth ?? 0}</span>
-                              <DisabledTooltip disabled={page!.isFrontierPage} tooltip="Frontier pages cannot be edited" align="right">
+                              <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Frontier pages cannot be edited" align="right">
                                 <button
-                                  onClick={() => setInlinksDepthOverrideOpenByPageId(prev => ({ ...prev, [page!.id]: true }))}
-                                  disabled={page!.isFrontierPage}
-                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierPage ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
+                                  onClick={() => setInlinksDepthOverrideOpenBySiteNodeKey(prev => ({ ...prev, [page!.siteNodeKey]: true }))}
+                                  disabled={page!.isFrontierNode}
+                                  className={`w-6 h-6 flex items-center justify-center rounded ${page!.isFrontierNode ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'}`}
                                 >
                                   <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
                                     <path d="M12.1 1.5a1.5 1.5 0 012.1 2.1l-9.1 9.2-2.8.7.7-2.8 9.1-9.2zM11 3.4l1.6 1.6" />
@@ -955,7 +954,7 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                           <div className="text-xs font-semibold text-neutral-700">Links</div>
                           <button
                             onClick={() => {
-                              setLinksModalPageId(page!.id);
+                              setLinksModalSiteNodeKey(page!.siteNodeKey);
                               setIsLinksModalOpen(true);
                             }}
                             className="px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
@@ -965,10 +964,10 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
                           </button>
                         </div>
                         {(() => {
-                          const allOutlinks = graph.getAllOutlinkTargets(page!.id);
-                          const allInlinks = graph.getAllInlinkSources(page!.id);
-                          const outlinksInGraph = allOutlinks.filter(id => graph.getPage(id)).length;
-                          const inlinksInGraph = allInlinks.filter(id => graph.getPage(id)).length;
+                          const allOutlinks = graph.getAllOutlinkTargets(page!.siteNodeKey);
+                          const allInlinks = graph.getAllInlinkSources(page!.siteNodeKey);
+                          const outlinksInGraph = allOutlinks.filter(id => graph.getNode(id)).length;
+                          const inlinksInGraph = allInlinks.filter(id => graph.getNode(id)).length;
                           const outlinksNotInGraph = allOutlinks.length - outlinksInGraph;
                           const inlinksNotInGraph = allInlinks.length - inlinksInGraph;
                           return (
@@ -1005,33 +1004,33 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
       </div>
 
       {/* Traversal Path Details Modal */}
-      {isTraversalDetailsModalOpen && traversalDetailsPageId && graph.getPage(traversalDetailsPageId) && (
+      {isTraversalDetailsModalOpen && traversalDetailsSiteNodeKey && graph.getNode(traversalDetailsSiteNodeKey) && (
         <TraversalPathDetailsModal
           isOpen={isTraversalDetailsModalOpen}
           onClose={() => setIsTraversalDetailsModalOpen(false)}
-          selectedPage={graph.getPage(traversalDetailsPageId)!}
+          selectedNode={graph.getNode(traversalDetailsSiteNodeKey)!}
           graph={graph}
         />
       )}
 
       {/* Site Page Links Modal */}
-      {isLinksModalOpen && linksModalPageId && (
-        <SitePageLinksModal
+      {isLinksModalOpen && linksModalSiteNodeKey && (
+        <SiteNodeLinksModal
           isOpen={isLinksModalOpen}
           onClose={() => setIsLinksModalOpen(false)}
-          initialPageId={linksModalPageId}
+          initialSiteNodeKey={linksModalSiteNodeKey}
           graph={graph}
-          onSelectPage={(pageId) => {
-            const newSelection = new Set(selectedPages);
-            newSelection.add(pageId);
-            onSelectedPagesChange(newSelection);
+          onSelectNode={(siteNodeKey) => {
+            const newSelection = new Set(selectedNodeKeys);
+            newSelection.add(siteNodeKey);
+            onSelectedNodeKeysChange(newSelection);
           }}
-          onDeselectPage={(pageId) => {
-            const newSelection = new Set(selectedPages);
-            newSelection.delete(pageId);
-            onSelectedPagesChange(newSelection);
+          onDeselectNode={(siteNodeKey) => {
+            const newSelection = new Set(selectedNodeKeys);
+            newSelection.delete(siteNodeKey);
+            onSelectedNodeKeysChange(newSelection);
           }}
-          selectedPages={selectedPages}
+          selectedNodeKeys={selectedNodeKeys}
           isEffectivelySensitive={isEffectivelySensitive}
         />
       )}
@@ -1039,4 +1038,4 @@ const SitePageSelectionSidebar: React.FC<SitePageSelectionSidebarProps> = ({
   );
 };
 
-export default SitePageSelectionSidebar;
+export default SiteNodeSelectionSidebar;

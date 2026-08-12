@@ -22,14 +22,14 @@ limitations under the License.
  *   SITE_DIR/
  *     build/
  *       prepared_source_content/
- *       prepared_site_page_config.yaml
+ *       prepared_site_node_config.yaml
  *       render_source_content/
  *       okf/
  *       sources_export/
  *       scrubbed_source_content/
  *     conf/
  *       site_config.yaml
- *       site_page_config.yaml
+ *       site_node_config.yaml
  *       custom_filters.json
  *     html/
  *       preview/
@@ -71,8 +71,8 @@ const TAGPAGES_DIR = 'x-tagpages';
 
 // File names
 const SITE_CONFIG_FILE = 'site_config.yaml';
-const SITE_PAGE_CONFIG_FILE = 'site_page_config.yaml';
-const PREPARED_SITE_PAGE_CONFIG_FILE = 'prepared_site_page_config.yaml';
+const SITE_NODE_CONFIG_FILE = 'site_node_config.yaml';
+const PREPARED_SITE_NODE_CONFIG_FILE = 'prepared_site_node_config.yaml';
 const CUSTOM_FILTERS_FILE = 'custom_filters.json';
 const PAGE_TITLE_NORMALIZATION_HOOK_FILE = 'pageTitleNormalization.ts';
 const MARKDOWN_PROCESSING_HOOK_FILE = 'markdownProcessing.ts';
@@ -129,9 +129,9 @@ export const SiteConfigPaths = {
       return join(BUILD_DIR, PREPARED_SOURCE_CONTENT_DIR);
     },
 
-    /** build/prepared_site_page_config.yaml */
-    preparedSitePageConfigFile(): string {
-      return join(BUILD_DIR, PREPARED_SITE_PAGE_CONFIG_FILE);
+    /** build/prepared_site_node_config.yaml */
+    preparedSiteNodeConfigFile(): string {
+      return join(BUILD_DIR, PREPARED_SITE_NODE_CONFIG_FILE);
     },
 
     /** build/render_source_content/ */
@@ -179,9 +179,9 @@ export const SiteConfigPaths = {
       return join(CONF_DIR, SITE_CONFIG_FILE);
     },
 
-    /** conf/site_page_config.yaml */
-    sitePageConfigFile(): string {
-      return join(CONF_DIR, SITE_PAGE_CONFIG_FILE);
+    /** conf/site_node_config.yaml */
+    siteNodeConfigFile(): string {
+      return join(CONF_DIR, SITE_NODE_CONFIG_FILE);
     },
 
     /** conf/custom_filters.json */
@@ -280,10 +280,10 @@ export const SiteConfigPaths = {
   },
 
   /**
-   * Get the prepared site page config file: SITE_DIR/build/prepared_site_page_config.yaml
+   * Get the prepared site node config file: SITE_DIR/build/prepared_site_node_config.yaml
    */
-  getPreparedSitePageConfigFile(siteDir: string): string {
-    return join(siteDir, this.relative.preparedSitePageConfigFile());
+  getPreparedSiteNodeConfigFile(siteDir: string): string {
+    return join(siteDir, this.relative.preparedSiteNodeConfigFile());
   },
 
   /**
@@ -372,10 +372,10 @@ export const SiteConfigPaths = {
   },
 
   /**
-   * Get the site page config file path: SITE_DIR/conf/site_page_config.yaml
+   * Get the site node config file path: SITE_DIR/conf/site_node_config.yaml
    */
-  getSitePageConfigFile(siteDir: string): string {
-    return join(siteDir, this.relative.sitePageConfigFile());
+  getSiteNodeConfigFile(siteDir: string): string {
+    return join(siteDir, this.relative.siteNodeConfigFile());
   },
 
   /**
@@ -448,8 +448,8 @@ export const SiteConfigPaths = {
   /** Config file names */
   CONFIG_FILES: {
     site_config: SITE_CONFIG_FILE,
-    site_page_config: SITE_PAGE_CONFIG_FILE,
-    prepared_site_page_config: PREPARED_SITE_PAGE_CONFIG_FILE,
+    site_node_config: SITE_NODE_CONFIG_FILE,
+    prepared_site_node_config: PREPARED_SITE_NODE_CONFIG_FILE,
     custom_filters: CUSTOM_FILTERS_FILE,
   } as const,
 

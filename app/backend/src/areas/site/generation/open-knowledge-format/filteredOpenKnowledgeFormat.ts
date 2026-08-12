@@ -15,13 +15,11 @@ limitations under the License.
 */
 
 import fs from 'fs';
-import { FileType } from '../../../../../../shared_code/types/FileType.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
-import { parsePageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
-import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import { pageConfigToKey, SitePageConfigs } from '../../../../shared/site-page/pageKeys.js';
+import { siteNodeConfigToKey, SiteNodeConfigMap } from '../../../../shared/site-node/nodeKeys.js';
+import { loadValidatedSiteNodeConfiguration } from '../../../../shared/site-node/siteNodeConfigLoader.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import { prepareSrsRenderSourceDirectory } from '../render-source/srsMarkdown.js';
 import { prepareScrubbedSourceDirectory } from '../source-material/sourceScrubbing.js';
@@ -35,35 +33,26 @@ import {
   openKnowledgeFormatLogSourceFromSiteConfig
 } from './openKnowledgeFormatConfig.js';
 
-type WorkingGraphPage = {
-  title: string;
-  sourceGraphSubdirectory: string;
-  file_type: FileType;
-};
-
 type WorkingGraphOutput = {
-  pages: WorkingGraphPage[];
+  nodes: Array<{ siteNodeKey: string }>;
   allLinkResolutionMaps?: Record<string, Record<string, {
     link_resolved_target_directory: string;
     link_resolved_target_path: string | null;
   }>>;
 };
 
-function readSitePageConfigs(sitePageConfPath: string): SitePageConfigs {
-  const result: SitePageConfigs = {};
-  if (!fs.existsSync(sitePageConfPath)) return result;
-  const content = fs.readFileSync(sitePageConfPath, 'utf-8');
-  const pageConfArray = parsePageConfig(content);
-  for (const conf of pageConfArray) {
-    result[pageConfigToKey(conf)] = conf;
+function buildSiteNodeConfigMap(nodes: SiteNodeConfig[]): SiteNodeConfigMap {
+  const result: SiteNodeConfigMap = {};
+  for (const conf of nodes) {
+    result[siteNodeConfigToKey(conf)] = conf;
   }
   return result;
 }
 
 export async function buildFilteredOpenKnowledgeFormatForSite(siteDirectory: string): Promise<string> {
-  const siteConfig = loadSiteConfig(siteDirectory);
-  const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-  const sitePageConfs = readSitePageConfigs(sitePageConfPath);
+  const { siteConfig, nodes, entryNode } = loadValidatedSiteNodeConfiguration(siteDirectory);
+  const siteNodeConfPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
+  const siteNodeConfs = buildSiteNodeConfigMap(nodes);
   const trackedContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const renderSourceContentDir = SiteConfigPaths.getRenderSourceContentDir(siteDirectory);
   const legacyRenderSourceContentDir = SiteConfigPaths.getLegacyRenderSourceContentDir(siteDirectory);
@@ -93,40 +82,28 @@ export async function buildFilteredOpenKnowledgeFormatForSite(siteDirectory: str
     fs.rmSync(legacyRenderSourceContentDir, { recursive: true, force: true });
   }
 
-  const traversablePageKeys = new Set<string>();
+  const traversableNodeKeys = new Set<string>();
   let allLinkResolutionMaps: Map<string, Record<string, {
     link_resolved_target_directory: string;
     link_resolved_target_path: string | null;
   }>> = new Map();
-  const initialTitle = siteConfig.initialSitePageTitle || '';
-  const initialDirectory = siteConfig.initialSitePageDirectory || '';
-
-  if (initialTitle) {
-    const initialConf = Object.values(sitePageConfs).find(
-      c => c.title === initialTitle && (c.source_graph_subdirectory || '') === initialDirectory
-    );
-    const initialFileType: FileType = initialConf?.file_type || 'md';
-
+  if (siteConfig.entrySiteNodeId && siteConfig.defaultTraversalSiteNodeId) {
     try {
       const raw = await runWorkingGraphRaw({
         graphRoot: sourceContentDir,
-        sitePageConfigPath: sitePageConfPath,
-        initial: { title: initialTitle, directory: initialDirectory, file_type: initialFileType },
-        traversal: { title: initialTitle, directory: initialDirectory, file_type: initialFileType },
+        siteNodeConfigPath: siteNodeConfPath,
+        entrySiteNodeId: siteConfig.entrySiteNodeId,
+        defaultTraversalSiteNodeId: siteConfig.defaultTraversalSiteNodeId,
+        defaultOutlinksDepth: siteConfig.defaultOutlinksDepth,
+        defaultInlinksDepth: siteConfig.defaultInlinksDepth,
         frontierDepth: 0,
         allowImagesToExtendToFrontier: true,
         allowLowerDepths: false,
       });
       const output = JSON.parse(raw) as WorkingGraphOutput;
       allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
-      for (const page of output.pages) {
-        const key = pageConfigToKey({
-          title: page.title,
-          source_graph_subdirectory: page.sourceGraphSubdirectory,
-          file_type: page.file_type,
-          config: { list_type: 'whitelist' },
-        });
-        traversablePageKeys.add(key);
+      for (const node of output.nodes) {
+        traversableNodeKeys.add(node.siteNodeKey);
       }
     } catch (err) {
       logger.warn(
@@ -135,16 +112,16 @@ export async function buildFilteredOpenKnowledgeFormatForSite(siteDirectory: str
     }
   }
 
-  const sitePageConfigsArrayForLinks: SitePageConfig[] = Object.values(sitePageConfs).filter(
-    conf => traversablePageKeys.has(pageConfigToKey(conf))
+  const siteNodeConfigsArrayForLinks: SiteNodeConfig[] = Object.values(siteNodeConfs).filter(
+    conf => traversableNodeKeys.has(siteNodeConfigToKey(conf))
   );
 
   prepareScrubbedSourceDirectory(
     sourceContentDir,
     scrubbedSourceDir,
-    traversablePageKeys,
-    sitePageConfs,
-    sitePageConfigsArrayForLinks,
+    traversableNodeKeys,
+    siteNodeConfs,
+    siteNodeConfigsArrayForLinks,
     allLinkResolutionMaps
   );
 
@@ -153,10 +130,10 @@ export async function buildFilteredOpenKnowledgeFormatForSite(siteDirectory: str
     scrubbedSourceDir,
     okfDir,
     {
-      sitePageConfigs: sitePageConfigsArrayForLinks,
+      siteNodeConfigs: siteNodeConfigsArrayForLinks,
       allLinkResolutionMaps,
-      initialPageTitle: initialTitle,
-      initialPageDirectory: initialDirectory,
+      entryNodeName: entryNode.siteNodeName,
+      entrySourceGraphSubdirectory: entryNode.sourceGraphSubdirectory || '',
       indexSource: openKnowledgeFormatIndexSourceFromSiteConfig(siteConfig),
       logSource: openKnowledgeFormatLogSourceFromSiteConfig(siteConfig),
     }

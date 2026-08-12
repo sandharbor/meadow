@@ -16,11 +16,11 @@ limitations under the License.
 
 import path from 'path';
 import fs from 'fs';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import { linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute } from './shared.js';
 import type { LinkInfo, PageNameToPage } from './types.js';
 import { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
+import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISiteNode.js';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
 import { extractContentWithoutPagespecs, hasPagespecsBlock } from '../../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -54,12 +54,12 @@ interface ResolvedTarget {
 export function resolveTrackedLinkHref(args: {
   resolved: LinkResolvedInfo;
   hostPageDirectory: string;
-  sitePageConfigs: SitePageConfig[];
+  siteNodeConfigs: SiteNodeConfig[];
   siteConfig?: SiteConfig;
   siteSlug?: string;
   targetUrlMode?: 'rendered-page' | 'source-file';
 }): string | null {
-  const { resolved, hostPageDirectory, sitePageConfigs, siteConfig, siteSlug } = args;
+  const { resolved, hostPageDirectory, siteNodeConfigs, siteConfig, siteSlug } = args;
   const targetUrlMode = args.targetUrlMode ?? 'rendered-page';
   const targetPath = resolved.link_resolved_target_path;
   if (!targetPath) return null;
@@ -72,12 +72,12 @@ export function resolveTrackedLinkHref(args: {
   const targetTitle = targetFilename.slice(0, dotIdx);
   const targetExt = targetFilename.slice(dotIdx + 1).toLowerCase();
 
-  const cfg = sitePageConfigs.find(c =>
-    c.title === targetTitle &&
-    (c.source_graph_subdirectory || '') === targetDir &&
-    (c.file_type || 'md') === targetExt
+  const cfg = siteNodeConfigs.find(c =>
+    c.siteNodeName === targetTitle &&
+    (c.sourceGraphSubdirectory || '') === targetDir &&
+    (c.fileType || 'md') === targetExt
   );
-  if (!cfg || cfg.config.list_type !== 'whitelist') return null;
+  if (!cfg || cfg.listType !== 'whitelist') return null;
 
   let urlFilename: string;
   if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'excalidraw')) {
@@ -171,12 +171,12 @@ function linkInfoWithResolvedTargetType(
 export function buildExcalidrawClientLinkData(args: {
   excalidrawPageIdent: string; // `<dir>/<title>.excalidraw` (or `/<title>.excalidraw` for root)
   hostPageDirectory: string; // directory of the page rendering the drawing's HTML
-  sitePageConfigs: SitePageConfig[];
+  siteNodeConfigs: SiteNodeConfig[];
   allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
   siteConfig?: SiteConfig;
   siteSlug?: string;
 }): { tracked: Record<string, ExcalidrawTrackedLink>; untracked: string[] } {
-  const { excalidrawPageIdent, hostPageDirectory, sitePageConfigs, allLinkResolutionMaps, siteConfig, siteSlug } = args;
+  const { excalidrawPageIdent, hostPageDirectory, siteNodeConfigs, allLinkResolutionMaps, siteConfig, siteSlug } = args;
   const tracked: Record<string, ExcalidrawTrackedLink> = {};
   const untracked: string[] = [];
   if (!allLinkResolutionMaps) return { tracked, untracked };
@@ -192,7 +192,7 @@ export function buildExcalidrawClientLinkData(args: {
     const href = resolveTrackedLinkHref({
       resolved,
       hostPageDirectory,
-      sitePageConfigs,
+      siteNodeConfigs,
       siteConfig,
       siteSlug,
     });
@@ -229,10 +229,10 @@ export function buildExcalidrawClientLinkData(args: {
 export function buildExcalidrawClientEmbeddedFileData(args: {
   excalidrawPageIdent: string; // `<dir>/<title>.excalidraw` (or `/<title>.excalidraw` for root)
   hostPageDirectory: string; // directory of the page rendering the drawing's HTML
-  sitePageConfigs: SitePageConfig[];
+  siteNodeConfigs: SiteNodeConfig[];
   allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
 }): ExcalidrawEmbeddedFileData {
-  const { excalidrawPageIdent, hostPageDirectory, sitePageConfigs, allLinkResolutionMaps } = args;
+  const { excalidrawPageIdent, hostPageDirectory, siteNodeConfigs, allLinkResolutionMaps } = args;
   const tracked: Record<string, string> = {};
   const untracked: string[] = [];
   if (!allLinkResolutionMaps) return { tracked, untracked };
@@ -246,7 +246,7 @@ export function buildExcalidrawClientEmbeddedFileData(args: {
     const href = resolveTrackedLinkHref({
       resolved,
       hostPageDirectory,
-      sitePageConfigs,
+      siteNodeConfigs,
       targetUrlMode: 'source-file',
     });
     if (href) {
@@ -262,10 +262,10 @@ export function copyExcalidrawEmbeddedFiles(args: {
   excalidrawPageIdent: string;
   contentDir: string;
   outputDir: string;
-  sitePageConfigs: SitePageConfig[];
+  siteNodeConfigs: SiteNodeConfig[];
   allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
 }): void {
-  const { excalidrawPageIdent, contentDir, outputDir, sitePageConfigs, allLinkResolutionMaps } = args;
+  const { excalidrawPageIdent, contentDir, outputDir, siteNodeConfigs, allLinkResolutionMaps } = args;
   if (!allLinkResolutionMaps) return;
   const map = allLinkResolutionMaps.get(excalidrawPageIdent);
   if (!map) return;
@@ -276,7 +276,7 @@ export function copyExcalidrawEmbeddedFiles(args: {
     const href = resolveTrackedLinkHref({
       resolved,
       hostPageDirectory: '',
-      sitePageConfigs,
+      siteNodeConfigs,
       targetUrlMode: 'source-file',
     });
     if (!href || !resolved.link_resolved_target_path) continue;
@@ -339,7 +339,7 @@ function resolveTarget(
  */
 export function isLinkTracked(
   linkText: string,
-  sitePageConfigs: SitePageConfig[],
+  siteNodeConfigs: SiteNodeConfig[],
   linkResolutionMap?: Record<string, LinkResolvedInfo>
 ): boolean {
   const linkInfo = linkInfoWithResolvedTargetType(linkText, linkResolutionMap);
@@ -351,10 +351,10 @@ export function isLinkTracked(
     );
     const imageNameWithoutExt = imageName.replace(/\.[^.]+$/, '');
     const imageExt = imageName.replace(/^.*\./, '');
-    let imageConfig = sitePageConfigs.find(sitePageConfig =>
-      sitePageConfig.title === imageNameWithoutExt &&
-      sitePageConfig.file_type === imageExt &&
-      (sitePageConfig.source_graph_subdirectory || '') === (imageSourceDir || '')
+    let imageConfig = siteNodeConfigs.find(siteNodeConfig =>
+      siteNodeConfig.siteNodeName === imageNameWithoutExt &&
+      siteNodeConfig.fileType === imageExt &&
+      (siteNodeConfig.sourceGraphSubdirectory || '') === (imageSourceDir || '')
     );
 
     // Fallback: if no match found and the link had an explicit path but
@@ -363,10 +363,10 @@ export function isLinkTracked(
     if (!imageConfig && !imageSourceDir && originalImageFilename.includes('/')) {
       const lastSlash = originalImageFilename.lastIndexOf('/');
       const explicitDir = originalImageFilename.substring(0, lastSlash);
-      imageConfig = sitePageConfigs.find(sitePageConfig =>
-        sitePageConfig.title === imageNameWithoutExt &&
-        sitePageConfig.file_type === imageExt &&
-        (sitePageConfig.source_graph_subdirectory || '') === explicitDir
+      imageConfig = siteNodeConfigs.find(siteNodeConfig =>
+        siteNodeConfig.siteNodeName === imageNameWithoutExt &&
+        siteNodeConfig.fileType === imageExt &&
+        (siteNodeConfig.sourceGraphSubdirectory || '') === explicitDir
       );
     }
 
@@ -374,13 +374,13 @@ export function isLinkTracked(
     // try matching by title alone (the image may live in a subdirectory).
     // Mirrors the page-link fallback logic.
     if (!imageConfig && !originalImageFilename.includes('/')) {
-      imageConfig = sitePageConfigs.find(sitePageConfig =>
-        sitePageConfig.title === imageNameWithoutExt &&
-        sitePageConfig.file_type === imageExt
+      imageConfig = siteNodeConfigs.find(siteNodeConfig =>
+        siteNodeConfig.siteNodeName === imageNameWithoutExt &&
+        siteNodeConfig.fileType === imageExt
       );
     }
 
-    return imageConfig?.config.list_type === 'whitelist';
+    return imageConfig?.listType === 'whitelist';
   }
 
   if (linkInfo.type === 'page') {
@@ -389,10 +389,10 @@ export function isLinkTracked(
       linkText, originalLinkFilename, linkResolutionMap, 'md'
     );
 
-    let linkConfig = sitePageConfigs.find(sitePageConfig =>
-      sitePageConfig.title === resolvedTitle &&
-      (sitePageConfig.source_graph_subdirectory || '') === targetPageDirectory &&
-      (sitePageConfig.file_type === 'md' || !sitePageConfig.file_type)
+    let linkConfig = siteNodeConfigs.find(siteNodeConfig =>
+      siteNodeConfig.siteNodeName === resolvedTitle &&
+      (siteNodeConfig.sourceGraphSubdirectory || '') === targetPageDirectory &&
+      (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
     );
 
     const linkHasExplicitPath = originalLinkFilename.includes('/');
@@ -403,23 +403,23 @@ export function isLinkTracked(
     if (!linkConfig && linkHasExplicitPath && !targetPageDirectory) {
       const lastSlash = originalLinkFilename.lastIndexOf('/');
       const explicitDir = originalLinkFilename.substring(0, lastSlash);
-      linkConfig = sitePageConfigs.find(sitePageConfig =>
-        sitePageConfig.title === resolvedTitle &&
-        (sitePageConfig.source_graph_subdirectory || '') === explicitDir &&
-        (sitePageConfig.file_type === 'md' || !sitePageConfig.file_type)
+      linkConfig = siteNodeConfigs.find(siteNodeConfig =>
+        siteNodeConfig.siteNodeName === resolvedTitle &&
+        (siteNodeConfig.sourceGraphSubdirectory || '') === explicitDir &&
+        (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
       );
     }
 
     // Fallback: title-only lookup when no explicit path was given (the page
     // may live in a subdirectory).
     if (!linkConfig && !linkHasExplicitPath) {
-      linkConfig = sitePageConfigs.find(sitePageConfig =>
-        sitePageConfig.title === resolvedTitle &&
-        (sitePageConfig.file_type === 'md' || !sitePageConfig.file_type)
+      linkConfig = siteNodeConfigs.find(siteNodeConfig =>
+        siteNodeConfig.siteNodeName === resolvedTitle &&
+        (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
       );
     }
 
-    return linkConfig?.config.list_type === 'whitelist';
+    return linkConfig?.listType === 'whitelist';
   }
 
   return false;
@@ -444,7 +444,7 @@ export interface LinkOrImageHtmlOptions {
 
 export function linkOrImageHtml(
   linkText: string,
-  sitePageConfigs: SitePageConfig[],
+  siteNodeConfigs: SiteNodeConfig[],
   options: LinkOrImageHtmlOptions = {}
 ): string {
   const {
@@ -475,7 +475,7 @@ export function linkOrImageHtml(
     );
 
     // Check if the image is blacklisted before copying/rendering it
-    if (!isLinkTracked(linkText, sitePageConfigs, linkResolutionMap)) {
+    if (!isLinkTracked(linkText, siteNodeConfigs, linkResolutionMap)) {
       return '<span class="link-not-tracked">link not tracked</span>';
     }
 
@@ -546,7 +546,7 @@ export function linkOrImageHtml(
       encodedImagePath = resolveTrackedLinkHref({
         resolved: resolvedImageInfo,
         hostPageDirectory: currentPageDirectory,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         siteSlug,
         targetUrlMode: 'source-file',
@@ -600,7 +600,7 @@ export function linkOrImageHtml(
       const fileAttrs = embeddedFileAttrs(buildExcalidrawClientEmbeddedFileData({
         excalidrawPageIdent,
         hostPageDirectory: currentPageDirectory,
-        sitePageConfigs,
+        siteNodeConfigs,
         allLinkResolutionMaps,
       }));
       if (contentDir && outputDir) {
@@ -608,7 +608,7 @@ export function linkOrImageHtml(
           excalidrawPageIdent,
           contentDir,
           outputDir,
-          sitePageConfigs,
+          siteNodeConfigs,
           allLinkResolutionMaps,
         });
       }
@@ -625,7 +625,7 @@ export function linkOrImageHtml(
         const { tracked, untracked } = buildExcalidrawClientLinkData({
           excalidrawPageIdent,
           hostPageDirectory: currentPageDirectory,
-          sitePageConfigs,
+          siteNodeConfigs,
           allLinkResolutionMaps,
           siteConfig,
           siteSlug,
@@ -662,28 +662,28 @@ export function linkOrImageHtml(
     );
 
     // Check if the link target is a publishable (whitelisted) page
-    if (!isLinkTracked(linkText, sitePageConfigs, linkResolutionMap)) {
+    if (!isLinkTracked(linkText, siteNodeConfigs, linkResolutionMap)) {
       return '<span class="link-not-tracked">link not tracked</span>';
     }
 
     // Find the target page's config for rendering (need linkConfig for title normalization etc.)
-    let linkConfig = sitePageConfigs.find(sitePageConfig =>
-      sitePageConfig.title === resolvedTitle &&
-      (sitePageConfig.source_graph_subdirectory || '') === targetPageDirectory &&
-      (sitePageConfig.file_type === 'md' || !sitePageConfig.file_type)
+    let linkConfig = siteNodeConfigs.find(siteNodeConfig =>
+      siteNodeConfig.siteNodeName === resolvedTitle &&
+      (siteNodeConfig.sourceGraphSubdirectory || '') === targetPageDirectory &&
+      (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
     );
 
     const linkHasExplicitPath = originalLinkFilename.includes('/');
     if (!linkConfig && !linkHasExplicitPath) {
-      linkConfig = sitePageConfigs.find(sitePageConfig =>
-        sitePageConfig.title === resolvedTitle &&
-        (sitePageConfig.file_type === 'md' || !sitePageConfig.file_type)
+      linkConfig = siteNodeConfigs.find(siteNodeConfig =>
+        siteNodeConfig.siteNodeName === resolvedTitle &&
+        (siteNodeConfig.fileType === 'md' || !siteNodeConfig.fileType)
       );
     }
 
     const normalizedLinkFilename = siteConfig && siteSlug 
-      ? normalizePageTitle(linkConfig?.title || resolvedTitle, siteConfig, siteSlug)
-      : (linkConfig?.title || resolvedTitle);
+      ? normalizePageTitle(linkConfig?.siteNodeName || resolvedTitle, siteConfig, siteSlug)
+      : (linkConfig?.siteNodeName || resolvedTitle);
 
     if (highlightDoNotLinkPageName &&
         (originalLinkFilename.toLowerCase() === highlightDoNotLinkPageName.toLowerCase() ||
@@ -718,14 +718,14 @@ export function linkOrImageHtml(
         relativeUrl = resolveTrackedLinkHref({
           resolved: resolvedInfo,
           hostPageDirectory: currentPageDirectory,
-          sitePageConfigs,
+          siteNodeConfigs,
           siteConfig,
           siteSlug,
         });
       }
       if (relativeUrl === null) {
-        const effectiveTargetDirectory = (!linkHasExplicitPath && linkConfig?.source_graph_subdirectory !== undefined)
-          ? linkConfig.source_graph_subdirectory
+        const effectiveTargetDirectory = (!linkHasExplicitPath && linkConfig?.sourceGraphSubdirectory !== undefined)
+          ? linkConfig.sourceGraphSubdirectory
           : targetPageDirectory;
         const targetPath = effectiveTargetDirectory
           ? encodePathForUrl(`${effectiveTargetDirectory}/${normalizedLinkFilename}.html`)

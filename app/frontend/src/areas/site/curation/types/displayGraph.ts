@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 import { Graph } from '../../../../../../shared_code/types/graph';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage.js';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode.js';
 import { FileType } from '../../../../../../shared_code/types/FileType.js';
-import { IFilter, IPageSelector } from './filters';
+import { IFilter, ISiteNodeSelector } from './filters';
 import { logger } from '../../../../shared/utils/logger';
 import { calculateHighlightDetail } from '../utils/highlightDetailCalculators';
 import {
@@ -35,8 +35,8 @@ export interface Highlight {
   detailInfo?: string;
 }
 
-export class DisplayPage {
-  private _page: ISitePage;
+export class DisplayNode {
+  private _node: ISiteNode;
   private _isVisible: boolean = true;
   private _isSelected: boolean = false;
   private _isEffectivelySensitive: boolean = false;
@@ -46,28 +46,28 @@ export class DisplayPage {
   private _showTitle: boolean = false;
   private _titleFilterColors: string[] = [];
 
-  constructor(page: ISitePage) {
-    this._page = page;
+  constructor(node: ISiteNode) {
+    this._node = node;
   }
 
-  get id(): string {
-    return this._page.id;
+  get siteNodeKey(): string {
+    return this._node.siteNodeKey;
   }
 
   get label(): string {
-    return this._page.label;
+    return this._node.label;
   }
 
-  get title(): string {
-    return this._page.title || 'Untitled';
+  get siteNodeName(): string {
+    return this._node.siteNodeName || 'Untitled';
   }
 
-  get file_type(): FileType {
-    return this._page.file_type;
+  get fileType(): FileType {
+    return this._node.fileType;
   }
 
   get sourceGraphSubdirectory(): string {
-    return this._page.sourceGraphSubdirectory;
+    return this._node.sourceGraphSubdirectory;
   }
 
   get isVisible(): boolean {
@@ -102,20 +102,20 @@ export class DisplayPage {
     return [...this._titleFilterColors];
   }
 
-  get underlyingPage(): ISitePage {
-    return this._page;
+  get underlyingNode(): ISiteNode {
+    return this._node;
   }
 
-  get isFrontierPage(): boolean {
-    return this._page.isFrontierPage || false;
+  get isFrontierNode(): boolean {
+    return this._node.isFrontierNode || false;
   }
 
   get isFrontierImageExtension(): boolean {
-    return this._page.isFrontierImageExtension || false;
+    return this._node.isFrontierImageExtension || false;
   }
 
   get tracked(): boolean {
-    return this._page.tracked || false;
+    return this._node.tracked || false;
   }
 
   setVisible(visible: boolean): void {
@@ -159,32 +159,32 @@ export class DisplayPage {
 
 export class DisplayGraph {
   private _graph: Graph;
-  private _displayPages: Map<string, DisplayPage>;
+  private _displayNodes: Map<string, DisplayNode>;
   private _filters: IFilter[];
   private _filterExpression: FilterExpression | null;
 
   constructor(graph: Graph) {
     this._graph = graph;
-    this._displayPages = new Map();
+    this._displayNodes = new Map();
     this._filters = [];
     this._filterExpression = null;
 
-    // Initialize display pages
-    for (const page of graph.getAllPages()) {
-      this._displayPages.set(page.id, new DisplayPage(page));
+    // Initialize display nodes
+    for (const node of graph.getAllNodes()) {
+      this._displayNodes.set(node.siteNodeKey, new DisplayNode(node));
     }
   }
 
-  get allDisplayPages(): DisplayPage[] {
-    return Array.from(this._displayPages.values());
+  get allDisplayNodes(): DisplayNode[] {
+    return Array.from(this._displayNodes.values());
   }
 
-  get visibleDisplayPages(): DisplayPage[] {
-    return this.allDisplayPages.filter(page => page.isVisible);
+  get visibleDisplayNodes(): DisplayNode[] {
+    return this.allDisplayNodes.filter(node => node.isVisible);
   }
 
-  getDisplayPage(id: string): DisplayPage | undefined {
-    return this._displayPages.get(id);
+  getDisplayNode(id: string): DisplayNode | undefined {
+    return this._displayNodes.get(id);
   }
 
   setFilters(filters: IFilter[], filterExpression: FilterExpression | null = null): void {
@@ -193,30 +193,29 @@ export class DisplayGraph {
     this.applyFilters();
   }
 
-  setInitialPage(pageIdAsTitle: string): void {
-    logger.debug(`[DisplayGraph] setInitialPage called with title: ${pageIdAsTitle}`);
+  setEntryNode(siteNodeId: string): void {
+    logger.debug(`[DisplayGraph] setEntryNode called with site node ID: ${siteNodeId}`);
 
-    // Find the actual page in the graph by its title
-    const targetPage = this._graph.getAllPages().find(page => page.title === pageIdAsTitle);
+    const entryNode = this._graph.getAllNodes().find(node => node.siteNodeId === siteNodeId);
 
-    if (!targetPage) {
-      logger.warn(`[DisplayGraph] Page with title '${pageIdAsTitle}' not found in underlying graph for distance calculation.`);
-      this._displayPages.forEach(displayPage => {
-        displayPage.setDistance(undefined);
+    if (!entryNode) {
+      logger.warn(`[DisplayGraph] Entry node '${siteNodeId}' not found in underlying graph for distance calculation.`);
+      this._displayNodes.forEach(displayNode => {
+        displayNode.setDistance(undefined);
       });
       return;
     }
 
-    // Use the depth property directly from each page — it already represents
-    // the hop count from the initial page (see tag-todo-depth in graph.ts).
-    this._displayPages.forEach(displayPage => {
-      displayPage.setDistance(displayPage.underlyingPage.depth);
+    // Use the depth property directly from each node — it already represents
+    // the hop count from the entry node (see tag-todo-depth in graph.ts).
+    this._displayNodes.forEach(displayNode => {
+      displayNode.setDistance(displayNode.underlyingNode.depth);
     });
   }
 
-  setSelectedPages(pageIds: Set<string>): void {
-    this._displayPages.forEach(displayPage => {
-      displayPage.setSelected(pageIds.has(displayPage.id));
+  setSelectedNodeKeys(siteNodeKeys: Set<string>): void {
+    this._displayNodes.forEach(displayNode => {
+      displayNode.setSelected(siteNodeKeys.has(displayNode.siteNodeKey));
     });
   }
 
@@ -227,42 +226,42 @@ export class DisplayGraph {
 
     this._filters.forEach(filter => {
       if (!activeFilterIds.has(filter.id) || filterMatches.has(filter.id)) return;
-      const selectedPages = filter.pageSelectors.map((selector: IPageSelector) => selector.select(this._graph));
+      const selectedNodeKeys = filter.siteNodeSelectors.map((selector: ISiteNodeSelector) => selector.select(this._graph));
       const matches = new Set<string>();
-      this._displayPages.forEach(displayPage => {
+      this._displayNodes.forEach(displayNode => {
         const isSelected = filter.selectorApplicationCriteria === 'union'
-          ? selectedPages.some((pages: Set<string>) => pages.has(displayPage.id))
-          : selectedPages.every((pages: Set<string>) => pages.has(displayPage.id));
-        if (isSelected) matches.add(displayPage.id);
+          ? selectedNodeKeys.some((nodeKeys: Set<string>) => nodeKeys.has(displayNode.siteNodeKey))
+          : selectedNodeKeys.every((nodeKeys: Set<string>) => nodeKeys.has(displayNode.siteNodeKey));
+        if (isSelected) matches.add(displayNode.siteNodeKey);
       });
       filterMatches.set(filter.id, matches);
     });
 
     const expression = this._filterExpression || createDefaultFilterExpression(activeTerms);
-    const allPageIds = new Set(this._displayPages.keys());
-    const visiblePageIds = evaluateFilterExpression(expression, activeTerms, filterMatches, allPageIds);
+    const allSiteNodeKeys = new Set(this._displayNodes.keys());
+    const visibleSiteNodeKeys = evaluateFilterExpression(expression, activeTerms, filterMatches, allSiteNodeKeys);
 
-    // Reset page presentation and apply the visibility expression.
-    this._displayPages.forEach(displayPage => {
-      displayPage.setVisible(visiblePageIds.has(displayPage.id));
-      displayPage.setHighlights([]);
-      displayPage.setShowLabel(false);
-      displayPage.setShowTitle(false);
-      displayPage.clearTitleFilterColors();
-      // Set effectively sensitive based on underlying page sensitivity
-      displayPage.setEffectivelySensitive(displayPage.underlyingPage.sensitive || false);
+    // Reset node presentation and apply the visibility expression.
+    this._displayNodes.forEach(displayNode => {
+      displayNode.setVisible(visibleSiteNodeKeys.has(displayNode.siteNodeKey));
+      displayNode.setHighlights([]);
+      displayNode.setShowLabel(false);
+      displayNode.setShowTitle(false);
+      displayNode.clearTitleFilterColors();
+      // Set effectively sensitive based on underlying node sensitivity
+      displayNode.setEffectivelySensitive(displayNode.underlyingNode.sensitive || false);
     });
 
     // Apply other filter actions (highlights, sensitivity, labels, titles)
     this._filters.forEach((filter: IFilter) => {
       if (!filter.enabled) return;
 
-      const selectedPages = filter.pageSelectors.map((selector: IPageSelector) => selector.select(this._graph));
+      const selectedNodeKeys = filter.siteNodeSelectors.map((selector: ISiteNodeSelector) => selector.select(this._graph));
 
-      this._displayPages.forEach((displayPage: DisplayPage) => {
+      this._displayNodes.forEach((displayNode: DisplayNode) => {
         const isSelected = filter.selectorApplicationCriteria === 'union'
-          ? selectedPages.some((pages: Set<string>) => pages.has(displayPage.id))
-          : selectedPages.every((pages: Set<string>) => pages.has(displayPage.id));
+          ? selectedNodeKeys.some((nodeKeys: Set<string>) => nodeKeys.has(displayNode.siteNodeKey))
+          : selectedNodeKeys.every((nodeKeys: Set<string>) => nodeKeys.has(displayNode.siteNodeKey));
 
         if (isSelected) {
           // Process mark_sensitive before highlight so sensitivity state is set
@@ -274,17 +273,17 @@ export class DisplayGraph {
             switch (action.type) {
               case 'highlight': {
                 // Add highlight if either:
-                // 1. The page is effectively sensitive and this highlight is from a sensitivity-related action
+                // 1. The node is effectively sensitive and this highlight is from a sensitivity-related action
                 // 2. This is a regular highlight action
                 const isSensitivityHighlight = action.color === '#ff69b4' && action.isDashed;
-                if (!isSensitivityHighlight || displayPage.isEffectivelySensitive) {
+                if (!isSensitivityHighlight || displayNode.isEffectivelySensitive) {
                   const detailInfo = calculateHighlightDetail(
                     filter.id,
-                    displayPage.underlyingPage,
+                    displayNode.underlyingNode,
                     this._graph
                   );
-                  displayPage.setHighlights([
-                    ...displayPage.highlights,
+                  displayNode.setHighlights([
+                    ...displayNode.highlights,
                     {
                       color: action.color,
                       isDashed: action.isDashed,
@@ -297,18 +296,18 @@ export class DisplayGraph {
                 break;
               }
               case 'mark_sensitive': {
-                displayPage.setEffectivelySensitive(true);
+                displayNode.setEffectivelySensitive(true);
                 break;
               }
               case 'show_labels': {
-                displayPage.setShowLabel(true);
+                displayNode.setShowLabel(true);
                 break;
               }
               case 'show_titles': {
-                displayPage.setShowTitle(true);
+                displayNode.setShowTitle(true);
                 const highlightAction = filter.actions.find(a => a.type === 'highlight');
                 if (highlightAction && highlightAction.type === 'highlight') {
-                  displayPage.addTitleFilterColor(highlightAction.color);
+                  displayNode.addTitleFilterColor(highlightAction.color);
                 }
                 break;
               }

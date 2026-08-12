@@ -36,6 +36,7 @@ import { commitChangesNative } from '../../../../shared/utils/configDirectory/gi
 import { clearSiteGuidCache, logSiteError, logSiteInfo } from '../../../../shared/utils/logging/siteLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
+import { parseSiteNodeConfig, resolveSiteNodeRoles } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
 
 const router = express.Router();
 
@@ -44,6 +45,18 @@ const __dirname = path.dirname(__filename);
 
 function getRequestOrigin(req: express.Request): string {
   return `${req.protocol}://${req.get('host')}`;
+}
+
+function loadDefaultTraversalPage(siteDirectory: string): { title: string; directory: string } {
+  const configPath = SiteConfigPaths.getSiteConfigFile(siteDirectory);
+  const nodeConfigPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
+  const siteConfig = YAML.parse(fs.readFileSync(configPath, 'utf8')) as SiteConfig;
+  const nodes = parseSiteNodeConfig(fs.readFileSync(nodeConfigPath, 'utf8'), nodeConfigPath);
+  const { defaultTraversalNode } = resolveSiteNodeRoles(nodes, siteConfig, configPath);
+  return {
+    title: defaultTraversalNode.siteNodeName,
+    directory: defaultTraversalNode.sourceGraphSubdirectory || '',
+  };
 }
 
 // Serve the vendored Excalidraw renderer bundle so the editor frontend
@@ -155,22 +168,17 @@ router.post('/sites/:siteSlug/generation/preview', (req, res, next) => {
         }
 
         // Get the site config to determine the traversal page
-        const configPath = SiteConfigPaths.getSiteConfigFile(siteDirectory);
         let traversalPageTitle = '';
         let traversalPageDirectory: string | undefined = undefined;
         
         try {
-          if (fs.existsSync(configPath)) {
-            timeSync('site.preview.request.stage', { stage: 'load_traversal_config', site_slug: siteSlug }, () => {
-              const yamlContent = fs.readFileSync(configPath, 'utf8');
-              const config = YAML.parse(yamlContent) as {
-                defaultTraversalSitePageTitle?: string;
-                defaultTraversalSitePageDirectory?: string;
-              };
-              traversalPageTitle = config?.defaultTraversalSitePageTitle || '';
-              traversalPageDirectory = config?.defaultTraversalSitePageDirectory;
-            });
-          }
+          const traversalPage = timeSync(
+            'site.preview.request.stage',
+            { stage: 'load_traversal_config', site_slug: siteSlug },
+            () => loadDefaultTraversalPage(siteDirectory),
+          );
+          traversalPageTitle = traversalPage.title;
+          traversalPageDirectory = traversalPage.directory;
         } catch (error) {
           logger.warn('Could not read site config for traversal page:', error);
         }
@@ -391,22 +399,17 @@ router.get('/sites/:siteSlug/generation/preview-stream', (req, res, _next) => {
       }
 
       // Get the site config to determine the traversal page
-      const configPath = SiteConfigPaths.getSiteConfigFile(siteDirectory);
       let traversalPageTitle = '';
       let traversalPageDirectory: string | undefined = undefined;
 
       try {
-        if (fs.existsSync(configPath)) {
-          timeSync('site.preview.request.stage', { stage: 'load_traversal_config', site_slug: siteSlug }, () => {
-            const yamlContent = fs.readFileSync(configPath, 'utf8');
-            const config = YAML.parse(yamlContent) as {
-              defaultTraversalSitePageTitle?: string;
-              defaultTraversalSitePageDirectory?: string;
-            };
-            traversalPageTitle = config?.defaultTraversalSitePageTitle || '';
-            traversalPageDirectory = config?.defaultTraversalSitePageDirectory;
-          });
-        }
+        const traversalPage = timeSync(
+          'site.preview.request.stage',
+          { stage: 'load_traversal_config', site_slug: siteSlug },
+          () => loadDefaultTraversalPage(siteDirectory),
+        );
+        traversalPageTitle = traversalPage.title;
+        traversalPageDirectory = traversalPage.directory;
       } catch (error) {
         logger.warn('Could not read site config for traversal page:', error);
       }
@@ -683,8 +686,24 @@ router.get('/sites/:siteSlug/generation/published/*', (req, res, next) => {
       }
     }
 
-    // Send the file
-    res.sendFile(filePath);
+    // The preview directory is replaced as one unit during regeneration. The
+    // file can therefore disappear after existsSync() but before sendFile()
+    // opens it. Report that race as the same ordinary 404 as the preflight
+    // check instead of forwarding ENOENT to the global 500 handler.
+    res.sendFile(filePath, error => {
+      if (!error) return;
+      const fileError = error as NodeJS.ErrnoException & { status?: number };
+      if (fileError.code === 'ENOENT' || fileError.status === 404) {
+        if (!res.headersSent) {
+          res.status(404).json({ error: 'Preview file not found', requestedPath: filePath });
+        }
+        return;
+      }
+      if (fileError.code === 'ECONNABORTED' || req.aborted || res.destroyed) {
+        return;
+      }
+      next(error);
+    });
     
   } catch (error) {
     next(error);

@@ -40,7 +40,7 @@ const GraphSearchLabels: React.FC<GraphSearchLabelsProps> = ({
   return (
     <g className="search-labels">
       {placements.map(placement => {
-        const { pageId, nodeX, nodeY, labelX, labelY, segments, needsConnector, titleFilterColors } = placement;
+        const { siteNodeKey, nodeX, nodeY, labelX, labelY, segments, needsConnector, titleFilterColors } = placement;
         const totalTextWidth = segments.reduce((sum, s) => sum + s.text.length * charWidth, 0);
         const rectWidth = totalTextWidth + padding * 2;
         const rectX = labelX - rectWidth / 2;
@@ -84,7 +84,7 @@ const GraphSearchLabels: React.FC<GraphSearchLabelsProps> = ({
         }
 
         return (
-          <g key={`search-label-${pageId}`}>
+          <g key={`search-label-${siteNodeKey}`}>
             {connectorLine}
 
             {/* Background rect */}

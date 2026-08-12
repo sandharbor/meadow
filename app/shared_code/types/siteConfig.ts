@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import type { SiteNodeId } from './siteNodeConfig.js';
+
 export interface GeneratedSiteVersion {
   versionId: string;
   firstPublishedAt: string;
@@ -31,10 +33,10 @@ export interface SiteConfig {
    */
   siteGuid?: string;
   sourceDirectory?: string;
-  initialSitePageTitle?: string;
-  initialSitePageDirectory?: string; // "" for root, "subdir" or "subdir/nested" for nested
-  defaultTraversalSitePageTitle?: string;
-  defaultTraversalSitePageDirectory?: string; // "" for root, "subdir" or "subdir/nested" for nested
+  entrySiteNodeId?: SiteNodeId;
+  defaultTraversalSiteNodeId?: SiteNodeId;
+  defaultOutlinksDepth?: number;
+  defaultInlinksDepth?: number;
   generatedSiteVersions?: string[];
   archivedAt?: string | null;
   siteCreatedAt?: string;

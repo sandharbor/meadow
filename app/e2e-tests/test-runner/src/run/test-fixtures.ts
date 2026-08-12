@@ -53,15 +53,15 @@ const BIG_SITE_EXCALIDRAW_PAGE_CONFIGS = [
     fileType: "excalidraw",
     listType: "whitelist",
     sourceGraphSubdirectory: "t006 - second directory",
-    title: "embedded in page in other t006 directory",
-    tracked: true,
+    siteNodeKind: "file",
+    siteNodeName: "embedded in page in other t006 directory",
   },
   {
     fileType: "excalidraw",
     listType: "whitelist",
     sourceGraphSubdirectory: "t006",
-    title: "t006 --- meadow-flower",
-    tracked: true,
+    siteNodeKind: "file",
+    siteNodeName: "t006 --- meadow-flower",
   },
 ];
 
@@ -126,6 +126,7 @@ export function waitForHttpReady(
   path: string,
   timeoutMs: number,
   proc: ChildProcess,
+  requireSuccess = false,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
@@ -146,9 +147,11 @@ export function waitForHttpReady(
         { host: "127.0.0.1", port, path, method: "GET", timeout: 2_000 },
         (res) => {
           res.resume();
-          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 500) {
-            // 2xx/3xx/4xx all mean the backend is processing requests.
-            // Only 5xx or no response indicates it's not truly ready.
+          const maximumAcceptedStatus = requireSuccess ? 299 : 499;
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode <= maximumAcceptedStatus) {
+            // Some probe endpoints intentionally reject an empty request, so
+            // callers may accept any non-5xx response. Known-success endpoints
+            // can require a 2xx payload to prove initialization has finished.
             resolve();
           } else {
             setTimeout(attempt, 200);
@@ -300,40 +303,43 @@ function populateConfigDir(configDir: string, fixtureName = "home_fixture_big_an
 }
 
 function trackBigSiteExcalidrawPages(configDir: string) {
-  const sitePageConfigPath = path.join(
+  const siteNodeConfigPath = path.join(
     configDir,
     "sites",
     "meadow-test-site-big",
     "conf",
-    "site_page_config.yaml",
+    "site_node_config.yaml",
   );
-  if (!existsSync(sitePageConfigPath)) return;
+  if (!existsSync(siteNodeConfigPath)) return;
 
-  const parsed = YAML.parse(readFileSync(sitePageConfigPath, "utf8")) as {
-    pages?: Array<Record<string, unknown>>;
+  const parsed = YAML.parse(readFileSync(siteNodeConfigPath, "utf8")) as {
+    nodes?: Array<Record<string, unknown>>;
   } | null;
-  const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
-  const keyFor = (page: {
+  const nodes = Array.isArray(parsed?.nodes) ? parsed.nodes : [];
+  const keyFor = (node: {
     sourceGraphSubdirectory?: unknown;
-    title?: unknown;
+    siteNodeName?: unknown;
     fileType?: unknown;
   }) => [
-    typeof page.sourceGraphSubdirectory === "string" ? page.sourceGraphSubdirectory : "",
-    typeof page.title === "string" ? page.title : "",
-    typeof page.fileType === "string" ? page.fileType : "",
+    typeof node.sourceGraphSubdirectory === "string" ? node.sourceGraphSubdirectory : "",
+    typeof node.siteNodeName === "string" ? node.siteNodeName : "",
+    typeof node.fileType === "string" ? node.fileType : "",
   ].join("\u0000");
-  const existing = new Set(pages.map(keyFor));
+  const existing = new Set(nodes.map(keyFor));
   for (const config of BIG_SITE_EXCALIDRAW_PAGE_CONFIGS) {
-    const existingPage = pages.find((page) => keyFor(page) === keyFor(config));
-    if (existingPage) {
-      Object.assign(existingPage, config);
+    const existingNode = nodes.find((node) => keyFor(node) === keyFor(config));
+    if (existingNode) {
+      Object.assign(existingNode, config);
     } else if (!existing.has(keyFor(config))) {
-      pages.push(config);
+      nodes.push({
+        ...config,
+        siteNodeId: createHash("sha256").update(`e2e:${keyFor(config)}`).digest("hex").slice(0, 12),
+      });
     }
   }
   writeFileSync(
-    sitePageConfigPath,
-    YAML.stringify({ ...(parsed ?? {}), pages }),
+    siteNodeConfigPath,
+    YAML.stringify({ ...(parsed ?? {}), nodes }),
     "utf8",
   );
 }
@@ -717,7 +723,7 @@ export const test = base.extend<{
       // accept is not sufficient — under heavy parallel load it has been
       // observed as bound-but-unresponsive, surfacing as 502s through the
       // static-frontend proxy (frontend page load).
-      await waitForHttpReady(backendPort, "/api/app-config", 15_000, backendProc);
+      await waitForHttpReady(backendPort, "/api/app-config", 15_000, backendProc, true);
       const sourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
 
       const server: TestServer = {

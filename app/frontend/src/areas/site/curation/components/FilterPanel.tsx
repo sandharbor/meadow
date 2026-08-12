@@ -23,8 +23,8 @@ import CustomFilterModal from './CustomFilterModal';
 import { CustomFilterConfig } from '../../../../../../shared_code/types/customFilters';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { logger } from '../../../../shared/utils/logger';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage';
-import { hasPagesInMultipleFolders } from '../utils/folderFilterUtils';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
+import { hasNodesInMultipleFolders } from '../utils/folderFilterUtils';
 import FolderFilterTree from './FolderFilterTree';
 import FilterExpressionComposer from './FilterExpressionComposer';
 import {
@@ -39,8 +39,8 @@ interface FilterPanelProps {
   onFilterChange: (filterId: string, changes: Partial<IFilter>) => void;
   siteSlug: string;
   onCustomFiltersChange?: () => void;
-  untrackedPagesCount?: number;
-  pages?: ISitePage[];
+  untrackedNodeCount?: number;
+  pages?: ISiteNode[];
   filterExpression?: FilterExpression | null;
   filterExpressionFilters?: IFilter[];
   onFilterExpressionChange?: (expression: FilterExpression) => void;
@@ -51,7 +51,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   onFilterChange,
   siteSlug,
   onCustomFiltersChange,
-  untrackedPagesCount,
+  untrackedNodeCount,
   pages = [],
   filterExpression = null,
   filterExpressionFilters,
@@ -115,7 +115,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     Object.entries(debouncedSearchInputs).forEach(([filterId, searchValue]) => {
       const filter = filters.find(f => f.id === filterId);
       if (filter && filter.id === 'search-by-title-filter') {
-        const currentSearchInput = filter.pageSelectors[0]?.searchInput || '';
+        const currentSearchInput = filter.siteNodeSelectors[0]?.searchInput || '';
 
         // Only update if the debounced value differs from current filter value
         if (searchValue !== currentSearchInput) {
@@ -123,7 +123,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           const isNewSearch = !searchHadContent && searchValue.length > 0;
 
           onFilterChange(filter.id, {
-            pageSelectors: [createSearchByTitleSelector(searchValue)],
+            siteNodeSelectors: [createSearchByTitleSelector(searchValue)],
             ...(isNewSearch ? { isSolo: true } : {}),
             // When clearing search, also turn off Solo and Hide
             ...(searchValue.length === 0 ? { isSolo: false, isHidden: false } : {})
@@ -155,7 +155,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
 
           if (newSelector) {
             // Persist both the selector and the thresholdValue on the filter
-            onFilterChange(filter.id, { pageSelectors: [newSelector], thresholdValue });
+            onFilterChange(filter.id, { siteNodeSelectors: [newSelector], thresholdValue });
           } else if (filterId === 'frontier-filter') {
             // Frontier threshold only affects the API call, not the page selector
             onFilterChange(filter.id, { thresholdValue });
@@ -172,10 +172,10 @@ const FilterPanel = React.memo<FilterPanelProps>(({
       let hasChanges = false;
 
       filters.forEach(filter => {
-        if (filter.showSearchInput && filter.pageSelectors.length > 0) {
+        if (filter.showSearchInput && filter.siteNodeSelectors.length > 0) {
           // Only initialize if not already set in local state - don't overwrite user input
           if (!(filter.id in prev)) {
-            updated[filter.id] = filter.pageSelectors[0]?.searchInput || '';
+            updated[filter.id] = filter.siteNodeSelectors[0]?.searchInput || '';
             hasChanges = true;
           }
         }
@@ -272,7 +272,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     }
   };
 
-  const showFolderFilter = hasPagesInMultipleFolders(pages);
+  const showFolderFilter = hasNodesInMultipleFolders(pages);
   const otherFilters = filters.filter(f =>
     !f.hideFromFilterList
     && f.id !== 'search-by-title-filter'
@@ -418,9 +418,9 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                   />
                   <label htmlFor={`${filter.id}-enabled`} className={`text-sm text-gray-700 flex items-center min-w-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}>
                     <span className="truncate">{filter.name}</span>
-                    {filter.id === 'untracked-filter' && untrackedPagesCount !== undefined && untrackedPagesCount > 0 && (
+                    {filter.id === 'untracked-filter' && untrackedNodeCount !== undefined && untrackedNodeCount > 0 && (
                       <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium bg-warning-100 text-warning-700 rounded flex-shrink-0">
-                        {untrackedPagesCount}
+                        {untrackedNodeCount}
                       </span>
                     )}
                   </label>
@@ -510,7 +510,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                 />
               )}
               {filter.enabled && filter.showSearchInput &&
-                filter.pageSelectors.length > 0 && (
+                filter.siteNodeSelectors.length > 0 && (
                 <div className="ml-6">
                   <input
                     type="text"
@@ -528,7 +528,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                 </div>
               )}
               {filter.enabled && filter.showThresholdInput &&
-                filter.pageSelectors.length > 0 && (
+                filter.siteNodeSelectors.length > 0 && (
                 <div className="ml-6 flex items-center space-x-2">
                   <label className="text-xs text-gray-500">{filter.thresholdLabel ?? 'Gap \u2265:'}</label>
                   <input

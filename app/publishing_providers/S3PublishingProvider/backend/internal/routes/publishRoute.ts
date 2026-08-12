@@ -21,6 +21,7 @@ import { SiteConfigPaths } from '../../../../../shared_code/paths/siteConfigPath
 import { getSiteDirectory } from '../../../../../backend/src/shared/site-config/siteConfigPaths.js';
 import { loadSiteConfig, updateSiteConfig } from '../../../../../backend/src/shared/utils/siteConfigUtils.js';
 import { getHtmlPathForPage } from '../../../../../backend/src/shared/utils/htmlPathLookup.js';
+import { loadValidatedSiteNodeConfiguration } from '../../../../../backend/src/shared/site-node/siteNodeConfigLoader.js';
 import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
 import { createS3Client, describeS3Error, requireBucket } from '../s3Client.js';
 import { uploadDirectory } from '../s3Operations.js';
@@ -92,15 +93,13 @@ export function registerS3PublishRoute(router: Router): void {
         if (normalizedBase) {
           let landingPath = 'index.html';
           try {
-            const coreSiteConfig = loadSiteConfig(siteDirectory);
-            if (coreSiteConfig.defaultTraversalSitePageTitle) {
-              const foundPath = getHtmlPathForPage(
-                siteDirectory,
-                coreSiteConfig.defaultTraversalSitePageTitle,
-                coreSiteConfig.defaultTraversalSitePageDirectory,
-              );
-              if (foundPath) landingPath = foundPath;
-            }
+            const { defaultTraversalNode } = loadValidatedSiteNodeConfiguration(siteDirectory);
+            const foundPath = getHtmlPathForPage(
+              siteDirectory,
+              defaultTraversalNode.siteNodeName,
+              defaultTraversalNode.sourceGraphSubdirectory,
+            );
+            if (foundPath) landingPath = foundPath;
           } catch (error) {
             logger.warn('[S3PublishingProvider] Could not resolve traversal page:', error);
           }

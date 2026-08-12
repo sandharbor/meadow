@@ -91,10 +91,10 @@ describe('computeLabelPlacements', () => {
   });
 
   it('places a single label above its node', () => {
-    const pages = [{ pageId: 'p1', title: 'test-page', nodeX: 100, nodeY: 100, titleFilterColors: [] }];
+    const pages = [{ siteNodeKey: 'p1', siteNodeName: 'test-page', nodeX: 100, nodeY: 100, titleFilterColors: [] }];
     const result = computeLabelPlacements(pages, 'test', 5, 3);
     expect(result).toHaveLength(1);
-    expect(result[0].pageId).toBe('p1');
+    expect(result[0].siteNodeKey).toBe('p1');
     // Label should be above the node
     expect(result[0].labelY).toBeLessThan(100);
     expect(result[0].segments).toEqual([
@@ -105,8 +105,8 @@ describe('computeLabelPlacements', () => {
 
   it('avoids overlapping labels for two nodes at the same position', () => {
     const pages = [
-      { pageId: 'p1', title: 'page-one', nodeX: 100, nodeY: 100, titleFilterColors: [] },
-      { pageId: 'p2', title: 'page-two', nodeX: 100, nodeY: 100, titleFilterColors: [] },
+      { siteNodeKey: 'p1', siteNodeName: 'page-one', nodeX: 100, nodeY: 100, titleFilterColors: [] },
+      { siteNodeKey: 'p2', siteNodeName: 'page-two', nodeX: 100, nodeY: 100, titleFilterColors: [] },
     ];
     const result = computeLabelPlacements(pages, 'page', 5, 3);
     expect(result).toHaveLength(2);
@@ -117,7 +117,7 @@ describe('computeLabelPlacements', () => {
   });
 
   it('does not need connector for labels close to their nodes', () => {
-    const pages = [{ pageId: 'p1', title: 'page', nodeX: 50, nodeY: 50, titleFilterColors: [] }];
+    const pages = [{ siteNodeKey: 'p1', siteNodeName: 'page', nodeX: 50, nodeY: 50, titleFilterColors: [] }];
     const result = computeLabelPlacements(pages, 'pa', 5, 3);
     expect(result[0].needsConnector).toBe(false);
   });
@@ -125,8 +125,8 @@ describe('computeLabelPlacements', () => {
   it('marks connector needed when label is displaced far from node', () => {
     // Create many pages at the same position to force displacement
     const pages = Array.from({ length: 15 }, (_, i) => ({
-      pageId: `p${i}`,
-      title: `page-number-${i}`,
+      siteNodeKey: `p${i}`,
+      siteNodeName: `page-number-${i}`,
       nodeX: 100,
       nodeY: 100,
       titleFilterColors: [],

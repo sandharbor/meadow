@@ -15,15 +15,15 @@ limitations under the License.
 */
 
 import { Graph } from '../../../../../../shared_code/types/graph';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
 
 /**
  * Calculate the detail info for outlink gap filter.
  * Returns format: "Outlinks: X (Y not in graph)"
  */
-export function calculateOutlinkGapDetail(page: ISitePage, graph: Graph): string {
-  const allOutlinks = graph.getAllOutlinkTargets(page.id);
-  const outlinksInGraph = allOutlinks.filter(id => graph.getPage(id)).length;
+export function calculateOutlinkGapDetail(page: ISiteNode, graph: Graph): string {
+  const allOutlinks = graph.getAllOutlinkTargets(page.siteNodeKey);
+  const outlinksInGraph = allOutlinks.filter(id => graph.getNode(id)).length;
   const outlinksNotInGraph = allOutlinks.length - outlinksInGraph;
 
   if (outlinksNotInGraph > 0) {
@@ -36,9 +36,9 @@ export function calculateOutlinkGapDetail(page: ISitePage, graph: Graph): string
  * Calculate the detail info for inlink gap filter.
  * Returns format: "Inlinks: X (Y not in graph)"
  */
-export function calculateInlinkGapDetail(page: ISitePage, graph: Graph): string {
-  const allInlinks = graph.getAllInlinkSources(page.id);
-  const inlinksInGraph = allInlinks.filter(id => graph.getPage(id)).length;
+export function calculateInlinkGapDetail(page: ISiteNode, graph: Graph): string {
+  const allInlinks = graph.getAllInlinkSources(page.siteNodeKey);
+  const inlinksInGraph = allInlinks.filter(id => graph.getNode(id)).length;
   const inlinksNotInGraph = allInlinks.length - inlinksInGraph;
 
   if (inlinksNotInGraph > 0) {
@@ -51,23 +51,23 @@ export function calculateInlinkGapDetail(page: ISitePage, graph: Graph): string 
  * Calculate the detail info for overrides filter.
  * Returns format like "outlinks depth: ~~4~~ 6" using ~~ for strikethrough
  */
-export function calculateOverridesDetail(page: ISitePage): string {
+export function calculateOverridesDetail(page: ISiteNode): string {
   const details: string[] = [];
   const traversalDetails = page.traversal_details;
-  const conf = page.conf?.config;
+  const conf = page.conf;
 
   // Check for outlinks_depth override
-  if (conf?.outlinks_depth !== undefined && traversalDetails?.outlinks_depth_inherited !== undefined) {
-    details.push(`outlinks depth: ~~${traversalDetails.outlinks_depth_inherited}~~ ${conf.outlinks_depth}`);
-  } else if (conf?.outlinks_depth !== undefined) {
-    details.push(`outlinks depth: ${conf.outlinks_depth}`);
+  if (conf?.outlinksDepth !== undefined && traversalDetails?.outlinks_depth_inherited !== undefined) {
+    details.push(`outlinks depth: ~~${traversalDetails.outlinks_depth_inherited}~~ ${conf.outlinksDepth}`);
+  } else if (conf?.outlinksDepth !== undefined) {
+    details.push(`outlinks depth: ${conf.outlinksDepth}`);
   }
 
   // Check for inlinks_depth override
-  if (conf?.inlinks_depth !== undefined && traversalDetails?.inlinks_depth_inherited !== undefined) {
-    details.push(`inlinks depth: ~~${traversalDetails.inlinks_depth_inherited}~~ ${conf.inlinks_depth}`);
-  } else if (conf?.inlinks_depth !== undefined) {
-    details.push(`inlinks depth: ${conf.inlinks_depth}`);
+  if (conf?.inlinksDepth !== undefined && traversalDetails?.inlinks_depth_inherited !== undefined) {
+    details.push(`inlinks depth: ~~${traversalDetails.inlinks_depth_inherited}~~ ${conf.inlinksDepth}`);
+  } else if (conf?.inlinksDepth !== undefined) {
+    details.push(`inlinks depth: ${conf.inlinksDepth}`);
   }
 
   return details.join(', ');
@@ -78,7 +78,7 @@ export function calculateOverridesDetail(page: ISitePage): string {
  */
 export function calculateHighlightDetail(
   filterId: string,
-  page: ISitePage,
+  page: ISiteNode,
   graph: Graph
 ): string | undefined {
   switch (filterId) {

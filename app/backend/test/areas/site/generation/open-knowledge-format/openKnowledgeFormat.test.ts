@@ -18,18 +18,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import {
   prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory
 } from '../../../../../src/areas/site/generation/open-knowledge-format/openKnowledgeFormat.js';
+import { makeSiteNodeConfig } from '../../../../shared/support/siteNodeConfigTestUtils.js';
 
-function pageConfig(title: string, dir = ''): SitePageConfig {
-  return {
-    title,
-    source_graph_subdirectory: dir,
-    file_type: 'md',
-    config: { list_type: 'whitelist' },
-  };
+function pageConfig(title: string, dir = ''): SiteNodeConfig {
+  return makeSiteNodeConfig(title, 'whitelist', { sourceGraphSubdirectory: dir });
 }
 
 function writeFile(root: string, relativePath: string, content: string | Buffer): void {
@@ -71,9 +67,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     writeFile(scrubbedDir, 'image file.png', Buffer.from([1, 2, 3]));
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('main page'), pageConfig('connected page')],
-      initialPageTitle: 'main page',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('main page'), pageConfig('connected page')],
+      entryNodeName: 'main page',
+      entrySourceGraphSubdirectory: '',
       allLinkResolutionMaps: new Map([
         [
           '/main page.md',
@@ -115,9 +111,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     ].join('\n'));
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('main page')],
-      initialPageTitle: 'main page',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('main page')],
+      entryNodeName: 'main page',
+      entrySourceGraphSubdirectory: '',
     });
 
     const mainPage = readFile(okfDir, 'main page.md');
@@ -139,7 +135,7 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     writeFile(scrubbedDir, 'index.md', 'Reserved index\n');
 
     const result = prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [
+      siteNodeConfigs: [
         pageConfig('home', 'sub'),
         pageConfig('log', 'sub'),
         pageConfig('log'),
@@ -147,8 +143,8 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
         pageConfig('log', 'alpha'),
         pageConfig('index'),
       ],
-      initialPageTitle: 'home',
-      initialPageDirectory: 'sub',
+      entryNodeName: 'home',
+      entrySourceGraphSubdirectory: 'sub',
     });
 
     expect(readFile(okfDir, 'log.md')).toBe('Preferred log\n');
@@ -184,9 +180,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     writeFile(scrubbedDir, 'updates.md', 'Updates\n');
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('home'), pageConfig('updates')],
-      initialPageTitle: 'home',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('home'), pageConfig('updates')],
+      entryNodeName: 'home',
+      entrySourceGraphSubdirectory: '',
       logSource: { mode: 'trackedPage', sourceGraphPath: 'updates.md' },
     });
 
@@ -205,9 +201,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     ].join('\n'));
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('home'), pageConfig('index')],
-      initialPageTitle: 'home',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('home'), pageConfig('index')],
+      entryNodeName: 'home',
+      entrySourceGraphSubdirectory: '',
       indexSource: { mode: 'trackedPage', sourceGraphPath: 'index.md' },
     });
 
@@ -230,9 +226,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     ].join('\n'));
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('home'), pageConfig('index')],
-      initialPageTitle: 'home',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('home'), pageConfig('index')],
+      entryNodeName: 'home',
+      entrySourceGraphSubdirectory: '',
       indexSource: { mode: 'trackedPage', sourceGraphPath: 'index.md' },
     });
 
@@ -255,9 +251,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     ].join('\n'));
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('home'), pageConfig('updates')],
-      initialPageTitle: 'home',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('home'), pageConfig('updates')],
+      entryNodeName: 'home',
+      entrySourceGraphSubdirectory: '',
       logSource: { mode: 'trackedPage', sourceGraphPath: 'updates.md' },
     });
 
@@ -273,9 +269,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     writeFile(scrubbedDir, 'custom index.md', 'Custom OKF index\n');
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('home'), pageConfig('index'), pageConfig('custom index')],
-      initialPageTitle: 'home',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('home'), pageConfig('index'), pageConfig('custom index')],
+      entryNodeName: 'home',
+      entrySourceGraphSubdirectory: '',
       indexSource: { mode: 'trackedPage', sourceGraphPath: 'custom index.md' },
     });
 
@@ -289,9 +285,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     writeFile(scrubbedDir, 'release notes.md', 'Shared OKF entry content\n');
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('home'), pageConfig('release notes')],
-      initialPageTitle: 'home',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('home'), pageConfig('release notes')],
+      entryNodeName: 'home',
+      entrySourceGraphSubdirectory: '',
       indexSource: { mode: 'trackedPage', sourceGraphPath: 'release notes.md' },
       logSource: { mode: 'trackedPage', sourceGraphPath: 'release notes.md' },
     });
@@ -307,9 +303,9 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     writeFile(scrubbedDir, 'log.md', 'Log\n');
 
     prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(scrubbedDir, okfDir, {
-      sitePageConfigs: [pageConfig('home'), pageConfig('log')],
-      initialPageTitle: 'home',
-      initialPageDirectory: '',
+      siteNodeConfigs: [pageConfig('home'), pageConfig('log')],
+      entryNodeName: 'home',
+      entrySourceGraphSubdirectory: '',
       logSource: { mode: 'none' },
     });
 

@@ -20,7 +20,7 @@ export interface TextSegment {
 }
 
 export interface LabelPlacement {
-  pageId: string;
+  siteNodeKey: string;
   nodeX: number;
   nodeY: number;
   labelX: number;
@@ -30,9 +30,9 @@ export interface LabelPlacement {
   titleFilterColors: string[];
 }
 
-interface PageInput {
-  pageId: string;
-  title: string;
+interface SiteNodeInput {
+  siteNodeKey: string;
+  siteNodeName: string;
   nodeX: number;
   nodeY: number;
   titleFilterColors: string[];
@@ -101,12 +101,12 @@ function overlapsAny(box: BoundingBox, placed: BoundingBox[]): boolean {
  * and picks the first one that doesn't overlap with already-placed labels.
  */
 export function computeLabelPlacements(
-  pages: PageInput[],
+  nodes: SiteNodeInput[],
   searchText: string,
   pageRadius: number,
   fontSize: number,
 ): LabelPlacement[] {
-  if (pages.length === 0) return [];
+  if (nodes.length === 0) return [];
 
   const charWidth = fontSize * 0.55;
   const labelHeight = fontSize * 1.6;
@@ -114,10 +114,10 @@ export function computeLabelPlacements(
   const connectorThreshold = pageRadius * 6;
 
   // Build initial data with segments
-  const items = pages.map(p => ({
+  const items = nodes.map(p => ({
     ...p,
-    segments: splitTitleBySearch(p.title, searchText),
-    width: p.title.length * charWidth + padding * 2,
+    segments: splitTitleBySearch(p.siteNodeName, searchText),
+    width: p.siteNodeName.length * charWidth + padding * 2,
     height: labelHeight,
   }));
 
@@ -128,7 +128,7 @@ export function computeLabelPlacements(
   const placedBoxes: BoundingBox[] = [];
 
   for (const item of items) {
-    const { pageId, nodeX, nodeY, segments, width, height } = item;
+    const { siteNodeKey, nodeX, nodeY, segments, width, height } = item;
 
     // Candidate positions: [dx, dy] offsets from node center
     const aboveY = nodeY - pageRadius - height - fontSize * 0.3;
@@ -189,7 +189,7 @@ export function computeLabelPlacements(
     const needsConnector = dist > connectorThreshold;
 
     placements.push({
-      pageId,
+      siteNodeKey,
       nodeX,
       nodeY,
       labelX: labelCenterX,

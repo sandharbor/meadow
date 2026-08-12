@@ -20,7 +20,8 @@ import os from 'os';
 import path from 'path';
 import { renderPageToHtml } from '../../../../../src/areas/site/generation/html/htmlGenerator.js';
 import type { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { makeSiteNodeConfig } from '../../../../shared/support/siteNodeConfigTestUtils.js';
 
 function mkTmp(): { contentRoot: string; outputRoot: string; cleanup: () => void } {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-directive-'));
@@ -39,15 +40,12 @@ function writeMd(root: string, title: string, content: string): void {
   fs.writeFileSync(path.join(root, `${title}.md`), content, 'utf8');
 }
 
-const siteConfig: SiteConfig = {
-  initialSitePageTitle: 'host',
-  initialSitePageDirectory: '',
-} as unknown as SiteConfig;
+const siteConfig: SiteConfig = {};
 
-const sitePageConfigs: SitePageConfig[] = [
-  { title: 'host', config: { list_type: 'whitelist' } },
-  { title: 'drawing', file_type: 'excalidraw', config: { list_type: 'whitelist' } },
-  { title: 'target', config: { list_type: 'whitelist' } },
+const siteNodeConfigs: SiteNodeConfig[] = [
+  makeSiteNodeConfig('host'),
+  makeSiteNodeConfig('drawing', 'whitelist', { fileType: 'excalidraw' }),
+  makeSiteNodeConfig('target'),
 ];
 
 function renderHost(contentRoot: string, outputRoot: string, markdown: string): string {
@@ -64,7 +62,7 @@ function renderHost(contentRoot: string, outputRoot: string, markdown: string): 
     {},
     siteConfig,
     'host.md',
-    sitePageConfigs,
+    siteNodeConfigs,
     { processBacklinks: false },
     undefined,
     '',

@@ -15,16 +15,17 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import { Graph, IPage } from '../../../../../../shared_code/types/graph';
+import { Graph, ISiteNode } from '../../../../../../shared_code/types/graph';
 import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../../../../../src/areas/site/curation/utils/selectionPaths';
 
-function makePage(id: string, overrides: Partial<IPage> = {}): IPage {
+function makePage(id: string, overrides: Partial<ISiteNode> = {}): ISiteNode {
   return {
-    id,
+    siteNodeKey: id as ISiteNode['siteNodeKey'],
+    siteNodeKind: 'file',
     label: id,
-    title: id,
+    siteNodeName: id,
     sourceGraphSubdirectory: '',
-    file_type: 'md',
+    fileType: 'md',
     depth: 0,
     remaining_depth: 0,
     remaining_inlinks_depth: 0,
@@ -35,26 +36,26 @@ function makePage(id: string, overrides: Partial<IPage> = {}): IPage {
 
 describe('selectionPaths', () => {
   describe('getSelectionPathToHereOrdered', () => {
-    it('puts the page first, then ancestors back to root', () => {
-      const page = makePage('C', { path: ['A', 'B', 'C'] });
-      expect(getSelectionPathToHereOrdered(page)).toEqual(['C', 'B', 'A']);
+    it('puts the node first, then ancestors back to root', () => {
+      const node = makePage('C', { path: ['A', 'B', 'C'] });
+      expect(getSelectionPathToHereOrdered(node)).toEqual(['C', 'B', 'A']);
     });
 
     it('handles missing path', () => {
-      const page = makePage('X');
-      expect(getSelectionPathToHereOrdered(page)).toEqual(['X']);
+      const node = makePage('X');
+      expect(getSelectionPathToHereOrdered(node)).toEqual(['X']);
     });
 
     it('dedupes while preserving order', () => {
-      const page = makePage('C', { path: ['A', 'B', 'B', 'C', 'A'] });
-      expect(getSelectionPathToHereOrdered(page)).toEqual(['C', 'A', 'B']);
+      const node = makePage('C', { path: ['A', 'B', 'B', 'C', 'A'] });
+      expect(getSelectionPathToHereOrdered(node)).toEqual(['C', 'A', 'B']);
     });
   });
 
   describe('getSelectionPathFromHereOrdered', () => {
     it('selects descendants following directed edges', () => {
       const g = new Graph();
-      ['A', 'B', 'C', 'D', 'E'].forEach((id) => g.addPage(makePage(id)));
+      ['A', 'B', 'C', 'D', 'E'].forEach((id) => g.addNode(makePage(id)));
       g.addEdge({ source: 'A', target: 'B' });
       g.addEdge({ source: 'B', target: 'C' });
       g.addEdge({ source: 'A', target: 'D' });
@@ -65,27 +66,27 @@ describe('selectionPaths', () => {
 
     it('treats bidirectional edges as traversable both ways', () => {
       const g = new Graph();
-      ['A', 'B', 'C'].forEach((id) => g.addPage(makePage(id)));
+      ['A', 'B', 'C'].forEach((id) => g.addNode(makePage(id)));
       g.addEdge({ source: 'A', target: 'B', isBidirectional: true });
       g.addEdge({ source: 'B', target: 'C' });
 
       expect(getSelectionPathFromHereOrdered(g, 'B')).toEqual(['B', 'A', 'C']);
     });
 
-    it('returns empty when startId is not in the graph', () => {
+    it('returns empty when startNodeKey is not in the graph', () => {
       const g = new Graph();
-      g.addPage(makePage('A'));
+      g.addNode(makePage('A'));
       expect(getSelectionPathFromHereOrdered(g, 'Z')).toEqual([]);
     });
   });
 
   describe('getSelectionDeeperPathsFromHereOrdered', () => {
-    it('follows edges only to higher-depth pages', () => {
+    it('follows edges only to higher-depth nodes', () => {
       const g = new Graph();
-      g.addPage(makePage('A', { depth: 0 }));
-      g.addPage(makePage('B', { depth: 1 }));
-      g.addPage(makePage('C', { depth: 2 }));
-      g.addPage(makePage('D', { depth: 1 }));
+      g.addNode(makePage('A', { depth: 0 }));
+      g.addNode(makePage('B', { depth: 1 }));
+      g.addNode(makePage('C', { depth: 2 }));
+      g.addNode(makePage('D', { depth: 1 }));
       g.addEdge({ source: 'A', target: 'B' });
       g.addEdge({ source: 'B', target: 'C' });
       g.addEdge({ source: 'A', target: 'D' });
@@ -93,12 +94,12 @@ describe('selectionPaths', () => {
       expect(getSelectionDeeperPathsFromHereOrdered(g, 'A')).toEqual(['A', 'B', 'C', 'D']);
     });
 
-    it('skips links to same-depth or lower-depth pages', () => {
+    it('skips links to same-depth or lower-depth nodes', () => {
       const g = new Graph();
-      g.addPage(makePage('A', { depth: 1 }));
-      g.addPage(makePage('B', { depth: 2 }));
-      g.addPage(makePage('C', { depth: 1 }));
-      g.addPage(makePage('D', { depth: 0 }));
+      g.addNode(makePage('A', { depth: 1 }));
+      g.addNode(makePage('B', { depth: 2 }));
+      g.addNode(makePage('C', { depth: 1 }));
+      g.addNode(makePage('D', { depth: 0 }));
       g.addEdge({ source: 'A', target: 'B' });
       g.addEdge({ source: 'A', target: 'C' });
       g.addEdge({ source: 'A', target: 'D' });
@@ -108,9 +109,9 @@ describe('selectionPaths', () => {
 
     it('works with bidirectional edges (only follows the deeper direction)', () => {
       const g = new Graph();
-      g.addPage(makePage('A', { depth: 0 }));
-      g.addPage(makePage('B', { depth: 1 }));
-      g.addPage(makePage('C', { depth: 2 }));
+      g.addNode(makePage('A', { depth: 0 }));
+      g.addNode(makePage('B', { depth: 1 }));
+      g.addNode(makePage('C', { depth: 2 }));
       g.addEdge({ source: 'B', target: 'A', isBidirectional: true });
       g.addEdge({ source: 'B', target: 'C' });
 
@@ -118,29 +119,29 @@ describe('selectionPaths', () => {
       expect(getSelectionDeeperPathsFromHereOrdered(g, 'B')).toEqual(['B', 'C']);
     });
 
-    it('returns just the start page when no deeper neighbors exist', () => {
+    it('returns just the start node when no deeper neighbors exist', () => {
       const g = new Graph();
-      g.addPage(makePage('A', { depth: 5 }));
-      g.addPage(makePage('B', { depth: 3 }));
+      g.addNode(makePage('A', { depth: 5 }));
+      g.addNode(makePage('B', { depth: 3 }));
       g.addEdge({ source: 'A', target: 'B' });
 
       expect(getSelectionDeeperPathsFromHereOrdered(g, 'A')).toEqual(['A']);
     });
 
-    it('returns empty when startId is not in the graph', () => {
+    it('returns empty when startNodeKey is not in the graph', () => {
       const g = new Graph();
-      g.addPage(makePage('A'));
+      g.addNode(makePage('A'));
       expect(getSelectionDeeperPathsFromHereOrdered(g, 'Z')).toEqual([]);
     });
   });
 
   describe('getSelectionChildrenOrdered', () => {
-    it('selects the page and its direct children (depth + 1)', () => {
+    it('selects the node and its direct children (depth + 1)', () => {
       const g = new Graph();
-      g.addPage(makePage('A', { depth: 0 }));
-      g.addPage(makePage('B', { depth: 1 }));
-      g.addPage(makePage('C', { depth: 1 }));
-      g.addPage(makePage('D', { depth: 2 }));
+      g.addNode(makePage('A', { depth: 0 }));
+      g.addNode(makePage('B', { depth: 1 }));
+      g.addNode(makePage('C', { depth: 1 }));
+      g.addNode(makePage('D', { depth: 2 }));
       g.addEdge({ source: 'A', target: 'B' });
       g.addEdge({ source: 'A', target: 'C' });
       g.addEdge({ source: 'B', target: 'D' });
@@ -148,29 +149,28 @@ describe('selectionPaths', () => {
       expect(getSelectionChildrenOrdered(g, 'A')).toEqual(['A', 'B', 'C']);
     });
 
-    it('excludes edges to pages at same or lower depth', () => {
+    it('excludes edges to nodes at same or lower depth', () => {
       const g = new Graph();
-      g.addPage(makePage('A', { depth: 1 }));
-      g.addPage(makePage('B', { depth: 2 }));
-      g.addPage(makePage('C', { depth: 1 }));
+      g.addNode(makePage('A', { depth: 1 }));
+      g.addNode(makePage('B', { depth: 2 }));
+      g.addNode(makePage('C', { depth: 1 }));
       g.addEdge({ source: 'A', target: 'B' });
       g.addEdge({ source: 'A', target: 'C' });
 
       expect(getSelectionChildrenOrdered(g, 'A')).toEqual(['A', 'B']);
     });
 
-    it('returns only the page when it has no children', () => {
+    it('returns only the node when it has no children', () => {
       const g = new Graph();
-      g.addPage(makePage('A', { depth: 2 }));
+      g.addNode(makePage('A', { depth: 2 }));
       expect(getSelectionChildrenOrdered(g, 'A')).toEqual(['A']);
     });
 
-    it('returns empty when startId is not in the graph', () => {
+    it('returns empty when startNodeKey is not in the graph', () => {
       const g = new Graph();
-      g.addPage(makePage('A'));
+      g.addNode(makePage('A'));
       expect(getSelectionChildrenOrdered(g, 'Z')).toEqual([]);
     });
   });
 });
-
 

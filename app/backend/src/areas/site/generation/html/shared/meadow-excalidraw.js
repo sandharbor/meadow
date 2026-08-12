@@ -14,6 +14,14 @@
 (function () {
   'use strict';
 
+  // Fetches started by a generated page are legitimately abandoned when the
+  // reader follows another link.  Under load the rejection can arrive after
+  // pagehide, so keep that lifecycle separate from a real rendering failure.
+  var pageIsUnloading = false;
+  window.addEventListener('pagehide', function () {
+    pageIsUnloading = true;
+  });
+
   var FULLSCREEN_CLASS = 'is-fullscreen';
   var BODY_CLASS = 'meadow-excalidraw-fullscreen-active';
   var MIN_ZOOM = 0.25;
@@ -565,6 +573,7 @@
         container.replaceChildren(svg);
       }
     } catch (err) {
+      if (pageIsUnloading) return;
       console.warn('[meadow-excalidraw] render failed', err);
       container.textContent = 'Excalidraw drawing failed to render.';
     }

@@ -22,6 +22,8 @@ import LZString from 'lz-string';
 import { generateHtmlForSite } from '../../../../../src/areas/site/generation/html/htmlService.js';
 import { TestSiteSetup } from '../../../../shared/support/testSiteSetup.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
+import { parseSiteNodeConfig, stringifySiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
+import { makeSiteNodeConfig } from '../../../../shared/support/siteNodeConfigTestUtils.js';
 
 describe('sources export filtering', () => {
   const testSetup = new TestSiteSetup('shared/fixtures/sources-export-site', 'sources-export-test');
@@ -53,20 +55,14 @@ describe('sources export filtering', () => {
     const mainPagePath = path.join(sitePath, 'raw', 'tracked_page_content', 'main page.md');
     fs.appendFileSync(mainPagePath, '\n\nEmbedded drawing:\n![[drawing.excalidraw]]\n', 'utf8');
 
-    const pageConfigPath = path.join(sitePath, 'conf', 'site_page_config.yaml');
-    fs.appendFileSync(
-      pageConfigPath,
-      [
-        '',
-        '  - fileType: excalidraw',
-        '    inlinksDepth: 0',
-        '    listType: whitelist',
-        '    outlinksDepth: 1',
-        '    title: drawing',
-        '',
-      ].join('\n'),
-      'utf8'
-    );
+    const pageConfigPath = path.join(sitePath, 'conf', 'site_node_config.yaml');
+    const configs = parseSiteNodeConfig(fs.readFileSync(pageConfigPath, 'utf8'), pageConfigPath);
+    configs.push(makeSiteNodeConfig('drawing', 'whitelist', {
+      fileType: 'excalidraw',
+      outlinksDepth: 1,
+      inlinksDepth: 0,
+    }));
+    fs.writeFileSync(pageConfigPath, stringifySiteNodeConfig(configs), 'utf8');
 
     const scene = {
       type: 'excalidraw',

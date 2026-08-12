@@ -19,12 +19,12 @@ import { Highlight } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils';
 import { FileType } from '../../../../../../shared_code/types/FileType';
 
-export const PAGE_NODE_RADIUS = 3;
+export const SITE_NODE_RADIUS = 3;
 
 const BAND_STROKE_WIDTH = 1;
 const BAND_GAP = 0.5;
 // First band starts just outside the node, each subsequent band hugs the previous one
-const BAND_OFFSET = PAGE_NODE_RADIUS + BAND_GAP + BAND_STROKE_WIDTH / 2;
+const BAND_OFFSET = SITE_NODE_RADIUS + BAND_GAP + BAND_STROKE_WIDTH / 2;
 const BAND_STEP = BAND_STROKE_WIDTH + BAND_GAP;
 
 // Node stroke colors
@@ -34,9 +34,9 @@ const FRONTIER_NODE_COLOR = '#f1f5f9';   // neutral-100
 const FRONTIER_IMAGE_COLOR = '#8b5cf6';  // violet-500
 const SELECTED_COLOR = '#f59e0b';        // warning-500
 
-interface PageNodeProps {
+interface SiteNodeGlyphProps {
   isSelected: boolean;
-  isFrontierPage: boolean;
+  isFrontierNode: boolean;
   isFrontierImageExtension: boolean;
   tracked: boolean;
   fileType: FileType;
@@ -45,17 +45,17 @@ interface PageNodeProps {
   label: string;
 }
 
-function getStrokeColor(props: Pick<PageNodeProps, 'isSelected' | 'isFrontierImageExtension' | 'isFrontierPage' | 'tracked'>): string {
+function getStrokeColor(props: Pick<SiteNodeGlyphProps, 'isSelected' | 'isFrontierImageExtension' | 'isFrontierNode' | 'tracked'>): string {
   if (props.isSelected) return SELECTED_COLOR;
   if (props.isFrontierImageExtension) return FRONTIER_IMAGE_COLOR;
-  if (props.isFrontierPage) return FRONTIER_NODE_COLOR;
+  if (props.isFrontierNode) return FRONTIER_NODE_COLOR;
   if (props.tracked) return TRACKED_NODE_COLOR;
   return UNTRACKED_NODE_COLOR;
 }
 
-const PageNode: React.FC<PageNodeProps> = ({
+const SiteNodeGlyph: React.FC<SiteNodeGlyphProps> = ({
   isSelected,
-  isFrontierPage,
+  isFrontierNode,
   isFrontierImageExtension,
   tracked,
   fileType,
@@ -63,7 +63,7 @@ const PageNode: React.FC<PageNodeProps> = ({
   showLabel,
   label,
 }) => {
-  const strokeColor = getStrokeColor({ isSelected, isFrontierImageExtension, isFrontierPage, tracked });
+  const strokeColor = getStrokeColor({ isSelected, isFrontierImageExtension, isFrontierNode, tracked });
 
   return (
     <>
@@ -82,7 +82,7 @@ const PageNode: React.FC<PageNodeProps> = ({
 
       {/* Page circle */}
       <circle
-        r={PAGE_NODE_RADIUS}
+        r={SITE_NODE_RADIUS}
         fill="#fff"
         stroke={strokeColor}
         strokeWidth={1}
@@ -112,4 +112,4 @@ const PageNode: React.FC<PageNodeProps> = ({
   );
 };
 
-export default PageNode;
+export default SiteNodeGlyph;

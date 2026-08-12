@@ -18,9 +18,10 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import type { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
 import { renderTransclusionToHtml } from '../../../../../src/areas/site/generation/html/transclusion.js';
+import { makeSiteNodeConfig } from '../../../../shared/support/siteNodeConfigTestUtils.js';
 
 function writeMd(root: string, subdir: string, title: string, content: string): void {
   const dir = subdir ? path.join(root, subdir) : root;
@@ -41,10 +42,7 @@ function mkTmp(): { contentRoot: string; outputRoot: string; cleanup: () => void
   };
 }
 
-const siteConfig: SiteConfig = {
-  initialSitePageTitle: 'main page',
-  initialSitePageDirectory: '',
-} as unknown as SiteConfig;
+const siteConfig: SiteConfig = {};
 
 describe('html transclusion', () => {
   it('full page transclusion should embed entire page content', () => {
@@ -56,15 +54,15 @@ describe('html transclusion', () => {
         'This is the content that should be transcluded into another page.',
       ].join('\n'));
 
-      const sitePageConfigs: SitePageConfig[] = [
-        { title: 't017 ---- full page source', source_graph_subdirectory: 't017', config: { list_type: 'whitelist' } },
+      const siteNodeConfigs: SiteNodeConfig[] = [
+        makeSiteNodeConfig('t017 ---- full page source', 'whitelist', { sourceGraphSubdirectory: 't017' }),
       ];
 
       const html = renderTransclusionToHtml('t017 ---- full page source', {
         finalPageDirectory: 't017',
         baseContentDirectory: contentRoot,
         baseOutputFolder: outputRoot,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         siteSlug: undefined,
         linkResolutionMapForCaller: {
@@ -103,15 +101,15 @@ describe('html transclusion', () => {
         'This is the conclusion section. It should also not be transcluded.',
       ].join('\n'));
 
-      const sitePageConfigs: SitePageConfig[] = [
-        { title: 't017 ---- section source', source_graph_subdirectory: 't017', config: { list_type: 'whitelist' } },
+      const siteNodeConfigs: SiteNodeConfig[] = [
+        makeSiteNodeConfig('t017 ---- section source', 'whitelist', { sourceGraphSubdirectory: 't017' }),
       ];
 
       const html = renderTransclusionToHtml('t017 ---- section source#Details', {
         finalPageDirectory: 't017',
         baseContentDirectory: contentRoot,
         baseOutputFolder: outputRoot,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         linkResolutionMapForCaller: {
           't017 ---- section source#Details': {
@@ -144,15 +142,15 @@ describe('html transclusion', () => {
         'This block has a specific identifier for testing. ^f4c4d5',
       ].join('\n'));
 
-      const sitePageConfigs: SitePageConfig[] = [
-        { title: 't017 ---- block source', source_graph_subdirectory: 't017', config: { list_type: 'whitelist' } },
+      const siteNodeConfigs: SiteNodeConfig[] = [
+        makeSiteNodeConfig('t017 ---- block source', 'whitelist', { sourceGraphSubdirectory: 't017' }),
       ];
 
       const html = renderTransclusionToHtml('t017 ---- block source#^key-insight', {
         finalPageDirectory: 't017',
         baseContentDirectory: contentRoot,
         baseOutputFolder: outputRoot,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         linkResolutionMapForCaller: {
           't017 ---- block source#^key-insight': {
@@ -190,9 +188,9 @@ describe('html transclusion', () => {
         'This is inner content.',
       ].join('\n'));
 
-      const sitePageConfigs: SitePageConfig[] = [
-        { title: 'outer', source_graph_subdirectory: 't017', config: { list_type: 'whitelist' } },
-        { title: 'inner', source_graph_subdirectory: 't017', config: { list_type: 'whitelist' } },
+      const siteNodeConfigs: SiteNodeConfig[] = [
+        makeSiteNodeConfig('outer', 'whitelist', { sourceGraphSubdirectory: 't017' }),
+        makeSiteNodeConfig('inner', 'whitelist', { sourceGraphSubdirectory: 't017' }),
       ];
 
       const allMaps = new Map<string, Record<string, any>>();
@@ -204,7 +202,7 @@ describe('html transclusion', () => {
         finalPageDirectory: 't017',
         baseContentDirectory: contentRoot,
         baseOutputFolder: outputRoot,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         linkResolutionMapForCaller: {
           outer: { link_resolved_target_directory: 't017', link_resolved_target_path: 't017/outer.md' },
@@ -225,7 +223,7 @@ describe('html transclusion', () => {
     try {
       writeMd(contentRoot, 't017', 'secret', 'Top secret');
 
-      const sitePageConfigs: SitePageConfig[] = [
+      const siteNodeConfigs: SiteNodeConfig[] = [
         // secret not present => not whitelisted
       ];
 
@@ -233,7 +231,7 @@ describe('html transclusion', () => {
         finalPageDirectory: '',
         baseContentDirectory: contentRoot,
         baseOutputFolder: outputRoot,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         linkResolutionMapForCaller: {
           secret: { link_resolved_target_directory: 't017', link_resolved_target_path: 't017/secret.md' },
@@ -257,9 +255,9 @@ describe('html transclusion', () => {
       ].join('\n'));
       writeMd(contentRoot, 'b', 'dest', '### Dest');
 
-      const sitePageConfigs: SitePageConfig[] = [
-        { title: 'source', source_graph_subdirectory: 'a', config: { list_type: 'whitelist' } },
-        { title: 'dest', source_graph_subdirectory: 'b', config: { list_type: 'whitelist' } },
+      const siteNodeConfigs: SiteNodeConfig[] = [
+        makeSiteNodeConfig('source', 'whitelist', { sourceGraphSubdirectory: 'a' }),
+        makeSiteNodeConfig('dest', 'whitelist', { sourceGraphSubdirectory: 'b' }),
       ];
 
       const allMaps = new Map<string, Record<string, any>>();
@@ -272,7 +270,7 @@ describe('html transclusion', () => {
         finalPageDirectory: 'c',
         baseContentDirectory: contentRoot,
         baseOutputFolder: outputRoot,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         linkResolutionMapForCaller: {
           source: { link_resolved_target_directory: 'a', link_resolved_target_path: 'a/source.md' },
@@ -286,5 +284,4 @@ describe('html transclusion', () => {
     }
   });
 });
-
 

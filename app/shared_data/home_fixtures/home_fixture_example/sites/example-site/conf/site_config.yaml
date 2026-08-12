@@ -1,10 +1,6 @@
 archivedAt: null
 siteGuid: placeholder
-defaultTraversalSitePageTitle: Notable Mental Models
-defaultTraversalSitePageDirectory: ""
 sourceDirectory: ./source_graphs/example-site-data
-initialSitePageTitle: Notable Mental Models
-initialSitePageDirectory: ""
 publishSlug: example-site
 siteCreatedAt: 2026-03-20T00:00:00.000Z
 siteLastPublishedAt: null
@@ -15,3 +11,6 @@ generationSpacedRepetitionTags:
   - "#flashcards/mental-models"
 generationMarkdownZipEnabled: true
 generatedSiteVersions: []
+defaultOutlinksDepth: 3
+entrySiteNodeId: 7fe9ab3fa811
+defaultTraversalSiteNodeId: 7fe9ab3fa811

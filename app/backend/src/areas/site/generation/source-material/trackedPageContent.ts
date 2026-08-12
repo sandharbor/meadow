@@ -16,10 +16,12 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { parsePageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
+import crypto from 'crypto';
+import { parseSiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../shared_code/utils/fileTypeUtils.js';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
-import { stringifyPageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import type { SiteNodeId } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { stringifySiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
 import { loadAppConfig } from '../../../../../../shared_code/utils/appConfigUtils.js';
@@ -40,13 +42,27 @@ import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js'
 
 export interface PreparedGenerationSourceMaterial {
   sourceContentDirectory: string;
-  sitePageConfigPath: string;
+  siteNodeConfigPath: string;
   tagPageCount: number;
+}
+
+function generatedTagSiteNodeId(
+  siteIdentity: string,
+  siteNodeName: string,
+  assignedIds: Set<string>,
+): SiteNodeId {
+  for (let salt = 0; ; salt += 1) {
+    const candidate = crypto.createHash('sha256')
+      .update(`${siteIdentity}\0${SiteConfigPaths.TAGPAGES_DIR}\0${siteNodeName}\0${salt}`)
+      .digest('hex')
+      .slice(0, 12);
+    if (!assignedIds.has(candidate)) return candidate as SiteNodeId;
+  }
 }
 
 /**
  * Ensures the tracked_page_content directory is populated with files from the source directory.
- * This copies tracked pages (based on site_page_config.yaml) from the source directory to
+ * This copies tracked pages (based on site_node_config.yaml) from the source directory to
  * the site's raw/tracked_page_content folder, preserving the directory structure.
  *
  * @param siteDirectory - The site's directory (e.g., /path/to/sites/my-site)
@@ -65,43 +81,39 @@ export async function ensureTrackedPageContent(
   const appConfig = loadAppConfig(getConfigDirectory());
   const generationOptions = resolveEffectiveGenerationOptions(appConfig, siteConfig);
 
-  // Read site_page_config.yaml to get tracked page titles
-  const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-  if (!fs.existsSync(sitePageConfPath)) {
-    logger.warn('site_page_config.yaml not found, skipping tracked page content sync');
+  // Read site_node_config.yaml to get tracked page titles
+  const siteNodeConfPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
+  if (!fs.existsSync(siteNodeConfPath)) {
+    logger.warn('site_node_config.yaml not found, skipping tracked page content sync');
     return;
   }
 
-  const confContent = fs.readFileSync(sitePageConfPath, 'utf8');
-  const sitePageConfigs = parsePageConfig(confContent);
+  const confContent = fs.readFileSync(siteNodeConfPath, 'utf8');
+  const siteNodeConfigs = parseSiteNodeConfig(confContent);
 
-  // Get tracked pages (whitelist with tracked:true or tracked not explicitly false)
-  const trackedPages = sitePageConfigs
-    .filter(sitePageConfig =>
-      sitePageConfig.config.tracked === true ||
-      (sitePageConfig.config.list_type === 'whitelist' && sitePageConfig.config.tracked !== false)
-    );
+  // Canonical record presence is the sole tracking/registration signal.
+  const trackedPages = siteNodeConfigs;
 
   if (trackedPages.length === 0) {
-    logger.warn('No tracked pages found in site_page_config.yaml');
+    logger.warn('No tracked pages found in site_node_config.yaml');
     return;
   }
 
   // Build expected file paths with subdirectories (excluding generated tag pages, which do not exist in sourceDirectory)
-  const expectedFilePaths = new Map<string, SitePageConfig>();
-  const sourceBackedTrackedPages = trackedPages.filter(c => (c.source_graph_subdirectory || '') !== tagPagesSubdirName);
-  for (const sitePageConfig of sourceBackedTrackedPages) {
-    const subdir = sitePageConfig.source_graph_subdirectory || '';
-    const filename = canonicalPageFilename(sitePageConfig.title, sitePageConfig.file_type);
+  const expectedFilePaths = new Map<string, SiteNodeConfig>();
+  const sourceBackedTrackedPages = trackedPages.filter(c => (c.sourceGraphSubdirectory || '') !== tagPagesSubdirName);
+  for (const siteNodeConfig of sourceBackedTrackedPages) {
+    const subdir = siteNodeConfig.sourceGraphSubdirectory || '';
+    const filename = canonicalPageFilename(siteNodeConfig.siteNodeName, siteNodeConfig.fileType);
     const relativePath = subdir ? path.join(subdir, filename) : filename;
-    expectedFilePaths.set(relativePath, sitePageConfig);
+    expectedFilePaths.set(relativePath, siteNodeConfig);
   }
 
   if (generationOptions.spacedRepetitionEnabled && generationOptions.spacedRepetitionTags.length > 0) {
     let updatedSourceFileCount = 0;
 
     for (const [relativePath, conf] of expectedFilePaths) {
-      const fileType = conf.file_type || 'md';
+      const fileType = conf.fileType || 'md';
       if (fileType !== 'md') {
         continue;
       }
@@ -153,10 +165,10 @@ export async function ensureTrackedPageContent(
   // Copy tracked pages from source to target, preserving directory structure
   let copiedCount = 0;
   for (const [relativePath, conf] of expectedFilePaths) {
-    const fileType = conf.file_type || 'md';
+    const fileType = conf.fileType || 'md';
 
-    const subdir = conf.source_graph_subdirectory || '';
-    const sourcePath = sourceFileCandidateFilenames(conf.title, fileType)
+    const subdir = conf.sourceGraphSubdirectory || '';
+    const sourcePath = sourceFileCandidateFilenames(conf.siteNodeName, fileType)
       .map(filename => subdir ? path.join(sourceDirectory, subdir, filename) : path.join(sourceDirectory, filename))
       .find(candidatePath => fs.existsSync(candidatePath));
 
@@ -174,10 +186,10 @@ export async function ensureTrackedPageContent(
         fs.copyFileSync(sourcePath, targetPath);
         copiedCount++;
       } catch (err) {
-        logger.error(`Failed to copy "${conf.title}": ${err instanceof Error ? err.message : String(err)}`);
+        logger.error(`Failed to copy "${conf.siteNodeName}": ${err instanceof Error ? err.message : String(err)}`);
       }
     } else {
-      logger.warn(`Tracked page "${conf.title}" (${fileType}) not found at: ${path.join(sourceDirectory, relativePath)}`);
+      logger.warn(`Tracked page "${conf.siteNodeName}" (${fileType}) not found at: ${path.join(sourceDirectory, relativePath)}`);
     }
   }
 
@@ -186,13 +198,13 @@ export async function ensureTrackedPageContent(
 
 function cleanupPreparedGenerationSourceMaterial(siteDirectory: string): void {
   const preparedSourceContentDir = SiteConfigPaths.getPreparedSourceContentDir(siteDirectory);
-  const preparedSitePageConfigPath = SiteConfigPaths.getPreparedSitePageConfigFile(siteDirectory);
+  const preparedSiteNodeConfigPath = SiteConfigPaths.getPreparedSiteNodeConfigFile(siteDirectory);
 
   if (fs.existsSync(preparedSourceContentDir)) {
     fs.rmSync(preparedSourceContentDir, { recursive: true, force: true });
   }
-  if (fs.existsSync(preparedSitePageConfigPath)) {
-    fs.rmSync(preparedSitePageConfigPath, { force: true });
+  if (fs.existsSync(preparedSiteNodeConfigPath)) {
+    fs.rmSync(preparedSiteNodeConfigPath, { force: true });
   }
 }
 
@@ -207,15 +219,15 @@ export function prepareGenerationSourceMaterial(
   options: { tagsEnabled: boolean }
 ): PreparedGenerationSourceMaterial {
   const trackedPageContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
-  const persistedSitePageConfigPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
+  const persistedSiteNodeConfigPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
   const preparedSourceContentDir = SiteConfigPaths.getPreparedSourceContentDir(siteDirectory);
-  const preparedSitePageConfigPath = SiteConfigPaths.getPreparedSitePageConfigFile(siteDirectory);
+  const preparedSiteNodeConfigPath = SiteConfigPaths.getPreparedSiteNodeConfigFile(siteDirectory);
   const tagPagesSubdirName = SiteConfigPaths.TAGPAGES_DIR;
   const tagPagesDir = path.join(preparedSourceContentDir, tagPagesSubdirName);
 
   const fallback: PreparedGenerationSourceMaterial = {
     sourceContentDirectory: trackedPageContentDir,
-    sitePageConfigPath: persistedSitePageConfigPath,
+    siteNodeConfigPath: persistedSiteNodeConfigPath,
     tagPageCount: 0,
   };
 
@@ -224,14 +236,14 @@ export function prepareGenerationSourceMaterial(
     return fallback;
   }
 
-  if (!fs.existsSync(persistedSitePageConfigPath) || !fs.existsSync(trackedPageContentDir)) {
+  if (!fs.existsSync(persistedSiteNodeConfigPath) || !fs.existsSync(trackedPageContentDir)) {
     cleanupPreparedGenerationSourceMaterial(siteDirectory);
     return fallback;
   }
 
   try {
-    const sitePageConfigs = parsePageConfig(fs.readFileSync(persistedSitePageConfigPath, 'utf8'));
-    const nonTagConfigs = sitePageConfigs.filter(c => (c.source_graph_subdirectory || '') !== tagPagesSubdirName);
+    const siteNodeConfigs = parseSiteNodeConfig(fs.readFileSync(persistedSiteNodeConfigPath, 'utf8'));
+    const nonTagConfigs = siteNodeConfigs.filter(c => (c.sourceGraphSubdirectory || '') !== tagPagesSubdirName);
 
     // 1) Scan tracked markdown for Obsidian-style #tags
     const trackedMarkdownFiles = listMarkdownFilesRecursive(trackedPageContentDir, { excludeDirNames: new Set([tagPagesSubdirName]) });
@@ -255,12 +267,20 @@ export function prepareGenerationSourceMaterial(
       return fallback;
     }
 
-    const desiredTagPageConfigs: SitePageConfig[] = desiredTagPageTitles.map(title => ({
-      title,
-      source_graph_subdirectory: tagPagesSubdirName,
-      file_type: 'md',
-      config: { list_type: 'whitelist', tracked: true }
-    }));
+    const assignedIds = new Set<string>(siteNodeConfigs.map(config => config.siteNodeId));
+    const siteIdentity = loadSiteConfig(siteDirectory).siteGuid || path.basename(siteDirectory);
+    const desiredTagPageConfigs: SiteNodeConfig[] = desiredTagPageTitles.map(siteNodeName => {
+      const siteNodeId = generatedTagSiteNodeId(siteIdentity, siteNodeName, assignedIds);
+      assignedIds.add(siteNodeId);
+      return {
+        siteNodeName,
+        sourceGraphSubdirectory: tagPagesSubdirName,
+        siteNodeKind: 'file',
+        fileType: 'md',
+        siteNodeId,
+        listType: 'whitelist',
+      };
+    });
 
     // 3) Copy tracked content into the generation-prepared source tree
     if (fs.existsSync(preparedSourceContentDir)) {
@@ -272,10 +292,10 @@ export function prepareGenerationSourceMaterial(
     }
 
     // 4) Write the prepared page config snapshot with only current tag pages
-    fs.mkdirSync(path.dirname(preparedSitePageConfigPath), { recursive: true });
+    fs.mkdirSync(path.dirname(preparedSiteNodeConfigPath), { recursive: true });
     fs.writeFileSync(
-      preparedSitePageConfigPath,
-      stringifyPageConfig([...nonTagConfigs, ...desiredTagPageConfigs]),
+      preparedSiteNodeConfigPath,
+      stringifySiteNodeConfig([...nonTagConfigs, ...desiredTagPageConfigs]),
       'utf8'
     );
 
@@ -302,7 +322,7 @@ export function prepareGenerationSourceMaterial(
 
     return {
       sourceContentDirectory: preparedSourceContentDir,
-      sitePageConfigPath: preparedSitePageConfigPath,
+      siteNodeConfigPath: preparedSiteNodeConfigPath,
       tagPageCount: desiredTagPageTitles.length,
     };
   } catch (err) {

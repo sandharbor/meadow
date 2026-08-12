@@ -17,52 +17,51 @@ limitations under the License.
 import { execSync } from 'child_process';
 import test from 'tape';
 
-type WorkingGraphPage = {
-  id: string;
-  title: string;
+type WorkingGraphNode = {
+  siteNodeKey: string;
+  siteNodeId?: string;
+  siteNodeKind: 'file';
+  siteNodeName: string;
   sourceGraphSubdirectory: string;
-  file_type: string;
+  fileType: string;
   depth: number;
 };
 
 type WorkingGraphEdge = {
   source: string;
   target: string;
+  siteEdgeKind: 'semanticLink';
   link_original_text: string;
   link_resolved_target_directory: string;
   link_resolved_target_path: string | null;
 };
 
 type WorkingGraphOutput = {
-  pages: WorkingGraphPage[];
+  nodes: WorkingGraphNode[];
   edges: WorkingGraphEdge[];
   allInlinkSources: Record<string, string[]>;
   allOutlinkTargets: Record<string, string[]>;
 };
 
 function runWorkingGraph(args: {
-  initialTitle: string;
-  initialDirectory: string;
-  initialFileType: string;
-  traversalTitle: string;
-  traversalDirectory: string;
-  traversalFileType: string;
+  entrySiteNodeId: string;
+  defaultTraversalSiteNodeId: string;
+  defaultOutlinksDepth?: number;
+  defaultInlinksDepth?: number;
   frontierDepth?: number;
 }): WorkingGraphOutput {
   // Path relative to working_graph_code working directory
   const graphRoot = "../../../shared_data/source_graphs/meadow-test-sites-data";
-  const sitePageConfig = "../../../shared_data/home_fixtures/home_fixture_big_and_small/sites/meadow-test-site-big/conf/site_page_config.yaml";
+  const siteNodeConfig = "../../../shared_data/home_fixtures/home_fixture_big_and_small/sites/meadow-test-site-big/conf/site_node_config.yaml";
 
   const cmd = [
     `cargo run --quiet --bin working_graph_bin --`,
     `--graph-root "${graphRoot}"`,
-    `--site-page-config "${sitePageConfig}"`,
-    `--initial-title "${args.initialTitle}"`,
-    `--initial-directory "${args.initialDirectory}"`,
-    `--initial-file-type "${args.initialFileType}"`,
-    `--traversal-title "${args.traversalTitle}"`,
-    `--traversal-directory "${args.traversalDirectory}"`,
-    `--traversal-file-type "${args.traversalFileType}"`,
+    `--site-node-config "${siteNodeConfig}"`,
+    `--entry-site-node-id "${args.entrySiteNodeId}"`,
+    `--default-traversal-site-node-id "${args.defaultTraversalSiteNodeId}"`,
+    ...(args.defaultOutlinksDepth === undefined ? [] : [`--default-outlinks-depth ${args.defaultOutlinksDepth}`]),
+    ...(args.defaultInlinksDepth === undefined ? [] : [`--default-inlinks-depth ${args.defaultInlinksDepth}`]),
     `--frontier-depth ${args.frontierDepth ?? 0}`,
   ].join(' ');
 
@@ -71,39 +70,35 @@ function runWorkingGraph(args: {
 }
 
 const resultMain = runWorkingGraph({
-  initialTitle: 'main page',
-  initialDirectory: '',
-  initialFileType: 'md',
-  traversalTitle: 'main page',
-  traversalDirectory: '',
-  traversalFileType: 'md',
+  entrySiteNodeId: 'ef63f962db68',
+  defaultTraversalSiteNodeId: 'ef63f962db68',
+  defaultOutlinksDepth: 4,
+  defaultInlinksDepth: 100,
   frontierDepth: 0
 });
 
 const resultDepth0 = runWorkingGraph({
-  initialTitle: 't009 - page conf graph depth',
-  initialDirectory: '',
-  initialFileType: 'md',
-  traversalTitle: 't009 - page conf graph depth',
-  traversalDirectory: '',
-  traversalFileType: 'md',
+  entrySiteNodeId: '8d86983d7f98',
+  defaultTraversalSiteNodeId: '8d86983d7f98',
+  defaultOutlinksDepth: 4,
+  defaultInlinksDepth: 100,
   frontierDepth: 0
 });
 
-function pageByTitleAndDir(pages: WorkingGraphPage[], title: string, dir: string): WorkingGraphPage | undefined {
-  return pages.find(n => n.title === title && (n.sourceGraphSubdirectory || '') === (dir || ''));
+function nodeByNameAndDir(nodes: WorkingGraphNode[], name: string, dir: string): WorkingGraphNode | undefined {
+  return nodes.find(node => node.siteNodeName === name && (node.sourceGraphSubdirectory || '') === (dir || ''));
 }
 
 test('working_graph integration', (t) => {
   t.test('outlinks_depth=0 yields only the initial page', (st) => {
-    st.equal(resultDepth0.pages.length, 1, 'should only contain initial page');
-    st.equal(resultDepth0.pages[0].title, 't009 - page conf graph depth', 'initial page title');
+    st.equal(resultDepth0.nodes.length, 1, 'should only contain the entry node');
+    st.equal(resultDepth0.nodes[0].siteNodeName, 't009 - page conf graph depth', 'entry node name');
     st.end();
   });
 
   t.test('blacklist cuts traversal beyond blacklisted page', (st) => {
-    const blacklisted = pageByTitleAndDir(resultMain.pages, 't007 ---- blacklisted page', '');
-    const child = pageByTitleAndDir(resultMain.pages, 't007 ---- child of blacklisted page', '');
+    const blacklisted = nodeByNameAndDir(resultMain.nodes, 't007 ---- blacklisted page', '');
+    const child = nodeByNameAndDir(resultMain.nodes, 't007 ---- child of blacklisted page', '');
     st.ok(blacklisted, 'blacklisted page itself should be present');
     st.notOk(child, 'child of blacklisted page should be excluded');
     st.end();
@@ -135,5 +130,4 @@ test('working_graph integration', (t) => {
 
   t.end();
 });
-
 

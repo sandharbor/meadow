@@ -17,7 +17,7 @@ limitations under the License.
 import React from 'react';
 import { Highlight } from '../types/displayGraph';
 
-interface SitePageHoverCardProps {
+interface SiteNodeHoverCardProps {
   title: string;
   highlights: Highlight[];
   style?: React.CSSProperties;
@@ -51,7 +51,7 @@ function renderWithStrikethrough(text: string): React.ReactNode {
   });
 }
 
-const SitePageHoverCard: React.FC<SitePageHoverCardProps> = ({
+const SiteNodeHoverCard: React.FC<SiteNodeHoverCardProps> = ({
   title,
   highlights,
   style,
@@ -95,4 +95,4 @@ const SitePageHoverCard: React.FC<SitePageHoverCardProps> = ({
   );
 };
 
-export default SitePageHoverCard;
+export default SiteNodeHoverCard;

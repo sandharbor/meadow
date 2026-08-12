@@ -16,9 +16,9 @@ limitations under the License.
 
 import path from 'path';
 import { marked } from 'marked';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import type { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
+import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISiteNode.js';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
 import {
   isImageLikeWikiLink,
@@ -42,7 +42,7 @@ export interface TransclusionOptions {
   /** Root directory of preview output (for images) */
   baseOutputFolder: string;
 
-  sitePageConfigs: SitePageConfig[];
+  siteNodeConfigs: SiteNodeConfig[];
   siteConfig: SiteConfig;
   siteSlug?: string;
 
@@ -62,7 +62,7 @@ export interface TransclusionOptions {
 interface ResolvedPageTarget {
   title: string;
   directory: string;
-  sitePageConfig: SitePageConfig;
+  siteNodeConfig: SiteNodeConfig;
   pageIdent: string;
   normalizedOutputTitle: string;
 }
@@ -115,14 +115,14 @@ function findPageConfig(
   resolvedTitle: string,
   resolvedDirectory: string,
   linkHasExplicitPath: boolean,
-  sitePageConfigs: SitePageConfig[]
-): SitePageConfig | undefined {
+  siteNodeConfigs: SiteNodeConfig[]
+): SiteNodeConfig | undefined {
   // Exact match first (title + directory)
-  const exact = sitePageConfigs.find(
+  const exact = siteNodeConfigs.find(
     (c) =>
-      c.title === resolvedTitle &&
-      (c.source_graph_subdirectory || '') === (resolvedDirectory || '') &&
-      (c.file_type === 'md' || !c.file_type)
+      c.siteNodeName === resolvedTitle &&
+      (c.sourceGraphSubdirectory || '') === (resolvedDirectory || '') &&
+      (c.fileType === 'md' || !c.fileType)
   );
   if (exact) {
     return exact;
@@ -130,7 +130,7 @@ function findPageConfig(
 
   // Fallback: if caller didn't specify an explicit path, allow title-only lookup
   if (!linkHasExplicitPath) {
-    return sitePageConfigs.find((c) => c.title === resolvedTitle && (c.file_type === 'md' || !c.file_type));
+    return siteNodeConfigs.find((c) => c.siteNodeName === resolvedTitle && (c.fileType === 'md' || !c.fileType));
   }
 
   return undefined;
@@ -138,7 +138,7 @@ function findPageConfig(
 
 function resolveTargetFromCallerContext(
   linkText: string,
-  sitePageConfigs: SitePageConfig[],
+  siteNodeConfigs: SiteNodeConfig[],
   siteConfig: SiteConfig,
   siteSlug: string | undefined,
   linkResolutionMapForCaller: Record<string, LinkResolvedInfo> | undefined
@@ -164,19 +164,19 @@ function resolveTargetFromCallerContext(
     resolvedTitle = parts[parts.length - 1];
   }
 
-  const cfg = findPageConfig(resolvedTitle, resolvedDirectory, linkHasExplicitPath, sitePageConfigs);
-  if (!cfg || cfg.config.list_type !== 'whitelist') {
+  const cfg = findPageConfig(resolvedTitle, resolvedDirectory, linkHasExplicitPath, siteNodeConfigs);
+  if (!cfg || cfg.listType !== 'whitelist') {
     return null;
   }
 
-  const normalizedOutputTitle = siteSlug ? normalizePageTitle(cfg.title, siteConfig, siteSlug) : cfg.title;
-  const directory = cfg.source_graph_subdirectory || '';
+  const normalizedOutputTitle = siteSlug ? normalizePageTitle(cfg.siteNodeName, siteConfig, siteSlug) : cfg.siteNodeName;
+  const directory = cfg.sourceGraphSubdirectory || '';
 
   return {
-    title: cfg.title,
+    title: cfg.siteNodeName,
     directory,
-    sitePageConfig: cfg,
-    pageIdent: pageIdentFor(cfg.title, directory),
+    siteNodeConfig: cfg,
+    pageIdent: pageIdentFor(cfg.siteNodeName, directory),
     normalizedOutputTitle,
   };
 }
@@ -239,7 +239,7 @@ function extractBlockMarkdown(md: string, blockIdWithOptionalCaret: string): str
 
 function convertWikiLinksInMarkdown(
   md: string,
-  sitePageConfigs: SitePageConfig[],
+  siteNodeConfigs: SiteNodeConfig[],
   options: {
     siteConfig: SiteConfig;
     siteSlug?: string;
@@ -250,7 +250,7 @@ function convertWikiLinksInMarkdown(
   }
 ): string {
   function linkOrImageHtml(linkText: string): string {
-    return linkOrImageHtmlService(linkText, sitePageConfigs, {
+    return linkOrImageHtmlService(linkText, siteNodeConfigs, {
       siteConfig: options.siteConfig,
       siteSlug: options.siteSlug,
       baseContentDirectory: options.baseContentDirectory,
@@ -282,7 +282,7 @@ function wrapTransclusionHtml(
 
 export function renderTransclusionToHtml(linkText: string, options: TransclusionOptions): string {
   const {
-    sitePageConfigs,
+    siteNodeConfigs,
     siteConfig,
     siteSlug,
     baseContentDirectory,
@@ -302,7 +302,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
 
   const resolved = resolveTargetFromCallerContext(
     linkText,
-    sitePageConfigs,
+    siteNodeConfigs,
     siteConfig,
     siteSlug,
     linkResolutionMapForCaller
@@ -362,7 +362,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
   });
 
   // Convert remaining wiki links and images into proper markdown/HTML with final-page-relative URLs
-  const processedMdForLinks = convertWikiLinksInMarkdown(expandedMd, sitePageConfigs, {
+  const processedMdForLinks = convertWikiLinksInMarkdown(expandedMd, siteNodeConfigs, {
     siteConfig,
     siteSlug,
     baseContentDirectory,

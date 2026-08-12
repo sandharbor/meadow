@@ -16,20 +16,20 @@ limitations under the License.
 
 import React from 'react';
 import Modal from '../../../../shared/components/Modal';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
 import { Graph } from '../../../../../../shared_code/types/graph';
 
 interface TraversalPathDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedPage: ISitePage;
+  selectedNode: ISiteNode;
   graph: Graph;
 }
 
 type DepthEvent = 'set_first_time' | 'overridden' | 'inherited';
 
 interface StepInfo {
-  page: ISitePage;
+  node: ISiteNode;
   linkType: 'start' | 'outlink' | 'inlink' | 'bidirectional';
   outlinksDepthEvent: DepthEvent;
   outlinksDepthValue: number | undefined;
@@ -125,19 +125,19 @@ const DepthBadge: React.FC<{
 const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
   isOpen,
   onClose,
-  selectedPage,
+  selectedNode,
   graph,
 }) => {
-  if (!selectedPage.path || selectedPage.path.length === 0) {
+  if (!selectedNode.path || selectedNode.path.length === 0) {
     return null;
   }
 
-  const steps: StepInfo[] = selectedPage.path
-    .map((pageId, index): StepInfo | null => {
-      const page = graph.getPage(pageId);
-      if (!page) return null;
+  const steps: StepInfo[] = selectedNode.path
+    .map((siteNodeKey, index): StepInfo | null => {
+      const node = graph.getNode(siteNodeKey);
+      if (!node) return null;
 
-      const details = page.traversal_details;
+      const details = node.traversal_details;
       const outlinksInfo = getDepthInfo(
         details?.outlinks_depth_set_first_time,
         details?.outlinks_depth_overridden,
@@ -150,7 +150,7 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
       );
 
       return {
-        page,
+        node,
         linkType: index === 0 ? 'start' : (details?.link_type ?? 'outlink'),
         outlinksDepthEvent: outlinksInfo.event,
         outlinksDepthValue: outlinksInfo.value,
@@ -158,8 +158,8 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
         inlinksDepthEvent: inlinksInfo.event,
         inlinksDepthValue: inlinksInfo.value,
         inlinksDepthInherited: inlinksInfo.inheritedFrom,
-        remainingDepth: page.remaining_depth,
-        remainingInlinksDepth: page.remaining_inlinks_depth ?? 0,
+        remainingDepth: node.remaining_depth,
+        remainingInlinksDepth: node.remaining_inlinks_depth ?? 0,
       };
     })
     .filter((s): s is StepInfo => s !== null);
@@ -173,18 +173,18 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
     >
       <div className="flex flex-col h-full">
         <div className="mb-4 text-xs text-neutral-500">
-          How the traversal reached <span className="font-medium text-neutral-700">{selectedPage.title}</span> — showing depth configuration at each step.
+          How the traversal reached <span className="font-medium text-neutral-700">{selectedNode.siteNodeName}</span> — showing depth configuration at each step.
         </div>
 
         <div className="flex-1 overflow-y-auto pr-2">
           {steps.map((step, index) => (
-            <React.Fragment key={step.page.id}>
+            <React.Fragment key={step.node.siteNodeKey}>
               {/* Connector between steps */}
               {index > 0 && <LinkConnector linkType={step.linkType as 'outlink' | 'inlink' | 'bidirectional'} />}
 
               {/* Step card */}
               <div className={`rounded-lg border p-3 ${
-                step.page.isFrontierImageExtension
+                step.node.isFrontierImageExtension
                   ? 'bg-violet-50/50 border-violet-200'
                   : index === steps.length - 1
                     ? 'bg-blue-50/40 border-blue-200'
@@ -199,7 +199,7 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
 
                   {/* Title */}
                   <h3 className="text-sm font-semibold text-neutral-800 truncate min-w-0">
-                    {step.page.title}
+                    {step.node.siteNodeName}
                   </h3>
 
                   {/* Badges */}
@@ -209,19 +209,19 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                         start
                       </span>
                     )}
-                    {step.page.isFrontierImageExtension && (
+                    {step.node.isFrontierImageExtension && (
                       <span className="text-[10px] text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded">
                         frontier image
                       </span>
                     )}
                     <span className="text-[10px] text-neutral-400 bg-neutral-50 px-1.5 py-0.5 rounded tabular-nums">
-                      depth {step.page.depth}
+                      depth {step.node.depth}
                     </span>
                   </div>
                 </div>
 
                 {/* Frontier image explanation */}
-                {step.page.isFrontierImageExtension && (
+                {step.node.isFrontierImageExtension && (
                   <div className="mb-2 px-2.5 py-1.5 bg-violet-100/60 rounded text-[11px] text-violet-600 leading-relaxed">
                     Included because it was linked from a page at the frontier edge (remaining depth = 0).
                   </div>

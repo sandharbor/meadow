@@ -15,17 +15,17 @@ limitations under the License.
 */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Graph, IPage } from '../../../../../../shared_code/types/graph';
-import CopySelectedPagesModal from './CopySelectedPagesModal';
+import { Graph, ISiteNode } from '../../../../../../shared_code/types/graph';
+import CopySelectedNodesModal from './CopySelectedNodesModal';
 
-interface SitePageTabsDropdownProps {
-  selectedPages: Set<string>;
+interface SiteNodeTabsDropdownProps {
+  selectedNodeKeys: Set<string>;
   graph: Graph;
   onRefresh: () => void;
 }
 
-const SitePageTabsDropdown: React.FC<SitePageTabsDropdownProps> = ({
-  selectedPages,
+const SiteNodeTabsDropdown: React.FC<SiteNodeTabsDropdownProps> = ({
+  selectedNodeKeys,
   graph,
   onRefresh,
 }) => {
@@ -44,11 +44,11 @@ const SitePageTabsDropdown: React.FC<SitePageTabsDropdownProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Get selected pages as raw IPage objects
-  const getSelectedPages = (): IPage[] => {
-    return Array.from(selectedPages)
-      .map(id => graph.getPage(id))
-      .filter(Boolean) as IPage[];
+  // Get selected pages as raw ISiteNode objects
+  const getSelectedNodes = (): ISiteNode[] => {
+    return Array.from(selectedNodeKeys)
+      .map(id => graph.getNode(id))
+      .filter(Boolean) as ISiteNode[];
   };
 
   const closeMenu = () => {
@@ -60,7 +60,7 @@ const SitePageTabsDropdown: React.FC<SitePageTabsDropdownProps> = ({
     closeMenu();
   };
 
-  const hasSelection = selectedPages.size > 0;
+  const hasSelection = selectedNodeKeys.size > 0;
 
   return (
     <>
@@ -105,13 +105,13 @@ const SitePageTabsDropdown: React.FC<SitePageTabsDropdownProps> = ({
         </div>
       </div>
 
-      <CopySelectedPagesModal
+      <CopySelectedNodesModal
         isOpen={isCopyModalOpen}
         onClose={() => setIsCopyModalOpen(false)}
-        selectedPages={getSelectedPages()}
+        selectedNodes={getSelectedNodes()}
       />
     </>
   );
 };
 
-export default SitePageTabsDropdown;
+export default SiteNodeTabsDropdown;

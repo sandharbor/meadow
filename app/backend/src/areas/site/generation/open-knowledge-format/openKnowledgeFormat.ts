@@ -16,8 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISiteNode.js';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
 import { FrontmatterUtils } from '../../../../shared/utils/frontmatterUtils.js';
 import { replaceOutsideCode } from '../html/markdown.js';
@@ -48,10 +48,10 @@ export interface OpenKnowledgeFormatRename {
 }
 
 export interface PrepareOpenKnowledgeFormatOptions {
-  sitePageConfigs: SitePageConfig[];
+  siteNodeConfigs: SiteNodeConfig[];
   allLinkResolutionMaps?: AllLinkResolutionMaps;
-  initialPageTitle?: string;
-  initialPageDirectory?: string;
+  entryNodeName?: string;
+  entrySourceGraphSubdirectory?: string;
   indexSource?: OpenKnowledgeFormatIndexSource;
   logSource?: OpenKnowledgeFormatLogSource;
 }
@@ -119,12 +119,12 @@ function pageIdentForSourcePath(sourcePath: string): string {
   return dir ? `${dir}/${filename}` : `/${filename}`;
 }
 
-function sourcePathForConfig(config: SitePageConfig): string {
-  const fileType = config.file_type || 'md';
+function sourcePathForConfig(config: SiteNodeConfig): string {
+  const fileType = config.fileType || 'md';
   const filename = fileType === 'excalidraw'
-    ? `${config.title}.excalidraw.md`
-    : `${config.title}.${fileType}`;
-  const dir = config.source_graph_subdirectory || '';
+    ? `${config.siteNodeName}.excalidraw.md`
+    : `${config.siteNodeName}.${fileType}`;
+  const dir = config.sourceGraphSubdirectory || '';
   return dir ? `${dir}/${filename}` : filename;
 }
 
@@ -286,13 +286,13 @@ function selectConfiguredIndexSource(
   return null;
 }
 
-function buildSourcePathByTitleAndDir(sitePageConfigs: SitePageConfig[]): Map<string, string> {
+function buildSourcePathByTitleAndDir(siteNodeConfigs: SiteNodeConfig[]): Map<string, string> {
   const result = new Map<string, string>();
-  for (const config of sitePageConfigs) {
-    const fileType = config.file_type || 'md';
+  for (const config of siteNodeConfigs) {
+    const fileType = config.fileType || 'md';
     if (fileType !== 'md' && fileType !== 'excalidraw') continue;
-    const dir = config.source_graph_subdirectory || '';
-    result.set(`${dir}\0${config.title}`, sourcePathForConfig(config));
+    const dir = config.sourceGraphSubdirectory || '';
+    result.set(`${dir}\0${config.siteNodeName}`, sourcePathForConfig(config));
   }
   return result;
 }
@@ -440,10 +440,10 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
     .map(toPosixPath)
     .filter(relativePath => relativePath.split('/')[0] !== SiteConfigPaths.TAGPAGES_DIR);
   const markdownFiles = files.filter(file => file.endsWith('.md'));
-  const sourcePathByTitleAndDir = buildSourcePathByTitleAndDir(options.sitePageConfigs);
-  const initialPageDirectory = options.initialPageDirectory || '';
-  const initialSourcePath = options.initialPageTitle
-    ? sourcePathByTitleAndDir.get(`${initialPageDirectory}\0${options.initialPageTitle}`) ?? null
+  const sourcePathByTitleAndDir = buildSourcePathByTitleAndDir(options.siteNodeConfigs);
+  const entrySourceGraphSubdirectory = options.entrySourceGraphSubdirectory || '';
+  const initialSourcePath = options.entryNodeName
+    ? sourcePathByTitleAndDir.get(`${entrySourceGraphSubdirectory}\0${options.entryNodeName}`) ?? null
     : null;
   const indexSourcePath = selectConfiguredIndexSource(
     markdownFiles,
@@ -538,7 +538,7 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
 
   const initialOutputPath = initialSourcePath ? outputPathBySourcePath.get(initialSourcePath) ?? null : null;
   if (!indexSourcePath) {
-    writeTextFile(outputDir, ROOT_INDEX_PATH, rootIndexMarkdown(initialOutputPath, options.initialPageTitle));
+    writeTextFile(outputDir, ROOT_INDEX_PATH, rootIndexMarkdown(initialOutputPath, options.entryNodeName));
   }
 
   return {

@@ -14,11 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
-import { FileType } from '../../../../../../shared_code/types/FileType.js';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
-import { parsePageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
-import { pageConfigToKey, SitePageConfigs } from '../../../../shared/site-page/pageKeys.js';
+import { parseSiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
+import { siteNodeConfigToKey, SiteNodeConfigMap } from '../../../../shared/site-node/nodeKeys.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
 import { prepareSrsRenderSourceDirectory } from '../render-source/srsMarkdown.js';
@@ -27,27 +26,21 @@ import { prepareSourcesExportFromScrubbedSourceDirectory } from './sourcesExport
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import fs from 'fs';
 
-type WorkingGraphPage = {
-  title: string;
-  sourceGraphSubdirectory: string;
-  file_type: FileType;
-};
-
 type WorkingGraphOutput = {
-  pages: WorkingGraphPage[];
+  nodes: Array<{ siteNodeKey: string }>;
   allLinkResolutionMaps?: Record<string, Record<string, {
     link_resolved_target_directory: string;
     link_resolved_target_path: string | null;
   }>>;
 };
 
-function readSitePageConfigs(sitePageConfPath: string): SitePageConfigs {
-  const result: SitePageConfigs = {};
-  if (!fs.existsSync(sitePageConfPath)) return result;
-  const content = fs.readFileSync(sitePageConfPath, 'utf-8');
-  const pageConfArray = parsePageConfig(content);
+function readSiteNodeConfigMap(siteNodeConfPath: string): SiteNodeConfigMap {
+  const result: SiteNodeConfigMap = {};
+  if (!fs.existsSync(siteNodeConfPath)) return result;
+  const content = fs.readFileSync(siteNodeConfPath, 'utf-8');
+  const pageConfArray = parseSiteNodeConfig(content);
   for (const conf of pageConfArray) {
-    result[pageConfigToKey(conf)] = conf;
+    result[siteNodeConfigToKey(conf)] = conf;
   }
   return result;
 }
@@ -61,8 +54,8 @@ function readSitePageConfigs(sitePageConfPath: string): SitePageConfigs {
  */
 export async function buildFilteredSourcesExportForSite(siteDirectory: string): Promise<string> {
   const siteConfig = loadSiteConfig(siteDirectory);
-  const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-  const sitePageConfs = readSitePageConfigs(sitePageConfPath);
+  const siteNodeConfPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
+  const siteNodeConfs = readSiteNodeConfigMap(siteNodeConfPath);
   const trackedContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const renderSourceContentDir = SiteConfigPaths.getRenderSourceContentDir(siteDirectory);
   const legacyRenderSourceContentDir = SiteConfigPaths.getLegacyRenderSourceContentDir(siteDirectory);
@@ -97,35 +90,23 @@ export async function buildFilteredSourcesExportForSite(siteDirectory: string): 
     link_resolved_target_directory: string;
     link_resolved_target_path: string | null;
   }>> = new Map();
-  const initialTitle = siteConfig.initialSitePageTitle || '';
-  const initialDirectory = siteConfig.initialSitePageDirectory || '';
-
-  if (initialTitle) {
-    const initialConf = Object.values(sitePageConfs).find(
-      c => c.title === initialTitle && (c.source_graph_subdirectory || '') === initialDirectory
-    );
-    const initialFileType: FileType = initialConf?.file_type || 'md';
-
+  if (siteConfig.entrySiteNodeId && siteConfig.defaultTraversalSiteNodeId) {
     try {
       const raw = await runWorkingGraphRaw({
         graphRoot: sourceContentDir,
-        sitePageConfigPath: sitePageConfPath,
-        initial: { title: initialTitle, directory: initialDirectory, file_type: initialFileType },
-        traversal: { title: initialTitle, directory: initialDirectory, file_type: initialFileType },
+        siteNodeConfigPath: siteNodeConfPath,
+        entrySiteNodeId: siteConfig.entrySiteNodeId,
+        defaultTraversalSiteNodeId: siteConfig.defaultTraversalSiteNodeId,
+        defaultOutlinksDepth: siteConfig.defaultOutlinksDepth,
+        defaultInlinksDepth: siteConfig.defaultInlinksDepth,
         frontierDepth: 0,
         allowImagesToExtendToFrontier: true,
         allowLowerDepths: false,
       });
       const output = JSON.parse(raw) as WorkingGraphOutput;
       allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
-      for (const page of output.pages) {
-        const key = pageConfigToKey({
-          title: page.title,
-          source_graph_subdirectory: page.sourceGraphSubdirectory,
-          file_type: page.file_type,
-          config: { list_type: 'whitelist' },
-        });
-        traversablePageKeys.add(key);
+      for (const node of output.nodes) {
+        traversablePageKeys.add(node.siteNodeKey);
       }
     } catch (err) {
       logger.warn(
@@ -134,16 +115,16 @@ export async function buildFilteredSourcesExportForSite(siteDirectory: string): 
     }
   }
 
-  const sitePageConfigsArrayForLinks: SitePageConfig[] = Object.values(sitePageConfs).filter(
-    conf => traversablePageKeys.has(pageConfigToKey(conf))
+  const siteNodeConfigsArrayForLinks: SiteNodeConfig[] = Object.values(siteNodeConfs).filter(
+    conf => traversablePageKeys.has(siteNodeConfigToKey(conf))
   );
 
   prepareScrubbedSourceDirectory(
     sourceContentDir,
     scrubbedSourceDir,
     traversablePageKeys,
-    sitePageConfs,
-    sitePageConfigsArrayForLinks,
+    siteNodeConfs,
+    siteNodeConfigsArrayForLinks,
     allLinkResolutionMaps
   );
 

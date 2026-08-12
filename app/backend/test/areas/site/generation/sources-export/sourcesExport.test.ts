@@ -16,19 +16,15 @@ limitations under the License.
 
 import { describe, it, expect } from 'vitest';
 import { sanitizeMarkdownLinks } from '../../../../../src/areas/site/generation/sources-export/sourcesExport.js';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { makeSiteNodeConfig } from '../../../../shared/support/siteNodeConfigTestUtils.js';
 
-function makeConfig(title: string, listType: 'whitelist' | 'blacklist', fileType?: string, dir?: string): SitePageConfig {
-  return {
-    title,
-    file_type: fileType as SitePageConfig['file_type'],
-    source_graph_subdirectory: dir || '',
-    config: { list_type: listType },
-  };
+function makeConfig(title: string, listType: 'whitelist' | 'blacklist', fileType: SiteNodeConfig['fileType'] = 'md', dir = ''): SiteNodeConfig {
+  return makeSiteNodeConfig(title, listType, { fileType, sourceGraphSubdirectory: dir });
 }
 
 describe('sanitizeMarkdownLinks', () => {
-  const configs: SitePageConfig[] = [
+  const configs: SiteNodeConfig[] = [
     makeConfig('tracked page', 'whitelist'),
     makeConfig('another tracked', 'whitelist'),
     makeConfig('blacklisted page', 'blacklist'),

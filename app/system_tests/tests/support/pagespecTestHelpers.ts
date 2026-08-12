@@ -21,7 +21,7 @@ import {
   getSourceGraphsPath,
 } from '../../helpers/serverManager.js';
 import type { SystemTestSiteSetup } from '../../helpers/testSetup.js';
-import type { SitePageConfig } from '../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../shared_code/types/siteNodeConfig.js';
 import { IMAGE_FILE_TYPES } from '../../../shared_code/utils/fileTypeUtils.js';
 
 export const pagespecSourceGraphDirs = [
@@ -99,13 +99,13 @@ export function getPageIdFromPath(
 }
 
 /**
- * Gets whether a page is tracked according to site_page_config.yaml.
+ * Gets whether a page is tracked according to site_node_config.yaml.
  * Returns true if the page has a config entry with tracked: true.
  * Returns false if no matching config entry exists or tracked is not set/false.
  */
 export function isPageTracked(
   pageId: string,
-  sitePageConfigs: SitePageConfig[],
+  siteNodeConfigs: SiteNodeConfig[],
   fileType: string = 'md'
 ): boolean {
   // pageId is like "t002/extra nested/t002 ---- dup" for md pages, or
@@ -116,7 +116,7 @@ export function isPageTracked(
 
   // If the title carries an embedded image-like extension (e.g. `.excalidraw`,
   // `.svg`), prefer that over the caller's default `fileType` and strip it
-  // from the title; that's how `site_page_config.yaml` stores image entries.
+  // from the title; that's how `site_node_config.yaml` stores image entries.
   let effectiveFileType = fileType;
   for (const imageType of IMAGE_FILE_TYPES) {
     const suffix = `.${imageType}`;
@@ -127,16 +127,16 @@ export function isPageTracked(
     }
   }
 
-  for (const config of sitePageConfigs) {
-    const configSubdir = config.source_graph_subdirectory || '';
-    const configFileType = config.file_type || 'md';
+  for (const config of siteNodeConfigs) {
+    const configSubdir = config.sourceGraphSubdirectory || '';
+    const configFileType = config.fileType;
 
     if (
-      config.title === title &&
+      config.siteNodeName === title &&
       configSubdir === subdirectory &&
       configFileType === effectiveFileType
     ) {
-      return config.config.tracked === true;
+      return true;
     }
   }
 

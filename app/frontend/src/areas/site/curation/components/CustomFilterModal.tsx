@@ -17,7 +17,7 @@ limitations under the License.
 /* global alert, confirm */
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../../shared/components/Modal';
-import { CustomFilterConfig, CustomPageSelectorConfig, CustomFilterAction, SelectorField, SelectorMatchType } from '../../../../../../shared_code/types/customFilters';
+import { CustomFilterConfig, CustomSiteNodeSelectorConfig, CustomFilterAction, SelectorField, SelectorMatchType } from '../../../../../../shared_code/types/customFilters';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { logger } from '../../../../shared/utils/logger';
 
@@ -41,7 +41,7 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
   const [filterName, setFilterName] = useState('');
   const [filterNote, setFilterNote] = useState('');
   const [filterScope, setFilterScope] = useState<'global' | 'site'>('site');
-  const [selectors, setSelectors] = useState<CustomPageSelectorConfig[]>([
+  const [selectors, setSelectors] = useState<CustomSiteNodeSelectorConfig[]>([
     { field: 'title', matchType: 'substring', value: '', caseSensitive: false }
   ]);
   const [selectorCriteria, setSelectorCriteria] = useState<'union' | 'intersection'>('union');
@@ -85,7 +85,7 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
     }
   };
 
-  const updateSelector = (index: number, updates: Partial<CustomPageSelectorConfig>) => {
+  const updateSelector = (index: number, updates: Partial<CustomSiteNodeSelectorConfig>) => {
     const newSelectors = [...selectors];
     newSelectors[index] = { ...newSelectors[index], ...updates };
     setSelectors(newSelectors);

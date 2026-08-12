@@ -16,8 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISiteNode.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 import {
   prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory,
@@ -44,10 +44,10 @@ export interface GeneratePublishedOpenKnowledgeFormatOptions {
   siteDirectory: string;
   assetsDirectory: string;
   scrubbedSourceContentDirectory: string;
-  sitePageConfigs: SitePageConfig[];
+  siteNodeConfigs: SiteNodeConfig[];
   allLinkResolutionMaps?: AllLinkResolutionMaps;
-  initialPageTitle?: string;
-  initialPageDirectory?: string;
+  entryNodeName?: string;
+  entrySourceGraphSubdirectory?: string;
   indexSource?: OpenKnowledgeFormatIndexSource;
   logSource?: OpenKnowledgeFormatLogSource;
   archiveRootDirectory: string;
@@ -71,10 +71,10 @@ export async function generatePublishedOpenKnowledgeFormatArtifacts(
     options.scrubbedSourceContentDirectory,
     okfDir,
     {
-      sitePageConfigs: options.sitePageConfigs,
+      siteNodeConfigs: options.siteNodeConfigs,
       allLinkResolutionMaps: options.allLinkResolutionMaps,
-      initialPageTitle: options.initialPageTitle,
-      initialPageDirectory: options.initialPageDirectory,
+      entryNodeName: options.entryNodeName,
+      entrySourceGraphSubdirectory: options.entrySourceGraphSubdirectory,
       indexSource: options.indexSource,
       logSource: options.logSource,
     }

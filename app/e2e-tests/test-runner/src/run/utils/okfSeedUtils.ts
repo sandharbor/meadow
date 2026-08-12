@@ -15,20 +15,22 @@ limitations under the License.
 */
 
 import fs from "fs";
+import { createHash } from "crypto";
 import os from "os";
 import path from "path";
 import YAML from "yaml";
 import { Site } from "../workflows.js";
 
-interface SitePageConfigYaml {
-  pages?: Array<{
-    fileType?: string;
+interface SiteNodeConfigYaml {
+  nodes?: Array<{
+    fileType: string;
     inlinksDepth?: number;
     listType: "blacklist" | "whitelist";
     outlinksDepth?: number;
     sourceGraphSubdirectory?: string;
-    title: string;
-    tracked?: boolean;
+    siteNodeId: string;
+    siteNodeKind: "file";
+    siteNodeName: string;
   }>;
 }
 
@@ -77,7 +79,7 @@ function writeSourceFile(sourceGraphDir: string, relativePath: string, content: 
 export function seedOkfBigSite(configDir: string, options: OkfBigSiteSeedOptions): string {
   const siteDir = path.join(configDir, "sites", Site.Big);
   const siteConfigPath = path.join(siteDir, "conf", "site_config.yaml");
-  const sitePageConfigPath = path.join(siteDir, "conf", "site_page_config.yaml");
+  const siteNodeConfigPath = path.join(siteDir, "conf", "site_node_config.yaml");
   const siteConfig = YAML.parse(fs.readFileSync(siteConfigPath, "utf8")) as Record<string, unknown>;
   const originalSourceDirectory = String(siteConfig.sourceDirectory || "");
   const sourceGraphCopy = fs.mkdtempSync(path.join(os.tmpdir(), "meadow-okf-source-graph-"));
@@ -110,33 +112,35 @@ export function seedOkfBigSite(configDir: string, options: OkfBigSiteSeedOptions
     writeSourceFile(sourceGraphCopy, page.relativePath, page.content);
   }
 
-  const sitePageConfig = YAML.parse(fs.readFileSync(sitePageConfigPath, "utf8")) as SitePageConfigYaml;
-  const pages = Array.isArray(sitePageConfig.pages) ? sitePageConfig.pages : [];
-  const ensurePage = (seedPage: OkfSeedPage) => {
+  const siteNodeConfig = YAML.parse(fs.readFileSync(siteNodeConfigPath, "utf8")) as SiteNodeConfigYaml;
+  const nodes = Array.isArray(siteNodeConfig.nodes) ? siteNodeConfig.nodes : [];
+  const ensureNode = (seedPage: OkfSeedPage) => {
     const sourceGraphSubdirectory = sourceGraphSubdirectoryFor(seedPage.relativePath);
-    const title = titleFor(seedPage.relativePath);
-    const exists = pages.some((page) =>
-      page.title === title &&
-      (page.sourceGraphSubdirectory || "") === sourceGraphSubdirectory &&
-      (page.fileType || "md") === "md"
+    const siteNodeName = titleFor(seedPage.relativePath);
+    const exists = nodes.some((node) =>
+      node.siteNodeName === siteNodeName &&
+      (node.sourceGraphSubdirectory || "") === sourceGraphSubdirectory &&
+      node.fileType === "md"
     );
     if (!exists) {
-      pages.push({
+      const locator = `${sourceGraphSubdirectory}\u0000${siteNodeName}\u0000md`;
+      nodes.push({
         fileType: "md",
         listType: "whitelist",
         sourceGraphSubdirectory,
-        title,
-        tracked: seedPage.tracked !== false,
+        siteNodeId: createHash("sha256").update(`okf-e2e:${locator}`).digest("hex").slice(0, 12),
+        siteNodeKind: "file",
+        siteNodeName,
       });
     }
   };
 
   for (const page of options.pages) {
     if (page.tracked !== false) {
-      ensurePage(page);
+      ensureNode(page);
     }
   }
-  fs.writeFileSync(sitePageConfigPath, YAML.stringify({ ...sitePageConfig, pages }), "utf8");
+  fs.writeFileSync(siteNodeConfigPath, YAML.stringify({ ...siteNodeConfig, nodes }), "utf8");
 
   return sourceGraphCopy;
 }

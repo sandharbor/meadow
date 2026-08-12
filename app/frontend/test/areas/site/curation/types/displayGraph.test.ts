@@ -15,25 +15,26 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import { Graph, IPage } from '../../../../../../shared_code/types/graph';
+import { Graph, ISiteNode } from '../../../../../../shared_code/types/graph';
 import { DisplayGraph } from '../../../../../src/areas/site/curation/types/displayGraph';
 import { FilterExpression } from '../../../../../src/areas/site/curation/types/filterExpression';
 import { IFilter } from '../../../../../src/areas/site/curation/types/filters';
 
 function createGraph(): Graph {
   const graph = new Graph();
-  const pages: IPage[] = ['1', '2', '3'].map(id => ({
-    id,
+  const pages: ISiteNode[] = ['1', '2', '3'].map(id => ({
+    siteNodeKey: id as ISiteNode['siteNodeKey'],
+    siteNodeKind: 'file',
     label: id,
-    title: `Page ${id}`,
+    siteNodeName: `Page ${id}`,
     sourceGraphSubdirectory: '',
-    file_type: 'md',
+    fileType: 'md',
     depth: 0,
     remaining_depth: 0,
     tracked: true,
     getIdent: () => `Page ${id}.md`
   }));
-  pages.forEach(page => graph.addPage(page));
+  pages.forEach(page => graph.addNode(page));
   return graph;
 }
 
@@ -41,7 +42,7 @@ function createFilter(id: string, pages: string[], mode: 'solo' | 'hide'): IFilt
   return {
     id,
     name: id,
-    pageSelectors: [{
+    siteNodeSelectors: [{
       id: `${id}-selector`,
       name: id,
       type: 'normal',
@@ -63,7 +64,7 @@ describe('DisplayGraph filter expressions', () => {
       createFilter('beta', ['2', '3'], 'solo')
     ]);
 
-    expect(displayGraph.visibleDisplayPages.map(page => page.id)).toEqual(['1', '2', '3']);
+    expect(displayGraph.visibleDisplayNodes.map(page => page.siteNodeKey)).toEqual(['1', '2', '3']);
   });
 
   it('applies a custom intersection and the complement represented by Hide', () => {
@@ -82,6 +83,6 @@ describe('DisplayGraph filter expressions', () => {
       createFilter('beta', ['2', '3'], 'hide')
     ], expression);
 
-    expect(displayGraph.visibleDisplayPages.map(page => page.id)).toEqual(['1']);
+    expect(displayGraph.visibleDisplayNodes.map(page => page.siteNodeKey)).toEqual(['1']);
   });
 });

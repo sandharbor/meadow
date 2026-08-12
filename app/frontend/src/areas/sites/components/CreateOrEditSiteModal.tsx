@@ -25,9 +25,9 @@ import { logger } from '../../../shared/utils/logger';
 interface CreateSiteForm {
   slug: string;
   sourceDirectory: string;
-  initialSitePageTitle: string;
-  initialSitePageDirectory: string;
-  initialSitePageFileType: string;
+  entrySiteNodeName: string;
+  entrySourceGraphSubdirectory: string;
+  entryFileType: string;
   siteNotes: string;
 }
 
@@ -36,8 +36,9 @@ type SiteModalMode = 'create' | 'edit';
 interface EditSiteDefaults {
   slug: string;
   sourceDirectory: string;
-  initialSitePageTitle: string;
-  initialSitePageDirectory?: string;
+  entrySiteNodeName: string;
+  entrySourceGraphSubdirectory?: string;
+  entryFileType?: string;
   siteNotes?: string;
 }
 
@@ -115,9 +116,9 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
   const [form, setForm] = useState<CreateSiteForm>({
     slug: '',
     sourceDirectory: '',
-    initialSitePageTitle: '',
-    initialSitePageDirectory: '',
-    initialSitePageFileType: '',
+    entrySiteNodeName: '',
+    entrySourceGraphSubdirectory: '',
+    entryFileType: '',
     siteNotes: ''
   });
 
@@ -157,30 +158,30 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
           ? {
               slug: editSite.slug,
               sourceDirectory: editSite.sourceDirectory || '',
-              initialSitePageTitle: editSite.initialSitePageTitle || '',
-              initialSitePageDirectory: normalizeDirectory(editSite.initialSitePageDirectory || ''),
-              initialSitePageFileType: '',
+              entrySiteNodeName: editSite.entrySiteNodeName || '',
+              entrySourceGraphSubdirectory: normalizeDirectory(editSite.entrySourceGraphSubdirectory || ''),
+              entryFileType: editSite.entryFileType || 'md',
               siteNotes: editSite.siteNotes || ''
             }
           : {
               slug: '',
               sourceDirectory: commonSourceDirectory,
-              initialSitePageTitle: '',
-              initialSitePageDirectory: '',
-              initialSitePageFileType: '',
+              entrySiteNodeName: '',
+              entrySourceGraphSubdirectory: '',
+              entryFileType: '',
               siteNotes: ''
             };
 
       if (mode === 'create' && findInSitesOptions) {
         const pageName = findInSitesOptions.pageName || findInSitesOptions.pageName || '';
-        initialForm.initialSitePageTitle = pageName;
+        initialForm.entrySiteNodeName = pageName;
         // Use vault path as source directory when page is specified via find in sites
         // (only override if vaultPath is non-empty; otherwise keep commonSourceDirectory)
         if (findInSitesOptions.vaultPath) {
           initialForm.sourceDirectory = findInSitesOptions.vaultPath;
         }
         // Set the folder path as the initial site page directory (for nested pages)
-        initialForm.initialSitePageDirectory = findInSitesOptions.folderPath;
+        initialForm.entrySourceGraphSubdirectory = findInSitesOptions.folderPath;
         // Generate slug from the page name, auto-incrementing if taken
         const baseSlug = pageName
           .toLowerCase()
@@ -213,12 +214,12 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       setIsLoadingSuggestions(false);
       setSuggestionsLoadError(null);
       if (mode === 'edit' && editSite) {
-        const dir = normalizeDirectory(editSite.initialSitePageDirectory || '');
+        const dir = normalizeDirectory(editSite.entrySourceGraphSubdirectory || '');
         setSelectedInitialPage({
-          title: editSite.initialSitePageTitle,
+          title: editSite.entrySiteNodeName,
           directory: dir,
           file_type: 'md',
-          fullPath: dir ? `${dir}/${editSite.initialSitePageTitle}.md` : `${editSite.initialSitePageTitle}.md`,
+          fullPath: dir ? `${dir}/${editSite.entrySiteNodeName}.md` : `${editSite.entrySiteNodeName}.md`,
           modifiedTimeMs: 0
         });
       } else {
@@ -277,7 +278,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
           setSuggestionsLoadError(null);
 
           const response = await fetch(
-            `${API_BASE_URL}/sites/source-pages/search?sourceDirectory=${encodeURIComponent(form.sourceDirectory)}&query=${encodeURIComponent(form.initialSitePageTitle)}&limit=${typeaheadLimit}`,
+            `${API_BASE_URL}/sites/source-pages/search?sourceDirectory=${encodeURIComponent(form.sourceDirectory)}&query=${encodeURIComponent(form.entrySiteNodeName)}&limit=${typeaheadLimit}`,
             { signal: controller.signal }
           );
 
@@ -309,7 +310,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [isOpen, form.sourceDirectory, form.initialSitePageTitle, selectedInitialPage, isEditingInitialPage]);
+  }, [isOpen, form.sourceDirectory, form.entrySiteNodeName, selectedInitialPage, isEditingInitialPage]);
 
   const handleFormChange = (field: keyof CreateSiteForm, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -341,10 +342,10 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     setForm(prev => {
       const next: CreateSiteForm = {
         ...prev,
-        initialSitePageTitle: value,
+        entrySiteNodeName: value,
         // While typing, the page is not locked in; clear any previously locked directory/file_type.
-        initialSitePageDirectory: '',
-        initialSitePageFileType: ''
+        entrySourceGraphSubdirectory: '',
+        entryFileType: ''
       };
 
       // Auto-generate slug if not manually edited
@@ -400,9 +401,9 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     // Use the exact title, directory, and file_type from the selected page
     const updatedForm: CreateSiteForm = {
       ...form,
-      initialSitePageTitle: page.title,
-      initialSitePageDirectory: page.directory,
-      initialSitePageFileType: page.file_type
+      entrySiteNodeName: page.title,
+      entrySourceGraphSubdirectory: page.directory,
+      entryFileType: page.file_type
     };
 
     if (!isSlugManuallyEdited) {
@@ -430,9 +431,9 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
   const handleSelectCandidatePage = async (page: SourcePageFileInfo) => {
     const updatedForm: CreateSiteForm = {
       ...form,
-      initialSitePageTitle: page.title,
-      initialSitePageDirectory: page.directory,
-      initialSitePageFileType: page.file_type
+      entrySiteNodeName: page.title,
+      entrySourceGraphSubdirectory: page.directory,
+      entryFileType: page.file_type
     };
 
     if (!isSlugManuallyEdited) {
@@ -462,9 +463,9 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     setIsTitleFocused(false);
     setForm(prev => ({
       ...prev,
-      initialSitePageTitle: '',
-      initialSitePageDirectory: '',
-      initialSitePageFileType: ''
+      entrySiteNodeName: '',
+      entrySourceGraphSubdirectory: '',
+      entryFileType: ''
     }));
   };
 
@@ -572,7 +573,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       // Normalize directory before sending to backend ("/" and "" both mean root)
       const normalizedFormData = {
         ...formData,
-        initialSitePageDirectory: normalizeDirectory(formData.initialSitePageDirectory)
+        entrySourceGraphSubdirectory: normalizeDirectory(formData.entrySourceGraphSubdirectory)
       };
       const response = await fetch(`${API_BASE_URL}/sites`, {
         method: 'POST',
@@ -601,8 +602,9 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     try {
       const normalizedBody = {
         sourceDirectory: formData.sourceDirectory,
-        initialSitePageTitle: formData.initialSitePageTitle,
-        initialSitePageDirectory: normalizeDirectory(formData.initialSitePageDirectory),
+        entrySiteNodeName: formData.entrySiteNodeName,
+        entrySourceGraphSubdirectory: normalizeDirectory(formData.entrySourceGraphSubdirectory),
+        entryFileType: formData.entryFileType,
         siteNotes: formData.siteNotes
       };
 
@@ -645,7 +647,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
     setIsValidating(true);
     
     try {
-      if (!selectedInitialPage && !form.initialSitePageTitle.trim()) {
+      if (!selectedInitialPage && !form.entrySiteNodeName.trim()) {
         setValidationError('Please choose an initial site page.');
         setIsValidating(false);
         return;
@@ -659,11 +661,11 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       }
 
       // Search for the page in the source directory
-      const searchResult = await searchPagesInSource(form.sourceDirectory, form.initialSitePageTitle);
+      const searchResult = await searchPagesInSource(form.sourceDirectory, form.entrySiteNodeName);
 
       if (!searchResult.found) {
         // Page not found - show error and don't close
-        setValidationError(`Page "${form.initialSitePageTitle}" was not found in the source directory. Please check the page name and try again.`);
+        setValidationError(`Page "${form.entrySiteNodeName}" was not found in the source directory. Please check the page name and try again.`);
         setIsValidating(false);
         return;
       }
@@ -673,7 +675,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
         // Multiple pages with same name - show picker
         setDuplicatePages(searchResult.pages);
         setShowDuplicatePicker(true);
-        setValidationError(`Found ${searchResult.count} pages named "${form.initialSitePageTitle}". Please select which one you want to use:`);
+        setValidationError(`Found ${searchResult.count} pages named "${form.entrySiteNodeName}". Please select which one you want to use:`);
         setIsValidating(false);
         return;
       }
@@ -682,9 +684,9 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
       const foundPage = searchResult.pages[0];
       const updatedForm = {
         ...form,
-        initialSitePageTitle: foundPage.title,
-        initialSitePageDirectory: foundPage.directory,
-        initialSitePageFileType: foundPage.file_type
+        entrySiteNodeName: foundPage.title,
+        entrySourceGraphSubdirectory: foundPage.directory,
+        entryFileType: foundPage.file_type
       };
       setForm(updatedForm);
       setSelectedInitialPage({
@@ -732,7 +734,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {duplicatePages.map((page, index) => (
                 <div key={index}>
-                  {renderPagePickerButton(page, () => handleSelectDuplicatePage(page), form.initialSitePageTitle)}
+                  {renderPagePickerButton(page, () => handleSelectDuplicatePage(page), form.entrySiteNodeName)}
                 </div>
               ))}
             </div>
@@ -836,7 +838,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={form.initialSitePageTitle}
+                  value={form.entrySiteNodeName}
                   onChange={(e) => handleInitialTitleChange(e.target.value)}
                   onFocus={() => setIsTitleFocused(true)}
                   onBlur={() => {
@@ -883,7 +885,7 @@ const CreateOrEditSiteModal: React.FC<CreateOrEditSiteModalProps> = ({
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {typeaheadCandidates.map((page) => (
                       <div key={page.fullPath}>
-                        {renderPagePickerButton(page, () => handleSelectCandidatePage(page), form.initialSitePageTitle)}
+                        {renderPagePickerButton(page, () => handleSelectCandidatePage(page), form.entrySiteNodeName)}
                       </div>
                     ))}
                   </div>

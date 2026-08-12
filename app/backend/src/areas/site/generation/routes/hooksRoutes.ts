@@ -26,7 +26,7 @@ import { loadSiteConfig, saveSiteConfig } from '../../../../shared/utils/siteCon
 import { commitChangesNative, logWithFile, logErrorWithFile } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { PageTitleNormalizationHook, MarkdownProcessingHook, HtmlPostProcessingHook } from '../../../../../../shared_code/types/hooks.js';
 import { parseHTML } from 'linkedom';
-import { parseSitePageConfig } from '../html/htmlService.js';
+import { loadSiteNodeConfigMap } from '../html/htmlService.js';
 import { getMdContent } from '../html/shared.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
@@ -398,8 +398,8 @@ router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req
   try {
     // Load the site page configs
     const siteDirectory = getSiteDirectory(siteSlug);
-    const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-    const sitePageConfs = parseSitePageConfig(sitePageConfPath);
+    const siteNodeConfPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
+    const siteNodeConfs = loadSiteNodeConfigMap(siteNodeConfPath);
 
     const affectedPages: PageValidationDiff[] = [];
     let totalAffectedCount = 0;
@@ -411,17 +411,17 @@ router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req
         throw new Error('Failed to parse hook');
       }
 
-      const allPages = Object.values(sitePageConfs);
+      const allPages = Object.values(siteNodeConfs);
       for (const pageConf of allPages) {
-        const before = pageConf.title;
-        const after = hook.pageTitleNormalization(siteSlug, pageConf.title);
+        const before = pageConf.siteNodeName;
+        const after = hook.pageTitleNormalization(siteSlug, pageConf.siteNodeName);
         
         if (before !== after) {
           totalAffectedCount++;
           if (affectedPages.length < 10) {
             affectedPages.push({
-              pageTitle: pageConf.title,
-              pageSubdirectory: pageConf.source_graph_subdirectory || '',
+              pageTitle: pageConf.siteNodeName,
+              pageSubdirectory: pageConf.sourceGraphSubdirectory || '',
               before,
               after
             });
@@ -499,18 +499,18 @@ router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req
         throw new Error('Failed to parse hook');
       }
       
-      const allPages = Object.values(sitePageConfs);
+      const allPages = Object.values(siteNodeConfs);
       for (const pageConf of allPages) {
         // Only test markdown pages
-        if (pageConf.file_type === 'md' || !pageConf.file_type) {
+        if (pageConf.fileType === 'md' || !pageConf.fileType) {
           // Read the page's markdown content
           const trackedPageContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
-          const sourceDir = pageConf.source_graph_subdirectory
-            ? SiteConfigPaths.getTrackedPageContentSubdir(siteDirectory, pageConf.source_graph_subdirectory)
+          const sourceDir = pageConf.sourceGraphSubdirectory
+            ? SiteConfigPaths.getTrackedPageContentSubdir(siteDirectory, pageConf.sourceGraphSubdirectory)
             : trackedPageContentDir;
           
           try {
-            const mdContent = getMdContent(sourceDir, pageConf.title, false);
+            const mdContent = getMdContent(sourceDir, pageConf.siteNodeName, false);
             if (mdContent) {
               const processedPage = hook.markdownProcessingPage(siteSlug, mdContent);
               
@@ -518,8 +518,8 @@ router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req
                 totalAffectedCount++;
                 if (affectedPages.length < 10) {
                   affectedPages.push({
-                    pageTitle: pageConf.title,
-                    pageSubdirectory: pageConf.source_graph_subdirectory || '',
+                    pageTitle: pageConf.siteNodeName,
+                    pageSubdirectory: pageConf.sourceGraphSubdirectory || '',
                     before: mdContent.substring(0, 500),
                     after: processedPage.substring(0, 500)
                   });
@@ -528,7 +528,7 @@ router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req
             }
           } catch (error) {
             // Skip pages that can't be read
-            logger.warn(`[hooksRoutes] Could not read page ${pageConf.title}:`, error);
+            logger.warn(`[hooksRoutes] Could not read page ${pageConf.siteNodeName}:`, error);
           }
         }
       }
@@ -815,4 +815,3 @@ router.post('/generation/hooks/clear-cache', (_req, res) => {
 });
 
 export default router;
-

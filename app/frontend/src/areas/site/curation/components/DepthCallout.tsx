@@ -62,34 +62,32 @@ export function useDepthCalloutDismissal(): {
 }
 
 // Check if the graph could expand by increasing depth.
-// Only true when the site is in its initial state (only the initial page is
-// tracked) AND leaf pages have outlinks to pages not in the working graph.
+// Only true when the site is in its initial state (only the traversal-start
+// node is tracked) AND leaf nodes have outlinks outside the working graph.
 // graphUpdateTrigger is needed because tracked state is applied in-place on the
-// graph's pages after config loads, without changing the graph object reference.
+// graph's nodes after config loads, without changing the graph object reference.
 export function useHasFrontierOutlinks(graph: Graph, graphUpdateTrigger?: number): boolean {
   return React.useMemo(() => {
-    const allPages = graph.getAllPages();
-    if (allPages.length === 0) return false;
+    const allNodes = graph.getAllNodes();
+    if (allNodes.length === 0) return false;
 
-    const initialPage = allPages.find(page => page.depth === 0);
-    if (!initialPage || !initialPage.tracked) return false;
+    const traversalStartNode = allNodes.find(node => node.depth === 0);
+    if (!traversalStartNode || !traversalStartNode.tracked) return false;
 
-    // Check that all other pages are not tracked (site is in initial state)
-    const otherTrackedPages = allPages.filter(
-      page => page.depth !== 0 && page.tracked
+    // Check that all other nodes are not tracked (site is in initial state).
+    const otherTrackedNodes = allNodes.filter(
+      node => node.depth !== 0 && node.tracked
     );
-    if (otherTrackedPages.length > 0) return false;
+    if (otherTrackedNodes.length > 0) return false;
 
-    // Get all page IDs in the current working graph
-    const workingGraphPageIds = new Set(allPages.map(p => p.id));
+    const workingGraphNodeKeys = new Set<string>(allNodes.map(node => node.siteNodeKey));
 
-    // Check if any leaf nodes (pages at remaining_depth === 0, not frontier pages themselves)
-    // have outlinks to pages not in the working graph
-    const leafPages = allPages.filter(p => p.remaining_depth === 0 && !p.isFrontierPage);
-    for (const leafPage of leafPages) {
-      const outlinks = graph.getAllOutlinkTargets(leafPage.id);
+    // Check whether any non-frontier leaf node has outlinks outside the graph.
+    const leafNodes = allNodes.filter(node => node.remaining_depth === 0 && !node.isFrontierNode);
+    for (const leafNode of leafNodes) {
+      const outlinks = graph.getAllOutlinkTargets(leafNode.siteNodeKey);
       for (const targetId of outlinks) {
-        if (!workingGraphPageIds.has(targetId)) {
+        if (!workingGraphNodeKeys.has(targetId)) {
           return true;
         }
       }

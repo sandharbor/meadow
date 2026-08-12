@@ -62,9 +62,11 @@ export function getWorkingGraphPath(): string {
 
 export type WorkingGraphRunArgs = {
   graphRoot: string;
-  sitePageConfigPath: string;
-  initial: { title: string; directory: string; file_type: string };
-  traversal: { title: string; directory: string; file_type: string };
+  siteNodeConfigPath: string;
+  entrySiteNodeId: string;
+  defaultTraversalSiteNodeId: string;
+  defaultOutlinksDepth?: number;
+  defaultInlinksDepth?: number;
   frontierDepth: number;
   allowImagesToExtendToFrontier: boolean;
   allowLowerDepths: boolean;
@@ -76,25 +78,24 @@ export async function runWorkingGraphRaw(runArgs: WorkingGraphRunArgs): Promise<
   const args: string[] = [
     '--graph-root',
     runArgs.graphRoot,
-    '--site-page-config',
-    runArgs.sitePageConfigPath,
-    '--initial-title',
-    runArgs.initial.title,
-    '--initial-directory',
-    runArgs.initial.directory,
-    '--initial-file-type',
-    runArgs.initial.file_type,
-    '--traversal-title',
-    runArgs.traversal.title,
-    '--traversal-directory',
-    runArgs.traversal.directory,
-    '--traversal-file-type',
-    runArgs.traversal.file_type,
+    '--site-node-config',
+    runArgs.siteNodeConfigPath,
+    '--entry-site-node-id',
+    runArgs.entrySiteNodeId,
+    '--default-traversal-site-node-id',
+    runArgs.defaultTraversalSiteNodeId,
     '--frontier-depth',
     String(runArgs.frontierDepth),
     '--allow-images-to-extend-to-frontier',
     runArgs.allowImagesToExtendToFrontier ? 'true' : 'false',
   ];
+
+  if (runArgs.defaultOutlinksDepth !== undefined) {
+    args.push('--default-outlinks-depth', String(runArgs.defaultOutlinksDepth));
+  }
+  if (runArgs.defaultInlinksDepth !== undefined) {
+    args.push('--default-inlinks-depth', String(runArgs.defaultInlinksDepth));
+  }
 
   if (runArgs.allowLowerDepths) {
     args.push('--allow-lower-depths');
@@ -103,4 +104,3 @@ export async function runWorkingGraphRaw(runArgs: WorkingGraphRunArgs): Promise<
   logger.debug(`Executing working_graph command: "${binaryPath}" ${args.map(a => JSON.stringify(a)).join(' ')}`);
   return await execWorkingGraph(binaryPath, args);
 }
-

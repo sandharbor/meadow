@@ -34,7 +34,7 @@ import {
   BacklinkContext
 } from './types.js';
 import { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import {
   normalizePageTitle,
   getMdContent,
@@ -50,7 +50,7 @@ import {
   resolveTrackedLinkHref,
   type ExcalidrawEmbedOptions,
 } from './linkModificationService.js';
-import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
+import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISiteNode.js';
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
@@ -164,7 +164,7 @@ export function renderPageToHtml(
   inverseLinks: InverseLinks,
   siteConfig: SiteConfig,
   siteConfigFile: string,
-  sitePageConfigs: SitePageConfig[],
+  siteNodeConfigs: SiteNodeConfig[],
   options: RenderOptions = {},
   siteSlug?: string,
   currentPageDirectory?: string,  // The source directory of the current page
@@ -216,7 +216,7 @@ export function renderPageToHtml(
   }
 
   function linkOrImageHtml(linkText: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
-    return linkOrImageHtmlService(linkText, sitePageConfigs, {
+    return linkOrImageHtmlService(linkText, siteNodeConfigs, {
       pageNameToPage,
       siteConfig,
       siteSlug,
@@ -303,7 +303,7 @@ export function renderPageToHtml(
         finalPageDirectory: overrides?.currentPageDirectoryOverride ?? currentPageDirectory ?? '',
         baseContentDirectory: contentRoot,
         baseOutputFolder: outputRoot,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         siteSlug,
         linkResolutionMapForCaller: overrides?.linkResolutionMapOverride ?? linkResolutionMap,
@@ -386,17 +386,17 @@ export function renderPageToHtml(
       // Page link
       const resolvedTitle = fileName.replace(/\.md$/, '');
 
-      let linkConfig = sitePageConfigs.find(c =>
-        c.title === resolvedTitle &&
-        (c.source_graph_subdirectory || '') === targetDir &&
-        (c.file_type === 'md' || !c.file_type) &&
-        c.config.list_type === 'whitelist'
+      let linkConfig = siteNodeConfigs.find(c =>
+        c.siteNodeName === resolvedTitle &&
+        (c.sourceGraphSubdirectory || '') === targetDir &&
+        (c.fileType === 'md' || !c.fileType) &&
+        c.listType === 'whitelist'
       );
       if (!linkConfig) {
-        linkConfig = sitePageConfigs.find(c =>
-          c.title === resolvedTitle &&
-          (c.file_type === 'md' || !c.file_type) &&
-          c.config.list_type === 'whitelist'
+        linkConfig = siteNodeConfigs.find(c =>
+          c.siteNodeName === resolvedTitle &&
+          (c.fileType === 'md' || !c.fileType) &&
+          c.listType === 'whitelist'
         );
       }
 
@@ -405,8 +405,8 @@ export function renderPageToHtml(
       }
 
       const normalizedTitle = siteConfig && siteSlug
-        ? normalizePageTitle(linkConfig.title, siteConfig, siteSlug)
-        : linkConfig.title;
+        ? normalizePageTitle(linkConfig.siteNodeName, siteConfig, siteSlug)
+        : linkConfig.siteNodeName;
 
       // Highlight self-links (links back to the current page) as non-clickable
       if (highlightDoNotLinkPageName &&
@@ -419,7 +419,7 @@ export function renderPageToHtml(
       const relativeUrl = resolveTrackedLinkHref({
         resolved: resolvedInfo,
         hostPageDirectory: effectivePageDir,
-        sitePageConfigs,
+        siteNodeConfigs,
         siteConfig,
         siteSlug,
       });
@@ -578,8 +578,8 @@ export function renderPageToHtml(
         for (const backlink of backlinks) {
           let shouldInclude = true;
           
-          const backlinkConfig = sitePageConfigs.find(sitePageConfig => sitePageConfig.title === backlink);
-          if (!backlinkConfig || backlinkConfig.config.list_type !== 'whitelist') {
+          const backlinkConfig = siteNodeConfigs.find(siteNodeConfig => siteNodeConfig.siteNodeName === backlink);
+          if (!backlinkConfig || backlinkConfig.listType !== 'whitelist') {
             shouldInclude = false;
           }
           
@@ -591,7 +591,7 @@ export function renderPageToHtml(
             let backlinkContextHtml = '';
             
             // Get the backlink's source directory for relative path calculation
-            const backlinkSourceDir = backlinkConfig?.source_graph_subdirectory || '';
+            const backlinkSourceDir = backlinkConfig?.sourceGraphSubdirectory || '';
             const normalizedBacklinkName = normalizePageTitle(backlink, siteConfig, siteSlug);
 
             if (showBacklinkContext) {
@@ -688,8 +688,8 @@ export function renderPageToHtml(
         breadcrumbItems.push(`<span class="breadcrumb-current">${normalizedTitle}</span>`);
       } else {
         // Find the source directory of this breadcrumb page to compute relative path
-        const breadcrumbSitePageConfig = sitePageConfigs.find(c => c.title === pathPageTitle);
-        const breadcrumbSourceDir = breadcrumbSitePageConfig?.source_graph_subdirectory || '';
+        const breadcrumbSiteNodeConfig = siteNodeConfigs.find(c => c.siteNodeName === pathPageTitle);
+        const breadcrumbSourceDir = breadcrumbSiteNodeConfig?.sourceGraphSubdirectory || '';
         const encodedBreadcrumbName = encodeURIComponent(normalizedTitle);
         const targetPath = breadcrumbSourceDir 
           ? `${breadcrumbSourceDir}/${encodedBreadcrumbName}.html`
@@ -817,7 +817,7 @@ export function renderSimpleBacklinksHtml(
   pageTitle: string,
   currentPageDirectory: string,
   inverseLinks: InverseLinks,
-  sitePageConfigs: SitePageConfig[],
+  siteNodeConfigs: SiteNodeConfig[],
   siteConfig: SiteConfig,
   siteSlug?: string,
 ): string {
@@ -830,9 +830,9 @@ export function renderSimpleBacklinksHtml(
 
   let html = '<h2>Backlinks</h2>\n<ul>\n';
   for (const backlink of sorted) {
-    const cfg = sitePageConfigs.find(c => c.title === backlink);
-    if (!cfg || cfg.config.list_type !== 'whitelist') continue;
-    const sourceDir = cfg.source_graph_subdirectory || '';
+    const cfg = siteNodeConfigs.find(c => c.siteNodeName === backlink);
+    if (!cfg || cfg.listType !== 'whitelist') continue;
+    const sourceDir = cfg.sourceGraphSubdirectory || '';
     const normName = normalizePageTitle(backlink, siteConfig, siteSlug);
     const encoded = encodeURIComponent(normName);
     const targetPath = sourceDir ? `${sourceDir}/${encoded}.html` : `${encoded}.html`;

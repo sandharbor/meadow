@@ -41,7 +41,7 @@ import {
   isPagespecNotInWorkingGraph,
 } from '../../../../pagespecs/index.js';
 import type { WorkingGraphData, PagespecInWorkingGraph } from '../../../../pagespecs/index.js';
-import { parsePageConfig } from '../../../../../shared_code/utils/sitePageConfigUtils.js';
+import { parseSiteNodeConfig } from '../../../../../shared_code/utils/siteNodeConfigUtils.js';
 import {
   findAllMarkdownFiles,
   getAvailableSites,
@@ -483,10 +483,10 @@ async function validatePagespecLinksForSite(
   const graphData = (await response.json()) as {
     allOutlinkTargets: Record<string, string[]>;
     allInlinkSources: Record<string, string[]>;
-    pages: { id: string }[];
+    nodes: { siteNodeKey: string }[];
   };
 
-  const workingGraphPageIds = new Set(graphData.pages.map((p) => linkPathToPageId(p.id)));
+  const workingGraphPageIds = new Set(graphData.nodes.map((node) => linkPathToPageId(node.siteNodeKey)));
 
   const outlinkMap = new Map<string, string[]>();
   for (const [pathKey, targets] of Object.entries(graphData.allOutlinkTargets)) {
@@ -622,10 +622,10 @@ describe('Runtime Pagespec Curation Validation', () => {
       expect(response.ok).toBe(true);
 
       const graphData = (await response.json()) as {
-        pages: { id: string }[];
+        nodes: { siteNodeKey: string }[];
       };
 
-      const workingGraphPageIds = new Set(graphData.pages.map((p) => linkPathToPageId(p.id)));
+      const workingGraphPageIds = new Set(graphData.nodes.map((node) => linkPathToPageId(node.siteNodeKey)));
       const mdFiles = findAllMarkdownFiles(sourceGraphDir);
 
       for (const mdFile of mdFiles) {
@@ -654,15 +654,15 @@ describe('Runtime Pagespec Curation Validation', () => {
     }
   });
 
-  it('should validate isTracked matches site_page_config.yaml', () => {
+  it('should validate isTracked matches site_node_config.yaml', () => {
     const sitesToCheck = getPagespecSitesToCheck(bigSiteSetup!, smallSiteSetup!, exampleSiteSetup!);
     const errors: string[] = [];
     let pagesValidated = 0;
 
     for (const { name: siteName, setup: siteSetup, sourceGraphDir } of sitesToCheck) {
-      const siteConfigPath = path.join(siteSetup.getSitePath(), 'conf', 'site_page_config.yaml');
-      const sitePageConfigs = fs.existsSync(siteConfigPath)
-        ? parsePageConfig(fs.readFileSync(siteConfigPath, 'utf-8'))
+      const siteConfigPath = path.join(siteSetup.getSitePath(), 'conf', 'site_node_config.yaml');
+      const siteNodeConfigs = fs.existsSync(siteConfigPath)
+        ? parseSiteNodeConfig(fs.readFileSync(siteConfigPath, 'utf-8'))
         : [];
 
       const mdFiles = findAllMarkdownFiles(sourceGraphDir);
@@ -678,7 +678,7 @@ describe('Runtime Pagespec Curation Validation', () => {
 
         pagesValidated++;
 
-        const actualTracked = isPageTracked(pageId, sitePageConfigs, 'md');
+        const actualTracked = isPageTracked(pageId, siteNodeConfigs, 'md');
         if (siteSpec.curation.isTracked !== actualTracked) {
           errors.push(
             `[${siteName}] ${pageId}: isTracked mismatch - spec says ${siteSpec.curation.isTracked}, actual is ${actualTracked}`
@@ -707,13 +707,13 @@ describe('Runtime Pagespec Curation Validation', () => {
       expect(response.ok).toBe(true);
 
       const graphData = (await response.json()) as {
-        pages: { id: string; remaining_depth: number }[];
+        nodes: { siteNodeKey: string; remaining_depth: number }[];
       };
 
       const pageRemainingDepthMap = new Map<string, number>();
-      for (const page of graphData.pages) {
-        const pageId = linkPathToPageId(page.id);
-        pageRemainingDepthMap.set(pageId, page.remaining_depth);
+      for (const node of graphData.nodes) {
+        const pageId = linkPathToPageId(node.siteNodeKey);
+        pageRemainingDepthMap.set(pageId, node.remaining_depth);
       }
 
       const mdFiles = findAllMarkdownFiles(sourceGraphDir);

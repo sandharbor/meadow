@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage.js';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode.js';
 
 export const ROOT_FOLDER_LABEL = 'Root';
 
 export interface FolderTreeNode {
   name: string;
   path: string;
-  pageCount: number;
-  directPageCount: number;
+  nodeCount: number;
+  directNodeCount: number;
   children: FolderTreeNode[];
 }
 
@@ -38,29 +38,29 @@ export const normalizeFolderPath = (path: string | undefined): string => (
     .join('/')
 );
 
-export const hasPagesInMultipleFolders = (pages: ISitePage[]): boolean => {
-  const folders = new Set(pages.map(page => normalizeFolderPath(page.sourceGraphSubdirectory)));
+export const hasNodesInMultipleFolders = (nodes: ISiteNode[]): boolean => {
+  const folders = new Set(nodes.map(node => normalizeFolderPath(node.sourceGraphSubdirectory)));
   return folders.size > 1;
 };
 
 const toFolderTreeNode = (node: MutableFolderTreeNode): FolderTreeNode => ({
   name: node.name,
   path: node.path,
-  pageCount: node.pageCount,
-  directPageCount: node.directPageCount,
+  nodeCount: node.nodeCount,
+  directNodeCount: node.directNodeCount,
   children: Array.from(node.children.values())
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
     .map(toFolderTreeNode)
 });
 
-export const buildFolderTree = (pages: ISitePage[]): FolderTreeNode[] => {
+export const buildFolderTree = (nodes: ISiteNode[]): FolderTreeNode[] => {
   const topLevel = new Map<string, MutableFolderTreeNode>();
-  let rootPageCount = 0;
+  let rootNodeCount = 0;
 
-  pages.forEach(page => {
-    const folderPath = normalizeFolderPath(page.sourceGraphSubdirectory);
+  nodes.forEach(node => {
+    const folderPath = normalizeFolderPath(node.sourceGraphSubdirectory);
     if (!folderPath) {
-      rootPageCount += 1;
+      rootNodeCount += 1;
       return;
     }
 
@@ -75,45 +75,45 @@ export const buildFolderTree = (pages: ISitePage[]): FolderTreeNode[] => {
         node = {
           name: segment,
           path: currentPath,
-          pageCount: 0,
-          directPageCount: 0,
+          nodeCount: 0,
+          directNodeCount: 0,
           children: new Map()
         };
         children.set(segment, node);
       }
 
-      node.pageCount += 1;
+      node.nodeCount += 1;
       if (index === segments.length - 1) {
-        node.directPageCount += 1;
+        node.directNodeCount += 1;
       }
       children = node.children;
     });
   });
 
-  const nodes = Array.from(topLevel.values())
+  const folderNodes = Array.from(topLevel.values())
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
     .map(toFolderTreeNode);
 
-  if (rootPageCount > 0) {
-    nodes.unshift({
+  if (rootNodeCount > 0) {
+    folderNodes.unshift({
       name: ROOT_FOLDER_LABEL,
       path: '',
-      pageCount: rootPageCount,
-      directPageCount: rootPageCount,
+      nodeCount: rootNodeCount,
+      directNodeCount: rootNodeCount,
       children: []
     });
   }
 
-  return nodes;
+  return folderNodes;
 };
 
-export const pageIsInFolder = (pageFolder: string | undefined, folderPath: string): boolean => {
-  const normalizedPageFolder = normalizeFolderPath(pageFolder);
+export const nodeIsInFolder = (nodeFolder: string | undefined, folderPath: string): boolean => {
+  const normalizedNodeFolder = normalizeFolderPath(nodeFolder);
   const normalizedFolder = normalizeFolderPath(folderPath);
 
-  // The synthetic Root row represents only pages stored directly at the root.
-  if (!normalizedFolder) return normalizedPageFolder === '';
+  // The synthetic Root row represents only nodes stored directly at the root.
+  if (!normalizedFolder) return normalizedNodeFolder === '';
 
-  return normalizedPageFolder === normalizedFolder
-    || normalizedPageFolder.startsWith(`${normalizedFolder}/`);
+  return normalizedNodeFolder === normalizedFolder
+    || normalizedNodeFolder.startsWith(`${normalizedFolder}/`);
 };

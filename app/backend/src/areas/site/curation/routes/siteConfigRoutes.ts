@@ -15,21 +15,46 @@ limitations under the License.
 */
 
 import express from 'express';
-import { readFileSync, writeFileSync } from 'fs';
-import { stringifyPageConfig, parsePageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import { readFileSync } from 'fs';
+import {
+  stringifySiteNodeConfig,
+  parseSiteNodeConfig,
+  validateCanonicalSiteConfiguration,
+} from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
 import fs from 'fs';
 import { getSiteConfigPath } from '../../../../shared/site-config/siteConfigPaths.js';
+import YAML from 'yaml';
 
 const router = express.Router();
 
 // Helper function to get both draft and main paths
 const getConfigPaths = (siteSlug: string) => {
   return {
-    draftPath: getSiteConfigPath(siteSlug, 'draft_site_page_config.yaml'),
-    mainPath: getSiteConfigPath(siteSlug, 'site_page_config.yaml')
+    draftPath: getSiteConfigPath(siteSlug, 'draft_site_node_config.yaml'),
+    mainPath: getSiteConfigPath(siteSlug, 'site_node_config.yaml'),
+    siteConfigPath: getSiteConfigPath(siteSlug),
   };
 };
+
+function readNodeConfig(filePath: string): SiteNodeConfig[] {
+  return parseSiteNodeConfig(readFileSync(filePath, 'utf8'), filePath);
+}
+
+function readSiteConfig(filePath: string): SiteConfig {
+  return YAML.parse(readFileSync(filePath, 'utf8')) as SiteConfig;
+}
+
+function writeAtomically(filePath: string, content: string): void {
+  const temporaryPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  try {
+    fs.writeFileSync(temporaryPath, content, { encoding: 'utf8', mode: 0o600 });
+    fs.renameSync(temporaryPath, filePath);
+  } finally {
+    if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+  }
+}
 
 // Middleware to validate siteSlug
 const validateSiteSlug = (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -57,7 +82,7 @@ const asyncHandler = (fn: (req: express.Request, res: express.Response, next: ex
 // Read site page configuration
 router.get('/sites/:siteSlug/curation/site-config', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
-  const { draftPath, mainPath } = getConfigPaths(siteSlug);
+  const { draftPath, mainPath, siteConfigPath } = getConfigPaths(siteSlug);
   
   let content = '';
   let hasDraft = false;
@@ -69,30 +94,66 @@ router.get('/sites/:siteSlug/curation/site-config', validateSiteSlug, asyncHandl
     content = readFileSync(mainPath, 'utf8');
   }
   
-  const configs = content ? parsePageConfig(content) : [];
+  const configs = content ? parseSiteNodeConfig(content, hasDraft ? draftPath : mainPath) : [];
+  if (fs.existsSync(mainPath) && fs.existsSync(siteConfigPath)) {
+    validateCanonicalSiteConfiguration({
+      committedNodes: readNodeConfig(mainPath),
+      committedPath: mainPath,
+      ...(hasDraft && { draftNodes: configs, draftPath }),
+      siteConfig: readSiteConfig(siteConfigPath),
+      siteConfigPath,
+    });
+  }
   res.json({ configs, hasDraft });
 }));
 
 // Save site page configuration
 router.post('/sites/:siteSlug/curation/site-config', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
-  const { configs, isDraft = true } = req.body as { configs?: SitePageConfig[], isDraft?: boolean };
+  const { configs, isDraft = true } = req.body as { configs?: SiteNodeConfig[], isDraft?: boolean };
 
   if (!configs || !Array.isArray(configs)) { 
     res.status(400).json({ error: 'Configs are required and must be an array' });
     return;
   }
   
-  const content = stringifyPageConfig(configs);
-  const { draftPath, mainPath } = getConfigPaths(siteSlug);
+  const { draftPath, mainPath, siteConfigPath } = getConfigPaths(siteSlug);
+  if (!fs.existsSync(mainPath) || !fs.existsSync(siteConfigPath)) {
+    res.status(409).json({ error: 'Canonical site configuration is incomplete' });
+    return;
+  }
+  const targetPath = isDraft ? draftPath : mainPath;
+  const candidate = parseSiteNodeConfig(stringifySiteNodeConfig(configs), targetPath);
+  const committed = readNodeConfig(mainPath);
+  const siteConfig = readSiteConfig(siteConfigPath);
+
+  // Comparing against committed first preserves IDs for logical nodes and
+  // prevents reuse of a committed ID for a different locator.
+  validateCanonicalSiteConfiguration({
+    committedNodes: committed,
+    committedPath: mainPath,
+    draftNodes: candidate,
+    draftPath: targetPath,
+    siteConfig,
+    siteConfigPath,
+  });
+  if (!isDraft) {
+    validateCanonicalSiteConfiguration({
+      committedNodes: candidate,
+      committedPath: mainPath,
+      siteConfig,
+      siteConfigPath,
+    });
+  }
+  const content = stringifySiteNodeConfig(candidate);
   
   if (isDraft) {
     // Save to draft file
-    writeFileSync(draftPath, content, 'utf8');
+    writeAtomically(draftPath, content);
   } else {
     // Save to main file and remove draft
     // Note: Commit happens in copy-tracked-pages endpoint to include both config and tracked content
-    writeFileSync(mainPath, content, 'utf8');
+    writeAtomically(mainPath, content);
     if (fs.existsSync(draftPath)) {
       fs.unlinkSync(draftPath);
     }
@@ -103,7 +164,15 @@ router.post('/sites/:siteSlug/curation/site-config', validateSiteSlug, asyncHand
 // Undo draft changes (remove draft file)
 router.delete('/sites/:siteSlug/curation/site-config-draft', validateSiteSlug, asyncHandler((req, res) => {
   const { siteSlug } = req.params;
-  const { draftPath } = getConfigPaths(siteSlug);
+  const { draftPath, mainPath, siteConfigPath } = getConfigPaths(siteSlug);
+  if (fs.existsSync(mainPath) && fs.existsSync(siteConfigPath)) {
+    validateCanonicalSiteConfiguration({
+      committedNodes: readNodeConfig(mainPath),
+      committedPath: mainPath,
+      siteConfig: readSiteConfig(siteConfigPath),
+      siteConfigPath,
+    });
+  }
   
   if (fs.existsSync(draftPath)) {
     fs.unlinkSync(draftPath);

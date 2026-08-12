@@ -15,13 +15,13 @@ limitations under the License.
 */
 
 import React, { useMemo, useState } from 'react';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
 import { IFilter, IFolderFilterState } from '../types/filters';
 import { buildFolderTree, FolderTreeNode, ROOT_FOLDER_LABEL } from '../utils/folderFilterUtils';
 
 interface FolderFilterTreeProps {
   filter: IFilter;
-  pages: ISitePage[];
+  pages: ISiteNode[];
   onFilterChange: (filterId: string, changes: Partial<IFilter>) => void;
 }
 
@@ -114,9 +114,9 @@ const FolderFilterTree: React.FC<FolderFilterTreeProps> = ({ filter, pages, onFi
           </span>
           <span
             className="flex-shrink-0 whitespace-nowrap text-[10px] tabular-nums text-gray-400"
-            title={`${node.pageCount} ${node.pageCount === 1 ? 'page' : 'pages'} in ${displayName}`}
+            title={`${node.nodeCount} ${node.nodeCount === 1 ? 'page' : 'pages'} in ${displayName}`}
           >
-            {node.pageCount}
+            {node.nodeCount}
           </span>
 
           {hasDescendantActivity && (

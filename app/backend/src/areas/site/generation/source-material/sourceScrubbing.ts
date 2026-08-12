@@ -17,13 +17,13 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import LZString from 'lz-string';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import type { FileType } from '../../../../../../shared_code/types/FileType.js';
-import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISitePage.js';
+import type { LinkResolvedInfo } from '../../../../../../shared_code/types/ISiteNode.js';
 import { replaceOutsideCode } from '../html/markdown.js';
 import { LINK_PATTERN } from '../html/constants.js';
 import { isLinkTracked } from '../html/linkModificationService.js';
-import { pageConfigToKey } from '../../../../shared/site-page/pageKeys.js';
+import { siteNodeConfigToKey } from '../../../../shared/site-node/nodeKeys.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
@@ -93,24 +93,24 @@ function pageFileInfoForRelativePath(relativePath: string): PageFileInfo | null 
   };
 }
 
-function configMatchesFileInfo(config: SitePageConfig, info: PageFileInfo): boolean {
-  const configFileType = config.file_type || 'md';
-  return config.title === info.title &&
-    (config.source_graph_subdirectory || '') === info.sourceGraphSubdirectory &&
+function configMatchesFileInfo(config: SiteNodeConfig, info: PageFileInfo): boolean {
+  const configFileType = config.fileType || 'md';
+  return config.siteNodeName === info.title &&
+    (config.sourceGraphSubdirectory || '') === info.sourceGraphSubdirectory &&
     configFileType === info.fileType;
 }
 
 function findMatchingConfig(
-  sitePageConfs: Record<string, SitePageConfig>,
+  siteNodeConfs: Record<string, SiteNodeConfig>,
   info: PageFileInfo
-): SitePageConfig | undefined {
-  return Object.values(sitePageConfs).find(conf => configMatchesFileInfo(conf, info));
+): SiteNodeConfig | undefined {
+  return Object.values(siteNodeConfs).find(conf => configMatchesFileInfo(conf, info));
 }
 
-function pageIdentForConfig(config: SitePageConfig): string {
-  const fileType = config.file_type || 'md';
-  const sourceGraphSubdirectory = config.source_graph_subdirectory || '';
-  const filename = `${config.title}.${fileType}`;
+function pageIdentForConfig(config: SiteNodeConfig): string {
+  const fileType = config.fileType || 'md';
+  const sourceGraphSubdirectory = config.sourceGraphSubdirectory || '';
+  const filename = `${config.siteNodeName}.${fileType}`;
   return sourceGraphSubdirectory ? `${sourceGraphSubdirectory}/${filename}` : `/${filename}`;
 }
 
@@ -123,7 +123,7 @@ function hasOwnLinkResolution(
 
 function isLinkSafeForSourceScrubbing(
   linkText: string,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   linkResolutionMap?: LinkResolutionMap
 ): boolean {
   if (hasOwnLinkResolution(linkResolutionMap, linkText)) {
@@ -133,7 +133,7 @@ function isLinkSafeForSourceScrubbing(
     }
   }
 
-  return isLinkTracked(linkText, sitePageConfigsForLinks, linkResolutionMap);
+  return isLinkTracked(linkText, siteNodeConfigsForLinks, linkResolutionMap);
 }
 
 /**
@@ -143,12 +143,12 @@ function isLinkSafeForSourceScrubbing(
  */
 export function sanitizeMarkdownLinks(
   content: string,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   linkResolutionMap?: LinkResolutionMap,
   replacement: string = MARKDOWN_LINK_REPLACEMENT
 ): string {
   return replaceOutsideCode(content, WIKI_LINK_OR_EMBED_PATTERN, (match: string, linkText: string) => {
-    if (isLinkSafeForSourceScrubbing(linkText, sitePageConfigsForLinks, linkResolutionMap)) {
+    if (isLinkSafeForSourceScrubbing(linkText, siteNodeConfigsForLinks, linkResolutionMap)) {
       return match;
     }
     return replacement;
@@ -167,11 +167,11 @@ function wikiLinkTextsIn(text: string): string[] {
 
 function hasUnsafeWikiLink(
   text: string,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   linkResolutionMap?: LinkResolutionMap
 ): boolean {
   return wikiLinkTextsIn(text).some(
-    linkText => !isLinkSafeForSourceScrubbing(linkText, sitePageConfigsForLinks, linkResolutionMap)
+    linkText => !isLinkSafeForSourceScrubbing(linkText, siteNodeConfigsForLinks, linkResolutionMap)
   );
 }
 
@@ -200,7 +200,7 @@ function replaceMarkdownSection(
 
 function sanitizeExcalidrawMarkdownSections(
   content: string,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   linkResolutionMap: LinkResolutionMap | undefined
 ): {
   content: string;
@@ -217,7 +217,7 @@ function sanitizeExcalidrawMarkdownSections(
     if (!match) return line;
 
     const [, text, suffix, elementId] = match;
-    if (!hasUnsafeWikiLink(text, sitePageConfigsForLinks, linkResolutionMap)) {
+    if (!hasUnsafeWikiLink(text, siteNodeConfigsForLinks, linkResolutionMap)) {
       return line;
     }
 
@@ -230,7 +230,7 @@ function sanitizeExcalidrawMarkdownSections(
     if (!match) return line;
 
     const [, elementId, linkText] = match;
-    if (!hasUnsafeWikiLink(linkText, sitePageConfigsForLinks, linkResolutionMap)) {
+    if (!hasUnsafeWikiLink(linkText, siteNodeConfigsForLinks, linkResolutionMap)) {
       return line;
     }
 
@@ -243,7 +243,7 @@ function sanitizeExcalidrawMarkdownSections(
     if (!match) return line;
 
     const [, fileId, linkText] = match;
-    if (!hasUnsafeWikiLink(linkText, sitePageConfigsForLinks, linkResolutionMap)) {
+    if (!hasUnsafeWikiLink(linkText, siteNodeConfigsForLinks, linkResolutionMap)) {
       return line;
     }
 
@@ -264,7 +264,7 @@ function sanitizeExcalidrawScene(
   unsafeTextElementIds: Set<string>,
   unsafeLinkedElementIds: Set<string>,
   unsafeEmbeddedFileIds: Set<string>,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   linkResolutionMap: LinkResolutionMap | undefined
 ): { scene: unknown; changed: boolean } {
   if (!scene || typeof scene !== 'object') {
@@ -321,7 +321,7 @@ function sanitizeExcalidrawScene(
 
     if (typeof mutableElement.link === 'string') {
       const inner = wikilinkInner(mutableElement.link);
-      if (inner && !isLinkSafeForSourceScrubbing(inner, sitePageConfigsForLinks, linkResolutionMap)) {
+      if (inner && !isLinkSafeForSourceScrubbing(inner, siteNodeConfigsForLinks, linkResolutionMap)) {
         mutableElement.link = null;
         changed = true;
       }
@@ -349,7 +349,7 @@ function scrubCompressedExcalidrawBlocks(
   unsafeTextElementIds: Set<string>,
   unsafeLinkedElementIds: Set<string>,
   unsafeEmbeddedFileIds: Set<string>,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   linkResolutionMap: LinkResolutionMap | undefined
 ): string {
   return content.replace(/```compressed-json\n([\s\S]*?)\n```/g, (match: string, compressed: string) => {
@@ -364,7 +364,7 @@ function scrubCompressedExcalidrawBlocks(
         unsafeTextElementIds,
         unsafeLinkedElementIds,
         unsafeEmbeddedFileIds,
-        sitePageConfigsForLinks,
+        siteNodeConfigsForLinks,
         linkResolutionMap
       );
       if (!scrubbed.changed) return match;
@@ -381,7 +381,7 @@ function scrubJsonExcalidrawBlocks(
   unsafeTextElementIds: Set<string>,
   unsafeLinkedElementIds: Set<string>,
   unsafeEmbeddedFileIds: Set<string>,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   linkResolutionMap: LinkResolutionMap | undefined
 ): string {
   return content.replace(/```json\n([\s\S]*?)\n```/g, (match: string, json: string) => {
@@ -393,7 +393,7 @@ function scrubJsonExcalidrawBlocks(
         unsafeTextElementIds,
         unsafeLinkedElementIds,
         unsafeEmbeddedFileIds,
-        sitePageConfigsForLinks,
+        siteNodeConfigsForLinks,
         linkResolutionMap
       );
       if (!scrubbed.changed) return match;
@@ -406,7 +406,7 @@ function scrubJsonExcalidrawBlocks(
 
 export function sanitizeExcalidrawSource(
   content: string,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   linkResolutionMap?: LinkResolutionMap,
   replacement: string = MARKDOWN_LINK_REPLACEMENT
 ): string {
@@ -415,14 +415,14 @@ export function sanitizeExcalidrawSource(
     unsafeTextElementIds,
     unsafeLinkedElementIds,
     unsafeEmbeddedFileIds,
-  } = sanitizeExcalidrawMarkdownSections(content, sitePageConfigsForLinks, linkResolutionMap);
+  } = sanitizeExcalidrawMarkdownSections(content, siteNodeConfigsForLinks, linkResolutionMap);
 
   const contentWithSanitizedCompressedScene = scrubCompressedExcalidrawBlocks(
     contentWithSanitizedSections,
     unsafeTextElementIds,
     unsafeLinkedElementIds,
     unsafeEmbeddedFileIds,
-    sitePageConfigsForLinks,
+    siteNodeConfigsForLinks,
     linkResolutionMap
   );
 
@@ -431,11 +431,11 @@ export function sanitizeExcalidrawSource(
     unsafeTextElementIds,
     unsafeLinkedElementIds,
     unsafeEmbeddedFileIds,
-    sitePageConfigsForLinks,
+    siteNodeConfigsForLinks,
     linkResolutionMap
   );
 
-  return sanitizeMarkdownLinks(contentWithSanitizedScene, sitePageConfigsForLinks, linkResolutionMap, replacement);
+  return sanitizeMarkdownLinks(contentWithSanitizedScene, siteNodeConfigsForLinks, linkResolutionMap, replacement);
 }
 
 /**
@@ -447,8 +447,8 @@ export function prepareScrubbedSourceDirectory(
   sourceContentDir: string,
   scrubbedContentDir: string,
   traversablePageKeys: Set<string>,
-  sitePageConfs: Record<string, SitePageConfig>,
-  sitePageConfigsForLinks: SitePageConfig[],
+  siteNodeConfs: Record<string, SiteNodeConfig>,
+  siteNodeConfigsForLinks: SiteNodeConfig[],
   allLinkResolutionMaps?: AllLinkResolutionMaps
 ): void {
   if (fs.existsSync(scrubbedContentDir)) {
@@ -466,18 +466,18 @@ export function prepareScrubbedSourceDirectory(
       continue;
     }
 
-    const matchingConf = findMatchingConfig(sitePageConfs, fileInfo);
+    const matchingConf = findMatchingConfig(siteNodeConfs, fileInfo);
     if (!matchingConf) {
       logger.debug(`Source scrubbing: skipping untracked file ${relativePath}`);
       continue;
     }
 
-    if (matchingConf.config.list_type !== 'whitelist') {
+    if (matchingConf.listType !== 'whitelist') {
       logger.debug(`Source scrubbing: skipping non-whitelisted file ${relativePath}`);
       continue;
     }
 
-    const key = pageConfigToKey(matchingConf);
+    const key = siteNodeConfigToKey(matchingConf);
     if (!traversablePageKeys.has(key)) {
       logger.debug(`Source scrubbing: skipping non-traversable file ${relativePath}`);
       continue;
@@ -494,8 +494,8 @@ export function prepareScrubbedSourceDirectory(
       const linkResolutionMap = allLinkResolutionMaps?.get(pageIdent);
       const content = fs.readFileSync(filePath, 'utf-8');
       const scrubbedContent = fileInfo.fileType === 'excalidraw'
-        ? sanitizeExcalidrawSource(content, sitePageConfigsForLinks, linkResolutionMap, HTML_LINK_NOT_TRACKED_REPLACEMENT)
-        : sanitizeMarkdownLinks(content, sitePageConfigsForLinks, linkResolutionMap, HTML_LINK_NOT_TRACKED_REPLACEMENT);
+        ? sanitizeExcalidrawSource(content, siteNodeConfigsForLinks, linkResolutionMap, HTML_LINK_NOT_TRACKED_REPLACEMENT)
+        : sanitizeMarkdownLinks(content, siteNodeConfigsForLinks, linkResolutionMap, HTML_LINK_NOT_TRACKED_REPLACEMENT);
       fs.writeFileSync(outputPath, scrubbedContent, 'utf-8');
     } else {
       fs.copyFileSync(filePath, outputPath);

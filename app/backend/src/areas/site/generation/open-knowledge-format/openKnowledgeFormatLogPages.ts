@@ -16,19 +16,16 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { FileType } from '../../../../../../shared_code/types/FileType.js';
-import type { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import type { SourcePageFileInfo } from '../../../../../../shared_code/types/sourcePageFileInfo.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
-import { parsePageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
 import {
   rankSourcePageCandidatesWithCount,
   recentSourcePageCandidatesWithCount
 } from '../../../../../../shared_code/utils/sourcePageSearchUtils.js';
-import { pageConfigToKey, type SitePageConfigs } from '../../../../shared/site-page/pageKeys.js';
+import { siteNodeConfigToKey, type SiteNodeConfigMap } from '../../../../shared/site-node/nodeKeys.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
-import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
+import { loadValidatedSiteNodeConfiguration } from '../../../../shared/site-node/siteNodeConfigLoader.js';
 import {
   selectAutoOpenKnowledgeFormatIndexSource,
   selectAutoOpenKnowledgeFormatLogSource
@@ -40,14 +37,8 @@ import {
   type OpenKnowledgeFormatLogMode
 } from './openKnowledgeFormatConfig.js';
 
-type WorkingGraphPage = {
-  title: string;
-  sourceGraphSubdirectory: string;
-  file_type: FileType;
-};
-
 type WorkingGraphOutput = {
-  pages: WorkingGraphPage[];
+  nodes: Array<{ siteNodeKey: string }>;
 };
 
 export interface OpenKnowledgeFormatLogPageOptions {
@@ -67,27 +58,24 @@ export interface OpenKnowledgeFormatLogPageOptions {
   count: number;
 }
 
-function readSitePageConfigs(sitePageConfPath: string): SitePageConfigs {
-  const result: SitePageConfigs = {};
-  if (!fs.existsSync(sitePageConfPath)) return result;
-  const content = fs.readFileSync(sitePageConfPath, 'utf-8');
-  const pageConfArray = parsePageConfig(content);
-  for (const conf of pageConfArray) {
-    result[pageConfigToKey(conf)] = conf;
+function buildSiteNodeConfigMap(nodes: SiteNodeConfig[]): SiteNodeConfigMap {
+  const result: SiteNodeConfigMap = {};
+  for (const conf of nodes) {
+    result[siteNodeConfigToKey(conf)] = conf;
   }
   return result;
 }
 
-function sourcePathForConfig(config: SitePageConfig): string {
-  const fileType = config.file_type || 'md';
+function sourcePathForConfig(config: SiteNodeConfig): string {
+  const fileType = config.fileType || 'md';
   const filename = fileType === 'excalidraw'
-    ? `${config.title}.excalidraw.md`
-    : `${config.title}.${fileType}`;
-  const dir = config.source_graph_subdirectory || '';
+    ? `${config.siteNodeName}.excalidraw.md`
+    : `${config.siteNodeName}.${fileType}`;
+  const dir = config.sourceGraphSubdirectory || '';
   return dir ? `${dir}/${filename}` : filename;
 }
 
-function pageInfoForConfig(config: SitePageConfig, trackedContentDir: string): SourcePageFileInfo {
+function pageInfoForConfig(config: SiteNodeConfig, trackedContentDir: string): SourcePageFileInfo {
   const fullPath = sourcePathForConfig(config);
   const absolutePath = path.join(trackedContentDir, ...fullPath.split('/'));
   let modifiedTimeMs = 0;
@@ -95,62 +83,39 @@ function pageInfoForConfig(config: SitePageConfig, trackedContentDir: string): S
     modifiedTimeMs = fs.statSync(absolutePath).mtimeMs;
   }
   return {
-    title: config.title,
-    directory: config.source_graph_subdirectory || '',
-    file_type: config.file_type || 'md',
+    title: config.siteNodeName,
+    directory: config.sourceGraphSubdirectory || '',
+    file_type: config.fileType,
     fullPath,
     modifiedTimeMs,
   };
 }
 
-function initialSourcePath(siteConfig: SiteConfig, sitePageConfs: SitePageConfigs): string | null {
-  const initialTitle = siteConfig.initialSitePageTitle || '';
-  const initialDirectory = siteConfig.initialSitePageDirectory || '';
-  if (!initialTitle) return null;
-  const initialConfig = Object.values(sitePageConfs).find(
-    config => config.title === initialTitle && (config.source_graph_subdirectory || '') === initialDirectory
-  );
-  return initialConfig ? sourcePathForConfig(initialConfig) : null;
-}
-
 async function reachableMarkdownPages(siteDirectory: string): Promise<SourcePageFileInfo[]> {
-  const siteConfig = loadSiteConfig(siteDirectory);
-  const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-  const sitePageConfs = readSitePageConfigs(sitePageConfPath);
+  const { siteConfig, nodes } = loadValidatedSiteNodeConfiguration(siteDirectory);
+  const siteNodeConfPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
+  const siteNodeConfs = buildSiteNodeConfigMap(nodes);
   const trackedContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
-  const initialTitle = siteConfig.initialSitePageTitle || '';
-  const initialDirectory = siteConfig.initialSitePageDirectory || '';
-
-  if (!initialTitle) return [];
-
-  const initialConfig = Object.values(sitePageConfs).find(
-    config => config.title === initialTitle && (config.source_graph_subdirectory || '') === initialDirectory
-  );
-  const initialFileType: FileType = initialConfig?.file_type || 'md';
   const raw = await runWorkingGraphRaw({
     graphRoot: trackedContentDir,
-    sitePageConfigPath: sitePageConfPath,
-    initial: { title: initialTitle, directory: initialDirectory, file_type: initialFileType },
-    traversal: { title: initialTitle, directory: initialDirectory, file_type: initialFileType },
+    siteNodeConfigPath: siteNodeConfPath,
+    entrySiteNodeId: siteConfig.entrySiteNodeId,
+    defaultTraversalSiteNodeId: siteConfig.defaultTraversalSiteNodeId,
+    defaultOutlinksDepth: siteConfig.defaultOutlinksDepth,
+    defaultInlinksDepth: siteConfig.defaultInlinksDepth,
     frontierDepth: 0,
     allowImagesToExtendToFrontier: true,
     allowLowerDepths: false,
   });
   const output = JSON.parse(raw) as WorkingGraphOutput;
   const reachableKeys = new Set<string>();
-  for (const page of output.pages) {
-    reachableKeys.add(pageConfigToKey({
-      title: page.title,
-      source_graph_subdirectory: page.sourceGraphSubdirectory,
-      file_type: page.file_type,
-      config: { list_type: 'whitelist' },
-    }));
+  for (const node of output.nodes) {
+    reachableKeys.add(node.siteNodeKey);
   }
 
-  return Object.values(sitePageConfs)
-    .filter(config => (config.file_type || 'md') === 'md')
-    .filter(config => config.config.tracked !== false)
-    .filter(config => reachableKeys.has(pageConfigToKey(config)))
+  return Object.values(siteNodeConfs)
+    .filter(config => (config.fileType || 'md') === 'md')
+    .filter(config => reachableKeys.has(siteNodeConfigToKey(config)))
     .map(config => pageInfoForConfig(config, trackedContentDir));
 }
 
@@ -158,21 +123,19 @@ export async function getOpenKnowledgeFormatLogPageOptions(
   siteDirectory: string,
   options: { query?: string; limit?: number } = {}
 ): Promise<OpenKnowledgeFormatLogPageOptions> {
-  const siteConfig = loadSiteConfig(siteDirectory);
-  const sitePageConfPath = SiteConfigPaths.getSitePageConfigFile(siteDirectory);
-  const sitePageConfs = readSitePageConfigs(sitePageConfPath);
+  const { siteConfig, entryNode } = loadValidatedSiteNodeConfiguration(siteDirectory);
   const allPages = await reachableMarkdownPages(siteDirectory);
   const byPath = new Map(allPages.map(page => [page.fullPath, page]));
   const markdownPaths = allPages.map(page => page.fullPath);
-  const initialPath = initialSourcePath(siteConfig, sitePageConfs);
+  const entrySourcePath = sourcePathForConfig(entryNode);
   const defaultIndexPath = selectAutoOpenKnowledgeFormatIndexSource(
     markdownPaths,
-    initialPath
+    entrySourcePath
   );
   const defaultIndexPage = defaultIndexPath ? byPath.get(defaultIndexPath) ?? null : null;
   const defaultLogPath = selectAutoOpenKnowledgeFormatLogSource(
     markdownPaths,
-    initialPath
+    entrySourcePath
   );
   const defaultPage = defaultLogPath ? byPath.get(defaultLogPath) ?? null : null;
   const configuredIndexMode = siteConfig.generationOpenKnowledgeFormatIndexMode;

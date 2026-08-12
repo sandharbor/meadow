@@ -20,6 +20,9 @@ import path from 'path';
 import { generateHtmlForSite, publishToNewVersion, updateOlderVersionsWithPointer } from '../../../../../src/areas/site/generation/html/htmlService.js';
 import { loadSiteConfig } from '../../../../../src/shared/utils/siteConfigUtils.js';
 import { TestSiteSetup } from '../../../../shared/support/testSiteSetup.js';
+import YAML from 'yaml';
+import { stringifySiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
+import { makeSiteNodeConfig } from '../../../../shared/support/siteNodeConfigTestUtils.js';
 
 function writeYaml(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content, 'utf8');
@@ -75,28 +78,23 @@ describe('publish new version pointers', () => {
     const rawDir = path.join(sitePath, 'raw', 'tracked_page_content');
     fs.mkdirSync(rawDir, { recursive: true });
 
-    // Update site_config.yaml so "home" is the initial + traversal page.
+    const nodes = titles.map(title => makeSiteNodeConfig(title, 'whitelist', title === 'home'
+      ? {}
+      : { outlinksDepth: 1, inlinksDepth: 0 }));
+    const entryNode = nodes.find(node => node.siteNodeName === 'home')!;
+
+    // Update site_config.yaml so "home" holds both site roles.
     const siteConfigPath = path.join(confDir, 'site_config.yaml');
-    writeYaml(
-      siteConfigPath,
-      [
-        'defaultTraversalSitePageTitle: home',
-        'defaultTraversalSitePageDirectory: ""',
-        'siteGuid: x3d9p0k',
-        'sourceDirectory: ./source_graphs/minimal-site-data',
-        'initialSitePageTitle: home',
-        'initialSitePageDirectory: ""',
-        'publishPrefix: test123',
-        'publishSlug: version-pointer-site',
-        'siteCreatedAt: 2025-01-01T00:00:00.000Z',
-        'siteLastPublishedAt: null',
-        'siteNotes: "Version pointer test site"',
-        'siteUpdatedAt: 2025-01-01T00:00:00.000Z',
-        'generatedSiteVersions: []',
-        'archivedAt: null',
-        '',
-      ].join('\n')
-    );
+    const existingSiteConfig = YAML.parse(fs.readFileSync(siteConfigPath, 'utf8')) as Record<string, unknown>;
+    writeYaml(siteConfigPath, YAML.stringify({
+      ...existingSiteConfig,
+      entrySiteNodeId: entryNode.siteNodeId,
+      defaultTraversalSiteNodeId: entryNode.siteNodeId,
+      defaultOutlinksDepth: 1,
+      defaultInlinksDepth: 0,
+      publishSlug: 'version-pointer-site',
+      siteNotes: 'Version pointer test site',
+    }));
 
     // Create 5 minimal pages. Ensure they're connected so the working graph includes them.
     fs.writeFileSync(
@@ -117,14 +115,9 @@ describe('publish new version pointers', () => {
       fs.writeFileSync(path.join(rawDir, `${t}.md`), `# ${t}\n\nback to [[home]]\n`, 'utf8');
     }
 
-    // Update site_page_config.yaml to whitelist all 5 pages.
-    const pageConfigPath = path.join(confDir, 'site_page_config.yaml');
-    const yaml = [
-      'pages:',
-      ...titles.map((t) => `  - inlinksDepth: 0\n    listType: whitelist\n    outlinksDepth: 1\n    title: ${t}`),
-      '',
-    ].join('\n');
-    writeYaml(pageConfigPath, yaml);
+    // Update site_node_config.yaml to whitelist all 5 pages.
+    const pageConfigPath = path.join(confDir, 'site_node_config.yaml');
+    writeYaml(pageConfigPath, stringifySiteNodeConfig(nodes));
   }
 
   async function generatePreview(): Promise<void> {
@@ -222,15 +215,14 @@ describe('publish new version pointers', () => {
     const siteConfig2 = loadSiteConfig(sitePath);
     const { version: v2 } = publishToNewVersion(sitePath, siteConfig2);
 
-    // Remove page-c from site_page_config.yaml (so it will not be rendered in the new version).
-    const pageConfigPath = path.join(sitePath, 'conf', 'site_page_config.yaml');
-    const remaining = titles.filter((t) => t !== 'page-c');
-    const yaml = [
-      'pages:',
-      ...remaining.map((t) => `  - inlinksDepth: 0\n    listType: whitelist\n    outlinksDepth: 1\n    title: ${t}`),
-      '',
-    ].join('\n');
-    writeYaml(pageConfigPath, yaml);
+    // Remove page-c from site_node_config.yaml (so it will not be rendered in the new version).
+    const pageConfigPath = path.join(sitePath, 'conf', 'site_node_config.yaml');
+    const remaining = titles
+      .filter((title) => title !== 'page-c')
+      .map(title => makeSiteNodeConfig(title, 'whitelist', title === 'home'
+        ? {}
+        : { outlinksDepth: 1, inlinksDepth: 0 }));
+    writeYaml(pageConfigPath, stringifySiteNodeConfig(remaining));
 
     // New preview/new version will not include page-c.html.
     await generatePreview();
@@ -257,15 +249,13 @@ describe('publish new version pointers', () => {
       expectHasRemovedBannerToInitial(pageCHtml, expectedInitialHref, 'home');
 
       // others should get normal banner linking to same page
-      for (const t of remaining) {
-        const oldHtmlPath = path.join(versionDir(v), `${t}.html`);
+      for (const node of remaining) {
+        const oldHtmlPath = path.join(versionDir(v), `${node.siteNodeName}.html`);
         expect(fs.existsSync(oldHtmlPath)).toBe(true);
         const html = readFile(oldHtmlPath);
-        const expectedHref = `${versionBaseUrl(v3)}/${t}.html`;
+        const expectedHref = `${versionBaseUrl(v3)}/${node.siteNodeName}.html`;
         expectHasNormalBannerTo(html, expectedHref);
       }
     }
   });
 });
-
-

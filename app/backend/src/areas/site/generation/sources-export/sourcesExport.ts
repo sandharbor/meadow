@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
+import type { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 import { replaceOutsideCode } from '../html/markdown.js';
 import {
@@ -107,16 +107,16 @@ export function prepareSourcesExportDirectory(
   _sourceContentDir: string | undefined,
   exportDir: string,
   traversablePageKeys: Set<string>,
-  sitePageConfs: Record<string, SitePageConfig>,
-  sitePageConfigsForLinks: SitePageConfig[]
+  siteNodeConfs: Record<string, SiteNodeConfig>,
+  siteNodeConfigsForLinks: SiteNodeConfig[]
 ): void {
   const scrubbedTempDir = `${exportDir}.scrubbed_tmp`;
   prepareScrubbedSourceDirectory(
     trackedContentDir,
     scrubbedTempDir,
     traversablePageKeys,
-    sitePageConfs,
-    sitePageConfigsForLinks
+    siteNodeConfs,
+    siteNodeConfigsForLinks
   );
   prepareSourcesExportFromScrubbedSourceDirectory(scrubbedTempDir, exportDir);
   fs.rmSync(scrubbedTempDir, { recursive: true, force: true });

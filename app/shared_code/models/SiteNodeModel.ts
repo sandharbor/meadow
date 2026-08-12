@@ -14,43 +14,45 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { ISitePage, LinkResolvedInfo } from '../types/ISitePage.js';
-import { SitePageConfig } from '../types/sitePageConfig.js';
-import { FileType } from '../types/FileType.js';
+import type { ISiteNode, LinkResolvedInfo } from '../types/ISiteNode.js';
+import type { SiteNodeConfig, SiteNodeId, SiteNodeKey } from '../types/siteNodeConfig.js';
+import type { FileType } from '../types/FileType.js';
 
-export class SitePageModel implements ISitePage {
-  id: string;
+export class SiteNodeModel implements ISiteNode {
+  siteNodeKey: SiteNodeKey;
+  siteNodeId?: SiteNodeId;
+  siteNodeKind = 'file' as const;
   label: string;
-  title: string;
+  siteNodeName: string;
   body?: string;
   tracked?: boolean;
   blacklisted?: boolean;
   sensitive?: boolean;
   offTopic?: boolean;
   sourceGraphSubdirectory: string;
-  file_type: FileType;
-  conf?: SitePageConfig;
+  fileType: FileType;
+  conf?: SiteNodeConfig;
   depth: number;
   remaining_depth: number;
   path?: string[];
   linkResolutionMap?: Record<string, LinkResolvedInfo>;
-  isFrontierPage?: boolean;
+  isFrontierNode?: boolean;
   isFrontierImageExtension?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: Record<string, any>;
 
   constructor(
-    id: string,
+    siteNodeKey: SiteNodeKey,
     label: string,
-    title: string,
+    siteNodeName: string,
     body?: string,
     tracked?: boolean,
     blacklisted?: boolean,
     sensitive?: boolean,
     offTopic?: boolean,
-    conf?: SitePageConfig,
+    conf?: SiteNodeConfig,
     sourceGraphSubdirectory?: string,
-    file_type?: FileType,
+    fileType?: FileType,
     depth: number = 0,
     remaining_depth: number = 0,
     path?: string[],
@@ -58,9 +60,10 @@ export class SitePageModel implements ISitePage {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data?: Record<string, any>
   ) {
-    this.id = id;
+    this.siteNodeKey = siteNodeKey;
+    this.siteNodeId = conf?.siteNodeId;
     this.label = label;
-    this.title = title;
+    this.siteNodeName = siteNodeName;
     this.body = body;
     this.tracked = tracked;
     this.blacklisted = blacklisted;
@@ -68,7 +71,7 @@ export class SitePageModel implements ISitePage {
     this.offTopic = offTopic;
     this.conf = conf;
     this.sourceGraphSubdirectory = sourceGraphSubdirectory || '';
-    this.file_type = file_type || 'md';
+    this.fileType = fileType || 'md';
     this.depth = depth;
     this.remaining_depth = remaining_depth;
     this.path = path;
@@ -77,6 +80,6 @@ export class SitePageModel implements ISitePage {
   }
 
   public getIdent(): string {
-    return `${this.sourceGraphSubdirectory}---${this.title}---${this.file_type}`;
+    return `${this.sourceGraphSubdirectory}---${this.siteNodeName}---${this.fileType}`;
   }
 }

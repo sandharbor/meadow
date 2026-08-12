@@ -22,14 +22,14 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { Graph } from '../../../../../../shared_code/types/graph';
 import { loadFixtureGraph, FixtureLoadResult } from './helpers/fixtureLoader';
 import {
-  createTrackedPageSelector,
-  createUntrackedPageSelector,
-  createBlacklistedPageSelector,
-  createSensitivePageSelector,
+  createTrackedNodeSelector,
+  createUntrackedNodeSelector,
+  createBlacklistedNodeSelector,
+  createSensitiveNodeSelector,
   createSearchByTitleSelector,
-  createCustomPageSelector
+  createCustomSiteNodeSelector
 } from '../../../../../src/areas/site/curation/utils/filterSelectors';
-import type { CustomPageSelectorConfig } from '../../../../../../shared_code/types/customFilters';
+import type { CustomSiteNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters';
 
 describe('Filter Integration Tests', () => {
   let graph: Graph;
@@ -42,69 +42,69 @@ describe('Filter Integration Tests', () => {
 
   describe('built-in filter selectors', () => {
     describe('tracked pages filter', () => {
-      it('selects pages that are tracked according to site_page_config', () => {
-        const selector = createTrackedPageSelector();
-        const selectedPages = selector.select(graph);
+      it('selects pages that are tracked according to site_node_config', () => {
+        const selector = createTrackedNodeSelector();
+        const selectedNodeKeys = selector.select(graph);
 
         // Verify we got some tracked pages
-        expect(selectedPages.size).toBeGreaterThan(0);
+        expect(selectedNodeKeys.size).toBeGreaterThan(0);
 
         // Verify all selected pages are actually tracked
-        selectedPages.forEach(pageId => {
-          const page = graph.getPage(pageId);
+        selectedNodeKeys.forEach(siteNodeKey => {
+          const page = graph.getNode(siteNodeKey);
           expect(page?.tracked).toBe(true);
         });
 
         // Verify known tracked page is selected (main page is tracked)
-        const mainPage = graph.getAllPages().find(n => n.title === 'main page');
+        const mainPage = graph.getAllNodes().find(n => n.siteNodeName === 'main page');
         expect(mainPage).toBeDefined();
         if (mainPage) {
-          expect(selectedPages.has(mainPage.id)).toBe(true);
+          expect(selectedNodeKeys.has(mainPage.siteNodeKey)).toBe(true);
         }
       });
     });
 
     describe('untracked pages filter', () => {
       it('selects pages that are not tracked', () => {
-        const selector = createUntrackedPageSelector();
-        const selectedPages = selector.select(graph);
+        const selector = createUntrackedNodeSelector();
+        const selectedNodeKeys = selector.select(graph);
 
         // Verify all selected pages are not tracked
-        selectedPages.forEach(pageId => {
-          const page = graph.getPage(pageId);
+        selectedNodeKeys.forEach(siteNodeKey => {
+          const page = graph.getNode(siteNodeKey);
           expect(page?.tracked).toBeFalsy();
         });
 
         // The untracked set should be the complement of tracked
-        const trackedSelector = createTrackedPageSelector();
+        const trackedSelector = createTrackedNodeSelector();
         const trackedPages = trackedSelector.select(graph);
 
         // No overlap between tracked and untracked
-        selectedPages.forEach(pageId => {
-          expect(trackedPages.has(pageId)).toBe(false);
+        selectedNodeKeys.forEach(siteNodeKey => {
+          expect(trackedPages.has(siteNodeKey)).toBe(false);
         });
       });
     });
 
     describe('blacklisted pages filter', () => {
       it('selects the t007 blacklisted page', () => {
-        const selector = createBlacklistedPageSelector();
-        const selectedPages = selector.select(graph);
+        const selector = createBlacklistedNodeSelector();
+        const selectedNodeKeys = selector.select(graph);
 
         // Find the blacklisted page
-        const blacklistedPage = graph.getAllPages().find(n =>
-          n.title === 't007 ---- blacklisted page'
+        const blacklistedPage = graph.getAllNodes().find(n =>
+          n.siteNodeName === 't007 ---- blacklisted page'
         );
 
         expect(blacklistedPage).toBeDefined();
         if (blacklistedPage) {
-          expect(selectedPages.has(blacklistedPage.id)).toBe(true);
+          expect(selectedNodeKeys.has(blacklistedPage.siteNodeKey)).toBe(true);
           expect(blacklistedPage.blacklisted).toBe(true);
         }
 
         // Verify all selected pages are actually blacklisted
-        selectedPages.forEach(pageId => {
-          const page = graph.getPage(pageId);
+        selectedNodeKeys.forEach(siteNodeKey => {
+          const page = graph.getNode(siteNodeKey);
           expect(page?.blacklisted).toBe(true);
         });
       });
@@ -112,23 +112,23 @@ describe('Filter Integration Tests', () => {
 
     describe('sensitive pages filter', () => {
       it('selects pages marked as sensitive', () => {
-        const selector = createSensitivePageSelector();
-        const selectedPages = selector.select(graph);
+        const selector = createSensitiveNodeSelector();
+        const selectedNodeKeys = selector.select(graph);
 
         // Find the sensitive test page we added
-        const sensitivePage = graph.getAllPages().find(n =>
-          n.title === 't004 ---- sensitive page'
+        const sensitivePage = graph.getAllNodes().find(n =>
+          n.siteNodeName === 't004 ---- sensitive page'
         );
 
         // The sensitive page should exist and be selected
         if (sensitivePage) {
-          expect(selectedPages.has(sensitivePage.id)).toBe(true);
+          expect(selectedNodeKeys.has(sensitivePage.siteNodeKey)).toBe(true);
           expect(sensitivePage.sensitive).toBe(true);
         }
 
         // Verify all selected pages are actually sensitive
-        selectedPages.forEach(pageId => {
-          const page = graph.getPage(pageId);
+        selectedNodeKeys.forEach(siteNodeKey => {
+          const page = graph.getNode(siteNodeKey);
           expect(page?.sensitive).toBe(true);
         });
       });
@@ -137,22 +137,22 @@ describe('Filter Integration Tests', () => {
     describe('search by title filter', () => {
       it('selects pages matching the search text', () => {
         const selector = createSearchByTitleSelector('blacklisted');
-        const selectedPages = selector.select(graph);
+        const selectedNodeKeys = selector.select(graph);
 
         // Should find pages with "blacklisted" in the title
-        expect(selectedPages.size).toBeGreaterThan(0);
+        expect(selectedNodeKeys.size).toBeGreaterThan(0);
 
         // Verify all selected pages contain the search text
-        selectedPages.forEach(pageId => {
-          const page = graph.getPage(pageId);
-          expect(page?.title.toLowerCase()).toContain('blacklisted');
+        selectedNodeKeys.forEach(siteNodeKey => {
+          const page = graph.getNode(siteNodeKey);
+          expect(page?.siteNodeName.toLowerCase()).toContain('blacklisted');
         });
       });
 
       it('returns empty set for search text less than 2 characters', () => {
         const selector = createSearchByTitleSelector('a');
-        const selectedPages = selector.select(graph);
-        expect(selectedPages.size).toBe(0);
+        const selectedNodeKeys = selector.select(graph);
+        expect(selectedNodeKeys.size).toBe(0);
       });
 
       it('is case insensitive', () => {
@@ -170,64 +170,64 @@ describe('Filter Integration Tests', () => {
   describe('custom filter selectors', () => {
     it('custom regex filter selects pages matching the pattern', () => {
       // Create a custom filter that matches titles with "t0" followed by two digits
-      const config: CustomPageSelectorConfig = {
+      const config: CustomSiteNodeSelectorConfig = {
         field: 'title',
         matchType: 'regex',
         value: 't0\\d{2}',
         caseSensitive: false
       };
 
-      const selector = createCustomPageSelector(config);
-      const selectedPages = selector.select(graph);
+      const selector = createCustomSiteNodeSelector(config);
+      const selectedNodeKeys = selector.select(graph);
 
       // Should match pages like t001, t002, t003, etc.
-      expect(selectedPages.size).toBeGreaterThan(0);
+      expect(selectedNodeKeys.size).toBeGreaterThan(0);
 
       // Verify all selected pages match the pattern
-      selectedPages.forEach(pageId => {
-        const page = graph.getPage(pageId);
-        expect(page?.title).toMatch(/t0\d{2}/i);
+      selectedNodeKeys.forEach(siteNodeKey => {
+        const page = graph.getNode(siteNodeKey);
+        expect(page?.siteNodeName).toMatch(/t0\d{2}/i);
       });
     });
 
     it('custom substring filter selects pages containing the substring', () => {
       // Create a custom filter that matches titles containing "transclusion"
-      const config: CustomPageSelectorConfig = {
+      const config: CustomSiteNodeSelectorConfig = {
         field: 'title',
         matchType: 'substring',
         value: 'transclusion',
         caseSensitive: false
       };
 
-      const selector = createCustomPageSelector(config);
-      const selectedPages = selector.select(graph);
+      const selector = createCustomSiteNodeSelector(config);
+      const selectedNodeKeys = selector.select(graph);
 
       // Should match pages with "transclusion" in the title
-      expect(selectedPages.size).toBeGreaterThan(0);
+      expect(selectedNodeKeys.size).toBeGreaterThan(0);
 
       // Verify all selected pages contain the substring
-      selectedPages.forEach(pageId => {
-        const page = graph.getPage(pageId);
-        expect(page?.title.toLowerCase()).toContain('transclusion');
+      selectedNodeKeys.forEach(siteNodeKey => {
+        const page = graph.getNode(siteNodeKey);
+        expect(page?.siteNodeName.toLowerCase()).toContain('transclusion');
       });
     });
 
     it('case sensitive custom filter respects case', () => {
       // Create a case-sensitive filter
-      const config: CustomPageSelectorConfig = {
+      const config: CustomSiteNodeSelectorConfig = {
         field: 'title',
         matchType: 'substring',
         value: 'Main', // Capital M
         caseSensitive: true
       };
 
-      const selector = createCustomPageSelector(config);
-      const selectedPages = selector.select(graph);
+      const selector = createCustomSiteNodeSelector(config);
+      const selectedNodeKeys = selector.select(graph);
 
       // "main page" has lowercase 'm', so should not match
-      const mainPage = graph.getAllPages().find(n => n.title === 'main page');
+      const mainPage = graph.getAllNodes().find(n => n.siteNodeName === 'main page');
       if (mainPage) {
-        expect(selectedPages.has(mainPage.id)).toBe(false);
+        expect(selectedNodeKeys.has(mainPage.siteNodeKey)).toBe(false);
       }
     });
   });

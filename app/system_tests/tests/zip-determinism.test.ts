@@ -18,7 +18,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
-import YAML from 'yaml';
+import { parseSiteNodeConfig, stringifySiteNodeConfig } from '../../shared_code/utils/siteNodeConfigUtils.js';
 import {
   startServer,
   stopServer,
@@ -32,44 +32,36 @@ const BIG_SITE_EXCALIDRAW_PAGE_CONFIGS = [
     fileType: 'excalidraw',
     listType: 'whitelist',
     sourceGraphSubdirectory: 't006 - second directory',
-    title: 'embedded in page in other t006 directory',
-    tracked: true,
+    siteNodeName: 'embedded in page in other t006 directory',
   },
   {
     fileType: 'excalidraw',
     listType: 'whitelist',
     sourceGraphSubdirectory: 't006',
-    title: 't006 --- meadow-flower',
-    tracked: true,
+    siteNodeName: 't006 --- meadow-flower',
   },
-];
+] as const;
 
 function trackBigSiteExcalidrawPages(testSetup: SystemTestSiteSetup) {
-  const sitePageConfigPath = testSetup.getPathInSite('conf/site_page_config.yaml');
-  const parsed = YAML.parse(fs.readFileSync(sitePageConfigPath, 'utf8')) as {
-    pages?: Array<Record<string, unknown>>;
-  } | null;
-  const pages = Array.isArray(parsed?.pages) ? parsed.pages : [];
-  const keyFor = (page: {
+  const siteNodeConfigPath = testSetup.getPathInSite('conf/site_node_config.yaml');
+  const nodes = parseSiteNodeConfig(fs.readFileSync(siteNodeConfigPath, 'utf8'), siteNodeConfigPath);
+  const keyFor = (node: {
     sourceGraphSubdirectory?: unknown;
-    title?: unknown;
+    siteNodeName?: unknown;
     fileType?: unknown;
   }) => [
-    typeof page.sourceGraphSubdirectory === 'string' ? page.sourceGraphSubdirectory : '',
-    typeof page.title === 'string' ? page.title : '',
-    typeof page.fileType === 'string' ? page.fileType : '',
+    typeof node.sourceGraphSubdirectory === 'string' ? node.sourceGraphSubdirectory : '',
+    typeof node.siteNodeName === 'string' ? node.siteNodeName : '',
+    typeof node.fileType === 'string' ? node.fileType : '',
   ].join('\u0000');
 
   for (const config of BIG_SITE_EXCALIDRAW_PAGE_CONFIGS) {
-    const existingPage = pages.find((page) => keyFor(page) === keyFor(config));
-    if (existingPage) {
-      Object.assign(existingPage, config);
-    } else {
-      pages.push(config);
-    }
+    const existingNode = nodes.find((node) => keyFor(node) === keyFor(config));
+    if (!existingNode) throw new Error(`Fixture node missing: ${config.siteNodeName}`);
+    existingNode.listType = config.listType;
   }
 
-  fs.writeFileSync(sitePageConfigPath, YAML.stringify({ ...(parsed ?? {}), pages }), 'utf8');
+  fs.writeFileSync(siteNodeConfigPath, stringifySiteNodeConfig(nodes), 'utf8');
 }
 
 describe('Generated archive determinism', () => {

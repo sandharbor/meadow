@@ -17,30 +17,30 @@ limitations under the License.
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Graph } from '../../../../../../shared_code/types/graph';
 import { IFilter } from '../types/filters';
-import { DisplayGraph, DisplayPage, Highlight } from '../types/displayGraph';
+import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH } from './ImageHoverPreview';
-import SitePageHoverCard from './SitePageHoverCard';
+import SiteNodeHoverCard from './SiteNodeHoverCard';
 import DepthCallout, { useDepthCalloutDismissal, useHasFrontierOutlinks } from './DepthCallout';
 import { computeLabelPlacements } from '../utils/graphSearchLabels';
 import GraphSearchLabels from './GraphSearchLabels';
-import PageNode, { PAGE_NODE_RADIUS } from './PageNode';
+import SiteNodeGlyph, { SITE_NODE_RADIUS } from './SiteNodeGlyph';
 
 interface GraphVisProps {
   graph: Graph;
   displayGraph: DisplayGraph;
   filters: IFilter[];
-  selectedPages: Set<string>;
-  onSelectedPagesChange: (pages: Set<string>) => void;
+  selectedNodeKeys: Set<string>;
+  onSelectedNodeKeysChange: (siteNodeKeys: Set<string>) => void;
   siteSlug: string;
   graphUpdateTrigger?: number;
-  onPageContextMenu?: (pageId: string, x: number, y: number) => void;
-  isSitePagesOnlyToggleActive?: boolean;
+  onSiteNodeContextMenu?: (siteNodeKey: string, x: number, y: number) => void;
+  isSitePreviewOnlyActive?: boolean;
   sitePreviewHover?: boolean;
 }
 
-interface PagePosition {
+interface NodePosition {
   x: number;
   y: number;
 }
@@ -67,17 +67,17 @@ const GraphVis: React.FC<GraphVisProps> = ({
   graph,
   displayGraph,
   filters,
-  selectedPages,
-  onSelectedPagesChange,
+  selectedNodeKeys,
+  onSelectedNodeKeysChange,
   siteSlug,
   graphUpdateTrigger,
-  onPageContextMenu,
-  isSitePagesOnlyToggleActive,
+  onSiteNodeContextMenu,
+  isSitePreviewOnlyActive,
   sitePreviewHover,
 }) => {
-  const [positions, setPositions] = useState<Map<string, PagePosition>>(new Map());
+  const [positions, setPositions] = useState<Map<string, NodePosition>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const [hoveredPage, setHoveredPage] = useState<{
+  const [hoveredNode, setHoveredNode] = useState<{
     id: string;
     x: number;
     y: number;
@@ -93,11 +93,11 @@ const GraphVis: React.FC<GraphVisProps> = ({
   // Site preview hover state
 
   // Compute set of "site page" IDs (tracked, not blacklisted, not frontier)
-  const sitePageIds = useMemo(() => {
+  const previewSiteNodeKeys = useMemo(() => {
     const ids = new Set<string>();
-    graph.getAllPages().forEach(page => {
-      if (page.tracked && !page.blacklisted && !page.isFrontierPage) {
-        ids.add(page.id);
+    graph.getAllNodes().forEach(page => {
+      if (page.tracked && !page.blacklisted && !page.isFrontierNode) {
+        ids.add(page.siteNodeKey);
       }
     });
     return ids;
@@ -105,12 +105,12 @@ const GraphVis: React.FC<GraphVisProps> = ({
   }, [graph, graphUpdateTrigger]);
 
   // Whether site preview is active (either hovering or solo clicked)
-  const isSitePreviewActive = sitePreviewHover || isSitePagesOnlyToggleActive;
+  const isSitePreviewActive = sitePreviewHover || isSitePreviewOnlyActive;
 
   // Box selection state
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
   const isDraggingRef = useRef(false);
-  const dragStartedOnPageRef = useRef(false);
+  const dragStartedOnNodeRef = useRef(false);
 
   // Zoom and pan state
   const [viewBox, setViewBox] = useState<ViewBox>(DEFAULT_VIEWBOX);
@@ -119,7 +119,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
   const isAnimatingRef = useRef(false);
   const pendingAnimationRef = useRef(false);
 
-  const calculatePositions = useCallback((pages: DisplayPage[], includeHidden: boolean = false) => {
+  const calculatePositions = useCallback((nodes: DisplayNode[], includeHidden: boolean = false) => {
     // Determine the drawing area dimensions
     const width = 300;
     const height = 200;
@@ -129,24 +129,24 @@ const GraphVis: React.FC<GraphVisProps> = ({
     const verticalPadding = 20;
 
     // Group pages by distance (treat undefined distance as a special group)
-    const levelMap = new Map<number, DisplayPage[]>();
-    const undefinedDistance: DisplayPage[] = [];
+    const levelMap = new Map<number, DisplayNode[]>();
+    const undefinedDistance: DisplayNode[] = [];
 
-    pages.forEach((page) => {
-      if (!includeHidden && !page.isVisible) return;
-      if (page.distance === undefined) {
-        undefinedDistance.push(page);
+    nodes.forEach((node) => {
+      if (!includeHidden && !node.isVisible) return;
+      if (node.distance === undefined) {
+        undefinedDistance.push(node);
         return;
       }
-      const list = levelMap.get(page.distance) ?? [];
-      list.push(page);
-      levelMap.set(page.distance, list);
+      const list = levelMap.get(node.distance) ?? [];
+      list.push(node);
+      levelMap.set(node.distance, list);
     });
 
     // Sort levels by ascending distance
     const sortedLevels = Array.from(levelMap.entries())
       .sort((a, b) => a[0] - b[0])
-      .map(([, levelPages]) => levelPages);
+      .map(([, levelNodes]) => levelNodes);
 
     // Append pages with undefined distance as the last level (if any)
     if (undefinedDistance.length > 0) {
@@ -158,36 +158,36 @@ const GraphVis: React.FC<GraphVisProps> = ({
     const availableHeight = height - verticalPadding * 2;
     const levelSpacing = levelCount > 1 ? availableHeight / (levelCount - 1) : 0;
 
-    const newPositions = new Map<string, PagePosition>();
+    const newPositions = new Map<string, NodePosition>();
 
-    sortedLevels.forEach((levelPages, levelIndex) => {
+    sortedLevels.forEach((levelNodes, levelIndex) => {
       // Filter visibility per autoRearrange setting
-      const visibleInLevel = levelPages.filter((p) => p.isVisible);
-      const hiddenInLevel = levelPages.filter((p) => !p.isVisible);
+      const visibleInLevel = levelNodes.filter((node) => node.isVisible);
+      const hiddenInLevel = levelNodes.filter((node) => !node.isVisible);
 
-      const processPages = (lpages: DisplayPage[], y: number) => {
-        if (lpages.length === 0) return;
+      const processNodes = (nodesAtLevel: DisplayNode[], y: number) => {
+        if (nodesAtLevel.length === 0) return;
         const availableWidth = width - horizontalPadding * 2;
-        const step = availableWidth / (lpages.length + 1);
-        lpages.forEach((page, idx) => {
-          const position: PagePosition = {
+        const step = availableWidth / (nodesAtLevel.length + 1);
+        nodesAtLevel.forEach((node, idx) => {
+          const position: NodePosition = {
             x: horizontalPadding + step * (idx + 1),
             y,
           };
-          newPositions.set(page.id, position);
+          newPositions.set(node.siteNodeKey, position);
         });
       };
 
       const yPos = verticalPadding + levelSpacing * levelIndex;
 
       // Place visible pages for this level
-      processPages(visibleInLevel, yPos);
+      processNodes(visibleInLevel, yPos);
 
       // Optionally cluster hidden pages (if includeHidden === true)
       if (includeHidden && hiddenInLevel.length > 0) {
         // Place them slightly below the level in a tighter cluster
         const clusterY = yPos + 10; // small offset
-        processPages(hiddenInLevel, clusterY);
+        processNodes(hiddenInLevel, clusterY);
       }
     });
 
@@ -208,7 +208,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
       return;
     }
 
-    const newPositions = calculatePositions(displayGraph.allDisplayPages, true);
+    const newPositions = calculatePositions(displayGraph.allDisplayNodes, true);
 
     if (positions.size === 0) {
       // Initial position setup - no animation
@@ -232,17 +232,17 @@ const GraphVis: React.FC<GraphVisProps> = ({
           ? 2 * progress * progress
           : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-        const currentPositions = new Map<string, PagePosition>();
+        const currentPositions = new Map<string, NodePosition>();
 
-        newPositions.forEach((endPos, pageId) => {
-          const startPos = startPositions.get(pageId);
+        newPositions.forEach((endPos, siteNodeKey) => {
+          const startPos = startPositions.get(siteNodeKey);
           if (startPos) {
-            currentPositions.set(pageId, {
+            currentPositions.set(siteNodeKey, {
               x: startPos.x + (endPos.x - startPos.x) * easeProgress,
               y: startPos.y + (endPos.y - startPos.y) * easeProgress,
             });
           } else {
-            currentPositions.set(pageId, endPos);
+            currentPositions.set(siteNodeKey, endPos);
           }
         });
 
@@ -280,22 +280,22 @@ const GraphVis: React.FC<GraphVisProps> = ({
   }, []);
 
   // Get pages within a selection box
-  const getPagesInBox = useCallback((box: SelectionBox): string[] => {
+  const getNodeKeysInBox = useCallback((box: SelectionBox): string[] => {
     const minX = Math.min(box.startX, box.currentX);
     const maxX = Math.max(box.startX, box.currentX);
     const minY = Math.min(box.startY, box.currentY);
     const maxY = Math.max(box.startY, box.currentY);
 
-    const pagesInBox: string[] = [];
-    displayGraph.allDisplayPages.forEach(page => {
+    const nodeKeysInBox: string[] = [];
+    displayGraph.allDisplayNodes.forEach(page => {
       if (!page.isVisible) return;
-      const pos = positions.get(page.id);
+      const pos = positions.get(page.siteNodeKey);
       if (!pos) return;
       if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) {
-        pagesInBox.push(page.id);
+        nodeKeysInBox.push(page.siteNodeKey);
       }
     });
-    return pagesInBox;
+    return nodeKeysInBox;
   }, [displayGraph, positions]);
 
   // Pan handlers - middle mouse button (defined before mouse handlers that use them)
@@ -370,11 +370,11 @@ const GraphVis: React.FC<GraphVisProps> = ({
     const isPageClick = target.closest('g[class*="cursor-pointer"]');
 
     if (isPageClick) {
-      dragStartedOnPageRef.current = true;
+      dragStartedOnNodeRef.current = true;
       return;
     }
 
-    dragStartedOnPageRef.current = false;
+    dragStartedOnNodeRef.current = false;
     const svgCoords = screenToSVGCoords(e.clientX, e.clientY);
     if (!svgCoords) return;
 
@@ -432,19 +432,19 @@ const GraphVis: React.FC<GraphVisProps> = ({
     isDraggingRef.current = false;
 
     // Calculate selected pages from box
-    const pagesInBox = getPagesInBox(selectionBox);
+    const nodeKeysInBox = getNodeKeysInBox(selectionBox);
 
     // If shift key is held, add to existing selection; otherwise replace
     if (e.shiftKey) {
-      const next = new Set(selectedPages);
-      pagesInBox.forEach(id => next.add(id));
-      onSelectedPagesChange(next);
+      const next = new Set(selectedNodeKeys);
+      nodeKeysInBox.forEach(id => next.add(id));
+      onSelectedNodeKeysChange(next);
     } else {
-      onSelectedPagesChange(new Set(pagesInBox));
+      onSelectedNodeKeysChange(new Set(nodeKeysInBox));
     }
 
     setSelectionBox(null);
-  }, [selectionBox, getPagesInBox, selectedPages, onSelectedPagesChange, handlePanEnd]);
+  }, [selectionBox, getNodeKeysInBox, selectedNodeKeys, onSelectedNodeKeysChange, handlePanEnd]);
 
   const handleMouseLeave = useCallback(() => {
     // Cancel panning if mouse leaves (drag selection uses pointer capture, so it's unaffected)
@@ -454,14 +454,14 @@ const GraphVis: React.FC<GraphVisProps> = ({
     }
   }, [isPanning]);
 
-  const handlePageClick = (pageId: string) => {
-    const next = new Set(selectedPages);
-    if (next.has(pageId)) {
-      next.delete(pageId);
+  const handlePageClick = (siteNodeKey: string) => {
+    const next = new Set(selectedNodeKeys);
+    if (next.has(siteNodeKey)) {
+      next.delete(siteNodeKey);
     } else {
-      next.add(pageId);
+      next.add(siteNodeKey);
     }
-    onSelectedPagesChange(next);
+    onSelectedNodeKeysChange(next);
   };
 
   // Zoom handler - wheel event
@@ -507,13 +507,13 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
   // Fit view to selected pages
   const handleFitToSelection = useCallback(() => {
-    if (selectedPages.size === 0) return;
+    if (selectedNodeKeys.size === 0) return;
 
     // Find bounding box of selected pages
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-    selectedPages.forEach(pageId => {
-      const pos = positions.get(pageId);
+    selectedNodeKeys.forEach(siteNodeKey => {
+      const pos = positions.get(siteNodeKey);
       if (pos) {
         minX = Math.min(minX, pos.x);
         minY = Math.min(minY, pos.y);
@@ -558,7 +558,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
       width: newWidth,
       height: newHeight,
     });
-  }, [selectedPages, positions]);
+  }, [selectedNodeKeys, positions]);
 
   // Check if view is modified from default
   const isViewModified = viewBox.x !== DEFAULT_VIEWBOX.x || 
@@ -566,16 +566,16 @@ const GraphVis: React.FC<GraphVisProps> = ({
                          viewBox.width !== DEFAULT_VIEWBOX.width || 
                          viewBox.height !== DEFAULT_VIEWBOX.height;
   
-  const hasSelection = selectedPages.size > 0;
+  const hasSelection = selectedNodeKeys.size > 0;
 
   // Get initial page screen position for callout placement
   const getInitialPageScreenPosition = useCallback((): { x: number; y: number } | null => {
     if (!svgRef.current || !containerRef.current) return null;
 
-    const initialPage = displayGraph.allDisplayPages.find(n => n.distance === 0);
+    const initialPage = displayGraph.allDisplayNodes.find(n => n.distance === 0);
     if (!initialPage) return null;
 
-    const pagePos = positions.get(initialPage.id);
+    const pagePos = positions.get(initialPage.siteNodeKey);
     if (!pagePos) return null;
 
     const pt = svgRef.current.createSVGPoint();
@@ -600,20 +600,20 @@ const GraphVis: React.FC<GraphVisProps> = ({
   // Extract search text from filters for label highlighting
   const searchText = useMemo(() => {
     const searchFilter = filters.find(f => f.id === 'search-by-title-filter');
-    return searchFilter?.pageSelectors[0]?.searchInput || '';
+    return searchFilter?.siteNodeSelectors[0]?.searchInput || '';
   }, [filters]);
 
   // Compute search result label placements
   const searchLabelPlacements = useMemo(() => {
-    const titledPages = displayGraph.allDisplayPages
+    const titledNodes = displayGraph.allDisplayNodes
       .filter(p => p.isVisible && p.showTitle)
       .map(p => {
-        const pos = positions.get(p.id);
-        return pos ? { pageId: p.id, title: p.title, nodeX: pos.x, nodeY: pos.y, titleFilterColors: p.titleFilterColors } : null;
+        const pos = positions.get(p.siteNodeKey);
+        return pos ? { siteNodeKey: p.siteNodeKey, siteNodeName: p.siteNodeName, nodeX: pos.x, nodeY: pos.y, titleFilterColors: p.titleFilterColors } : null;
       })
       .filter((p): p is NonNullable<typeof p> => p !== null);
 
-    return computeLabelPlacements(titledPages, searchText, PAGE_NODE_RADIUS, 4);
+    return computeLabelPlacements(titledNodes, searchText, SITE_NODE_RADIUS, 4);
   }, [displayGraph, positions, searchText]);
 
   return (
@@ -664,25 +664,25 @@ const GraphVis: React.FC<GraphVisProps> = ({
       )}
 
       <div ref={containerRef} className="w-full h-full">
-        {hoveredPage && (
-          hoveredPage.isImage && hoveredPage.imageUrl ? (
+        {hoveredNode && (
+          hoveredNode.isImage && hoveredNode.imageUrl ? (
             <ImageHoverPreview
-              imageUrl={hoveredPage.imageUrl}
-              title={hoveredPage.title}
+              imageUrl={hoveredNode.imageUrl}
+              title={hoveredNode.title}
               style={{
                 position: 'absolute',
-                left: hoveredPage.x - HOVER_IMAGE_WIDTH / 2, // center horizontally
-                top: hoveredPage.y + 20, // position below page nodes
+                left: hoveredNode.x - HOVER_IMAGE_WIDTH / 2, // center horizontally
+                top: hoveredNode.y + 20, // position below page nodes
               }}
             />
           ) : (
-            <SitePageHoverCard
-              title={hoveredPage.title}
-              highlights={hoveredPage.highlights}
+            <SiteNodeHoverCard
+              title={hoveredNode.title}
+              highlights={hoveredNode.highlights}
               style={{
                 position: 'absolute',
-                left: hoveredPage.x - 40, // center horizontally
-                top: hoveredPage.y + 20, // position below page nodes
+                left: hoveredNode.x - 40, // center horizontally
+                top: hoveredNode.y + 20, // position below page nodes
               }}
             />
           )
@@ -782,8 +782,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
           {/* Draw edges */}
           {graph.getAllEdges().map((edge, index) => {
-            const sourcePage = displayGraph.getDisplayPage(edge.source);
-            const targetPage = displayGraph.getDisplayPage(edge.target);
+            const sourcePage = displayGraph.getDisplayNode(edge.source);
+            const targetPage = displayGraph.getDisplayNode(edge.target);
             if (!sourcePage || !targetPage) return null;
 
             const sourcePos = positions.get(edge.source);
@@ -791,10 +791,10 @@ const GraphVis: React.FC<GraphVisProps> = ({
             if (!sourcePos || !targetPos) return null;
 
             const sourceVisible = isSitePreviewActive
-              ? sitePageIds.has(edge.source)
+              ? previewSiteNodeKeys.has(edge.source)
               : sourcePage.isVisible;
             const targetVisible = isSitePreviewActive
-              ? sitePageIds.has(edge.target)
+              ? previewSiteNodeKeys.has(edge.target)
               : targetPage.isVisible;
 
             // Skip edges where both endpoints are hidden, or either endpoint
@@ -803,7 +803,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
             if (isSitePreviewActive && (!sourceVisible || !targetVisible)) return null;
 
             const visibilityOpacity = (!sourceVisible || !targetVisible) ? 0.1 : 1;
-            const isSelected = selectedPages.has(edge.source) && selectedPages.has(edge.target);
+            const isSelected = selectedNodeKeys.has(edge.source) && selectedNodeKeys.has(edge.target);
 
             // Determine tracked status for color selection
             const sourceTracked = sourcePage.tracked;
@@ -826,7 +826,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
             const uniformStrokeColor = isSelected ? selectedEdgeColor : (sourceTracked ? trackedEdgeColor : untrackedEdgeColor);
 
             // Move the start and end
-            const pageRadius = PAGE_NODE_RADIUS;
+            const pageRadius = SITE_NODE_RADIUS;
             const dx = targetPos.x - sourcePos.x;
             const dy = targetPos.y - sourcePos.y;
             const len = Math.sqrt(dx * dx + dy * dy);
@@ -881,28 +881,28 @@ const GraphVis: React.FC<GraphVisProps> = ({
           })}
 
           {/* Draw pages */}
-          {displayGraph.allDisplayPages.map((page) => {
+          {displayGraph.allDisplayNodes.map((page) => {
             if (isSitePreviewActive) {
-              if (!sitePageIds.has(page.id)) return null;
+              if (!previewSiteNodeKeys.has(page.siteNodeKey)) return null;
             } else {
               if (!page.isVisible) return null;
             }
 
-            const pagePosition = positions.get(page.id);
+            const pagePosition = positions.get(page.siteNodeKey);
             if (!pagePosition) return null;
 
             return (
               <g
-                key={page.id}
+                key={page.siteNodeKey}
                 data-testid="graph-page-node"
-                data-page-id={page.id}
+                data-page-id={page.siteNodeKey}
                 transform={`translate(${pagePosition.x},${pagePosition.y})`}
-                onClick={() => handlePageClick(page.id)}
+                onClick={() => handlePageClick(page.siteNodeKey)}
                 onContextMenu={(e) => {
-                  if (onPageContextMenu) {
+                  if (onSiteNodeContextMenu) {
                     e.preventDefault();
                     e.stopPropagation();
-                    onPageContextMenu(page.id, e.clientX, e.clientY);
+                    onSiteNodeContextMenu(page.siteNodeKey, e.clientX, e.clientY);
                   }
                 }}
                 onMouseEnter={() => {
@@ -914,38 +914,38 @@ const GraphVis: React.FC<GraphVisProps> = ({
                   const containerRect = containerRef.current.getBoundingClientRect();
                   if (ctm) {
                     const screenPt = pt.matrixTransform(ctm);
-                    const isImage = isImageFileType(page.file_type);
+                    const isImage = isImageFileType(page.fileType);
                     // Excalidraw drawings live as `<title>.excalidraw.md` on disk;
                     // the hover preview component recognises that URL suffix and
                     // routes it through the vendored Excalidraw renderer instead
                     // of `<img>`.
-                    const isExcalidraw = page.file_type === 'excalidraw';
+                    const isExcalidraw = page.fileType === 'excalidraw';
                     const filename = isExcalidraw
-                      ? `${page.title}.excalidraw.md`
-                      : `${page.title}.${page.file_type}`;
+                      ? `${page.siteNodeName}.excalidraw.md`
+                      : `${page.siteNodeName}.${page.fileType}`;
                     const filePath = page.sourceGraphSubdirectory
                       ? `${page.sourceGraphSubdirectory}/${filename}`
                       : filename;
-                    setHoveredPage({
-                      id: page.id,
+                    setHoveredNode({
+                      id: page.siteNodeKey,
                       x: screenPt.x - containerRect.left,
                       y: screenPt.y - containerRect.top,
-                      title: page.title,
+                      title: page.siteNodeName,
                       isImage,
                       imageUrl: isImage ? `${API_BASE_URL}/sites/${siteSlug}/generation/source-file/${encodeURIComponent(filePath)}` : undefined,
                       highlights: page.highlights,
                     });
                   }
                 }}
-                onMouseLeave={() => setHoveredPage(null)}
+                onMouseLeave={() => setHoveredNode(null)}
                 className="cursor-pointer"
               >
-                <PageNode
+                <SiteNodeGlyph
                   isSelected={page.isSelected}
-                  isFrontierPage={page.isFrontierPage}
+                  isFrontierNode={page.isFrontierNode}
                   isFrontierImageExtension={page.isFrontierImageExtension}
                   tracked={page.tracked}
-                  fileType={page.file_type}
+                  fileType={page.fileType}
                   highlights={page.highlights}
                   showLabel={page.showLabel}
                   label={page.label}
@@ -958,7 +958,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
           <GraphSearchLabels
             placements={searchLabelPlacements}
             fontSize={4}
-            pageRadius={PAGE_NODE_RADIUS}
+            pageRadius={SITE_NODE_RADIUS}
             connectorMarkerId="label-connector-arrow"
           />
 

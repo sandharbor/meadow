@@ -96,8 +96,8 @@ interface PreviewPublishModalProps {
   retryPublishTrigger?: number;
 
   // Untracked pages integration
-  untrackedPagesCount: number;
-  onShowUntrackedPages: () => void;
+  untrackedNodeCount: number;
+  onShowUntrackedNodes: () => void;
 
   // URL param syncing
   onTabChange?: (tab: PreviewModalTab) => void;
@@ -127,14 +127,15 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   onAuthError,
   onPublishSuccess,
   retryPublishTrigger,
-  untrackedPagesCount,
-  onShowUntrackedPages,
+  untrackedNodeCount,
+  onShowUntrackedNodes,
   onTabChange,
   initialTab,
   hooksHaveErrors,
 }) => {
   // Preview operations state
   const [isRegeneratingPreview, setIsRegeneratingPreview] = useState(false);
+  const isRegeneratingPreviewRef = useRef(false);
   const pendingRegenerationRef = useRef(false);
   const [previewResult, setPreviewResult] = useState<{
     success: boolean;
@@ -377,8 +378,9 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   // Execute preview SSE operation
   const executePreview = useCallback(async () => {
     if (!slug) return;
-    if (isRegeneratingPreview) return;
+    if (isRegeneratingPreviewRef.current) return;
 
+    isRegeneratingPreviewRef.current = true;
     setIsRegeneratingPreview(true);
     setIsIframeLoading(true);
     setPreviewProgress({ stage: 'preparing', message: 'Preparing to render preview...' });
@@ -443,10 +445,11 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         error: error instanceof Error ? error.message : 'Network error'
       });
     } finally {
+      isRegeneratingPreviewRef.current = false;
       setIsRegeneratingPreview(false);
       setIsIframeLoading(false);
     }
-  }, [slug, startPage, isRegeneratingPreview]);
+  }, [slug, startPage]);
 
   // Get the current page's file path from the preview URL
   const getCurrentPreviewFilePath = useCallback((): string | null => {
@@ -476,7 +479,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   // Regenerate preview and reload (used when options change)
   const regeneratePreviewAndReload = useCallback(async () => {
     if (!slug) return;
-    if (isRegeneratingPreview) {
+    if (isRegeneratingPreviewRef.current) {
       // Queue a regeneration for when the current one finishes
       pendingRegenerationRef.current = true;
       return;
@@ -487,6 +490,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     setImpactedPages([]);
     setImpactedPagesTotal(0);
 
+    isRegeneratingPreviewRef.current = true;
     setIsRegeneratingPreview(true);
     setIsIframeLoading(true);
     setPreviewProgress({ stage: 'preparing', message: 'Preparing to render preview...' });
@@ -579,9 +583,10 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         .catch((err) => logger.error('Failed to refresh changed files:', err));
     }
 
+    isRegeneratingPreviewRef.current = false;
     setIsRegeneratingPreview(false);
     setIsIframeLoading(false);
-  }, [slug, isRegeneratingPreview, currentPreviewUrl, previewResult?.traversalPageUrl, previewFileExplorerApi, getCurrentPreviewFilePath, previewRootPath, changedFiles, collectChangedFiles]);
+  }, [slug, currentPreviewUrl, previewResult?.traversalPageUrl, previewFileExplorerApi, getCurrentPreviewFilePath, previewRootPath, changedFiles, collectChangedFiles]);
 
   // Drain pending regeneration: if something requested a regeneration while
   // one was in progress, run it now that the previous one has finished.
@@ -872,11 +877,11 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         </div>
 
         {/* Untracked Pages Alert - shown above the process steps */}
-        {previewResult?.success && untrackedPagesCount > 0 && (
+        {previewResult?.success && untrackedNodeCount > 0 && (
           <div className="flex justify-center mb-3">
             <UntrackedPagesButton
-              untrackedCount={untrackedPagesCount}
-              onClick={onShowUntrackedPages}
+              untrackedCount={untrackedNodeCount}
+              onClick={onShowUntrackedNodes}
               showActionLink
             />
           </div>

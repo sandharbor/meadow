@@ -20,6 +20,8 @@ import os from 'os';
 import path from 'path';
 import { getHtmlPathForPage } from '../../../src/shared/utils/htmlPathLookup.js';
 import { SiteConfigPaths } from '../../../../shared_code/paths/siteConfigPaths.js';
+import { stringifySiteNodeConfig } from '../../../../shared_code/utils/siteNodeConfigUtils.js';
+import { makeSiteNodeConfig } from '../support/siteNodeConfigTestUtils.js';
 
 describe('getHtmlPathForPage', () => {
   let siteDirectory: string;
@@ -36,14 +38,13 @@ describe('getHtmlPathForPage', () => {
 
   it('finds a non-markdown tracked page', () => {
     fs.writeFileSync(
-      SiteConfigPaths.getSitePageConfigFile(siteDirectory),
-      [
-        'pages:',
-        '  - fileType: excalidraw',
-        '    listType: whitelist',
-        '    sourceGraphSubdirectory: t006',
-        '    title: t006 --- meadow-flower',
-      ].join('\n'),
+      SiteConfigPaths.getSiteNodeConfigFile(siteDirectory),
+      stringifySiteNodeConfig([
+        makeSiteNodeConfig('t006 --- meadow-flower', 'whitelist', {
+          sourceGraphSubdirectory: 't006',
+          fileType: 'excalidraw',
+        }),
+      ]),
       'utf8',
     );
 
@@ -54,18 +55,17 @@ describe('getHtmlPathForPage', () => {
 
   it('prefers markdown when multiple tracked pages share a title', () => {
     fs.writeFileSync(
-      SiteConfigPaths.getSitePageConfigFile(siteDirectory),
-      [
-        'pages:',
-        '  - fileType: excalidraw',
-        '    listType: whitelist',
-        '    sourceGraphSubdirectory: t006',
-        '    title: shared title',
-        '  - fileType: md',
-        '    listType: whitelist',
-        '    sourceGraphSubdirectory: t006',
-        '    title: shared title',
-      ].join('\n'),
+      SiteConfigPaths.getSiteNodeConfigFile(siteDirectory),
+      stringifySiteNodeConfig([
+        makeSiteNodeConfig('shared title', 'whitelist', {
+          sourceGraphSubdirectory: 't006',
+          fileType: 'excalidraw',
+        }),
+        makeSiteNodeConfig('shared title', 'whitelist', {
+          sourceGraphSubdirectory: 't006',
+          fileType: 'md',
+        }),
+      ]),
       'utf8',
     );
 

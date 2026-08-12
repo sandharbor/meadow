@@ -16,41 +16,41 @@ limitations under the License.
 
 import React, { useState } from 'react';
 import Modal from '../../../../shared/components/Modal';
-import { IPage } from '../../../../../../shared_code/types/graph';
+import type { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
 
 type CopyFormat = 'titles' | 'paths' | 'json' | 'yaml';
 type PathsVariant = 'space-separated' | 'separate-lines';
 
-interface CopySelectedPagesModalProps {
+interface CopySelectedNodesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedPages: IPage[];
+  selectedNodes: ISiteNode[];
 }
 
-// Common presenter for site page details (used by both JSON and YAML)
-const presentSitePageDetails = (page: IPage): Record<string, unknown> => {
+// Common presenter for the existing user-facing page details export.
+const presentSiteNodeDetails = (node: ISiteNode): Record<string, unknown> => {
   const details: Record<string, unknown> = {
-    title: page.title,
-    sourceGraphSubdirectory: page.sourceGraphSubdirectory,
-    file_type: page.file_type,
+    title: node.siteNodeName,
+    sourceGraphSubdirectory: node.sourceGraphSubdirectory,
+    fileType: node.fileType,
   };
-  if (page.tracked) details.tracked = true;
-  if (page.blacklisted) details.blacklisted = true;
-  if (page.sensitive) details.sensitive = true;
-  if (page.offTopic) details.offTopic = true;
-  if (page.depth !== undefined) details.depth = page.depth;
-  if (page.isFrontierPage) details.isFrontierPage = true;
-  if (page.isFrontierImageExtension) details.isFrontierImageExtension = true;
+  if (node.tracked) details.tracked = true;
+  if (node.blacklisted) details.blacklisted = true;
+  if (node.sensitive) details.sensitive = true;
+  if (node.offTopic) details.offTopic = true;
+  if (node.depth !== undefined) details.depth = node.depth;
+  if (node.isFrontierNode) details.isFrontierNode = true;
+  if (node.isFrontierImageExtension) details.isFrontierImageExtension = true;
   return details;
 };
 
 // Build the file path for a page
-const getPagePath = (page: IPage): string => {
+const getSourceFilePath = (node: ISiteNode): string => {
   const parts = [];
-  if (page.sourceGraphSubdirectory) {
-    parts.push(page.sourceGraphSubdirectory);
+  if (node.sourceGraphSubdirectory) {
+    parts.push(node.sourceGraphSubdirectory);
   }
-  parts.push(`${page.title}.${page.file_type}`);
+  parts.push(`${node.siteNodeName}.${node.fileType}`);
   return parts.join('/');
 };
 
@@ -60,7 +60,7 @@ const quotePathForUnix = (path: string): string => {
 };
 
 // Format page details as YAML
-const formatPageDetailsAsYaml = (details: Record<string, unknown>): string => {
+const formatSiteNodeDetailsAsYaml = (details: Record<string, unknown>): string => {
   const lines: string[] = [];
   for (const [key, value] of Object.entries(details)) {
     if (typeof value === 'string') {
@@ -72,30 +72,30 @@ const formatPageDetailsAsYaml = (details: Record<string, unknown>): string => {
   return '- ' + lines.join('\n  ').replace(/^ {2}/, '');
 };
 
-const CopySelectedPagesModal: React.FC<CopySelectedPagesModalProps> = ({
+const CopySelectedNodesModal: React.FC<CopySelectedNodesModalProps> = ({
   isOpen,
   onClose,
-  selectedPages,
+  selectedNodes,
 }) => {
   const [selectedFormat, setSelectedFormat] = useState<CopyFormat>('paths');
   const [pathsVariant, setPathsVariant] = useState<PathsVariant>('space-separated');
 
   const getFormattedContent = (): string => {
-    if (selectedPages.length === 0) return '';
+    if (selectedNodes.length === 0) return '';
 
     switch (selectedFormat) {
       case 'titles':
-        return selectedPages.map(page => page.title).join('\n');
+        return selectedNodes.map(node => node.siteNodeName).join('\n');
       case 'paths': {
-        const paths = selectedPages.map(page => quotePathForUnix(getPagePath(page)));
+        const paths = selectedNodes.map(node => quotePathForUnix(getSourceFilePath(node)));
         return pathsVariant === 'space-separated' ? paths.join(' ') : paths.join('\n');
       }
       case 'json': {
-        const details = selectedPages.map(presentSitePageDetails);
+        const details = selectedNodes.map(presentSiteNodeDetails);
         return JSON.stringify(details, null, 2);
       }
       case 'yaml':
-        return selectedPages.map(page => formatPageDetailsAsYaml(presentSitePageDetails(page))).join('\n');
+        return selectedNodes.map(node => formatSiteNodeDetailsAsYaml(presentSiteNodeDetails(node))).join('\n');
     }
   };
 
@@ -191,4 +191,4 @@ const CopySelectedPagesModal: React.FC<CopySelectedPagesModalProps> = ({
   );
 };
 
-export default CopySelectedPagesModal;
+export default CopySelectedNodesModal;

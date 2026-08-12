@@ -1,5 +1,8 @@
-use crate::site_page_config::{find_matching_config, SitePageConfig};
-use crate::types::{is_image_file_type, BasicEdge, LinkType, TraversalDetails, TraversalFile, WorkingEdge, WorkingPage};
+use crate::site_node_config::{find_matching_config, SiteNodeConfig};
+use crate::types::{
+    is_image_file_type, BasicEdge, FileSiteNode, LinkType, SiteEdgeKind, TraversalDetails,
+    WorkingEdge, WorkingNode,
+};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Debug, Clone)]
@@ -16,68 +19,98 @@ pub struct TraverseOpts {
 }
 
 #[derive(Debug)]
-pub struct PageFileGraph {
-    pub pages: HashMap<String, WorkingPage>,
+pub struct SiteNodeGraph {
+    pub nodes: HashMap<String, WorkingNode>,
     pub edges: Vec<WorkingEdge>,
-    site_page_configs: Vec<SitePageConfig>,
+    site_node_configs: Vec<SiteNodeConfig>,
     opts: BuildOpts,
 }
 
-impl PageFileGraph {
-    pub fn new(raw_edges: &[BasicEdge], start: &TraversalFile, site_page_configs: Vec<SitePageConfig>, opts: BuildOpts) -> Self {
+impl SiteNodeGraph {
+    pub fn new(
+        raw_edges: &[BasicEdge],
+        start: &FileSiteNode,
+        site_node_configs: Vec<SiteNodeConfig>,
+        opts: BuildOpts,
+    ) -> Self {
         let mut g = Self {
-            pages: HashMap::new(),
+            nodes: HashMap::new(),
             edges: Vec::new(),
-            site_page_configs,
+            site_node_configs,
             opts,
         };
         g.build_graph(raw_edges, start);
         g
     }
 
-    fn apply_config_to_file(configs: &[SitePageConfig], f: &mut TraversalFile) {
-        if let Some(conf) = find_matching_config(configs, &f.title, &f.directory, &f.file_type) {
-            f.conf_outlinks_depth = conf.config.outlinks_depth;
-            f.conf_inlinks_depth = conf.config.inlinks_depth;
-            f.conf_is_blacklisted = Some(conf.config.list_type == "blacklist");
+    fn apply_config_to_file(configs: &[SiteNodeConfig], f: &mut FileSiteNode) {
+        if let Some(conf) = find_matching_config(
+            configs,
+            &f.site_node_name,
+            &f.source_graph_subdirectory,
+            &f.file_type,
+        ) {
+            f.site_node_id = Some(conf.site_node_id.clone());
+            f.conf_outlinks_depth = conf.outlinks_depth;
+            f.conf_inlinks_depth = conf.inlinks_depth;
+            f.conf_is_blacklisted = Some(conf.list_type == "blacklist");
         }
     }
 
-    fn build_graph(&mut self, raw_edges: &[BasicEdge], start_file: &TraversalFile) {
+    fn build_graph(&mut self, raw_edges: &[BasicEdge], start_file: &FileSiteNode) {
         let frontier_depth = self.opts.frontier_depth.max(0);
 
         // Pre-build adjacency lists to avoid O(V*E) scanning.
         let mut out_map: HashMap<String, Vec<(String, bool)>> = HashMap::new();
         let mut in_map: HashMap<String, Vec<(String, bool)>> = HashMap::new();
-        let mut file_map: HashMap<String, TraversalFile> = HashMap::new();
+        let mut file_map: HashMap<String, FileSiteNode> = HashMap::new();
 
         for e in raw_edges {
-            let sid = e.source.ident();
-            let tid = e.target.ident();
-            file_map.entry(sid.clone()).or_insert_with(|| e.source.clone());
-            file_map.entry(tid.clone()).or_insert_with(|| e.target.clone());
-            out_map.entry(sid.clone()).or_default().push((tid.clone(), e.is_bidirectional));
-            in_map.entry(tid.clone()).or_default().push((sid.clone(), e.is_bidirectional));
+            let sid = e.source.site_node_key();
+            let tid = e.target.site_node_key();
+            file_map
+                .entry(sid.clone())
+                .or_insert_with(|| e.source.clone());
+            file_map
+                .entry(tid.clone())
+                .or_insert_with(|| e.target.clone());
+            out_map
+                .entry(sid.clone())
+                .or_default()
+                .push((tid.clone(), e.is_bidirectional));
+            in_map
+                .entry(tid.clone())
+                .or_default()
+                .push((sid.clone(), e.is_bidirectional));
         }
 
         // Ensure start exists in file_map.
-        let start_id = start_file.ident();
-        file_map.entry(start_id.clone()).or_insert_with(|| start_file.clone());
+        let start_id = start_file.site_node_key();
+        file_map
+            .entry(start_id.clone())
+            .or_insert_with(|| start_file.clone());
 
         // Apply configs to all files (mirrors TS where conf_* is assigned across all edge endpoints).
         for f in file_map.values_mut() {
-            Self::apply_config_to_file(&self.site_page_configs, f);
+            Self::apply_config_to_file(&self.site_node_configs, f);
         }
 
-        let start_file_conf = file_map.get(&start_id).cloned().unwrap_or_else(|| start_file.clone());
+        let start_file_conf = file_map
+            .get(&start_id)
+            .cloned()
+            .unwrap_or_else(|| start_file.clone());
         let mut start_file_with_conf = start_file_conf.clone();
-        Self::apply_config_to_file(&self.site_page_configs, &mut start_file_with_conf);
+        Self::apply_config_to_file(&self.site_node_configs, &mut start_file_with_conf);
 
-        let initial_remaining_depth_for_start = start_file_with_conf.conf_outlinks_depth.unwrap_or(self.opts.max_depth);
-        let initial_inherited_inlinks_depth_for_start = start_file_with_conf.conf_inlinks_depth.unwrap_or(self.opts.inlinks_depth);
+        let initial_remaining_depth_for_start = start_file_with_conf
+            .conf_outlinks_depth
+            .unwrap_or(self.opts.max_depth);
+        let initial_inherited_inlinks_depth_for_start = start_file_with_conf
+            .conf_inlinks_depth
+            .unwrap_or(self.opts.inlinks_depth);
         let start_path = vec![start_id.clone()];
 
-        let start_page = WorkingPage {
+        let start_node = WorkingNode {
             file: start_file_with_conf.clone(),
             depth: 0,
             remaining_depth: initial_remaining_depth_for_start,
@@ -92,10 +125,10 @@ impl PageFileGraph {
                 inlinks_depth_overridden: None,
                 link_type: Some(LinkType::Start),
             }),
-            is_frontier_page: None,
+            is_frontier_node: None,
             is_frontier_image_extension: None,
         };
-        self.pages.insert(start_id.clone(), start_page);
+        self.nodes.insert(start_id.clone(), start_node);
 
         #[derive(Clone)]
         struct QItem {
@@ -120,9 +153,9 @@ impl PageFileGraph {
         while let Some(cur) = queue.pop_front() {
             let current_key = cur.id.clone();
 
-            // Update the page's conf fields from configs (mirrors TS behavior).
-            if let Some(n) = self.pages.get_mut(&current_key) {
-                Self::apply_config_to_file(&self.site_page_configs, &mut n.file);
+            // Update the node's conf fields from configs (mirrors TS behavior).
+            if let Some(n) = self.nodes.get_mut(&current_key) {
+                Self::apply_config_to_file(&self.site_node_configs, &mut n.file);
             }
 
             if let Some(prev) = visited_at_min_depth.get(&current_key) {
@@ -133,7 +166,7 @@ impl PageFileGraph {
             visited_at_min_depth.insert(current_key.clone(), cur.depth);
 
             let current_is_blacklisted = self
-                .pages
+                .nodes
                 .get(&current_key)
                 .and_then(|n| n.file.conf_is_blacklisted)
                 .unwrap_or(false);
@@ -141,139 +174,162 @@ impl PageFileGraph {
                 continue;
             }
 
-            let current_page_snapshot = self.pages.get(&current_key).cloned().expect("page exists");
-            let current_file = current_page_snapshot.file.clone();
-            let current_remaining_inlinks_depth = current_page_snapshot.remaining_inlinks_depth;
+            let current_node_snapshot = self.nodes.get(&current_key).cloned().expect("node exists");
+            let current_file = current_node_snapshot.file.clone();
+            let current_remaining_inlinks_depth = current_node_snapshot.remaining_inlinks_depth;
 
-            let mut process_connection = |target_key: &str, link_type: LinkType, raw_edge_is_bidirectional: bool| {
-                let child_depth = cur.depth + 1;
-                let mut child_path = cur.path.clone();
-                child_path.push(target_key.to_string());
+            let mut process_connection =
+                |target_key: &str, link_type: LinkType, raw_edge_is_bidirectional: bool| {
+                    let child_depth = cur.depth + 1;
+                    let mut child_path = cur.path.clone();
+                    child_path.push(target_key.to_string());
 
-                let current_conf_outlinks_depth = current_file.conf_outlinks_depth;
-                let current_conf_is_blacklisted = current_file.conf_is_blacklisted.unwrap_or(false);
-                let max_allowed_child_outlinks_depth = if current_conf_outlinks_depth.is_some() && !current_conf_is_blacklisted {
-                    cur.depth.saturating_add(current_conf_outlinks_depth.unwrap()).saturating_add(frontier_depth)
-                } else {
-                    cur.depth.saturating_add(cur.remaining_depth).saturating_add(frontier_depth)
-                };
+                    let current_conf_outlinks_depth = current_file.conf_outlinks_depth;
+                    let current_conf_is_blacklisted =
+                        current_file.conf_is_blacklisted.unwrap_or(false);
+                    let max_allowed_child_outlinks_depth =
+                        if current_conf_outlinks_depth.is_some() && !current_conf_is_blacklisted {
+                            cur.depth
+                                .saturating_add(current_conf_outlinks_depth.unwrap())
+                                .saturating_add(frontier_depth)
+                        } else {
+                            cur.depth
+                                .saturating_add(cur.remaining_depth)
+                                .saturating_add(frontier_depth)
+                        };
 
-                let target_file = match file_map.get(target_key) {
-                    Some(f) => f.clone(),
-                    None => return,
-                };
+                    let target_file = match file_map.get(target_key) {
+                        Some(f) => f.clone(),
+                        None => return,
+                    };
 
-                let is_excluded_by_depth = child_depth > max_allowed_child_outlinks_depth;
-                let is_frontier_image_extension_case = is_excluded_by_depth
-                    && self.opts.allow_images_to_extend_to_frontier
-                    && link_type == LinkType::Outlink
-                    && is_image_file_type(&target_file.file_type)
-                    && cur.remaining_depth == 0;
+                    let is_excluded_by_depth = child_depth > max_allowed_child_outlinks_depth;
+                    let is_frontier_image_extension_case = is_excluded_by_depth
+                        && self.opts.allow_images_to_extend_to_frontier
+                        && link_type == LinkType::Outlink
+                        && is_image_file_type(&target_file.file_type)
+                        && cur.remaining_depth == 0;
 
-                if is_excluded_by_depth && !is_frontier_image_extension_case {
-                    return;
-                }
+                    if is_excluded_by_depth && !is_frontier_image_extension_case {
+                        return;
+                    }
 
-                let target_conf_is_blacklisted = target_file.conf_is_blacklisted.unwrap_or(false);
-                let target_prospective_remaining_depth = if target_file.conf_outlinks_depth.is_some() && !target_conf_is_blacklisted {
-                    target_file.conf_outlinks_depth.unwrap()
-                } else {
-                    cur.remaining_depth - 1
-                };
+                    let target_conf_is_blacklisted =
+                        target_file.conf_is_blacklisted.unwrap_or(false);
+                    let target_prospective_remaining_depth =
+                        if target_file.conf_outlinks_depth.is_some() && !target_conf_is_blacklisted
+                        {
+                            target_file.conf_outlinks_depth.unwrap()
+                        } else {
+                            cur.remaining_depth - 1
+                        };
 
-                let target_inherited_inlinks_depth =
-                    target_file
+                    let target_inherited_inlinks_depth = target_file
                         .conf_inlinks_depth
                         .unwrap_or_else(|| (cur.inherited_inlinks_depth - 1).max(0));
 
-                let needs_update_and_queue: bool;
-                if !self.pages.contains_key(target_key) {
-                    let mut traversal_details = TraversalDetails {
-                        outlinks_depth_set_first_time: None,
-                        outlinks_depth_inherited: Some(cur.remaining_depth - 1),
-                        outlinks_depth_overridden: None,
-                        inlinks_depth_set_first_time: None,
-                        inlinks_depth_inherited: Some((cur.inherited_inlinks_depth - 1).max(0)),
-                        inlinks_depth_overridden: None,
-                        link_type: Some(link_type),
-                    };
+                    let needs_update_and_queue: bool;
+                    if !self.nodes.contains_key(target_key) {
+                        let mut traversal_details = TraversalDetails {
+                            outlinks_depth_set_first_time: None,
+                            outlinks_depth_inherited: Some(cur.remaining_depth - 1),
+                            outlinks_depth_overridden: None,
+                            inlinks_depth_set_first_time: None,
+                            inlinks_depth_inherited: Some((cur.inherited_inlinks_depth - 1).max(0)),
+                            inlinks_depth_overridden: None,
+                            link_type: Some(link_type),
+                        };
 
-                    if let Some(conf_md) = target_file.conf_outlinks_depth {
-                        traversal_details.outlinks_depth_overridden = Some(conf_md);
-                        traversal_details.outlinks_depth_inherited = Some(cur.remaining_depth - 1);
-                    }
-                    if let Some(conf_id) = target_file.conf_inlinks_depth {
-                        traversal_details.inlinks_depth_overridden = Some(conf_id);
-                        traversal_details.inlinks_depth_inherited = Some((cur.inherited_inlinks_depth - 1).max(0));
-                    }
+                        if let Some(conf_md) = target_file.conf_outlinks_depth {
+                            traversal_details.outlinks_depth_overridden = Some(conf_md);
+                            traversal_details.outlinks_depth_inherited =
+                                Some(cur.remaining_depth - 1);
+                        }
+                        if let Some(conf_id) = target_file.conf_inlinks_depth {
+                            traversal_details.inlinks_depth_overridden = Some(conf_id);
+                            traversal_details.inlinks_depth_inherited =
+                                Some((cur.inherited_inlinks_depth - 1).max(0));
+                        }
 
-                    let is_frontier_page = target_prospective_remaining_depth < 0 && !is_frontier_image_extension_case;
+                        let is_frontier_node = target_prospective_remaining_depth < 0
+                            && !is_frontier_image_extension_case;
 
-                    let target_page = WorkingPage {
-                        file: target_file.clone(),
-                        depth: child_depth,
-                        remaining_depth: target_prospective_remaining_depth,
-                        remaining_inlinks_depth: target_inherited_inlinks_depth,
-                        path: child_path.clone(),
-                        traversal_details: Some(traversal_details),
-                        is_frontier_page: Some(is_frontier_page),
-                        is_frontier_image_extension: Some(is_frontier_image_extension_case),
-                    };
-                    self.pages.insert(target_key.to_string(), target_page);
-                    needs_update_and_queue = true;
-                } else {
-                    let mut should_queue = false;
-                    if let Some(existing) = self.pages.get_mut(target_key) {
-                        if existing.depth > child_depth {
-                            existing.depth = child_depth;
-                            existing.remaining_depth = target_prospective_remaining_depth;
-                            existing.remaining_inlinks_depth = target_inherited_inlinks_depth;
-                            existing.path = child_path.clone();
-                            existing.is_frontier_page =
-                                Some(target_prospective_remaining_depth < 0 && !is_frontier_image_extension_case);
-                            existing.is_frontier_image_extension = Some(is_frontier_image_extension_case);
-                            should_queue = true;
-                        } else if existing.depth == child_depth {
-                            if target_prospective_remaining_depth > existing.remaining_depth {
+                        let target_page = WorkingNode {
+                            file: target_file.clone(),
+                            depth: child_depth,
+                            remaining_depth: target_prospective_remaining_depth,
+                            remaining_inlinks_depth: target_inherited_inlinks_depth,
+                            path: child_path.clone(),
+                            traversal_details: Some(traversal_details),
+                            is_frontier_node: Some(is_frontier_node),
+                            is_frontier_image_extension: Some(is_frontier_image_extension_case),
+                        };
+                        self.nodes.insert(target_key.to_string(), target_page);
+                        needs_update_and_queue = true;
+                    } else {
+                        let mut should_queue = false;
+                        if let Some(existing) = self.nodes.get_mut(target_key) {
+                            if existing.depth > child_depth {
+                                existing.depth = child_depth;
                                 existing.remaining_depth = target_prospective_remaining_depth;
                                 existing.remaining_inlinks_depth = target_inherited_inlinks_depth;
                                 existing.path = child_path.clone();
-                                existing.is_frontier_page =
-                                    Some(target_prospective_remaining_depth < 0 && !is_frontier_image_extension_case);
-                                existing.is_frontier_image_extension = Some(is_frontier_image_extension_case);
+                                existing.is_frontier_node = Some(
+                                    target_prospective_remaining_depth < 0
+                                        && !is_frontier_image_extension_case,
+                                );
+                                existing.is_frontier_image_extension =
+                                    Some(is_frontier_image_extension_case);
                                 should_queue = true;
+                            } else if existing.depth == child_depth {
+                                if target_prospective_remaining_depth > existing.remaining_depth {
+                                    existing.remaining_depth = target_prospective_remaining_depth;
+                                    existing.remaining_inlinks_depth =
+                                        target_inherited_inlinks_depth;
+                                    existing.path = child_path.clone();
+                                    existing.is_frontier_node = Some(
+                                        target_prospective_remaining_depth < 0
+                                            && !is_frontier_image_extension_case,
+                                    );
+                                    existing.is_frontier_image_extension =
+                                        Some(is_frontier_image_extension_case);
+                                    should_queue = true;
+                                }
                             }
                         }
+                        needs_update_and_queue = should_queue;
                     }
-                    needs_update_and_queue = should_queue;
-                }
 
-                if needs_update_and_queue {
-                    queue.push_back(QItem {
-                        id: target_key.to_string(),
-                        depth: child_depth,
-                        inherited_inlinks_depth: target_inherited_inlinks_depth,
-                        remaining_depth: target_prospective_remaining_depth,
-                        path: child_path,
-                    });
-                }
+                    if needs_update_and_queue {
+                        queue.push_back(QItem {
+                            id: target_key.to_string(),
+                            depth: child_depth,
+                            inherited_inlinks_depth: target_inherited_inlinks_depth,
+                            remaining_depth: target_prospective_remaining_depth,
+                            path: child_path,
+                        });
+                    }
 
-                match link_type {
-                    LinkType::Outlink | LinkType::Bidirectional => self.edges.push(WorkingEdge {
-                        from: current_key.clone(),
-                        to: target_key.to_string(),
-                        is_bidirectional: raw_edge_is_bidirectional,
-                        is_traversal_only: false,
-                    }),
-                    LinkType::Inlink => self.edges.push(WorkingEdge {
-                        from: current_key.clone(),
-                        to: target_key.to_string(),
-                        is_bidirectional: false,
-                        is_traversal_only: true,
-                    }),
-                    LinkType::Start => {}
-                }
-            };
+                    match link_type {
+                        LinkType::Outlink | LinkType::Bidirectional => {
+                            self.edges.push(WorkingEdge {
+                                from: current_key.clone(),
+                                to: target_key.to_string(),
+                                site_edge_kind: SiteEdgeKind::SemanticLink,
+                                is_bidirectional: raw_edge_is_bidirectional,
+                                is_traversal_only: false,
+                            })
+                        }
+                        LinkType::Inlink => self.edges.push(WorkingEdge {
+                            from: current_key.clone(),
+                            to: target_key.to_string(),
+                            site_edge_kind: SiteEdgeKind::SemanticLink,
+                            is_bidirectional: false,
+                            is_traversal_only: true,
+                        }),
+                        LinkType::Start => {}
+                    }
+                };
 
             // Outgoing edges
             if let Some(outs) = out_map.get(&current_key) {
@@ -298,47 +354,47 @@ impl PageFileGraph {
         }
     }
 
-    pub fn traverse(&self, from: &TraversalFile, opts: TraverseOpts) -> Vec<WorkingPage> {
-        let start_key = from.ident();
-        let start_page = match self.pages.get(&start_key) {
+    pub fn traverse(&self, from: &FileSiteNode, opts: TraverseOpts) -> Vec<WorkingNode> {
+        let start_key = from.site_node_key();
+        let start_node = match self.nodes.get(&start_key) {
             Some(n) => n.clone(),
             None => return vec![],
         };
 
-        let min_depth = start_page.depth;
-        let mut result: Vec<WorkingPage> = Vec::new();
+        let min_depth = start_node.depth;
+        let mut result: Vec<WorkingNode> = Vec::new();
         let mut visited: HashMap<String, i32> = HashMap::new();
 
         fn dfs(
-            g: &PageFileGraph,
-            page: &WorkingPage,
+            g: &SiteNodeGraph,
+            node: &WorkingNode,
             opts: &TraverseOpts,
             min_depth: i32,
             visited: &mut HashMap<String, i32>,
-            result: &mut Vec<WorkingPage>,
+            result: &mut Vec<WorkingNode>,
         ) {
-            let key = page.file.ident();
-            if !opts.allow_lower_depths && page.depth < min_depth {
+            let key = node.file.site_node_key();
+            if !opts.allow_lower_depths && node.depth < min_depth {
                 return;
             }
             if let Some(prev_depth) = visited.get(&key) {
-                if *prev_depth <= page.depth {
+                if *prev_depth <= node.depth {
                     return;
                 }
             }
-            visited.insert(key.clone(), page.depth);
-            result.push(page.clone());
+            visited.insert(key.clone(), node.depth);
+            result.push(node.clone());
 
             for e in &g.edges {
                 if e.from == key {
-                    if let Some(to_page) = g.pages.get(&e.to) {
+                    if let Some(to_page) = g.nodes.get(&e.to) {
                         dfs(g, to_page, opts, min_depth, visited, result);
                     }
                 } else if e.to == key {
-                    let conf_inlinks_depth = page.file.conf_inlinks_depth.unwrap_or(0);
+                    let conf_inlinks_depth = node.file.conf_inlinks_depth.unwrap_or(0);
                     let should_follow_incoming = opts.allow_lower_depths || conf_inlinks_depth > 0;
                     if should_follow_incoming {
-                        if let Some(from_page) = g.pages.get(&e.from) {
+                        if let Some(from_page) = g.nodes.get(&e.from) {
                             dfs(g, from_page, opts, min_depth, visited, result);
                         }
                     }
@@ -346,7 +402,14 @@ impl PageFileGraph {
             }
         }
 
-        dfs(self, &start_page, &opts, min_depth, &mut visited, &mut result);
+        dfs(
+            self,
+            &start_node,
+            &opts,
+            min_depth,
+            &mut visited,
+            &mut result,
+        );
         result
     }
 }
@@ -371,6 +434,7 @@ pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
                     WorkingEdge {
                         from: e.from.clone(),
                         to: e.to.clone(),
+                        site_edge_kind: e.site_edge_kind,
                         is_bidirectional: e.is_bidirectional,
                         is_traversal_only: e.is_traversal_only,
                     },
@@ -387,6 +451,7 @@ pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
                     WorkingEdge {
                         from: e.from.clone(),
                         to: e.to.clone(),
+                        site_edge_kind: e.site_edge_kind,
                         is_bidirectional: e.is_bidirectional,
                         is_traversal_only: e.is_traversal_only,
                     },
@@ -398,6 +463,7 @@ pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
                 WorkingEdge {
                     from: e.from.clone(),
                     to: e.to.clone(),
+                    site_edge_kind: e.site_edge_kind,
                     is_bidirectional: e.is_bidirectional,
                     is_traversal_only: e.is_traversal_only,
                 },
@@ -410,30 +476,41 @@ pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
 
 pub fn get_working_graph(
     edges: &[BasicEdge],
-    site_page_configs: &[SitePageConfig],
-    initial_page: &TraversalFile,
-    traversal_page: &TraversalFile,
+    site_node_configs: &[SiteNodeConfig],
+    entry_node: &FileSiteNode,
+    default_traversal_node: &FileSiteNode,
+    default_outlinks_depth: Option<i32>,
+    default_inlinks_depth: Option<i32>,
     traversal_opts: TraverseOpts,
     frontier_depth: i32,
     allow_images_to_extend_to_frontier: bool,
-) -> anyhow::Result<(Vec<WorkingPage>, Vec<WorkingEdge>)> {
-    let initial_conf = find_matching_config(site_page_configs, &initial_page.title, &initial_page.directory, &initial_page.file_type)
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "Initial page conf not found for {} (directory: {}, file_type: {})",
-                initial_page.title,
-                if initial_page.directory.is_empty() { "(root)" } else { &initial_page.directory },
-                initial_page.file_type
-            )
-        })?;
+) -> anyhow::Result<(Vec<WorkingNode>, Vec<WorkingEdge>)> {
+    find_matching_config(
+        site_node_configs,
+        &entry_node.site_node_name,
+        &entry_node.source_graph_subdirectory,
+        &entry_node.file_type,
+    )
+    .ok_or_else(|| {
+        anyhow::anyhow!(
+            "Entry node config not found for {} (directory: {}, file_type: {})",
+            entry_node.site_node_name,
+            if entry_node.source_graph_subdirectory.is_empty() {
+                "(root)"
+            } else {
+                &entry_node.source_graph_subdirectory
+            },
+            entry_node.file_type
+        )
+    })?;
 
-    let max_depth = initial_conf.config.outlinks_depth.unwrap_or(i32::MAX);
-    let inlinks_depth = initial_conf.config.inlinks_depth.unwrap_or(0);
+    let max_depth = default_outlinks_depth.unwrap_or(i32::MAX);
+    let inlinks_depth = default_inlinks_depth.unwrap_or(0);
 
-    let graph = PageFileGraph::new(
+    let graph = SiteNodeGraph::new(
         edges,
-        initial_page,
-        site_page_configs.to_vec(),
+        entry_node,
+        site_node_configs.to_vec(),
         BuildOpts {
             max_depth,
             inlinks_depth,
@@ -442,8 +519,11 @@ pub fn get_working_graph(
         },
     );
 
-    let traversed_pages = graph.traverse(traversal_page, traversal_opts);
-    let traversed_keys: HashSet<String> = traversed_pages.iter().map(|p| p.file.ident()).collect();
+    let traversed_nodes = graph.traverse(default_traversal_node, traversal_opts);
+    let traversed_keys: HashSet<String> = traversed_nodes
+        .iter()
+        .map(|node| node.file.site_node_key())
+        .collect();
 
     let filtered_edges: Vec<WorkingEdge> = graph
         .edges
@@ -453,20 +533,21 @@ pub fn get_working_graph(
         .collect();
 
     let working_edges = deduplicate_edges(&filtered_edges);
-    Ok((traversed_pages, working_edges))
+    Ok((traversed_nodes, working_edges))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::site_page_config::{SitePageConfig, SitePageConfigConfig};
-    use crate::types::{BasicEdge, LinkType, TraversalFile, WorkingPage};
+    use crate::site_node_config::SiteNodeConfig;
+    use crate::types::{BasicEdge, FileSiteNode, LinkType, WorkingNode};
 
-    fn file(title: &str, file_type: &str) -> TraversalFile {
-        TraversalFile {
-            directory: "".to_string(),
-            title: title.to_string(),
+    fn file(title: &str, file_type: &str) -> FileSiteNode {
+        FileSiteNode {
+            source_graph_subdirectory: "".to_string(),
+            site_node_name: title.to_string(),
             file_type: file_type.to_string(),
+            site_node_id: None,
             is_sensitive: false,
             conf_outlinks_depth: None,
             conf_inlinks_depth: None,
@@ -474,36 +555,36 @@ mod tests {
         }
     }
 
-    fn sorted_pages(pages: &[WorkingPage]) -> Vec<WorkingPage> {
-        let mut out = pages.to_vec();
+    fn sorted_nodes(nodes: &[WorkingNode]) -> Vec<WorkingNode> {
+        let mut out = nodes.to_vec();
         out.sort_by(|a, b| {
             if a.depth != b.depth {
                 a.depth.cmp(&b.depth)
             } else {
-                a.file.title.cmp(&b.file.title)
+                a.file.site_node_name.cmp(&b.file.site_node_name)
             }
         });
         out
     }
 
-    fn name_and_depth(pages: &[WorkingPage]) -> Vec<String> {
-        sorted_pages(pages)
+    fn name_and_depth(nodes: &[WorkingNode]) -> Vec<String> {
+        sorted_nodes(nodes)
             .into_iter()
-            .map(|n| format!("{}:{}", n.file.title, n.depth))
+            .map(|n| format!("{}:{}", n.file.site_node_name, n.depth))
             .collect()
     }
 
-    fn name_and_remaining_depth(pages: &[WorkingPage]) -> Vec<String> {
-        sorted_pages(pages)
+    fn name_and_remaining_depth(nodes: &[WorkingNode]) -> Vec<String> {
+        sorted_nodes(nodes)
             .into_iter()
-            .map(|n| format!("{}:{}", n.file.title, n.remaining_depth))
+            .map(|n| format!("{}:{}", n.file.site_node_name, n.remaining_depth))
             .collect()
     }
 
-    fn name_and_remaining_inlinks_depth(pages: &[WorkingPage]) -> Vec<String> {
-        sorted_pages(pages)
+    fn name_and_remaining_inlinks_depth(nodes: &[WorkingNode]) -> Vec<String> {
+        sorted_nodes(nodes)
             .into_iter()
-            .map(|n| format!("{}:{}", n.file.title, n.remaining_inlinks_depth))
+            .map(|n| format!("{}:{}", n.file.site_node_name, n.remaining_inlinks_depth))
             .collect()
     }
 
@@ -516,16 +597,16 @@ mod tests {
         }
     }
 
-    fn traversal_details_string(pages: &[WorkingPage]) -> Vec<String> {
-        sorted_pages(pages)
+    fn traversal_details_string(nodes: &[WorkingNode]) -> Vec<String> {
+        sorted_nodes(nodes)
             .into_iter()
             .map(|n| {
                 let details = n.traversal_details.clone();
                 if details.is_none() {
-                    return format!("{}: no details", n.file.title);
+                    return format!("{}: no details", n.file.site_node_name);
                 }
                 let d = details.unwrap();
-                let mut parts: Vec<String> = vec![format!("{}:", n.file.title)];
+                let mut parts: Vec<String> = vec![format!("{}:", n.file.site_node_name)];
                 if let Some(v) = d.outlinks_depth_set_first_time {
                     parts.push(format!("gd_first={}", v));
                 }
@@ -552,45 +633,58 @@ mod tests {
             .collect()
     }
 
-    fn default_confs() -> Vec<SitePageConfig> {
-        vec![SitePageConfig {
-            title: "A".to_string(),
+    fn conf(
+        site_node_name: &str,
+        list_type: &str,
+        outlinks_depth: Option<i32>,
+        inlinks_depth: Option<i32>,
+    ) -> SiteNodeConfig {
+        SiteNodeConfig {
+            site_node_name: site_node_name.to_string(),
             source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(4),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }]
+            site_node_kind: "file".to_string(),
+            file_type: "md".to_string(),
+            site_node_id: format!("{:0<12}", site_node_name.to_ascii_lowercase()),
+            list_type: list_type.to_string(),
+            outlinks_depth,
+            inlinks_depth,
+        }
     }
 
-    fn default_conf_with_overrides(outlinks_depth: Option<i32>, inlinks_depth: Option<i32>) -> SitePageConfig {
+    fn default_confs() -> Vec<SiteNodeConfig> {
+        vec![conf("A", "whitelist", None, None)]
+    }
+
+    fn default_conf_with_overrides(
+        outlinks_depth: Option<i32>,
+        inlinks_depth: Option<i32>,
+    ) -> SiteNodeConfig {
         let mut c = default_confs()[0].clone();
         if outlinks_depth.is_some() {
-            c.config.outlinks_depth = outlinks_depth;
+            c.outlinks_depth = outlinks_depth;
         }
         if inlinks_depth.is_some() {
-            c.config.inlinks_depth = inlinks_depth;
+            c.inlinks_depth = inlinks_depth;
         }
         c
     }
 
     fn my_get_working_graph(
         edges: &[BasicEdge],
-        site_page_configs: &[SitePageConfig],
-        initial_page: &TraversalFile,
-        traversal_page: &TraversalFile,
+        site_node_configs: &[SiteNodeConfig],
+        entry_node: &FileSiteNode,
+        default_traversal_node: &FileSiteNode,
         allow_lower_depths: bool,
         frontier_depth: i32,
         allow_images_to_extend_to_frontier: bool,
-    ) -> (Vec<WorkingPage>, Vec<WorkingEdge>) {
+    ) -> (Vec<WorkingNode>, Vec<WorkingEdge>) {
         get_working_graph(
             edges,
-            site_page_configs,
-            initial_page,
-            traversal_page,
+            site_node_configs,
+            entry_node,
+            default_traversal_node,
+            Some(4),
+            Some(0),
             TraverseOpts { allow_lower_depths },
             frontier_depth,
             allow_images_to_extend_to_frontier,
@@ -598,10 +692,10 @@ mod tests {
         .unwrap()
     }
 
-    fn edge_descriptions(edges: &[WorkingEdge], pages: &[WorkingPage]) -> Vec<String> {
-        let id_to_title: HashMap<String, String> = pages
+    fn edge_descriptions(edges: &[WorkingEdge], nodes: &[WorkingNode]) -> Vec<String> {
+        let id_to_title: HashMap<String, String> = nodes
             .iter()
-            .map(|n| (n.file.ident(), n.file.title.clone()))
+            .map(|n| (n.file.site_node_key(), n.file.site_node_name.clone()))
             .collect();
         let mut out: Vec<String> = edges
             .iter()
@@ -621,183 +715,355 @@ mod tests {
 
     #[test]
     fn building_by_default_does_not_include_inlinks() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
-        let page_h = file("H", "md");
-        let page_i = file("I", "md");
-        let page_j = file("J", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
+        let node_h = file("H", "md");
+        let node_i = file("I", "md");
+        let node_j = file("J", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_h.clone(), target: page_i.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_j.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_h.clone(),
+                target: node_i.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_j.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
         let confs = default_confs();
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "C:2", "E:2"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "C:2", "E:2"]
+        );
     }
 
     #[test]
     fn building_includes_bidirectional_inlinks_even_if_inlinks_depth_0() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
         let confs = default_confs();
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "C:2", "E:2"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "C:2", "E:2"]
+        );
     }
 
     #[test]
     fn building_respects_outlinks_depth_for_default_outlinks_only() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
         ];
 
         let confs = vec![default_conf_with_overrides(Some(1), None)];
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1", "D:1"]);
     }
 
     #[test]
     fn building_follows_inlinks_if_inlinks_depth_gt_0() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
-        let page_h = file("H", "md");
-        let page_i = file("I", "md");
-        let page_j = file("J", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
+        let node_h = file("H", "md");
+        let node_i = file("I", "md");
+        let node_j = file("J", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_h.clone(), target: page_i.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_j.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_h.clone(),
+                target: node_i.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_j.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
         let confs = vec![default_conf_with_overrides(None, Some(max_inlinks_depth))];
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        let full_listing = vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2", "H:3", "I:4", "J:4"];
-        assert_eq!(name_and_depth(&pages), full_listing);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        let full_listing = vec![
+            "A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2", "H:3", "I:4", "J:4",
+        ];
+        assert_eq!(name_and_depth(&nodes), full_listing);
     }
 
     #[test]
     fn building_respects_outlinks_depth_with_inlinks() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs = vec![default_conf_with_overrides(Some(1), Some(max_inlinks_depth))];
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1"]);
+        let confs = vec![default_conf_with_overrides(
+            Some(1),
+            Some(max_inlinks_depth),
+        )];
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1", "D:1", "F:1"]);
     }
 
     #[test]
     fn conf_outlinks_depth_override_allows_deeper_pages_1() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![
-            SitePageConfig {
-                title: "A".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(1),
-                    inlinks_depth: Some(max_inlinks_depth),
-                    tracked: None,
-                },
-            },
-            SitePageConfig {
-                title: "B".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(1),
-                    inlinks_depth: None,
-                    tracked: None,
-                },
-            },
+        let confs: Vec<SiteNodeConfig> = vec![
+            conf("A", "whitelist", Some(1), Some(max_inlinks_depth)),
+            conf("B", "whitelist", Some(1), None),
         ];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         assert_eq!(
-            name_and_remaining_depth(&pages),
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2"]
+        );
+        assert_eq!(
+            name_and_remaining_depth(&nodes),
             vec!["A:1", "B:1", "D:0", "F:0", "C:0", "E:0", "G:0"]
         );
     }
@@ -805,55 +1071,71 @@ mod tests {
     #[test]
     fn conf_outlinks_depth_override_allows_deeper_pages_2() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
-        let page_h = file("H", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
+        let node_h = file("H", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![
-            SitePageConfig {
-                title: "A".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(1),
-                    inlinks_depth: Some(max_inlinks_depth),
-                    tracked: None,
-                },
-            },
-            SitePageConfig {
-                title: "B".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(2),
-                    inlinks_depth: None,
-                    tracked: None,
-                },
-            },
+        let confs: Vec<SiteNodeConfig> = vec![
+            conf("A", "whitelist", Some(1), Some(max_inlinks_depth)),
+            conf("B", "whitelist", Some(2), None),
         ];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2", "H:3"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         assert_eq!(
-            name_and_remaining_depth(&pages),
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2", "H:3"]
+        );
+        assert_eq!(
+            name_and_remaining_depth(&nodes),
             vec!["A:1", "B:2", "D:0", "F:0", "C:1", "E:1", "G:1", "H:0"]
         );
     }
@@ -861,496 +1143,720 @@ mod tests {
     #[test]
     fn conf_inlinks_depth_override_can_disable_inlinks_for_deeper_pages() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![
-            SitePageConfig {
-                title: "A".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(2),
-                    inlinks_depth: Some(max_inlinks_depth),
-                    tracked: None,
-                },
-            },
-            SitePageConfig {
-                title: "B".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: None,
-                    inlinks_depth: Some(0),
-                    tracked: None,
-                },
-            },
+        let confs: Vec<SiteNodeConfig> = vec![
+            conf("A", "whitelist", Some(2), Some(max_inlinks_depth)),
+            conf("B", "whitelist", None, Some(0)),
         ];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2"]
+        );
     }
 
     #[test]
     fn conf_inlinks_depth_override_can_enable_inlinks_for_deeper_pages() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_g = file("G", "md");
-        let page_h = file("H", "md");
-        let page_i = file("I", "md");
-        let page_j = file("J", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_g = file("G", "md");
+        let node_h = file("H", "md");
+        let node_i = file("I", "md");
+        let node_j = file("J", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_h.clone(), target: page_i.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_j.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_h.clone(),
+                target: node_i.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_j.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![
-            SitePageConfig {
-                title: "A".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(1),
-                    inlinks_depth: Some(0),
-                    tracked: None,
-                },
-            },
-            SitePageConfig {
-                title: "B".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(3),
-                    inlinks_depth: Some(max_inlinks_depth),
-                    tracked: None,
-                },
-            },
+        let confs: Vec<SiteNodeConfig> = vec![
+            conf("A", "whitelist", Some(1), Some(0)),
+            conf("B", "whitelist", Some(3), Some(max_inlinks_depth)),
         ];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         assert_eq!(
-            name_and_depth(&pages),
+            name_and_depth(&nodes),
             vec!["A:0", "B:1", "D:1", "C:2", "E:2", "G:2", "H:3", "I:4", "J:4"]
         );
     }
 
     #[test]
     fn inlinks_depth_decreases_by_one_each_level() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
-        let page_h = file("H", "md");
-        let page_i = file("I", "md");
-        let page_j = file("J", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
+        let node_h = file("H", "md");
+        let node_i = file("I", "md");
+        let node_j = file("J", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_h.clone(), target: page_i.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_j.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_h.clone(),
+                target: node_i.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_j.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(4),
-                inlinks_depth: Some(2),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(2))];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2", "H:3", "I:4"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2", "H:3", "I:4"]
+        );
     }
 
     #[test]
     fn inlinks_depth_of_one_only_allows_inlinks_at_same_depth() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(4),
-                inlinks_depth: Some(1),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(1))];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2"]);
-        assert_eq!(name_and_remaining_inlinks_depth(&pages), vec!["A:1", "B:0", "D:0", "F:0", "C:0", "E:0"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2"]
+        );
+        assert_eq!(
+            name_and_remaining_inlinks_depth(&nodes),
+            vec!["A:1", "B:0", "D:0", "F:0", "C:0", "E:0"]
+        );
     }
 
     #[test]
     fn remaining_depth_tracked_depth_two() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_remaining_depth(&pages), vec!["A:2", "B:1", "D:1", "C:0", "E:0"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_remaining_depth(&nodes),
+            vec!["A:2", "B:1", "D:1", "C:0", "E:0"]
+        );
     }
 
     #[test]
     fn remaining_depth_tracked_depth_one() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_d = file("D", "md");
-        let page_f = file("F", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_d = file("D", "md");
+        let node_f = file("F", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(1),
-                inlinks_depth: Some(max_inlinks_depth),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> =
+            vec![conf("A", "whitelist", Some(1), Some(max_inlinks_depth))];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_remaining_depth(&pages), vec!["A:1", "B:0", "D:0", "F:0"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_remaining_depth(&nodes),
+            vec!["A:1", "B:0", "D:0", "F:0"]
+        );
     }
 
     #[test]
     fn depth_limiting_respects_outlinks_depth_limit() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(max_inlinks_depth),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> =
+            vec![conf("A", "whitelist", Some(2), Some(max_inlinks_depth))];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_remaining_depth(&pages), vec!["A:2", "B:1", "D:1", "F:1", "C:0", "E:0", "G:0"]);
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_remaining_depth(&nodes),
+            vec!["A:2", "B:1", "D:1", "F:1", "C:0", "E:0", "G:0"]
+        );
     }
 
     #[test]
     fn blacklisted_pages_included_but_cutoff() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_f = file("F", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_f = file("F", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-        ];
-
-        let confs: Vec<SitePageConfig> = vec![
-            SitePageConfig {
-                title: "A".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(2),
-                    inlinks_depth: Some(max_inlinks_depth),
-                    tracked: None,
-                },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
             },
-            SitePageConfig {
-                title: "B".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "blacklist".to_string(),
-                    outlinks_depth: None,
-                    inlinks_depth: None,
-                    tracked: None,
-                },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
             },
         ];
 
-        let (pages, _edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1"]);
+        let confs: Vec<SiteNodeConfig> = vec![
+            conf("A", "whitelist", Some(2), Some(max_inlinks_depth)),
+            conf("B", "blacklist", None, None),
+        ];
+
+        let (nodes, _edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1", "D:1", "F:1"]);
     }
 
     #[test]
     fn blacklisted_pages_do_not_extend_depth_via_conf_outlinks_depth() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![
-            SitePageConfig {
-                title: "A".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(1),
-                    inlinks_depth: Some(max_inlinks_depth),
-                    tracked: None,
-                },
-            },
-            SitePageConfig {
-                title: "B".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "blacklist".to_string(),
-                    outlinks_depth: Some(2),
-                    inlinks_depth: None,
-                    tracked: None,
-                },
-            },
+        let confs: Vec<SiteNodeConfig> = vec![
+            conf("A", "whitelist", Some(1), Some(max_inlinks_depth)),
+            conf("B", "blacklist", Some(2), None),
         ];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         // B is blacklisted; its outlinks_depth override must not pull in C/E/G.
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1"]);
+        assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1", "D:1", "F:1"]);
     }
 
     #[test]
     fn traverse_can_start_from_different_points() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
         let confs = default_confs();
 
-        let (pages_from_a, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages_from_a), vec!["A:0", "B:1", "D:1", "C:2", "E:2"]);
+        let (pages_from_a, _) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_depth(&pages_from_a),
+            vec!["A:0", "B:1", "D:1", "C:2", "E:2"]
+        );
 
-        let (pages_from_b, _) = my_get_working_graph(&edges, &confs, &page_a, &page_b, false, 0, true);
+        let (pages_from_b, _) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_b, false, 0, true);
         assert_eq!(name_and_depth(&pages_from_b), vec!["B:1", "C:2", "E:2"]);
     }
 
     #[test]
     fn traverse_should_only_traverse_to_same_or_greater_depth_by_default() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_g = file("G", "md");
-        let page_h = file("H", "md");
-        let page_i = file("I", "md");
-        let page_j = file("J", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_g = file("G", "md");
+        let node_h = file("H", "md");
+        let node_i = file("I", "md");
+        let node_j = file("J", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_g.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_h.clone(), target: page_i.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_j.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_h.clone(),
+                target: node_i.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_j.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
         ];
 
         let confs = vec![default_conf_with_overrides(None, Some(max_inlinks_depth))];
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_g, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["G:2", "H:3", "I:4", "J:4"]);
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_g, false, 0, true);
+        assert_eq!(name_and_depth(&nodes), vec!["G:2", "H:3", "I:4", "J:4"]);
     }
 
     #[test]
     fn traverse_should_traverse_to_all_pages_if_allow_lower_depths_true() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
-        let page_h = file("H", "md");
-        let page_i = file("I", "md");
-        let page_j = file("J", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
+        let node_h = file("H", "md");
+        let node_i = file("I", "md");
+        let node_j = file("J", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_d.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_h.clone(), target: page_i.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_j.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_d.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_h.clone(),
+                target: node_i.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_j.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
         let confs = vec![default_conf_with_overrides(None, Some(max_inlinks_depth))];
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_g, true, 0, true);
-        let full_listing = vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2", "H:3", "I:4", "J:4"];
-        assert_eq!(name_and_depth(&pages), full_listing);
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_g, true, 0, true);
+        let full_listing = vec![
+            "A:0", "B:1", "D:1", "F:1", "C:2", "E:2", "G:2", "H:3", "I:4", "J:4",
+        ];
+        assert_eq!(name_and_depth(&nodes), full_listing);
     }
 
     #[test]
     fn edge_dedup_does_not_create_duplicate_pairs() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(1),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(1))];
 
-        let (pages, result_edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        let descriptions = edge_descriptions(&result_edges, &pages);
+        let (nodes, result_edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        let descriptions = edge_descriptions(&result_edges, &nodes);
 
         let mut undirected_pairs: HashSet<String> = HashSet::new();
         for desc in descriptions {
-            let parts: Vec<&str> = desc.split_whitespace().next().unwrap().split("->").collect();
+            let parts: Vec<&str> = desc
+                .split_whitespace()
+                .next()
+                .unwrap()
+                .split("->")
+                .collect();
             if parts.len() == 2 {
                 let mut a = parts[0].to_string();
                 let mut b = parts[1].to_string();
@@ -1366,62 +1872,70 @@ mod tests {
 
     #[test]
     fn edge_marked_bidirectional_when_raw_edge_is_bidirectional() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
             // Raw bidirectional edge (purposefully backwards)
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
-        let (pages, result_edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        let descriptions = edge_descriptions(&result_edges, &pages);
-        assert!(descriptions.iter().any(|d| d == "B->E (bi)" || d == "E->B (bi)"));
+        let (nodes, result_edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        let descriptions = edge_descriptions(&result_edges, &nodes);
+        assert!(descriptions
+            .iter()
+            .any(|d| d == "B->E (bi)" || d == "E->B (bi)"));
     }
 
     #[test]
     fn edge_keeps_unidirectional_edges_as_non_bidirectional() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_d = file("D", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_d = file("D", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
-        let (pages, result_edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        let descriptions = edge_descriptions(&result_edges, &pages);
+        let (nodes, result_edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        let descriptions = edge_descriptions(&result_edges, &nodes);
         assert!(descriptions.contains(&"A->B".to_string()));
         assert!(descriptions.contains(&"A->D".to_string()));
         assert!(!descriptions.contains(&"A->B (bi)".to_string()));
@@ -1430,82 +1944,103 @@ mod tests {
 
     #[test]
     fn edge_does_not_become_bidirectional_due_to_inlink_traversal_only_reverse() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_d = file("D", "md");
-        let page_f = file("F", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_d = file("D", "md");
+        let node_f = file("F", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false }, // inlink to A
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            }, // inlink to A
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(1),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(1))];
 
-        let (pages, result_edges) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        let descriptions = edge_descriptions(&result_edges, &pages);
+        let (nodes, result_edges) =
+            my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        let descriptions = edge_descriptions(&result_edges, &nodes);
         // There should be an edge between F and A, but it must not be bidirectional.
         assert!(descriptions.iter().any(|d| d == "F->A" || d == "A->F"));
-        assert!(!descriptions.iter().any(|d| d == "F->A (bi)" || d == "A->F (bi)"));
+        assert!(!descriptions
+            .iter()
+            .any(|d| d == "F->A (bi)" || d == "A->F (bi)"));
     }
 
     #[test]
     fn traversal_details_are_tracked() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
-        ];
-
-        let confs: Vec<SitePageConfig> = vec![
-            SitePageConfig {
-                title: "A".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(2),
-                    inlinks_depth: Some(1),
-                    tracked: None,
-                },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
             },
-            SitePageConfig {
-                title: "B".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(1),
-                    inlinks_depth: Some(0),
-                    tracked: None,
-                },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
             },
         ];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2"]);
+        let confs: Vec<SiteNodeConfig> = vec![
+            conf("A", "whitelist", None, None),
+            conf("B", "whitelist", Some(1), Some(0)),
+        ];
+
+        let (nodes, _) = get_working_graph(
+            &edges,
+            &confs,
+            &node_a,
+            &node_a,
+            Some(2),
+            Some(1),
+            TraverseOpts {
+                allow_lower_depths: false,
+            },
+            0,
+            true,
+        )
+        .unwrap();
         assert_eq!(
-            traversal_details_string(&pages),
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "F:1", "C:2", "E:2"]
+        );
+        assert_eq!(
+            traversal_details_string(&nodes),
             vec![
                 "A: gd_first=2 id_first=1 link=start",
                 "B: gd_inherited=1 gd_override=1 id_inherited=0 id_override=0 link=outlink",
@@ -1519,263 +2054,319 @@ mod tests {
 
     #[test]
     fn does_not_process_inlinks_when_remaining_inlinks_depth_is_zero() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_f = file("F", "md");
-        let page_g = file("G", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_f = file("F", "md");
+        let node_g = file("G", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_f.clone(), target: page_a.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_f.clone(),
+                target: node_a.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(4),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(0))];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "C:2", "E:2"]);
-        assert_eq!(name_and_remaining_inlinks_depth(&pages), vec!["A:0", "B:0", "D:0", "C:0", "E:0"]);
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "C:2", "E:2"]
+        );
+        assert_eq!(
+            name_and_remaining_inlinks_depth(&nodes),
+            vec!["A:0", "B:0", "D:0", "C:0", "E:0"]
+        );
     }
 
     #[test]
     fn frontier_image_extension_includes_images_at_frontier_edge_when_enabled() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
         let img = file("IMG", "png");
         let md_link = file("MD_LINK", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_c.clone(), target: img.clone(), is_bidirectional: false },
-            BasicEdge { source: page_c.clone(), target: md_link.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_c.clone(),
+                target: img.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_c.clone(),
+                target: md_link.clone(),
+                is_bidirectional: false,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "C:2", "IMG:3"]);
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1", "C:2", "IMG:3"]);
 
-        let img_page = pages.iter().find(|p| p.file.title == "IMG").unwrap();
+        let img_page = nodes
+            .iter()
+            .find(|p| p.file.site_node_name == "IMG")
+            .unwrap();
         assert_eq!(img_page.is_frontier_image_extension, Some(true));
-        assert_eq!(img_page.is_frontier_page, Some(false));
+        assert_eq!(img_page.is_frontier_node, Some(false));
     }
 
     #[test]
     fn frontier_image_extension_excludes_images_when_disabled() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
         let img = file("IMG", "png");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_c.clone(), target: img.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_c.clone(),
+                target: img.clone(),
+                is_bidirectional: false,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, false);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "C:2"]);
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, false);
+        assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1", "C:2"]);
     }
 
     #[test]
     fn frontier_image_extension_does_not_extend_beyond_one_level_past_frontier() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
         let img = file("IMG", "png");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_c.clone(), target: img.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_c.clone(),
+                target: img.clone(),
+                is_bidirectional: false,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(1),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(1), Some(0))];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1"]);
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1"]);
     }
 
     #[test]
     fn frontier_image_extension_includes_multiple_images_at_frontier_edge() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
         let img1 = file("IMG", "png");
         let img2 = file("IMG2", "jpg");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_c.clone(), target: img1.clone(), is_bidirectional: false },
-            BasicEdge { source: page_c.clone(), target: img2.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_c.clone(),
+                target: img1.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_c.clone(),
+                target: img2.clone(),
+                is_bidirectional: false,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(2),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "C:2", "IMG:3", "IMG2:3"]);
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        assert_eq!(
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "C:2", "IMG:3", "IMG2:3"]
+        );
 
-        let img1_page = pages.iter().find(|p| p.file.title == "IMG").unwrap();
-        let img2_page = pages.iter().find(|p| p.file.title == "IMG2").unwrap();
+        let img1_page = nodes
+            .iter()
+            .find(|p| p.file.site_node_name == "IMG")
+            .unwrap();
+        let img2_page = nodes
+            .iter()
+            .find(|p| p.file.site_node_name == "IMG2")
+            .unwrap();
         assert_eq!(img1_page.is_frontier_image_extension, Some(true));
         assert_eq!(img2_page.is_frontier_image_extension, Some(true));
     }
 
     #[test]
     fn frontier_image_extension_does_not_mark_normal_images_as_extension() {
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
         let img = file("IMG", "png");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_c.clone(), target: img.clone(), is_bidirectional: false },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_c.clone(),
+                target: img.clone(),
+                is_bidirectional: false,
+            },
         ];
 
-        let confs: Vec<SitePageConfig> = vec![SitePageConfig {
-            title: "A".to_string(),
-            source_graph_subdirectory: None,
-            file_type: None,
-            config: SitePageConfigConfig {
-                list_type: "whitelist".to_string(),
-                outlinks_depth: Some(4),
-                inlinks_depth: Some(0),
-                tracked: None,
-            },
-        }];
+        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(0))];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
-        let img_page = pages.iter().find(|p| p.file.title == "IMG").unwrap();
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
+        let img_page = nodes
+            .iter()
+            .find(|p| p.file.site_node_name == "IMG")
+            .unwrap();
         assert_ne!(img_page.is_frontier_image_extension, Some(true));
     }
 
     #[test]
     fn conf_inlinks_depth_can_override_twice() {
         let max_inlinks_depth = 100;
-        let page_a = file("A", "md");
-        let page_b = file("B", "md");
-        let page_c = file("C", "md");
-        let page_d = file("D", "md");
-        let page_e = file("E", "md");
-        let page_g = file("G", "md");
-        let page_h = file("H", "md");
-        let page_i = file("I", "md");
-        let page_j = file("J", "md");
+        let node_a = file("A", "md");
+        let node_b = file("B", "md");
+        let node_c = file("C", "md");
+        let node_d = file("D", "md");
+        let node_e = file("E", "md");
+        let node_g = file("G", "md");
+        let node_h = file("H", "md");
+        let node_i = file("I", "md");
+        let node_j = file("J", "md");
 
         let edges: Vec<BasicEdge> = vec![
-            BasicEdge { source: page_a.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_a.clone(), target: page_d.clone(), is_bidirectional: false },
-            BasicEdge { source: page_b.clone(), target: page_c.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_h.clone(), target: page_i.clone(), is_bidirectional: false },
-            BasicEdge { source: page_g.clone(), target: page_b.clone(), is_bidirectional: false },
-            BasicEdge { source: page_j.clone(), target: page_h.clone(), is_bidirectional: false },
-            BasicEdge { source: page_e.clone(), target: page_b.clone(), is_bidirectional: true },
-        ];
-
-        let confs: Vec<SitePageConfig> = vec![
-            SitePageConfig {
-                title: "A".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(1),
-                    inlinks_depth: Some(0),
-                    tracked: None,
-                },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
             },
-            SitePageConfig {
-                title: "B".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: Some(3),
-                    inlinks_depth: Some(max_inlinks_depth),
-                    tracked: None,
-                },
+            BasicEdge {
+                source: node_a.clone(),
+                target: node_d.clone(),
+                is_bidirectional: false,
             },
-            SitePageConfig {
-                title: "G".to_string(),
-                source_graph_subdirectory: None,
-                file_type: None,
-                config: SitePageConfigConfig {
-                    list_type: "whitelist".to_string(),
-                    outlinks_depth: None,
-                    inlinks_depth: Some(0),
-                    tracked: None,
-                },
+            BasicEdge {
+                source: node_b.clone(),
+                target: node_c.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_h.clone(),
+                target: node_i.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_g.clone(),
+                target: node_b.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_j.clone(),
+                target: node_h.clone(),
+                is_bidirectional: false,
+            },
+            BasicEdge {
+                source: node_e.clone(),
+                target: node_b.clone(),
+                is_bidirectional: true,
             },
         ];
 
-        let (pages, _) = my_get_working_graph(&edges, &confs, &page_a, &page_a, false, 0, true);
+        let confs: Vec<SiteNodeConfig> = vec![
+            conf("A", "whitelist", Some(1), Some(0)),
+            conf("B", "whitelist", Some(3), Some(max_inlinks_depth)),
+            conf("G", "whitelist", None, Some(0)),
+        ];
+
+        let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         // J should not be included because G's conf_inlinks_depth is 0.
-        assert_eq!(name_and_depth(&pages), vec!["A:0", "B:1", "D:1", "C:2", "E:2", "G:2", "H:3", "I:4"]);
+        assert_eq!(
+            name_and_depth(&nodes),
+            vec!["A:0", "B:1", "D:1", "C:2", "E:2", "G:2", "H:3", "I:4"]
+        );
     }
 }
-
-

@@ -54,13 +54,6 @@ export function normalizePageTitle(pageTitle: string, siteConfig: SiteConfig, si
     logger.debug(`[normalizeSitePageTitle] No siteSlug provided, skipping hook execution`);
   }
 
-  // Fall back to original normalization logic
-  if (pageTitle === siteConfig.initialSitePageTitle) {
-    if (siteSlug) logSiteDebug(siteSlug, `[normalizeSitePageTitle] Using initial page output name mapping`);
-    else logger.debug(`[normalizeSitePageTitle] Using initial page output name mapping`);
-    pageTitle = siteConfig.initialSitePageTitle || pageTitle;
-  }
-
   if (siteSlug) logSiteDebug(siteSlug, `[normalizeSitePageTitle] Final result: "${pageTitle}"`);
   else logger.debug(`[normalizeSitePageTitle] Final result: "${pageTitle}"`);
   return pageTitle;

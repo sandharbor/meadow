@@ -1,0 +1,31 @@
+nodes:
+  - siteNodeName: t018 - tags
+    sourceGraphSubdirectory: ""
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: 6fedb3d923d2
+    listType: whitelist
+  - siteNodeName: t018 ---- code blocks and inline code should not create tag links
+    sourceGraphSubdirectory: t018
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: 900d51973085
+    listType: whitelist
+  - siteNodeName: t018 ---- shared tags page 1
+    sourceGraphSubdirectory: t018
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: 830616dcc90c
+    listType: whitelist
+  - siteNodeName: t018 ---- shared tags page 2
+    sourceGraphSubdirectory: t018
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: e6cae7f2a4e7
+    listType: whitelist
+  - siteNodeName: t018 ---- unique tags
+    sourceGraphSubdirectory: t018
+    siteNodeKind: file
+    fileType: md
+    siteNodeId: 3073ee58beea
+    listType: whitelist

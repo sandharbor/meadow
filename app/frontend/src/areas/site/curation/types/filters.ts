@@ -20,36 +20,36 @@ import { CustomFilterConfig } from '../../../../../../shared_code/types/customFi
 import { logger } from '../../../../shared/utils/logger';
 
 // Re-export filter selector types and functions from local utils
-export type { SelectorBase, INormalPageSelector, IPageSelector } from '../utils/filterSelectors';
+export type { SelectorBase, INormalSiteNodeSelector, ISiteNodeSelector } from '../utils/filterSelectors';
 export {
-  createTrackedPageSelector,
-  createUntrackedPageSelector,
-  createBlacklistedPageSelector,
-  createSensitivePageSelector,
-  createFrontierPageSelector,
-  createFolderPageSelector,
+  createTrackedNodeSelector,
+  createUntrackedNodeSelector,
+  createBlacklistedNodeSelector,
+  createSensitiveNodeSelector,
+  createFrontierNodeSelector,
+  createFolderNodeSelector,
   createSearchByTitleSelector,
-  createPageWithOverrideSelector,
+  createNodeWithOverrideSelector,
   createOutlinkDiscrepancySelector,
   createInlinkDiscrepancySelector,
-  createCustomPageSelector as createCustomPageSelectorBase,
+  createCustomSiteNodeSelector as createCustomSiteNodeSelectorBase,
   calculateOptimalGapThreshold
 } from '../utils/filterSelectors';
 
 import {
-  INormalPageSelector,
-  IPageSelector,
-  createUntrackedPageSelector,
-  createBlacklistedPageSelector,
-  createSensitivePageSelector,
+  INormalSiteNodeSelector,
+  ISiteNodeSelector,
+  createUntrackedNodeSelector,
+  createBlacklistedNodeSelector,
+  createSensitiveNodeSelector,
   createSearchByTitleSelector,
-  createPageWithOverrideSelector,
+  createNodeWithOverrideSelector,
   createOutlinkDiscrepancySelector,
   createInlinkDiscrepancySelector,
-  createFrontierPageSelector,
-  createCustomPageSelector as createCustomPageSelectorBase
+  createFrontierNodeSelector,
+  createCustomSiteNodeSelector as createCustomSiteNodeSelectorBase
 } from '../utils/filterSelectors';
-import type { CustomPageSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
+import type { CustomSiteNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
 
 export interface IHighlightAction {
   type: 'highlight';
@@ -80,7 +80,7 @@ export interface IFolderFilterState {
 export interface IFilter {
   id: string;
   name: string;
-  pageSelectors: IPageSelector[];
+  siteNodeSelectors: ISiteNodeSelector[];
   selectorApplicationCriteria: 'union' | 'intersection';
   actions: FilterAction[];
   enabled: boolean;
@@ -106,14 +106,14 @@ export interface IFilterState {
   hiddenFilters: Set<string>;
 }
 
-// Wrapper for createCustomPageSelector that uses the frontend logger
-export const createCustomPageSelector = (config: CustomPageSelectorConfig): INormalPageSelector => {
-  return createCustomPageSelectorBase(config, (msg, error) => logger.warn(msg, error));
+// Wrapper for createCustomSiteNodeSelector that uses the frontend logger
+export const createCustomSiteNodeSelector = (config: CustomSiteNodeSelectorConfig): INormalSiteNodeSelector => {
+  return createCustomSiteNodeSelectorBase(config, (msg, error) => logger.warn(msg, error));
 };
 
 // Convert custom filter config to IFilter
 export const customFilterToIFilter = (customFilter: CustomFilterConfig): IFilter => {
-  const pageSelectors = customFilter.selectors.map(createCustomPageSelector);
+  const siteNodeSelectors = customFilter.selectors.map(createCustomSiteNodeSelector);
   
   const actions = customFilter.actions.map(action => {
     switch (action.type) {
@@ -133,7 +133,7 @@ export const customFilterToIFilter = (customFilter: CustomFilterConfig): IFilter
   return {
     id: `custom-${customFilter.id}`,
     name: customFilter.name,
-    pageSelectors,
+    siteNodeSelectors,
     selectorApplicationCriteria: customFilter.selectorApplicationCriteria,
     actions,
     enabled: customFilter.enabled,
@@ -171,7 +171,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
     {
       id: 'search-by-title-filter',
       name: 'Search By Title',
-      pageSelectors: [createSearchByTitleSelector()],
+      siteNodeSelectors: [createSearchByTitleSelector()],
       selectorApplicationCriteria: 'union',
       actions: [
         { type: 'highlight', color: '#009688', isDashed: false },
@@ -186,7 +186,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       id: 'untracked-filter',
       name: 'Untracked',
       description: 'Pages not yet tracked for publishing. New source pages appear here after they are added to the source directory',
-      pageSelectors: [createUntrackedPageSelector()],
+      siteNodeSelectors: [createUntrackedNodeSelector()],
       selectorApplicationCriteria: 'union',
       actions: [{ type: 'highlight', color: '#2196F3', isDashed: true }],
       enabled: false,
@@ -202,7 +202,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
         React.createElement('code', { className: 'bg-gray-100 px-1 py-0.5 rounded text-xs' }, 'meadow-sensitive: true'),
         ' property in the source page. Sensitive pages are automatically excluded from bulk tracking'
       ),
-      pageSelectors: [createSensitivePageSelector()],
+      siteNodeSelectors: [createSensitiveNodeSelector()],
       selectorApplicationCriteria: 'union',
       actions: [{ type: 'highlight', color: '#9C27B0', isDashed: false }],
       enabled: true,
@@ -218,7 +218,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
         React.createElement('strong', null, 'not'),
         ' published to the site. Also, their directly-owned children are removed from the graph'
       ),
-      pageSelectors: [createBlacklistedPageSelector()],
+      siteNodeSelectors: [createBlacklistedNodeSelector()],
       selectorApplicationCriteria: 'union',
       actions: [{ type: 'highlight', color: '#F44336', isDashed: false }],
       enabled: false,
@@ -229,7 +229,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       id: 'overrides-filter',
       name: 'Depth Override',
       description: 'Inherited depth is overridden',
-      pageSelectors: [createPageWithOverrideSelector()],
+      siteNodeSelectors: [createNodeWithOverrideSelector()],
       selectorApplicationCriteria: 'union',
       actions: [{ type: 'highlight', color: '#33FFF9', isDashed: false }],
       enabled: false,
@@ -239,7 +239,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
     {
       id: 'outlink-gap-filter',
       name: 'Outlink Gap',
-      pageSelectors: [createOutlinkDiscrepancySelector(5)],
+      siteNodeSelectors: [createOutlinkDiscrepancySelector(5)],
       selectorApplicationCriteria: 'union',
       actions: [{ type: 'highlight', color: '#CDDC39', isDashed: false }],
       enabled: false,
@@ -251,7 +251,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
     {
       id: 'inlink-gap-filter',
       name: 'Inlink Gap',
-      pageSelectors: [createInlinkDiscrepancySelector(5)],
+      siteNodeSelectors: [createInlinkDiscrepancySelector(5)],
       selectorApplicationCriteria: 'union',
       actions: [{ type: 'highlight', color: '#E91E63', isDashed: false }],
       enabled: false,
@@ -264,7 +264,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       id: 'frontier-filter',
       name: 'Frontier',
       description: 'Show me what is beyond the graph!',
-      pageSelectors: [createFrontierPageSelector()],
+      siteNodeSelectors: [createFrontierNodeSelector()],
       selectorApplicationCriteria: 'union',
       actions: [{ type: 'highlight', color: '#FF69B4', isDashed: false }],
       enabled: false,
@@ -280,7 +280,7 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       id: 'folder-filter',
       name: 'Folders',
       description: 'Filter pages by their folder in the source graph',
-      pageSelectors: [],
+      siteNodeSelectors: [],
       selectorApplicationCriteria: 'union',
       actions: [],
       enabled: false,

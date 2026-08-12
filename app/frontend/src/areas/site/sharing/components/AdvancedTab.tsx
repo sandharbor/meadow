@@ -27,7 +27,7 @@ interface LocalPaths {
   rawMarkdown: string;
   previewHtml: string;
   siteConfigFile: string;
-  sitePageConfigFile: string;
+  siteNodeConfigFile: string;
 }
 
 const CopyButton: React.FC<{ text: string }> = ({ text }) => {
@@ -80,7 +80,7 @@ export const AdvancedTab: React.FC<AdvancedTabProps> = ({ siteSlug }) => {
   const pathRows = [
     { label: 'App Config', path: paths.appConfigFile },
     { label: 'Site Config', path: paths.siteConfigFile },
-    { label: 'Site Page Config', path: paths.sitePageConfigFile },
+    { label: 'Site Page Config', path: paths.siteNodeConfigFile },
     { label: 'Sources', path: paths.rawMarkdown },
     { label: 'Rendered Preview Site', path: paths.previewHtml },
   ];

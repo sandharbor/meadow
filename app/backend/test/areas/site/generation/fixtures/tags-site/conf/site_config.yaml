@@ -1,13 +1,9 @@
 archivedAt: null
 siteGuid: t018tagz
-defaultTraversalSitePageTitle: t018 - tags
-defaultTraversalSitePageDirectory: ""
-initialSitePageTitle: t018 - tags
-initialSitePageDirectory: ""
 publishSlug: tag-test-site
 publishPrefix: test
 generatedSiteVersions: []
 generationBacklinksEnabled: true
 generationTagsEnabled: true
-
-
+entrySiteNodeId: 6fedb3d923d2
+defaultTraversalSiteNodeId: 6fedb3d923d2

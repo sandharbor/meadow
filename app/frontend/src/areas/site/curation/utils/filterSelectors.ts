@@ -20,9 +20,9 @@ limitations under the License.
  */
 
 import { Graph } from '../../../../../../shared_code/types/graph.js';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage.js';
-import { CustomPageSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
-import { pageIsInFolder } from './folderFilterUtils.js';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode.js';
+import { CustomSiteNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
+import { nodeIsInFolder } from './folderFilterUtils.js';
 
 export interface SelectorBase {
   id: string;
@@ -30,101 +30,101 @@ export interface SelectorBase {
   select: (graph: Graph) => Set<string>;
 }
 
-export interface INormalPageSelector extends SelectorBase {
+export interface INormalSiteNodeSelector extends SelectorBase {
   type: 'normal';
   searchInput?: string;
 }
 
-export type IPageSelector = INormalPageSelector;
+export type ISiteNodeSelector = INormalSiteNodeSelector;
 
 // Cache for search functions to avoid recreating them
 const searchFunctionCache = new Map<string, (graph: Graph) => Set<string>>();
 
 // Page selector functions
-export const createTrackedPageSelector = (): INormalPageSelector => ({
+export const createTrackedNodeSelector = (): INormalSiteNodeSelector => ({
   id: 'tracked-pages',
   name: 'Tracked Pages',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      if (page.tracked) {
-        selectedPages.add(page.id);
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      if (node.tracked) {
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
-export const createPageWithOverrideSelector = (): INormalPageSelector => ({
+export const createNodeWithOverrideSelector = (): INormalSiteNodeSelector => ({
   id: 'overrides',
   name: 'Depth Override',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      // The initial page (depth 0) is not considered an override — its depth
-      // settings are part of the base site configuration, not a per-page
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      // The initial node (depth 0) is not considered an override — its depth
+      // settings are part of the base site configuration, not a per-node
       // override.
-      if (page.depth === 0) return;
-      const conf = page.conf;
+      if (node.depth === 0) return;
+      const conf = node.conf;
       if (conf) {
-        if (conf.config.outlinks_depth !== undefined || conf.config.inlinks_depth !== undefined) {
-            selectedPages.add(page.id);
+        if (conf.outlinksDepth !== undefined || conf.inlinksDepth !== undefined) {
+            selectedNodeKeys.add(node.siteNodeKey);
         }
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
-export const createUntrackedPageSelector = (): INormalPageSelector => ({
+export const createUntrackedNodeSelector = (): INormalSiteNodeSelector => ({
   id: 'untracked-pages',
   name: 'Untracked Pages',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      if (!page.tracked) {
-        selectedPages.add(page.id);
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      if (!node.tracked) {
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
-export const createBlacklistedPageSelector = (): INormalPageSelector => ({
+export const createBlacklistedNodeSelector = (): INormalSiteNodeSelector => ({
   id: 'blacklisted-pages',
   name: 'Blacklisted Pages',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      if (page.blacklisted) {
-        selectedPages.add(page.id);
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      if (node.blacklisted) {
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
-export const createSearchByTitleSelector = (searchText: string = ''): INormalPageSelector => {
+export const createSearchByTitleSelector = (searchText: string = ''): INormalSiteNodeSelector => {
   // Use cached search function if available
   let selectFunction = searchFunctionCache.get(searchText);
 
   if (!selectFunction) {
     selectFunction = (graph: Graph) => {
-      const selectedPages = new Set<string>();
+      const selectedNodeKeys = new Set<string>();
       // Only search when there are 2 or more characters to avoid overwhelming results
-      if (!searchText || searchText.length < 2) return selectedPages;
+      if (!searchText || searchText.length < 2) return selectedNodeKeys;
 
       const searchLower = searchText.toLowerCase();
-      graph.getAllPages().forEach((page: ISitePage) => {
-        if (page.title.toLowerCase().includes(searchLower)) {
-          selectedPages.add(page.id);
+      graph.getAllNodes().forEach((node: ISiteNode) => {
+        if (node.siteNodeName.toLowerCase().includes(searchLower)) {
+          selectedNodeKeys.add(node.siteNodeKey);
         }
       });
-      return selectedPages;
+      return selectedNodeKeys;
     };
 
     // Cache the function for reuse, but limit cache size to prevent memory leaks
@@ -142,84 +142,84 @@ export const createSearchByTitleSelector = (searchText: string = ''): INormalPag
   };
 };
 
-export const createSensitivePageSelector = (): INormalPageSelector => ({
+export const createSensitiveNodeSelector = (): INormalSiteNodeSelector => ({
   id: 'sensitive-pages',
   name: 'Sensitive Pages',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      if (page.sensitive) {
-        selectedPages.add(page.id);
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      if (node.sensitive) {
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
-export const createFrontierPageSelector = (): INormalPageSelector => ({
+export const createFrontierNodeSelector = (): INormalSiteNodeSelector => ({
   id: 'frontier',
   name: 'Frontier',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      if (page.isFrontierPage) {
-        selectedPages.add(page.id);
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      if (node.isFrontierNode) {
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
-export const createFolderPageSelector = (folderPath: string): INormalPageSelector => ({
+export const createFolderNodeSelector = (folderPath: string): INormalSiteNodeSelector => ({
   id: `folder-${folderPath || 'root'}`,
   name: folderPath ? `Folder: ${folderPath}` : 'Folder: Root',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      if (pageIsInFolder(page.sourceGraphSubdirectory, folderPath)) {
-        selectedPages.add(page.id);
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      if (nodeIsInFolder(node.sourceGraphSubdirectory, folderPath)) {
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
-export const createOutlinkDiscrepancySelector = (threshold: number = 5): INormalPageSelector => ({
+export const createOutlinkDiscrepancySelector = (threshold: number = 5): INormalSiteNodeSelector => ({
   id: 'outlink-gap',
   name: 'Outlink Gap',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      const allTargets = graph.getAllOutlinkTargets(page.id);
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      const allTargets = graph.getAllOutlinkTargets(node.siteNodeKey);
       const sourceCount = allTargets.length;
-      const workingCount = allTargets.filter(id => graph.getPage(id)).length;
+      const workingCount = allTargets.filter(id => graph.getNode(id)).length;
       if (sourceCount - workingCount >= threshold) {
-        selectedPages.add(page.id);
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
-export const createInlinkDiscrepancySelector = (threshold: number = 5): INormalPageSelector => ({
+export const createInlinkDiscrepancySelector = (threshold: number = 5): INormalSiteNodeSelector => ({
   id: 'inlink-gap',
   name: 'Inlink Gap',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedPages = new Set<string>();
-    graph.getAllPages().forEach((page: ISitePage) => {
-      const allSources = graph.getAllInlinkSources(page.id);
+    const selectedNodeKeys = new Set<string>();
+    graph.getAllNodes().forEach((node: ISiteNode) => {
+      const allSources = graph.getAllInlinkSources(node.siteNodeKey);
       const sourceCount = allSources.length;
-      const workingCount = allSources.filter(id => graph.getPage(id)).length;
+      const workingCount = allSources.filter(id => graph.getNode(id)).length;
       if (sourceCount - workingCount >= threshold) {
-        selectedPages.add(page.id);
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
-    return selectedPages;
+    return selectedNodeKeys;
   }
 });
 
@@ -237,17 +237,17 @@ export const calculateOptimalGapThreshold = (
 ): number => {
   const gaps: number[] = [];
 
-  graph.getAllPages().forEach((page: ISitePage) => {
+  graph.getAllNodes().forEach((node: ISiteNode) => {
     let gap: number;
     if (gapType === 'outlink') {
-      const allTargets = graph.getAllOutlinkTargets(page.id);
+      const allTargets = graph.getAllOutlinkTargets(node.siteNodeKey);
       const sourceCount = allTargets.length;
-      const workingCount = allTargets.filter(id => graph.getPage(id)).length;
+      const workingCount = allTargets.filter(id => graph.getNode(id)).length;
       gap = sourceCount - workingCount;
     } else {
-      const allSources = graph.getAllInlinkSources(page.id);
+      const allSources = graph.getAllInlinkSources(node.siteNodeKey);
       const sourceCount = allSources.length;
-      const workingCount = allSources.filter(id => graph.getPage(id)).length;
+      const workingCount = allSources.filter(id => graph.getNode(id)).length;
       gap = sourceCount - workingCount;
     }
 
@@ -271,39 +271,39 @@ export const calculateOptimalGapThreshold = (
 };
 
 /**
- * Create custom filter page selector.
- * @param config - The custom page selector configuration
+ * Create custom filter node selector.
+ * @param config - The custom node selector configuration
  * @param onError - Optional callback for regex parsing errors (defaults to console.warn)
  */
-export const createCustomPageSelector = (
-  config: CustomPageSelectorConfig,
+export const createCustomSiteNodeSelector = (
+  config: CustomSiteNodeSelectorConfig,
   onError?: (message: string, error: unknown) => void
-): INormalPageSelector => {
+): INormalSiteNodeSelector => {
   const selectFunction = (graph: Graph) => {
-    const selectedPages = new Set<string>();
+    const selectedNodeKeys = new Set<string>();
 
-    graph.getAllPages().forEach((page: ISitePage) => {
+    graph.getAllNodes().forEach((node: ISiteNode) => {
       let matchValue = '';
 
       // Get the value to match against based on the field
       switch (config.field) {
         case 'title':
-          matchValue = page.title || '';
+          matchValue = node.siteNodeName || '';
           break;
         case 'path': {
           // Construct a path-like string (e.g., "dir/subdir/title.md") so users can
           // filter with natural path syntax like "/gt/" to match directory boundaries.
           // Normalize backslashes to forward slashes for cross-platform compatibility.
-          const subdir = (page.sourceGraphSubdirectory || '').replace(/\\/g, '/');
-          const title = page.title || '';
-          const ext = page.file_type || 'md';
+          const subdir = (node.sourceGraphSubdirectory || '').replace(/\\/g, '/');
+          const title = node.siteNodeName || '';
+          const ext = node.fileType || 'md';
           matchValue = subdir ? `${subdir}/${title}.${ext}` : `${title}.${ext}`;
           break;
         }
         case 'content':
           // For content matching, we'd need to load file content
-          // For now, we'll match against page title as a fallback
-          matchValue = page.title || '';
+          // For now, we'll match against node title as a fallback
+          matchValue = node.siteNodeName || '';
           break;
       }
 
@@ -336,11 +336,11 @@ export const createCustomPageSelector = (
       }
 
       if (matches) {
-        selectedPages.add(page.id);
+        selectedNodeKeys.add(node.siteNodeKey);
       }
     });
 
-    return selectedPages;
+    return selectedNodeKeys;
   };
 
   return {

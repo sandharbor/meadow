@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TraversalFile {
-    pub directory: String,
-    pub title: String,
+pub struct FileSiteNode {
+    pub source_graph_subdirectory: String,
+    pub site_node_name: String,
     pub file_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub site_node_id: Option<String>,
     #[serde(default)]
     pub is_sensitive: bool,
 
@@ -16,9 +18,12 @@ pub struct TraversalFile {
     pub conf_is_blacklisted: Option<bool>,
 }
 
-impl TraversalFile {
-    pub fn ident(&self) -> String {
-        format!("{}/{}.{}", self.directory, self.title, self.file_type)
+impl FileSiteNode {
+    pub fn site_node_key(&self) -> String {
+        format!(
+            "{}/{}.{}",
+            self.source_graph_subdirectory, self.site_node_name, self.file_type
+        )
     }
 }
 
@@ -50,8 +55,8 @@ pub enum LinkType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct WorkingPage {
-    pub file: TraversalFile,
+pub struct WorkingNode {
+    pub file: FileSiteNode,
     pub depth: i32,
     pub remaining_depth: i32,
     pub remaining_inlinks_depth: i32,
@@ -60,15 +65,15 @@ pub struct WorkingPage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub traversal_details: Option<TraversalDetails>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub is_frontier_page: Option<bool>,
+    pub is_frontier_node: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_frontier_image_extension: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BasicEdge {
-    pub source: TraversalFile,
-    pub target: TraversalFile,
+    pub source: FileSiteNode,
+    pub target: FileSiteNode,
     pub is_bidirectional: bool,
 }
 
@@ -76,12 +81,17 @@ pub struct BasicEdge {
 pub struct WorkingEdge {
     pub from: String,
     pub to: String,
+    pub site_edge_kind: SiteEdgeKind,
     pub is_bidirectional: bool,
     pub is_traversal_only: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SiteEdgeKind {
+    SemanticLink,
 }
 
 pub fn is_image_file_type(file_type: &str) -> bool {
     matches!(file_type, "png" | "jpg" | "jpeg" | "gif")
 }
-
-

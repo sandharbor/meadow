@@ -18,13 +18,14 @@ import express from 'express';
 import { join } from 'path';
 import YAML from 'yaml';
 import fs from 'fs';
-import { parsePageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
+import { parseSiteNodeConfig, validateCanonicalSiteConfiguration } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../shared_code/utils/fileTypeUtils.js';
-import { SitePageConfig } from '../../../../../../shared_code/types/sitePageConfig.js';
-import { FileType, FILE_TYPES } from '../../../../../../shared_code/types/FileType.js';
-import { ISitePage } from '../../../../../../shared_code/types/ISitePage.js';
+import { SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { FileType } from '../../../../../../shared_code/types/FileType.js';
+import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode.js';
+import type { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
 import { loadAppConfig as loadAppConfigFromDisk } from '../../../../../../shared_code/utils/appConfigUtils.js';
-import type { PageTraversalDetails } from '../../../../../types/pageFileGraph.js';
+import type { SiteNodeTraversalDetails } from '../../../../../../shared_code/types/siteNodeGraph.js';
 import { getConfigDirectory, getSiteDirectory, getSiteConfigPath, getSiteRawDirectory } from '../../../../shared/site-config/siteConfigPaths.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
@@ -39,8 +40,8 @@ const loadAppConfig = () => loadAppConfigFromDisk(getConfigDirectory());
 router.post('/sites/:siteSlug/curation/copy-tracked-pages', (req, res, next) => {
   (async () => {
     const { siteSlug } = req.params;
-    const { trackedPages, commitMessage } = req.body as {
-      trackedPages?: Array<{ sourceGraphSubdirectory: string; title: string; file_type: string }>;
+    const { trackedNodes, commitMessage } = req.body as {
+      trackedNodes?: Array<{ sourceGraphSubdirectory: string; title: string; fileType: string }>;
       commitMessage?: string;
     };
     
@@ -48,12 +49,12 @@ router.post('/sites/:siteSlug/curation/copy-tracked-pages', (req, res, next) => 
       return res.status(400).json({ error: 'siteSlug is required' });
     }
 
-    if (!trackedPages || !Array.isArray(trackedPages)) {
-      return res.status(400).json({ error: 'trackedPages array is required' });
+    if (!trackedNodes || !Array.isArray(trackedNodes)) {
+      return res.status(400).json({ error: 'trackedNodes array is required' });
     }
 
-    if (trackedPages.length === 0) {
-      return res.json({ message: 'No tracked pages provided', copiedFiles: [] });
+    if (trackedNodes.length === 0) {
+      return res.json({ message: 'No tracked nodes provided', copiedFiles: [] });
     }
 
     // Load site config to get notesDir (base directory)
@@ -89,10 +90,10 @@ router.post('/sites/:siteSlug/curation/copy-tracked-pages', (req, res, next) => 
     const copiedFiles: string[] = [];
     const errors: string[] = [];
 
-    for (const page of trackedPages) {
+    for (const page of trackedNodes) {
       try {
-        const filename = canonicalPageFilename(page.title, page.file_type);
-        const sourceFile = sourceFileCandidateFilenames(page.title, page.file_type)
+        const filename = canonicalPageFilename(page.title, page.fileType);
+        const sourceFile = sourceFileCandidateFilenames(page.title, page.fileType)
           .map(candidateFilename => join(notesDir, page.sourceGraphSubdirectory, candidateFilename))
           .find(candidatePath => fs.existsSync(candidatePath));
         const targetFile = join(targetDir, filename);
@@ -108,7 +109,7 @@ router.post('/sites/:siteSlug/curation/copy-tracked-pages', (req, res, next) => 
       }
     }
 
-    // Commit both the site_page_config.yaml and tracked_page_content as a single commit
+    // Commit both the site_node_config.yaml and tracked_page_content as a single commit
     // This ensures the configuration and its tracked content are versioned together
     try {
       const confDir = join(getSiteDirectory(siteSlug), 'conf');
@@ -138,56 +139,25 @@ router.post('/sites/:siteSlug/curation/copy-tracked-pages', (req, res, next) => 
 router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
   (async () => {
     const { siteSlug } = req.params;
-    const initialPageTitleQuery = req.query.initialPageTitle;
-    const traversalPageTitleQuery = req.query.traversalPageTitle as string | undefined;
     const frontierDepthQuery = req.query.frontierDepth as string | undefined;
     const frontierDepth = frontierDepthQuery ? parseInt(frontierDepthQuery, 10) : 0;
 
-    if (typeof initialPageTitleQuery !== 'string' || !initialPageTitleQuery.trim()) {
-      return res.status(400).json({ error: 'Missing required query parameter: pageName' });
-    }
-    const initialPageTitle = initialPageTitleQuery.trim();
-
-    // Load site config to get notesDir and page title/directory settings
+    // Load the site-level source, role, and traversal policy.
     const configPath = getSiteConfigPath(siteSlug);
     let notesDir = '';
-    let initialSitePageTitleFromYaml: string | undefined = undefined;
-    let initialSitePageDirectoryFromYaml: string | undefined = undefined;
-    let defaultTraversalSitePageTitleFromYaml: string | undefined = undefined;
-    let defaultTraversalSitePageDirectoryFromYaml: string | undefined = undefined;
+    let siteConfig: SiteConfig;
     let siteAllowImagesToExtendToFrontier: boolean | undefined = undefined;
     try {
       if (!fs.existsSync(configPath)) {
         return res.status(500).json({ error: `site_config.yaml not found for slug ${siteSlug}` });
       }
       const yamlContent = fs.readFileSync(configPath, 'utf8');
-      const config = YAML.parse(yamlContent) as { 
-        sourceDirectory?: string; 
-        initialSitePageTitle?: string;
-        initialSitePageDirectory?: string;
-        defaultTraversalSitePageTitle?: string;
-        defaultTraversalSitePageDirectory?: string;
-        allowImagesToExtendToFrontier?: boolean;
-      };
-      if (config) {
-        if (typeof config.sourceDirectory === 'string') {
-          notesDir = config.sourceDirectory;
-        }
-        if (typeof config.initialSitePageTitle === 'string' && config.initialSitePageTitle.trim()) {
-          initialSitePageTitleFromYaml = config.initialSitePageTitle.trim();
-        }
-        if (typeof config.initialSitePageDirectory === 'string') {
-          initialSitePageDirectoryFromYaml = config.initialSitePageDirectory;
-        }
-        if (typeof config.defaultTraversalSitePageTitle === 'string' && config.defaultTraversalSitePageTitle.trim()) {
-          defaultTraversalSitePageTitleFromYaml = config.defaultTraversalSitePageTitle.trim();
-        }
-        if (typeof config.defaultTraversalSitePageDirectory === 'string') {
-          defaultTraversalSitePageDirectoryFromYaml = config.defaultTraversalSitePageDirectory;
-        }
-        if (typeof config.allowImagesToExtendToFrontier === 'boolean') {
-          siteAllowImagesToExtendToFrontier = config.allowImagesToExtendToFrontier;
-        }
+      siteConfig = YAML.parse(yamlContent) as SiteConfig;
+      if (typeof siteConfig.sourceDirectory === 'string') {
+        notesDir = siteConfig.sourceDirectory;
+      }
+      if (typeof siteConfig.allowImagesToExtendToFrontier === 'boolean') {
+        siteAllowImagesToExtendToFrontier = siteConfig.allowImagesToExtendToFrontier;
       }
     } catch {
       return next(new Error(`Failed to load site configuration for ${siteSlug}`));
@@ -196,31 +166,31 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
       return res.status(500).json({ error: `Could not determine the notes directory for site ${siteSlug}. Ensure site_config.yaml exists and contains a 'sourceDirectory' property.` });
     }
 
-    // Load and parse site_page_config.yaml (check draft first)
-    let sitePageConfigs: SitePageConfig[] = [];
-    let sitePageConfigPath: string | undefined = undefined;
+    // Load committed and optional draft configurations together so identity and
+    // strong role invariants are checked before graph construction.
+    let committedNodes: SiteNodeConfig[];
+    let draftNodes: SiteNodeConfig[] | undefined;
+    let siteNodeConfigPath: string;
     try {
-      const draftPath = getSiteConfigPath(siteSlug, 'draft_site_page_config.yaml');
-      const mainPath = getSiteConfigPath(siteSlug, 'site_page_config.yaml');
-      
-      let confContent = '';
+      const draftPath = getSiteConfigPath(siteSlug, 'draft_site_node_config.yaml');
+      const mainPath = getSiteConfigPath(siteSlug, 'site_node_config.yaml');
+      if (!fs.existsSync(mainPath)) {
+        return next(new Error(`site_node_config.yaml not found for ${siteSlug}`));
+      }
+      committedNodes = parseSiteNodeConfig(fs.readFileSync(mainPath, 'utf8'), mainPath);
       if (fs.existsSync(draftPath)) {
-        sitePageConfigPath = draftPath;
-        confContent = fs.readFileSync(draftPath, 'utf8');
-      } else if (fs.existsSync(mainPath)) {
-        sitePageConfigPath = mainPath;
-        confContent = fs.readFileSync(mainPath, 'utf8');
+        draftNodes = parseSiteNodeConfig(fs.readFileSync(draftPath, 'utf8'), draftPath);
       }
-      
-      if (confContent) {
-        sitePageConfigs = parsePageConfig(confContent);
-      }
-    } catch {
-      return next(new Error(`Failed to load or parse site_page_config.yaml for ${siteSlug}`));
-    }
-
-    if (!sitePageConfigPath) {
-      return next(new Error(`site_page_config.yaml not found for ${siteSlug}`));
+      validateCanonicalSiteConfiguration({
+        committedNodes,
+        committedPath: mainPath,
+        ...(draftNodes && { draftNodes, draftPath }),
+        siteConfig,
+        siteConfigPath: configPath,
+      });
+      siteNodeConfigPath = draftNodes ? draftPath : mainPath;
+    } catch (error) {
+      return next(new Error(`Failed to load or validate site node configuration for ${siteSlug}: ${error instanceof Error ? error.message : String(error)}`));
     }
     
     // Resolve allowImagesToExtendToFrontier: site config overrides app config, default true
@@ -234,75 +204,28 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
       }
     }
 
-    const knownFileTypes: Set<string> = new Set(FILE_TYPES);
-    function parsePageRef(raw: string): { title: string; directory: string; file_type?: string } {
-      const trimmed = raw.trim();
-      const withoutLeadingSlash = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
-      const lastDot = withoutLeadingSlash.lastIndexOf('.');
-      const lastSlash = withoutLeadingSlash.lastIndexOf('/');
-
-      if (lastDot > -1 && lastDot > lastSlash) {
-        const file_type = withoutLeadingSlash.slice(lastDot + 1);
-        // Only treat as a file extension if it's a known file type;
-        // otherwise the dot is part of the page title (e.g. "test.io something").
-        if (knownFileTypes.has(file_type.toLowerCase())) {
-          const beforeDot = withoutLeadingSlash.slice(0, lastDot);
-          const slash = beforeDot.lastIndexOf('/');
-          const directory = slash >= 0 ? beforeDot.slice(0, slash) : '';
-          const title = slash >= 0 ? beforeDot.slice(slash + 1) : beforeDot;
-          return { title, directory, file_type };
-        }
-      }
-
-      if (lastSlash >= 0) {
-        return { title: withoutLeadingSlash.slice(lastSlash + 1), directory: withoutLeadingSlash.slice(0, lastSlash) };
-      }
-
-      return { title: trimmed, directory: '' };
-    }
-
-    function inferFileType(title: string, directory: string): string {
-      const conf = sitePageConfigs.find(c => c.title === title && (c.source_graph_subdirectory || '') === (directory || '') && c.file_type);
-      return conf?.file_type ?? 'md';
-    }
-
-    const initialRefFromQuery = parsePageRef(initialPageTitle);
-    const initialDirectory =
-      initialRefFromQuery.directory ||
-      (initialPageTitle === initialSitePageTitleFromYaml && initialSitePageDirectoryFromYaml !== undefined ? initialSitePageDirectoryFromYaml : '');
-    const initialFileType = initialRefFromQuery.file_type ?? inferFileType(initialRefFromQuery.title, initialDirectory);
-
-    const traversalTitleRaw = traversalPageTitleQuery && traversalPageTitleQuery.trim()
-      ? traversalPageTitleQuery.trim()
-      : defaultTraversalSitePageTitleFromYaml || initialRefFromQuery.title;
-    const traversalRef = parsePageRef(traversalTitleRaw);
-    const traversalDirectory =
-      traversalRef.directory ||
-      ((traversalRef.title === defaultTraversalSitePageTitleFromYaml && defaultTraversalSitePageDirectoryFromYaml !== undefined)
-        ? defaultTraversalSitePageDirectoryFromYaml
-        : initialDirectory);
-    const traversalFileType = traversalRef.file_type ?? inferFileType(traversalRef.title, traversalDirectory);
-
     type RustLinkResolvedInfo = { link_resolved_target_directory: string; link_resolved_target_path: string | null };
-    type RustPage = {
-      id: string;
-      title: string;
+    type RustNode = {
+      siteNodeKey: string;
+      siteNodeId?: string;
+      siteNodeKind: 'file';
+      siteNodeName: string;
       sourceGraphSubdirectory: string;
-      file_type: FileType;
+      fileType: FileType;
       depth: number;
       remaining_depth: number;
       remaining_inlinks_depth: number;
       path: string[];
-      traversal_details?: PageTraversalDetails;
-      isFrontierPage?: boolean;
+      traversal_details?: SiteNodeTraversalDetails;
+      isFrontierNode?: boolean;
       isFrontierImageExtension?: boolean;
       is_sensitive: boolean;
       source_page_outlink_count?: number;
       source_page_inlink_count?: number;
     };
-    type RustEdge = { source: string; target: string; isBidirectional: boolean };
+    type RustEdge = { source: string; target: string; siteEdgeKind: 'semanticLink'; isBidirectional: boolean };
     type RustOutput = {
-      pages: RustPage[];
+      nodes: RustNode[];
       edges: (RustEdge & { link_original_text: string })[];
       allLinkResolutionMaps: Record<string, Record<string, RustLinkResolvedInfo>>;
       allInlinkSources: Record<string, string[]>;
@@ -313,9 +236,11 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
     try {
       const raw = await runWorkingGraphRaw({
         graphRoot: notesDir,
-        sitePageConfigPath,
-        initial: { title: initialRefFromQuery.title, directory: initialDirectory, file_type: initialFileType },
-        traversal: { title: traversalRef.title, directory: traversalDirectory, file_type: traversalFileType },
+        siteNodeConfigPath,
+        entrySiteNodeId: siteConfig.entrySiteNodeId!,
+        defaultTraversalSiteNodeId: siteConfig.defaultTraversalSiteNodeId!,
+        defaultOutlinksDepth: siteConfig.defaultOutlinksDepth,
+        defaultInlinksDepth: siteConfig.defaultInlinksDepth,
         frontierDepth,
         allowImagesToExtendToFrontier,
         allowLowerDepths: false,
@@ -325,34 +250,36 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
       return next(new Error(`Failed to run working_graph for site ${siteSlug}: ${err instanceof Error ? err.message : String(err)}`));
     }
 
-    const pageDepthMap = new Map<string, number>(rustOutput.pages.map(n => [n.id, n.depth]));
+    const nodeDepthMap = new Map<string, number>(rustOutput.nodes.map(node => [node.siteNodeKey, node.depth]));
     const linkResolutionMaps = rustOutput.allLinkResolutionMaps || {};
 
-    const pages: ISitePage[] = rustOutput.pages.map(n => ({
-      id: n.id,
-      label: n.title,
-      title: n.title,
-      sourceGraphSubdirectory: n.sourceGraphSubdirectory,
-      file_type: n.file_type,
+    const nodes: ISiteNode[] = rustOutput.nodes.map(node => ({
+      siteNodeKey: node.siteNodeKey as ISiteNode['siteNodeKey'],
+      ...(node.siteNodeId && { siteNodeId: node.siteNodeId as ISiteNode['siteNodeId'] }),
+      siteNodeKind: node.siteNodeKind,
+      label: node.siteNodeName,
+      siteNodeName: node.siteNodeName,
+      sourceGraphSubdirectory: node.sourceGraphSubdirectory,
+      fileType: node.fileType,
 
-      depth: n.depth,
-      remaining_depth: n.remaining_depth,
-      remaining_inlinks_depth: n.remaining_inlinks_depth,
-      path: n.path,
-      traversal_details: n.traversal_details,
-      linkResolutionMap: linkResolutionMaps[n.id],
-      isFrontierPage: n.isFrontierPage,
-      isFrontierImageExtension: n.isFrontierImageExtension,
-      source_page_outlink_count: n.source_page_outlink_count,
-      source_page_inlink_count: n.source_page_inlink_count,
+      depth: node.depth,
+      remaining_depth: node.remaining_depth,
+      remaining_inlinks_depth: node.remaining_inlinks_depth,
+      path: node.path,
+      traversal_details: node.traversal_details,
+      linkResolutionMap: linkResolutionMaps[node.siteNodeKey],
+      isFrontierNode: node.isFrontierNode,
+      isFrontierImageExtension: node.isFrontierImageExtension,
+      source_page_outlink_count: node.source_page_outlink_count,
+      source_page_inlink_count: node.source_page_inlink_count,
 
       data: {
-        title: n.title,
-        sourceGraphSubdirectory: n.sourceGraphSubdirectory,
-        file_type: n.file_type,
-        is_sensitive: n.is_sensitive
+        siteNodeName: node.siteNodeName,
+        sourceGraphSubdirectory: node.sourceGraphSubdirectory,
+        fileType: node.fileType,
+        is_sensitive: node.is_sensitive
       },
-      getIdent: () => n.id
+      getIdent: () => node.siteNodeKey
     }));
 
     // Deduplicate edges to match existing API: one edge per page pair, mark bidirectional if reverse exists.
@@ -375,13 +302,14 @@ router.get('/sites/:siteSlug/curation/working-graph', (req, res, next) => {
       .map(e => ({
         source: e.source,
         target: e.target,
+        siteEdgeKind: 'semanticLink' as const,
         isBidirectional: e.isBidirectional ?? false,
-        data: { fromDepth: pageDepthMap.get(e.source) ?? 0, toDepth: pageDepthMap.get(e.target) ?? 0 }
+        data: { fromDepth: nodeDepthMap.get(e.source) ?? 0, toDepth: nodeDepthMap.get(e.target) ?? 0 }
       }))
       .sort((a, b) => (a.source + '->' + a.target).localeCompare(b.source + '->' + b.target));
 
     res.json({
-      pages,
+      nodes,
       edges: resultEdges,
       allInlinkSources: rustOutput.allInlinkSources || {},
       allOutlinkTargets: rustOutput.allOutlinkTargets || {},

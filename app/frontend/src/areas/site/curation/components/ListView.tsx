@@ -15,40 +15,40 @@ limitations under the License.
 */
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { DisplayGraph, DisplayPage, Highlight } from '../types/displayGraph';
+import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './ImageHoverPreview';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
-import SitePageHoverCard from './SitePageHoverCard';
+import SiteNodeHoverCard from './SiteNodeHoverCard';
 
 interface ListViewProps {
   displayGraph: DisplayGraph;
-  onPageClick: (pageId: string) => void;
+  onPageClick: (siteNodeKey: string) => void;
   siteSlug: string;
-  onPageContextMenu?: (pageId: string, x: number, y: number) => void;
-  selectedPages?: Set<string>;
-  onSelectedPagesChange?: (pages: Set<string>) => void;
+  onSiteNodeContextMenu?: (siteNodeKey: string, x: number, y: number) => void;
+  selectedNodeKeys?: Set<string>;
+  onSelectedNodeKeysChange?: (siteNodeKeys: Set<string>) => void;
 }
 
 type SortField = 'title' | 'directory' | 'fileType' | 'depth';
 type SortDirection = 'asc' | 'desc';
 type ViewMode = 'flat' | 'grouped';
 
-interface PageGroup {
+interface NodeGroup {
   parentId: string | null;
   parentTitle: string;
   parentDistance: number;
-  children: DisplayPage[];
+  children: DisplayNode[];
 }
 
 const ListView: React.FC<ListViewProps> = ({
   displayGraph,
   onPageClick,
   siteSlug,
-  onPageContextMenu,
-  selectedPages,
-  onSelectedPagesChange,
+  onSiteNodeContextMenu,
+  selectedNodeKeys,
+  onSelectedNodeKeysChange,
 }) => {
   const [sortField, setSortField] = useState<SortField>('depth');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -75,15 +75,15 @@ const ListView: React.FC<ListViewProps> = ({
     sessionStorage.setItem('listViewMode', viewMode);
   }, [viewMode]);
 
-  const sortedPages = useMemo(() => {
-    const pages = displayGraph.visibleDisplayPages;
+  const sortedNodes = useMemo(() => {
+    const nodes = displayGraph.visibleDisplayNodes;
 
-    return pages.sort((a, b) => {
+    return nodes.sort((a, b) => {
       let comparison = 0;
       
       switch (sortField) {
         case 'title': {
-          comparison = a.title.localeCompare(b.title);
+          comparison = a.siteNodeName.localeCompare(b.siteNodeName);
           break;
         }
         case 'directory': {
@@ -92,15 +92,15 @@ const ListView: React.FC<ListViewProps> = ({
           comparison = dirA.localeCompare(dirB);
           // Secondary sort by title when directories are equal
           if (comparison === 0) {
-            comparison = a.title.localeCompare(b.title);
+            comparison = a.siteNodeName.localeCompare(b.siteNodeName);
           }
           break;
         }
         case 'fileType': {
-          comparison = a.file_type.localeCompare(b.file_type);
+          comparison = a.fileType.localeCompare(b.fileType);
           // Secondary sort by title when file types are equal
           if (comparison === 0) {
-            comparison = a.title.localeCompare(b.title);
+            comparison = a.siteNodeName.localeCompare(b.siteNodeName);
           }
           break;
         }
@@ -110,7 +110,7 @@ const ListView: React.FC<ListViewProps> = ({
           comparison = depthA - depthB;
           // Secondary sort by title when depths are equal
           if (comparison === 0) {
-            comparison = a.title.localeCompare(b.title);
+            comparison = a.siteNodeName.localeCompare(b.siteNodeName);
           }
           break;
         }
@@ -121,22 +121,22 @@ const ListView: React.FC<ListViewProps> = ({
   }, [displayGraph, sortField, sortDirection]);
 
   // Group pages by their first ancestor (immediate parent in traversal path)
-  const groupedPages = useMemo((): PageGroup[] => {
-    const pages = sortedPages;
-    const pageMap = new Map<string, DisplayPage>();
+  const groupedNodes = useMemo((): NodeGroup[] => {
+    const nodes = sortedNodes;
+    const nodeMap = new Map<string, DisplayNode>();
 
     // Build a map of all pages by ID for title lookups
-    for (const page of displayGraph.visibleDisplayPages) {
-      pageMap.set(page.id, page);
+    for (const page of displayGraph.visibleDisplayNodes) {
+      nodeMap.set(page.siteNodeKey, page);
     }
 
     // Group pages by parent ID
-    const groups = new Map<string | null, DisplayPage[]>();
+    const groups = new Map<string | null, DisplayNode[]>();
 
-    for (const page of pages) {
-      const underlyingPage = page.underlyingPage;
-      const depth = underlyingPage.depth;
-      const path = underlyingPage.path;
+    for (const page of nodes) {
+      const underlyingNode = page.underlyingNode;
+      const depth = underlyingNode.depth;
+      const path = underlyingNode.path;
 
       // Determine parent ID
       let parentId: string | null = null;
@@ -150,8 +150,8 @@ const ListView: React.FC<ListViewProps> = ({
       groups.get(parentId)!.push(page);
     }
 
-    // Convert to array of PageGroup objects
-    const result: PageGroup[] = [];
+    // Convert to an array of node groups.
+    const result: NodeGroup[] = [];
 
     for (const [parentId, children] of groups.entries()) {
       // Get parent title and distance
@@ -159,10 +159,10 @@ const ListView: React.FC<ListViewProps> = ({
       let parentDistance = -1;
 
       if (parentId !== null) {
-        const parentPage = pageMap.get(parentId);
-        if (parentPage) {
-          parentTitle = parentPage.title;
-          parentDistance = parentPage.distance ?? Infinity;
+        const parentNode = nodeMap.get(parentId);
+        if (parentNode) {
+          parentTitle = parentNode.siteNodeName;
+          parentDistance = parentNode.distance ?? Infinity;
         } else {
           // Parent not in visible pages, use ID as fallback
           parentTitle = parentId;
@@ -187,7 +187,7 @@ const ListView: React.FC<ListViewProps> = ({
     });
 
     return result;
-  }, [sortedPages, displayGraph]);
+  }, [sortedNodes, displayGraph]);
 
   // Toggle a group's expanded/collapsed state
   const toggleGroup = (groupId: string | null) => {
@@ -204,20 +204,20 @@ const ListView: React.FC<ListViewProps> = ({
   };
 
   // Toggle selection of all pages in a group
-  const toggleGroupSelection = (group: PageGroup, e: React.MouseEvent) => {
+  const toggleGroupSelection = (group: NodeGroup, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!selectedPages || !onSelectedPagesChange) return;
+    if (!selectedNodeKeys || !onSelectedNodeKeysChange) return;
 
-    const childIds = group.children.map(p => p.id);
-    const allSelected = childIds.every(id => selectedPages.has(id));
+    const childIds = group.children.map(p => p.siteNodeKey);
+    const allSelected = childIds.every(id => selectedNodeKeys.has(id));
 
-    const next = new Set(selectedPages);
+    const next = new Set(selectedNodeKeys);
     if (allSelected) {
       childIds.forEach(id => next.delete(id));
     } else {
       childIds.forEach(id => next.add(id));
     }
-    onSelectedPagesChange(next);
+    onSelectedNodeKeysChange(next);
   };
 
   // Auto-expand all groups when switching from flat to grouped view, or on mount if already grouped
@@ -227,14 +227,14 @@ const ListView: React.FC<ListViewProps> = ({
       (viewMode === 'grouped' && isInitialMountRef.current);
     if (shouldExpand) {
       const allGroupKeys = new Set<string>();
-      for (const group of groupedPages) {
+      for (const group of groupedNodes) {
         allGroupKeys.add(group.parentId ?? 'root');
       }
       setExpandedGroups(allGroupKeys);
     }
     prevViewModeRef.current = viewMode;
     isInitialMountRef.current = false;
-  }, [viewMode, groupedPages]);
+  }, [viewMode, groupedNodes]);
 
   const handleHeaderClick = (field: SortField) => {
     if (sortField === field) {
@@ -272,32 +272,32 @@ const ListView: React.FC<ListViewProps> = ({
   // drawings can't be `<img src>`'d (the on-disk file is a `.excalidraw.md` whose
   // scene has to be decompressed and rendered) — they go through the vendored
   // renderer instead. Both paths feed the same hover-preview popup.
-  const renderInlineThumbnail = (page: { title: string; file_type: string; sourceGraphSubdirectory: string }) => {
-    if (page.file_type === 'excalidraw') {
+  const renderInlineThumbnail = (page: { siteNodeName: string; fileType: string; sourceGraphSubdirectory: string }) => {
+    if (page.fileType === 'excalidraw') {
       const mdPath = page.sourceGraphSubdirectory
-        ? `${page.sourceGraphSubdirectory}/${page.title}.excalidraw.md`
-        : `${page.title}.excalidraw.md`;
+        ? `${page.sourceGraphSubdirectory}/${page.siteNodeName}.excalidraw.md`
+        : `${page.siteNodeName}.excalidraw.md`;
       const mdSourceUrl = `${API_BASE_URL}/sites/${siteSlug}/generation/source-file/${encodeURIComponent(mdPath)}`;
       return (
         <ExcalidrawThumbnail
           mdSourceUrl={mdSourceUrl}
           vendorUrl={`${API_BASE_URL}/generation/assets/excalidraw-vendor.js`}
-          alt={page.title}
+          alt={page.siteNodeName}
           className="w-8 h-8 rounded border border-gray-200 cursor-pointer bg-white"
           lazy
-          onMouseEnter={(e) => handleImageMouseEnter(e, mdSourceUrl, page.title)}
+          onMouseEnter={(e) => handleImageMouseEnter(e, mdSourceUrl, page.siteNodeName)}
           onMouseLeave={() => setHoveredImage(null)}
         />
       );
     }
-    if (isImageFileType(page.file_type)) {
-      const imageUrl = `${API_BASE_URL}/sites/${siteSlug}/generation/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.title}.${page.file_type}` : `${page.title}.${page.file_type}`)}`;
+    if (isImageFileType(page.fileType)) {
+      const imageUrl = `${API_BASE_URL}/sites/${siteSlug}/generation/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.siteNodeName}.${page.fileType}` : `${page.siteNodeName}.${page.fileType}`)}`;
       return (
         <img
           src={imageUrl}
-          alt={page.title}
+          alt={page.siteNodeName}
           className="w-8 h-8 object-cover rounded border border-gray-200 cursor-pointer"
-          onMouseEnter={(e) => handleImageMouseEnter(e, imageUrl, page.title)}
+          onMouseEnter={(e) => handleImageMouseEnter(e, imageUrl, page.siteNodeName)}
           onMouseLeave={() => setHoveredImage(null)}
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = 'none';
@@ -336,7 +336,7 @@ const ListView: React.FC<ListViewProps> = ({
         />
       )}
       {hoveredHighlights && (
-        <SitePageHoverCard
+        <SiteNodeHoverCard
           title={hoveredHighlights.title}
           highlights={hoveredHighlights.highlights}
           style={{
@@ -402,14 +402,14 @@ const ListView: React.FC<ListViewProps> = ({
           </thead>
           <tbody>
             {viewMode === 'flat' ? (
-              sortedPages.map(page => (
+              sortedNodes.map(page => (
                 <tr
-                  key={page.id}
-                  onClick={() => onPageClick(page.id)}
+                  key={page.siteNodeKey}
+                  onClick={() => onPageClick(page.siteNodeKey)}
                   onContextMenu={(e) => {
-                    if (onPageContextMenu) {
+                    if (onSiteNodeContextMenu) {
                       e.preventDefault();
-                      onPageContextMenu(page.id, e.clientX, e.clientY);
+                      onSiteNodeContextMenu(page.siteNodeKey, e.clientX, e.clientY);
                     }
                   }}
                   className={`
@@ -420,7 +420,7 @@ const ListView: React.FC<ListViewProps> = ({
                 >
                   <td
                     className="border px-4 py-2 relative"
-                    onMouseEnter={(e) => handleHighlightMouseEnter(e, page.title, page.highlights)}
+                    onMouseEnter={(e) => handleHighlightMouseEnter(e, page.siteNodeName, page.highlights)}
                     onMouseLeave={() => setHoveredHighlights(null)}
                   >
                     <div className="w-8 h-8 relative">
@@ -451,7 +451,7 @@ const ListView: React.FC<ListViewProps> = ({
                   </td>
                   <td className="border px-4 py-2">
                     <div className="flex items-center gap-2">
-                      {page.title}
+                      {page.siteNodeName}
                       {renderInlineThumbnail(page)}
                     </div>
                   </td>
@@ -459,7 +459,7 @@ const ListView: React.FC<ListViewProps> = ({
                     {page.sourceGraphSubdirectory || ''}
                   </td>
                   <td className="border px-4 py-2 text-neutral-500 font-mono text-sm">
-                    .{page.file_type}
+                    .{page.fileType}
                   </td>
                   <td className="border px-4 py-2">
                     {page.distance ?? 'N/A'}
@@ -467,7 +467,7 @@ const ListView: React.FC<ListViewProps> = ({
                 </tr>
               ))
             ) : (
-              groupedPages.map(group => {
+              groupedNodes.map(group => {
                 const groupKey = group.parentId ?? 'root';
                 const isExpanded = expandedGroups.has(groupKey);
 
@@ -487,9 +487,9 @@ const ListView: React.FC<ListViewProps> = ({
                           >
                             ▶
                           </span>
-                          {selectedPages && onSelectedPagesChange && (() => {
-                            const childIds = group.children.map(p => p.id);
-                            const selectedCount = childIds.filter(id => selectedPages.has(id)).length;
+                          {selectedNodeKeys && onSelectedNodeKeysChange && (() => {
+                            const childIds = group.children.map(p => p.siteNodeKey);
+                            const selectedCount = childIds.filter(id => selectedNodeKeys.has(id)).length;
                             const allSelected = selectedCount === childIds.length;
                             const someSelected = selectedCount > 0 && !allSelected;
                             return (
@@ -514,12 +514,12 @@ const ListView: React.FC<ListViewProps> = ({
                     {isExpanded &&
                       group.children.map(page => (
                         <tr
-                          key={page.id}
-                          onClick={() => onPageClick(page.id)}
+                          key={page.siteNodeKey}
+                          onClick={() => onPageClick(page.siteNodeKey)}
                           onContextMenu={(e) => {
-                            if (onPageContextMenu) {
+                            if (onSiteNodeContextMenu) {
                               e.preventDefault();
-                              onPageContextMenu(page.id, e.clientX, e.clientY);
+                              onSiteNodeContextMenu(page.siteNodeKey, e.clientX, e.clientY);
                             }
                           }}
                           className={`
@@ -530,7 +530,7 @@ const ListView: React.FC<ListViewProps> = ({
                         >
                           <td
                             className="border px-4 py-2 pl-8 relative"
-                            onMouseEnter={(e) => handleHighlightMouseEnter(e, page.title, page.highlights)}
+                            onMouseEnter={(e) => handleHighlightMouseEnter(e, page.siteNodeName, page.highlights)}
                             onMouseLeave={() => setHoveredHighlights(null)}
                           >
                             <div className="w-8 h-8 relative">
@@ -561,7 +561,7 @@ const ListView: React.FC<ListViewProps> = ({
                           </td>
                           <td className="border px-4 py-2 pl-8">
                             <div className="flex items-center gap-2">
-                              {page.title}
+                              {page.siteNodeName}
                               {renderInlineThumbnail(page)}
                             </div>
                           </td>
@@ -569,7 +569,7 @@ const ListView: React.FC<ListViewProps> = ({
                             {page.sourceGraphSubdirectory || ''}
                           </td>
                           <td className="border px-4 py-2 text-neutral-500 font-mono text-sm">
-                            .{page.file_type}
+                            .{page.fileType}
                           </td>
                           <td className="border px-4 py-2">
                             {page.distance ?? 'N/A'}
@@ -587,4 +587,4 @@ const ListView: React.FC<ListViewProps> = ({
   );
 };
 
-export default ListView; 
+export default ListView;

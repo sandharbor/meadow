@@ -18,10 +18,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { generateHtmlForSite } from '../../../../../src/areas/site/generation/html/htmlService.js';
-import { ensureTrackedPageContent } from '../../../../../src/areas/site/generation/source-material/trackedPageContent.js';
+import { ensureTrackedPageContent, prepareGenerationSourceMaterial } from '../../../../../src/areas/site/generation/source-material/trackedPageContent.js';
 import { TestSiteSetup } from '../../../../shared/support/testSiteSetup.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
-import { parsePageConfig } from '../../../../../../shared_code/utils/sitePageConfigUtils.js';
+import { parseSiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
 
 describe('tags (obsidian-style) in html preview', () => {
   const testSetup = new TestSiteSetup('areas/site/generation/fixtures/tags-site', 'tags-test-site');
@@ -48,17 +48,21 @@ describe('tags (obsidian-style) in html preview', () => {
   });
 
   it('should generate tag pages and backlinks should show both pages for a shared tag', () => {
-    const persistedPageConfigPath = SiteConfigPaths.getSitePageConfigFile(sitePath);
-    const persistedPageConfigs = parsePageConfig(fs.readFileSync(persistedPageConfigPath, 'utf8'));
-    expect(persistedPageConfigs.some(c => (c.source_graph_subdirectory || '') === SiteConfigPaths.TAGPAGES_DIR)).toBe(false);
+    const persistedPageConfigPath = SiteConfigPaths.getSiteNodeConfigFile(sitePath);
+    const persistedPageConfigs = parseSiteNodeConfig(fs.readFileSync(persistedPageConfigPath, 'utf8'));
+    expect(persistedPageConfigs.some(c => (c.sourceGraphSubdirectory || '') === SiteConfigPaths.TAGPAGES_DIR)).toBe(false);
 
-    const preparedPageConfigPath = SiteConfigPaths.getPreparedSitePageConfigFile(sitePath);
+    const preparedPageConfigPath = SiteConfigPaths.getPreparedSiteNodeConfigFile(sitePath);
     expect(fs.existsSync(preparedPageConfigPath)).toBe(true);
-    const preparedPageConfigs = parsePageConfig(fs.readFileSync(preparedPageConfigPath, 'utf8'));
+    const preparedPageConfigs = parseSiteNodeConfig(fs.readFileSync(preparedPageConfigPath, 'utf8'));
     expect(preparedPageConfigs.some(c =>
-      c.title === 'tag--t018-shared-1' &&
-      (c.source_graph_subdirectory || '') === SiteConfigPaths.TAGPAGES_DIR
+      c.siteNodeName === 'tag--t018-shared-1' &&
+      (c.sourceGraphSubdirectory || '') === SiteConfigPaths.TAGPAGES_DIR
     )).toBe(true);
+    const firstPreparedConfig = fs.readFileSync(preparedPageConfigPath, 'utf8');
+    const repeatedPreparation = prepareGenerationSourceMaterial(sitePath, { tagsEnabled: true });
+    expect(repeatedPreparation.siteNodeConfigPath).toBe(preparedPageConfigPath);
+    expect(fs.readFileSync(preparedPageConfigPath, 'utf8')).toBe(firstPreparedConfig);
 
     const rawTagPageMdPath = path.join(SiteConfigPaths.getTrackedPageContentDir(sitePath), SiteConfigPaths.TAGPAGES_DIR, 'tag--t018-shared-1.md');
     expect(fs.existsSync(rawTagPageMdPath)).toBe(false);
