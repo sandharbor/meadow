@@ -86,6 +86,7 @@ export interface StaticAssetNames {
   javascriptJs: string;
   mermaidMinJs: string;
   calloutsCss: string;
+  structuralPagesCss: string;
   excalidrawCss: string;
   excalidrawVendorJs: string;
   excalidrawJs: string;

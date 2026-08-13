@@ -146,6 +146,48 @@
   user-select: none;
 }
 
+/* Compact, non-interactive drawing surface used by virtual folder pages. */
+html[data-meadow-excalidraw-thumbnail="true"] body {
+  display: block;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+html[data-meadow-excalidraw-thumbnail="true"] .meadow-folder-nav,
+html[data-meadow-excalidraw-thumbnail="true"] header,
+html[data-meadow-excalidraw-thumbnail="true"] main > h1,
+html[data-meadow-excalidraw-thumbnail="true"] footer,
+html[data-meadow-excalidraw-thumbnail="true"] .meadow-excalidraw-controls {
+  display: none;
+}
+
+html[data-meadow-excalidraw-thumbnail="true"] .meadow-site-content {
+  min-height: 0;
+  margin: 0 !important;
+  padding: 0;
+}
+
+html[data-meadow-excalidraw-thumbnail="true"] main {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+html[data-meadow-excalidraw-thumbnail="true"] .meadow-excalidraw-page {
+  min-height: 100vh;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+html[data-meadow-excalidraw-thumbnail="true"] .meadow-excalidraw-page .meadow-excalidraw-viewer {
+  min-height: 100vh;
+}
+
 .meadow-excalidraw-controls {
   position: absolute;
   top: 8px;

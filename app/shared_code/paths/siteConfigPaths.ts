@@ -36,6 +36,7 @@ limitations under the License.
  *       published/
  *     raw/
  *       tracked_page_content/
+ *       tracked_site_node_config.yaml
  *     hooks/
  *       pageTitleNormalization.ts
  *       markdownProcessing.ts
@@ -72,6 +73,7 @@ const TAGPAGES_DIR = 'x-tagpages';
 // File names
 const SITE_CONFIG_FILE = 'site_config.yaml';
 const SITE_NODE_CONFIG_FILE = 'site_node_config.yaml';
+const TRACKED_SITE_NODE_CONFIG_FILE = 'tracked_site_node_config.yaml';
 const PREPARED_SITE_NODE_CONFIG_FILE = 'prepared_site_node_config.yaml';
 const CUSTOM_FILTERS_FILE = 'custom_filters.json';
 const PAGE_TITLE_NORMALIZATION_HOOK_FILE = 'pageTitleNormalization.ts';
@@ -122,6 +124,11 @@ export const SiteConfigPaths = {
     /** raw/tracked_page_content/ */
     trackedPageContentDir(): string {
       return join(RAW_DIR, TRACKED_PAGE_CONTENT_DIR);
+    },
+
+    /** raw/tracked_site_node_config.yaml */
+    trackedSiteNodeConfigFile(): string {
+      return join(RAW_DIR, TRACKED_SITE_NODE_CONFIG_FILE);
     },
 
     /** build/prepared_source_content/ */
@@ -270,6 +277,14 @@ export const SiteConfigPaths = {
    */
   getTrackedPageContentDir(siteDir: string): string {
     return join(siteDir, this.relative.trackedPageContentDir());
+  },
+
+  /**
+   * Get the generation-only tracked site node config:
+   * SITE_DIR/raw/tracked_site_node_config.yaml
+   */
+  getTrackedSiteNodeConfigFile(siteDir: string): string {
+    return join(siteDir, this.relative.trackedSiteNodeConfigFile());
   },
 
   /**
@@ -449,6 +464,7 @@ export const SiteConfigPaths = {
   CONFIG_FILES: {
     site_config: SITE_CONFIG_FILE,
     site_node_config: SITE_NODE_CONFIG_FILE,
+    tracked_site_node_config: TRACKED_SITE_NODE_CONFIG_FILE,
     prepared_site_node_config: PREPARED_SITE_NODE_CONFIG_FILE,
     custom_filters: CUSTOM_FILTERS_FILE,
   } as const,

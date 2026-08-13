@@ -47,6 +47,7 @@ import type { SiteNodeId, SiteNodeKey } from '../../../../../../shared_code/type
 import { buildVisibleStructuralProjection, type VisibleStructuralProjection } from '../../../../../../shared_code/utils/structuralProjection.js';
 import { hashAndRenameStaticAssets, type PrecompressedAssetSource } from './staticAssets.js';
 import { createRequire } from 'module';
+import { createHash } from 'crypto';
 
 // Load highlight.js github-light theme once at module load so the preset
 // stylesheet pipeline can append it to style.css (scoping the theme to code
@@ -91,6 +92,7 @@ import {
   SPACED_REPETITION_ASSETS_DIRECTORY,
 } from '../customizationAssets.js';
 import { planSiteRoutes, routeForSiteNode } from './siteRoutePlanner.js';
+import { canonicalPageFilename, isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -808,6 +810,20 @@ export async function generateHtmlForSite(
     logger.warn(`callouts.css not found at ${calloutsSrc}`);
   }
 
+  const siteHasStructuralPages = Object.values(siteNodeConfs).some(
+    conf => conf.siteNodeKind !== 'file' && conf.listType === 'whitelist'
+  );
+  if (siteHasStructuralPages) {
+    const structuralPagesSrc = path.join(sharedDirectory, 'structural-pages.css');
+    const structuralPagesDst = path.join(assetsDirectory, 'structural-pages.css');
+    if (fs.existsSync(structuralPagesSrc)) {
+      fs.copyFileSync(structuralPagesSrc, structuralPagesDst);
+      logger.debug(`Copied structural-pages.css to ${structuralPagesDst}`);
+    } else {
+      logger.warn(`structural-pages.css not found at ${structuralPagesSrc}`);
+    }
+  }
+
   if (generationOptions.folderNavigationEnabled) {
     const folderNavigationDirectory = path.join(assetsDirectory, CUSTOMIZATION_ASSETS_DIRECTORY, 'folder_nav');
     fs.mkdirSync(folderNavigationDirectory, { recursive: true });
@@ -1283,6 +1299,43 @@ export async function generateHtmlForSite(
     return directory === '.' ? '' : directory;
   };
 
+  const structuralChildIcon = (kind: ISiteNode['siteNodeKind']): string => {
+    if (kind === 'folder' || kind === 'collection') {
+      return '<span class="structural-child-icon" aria-hidden="true">'
+        + '<svg viewBox="0 0 24 24" focusable="false">'
+        + '<path d="M2.75 6.75A2.75 2.75 0 0 1 5.5 4h4.1l2.1 2.25h6.8a2.75 2.75 0 0 1 2.75 2.75v8.25A2.75 2.75 0 0 1 18.5 20h-13a2.75 2.75 0 0 1-2.75-2.75Z" fill="currentColor" opacity=".18"/>'
+        + '<path d="M3 7h17.5M5.5 4.25h4l2.1 2.25h6.9A2.5 2.5 0 0 1 21 9v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17V6.75a2.5 2.5 0 0 1 2.5-2.5Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>'
+        + '</svg></span>';
+    }
+    return '<span class="structural-child-icon" aria-hidden="true">'
+      + '<svg viewBox="0 0 24 24" focusable="false">'
+      + '<path d="M6.25 2.75h7l4.5 4.5v14h-11.5Z" fill="currentColor" opacity=".12"/>'
+      + '<path d="M13.25 2.75v4.5h4.5m-11.5-4.5h7l4.5 4.5v14h-11.5Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>'
+      + '<path d="M9 12h6M9 15.5h6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>'
+      + '</svg></span>';
+  };
+
+  const copyStructuralFileAsset = (config: Extract<typeof siteNodeConfigsArray[number], { siteNodeKind: 'file' }>): string | undefined => {
+    const sourceFilename = canonicalPageFilename(config.siteNodeName, config.fileType);
+    const sourcePath = config.sourceGraphSubdirectory
+      ? path.join(renderContentDirectory, ...config.sourceGraphSubdirectory.split('/'), sourceFilename)
+      : path.join(renderContentDirectory, sourceFilename);
+    if (!fs.existsSync(sourcePath)) return undefined;
+
+    const digest = createHash('sha256').update(fs.readFileSync(sourcePath)).digest('hex').slice(0, 8);
+    const extension = path.extname(sourceFilename);
+    const outputRelativePath = path.posix.join(
+      '_mw_assets',
+      CUSTOMIZATION_ASSETS_DIRECTORY,
+      'structural-previews',
+      `${config.siteNodeId}.${digest}${extension}`,
+    );
+    const outputPath = path.join(previewHtmlDirectory, ...outputRelativePath.split('/'));
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    if (!fs.existsSync(outputPath)) fs.copyFileSync(sourcePath, outputPath);
+    return outputRelativePath;
+  };
+
   const structuralBreadcrumbHtml = (siteNodeKey: SiteNodeKey, currentRoute: string): string => {
     if (!breadcrumbsEnabled || !structuralProjection) return '';
     const keys = structuralProjection.breadcrumbNodeKeysByNodeKey.get(siteNodeKey) ?? [];
@@ -1329,14 +1382,31 @@ export async function generateHtmlForSite(
       .filter((child): child is ISiteNode => Boolean(child?.siteNodeId && configById.has(child.siteNodeId)));
     const childItems = children.map(child => {
       const childConfig = configById.get(child.siteNodeId!)!;
-      const href = encodePathForUrl(calculateRelativePath(outputDirectory, routeForSiteNode(childConfig, routePlan.routes)));
-      const kind = child.siteNodeKind === 'folder' ? 'folder' : child.siteNodeKind === 'collection' ? 'site home' : 'page';
-      return `<li class="structural-child structural-child-${child.siteNodeKind}"><a href="${href}">${escapeHtml(child.siteNodeName)}</a><span class="structural-child-kind">${kind}</span></li>`;
+      const pageRoute = routeForSiteNode(childConfig, routePlan.routes);
+      const directAssetRoute = childConfig.siteNodeKind === 'file'
+        && childConfig.fileType !== 'md'
+        && childConfig.fileType !== 'excalidraw'
+        ? copyStructuralFileAsset(childConfig)
+        : undefined;
+      const targetRoute = directAssetRoute ?? pageRoute;
+      const href = encodePathForUrl(calculateRelativePath(outputDirectory, targetRoute));
+      const imageLike = childConfig.siteNodeKind === 'file' && isImageFileType(childConfig.fileType);
+      const preview = imageLike && childConfig.fileType === 'excalidraw'
+        ? `<span class="structural-child-preview structural-child-preview-excalidraw"><iframe src="${href}?meadow-thumbnail=1" title="Preview of ${escapeHtml(child.siteNodeName)}" loading="lazy" tabindex="-1" aria-hidden="true"></iframe></span>`
+        : imageLike && directAssetRoute
+          ? `<span class="structural-child-preview structural-child-preview-image"><img src="${href}" alt="" loading="lazy"></span>`
+          : '';
+      const fileTypeAttr = childConfig.siteNodeKind === 'file'
+        ? ` data-file-type="${escapeHtml(childConfig.fileType)}"`
+        : '';
+      return `<li class="structural-child structural-child-${child.siteNodeKind}${preview ? ' structural-child-has-preview' : ''}"${fileTypeAttr}>`
+        + `<a class="structural-child-link" href="${href}">${structuralChildIcon(child.siteNodeKind)}<span class="structural-child-name">${escapeHtml(child.siteNodeName)}</span></a>`
+        + preview
+        + '</li>';
     });
-    const bodyHtml = `<h1>${escapeHtml(config.siteNodeName)}</h1>`
-      + (childItems.length > 0
+    const bodyHtml = childItems.length > 0
         ? `<ul class="structural-children">${childItems.join('')}</ul>`
-        : '<p class="structural-empty">This folder is empty.</p>');
+        : '<p class="structural-empty">This folder is empty.</p>';
     const htmlPath = renderGeneratedSiteNodeToHtml({
       outputRoot: previewHtmlDirectory,
       outputRoute,

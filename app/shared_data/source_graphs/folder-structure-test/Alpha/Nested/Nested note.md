@@ -1,5 +1,3 @@
-# Nested note
-
 This page is nested below the selected Alpha folder.
 
 ```yaml
@@ -16,7 +14,13 @@ pagespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
-        footerSectionBacklinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: ../Alpha note.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../Alpha note.html
+                embeddedLinks:
+                  - linkName: Outside note
+                    linkRelativePath: ../../Outside/Outside note.html
   - site: ordered-folders
     curation:
       isTracked: false
@@ -29,5 +33,11 @@ pagespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
-        footerSectionBacklinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: ../Alpha note.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../Alpha note.html
+                embeddedLinks:
+                  - linkName: Outside note
+                    linkRelativePath: ../../Outside/Outside note.html
 ```

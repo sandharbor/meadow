@@ -47,6 +47,7 @@ test("previews a configured site from one recursively scanned folder", async ({
   await editor.switchToListView();
   await editor.switchToStructuralListView();
   await editor.expectListViewRowByExactNamePresent("Alpha note");
+  await editor.expectListViewRowByExactNamePresent("Visual map");
   await editor.expectListViewRowByExactNamePresent("Nested note");
   await editor.expectListViewRowByExactNameNotPresent("Beta note");
   await editor.expectListViewRowByExactNamePresent("Outside note");
@@ -55,14 +56,40 @@ test("previews a configured site from one recursively scanned folder", async ({
 
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
-  await previewModal.generatedSite.expectHeading("Alpha", 60_000);
-  await previewModal.generatedSite.folderNavigation.expectAvailable();
+  await previewModal.generatedSite.expectSingleHeading("Alpha", 60_000);
+  const folderNavigation = previewModal.generatedSite.folderNavigation;
+  await folderNavigation.expectAvailable();
+  await folderNavigation.open();
+  await folderNavigation.expectRootFolderNames(["Nested"]);
+  await folderNavigation.expectRootFileNames([
+    "Alpha note.html",
+    "Beyond outside.html",
+    "Outside note.html",
+  ]);
+  await folderNavigation.openFolder("Alpha/Nested/index.html");
+  await folderNavigation.expectDirectFileNames("Alpha/Nested/index.html", [
+    "Nested note.html",
+  ]);
+  await previewModal.generatedSite.expectStructuralChildNames([
+    "Nested",
+    "Alpha note",
+    "Visual map",
+  ]);
+  await previewModal.generatedSite.expectStructuralImagePreview("Visual map");
+  await folderNavigation.close();
   await snapshot("single folder generated home");
   await addKeyFrame(htmlGeneration);
+  await folderNavigation.open();
+  await folderNavigation.clickRootFile("Outside note.html");
+  await previewModal.generatedSite.expectSingleHeading("Outside note");
+  await folderNavigation.expectSelectedFile("Outside note.html");
+  await folderNavigation.open();
+  await snapshot("single folder linked page in folder navigation");
   void customSite;
 
   await assertMeadowHomeState({
     allowedUntracked: [
+      "sites/single-folder-site/build/",
       "sites/single-folder-site/html/",
       "sites/single-folder-site/raw/",
     ],

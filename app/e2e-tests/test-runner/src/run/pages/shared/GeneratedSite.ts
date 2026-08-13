@@ -401,6 +401,10 @@ export class GeneratedSiteFolderNavigation {
     return this.root.locator(`details[data-folder-path="${folderPath}"]`);
   }
 
+  private get rootTree() {
+    return this.sidebar.locator(".meadow-folder-nav-tree");
+  }
+
   async expectUnavailable() {
     await this.expect(this.sidebar).toHaveCount(0);
   }
@@ -530,6 +534,22 @@ export class GeneratedSiteFolderNavigation {
     ).toHaveText(fileNames);
   }
 
+  async expectRootFolderNames(folderNames: string[]) {
+    await this.expect(
+      this.rootTree.locator(
+        ":scope > li.meadow-folder-nav-folder > details > summary > span:last-child",
+      ),
+    ).toHaveText(folderNames);
+  }
+
+  async expectRootFileNames(fileNames: string[]) {
+    await this.expect(
+      this.rootTree.locator(
+        ":scope > li.meadow-folder-nav-file > a",
+      ),
+    ).toHaveText(fileNames);
+  }
+
   async clickFile(folderPath: string, fileName: string, force = false) {
     const link = this.folder(folderPath).getByRole("link", { name: fileName });
     if (force) {
@@ -537,6 +557,12 @@ export class GeneratedSiteFolderNavigation {
       return;
     }
     await link.click();
+  }
+
+  async clickRootFile(fileName: string) {
+    await this.rootTree.locator(":scope > li.meadow-folder-nav-file")
+      .getByRole("link", { name: fileName, exact: true })
+      .click();
   }
 
   async expectSelectedFile(fileName: string) {
@@ -562,7 +588,10 @@ export class GeneratedSiteFolderNavigation {
   }
 
   async open() {
-    await this.openButton.click();
+    await this.expectAvailable();
+    if (await this.html.getAttribute("data-meadow-folder-nav-open") !== "true") {
+      await this.openButton.click();
+    }
     await this.expectOpen();
   }
 
@@ -610,6 +639,21 @@ export class GeneratedSite {
 
   async expectHeading(text: string, timeout = 15_000) {
     await this.expect(this.heading).toContainText(text, { timeout });
+  }
+
+  async expectSingleHeading(text: string, timeout = 15_000) {
+    await this.expect(this.root.locator("h1")).toHaveText([text], { timeout });
+  }
+
+  async expectStructuralChildNames(names: string[]) {
+    await this.expect(this.root.locator(".structural-child-name")).toHaveText(names);
+  }
+
+  async expectStructuralImagePreview(name: string) {
+    const child = this.root.locator(".structural-child", {
+      has: this.root.locator(".structural-child-name", { hasText: name }),
+    });
+    await this.expect(child.locator(".structural-child-preview-image img")).toBeVisible();
   }
 
   async clickPageLink(name: string) {

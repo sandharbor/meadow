@@ -46,12 +46,14 @@ describe('folder-derived HTML generation', () => {
     expect(fs.existsSync(path.join(preview, 'index.html'))).toBe(true);
     expect(fs.existsSync(path.join(preview, 'Project', '_folder-111111.html'))).toBe(true);
     expect(fs.existsSync(path.join(preview, 'Project', 'index.html'))).toBe(true);
+    expect(fs.existsSync(path.join(preview, 'Project', 'Folder sketch.html'))).toBe(true);
     expect(fs.existsSync(path.join(preview, 'Project', 'Middle', 'Deep.html'))).toBe(true);
     expect(fs.existsSync(path.join(preview, 'Project', 'Middle', 'index.html'))).toBe(false);
     expect(fs.existsSync(path.join(preview, 'Empty', 'index.html'))).toBe(true);
     expect(fs.existsSync(path.join(preview, 'Outside.html'))).toBe(true);
 
     const home = read('index.html');
+    expect(home.match(/<h1>Folder Test<\/h1>/g)).toHaveLength(1);
     expect(home).toContain('data-hook-processed="true"');
     expect(home.indexOf('Project')).toBeLessThan(home.indexOf('Empty'));
     expect(home).toContain('Project/_folder-111111.html');
@@ -59,6 +61,11 @@ describe('folder-derived HTML generation', () => {
     expect(project).toContain('Stop/index.html');
     expect(project).toContain('Middle/Deep.html');
     expect(project).toContain('index.html');
+    expect(project).toContain('class="structural-child-icon"');
+    expect(project).not.toContain('structural-child-kind');
+    expect(project).toContain('data-file-type="excalidraw"');
+    expect(project).toContain('class="structural-child-preview structural-child-preview-excalidraw"');
+    expect(project).toContain('src="Folder%20sketch.html?meadow-thumbnail=1"');
     expect(project).not.toContain('Middle/index.html');
     expect(read('Empty/index.html')).toContain('This folder is empty.');
     expect(read('Project/Middle/Deep.html')).toContain('href="../../Outside.html"');

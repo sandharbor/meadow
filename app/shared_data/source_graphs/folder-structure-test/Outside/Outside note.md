@@ -1,5 +1,3 @@
-# Outside note
-
 This page remains outside both selected folder configurations, but Alpha note links to it.
 It links one step farther to [[Beyond outside]].
 
@@ -18,8 +16,15 @@ pagespecs:
             isInGraph: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
+        mainSectionLinks:
+          - relativeLinkPath: Beyond outside.html
+        footerSectionBacklinks:
+          - relativeLinkPath: ../Alpha/Alpha note.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../Alpha/Alpha note.html
+                embeddedLinks:
+                  - linkName: Nested note
+                    linkRelativePath: ../Alpha/Nested/Nested note.html
   - site: ordered-folders
     curation:
       isTracked: false
@@ -33,6 +38,13 @@ pagespecs:
             isInGraph: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
+        mainSectionLinks:
+          - relativeLinkPath: Beyond outside.html
+        footerSectionBacklinks:
+          - relativeLinkPath: ../Alpha/Alpha note.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../Alpha/Alpha note.html
+                embeddedLinks:
+                  - linkName: Nested note
+                    linkRelativePath: ../Alpha/Nested/Nested note.html
 ```

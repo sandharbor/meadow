@@ -14,6 +14,14 @@
 (function () {
   'use strict';
 
+  try {
+    if (new URLSearchParams(window.location.search).get('meadow-thumbnail') === '1') {
+      document.documentElement.setAttribute('data-meadow-excalidraw-thumbnail', 'true');
+    }
+  } catch (_error) {
+    // The standalone drawing remains fully usable if URL parsing is unavailable.
+  }
+
   // Fetches started by a generated page are legitimately abandoned when the
   // reader follows another link.  Under load the rejection can arrive after
   // pagehide, so keep that lifecycle separate from a real rendering failure.

@@ -1,5 +1,3 @@
-# Alpha note
-
 This page links to [[Nested note]] inside the selected structure and [[Outside note]] beyond it.
 
 ```yaml
@@ -17,7 +15,9 @@ pagespecs:
         inlinks: []
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
+        mainSectionLinks:
+          - relativeLinkPath: Nested/Nested note.html
+          - relativeLinkPath: ../Outside/Outside note.html
         footerSectionBacklinks: []
   - site: ordered-folders
     curation:
@@ -32,6 +32,8 @@ pagespecs:
         inlinks: []
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
+        mainSectionLinks:
+          - relativeLinkPath: Nested/Nested note.html
+          - relativeLinkPath: ../Outside/Outside note.html
         footerSectionBacklinks: []
 ```

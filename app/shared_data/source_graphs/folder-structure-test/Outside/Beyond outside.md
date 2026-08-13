@@ -1,5 +1,3 @@
-# Beyond outside
-
 This page is linked from Outside note at the second configured outlink depth.
 
 ```yaml
@@ -16,7 +14,11 @@ pagespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
-        footerSectionBacklinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: Outside note.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Outside note.html
+                embeddedLinks: []
   - site: ordered-folders
     curation:
       isTracked: false
@@ -29,5 +31,9 @@ pagespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
-        footerSectionBacklinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: Outside note.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Outside note.html
+                embeddedLinks: []
 ```

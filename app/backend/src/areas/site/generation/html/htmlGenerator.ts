@@ -868,6 +868,7 @@ export function renderGeneratedSiteNodeToHtml(args: {
     site_javascript_js: assets?.siteJavascriptJs,
     mermaid_min_js: assets?.mermaidMinJs ?? 'mermaid.min.js',
     callouts_css: assets?.calloutsCss ?? 'callouts.css',
+    structural_pages_css: assets?.structuralPagesCss ?? 'structural-pages.css',
     search_css: assets?.searchCss ?? 'cust/search/search.css',
     search_js: assets?.searchJs ?? 'cust/search/search.js',
     hover_preview_css: assets?.hoverPreviewCss ?? 'cust/hover_preview/hover-preview.css',

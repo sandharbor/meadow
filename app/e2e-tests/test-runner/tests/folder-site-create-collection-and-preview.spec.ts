@@ -51,6 +51,7 @@ test("previews a configured multiple-folder collection site", async ({
   await editor.expectListViewRowByExactNamePresent("Alpha");
   await editor.expectListViewRowByExactNamePresent("Beta note");
   await editor.expectListViewRowByExactNamePresent("Alpha note");
+  await editor.expectListViewRowByExactNamePresent("Visual map");
   await editor.expectListViewRowByExactNamePresent("Nested note");
   await editor.expectListViewRowByExactNamePresent("Outside note");
   await editor.expectListViewRowByExactNamePresent("Beyond outside");
@@ -58,14 +59,38 @@ test("previews a configured multiple-folder collection site", async ({
 
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
-  await previewModal.generatedSite.expectHeading("Ordered Folders", 60_000);
-  await previewModal.generatedSite.folderNavigation.expectAvailable();
+  await previewModal.generatedSite.expectSingleHeading("Ordered Folders", 60_000);
+  const folderNavigation = previewModal.generatedSite.folderNavigation;
+  await folderNavigation.expectAvailable();
+  await folderNavigation.open();
+  await folderNavigation.expectRootFolderNames(["Alpha", "Beta"]);
+  await folderNavigation.expectRootFileNames([
+    "Beyond outside.html",
+    "Outside note.html",
+  ]);
+  await folderNavigation.openFolder("Alpha/index.html");
+  await folderNavigation.expectDirectFileNames("Alpha/index.html", [
+    "Alpha note.html",
+  ]);
+  await folderNavigation.openFolder("Beta/index.html");
+  await folderNavigation.expectDirectFileNames("Beta/index.html", [
+    "Beta note.html",
+  ]);
+  await previewModal.generatedSite.expectStructuralChildNames(["Beta", "Alpha"]);
+  await folderNavigation.close();
   await snapshot("ordered collection generated home");
   await addKeyFrame(htmlGeneration);
+  await folderNavigation.open();
+  await folderNavigation.clickFile("Alpha/index.html", "Alpha note.html");
+  await previewModal.generatedSite.expectSingleHeading("Alpha note");
+  await folderNavigation.expectSelectedFile("Alpha note.html");
+  await folderNavigation.open();
+  await snapshot("ordered collection selected folder page");
   void customSite;
 
   await assertMeadowHomeState({
     allowedUntracked: [
+      "sites/ordered-folders/build/",
       "sites/ordered-folders/html/",
       "sites/ordered-folders/raw/",
     ],

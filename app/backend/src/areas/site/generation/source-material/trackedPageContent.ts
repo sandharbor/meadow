@@ -17,7 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { parseSiteNodeConfig } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
+import { parseSiteNodeConfig, resolveSiteNodeRoles } from '../../../../../../shared_code/utils/siteNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../shared_code/utils/fileTypeUtils.js';
 import { FileSiteNodeConfig, SiteNodeConfig } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import type { SiteNodeId } from '../../../../../../shared_code/types/siteNodeConfig.js';
@@ -39,6 +39,7 @@ import {
   pageMatchesConfiguredSrsTags,
 } from '../render-source/srsMarkdown.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 
 export interface PreparedGenerationSourceMaterial {
   sourceContentDirectory: string;
@@ -60,6 +61,98 @@ function generatedTagSiteNodeId(
   }
 }
 
+type FolderGenerationNode = {
+  siteNodeKey: string;
+  siteNodeId?: string;
+  siteNodeKind: 'file' | 'folder' | 'collection';
+  siteNodeName: string;
+  sourceGraphSubdirectory?: string;
+  fileType?: FileSiteNodeConfig['fileType'];
+  effectiveBlacklistingSiteNodeId?: string;
+  remaining_depth: number;
+  remaining_inlinks_depth?: number;
+};
+
+type FolderGenerationOutput = {
+  nodes: FolderGenerationNode[];
+};
+
+function generatedFolderSiteNodeId(
+  siteIdentity: string,
+  siteNodeKey: string,
+  assignedIds: Set<string>,
+): SiteNodeId {
+  for (let salt = 0; ; salt += 1) {
+    const candidate = crypto.createHash('sha256')
+      .update(`${siteIdentity}\0folder-generation\0${siteNodeKey}\0${salt}`)
+      .digest('hex')
+      .slice(0, 12);
+    if (!assignedIds.has(candidate)) return candidate as SiteNodeId;
+  }
+}
+
+async function materializeFolderGenerationConfigs(options: {
+  siteDirectory: string;
+  sourceDirectory: string;
+  siteNodeConfigPath: string;
+  siteNodeConfigs: SiteNodeConfig[];
+}): Promise<SiteNodeConfig[]> {
+  const { siteDirectory, sourceDirectory, siteNodeConfigPath, siteNodeConfigs } = options;
+  const siteConfig = loadSiteConfig(siteDirectory);
+  const { entryNode, defaultTraversalNode } = resolveSiteNodeRoles(
+    siteNodeConfigs,
+    siteConfig,
+    SiteConfigPaths.getSiteConfigFile(siteDirectory),
+  );
+  if (entryNode.siteNodeKind === 'file') return siteNodeConfigs;
+
+  const raw = await runWorkingGraphRaw({
+    graphRoot: sourceDirectory,
+    siteNodeConfigPath,
+    entrySiteNodeId: entryNode.siteNodeId,
+    defaultTraversalSiteNodeId: defaultTraversalNode.siteNodeId,
+    defaultOutlinksDepth: siteConfig.defaultOutlinksDepth,
+    defaultInlinksDepth: siteConfig.defaultInlinksDepth,
+    frontierDepth: 0,
+    allowImagesToExtendToFrontier: true,
+    allowLowerDepths: false,
+  });
+  const output = JSON.parse(raw) as FolderGenerationOutput;
+  const assignedIds = new Set<string>(siteNodeConfigs.map(config => config.siteNodeId));
+  const siteIdentity = siteConfig.siteGuid || path.basename(siteDirectory);
+  const derivedConfigs: SiteNodeConfig[] = [];
+  const derivedNodes = output.nodes
+    .filter(node => !node.siteNodeId && !node.effectiveBlacklistingSiteNodeId)
+    .sort((left, right) => left.siteNodeKey.localeCompare(right.siteNodeKey));
+  for (const node of derivedNodes) {
+    const siteNodeId = generatedFolderSiteNodeId(siteIdentity, node.siteNodeKey, assignedIds);
+    assignedIds.add(siteNodeId);
+    if (node.siteNodeKind === 'file' && node.fileType) {
+      derivedConfigs.push({
+        siteNodeName: node.siteNodeName,
+        ...(node.sourceGraphSubdirectory && { sourceGraphSubdirectory: node.sourceGraphSubdirectory }),
+        siteNodeKind: 'file',
+        fileType: node.fileType,
+        siteNodeId,
+        listType: 'whitelist',
+        outlinksDepth: node.remaining_depth,
+        inlinksDepth: node.remaining_inlinks_depth ?? 0,
+      });
+    } else if (node.siteNodeKind === 'folder') {
+      derivedConfigs.push({
+        siteNodeName: node.siteNodeName,
+        sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
+        siteNodeKind: 'folder',
+        siteNodeId,
+        listType: 'whitelist',
+        outlinksDepth: 0,
+        inlinksDepth: 0,
+      });
+    }
+  }
+  return [...siteNodeConfigs, ...derivedConfigs];
+}
+
 /**
  * Ensures the tracked_page_content directory is populated with files from the source directory.
  * This copies tracked pages (based on site_node_config.yaml) from the source directory to
@@ -76,6 +169,7 @@ export async function ensureTrackedPageContent(
   // filesystem operations. Keep an `await` to satisfy @typescript-eslint/require-await.
   await Promise.resolve();
   const targetDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
+  const trackedSiteNodeConfigPath = SiteConfigPaths.getTrackedSiteNodeConfigFile(siteDirectory);
   const tagPagesSubdirName = SiteConfigPaths.TAGPAGES_DIR;
   const siteConfig = loadSiteConfig(siteDirectory);
   const appConfig = loadAppConfig(getConfigDirectory());
@@ -84,12 +178,26 @@ export async function ensureTrackedPageContent(
   // Read site_node_config.yaml to get tracked page titles
   const siteNodeConfPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
   if (!fs.existsSync(siteNodeConfPath)) {
+    fs.rmSync(trackedSiteNodeConfigPath, { force: true });
     logger.warn('site_node_config.yaml not found, skipping tracked page content sync');
     return;
   }
 
   const confContent = fs.readFileSync(siteNodeConfPath, 'utf8');
-  const siteNodeConfigs = parseSiteNodeConfig(confContent);
+  const persistedSiteNodeConfigs = parseSiteNodeConfig(confContent);
+  const siteNodeConfigs = await materializeFolderGenerationConfigs({
+    siteDirectory,
+    sourceDirectory,
+    siteNodeConfigPath: siteNodeConfPath,
+    siteNodeConfigs: persistedSiteNodeConfigs,
+  });
+
+  if (siteNodeConfigs.length > persistedSiteNodeConfigs.length) {
+    fs.mkdirSync(path.dirname(trackedSiteNodeConfigPath), { recursive: true });
+    fs.writeFileSync(trackedSiteNodeConfigPath, stringifySiteNodeConfig(siteNodeConfigs), 'utf8');
+  } else {
+    fs.rmSync(trackedSiteNodeConfigPath, { force: true });
+  }
 
   // Canonical record presence is the sole tracking/registration signal.
   const trackedPages = siteNodeConfigs;
@@ -237,6 +345,10 @@ export function prepareGenerationSourceMaterial(
 ): PreparedGenerationSourceMaterial {
   const trackedPageContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const persistedSiteNodeConfigPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
+  const trackedSiteNodeConfigPath = SiteConfigPaths.getTrackedSiteNodeConfigFile(siteDirectory);
+  const baseSiteNodeConfigPath = fs.existsSync(trackedSiteNodeConfigPath)
+    ? trackedSiteNodeConfigPath
+    : persistedSiteNodeConfigPath;
   const preparedSourceContentDir = SiteConfigPaths.getPreparedSourceContentDir(siteDirectory);
   const preparedSiteNodeConfigPath = SiteConfigPaths.getPreparedSiteNodeConfigFile(siteDirectory);
   const tagPagesSubdirName = SiteConfigPaths.TAGPAGES_DIR;
@@ -244,7 +356,7 @@ export function prepareGenerationSourceMaterial(
 
   const fallback: PreparedGenerationSourceMaterial = {
     sourceContentDirectory: trackedPageContentDir,
-    siteNodeConfigPath: persistedSiteNodeConfigPath,
+    siteNodeConfigPath: baseSiteNodeConfigPath,
     tagPageCount: 0,
   };
 
@@ -253,13 +365,13 @@ export function prepareGenerationSourceMaterial(
     return fallback;
   }
 
-  if (!fs.existsSync(persistedSiteNodeConfigPath) || !fs.existsSync(trackedPageContentDir)) {
+  if (!fs.existsSync(baseSiteNodeConfigPath) || !fs.existsSync(trackedPageContentDir)) {
     cleanupPreparedGenerationSourceMaterial(siteDirectory);
     return fallback;
   }
 
   try {
-    const siteNodeConfigs = parseSiteNodeConfig(fs.readFileSync(persistedSiteNodeConfigPath, 'utf8'));
+    const siteNodeConfigs = parseSiteNodeConfig(fs.readFileSync(baseSiteNodeConfigPath, 'utf8'));
     const nonTagConfigs = siteNodeConfigs.filter(c => (c.sourceGraphSubdirectory || '') !== tagPagesSubdirName);
 
     // 1) Scan tracked markdown for Obsidian-style #tags

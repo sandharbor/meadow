@@ -23,6 +23,12 @@ const SWITCH_DOES_CHANGE_CONF_KEY = 'switch_does_change_conf';
 const SWITCH_DOES_CLEAR_LOGS_KEY = 'switch_does_clear_logs';
 const LAUNCH_MODE_KEY = 'dev_tools_launch_mode';
 
+const FIXTURE_ROW_IDS = [
+  ['home_fixture_big_and_small', 'home_fixture_example'],
+  ['home_fixture_folder_structure_single', 'home_fixture_folder_structure_multiple'],
+  ['home_fixture_hooks', 'home_fixture_nested', 'home_fixture_srs'],
+] as const;
+
 interface ConfigStatus {
   configMode: ConfigMode;
   normalConfBackupExists: boolean;
@@ -224,6 +230,17 @@ const ConfigManager: React.FC = () => {
     activeColorClass: 'ring-2 ring-info-500 ring-offset-2',
     buttonColorClass: 'bg-info-500 hover:bg-info-600',
   }));
+  const fixtureOptionById = new Map(fixtureOptions.map((option) => [option.id, option]));
+  const fixtureOptionRows: ConfigModeOption[][] = FIXTURE_ROW_IDS
+    .map((fixtureIds) => fixtureIds
+      .map((fixtureId) => fixtureOptionById.get(fixtureId))
+      .filter((option): option is ConfigModeOption => Boolean(option)))
+    .filter((row) => row.length > 0);
+  const groupedFixtureIds = new Set<string>(FIXTURE_ROW_IDS.flat());
+  const remainingFixtureOptions = fixtureOptions.filter((option) => !groupedFixtureIds.has(option.id));
+  for (let index = 0; index < remainingFixtureOptions.length; index += 3) {
+    fixtureOptionRows.push(remainingFixtureOptions.slice(index, index + 3));
+  }
 
   const renderModeCard = (option: ConfigModeOption, isActive: boolean, options: { isNormalMode?: boolean; isFixture?: boolean } = {}) => {
     const { isNormalMode = false, isFixture = false } = options;
@@ -422,11 +439,19 @@ const ConfigManager: React.FC = () => {
           {fixtureOptions.length > 0 && (
             <>
               <div className="text-xs font-medium text-neutral-500 mb-2 mt-4">Test Fixtures</div>
-              <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${Math.min(fixtureOptions.length, 3)}, 1fr)` }}>
-                {fixtureOptions.map((option) => {
-                  const isActive = !!modeHelper?.isTestFixture && activeFixtureName === option.id;
-                  return renderModeCard(option, isActive, { isFixture: true });
-                })}
+              <div className="space-y-3">
+                {fixtureOptionRows.map((row) => (
+                  <div
+                    key={row.map((option) => option.id).join(':')}
+                    className="grid gap-3"
+                    style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}
+                  >
+                    {row.map((option) => {
+                      const isActive = !!modeHelper?.isTestFixture && activeFixtureName === option.id;
+                      return renderModeCard(option, isActive, { isFixture: true });
+                    })}
+                  </div>
+                ))}
               </div>
             </>
           )}

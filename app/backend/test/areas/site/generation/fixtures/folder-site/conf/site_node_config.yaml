@@ -39,6 +39,12 @@ nodes:
     fileType: md
     siteNodeId: iiiiiiiiiiii
     listType: whitelist
+  - siteNodeName: Folder sketch
+    sourceGraphSubdirectory: Project
+    siteNodeKind: file
+    fileType: excalidraw
+    siteNodeId: eeeeeeeeeeee
+    listType: whitelist
   - siteNodeName: Outside
     siteNodeKind: file
     fileType: md
