@@ -24,7 +24,7 @@ interface SaveLocallyTabProps {
 
 interface LocalPaths {
   rawMarkdown: string;
-  previewHtml: string;
+  generatedHtml: string;
   openKnowledgeFormat: string;
 }
 

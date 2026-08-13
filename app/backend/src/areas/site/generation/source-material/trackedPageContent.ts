@@ -54,7 +54,7 @@ function generatedTagSiteNodeId(
 ): SiteNodeId {
   for (let salt = 0; ; salt += 1) {
     const candidate = crypto.createHash('sha256')
-      .update(`${siteIdentity}\0${SiteConfigPaths.TAGPAGES_DIR}\0${siteNodeName}\0${salt}`)
+      .update(`${siteIdentity}\0${SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR}\0${siteNodeName}\0${salt}`)
       .digest('hex')
       .slice(0, 12);
     if (!assignedIds.has(candidate)) return candidate as SiteNodeId;
@@ -170,7 +170,7 @@ export async function ensureTrackedPageContent(
   await Promise.resolve();
   const targetDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
   const trackedSiteNodeConfigPath = SiteConfigPaths.getTrackedSiteNodeConfigFile(siteDirectory);
-  const tagPagesSubdirName = SiteConfigPaths.TAGPAGES_DIR;
+  const tagPagesSubdirName = SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;
   const siteConfig = loadSiteConfig(siteDirectory);
   const appConfig = loadAppConfig(getConfigDirectory());
   const generationOptions = resolveEffectiveGenerationOptions(appConfig, siteConfig);
@@ -351,7 +351,7 @@ export function prepareGenerationSourceMaterial(
     : persistedSiteNodeConfigPath;
   const preparedSourceContentDir = SiteConfigPaths.getPreparedSourceContentDir(siteDirectory);
   const preparedSiteNodeConfigPath = SiteConfigPaths.getPreparedSiteNodeConfigFile(siteDirectory);
-  const tagPagesSubdirName = SiteConfigPaths.TAGPAGES_DIR;
+  const tagPagesSubdirName = SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;
   const tagPagesDir = path.join(preparedSourceContentDir, tagPagesSubdirName);
 
   const fallback: PreparedGenerationSourceMaterial = {

@@ -50,27 +50,27 @@ describe('tags (obsidian-style) in html preview', () => {
   it('should generate tag pages and backlinks should show both pages for a shared tag', () => {
     const persistedPageConfigPath = SiteConfigPaths.getSiteNodeConfigFile(sitePath);
     const persistedPageConfigs = parseSiteNodeConfig(fs.readFileSync(persistedPageConfigPath, 'utf8'));
-    expect(persistedPageConfigs.some(c => (c.sourceGraphSubdirectory || '') === SiteConfigPaths.TAGPAGES_DIR)).toBe(false);
+    expect(persistedPageConfigs.some(c => (c.sourceGraphSubdirectory || '') === SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR)).toBe(false);
 
     const preparedPageConfigPath = SiteConfigPaths.getPreparedSiteNodeConfigFile(sitePath);
     expect(fs.existsSync(preparedPageConfigPath)).toBe(true);
     const preparedPageConfigs = parseSiteNodeConfig(fs.readFileSync(preparedPageConfigPath, 'utf8'));
     expect(preparedPageConfigs.some(c =>
       c.siteNodeName === 'tag--t018-shared-1' &&
-      (c.sourceGraphSubdirectory || '') === SiteConfigPaths.TAGPAGES_DIR
+      (c.sourceGraphSubdirectory || '') === SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR
     )).toBe(true);
     const firstPreparedConfig = fs.readFileSync(preparedPageConfigPath, 'utf8');
     const repeatedPreparation = prepareGenerationSourceMaterial(sitePath, { tagsEnabled: true });
     expect(repeatedPreparation.siteNodeConfigPath).toBe(preparedPageConfigPath);
     expect(fs.readFileSync(preparedPageConfigPath, 'utf8')).toBe(firstPreparedConfig);
 
-    const rawTagPageMdPath = path.join(SiteConfigPaths.getTrackedPageContentDir(sitePath), SiteConfigPaths.TAGPAGES_DIR, 'tag--t018-shared-1.md');
+    const rawTagPageMdPath = path.join(SiteConfigPaths.getTrackedPageContentDir(sitePath), SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR, 'tag--t018-shared-1.md');
     expect(fs.existsSync(rawTagPageMdPath)).toBe(false);
 
-    const tagPageMdPath = path.join(SiteConfigPaths.getPreparedSourceContentDir(sitePath), SiteConfigPaths.TAGPAGES_DIR, 'tag--t018-shared-1.md');
+    const tagPageMdPath = path.join(SiteConfigPaths.getPreparedSourceContentDir(sitePath), SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR, 'tag--t018-shared-1.md');
     expect(fs.existsSync(tagPageMdPath)).toBe(true);
 
-    const tagHtmlPath = path.join(SiteConfigPaths.getPreviewDir(sitePath), SiteConfigPaths.TAGPAGES_DIR, 'tag--t018-shared-1.html');
+    const tagHtmlPath = path.join(SiteConfigPaths.getGeneratedTagpagesDir(sitePath), 'tag--t018-shared-1.html');
     expect(fs.existsSync(tagHtmlPath)).toBe(true);
 
     const html = fs.readFileSync(tagHtmlPath, 'utf8');
@@ -106,7 +106,7 @@ describe('tags (obsidian-style) in html preview', () => {
     expect(md).not.toContain('[[tag--tag-inside-fenced-code-block|#tag-inside-fenced-code-block]]');
 
     // And we should not create tag pages from those code snippets.
-    const tagPagesDir = path.join(SiteConfigPaths.getPreparedSourceContentDir(sitePath), SiteConfigPaths.TAGPAGES_DIR);
+    const tagPagesDir = path.join(SiteConfigPaths.getPreparedSourceContentDir(sitePath), SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR);
     const tagPageFiles = fs.existsSync(tagPagesDir) ? fs.readdirSync(tagPagesDir).join('\n') : '';
     expect(tagPageFiles).not.toContain('tag--tag-inside-code-ticks.md');
     expect(tagPageFiles).not.toContain('tag--tag-inside-fenced-code-block.md');

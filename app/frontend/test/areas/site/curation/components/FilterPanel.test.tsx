@@ -18,8 +18,69 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, screen, waitFor } from '@testing-library/react';
 import FilterPanel from '../../../../../src/areas/site/curation/components/FilterPanel';
 import { IFilter } from '../../../../../src/areas/site/curation/types/filters';
+import { Graph } from '../../../../../../shared_code/types/graph';
+import type { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
+import type { FileType } from '../../../../../../shared_code/types/FileType';
+import type { SiteNodeKey } from '../../../../../../shared_code/types/siteNodeConfig';
 
 describe('FilterPanel', () => {
+  const fileNode = (key: string, fileType: FileType): ISiteNode => ({
+    siteNodeKey: key as SiteNodeKey,
+    siteNodeName: key,
+    siteNodeKind: 'file',
+    sourceGraphSubdirectory: '',
+    fileType,
+    label: key,
+    depth: 0,
+    remaining_depth: 0,
+    getIdent: () => key,
+  });
+
+  const nodeTypesFilter = (enabled = false): IFilter => ({
+    id: 'node-types-filter',
+    name: 'Types',
+    description: 'Filter nodes by the roles and file types present in this graph',
+    siteNodeSelectors: [],
+    selectorApplicationCriteria: 'union',
+    actions: [],
+    enabled,
+    isSolo: false,
+    isHidden: false,
+    isNodeTypeFilter: true,
+    nodeTypeStates: {},
+  });
+
+  const gapFilterGroup: IFilter = {
+    id: 'gap-filter',
+    name: 'Gap',
+    siteNodeSelectors: [],
+    selectorApplicationCriteria: 'union',
+    actions: [],
+    enabled: false,
+    isSolo: false,
+    isHidden: false,
+    isGapFilter: true,
+  };
+
+  const gapFilter = (id: 'outlink-gap-filter' | 'inlink-gap-filter'): IFilter => ({
+    id,
+    name: id === 'outlink-gap-filter' ? 'Outlink Gap' : 'Inlink Gap',
+    siteNodeSelectors: [{
+      id: `${id}-selector`,
+      name: id,
+      type: 'normal',
+      select: () => new Set(),
+    }],
+    selectorApplicationCriteria: 'union',
+    actions: [{ type: 'highlight', color: '#999999', isDashed: false }],
+    enabled: false,
+    isSolo: false,
+    isHidden: false,
+    showThresholdInput: true,
+    thresholdValue: 5,
+    hideFromFilterList: true,
+  });
+
   const mockFilters: IFilter[] = [
     {
       id: 'test-filter-1',
@@ -100,6 +161,7 @@ describe('FilterPanel', () => {
   const defaultPanelProps = {
     siteSlug: 'test-site',
     onCustomFiltersChange: vi.fn(),
+    graph: new Graph(),
   };
 
   it('renders all filters', () => {
@@ -249,4 +311,82 @@ describe('FilterPanel', () => {
     });
   });
 
-}); 
+  it('hides Types when the graph only has one applicable type', () => {
+    const graph = new Graph();
+    graph.addNode(fileNode('note', 'md'));
+
+    render(
+      <FilterPanel
+        filters={[nodeTypesFilter()]}
+        onFilterChange={vi.fn()}
+        {...defaultPanelProps}
+        graph={graph}
+        pages={graph.getAllNodes()}
+      />
+    );
+
+    expect(screen.queryByText('Types')).not.toBeInTheDocument();
+  });
+
+  it('groups the graph types that are present and updates their individual state', () => {
+    const graph = new Graph();
+    graph.addNode(fileNode('note', 'md'));
+    graph.addNode(fileNode('drawing', 'excalidraw'));
+    const onFilterChange = vi.fn();
+
+    render(
+      <FilterPanel
+        filters={[nodeTypesFilter(true)]}
+        onFilterChange={onFilterChange}
+        {...defaultPanelProps}
+        graph={graph}
+        pages={graph.getAllNodes()}
+      />
+    );
+
+    expect(screen.getByText('Types')).toBeInTheDocument();
+    expect(screen.queryByText('File Nodes')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Types' }));
+    expect(screen.getByText('File Nodes')).toBeInTheDocument();
+    expect(screen.getByText('Image Nodes')).toBeInTheDocument();
+    expect(screen.queryByText('Folder Nodes')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTitle('Solo Image Nodes'));
+    expect(onFilterChange).toHaveBeenCalledWith('node-types-filter', {
+      nodeTypeStates: {
+        image: { showTitles: false, isSolo: true, isHidden: false },
+      },
+    });
+  });
+
+  it('groups Outlink and Inlink under a chevron-based Gap disclosure', () => {
+    const onFilterChange = vi.fn();
+
+    render(
+      <FilterPanel
+        filters={[gapFilterGroup, gapFilter('outlink-gap-filter'), gapFilter('inlink-gap-filter')]}
+        onFilterChange={onFilterChange}
+        {...defaultPanelProps}
+      />
+    );
+
+    const gapDisclosure = screen.getByRole('button', { name: 'Expand Gap' });
+    expect(gapDisclosure).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText('Outlink Gap')).not.toBeInTheDocument();
+
+    fireEvent.click(gapDisclosure);
+    expect(screen.getByRole('button', { name: 'Collapse Gap' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText('Outlink Gap')).toBeInTheDocument();
+    expect(screen.getByLabelText('Inlink Gap')).toBeInTheDocument();
+    expect(screen.getByText('Outlink')).toBeInTheDocument();
+    expect(screen.getByText('Inlink')).toBeInTheDocument();
+    expect(screen.queryByText('Outlink Gap')).not.toBeInTheDocument();
+    expect(screen.queryByText('Inlink Gap')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Outlink gap threshold')).toHaveValue(5);
+    expect(screen.getByLabelText('Outlink gap threshold')).toHaveClass('w-12');
+
+    fireEvent.click(screen.getByLabelText('Outlink Gap'));
+    expect(onFilterChange).toHaveBeenCalledWith('outlink-gap-filter', { enabled: true });
+  });
+
+});

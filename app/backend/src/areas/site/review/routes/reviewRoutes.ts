@@ -21,10 +21,10 @@ import YAML from 'yaml';
 import { GeneratedSiteVersion } from '../../../../../../shared_code/types/siteConfig.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 import { loadAppConfig as loadAppConfigFromDisk } from '../../../../../../shared_code/utils/appConfigUtils.js';
-import { getConfigDirectory, getSiteDirectory, getSiteConfigPath, getSiteHtmlDirectory } from '../../../../shared/site-config/siteConfigPaths.js';
+import { getConfigDirectory, getSiteDirectory, getSiteConfigPath } from '../../../../shared/site-config/siteConfigPaths.js';
 import { loadYamlFromPath, saveYamlToPath } from '../../../../shared/utils/siteConfigUtils.js';
-import { commitSiteChanges, getPreviewChanges } from '../../../../shared/utils/configDirectory/gitUtils/previewGitService.js';
-import { getConfFileTree, getPreviewFileTree, getOriginalContent, readFileContent, findGitRoot, detectFileType, getMimeType } from '../../../../shared/utils/confFileExplorerUtils.js';
+import { commitSiteChanges, getGeneratedHtmlChanges } from '../../../../shared/utils/configDirectory/gitUtils/generatedHtmlGitService.js';
+import { getConfFileTree, getGeneratedHtmlFileTree, getOriginalContent, readFileContent, findGitRoot, detectFileType, getMimeType } from '../../../../shared/utils/confFileExplorerUtils.js';
 import { runGitDirLogNative, runGitCommitFilesNative, runGitCatFileNative, runGitFileLogNative, runGitHtmlSectionDiffNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { logSiteInfo } from '../../../../shared/utils/logging/siteLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -48,7 +48,7 @@ router.get('/sites/:siteSlug/review/preview-changes', (req, res, next) => {
       return res.status(404).json({ error: `Site '${siteSlug}' not found` });
     }
 
-    const changes = getPreviewChanges(siteDirectory);
+    const changes = getGeneratedHtmlChanges(siteDirectory);
     
     res.json({
       success: true,
@@ -129,7 +129,7 @@ router.get('/sites/:siteSlug/review/conf-files/tree', (req, res, next) => {
   })().catch(next);
 });
 
-// Get file tree for site's preview directory
+// Get the file tree for the site's current generated HTML.
 router.get('/sites/:siteSlug/review/preview-files/tree', (req, res, next) => {
   (async () => {
     try {
@@ -146,7 +146,7 @@ router.get('/sites/:siteSlug/review/preview-files/tree', (req, res, next) => {
         return res.status(404).json({ error: `Site '${siteSlug}' not found` });
       }
 
-      const treeData = await getPreviewFileTree(siteDirectory, changedOnly);
+      const treeData = await getGeneratedHtmlFileTree(siteDirectory, changedOnly);
       res.json(treeData);
       
     } catch (error) {
@@ -156,7 +156,7 @@ router.get('/sites/:siteSlug/review/preview-files/tree', (req, res, next) => {
   })().catch(next);
 });
 
-// Get HTML section changes for files under the site's preview directory (working tree vs index)
+// Get HTML section changes for the current generated HTML (working tree vs index).
 router.get('/sites/:siteSlug/review/preview-files/html-section-changes', (req, res, next) => {
   (async () => {
     try {
@@ -166,12 +166,12 @@ router.get('/sites/:siteSlug/review/preview-files/html-section-changes', (req, r
       const siteDirectory = getSiteDirectory(siteSlug);
       if (!fs.existsSync(siteDirectory)) return res.status(404).json({ error: `Site '${siteSlug}' not found` });
 
-      const previewDir = SiteConfigPaths.getPreviewDir(siteDirectory);
-      if (!fs.existsSync(previewDir)) {
+      const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
+      if (!fs.existsSync(generatedHtmlDir)) {
         return res.json({ files: [] });
       }
 
-      const result = await runGitHtmlSectionDiffNative(previewDir);
+      const result = await runGitHtmlSectionDiffNative(generatedHtmlDir);
       res.json(result);
     } catch (error) {
       logger.error('Error getting preview HTML section changes:', error);
@@ -635,10 +635,13 @@ router.delete('/sites/:siteSlug/review/versions/:versionId', (req, res, next) =>
     // Remove the version from the array
     versionsData.versions.splice(versionIndex, 1);
 
-    // Delete the published directory
-    const publishedDir = join(getSiteHtmlDirectory(siteSlug), 'published', versionId);
-    if (fs.existsSync(publishedDir)) {
-      fs.rmSync(publishedDir, { recursive: true, force: true });
+    // Delete the immutable generated-site version.
+    const versionDirectory = join(
+      SiteConfigPaths.getGeneratedSiteVersionsDir(getSiteDirectory(siteSlug)),
+      versionId,
+    );
+    if (fs.existsSync(versionDirectory)) {
+      fs.rmSync(versionDirectory, { recursive: true, force: true });
     }
 
     const updatedYaml = YAML.stringify(versionsData);

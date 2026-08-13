@@ -66,7 +66,7 @@ pagespecs:
           - relativeLinkPath: Howard Marks.html
           - relativeLinkPath: Second Order Thinking.html
           - relativeLinkPath: Howard Marks.html
-          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+          - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
         footerSectionBacklinks:
           - relativeLinkPath: Howard Marks.html
             backlinkContexts:

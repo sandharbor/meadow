@@ -87,7 +87,7 @@ pagespecs:
           - relativeLinkPath: Inversion.html
           - relativeLinkPath: Margin of Safety.html
           - relativeLinkPath: Margin of Safety.html
-          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+          - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
         footerSectionBacklinks:
           - relativeLinkPath: Circle of Competence.html
             backlinkContexts:

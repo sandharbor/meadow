@@ -40,37 +40,37 @@ describe('folder-derived HTML generation', () => {
 
   it('renders contraction, collision-safe routes, search, navigation, hooks-compatible HTML, and source-backed optional outputs', async () => {
     await generateHtmlForSite(sitePath, { preview: true });
-    const preview = SiteConfigPaths.getPreviewDir(sitePath);
-    const read = (relative: string) => fs.readFileSync(path.join(preview, ...relative.split('/')), 'utf8');
+    const generatedHtml = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const read = (relative: string) => fs.readFileSync(path.join(generatedHtml, ...relative.split('/')), 'utf8');
 
-    expect(fs.existsSync(path.join(preview, 'index.html'))).toBe(true);
-    expect(fs.existsSync(path.join(preview, 'Project', '_folder-111111.html'))).toBe(true);
-    expect(fs.existsSync(path.join(preview, 'Project', 'index.html'))).toBe(true);
-    expect(fs.existsSync(path.join(preview, 'Project', 'Folder sketch.html'))).toBe(true);
-    expect(fs.existsSync(path.join(preview, 'Project', 'Middle', 'Deep.html'))).toBe(true);
-    expect(fs.existsSync(path.join(preview, 'Project', 'Middle', 'index.html'))).toBe(false);
-    expect(fs.existsSync(path.join(preview, 'Empty', 'index.html'))).toBe(true);
-    expect(fs.existsSync(path.join(preview, 'Outside.html'))).toBe(true);
+    expect(fs.existsSync(path.join(generatedHtml, 'index.html'))).toBe(true);
+    expect(fs.existsSync(path.join(generatedHtml, '_mw_gen', 'folderpages', 'project-111111111111.html'))).toBe(true);
+    expect(fs.existsSync(path.join(generatedHtml, 'Project', 'index.html'))).toBe(true);
+    expect(fs.existsSync(path.join(generatedHtml, 'Project', 'Folder sketch.html'))).toBe(true);
+    expect(fs.existsSync(path.join(generatedHtml, 'Project', 'Middle', 'Deep.html'))).toBe(true);
+    expect(fs.existsSync(path.join(generatedHtml, 'Project', 'Middle', 'index.html'))).toBe(false);
+    expect(fs.existsSync(path.join(generatedHtml, '_mw_gen', 'folderpages', 'empty-222222222222.html'))).toBe(true);
+    expect(fs.existsSync(path.join(generatedHtml, 'Outside.html'))).toBe(true);
 
     const home = read('index.html');
     expect(home.match(/<h1>Folder Test<\/h1>/g)).toHaveLength(1);
     expect(home).toContain('data-hook-processed="true"');
     expect(home.indexOf('Project')).toBeLessThan(home.indexOf('Empty'));
-    expect(home).toContain('Project/_folder-111111.html');
-    const project = read('Project/_folder-111111.html');
-    expect(project).toContain('Stop/index.html');
-    expect(project).toContain('Middle/Deep.html');
-    expect(project).toContain('index.html');
+    expect(home).toContain('_mw_gen/folderpages/project-111111111111.html');
+    const project = read('_mw_gen/folderpages/project-111111111111.html');
+    expect(project).toContain('stop-ssssssssssss.html');
+    expect(project).toContain('../../Project/Middle/Deep.html');
+    expect(project).toContain('../../Project/index.html');
     expect(project).toContain('class="structural-child-icon"');
     expect(project).not.toContain('structural-child-kind');
     expect(project).toContain('data-file-type="excalidraw"');
     expect(project).toContain('class="structural-child-preview structural-child-preview-excalidraw"');
-    expect(project).toContain('src="Folder%20sketch.html?meadow-thumbnail=1"');
-    expect(project).not.toContain('Middle/index.html');
-    expect(read('Empty/index.html')).toContain('This folder is empty.');
+    expect(project).toContain('src="../../Project/Folder%20sketch.html?meadow-thumbnail=1"');
+    expect(project).not.toContain('Project/Middle/index.html');
+    expect(read('_mw_gen/folderpages/empty-222222222222.html')).toContain('This folder is empty.');
     expect(read('Project/Middle/Deep.html')).toContain('href="../../Outside.html"');
 
-    const assets = path.join(preview, '_mw_assets', 'cust');
+    const assets = path.join(generatedHtml, '_mw_assets', 'cust');
     expect(fs.existsSync(path.join(assets, 'search', 'index', 'manifest.js'))).toBe(true);
     expect(fs.existsSync(path.join(assets, 'folder_nav'))).toBe(true);
     expect(fs.existsSync(path.join(assets, 'sources-export'))).toBe(true);

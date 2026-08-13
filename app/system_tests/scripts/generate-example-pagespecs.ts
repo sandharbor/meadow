@@ -149,7 +149,7 @@ async function main() {
     }
 
     // Preview folder
-    const previewDir = setup.getPathInSite('html/preview');
+    const generatedHtmlDir = setup.getPathInSite('html/generated');
 
     // 6. Process each source file
     const sourceFiles = findAllMarkdownFiles(SOURCE_GRAPH_DIR);
@@ -178,7 +178,7 @@ async function main() {
         }));
 
         // Build htmlRenderedLinks from preview HTML
-        const htmlRenderedLinks = buildHtmlRenderedLinks(pageId, previewDir);
+        const htmlRenderedLinks = buildHtmlRenderedLinks(pageId, generatedHtmlDir);
 
         entry = {
           site: SITE_NAME,
@@ -262,9 +262,9 @@ function computeIsTracked(
 
 function buildHtmlRenderedLinks(
   pageId: string,
-  previewDir: string,
+  generatedHtmlDir: string,
 ): Record<string, unknown> {
-  const htmlPath = path.join(previewDir, pageId + '.html');
+  const htmlPath = path.join(generatedHtmlDir, pageId + '.html');
   if (!fs.existsSync(htmlPath)) {
     return { mainSectionLinks: [], footerSectionBacklinks: [] };
   }

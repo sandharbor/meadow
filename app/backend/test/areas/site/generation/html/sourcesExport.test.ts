@@ -43,12 +43,12 @@ describe('sources export filtering', () => {
   }
 
   function getSourcesExportZipPath(): string {
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(previewDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json'), 'utf8')
+      fs.readFileSync(path.join(generatedHtmlDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json'), 'utf8')
     ) as { zipFilename: string; downloadFilename: string };
     expect(manifest.downloadFilename).toBe('sources-export-test-sources.zip');
-    return path.join(previewDir, '_mw_assets', 'cust', 'sources-export', manifest.zipFilename);
+    return path.join(generatedHtmlDir, '_mw_assets', 'cust', 'sources-export', manifest.zipFilename);
   }
 
   function addReachableExcalidrawDrawing() {
@@ -166,8 +166,8 @@ describe('sources export filtering', () => {
   it('should render scrubbed links with the link-not-tracked HTML class', async () => {
     await createPreview();
 
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const mainPageHtml = fs.readFileSync(path.join(previewDir, 'main page.html'), 'utf8');
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const mainPageHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
 
     expect(mainPageHtml).toContain('<span class="link-not-tracked">link not tracked</span>');
     expect(mainPageHtml).not.toContain('<em>link not tracked</em>');
@@ -240,8 +240,8 @@ describe('sources export filtering', () => {
     const sourcesExportPath = path.join(SiteConfigPaths.getSourcesExportDir(sitePath), 'drawing.excalidraw.md');
     expect(fs.readFileSync(sourcesExportPath, 'utf8')).toBe(scrubbedContent);
 
-    const previewSourcePath = path.join(SiteConfigPaths.getPreviewDir(sitePath), 'drawing.excalidraw.md');
-    expect(fs.readFileSync(previewSourcePath, 'utf8')).toBe(scrubbedContent);
+    const generatedHtmlSourcePath = path.join(SiteConfigPaths.getGeneratedHtmlDir(sitePath), 'drawing.excalidraw.md');
+    expect(fs.readFileSync(generatedHtmlSourcePath, 'utf8')).toBe(scrubbedContent);
 
     const zipPath = getSourcesExportZipPath();
     const zipContents = execFileSync('unzip', ['-l', zipPath], { encoding: 'utf8' });

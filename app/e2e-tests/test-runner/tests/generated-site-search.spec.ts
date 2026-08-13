@@ -80,7 +80,7 @@ test("generated site search finds titles and contents, navigates, and can be dis
     "sites",
     Site.Big,
     "html",
-    "preview",
+    "generated",
     "main page.html",
   );
   await localPage.goto(pathToFileURL(localMainPage).href);

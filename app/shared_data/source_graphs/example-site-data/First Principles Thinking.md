@@ -76,7 +76,7 @@ pagespecs:
           - relativeLinkPath: First Principles Thinking.html
           - relativeLinkPath: First Principles Thinking.html
           - relativeLinkPath: Inversion.html
-          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+          - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
         footerSectionBacklinks:
           - relativeLinkPath: First Principles Thinking.html
             backlinkContexts:

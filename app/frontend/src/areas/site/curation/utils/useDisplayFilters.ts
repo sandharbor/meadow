@@ -16,13 +16,18 @@ limitations under the License.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Graph } from '../../../../../../shared_code/types/graph';
-import { IFilter, ISiteNodeSelector, createFolderNodeSelector } from '../types/filters';
+import { IFilter, ISiteNodeSelector, NodeTypeFilterId, createFolderNodeSelector } from '../types/filters';
 import {
   FilterExpression,
   getActiveFilterExpressionTerms,
   reconcileFilterExpression
 } from '../types/filterExpression';
 import { hasNodesInMultipleFolders } from './folderFilterUtils';
+import {
+  createNodeTypeFilterSelector,
+  getNodeTypeFilterLabel,
+  getPresentNodeTypeFilters,
+} from './nodeTypeFilterUtils';
 
 interface UseDisplayFiltersOptions {
   filters: IFilter[];
@@ -62,8 +67,9 @@ export function useDisplayFilters({
     void graphUpdateTrigger;
     const result: IFilter[] = [...filters];
     const folderFilter = filters.find(filter => filter.isFolderFilter);
+    const nodeTypeFilter = filters.find(filter => filter.isNodeTypeFilter);
 
-    if (folderFilter?.enabled && hasNodesInMultipleFolders(graph.getAllNodes())) {
+    if (folderFilter && hasNodesInMultipleFolders(graph.getAllNodes())) {
       Object.entries(folderFilter.folderStates || {}).forEach(([folderPath, state]) => {
         if (!state.showTitles && !state.isSolo && !state.isHidden) return;
         result.push({
@@ -76,6 +82,26 @@ export function useDisplayFilters({
           isSolo: state.isSolo,
           isHidden: state.isHidden,
           hideFromFilterList: true
+        });
+      });
+    }
+
+    const presentNodeTypeIds = new Set(getPresentNodeTypeFilters(graph).map(type => type.id));
+    if (nodeTypeFilter && presentNodeTypeIds.size > 1) {
+      Object.entries(nodeTypeFilter.nodeTypeStates || {}).forEach(([nodeTypeId, state]) => {
+        if (!state || (!state.showTitles && !state.isSolo && !state.isHidden)) return;
+        const typedNodeTypeId = nodeTypeId as NodeTypeFilterId;
+        if (!presentNodeTypeIds.has(typedNodeTypeId)) return;
+        result.push({
+          id: `node-types-filter-${typedNodeTypeId}`,
+          name: `Type: ${getNodeTypeFilterLabel(typedNodeTypeId)}`,
+          siteNodeSelectors: [createNodeTypeFilterSelector(typedNodeTypeId)],
+          selectorApplicationCriteria: 'union',
+          actions: state.showTitles ? [{ type: 'show_titles' }] : [],
+          enabled: true,
+          isSolo: state.isSolo,
+          isHidden: state.isHidden,
+          hideFromFilterList: true,
         });
       });
     }

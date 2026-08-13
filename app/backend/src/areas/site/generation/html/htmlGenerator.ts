@@ -169,7 +169,7 @@ export function renderPageToHtml(
   siteSlug?: string,
   currentPageDirectory?: string,  // The source directory of the current page
   baseContentDirectory?: string,  // Base source-content directory for image lookups
-  baseOutputFolder?: string,  // Base preview directory for image output
+  baseOutputFolder?: string,  // Base generated HTML directory for image output
   linkResolutionMap?: Record<string, LinkResolvedInfo>,  // Pre-computed link resolution map
   allLinkResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>  // All page link resolution maps for transclusion
 ): { htmlPath: string | null; htmlContent: string | null; srsCards: CollectedSrsCard[] } {
@@ -630,10 +630,18 @@ export function renderPageToHtml(
                 
                 // Calculate relative path for "see in context" link
                 const encodedBacklinkName = encodeURIComponent(normalizedBacklinkName);
-                const targetPath = routeTable?.get(backlinkConfig!.siteNodeId) ?? (backlinkSourceDir
+                const conventionalTargetPath = backlinkSourceDir
+                  ? `${backlinkSourceDir}/${normalizedBacklinkName}.html`
+                  : `${normalizedBacklinkName}.html`;
+                const plannedRoute = routeTable?.get(backlinkConfig!.siteNodeId);
+                const plannedTargetPath = plannedRoute !== conventionalTargetPath ? plannedRoute : undefined;
+                const targetPath = plannedTargetPath ?? (backlinkSourceDir
                   ? `${backlinkSourceDir}/${encodedBacklinkName}.html`
                   : `${encodedBacklinkName}.html`);
-                const relativeContextUrl = calculateRelativePath(currentOutputDirectory, targetPath);
+                const relativeContextPath = calculateRelativePath(currentOutputDirectory, targetPath);
+                const relativeContextUrl = plannedTargetPath
+                  ? encodePathForUrl(relativeContextPath)
+                  : relativeContextPath;
                 
                 backlinkContextHtml += `
               <div class="backlink-context-container">
@@ -649,10 +657,16 @@ export function renderPageToHtml(
           if (processingMode === 'each-page') {
             // Calculate relative path from current page to backlink page
             const encodedBacklinkName = encodeURIComponent(normalizedBacklinkName);
-            const targetPath = routeTable?.get(backlinkConfig!.siteNodeId) ?? (backlinkSourceDir
+            const conventionalTargetPath = backlinkSourceDir
+              ? `${backlinkSourceDir}/${normalizedBacklinkName}.html`
+              : `${normalizedBacklinkName}.html`;
+            const plannedRoute = routeTable?.get(backlinkConfig!.siteNodeId);
+            const plannedTargetPath = plannedRoute !== conventionalTargetPath ? plannedRoute : undefined;
+            const targetPath = plannedTargetPath ?? (backlinkSourceDir
               ? `${backlinkSourceDir}/${encodedBacklinkName}.html`
               : `${encodedBacklinkName}.html`);
-            const relativeUrl = calculateRelativePath(currentOutputDirectory, targetPath);
+            const relativePath = calculateRelativePath(currentOutputDirectory, targetPath);
+            const relativeUrl = plannedTargetPath ? encodePathForUrl(relativePath) : relativePath;
             backlinksHtml += `<li class="backlink"><a href="${relativeUrl}">${normalizedBacklinkName}</a>${backlinkContextHtml}</li>\n`;
           } else if (processingMode === 'single-page') {
             const anchor = anchorNameFor(normalizedBacklinkName);
@@ -700,10 +714,18 @@ export function renderPageToHtml(
           : siteNodeConfigs.find(c => c.siteNodeName === pathPageTitle);
         const breadcrumbSourceDir = breadcrumbSiteNodeConfig?.sourceGraphSubdirectory || '';
         const encodedBreadcrumbName = encodeURIComponent(normalizedTitle);
-        const targetPath = (breadcrumbSiteNodeConfig && routeTable?.get(breadcrumbSiteNodeConfig.siteNodeId)) ?? (breadcrumbSourceDir
+        const conventionalTargetPath = breadcrumbSourceDir
+          ? `${breadcrumbSourceDir}/${normalizedTitle}.html`
+          : `${normalizedTitle}.html`;
+        const plannedRoute = breadcrumbSiteNodeConfig
+          ? routeTable?.get(breadcrumbSiteNodeConfig.siteNodeId)
+          : undefined;
+        const plannedTargetPath = plannedRoute !== conventionalTargetPath ? plannedRoute : undefined;
+        const targetPath = plannedTargetPath ?? (breadcrumbSourceDir
           ? `${breadcrumbSourceDir}/${encodedBreadcrumbName}.html`
           : `${encodedBreadcrumbName}.html`);
-        const relativeUrl = calculateRelativePath(currentOutputDirectory, targetPath);
+        const relativePath = calculateRelativePath(currentOutputDirectory, targetPath);
+        const relativeUrl = plannedTargetPath ? encodePathForUrl(relativePath) : relativePath;
         breadcrumbItems.push(`<a href="${relativeUrl}" class="breadcrumb-link">${normalizedTitle}</a>`);
       }
     }
@@ -924,8 +946,12 @@ export function renderSimpleBacklinksHtml(
     const sourceDir = cfg.sourceGraphSubdirectory || '';
     const normName = normalizePageTitle(backlink, siteConfig, siteSlug);
     const encoded = encodeURIComponent(normName);
-    const targetPath = routeTable?.get(cfg.siteNodeId) ?? (sourceDir ? `${sourceDir}/${encoded}.html` : `${encoded}.html`);
-    const relUrl = calculateRelativePath(currentOutputDirectory, targetPath);
+    const conventionalTargetPath = sourceDir ? `${sourceDir}/${normName}.html` : `${normName}.html`;
+    const plannedRoute = routeTable?.get(cfg.siteNodeId);
+    const plannedTargetPath = plannedRoute !== conventionalTargetPath ? plannedRoute : undefined;
+    const targetPath = plannedTargetPath ?? (sourceDir ? `${sourceDir}/${encoded}.html` : `${encoded}.html`);
+    const relativePath = calculateRelativePath(currentOutputDirectory, targetPath);
+    const relUrl = plannedTargetPath ? encodePathForUrl(relativePath) : relativePath;
     html += `<li class="backlink"><a href="${relUrl}">${normName}</a></li>\n`;
   }
   html += '</ul>\n';

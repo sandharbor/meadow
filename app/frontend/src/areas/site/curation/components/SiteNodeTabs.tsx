@@ -702,7 +702,7 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
             }
           }}
           untrackedNodeCount={untrackedNodeCount}
-          pages={graph.getAllNodes()}
+          pages={graph.getAllNodes()} graph={graph}
           filterExpression={effectiveFilterExpression}
           filterExpressionFilters={combinedFilters}
           onFilterExpressionChange={handleFilterExpressionChange}

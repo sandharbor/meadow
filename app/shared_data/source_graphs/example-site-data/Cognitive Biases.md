@@ -82,7 +82,7 @@ pagespecs:
           - relativeLinkPath: Cognitive Biases.html
           - relativeLinkPath: Inversion.html
           - relativeLinkPath: Probabilistic Thinking.html
-          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+          - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
         footerSectionBacklinks:
           - relativeLinkPath: Cognitive Biases.html
             backlinkContexts:

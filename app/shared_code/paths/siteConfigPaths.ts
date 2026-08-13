@@ -32,8 +32,8 @@ limitations under the License.
  *       site_node_config.yaml
  *       custom_filters.json
  *     html/
- *       preview/
- *       published/
+ *       generated/
+ *       generated_site_versions/
  *     raw/
  *       tracked_page_content/
  *       tracked_site_node_config.yaml
@@ -60,7 +60,7 @@ const HOOKS_DIR = 'hooks';
 const CUSTOM_ASSETS_DIR = 'custom_assets';
 const OPEN_KNOWLEDGE_FORMAT_DIR = 'okf';
 const SOURCES_EXPORT_DIR = 'sources_export';
-const PREVIEW_DIR = 'preview';
+const GENERATED_HTML_DIR = 'generated';
 const GENERATED_SITE_VERSIONS_DIR = 'generated_site_versions';
 const TRACKED_PAGE_CONTENT_DIR = 'tracked_page_content';
 const PREPARED_SOURCE_CONTENT_DIR = 'prepared_source_content';
@@ -68,7 +68,11 @@ const RENDER_SOURCE_CONTENT_DIR = 'render_source_content';
 const LEGACY_RENDER_SOURCE_CONTENT_DIR = 'modified_page_content';
 const SCRUBBED_SOURCE_CONTENT_DIR = 'scrubbed_source_content';
 const FONTS_DIR = 'fonts';
-const TAGPAGES_DIR = 'x-tagpages';
+const TAGPAGE_SOURCE_STAGING_DIR = 'x-tagpages';
+const GENERATED_SITE_INTERNAL_DIR = '_mw_gen';
+const GENERATED_TAGPAGES_DIR = 'tagpages';
+const GENERATED_FOLDERPAGES_DIR = 'folderpages';
+const GENERATED_SOURCEPAGES_DIR = 'sourcepages';
 
 // File names
 const SITE_CONFIG_FILE = 'site_config.yaml';
@@ -96,9 +100,9 @@ export const SiteConfigPaths = {
       return HTML_DIR;
     },
 
-    /** html/preview/ */
-    previewDir(): string {
-      return join(HTML_DIR, PREVIEW_DIR);
+    /** html/generated/ */
+    generatedHtmlDir(): string {
+      return join(HTML_DIR, GENERATED_HTML_DIR);
     },
 
     /** html/generated_site_versions/ */
@@ -106,14 +110,19 @@ export const SiteConfigPaths = {
       return join(HTML_DIR, GENERATED_SITE_VERSIONS_DIR);
     },
 
-    /** html/preview/fonts/ */
-    previewFontsDir(): string {
-      return join(HTML_DIR, PREVIEW_DIR, FONTS_DIR);
+    /** html/generated/fonts/ */
+    generatedHtmlFontsDir(): string {
+      return join(HTML_DIR, GENERATED_HTML_DIR, FONTS_DIR);
     },
 
-    /** html/preview/x-tagpages/ */
-    previewTagpagesDir(): string {
-      return join(HTML_DIR, PREVIEW_DIR, TAGPAGES_DIR);
+    /** html/generated/_mw_gen/tagpages/ */
+    generatedTagpagesDir(): string {
+      return join(
+        HTML_DIR,
+        GENERATED_HTML_DIR,
+        GENERATED_SITE_INTERNAL_DIR,
+        GENERATED_TAGPAGES_DIR,
+      );
     },
 
     /** raw/ */
@@ -168,7 +177,7 @@ export const SiteConfigPaths = {
 
     /** raw/tracked_page_content/x-tagpages/ */
     trackedPageContentTagpagesDir(): string {
-      return join(RAW_DIR, TRACKED_PAGE_CONTENT_DIR, TAGPAGES_DIR);
+      return join(RAW_DIR, TRACKED_PAGE_CONTENT_DIR, TAGPAGE_SOURCE_STAGING_DIR);
     },
 
     /** hooks/ */
@@ -234,10 +243,10 @@ export const SiteConfigPaths = {
   },
 
   /**
-   * Get the preview directory: SITE_DIR/html/preview/
+   * Get the current generated HTML directory: SITE_DIR/html/generated/
    */
-  getPreviewDir(siteDir: string): string {
-    return join(siteDir, this.relative.previewDir());
+  getGeneratedHtmlDir(siteDir: string): string {
+    return join(siteDir, this.relative.generatedHtmlDir());
   },
 
   /**
@@ -248,17 +257,17 @@ export const SiteConfigPaths = {
   },
 
   /**
-   * Get the fonts directory within preview: SITE_DIR/html/preview/fonts/
+   * Get the fonts directory within generated HTML: SITE_DIR/html/generated/fonts/
    */
-  getPreviewFontsDir(siteDir: string): string {
-    return join(siteDir, this.relative.previewFontsDir());
+  getGeneratedHtmlFontsDir(siteDir: string): string {
+    return join(siteDir, this.relative.generatedHtmlFontsDir());
   },
 
   /**
-   * Get the tagpages directory within preview: SITE_DIR/html/preview/x-tagpages/
+   * Get the generated tag-page directory: SITE_DIR/html/generated/_mw_gen/tagpages/
    */
-  getPreviewTagpagesDir(siteDir: string): string {
-    return join(siteDir, this.relative.previewTagpagesDir());
+  getGeneratedTagpagesDir(siteDir: string): string {
+    return join(siteDir, this.relative.generatedTagpagesDir());
   },
 
   // ─────────────────────────────────────────────────────────────────
@@ -433,10 +442,10 @@ export const SiteConfigPaths = {
   /** The custom_assets subdirectory name: 'custom_assets' */
   CUSTOM_ASSETS_DIR,
 
-  /** The preview subdirectory name: 'preview' */
-  PREVIEW_DIR,
+  /** The current generated HTML subdirectory name: 'generated' */
+  GENERATED_HTML_DIR,
 
-  /** The published subdirectory name: 'published' */
+  /** The immutable generated-site versions subdirectory name. */
   GENERATED_SITE_VERSIONS_DIR,
 
   /** The tracked_page_content subdirectory name: 'tracked_page_content' */
@@ -454,8 +463,20 @@ export const SiteConfigPaths = {
   /** The scrubbed_source_content subdirectory name: 'scrubbed_source_content' */
   SCRUBBED_SOURCE_CONTENT_DIR,
 
-  /** The tagpages subdirectory name: 'x-tagpages' */
-  TAGPAGES_DIR,
+  /** Generation-only source staging directory for synthetic tag Markdown. */
+  TAGPAGE_SOURCE_STAGING_DIR,
+
+  /** Reserved root for generated public pages inside a generated site. */
+  GENERATED_SITE_INTERNAL_DIR,
+
+  /** Generated tag-page directory below GENERATED_SITE_INTERNAL_DIR. */
+  GENERATED_TAGPAGES_DIR,
+
+  /** Generated folder-page directory below GENERATED_SITE_INTERNAL_DIR. */
+  GENERATED_FOLDERPAGES_DIR,
+
+  /** Relocated source-page directory below GENERATED_SITE_INTERNAL_DIR. */
+  GENERATED_SOURCEPAGES_DIR,
 
   /** The sources_export subdirectory name: 'sources_export' */
   SOURCES_EXPORT_DIR,

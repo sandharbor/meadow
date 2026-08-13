@@ -2,5 +2,5 @@ nodes:
   - siteNodeName: Alpha
     sourceGraphSubdirectory: Alpha
     siteNodeKind: folder
-    siteNodeId: alpha0000001
+    siteNodeId: 3fef494a5c4d
     listType: whitelist

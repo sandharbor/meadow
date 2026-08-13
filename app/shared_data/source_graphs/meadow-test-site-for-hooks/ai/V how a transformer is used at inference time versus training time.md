@@ -51,7 +51,7 @@ At 47 since all of the [[decoder input ids]] are provided together in one long s
 
 ### Prompts
 
-#flashcards/transformers 
+#flashcards/transformers
 
  From 29
 
@@ -67,4 +67,4 @@ During the training of something like ChatGPT, what is done with the [[logit]] v
 
 From 45
 
-For [[training]], explain how the [[decoder]] is [[condition]]ed to allow for determining the [[training loss]] on sequence to sequence prediction using only a single [[forward pass]] X [[dim - number of forward passes]]?::: you have a set of target [[label]]s that describe the entire sequence, from which the [[decoder input ids]] (which are tokens for the entire target sequence).  The conditioning consists of combining the [[last hidden states]] of the [[encoder]] (the [[embedding vector]]), 
+For [[training]], explain how the [[decoder]] is [[condition]]ed to allow for determining the [[training loss]] on sequence to sequence prediction using only a single [[forward pass]] X [[dim - number of forward passes]]?::: you have a set of target [[label]]s that describe the entire sequence, from which the [[decoder input ids]] (which are tokens for the entire target sequence).  The conditioning consists of combining the [[last hidden states]] of the [[encoder]] (the [[embedding vector]]),

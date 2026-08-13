@@ -1,1 +1,1 @@
-window.__meadowSearchReceiveShard([{"t":"China","p":"ai/China.html","b":"race with China"},{"t":"positional encoding","p":"ai/positional%20encoding.html","b":"chat - positional encoding values"}]);
+window.__meadowSearchReceiveShard([{"t":"tag--podcast-data-skeptic","p":"_mw_gen/tagpages/tag--podcast-data-skeptic.html","b":""},{"t":"China","p":"ai/China.html","b":"race with China"},{"t":"positional encoding","p":"ai/positional%20encoding.html","b":"chat - positional encoding values"}]);

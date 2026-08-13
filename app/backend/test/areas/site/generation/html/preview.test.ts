@@ -38,8 +38,8 @@ describe('html preview', () => {
 
   it('should not create a publish folder', async () => {
     // Check that preview folder does not exist before generating HTML
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    expect(fs.existsSync(previewFolderPath)).toBe(false);
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    expect(fs.existsSync(generatedHtmlFolderPath)).toBe(false);
 
     // Generate HTML with preview option
     await generateHtmlForSite(sitePath, { preview: true });
@@ -49,14 +49,14 @@ describe('html preview', () => {
     expect(fs.existsSync(htmlFolderPath)).toBe(true);
 
     // Check that preview folder exists
-    expect(fs.existsSync(previewFolderPath)).toBe(true);
+    expect(fs.existsSync(generatedHtmlFolderPath)).toBe(true);
 
     // Check that publish folder does NOT exist
     const publishFolderPath = SiteConfigPaths.getGeneratedSiteVersionsDir(sitePath);
     expect(fs.existsSync(publishFolderPath)).toBe(false);
 
     // Additional assertion: check that preview folder contains HTML files
-    const previewFiles = fs.readdirSync(previewFolderPath);
+    const previewFiles = fs.readdirSync(generatedHtmlFolderPath);
     const htmlFiles = previewFiles.filter(file => file.endsWith('.html'));
     expect(htmlFiles.length).toBeGreaterThan(0);
   });
@@ -65,8 +65,8 @@ describe('html preview', () => {
     // Generate HTML with preview option
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const previewFiles = fs.readdirSync(previewFolderPath);
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const previewFiles = fs.readdirSync(generatedHtmlFolderPath);
 
     // Should contain HTML files
     const htmlFiles = previewFiles.filter(file => file.endsWith('.html'));
@@ -76,7 +76,7 @@ describe('html preview', () => {
     expect(previewFiles).toContain('_mw_assets');
 
     // Assets should be inside _mw_assets subdirectory
-    const assetsDir = path.join(previewFolderPath, '_mw_assets');
+    const assetsDir = path.join(generatedHtmlFolderPath, '_mw_assets');
     const assetFiles = fs.readdirSync(assetsDir);
 
     // Should contain CSS file
@@ -97,8 +97,8 @@ describe('html preview', () => {
   it('generates site search assets and a sharded index by default', async () => {
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const searchDirectory = path.join(previewFolderPath, '_mw_assets', 'cust', 'search');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const searchDirectory = path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'search');
     const indexDirectory = path.join(searchDirectory, 'index');
     const searchFiles = fs.readdirSync(searchDirectory);
     const searchJs = searchFiles.find(filename => /^search\.[a-f0-9]{8}\.js$/.test(filename));
@@ -120,7 +120,7 @@ describe('html preview', () => {
     expect(fs.existsSync(path.join(indexDirectory, 'manifest.js'))).toBe(true);
     expect(fs.readdirSync(indexDirectory).some(filename => /^shard-[a-f0-9]{2}\.js$/.test(filename))).toBe(true);
 
-    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).toContain('data-meadow-search-open');
     expect(mainPageHtml).toContain('aria-label="Search this site"');
     expect(mainPageHtml).toContain('<svg viewBox="0 0 24 24"');
@@ -146,9 +146,9 @@ describe('html preview', () => {
 
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    expect(fs.existsSync(path.join(previewFolderPath, '_mw_assets', 'cust', 'search'))).toBe(false);
-    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    expect(fs.existsSync(path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'search'))).toBe(false);
+    const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).not.toContain('data-meadow-search-open');
     expect(mainPageHtml).not.toMatch(/search\/search(?:\.[a-f0-9]{8})?\.js/);
   });
@@ -156,10 +156,10 @@ describe('html preview', () => {
   it('omits folder navigation by default', async () => {
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).not.toContain('data-meadow-folder-nav');
-    expect(fs.existsSync(path.join(previewFolderPath, '_mw_assets', 'cust', 'folder_nav'))).toBe(false);
+    expect(fs.existsSync(path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'folder_nav'))).toBe(false);
   });
 
   it('generates hashed hover preview assets instead of inline behavior when enabled', async () => {
@@ -171,8 +171,8 @@ describe('html preview', () => {
 
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const hoverPreviewDirectory = path.join(previewFolderPath, '_mw_assets', 'cust', 'hover_preview');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const hoverPreviewDirectory = path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'hover_preview');
     const assetFiles = fs.readdirSync(hoverPreviewDirectory);
     const hoverPreviewCss = assetFiles.find(filename => /^hover-preview\.[a-f0-9]{8}\.css$/.test(filename));
     const hoverPreviewJs = assetFiles.find(filename => /^hover-preview\.[a-f0-9]{8}\.js$/.test(filename));
@@ -188,7 +188,7 @@ describe('html preview', () => {
       expect(asset).toContain(`.${digest}.`);
     }
 
-    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).toContain(`_mw_assets/cust/hover_preview/${hoverPreviewCss}`);
     expect(mainPageHtml).toContain(`_mw_assets/cust/hover_preview/${hoverPreviewJs}`);
     expect(mainPageHtml).not.toContain("document.addEventListener('DOMContentLoaded'");
@@ -198,9 +198,9 @@ describe('html preview', () => {
   it('omits hover preview assets when hover preview is disabled', async () => {
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    expect(fs.existsSync(path.join(previewFolderPath, '_mw_assets', 'cust', 'hover_preview'))).toBe(false);
-    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    expect(fs.existsSync(path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'hover_preview'))).toBe(false);
+    const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).not.toMatch(/hover_preview\/hover-preview(?:\.[a-f0-9]{8})?\.(?:css|js)/);
   });
 
@@ -213,8 +213,8 @@ describe('html preview', () => {
 
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const folderNavigationDirectory = path.join(previewFolderPath, '_mw_assets', 'cust', 'folder_nav');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const folderNavigationDirectory = path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'folder_nav');
     const assetFiles = fs.readdirSync(folderNavigationDirectory);
     const folderNavigationCss = assetFiles.find(filename => /^folder-nav\.[a-f0-9]{8}\.css$/.test(filename));
     const folderNavigationDataJs = assetFiles.find(filename => /^folder-nav-data\.[a-f0-9]{8}\.js$/.test(filename));
@@ -235,7 +235,7 @@ describe('html preview', () => {
     expect(folderNavigationDataJs).toBe(`folder-nav-data.${folderNavigationDataDigest}.js`);
     expect(folderNavigationData).toContain('window.MeadowFolderNavData=');
     expect(folderNavigationData).toContain('"main page.html"');
-    expect(fs.readdirSync(path.join(previewFolderPath, '_mw_assets'))).not.toEqual(
+    expect(fs.readdirSync(path.join(generatedHtmlFolderPath, '_mw_assets'))).not.toEqual(
       expect.arrayContaining([
         'folder_nav',
         'search',
@@ -244,7 +244,7 @@ describe('html preview', () => {
       ])
     );
 
-    const mainPageHtml = fs.readFileSync(path.join(previewFolderPath, 'main page.html'), 'utf8');
+    const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).toContain('data-meadow-folder-nav');
     expect(mainPageHtml).toContain('data-storage-key="meadow-folder-nav:x3d9p0k"');
     expect(mainPageHtml).toContain('data-meadow-folder-nav-storage-key="meadow-folder-nav:x3d9p0k"');
@@ -293,9 +293,9 @@ describe('html preview', () => {
         },
       ]);
 
-      const previewFolderPath = SiteConfigPaths.getPreviewDir(excalidrawInitialSetup.getSitePath());
-      expect(fs.existsSync(path.join(previewFolderPath, 'meadow flower.html'))).toBe(true);
-      expect(fs.existsSync(path.join(previewFolderPath, 'embedded media.html'))).toBe(true);
+      const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(excalidrawInitialSetup.getSitePath());
+      expect(fs.existsSync(path.join(generatedHtmlFolderPath, 'meadow flower.html'))).toBe(true);
+      expect(fs.existsSync(path.join(generatedHtmlFolderPath, 'embedded media.html'))).toBe(true);
     } finally {
       excalidrawInitialSetup.tearDown();
     }

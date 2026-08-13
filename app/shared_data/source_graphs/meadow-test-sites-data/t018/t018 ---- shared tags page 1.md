@@ -18,8 +18,8 @@ pagespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: ../x-tagpages/tag--t018-shared-1.html
-          - relativeLinkPath: ../x-tagpages/tag--t018-shared-2.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-shared-1.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-shared-2.html
         footerSectionBacklinks:
           - relativeLinkPath: ../t018 - tags.html
             backlinkContexts:

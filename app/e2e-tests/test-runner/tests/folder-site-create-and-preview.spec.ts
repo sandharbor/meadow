@@ -60,15 +60,18 @@ test("previews a configured site from one recursively scanned folder", async ({
   const folderNavigation = previewModal.generatedSite.folderNavigation;
   await folderNavigation.expectAvailable();
   await folderNavigation.open();
-  await folderNavigation.expectRootFolderNames(["Nested"]);
-  await folderNavigation.expectRootFileNames([
-    "Alpha note.html",
+  await folderNavigation.expectRootFolderNames(["Alpha", "Outside"]);
+  await folderNavigation.expectRootFileNames([]);
+  await folderNavigation.openFolder("Alpha");
+  await folderNavigation.expectDirectFileNames("Alpha", ["Alpha note.html"]);
+  await folderNavigation.openFolder("Alpha/Nested");
+  await folderNavigation.expectDirectFileNames("Alpha/Nested", [
+    "Nested note.html",
+  ]);
+  await folderNavigation.openFolder("Outside");
+  await folderNavigation.expectDirectFileNames("Outside", [
     "Beyond outside.html",
     "Outside note.html",
-  ]);
-  await folderNavigation.openFolder("Alpha/Nested/index.html");
-  await folderNavigation.expectDirectFileNames("Alpha/Nested/index.html", [
-    "Nested note.html",
   ]);
   await previewModal.generatedSite.expectStructuralChildNames([
     "Nested",
@@ -80,7 +83,7 @@ test("previews a configured site from one recursively scanned folder", async ({
   await snapshot("single folder generated home");
   await addKeyFrame(htmlGeneration);
   await folderNavigation.open();
-  await folderNavigation.clickRootFile("Outside note.html");
+  await folderNavigation.clickFile("Outside", "Outside note.html");
   await previewModal.generatedSite.expectSingleHeading("Outside note");
   await folderNavigation.expectSelectedFile("Outside note.html");
   await folderNavigation.open();

@@ -443,7 +443,7 @@ export interface LinkOrImageHtmlOptions {
   directory?: string;
   baseContentDirectory?: string;  // Base source-content directory for image lookups
   outputFolder?: string;
-  baseOutputFolder?: string;  // Base preview directory for image output
+  baseOutputFolder?: string;  // Base generated HTML directory for image output
   processingMode?: 'each-page' | 'single-page';
   skipUninterestingLeafPages?: boolean;
   highlightDoNotLinkPageName?: string;

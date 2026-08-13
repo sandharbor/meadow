@@ -24,6 +24,7 @@ import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode.js';
 import { CustomSiteNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
 import { nodeIsInFolder } from './folderFilterUtils.js';
 import type { SiteNodeKind } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils.js';
 
 export interface SelectorBase {
   id: string;
@@ -63,6 +64,28 @@ export const createSiteNodeKindSelector = (siteNodeKind: SiteNodeKind): INormalS
   type: 'normal',
   select: (graph: Graph) => new Set(
     graph.getAllNodes().filter(node => node.siteNodeKind === siteNodeKind).map(node => node.siteNodeKey)
+  ),
+});
+
+export const createNonImageFileNodeSelector = (): INormalSiteNodeSelector => ({
+  id: 'non-image-file-nodes',
+  name: 'File Nodes',
+  type: 'normal',
+  select: (graph: Graph) => new Set(
+    graph.getAllNodes()
+      .filter(node => node.siteNodeKind === 'file' && !isImageFileType(node.fileType))
+      .map(node => node.siteNodeKey)
+  ),
+});
+
+export const createImageNodeSelector = (): INormalSiteNodeSelector => ({
+  id: 'image-nodes',
+  name: 'Image Nodes',
+  type: 'normal',
+  select: (graph: Graph) => new Set(
+    graph.getAllNodes()
+      .filter(node => node.siteNodeKind === 'file' && isImageFileType(node.fileType))
+      .map(node => node.siteNodeKey)
   ),
 });
 

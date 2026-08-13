@@ -235,7 +235,7 @@ describe('Runtime Pagespec Generation Validation', () => {
     let pagesValidated = 0;
 
     for (const { name: siteName, setup: siteSetup, sourceGraphDir } of sitesToCheck) {
-      const previewFolderPath = siteSetup.getPathInSite('html/preview');
+      const generatedHtmlFolderPath = siteSetup.getPathInSite('html/generated');
       const mdFiles = findAllMarkdownFiles(sourceGraphDir);
 
       for (const mdFile of mdFiles) {
@@ -247,7 +247,7 @@ describe('Runtime Pagespec Generation Validation', () => {
         if (!siteSpec || !siteSpec.curation.isInWorkingGraph) continue;
 
         const relativePath = path.relative(sourceGraphDir, mdFile).replace(/\.md$/, '.html');
-        const htmlPath = path.join(previewFolderPath, relativePath);
+        const htmlPath = path.join(generatedHtmlFolderPath, relativePath);
 
         if (!fs.existsSync(htmlPath)) {
           const mainLinks = siteSpec.generation.htmlRenderedLinks?.mainSectionLinks ?? [];

@@ -63,25 +63,27 @@ test("previews a configured multiple-folder collection site", async ({
   const folderNavigation = previewModal.generatedSite.folderNavigation;
   await folderNavigation.expectAvailable();
   await folderNavigation.open();
-  await folderNavigation.expectRootFolderNames(["Alpha", "Beta"]);
-  await folderNavigation.expectRootFileNames([
-    "Beyond outside.html",
-    "Outside note.html",
-  ]);
-  await folderNavigation.openFolder("Alpha/index.html");
-  await folderNavigation.expectDirectFileNames("Alpha/index.html", [
+  await folderNavigation.expectRootFolderNames(["Alpha", "Beta", "Outside"]);
+  await folderNavigation.expectRootFileNames([]);
+  await folderNavigation.openFolder("Alpha");
+  await folderNavigation.expectDirectFileNames("Alpha", [
     "Alpha note.html",
   ]);
-  await folderNavigation.openFolder("Beta/index.html");
-  await folderNavigation.expectDirectFileNames("Beta/index.html", [
+  await folderNavigation.openFolder("Beta");
+  await folderNavigation.expectDirectFileNames("Beta", [
     "Beta note.html",
+  ]);
+  await folderNavigation.openFolder("Outside");
+  await folderNavigation.expectDirectFileNames("Outside", [
+    "Beyond outside.html",
+    "Outside note.html",
   ]);
   await previewModal.generatedSite.expectStructuralChildNames(["Beta", "Alpha"]);
   await folderNavigation.close();
   await snapshot("ordered collection generated home");
   await addKeyFrame(htmlGeneration);
   await folderNavigation.open();
-  await folderNavigation.clickFile("Alpha/index.html", "Alpha note.html");
+  await folderNavigation.clickFile("Alpha", "Alpha note.html");
   await previewModal.generatedSite.expectSingleHeading("Alpha note");
   await folderNavigation.expectSelectedFile("Alpha note.html");
   await folderNavigation.open();

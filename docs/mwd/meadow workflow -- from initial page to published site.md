@@ -12,6 +12,6 @@ This raw working graph is the graph that powers the [[app component -- site page
 
 From there, once we [[site page tracking state -- tracked|track]] the pages we care about and [[blacklist]] those we don't want to include, a [[tracked working graph]] is created.
 
-then in the [[app component - modal -- site preview|preview modal]] we create the [[local html preview site]].  From there the [[publisher]] can review differences compared to the previous version of the preview.  The user saves those changes.
+then in the [[app component - modal -- site preview|preview modal]] we create the [[generated html site]].  From there the [[publisher]] can review differences compared to the previous version of the preview.  The user saves those changes.
 
-Finally, in the [[app component - modal -- site preview -- publish tab|publish to meadow tab]] we copy that [[local html preview site]] to the [[published site type -- local html]] and then upload it to [[published site type -- remote html|the files on S3]].
+Finally, in the [[app component - modal -- site preview -- publish tab|publish to meadow tab]] we copy that [[generated html site]] to the [[published site type -- local html]] and then upload it to [[published site type -- remote html|the files on S3]].

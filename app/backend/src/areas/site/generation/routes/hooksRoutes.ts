@@ -435,8 +435,8 @@ router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req
         throw new Error('Failed to parse hook');
       }
 
-      const previewDir = SiteConfigPaths.getPreviewDir(siteDirectory);
-      if (existsSync(previewDir)) {
+      const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
+      if (existsSync(generatedHtmlDir)) {
         // Collect .html files from preview dir and subdirectories
         const htmlFiles: { filePath: string; relPath: string }[] = [];
         const collectHtmlFiles = (dir: string, base: string) => {
@@ -448,7 +448,7 @@ router.post('/sites/:siteSlug/generation/hooks/validate', validateSiteSlug, (req
             }
           }
         };
-        collectHtmlFiles(previewDir, '');
+        collectHtmlFiles(generatedHtmlDir, '');
 
         for (const { filePath, relPath } of htmlFiles) {
           try {

@@ -415,21 +415,20 @@ export async function getConfFileTree(siteDirectory: string, changedOnly = false
 }
 
 /**
- * Get the file tree for a site's preview directory.
+ * Get the file tree for a site's current generated HTML directory.
  * @param changedOnly - If true, only return files with git changes (much faster for large directories)
  */
-export async function getPreviewFileTree(siteDirectory: string, changedOnly = false): Promise<FileTreeResponse> {
-  const previewDir = SiteConfigPaths.getPreviewDir(siteDirectory);
-  const gitStatusMap = await getGitStatusMap(previewDir);
+export async function getGeneratedHtmlFileTree(siteDirectory: string, changedOnly = false): Promise<FileTreeResponse> {
+  const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
+  const gitStatusMap = await getGitStatusMap(generatedHtmlDir);
 
   // Use optimized path when only showing changed files
   const tree = changedOnly
-    ? buildChangedFilesTree(previewDir, gitStatusMap)
-    : buildFileTree(previewDir, gitStatusMap);
+    ? buildChangedFilesTree(generatedHtmlDir, gitStatusMap)
+    : buildFileTree(generatedHtmlDir, gitStatusMap);
 
   return {
-    root: previewDir,
+    root: generatedHtmlDir,
     tree,
   };
 }
-

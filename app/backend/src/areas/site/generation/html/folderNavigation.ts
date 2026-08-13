@@ -43,15 +43,18 @@ export interface FolderNavigationData {
 const compareNames = (left: string, right: string): number =>
   left.localeCompare(right, 'en', { sensitivity: 'base', numeric: true });
 
-function buildTree(pages: FolderNavigationPage[]): FolderNode {
+function buildTree(
+  pages: FolderNavigationPage[],
+  omittedDirectorySegments: string[] = [],
+): FolderNode {
   const root: FolderNode = { name: '', path: '', folders: new Map(), pages: [] };
 
   for (const page of pages) {
     const segments = page.directory.split('/').filter(Boolean);
     let node = root;
-    let accumulatedPath = '';
+    let accumulatedPath = omittedDirectorySegments.join('/');
 
-    for (const segment of segments) {
+    for (const segment of segments.slice(omittedDirectorySegments.length)) {
       accumulatedPath = accumulatedPath ? `${accumulatedPath}/${segment}` : segment;
       let child = node.folders.get(segment);
       if (!child) {
@@ -65,6 +68,18 @@ function buildTree(pages: FolderNavigationPage[]): FolderNode {
   }
 
   return root;
+}
+
+function sharedDirectorySegments(pages: FolderNavigationPage[]): string[] {
+  if (pages.length === 0) return [];
+  const directories = pages.map(page => page.directory.split('/').filter(Boolean));
+  const shared = [...directories[0]];
+  for (const directory of directories.slice(1)) {
+    while (shared.some((segment, index) => directory[index] !== segment)) {
+      shared.pop();
+    }
+  }
+  return shared;
 }
 
 function dataFile(page: FolderNavigationPage): FolderNavigationDataFile {
@@ -90,37 +105,15 @@ function dataFolder(node: FolderNode): FolderNavigationDataFolder {
 export function buildFolderNavigationData(pages: FolderNavigationPage[]): FolderNavigationData {
   const entry = pages.find(page => page.isEntry && page.siteNodeId);
   if (entry) {
-    const childrenByParent = new Map<string, FolderNavigationPage[]>();
-    for (const page of pages) {
-      if (!page.parentSiteNodeId) continue;
-      const children = childrenByParent.get(page.parentSiteNodeId) ?? [];
-      children.push(page);
-      childrenByParent.set(page.parentSiteNodeId, children);
-    }
-    const directChildren = (parentId: string): FolderNavigationPage[] =>
-      [...(childrenByParent.get(parentId) ?? [])].sort((left, right) => {
-        const rank = (page: FolderNavigationPage) => page.siteNodeKind === 'folder' ? 0 : 1;
-        return rank(left) - rank(right) || compareNames(left.normalizedTitle, right.normalizedTitle) || left.outputPath.localeCompare(right.outputPath);
-      });
-    const structuralFolder = (page: FolderNavigationPage): FolderNavigationDataFolder => ({
-      name: page.normalizedTitle,
-      path: page.outputPath,
-      folders: directChildren(page.siteNodeId!)
-        .filter(child => child.siteNodeKind === 'folder')
-        .map(structuralFolder),
-      files: directChildren(page.siteNodeId!)
-        .filter(child => child.siteNodeKind === 'file')
-        .map(dataFile),
-    });
-    const rootChildren = entry.siteNodeKind === 'collection' || entry.siteNodeKind === 'folder'
-      ? directChildren(entry.siteNodeId!)
-      : [];
-    const semanticOnly = pages
-      .filter(page => page.siteNodeKind === 'file' && !page.parentSiteNodeId && page.siteNodeId !== entry.siteNodeId)
-      .sort((left, right) => compareNames(left.normalizedTitle, right.normalizedTitle));
+    const filePages = pages.filter(page => page.siteNodeKind === 'file');
+    const root = buildTree(filePages, sharedDirectorySegments(filePages));
     return {
-      folders: rootChildren.filter(page => page.siteNodeKind === 'folder').map(structuralFolder),
-      files: [...rootChildren.filter(page => page.siteNodeKind === 'file'), ...semanticOnly].map(dataFile),
+      folders: [...root.folders.values()]
+        .sort((left, right) => compareNames(left.name, right.name))
+        .map(dataFolder),
+      files: [...root.pages]
+        .sort((left, right) => compareNames(left.normalizedTitle, right.normalizedTitle))
+        .map(dataFile),
     };
   }
   const root = buildTree(pages);

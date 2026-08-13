@@ -1,7 +1,7 @@
 siteGuid: fldr001
 sourceDirectory: ./source_graphs/folder-structure-test
-entrySiteNodeId: alpha0000001
-defaultTraversalSiteNodeId: alpha0000001
+entrySiteNodeId: 3fef494a5c4d
+defaultTraversalSiteNodeId: 3fef494a5c4d
 defaultOutlinksDepth: 2
 defaultInlinksDepth: 0
 generationFolderNavigationEnabled: true

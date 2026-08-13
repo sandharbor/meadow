@@ -66,10 +66,37 @@ export class FilterPanelComponent {
     return this.page.getByRole("checkbox", { name: new RegExp(`^${escaped}(\\s|$)`) });
   }
 
+  private filterDisclosure(filterName: string) {
+    const escaped = filterName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return this.page.getByRole("button", {
+      name: new RegExp(`^(Expand|Collapse) ${escaped}$`),
+    });
+  }
+
+  private gapDirection(filterName: string): "Outlink" | "Inlink" | null {
+    if (filterName === "Outlink Gap") return "Outlink";
+    if (filterName === "Inlink Gap") return "Inlink";
+    return null;
+  }
+
+  private async filterControl(filterName: string) {
+    const checkbox = this.filterCheckbox(filterName);
+    if (await checkbox.count() > 0) return checkbox;
+    return this.filterDisclosure(filterName);
+  }
+
   private folderRow(folderPath: string) {
     return this.page.locator('[data-folder-path]').filter({
       has: this.page.locator(`[title="${folderPath || 'Root'}"]`),
     }).first();
+  }
+
+  private nodeTypeRow(typeName: string) {
+    return this.page
+      .getByTestId("node-type-filter-list")
+      .locator(":scope > div")
+      .filter({ has: this.page.getByTitle(typeName, { exact: true }) })
+      .first();
   }
 
   async clickAddCustomFilter() {
@@ -106,12 +133,28 @@ export class FilterPanelComponent {
   }
 
   async enableFilter(filterName: string) {
+    const gapDirection = this.gapDirection(filterName);
+    if (gapDirection) await this.expandFilterGroup("Gap");
+
+    const disclosure = this.filterDisclosure(filterName);
+    if (await disclosure.count() > 0) {
+      await this.expandFilterGroup(filterName);
+      return;
+    }
+
     const checkbox = this.filterCheckbox(filterName);
     await this.expect(checkbox).toBeVisible();
     await checkbox.check();
   }
 
   async getFilterThresholdValue(filterName: string): Promise<number> {
+    const gapDirection = this.gapDirection(filterName);
+    if (gapDirection) {
+      await this.expandFilterGroup("Gap");
+      const input = this.page.getByLabel(`${gapDirection} gap threshold`);
+      await this.expect(input).toBeVisible();
+      return parseInt(await input.inputValue(), 10);
+    }
     const filterContainer = this.filterCheckbox(filterName).locator("xpath=ancestor::div[contains(@class, 'space-y-2')][1]");
     const input = filterContainer.locator('input[type="number"]');
     await this.expect(input).toBeVisible();
@@ -120,6 +163,14 @@ export class FilterPanelComponent {
   }
 
   async setFilterThresholdValue(filterName: string, value: number) {
+    const gapDirection = this.gapDirection(filterName);
+    if (gapDirection) {
+      await this.expandFilterGroup("Gap");
+      const input = this.page.getByLabel(`${gapDirection} gap threshold`);
+      await this.expect(input).toBeVisible();
+      await input.fill(String(value));
+      return;
+    }
     const filterContainer = this.filterCheckbox(filterName).locator("xpath=ancestor::div[contains(@class, 'space-y-2')][1]");
     const input = filterContainer.locator('input[type="number"]');
     await this.expect(input).toBeVisible();
@@ -127,8 +178,29 @@ export class FilterPanelComponent {
   }
 
   async clickSoloOnFilter(filterName: string) {
+    const gapDirection = this.gapDirection(filterName);
+    if (gapDirection) {
+      await this.expandFilterGroup("Gap");
+      await this.page.getByTitle(`Solo ${gapDirection} gaps`).click();
+      return;
+    }
     const filterRow = this.filterCheckbox(filterName).locator("xpath=ancestor::div[.//button[@title='Solo']][1]");
     await filterRow.locator('button[title="Solo"]').click();
+  }
+
+  async getNodeTypeCount(typeName: string): Promise<number> {
+    await this.expandFilterGroup("Types");
+    const count = this.nodeTypeRow(typeName).locator('span[title$=" node"], span[title$=" nodes"]');
+    await this.expect(count).toBeVisible();
+    return parseInt(await count.innerText(), 10);
+  }
+
+  async soloNodeType(typeName: string) {
+    await this.expandFilterGroup("Types");
+    const button = this.nodeTypeRow(typeName).getByTitle(`Solo ${typeName}`, { exact: true });
+    await this.expect(button).toBeVisible();
+    await button.click();
+    await this.expect(button).toHaveAttribute("aria-pressed", "true");
   }
 
   async enableAndSoloFilter(filterName: string) {
@@ -185,7 +257,7 @@ export class FilterPanelComponent {
     const [searchBox, mixBox, filterBox] = await Promise.all([
       this.searchInput.boundingBox(),
       this.mixViewBtn.boundingBox(),
-      this.filterCheckbox(filterName).boundingBox(),
+      (await this.filterControl(filterName)).boundingBox(),
     ]);
     if (!searchBox || !mixBox || !filterBox) {
       throw new Error("Filter panel geometry is unavailable");
@@ -283,11 +355,25 @@ export class FilterPanelComponent {
   }
 
   async expectFilterVisible(filterName: string) {
-    await this.expect(this.filterCheckbox(filterName)).toBeVisible();
+    await this.expect(await this.filterControl(filterName)).toBeVisible();
   }
 
   async expectFolderFilterHidden() {
-    await this.expect(this.filterCheckbox("Folders")).toHaveCount(0);
+    await this.expect(this.filterDisclosure("Folders")).toHaveCount(0);
+  }
+
+  async expandFilterGroup(filterName: string) {
+    const disclosure = this.filterDisclosure(filterName);
+    await this.expect(disclosure).toBeVisible();
+    if (await disclosure.getAttribute("aria-expanded") !== "true") await disclosure.click();
+    await this.expect(disclosure).toHaveAttribute("aria-expanded", "true");
+  }
+
+  async collapseFilterGroup(filterName: string) {
+    const disclosure = this.filterDisclosure(filterName);
+    await this.expect(disclosure).toBeVisible();
+    if (await disclosure.getAttribute("aria-expanded") !== "false") await disclosure.click();
+    await this.expect(disclosure).toHaveAttribute("aria-expanded", "false");
   }
 
   async expectFolderVisible(folderPath: string) {

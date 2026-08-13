@@ -2,17 +2,17 @@ nodes:
   - siteNodeName: Alpha
     sourceGraphSubdirectory: Alpha
     siteNodeKind: folder
-    siteNodeId: alpha0000002
+    siteNodeId: f21b53e6bbbd
     listType: whitelist
   - siteNodeName: Beta
     sourceGraphSubdirectory: Beta
     siteNodeKind: folder
-    siteNodeId: beta00000003
+    siteNodeId: b2db90165ec0
     listType: whitelist
   - siteNodeName: Ordered Folders
     siteNodeKind: collection
-    siteNodeId: sitehome0001
+    siteNodeId: 7e4a79dd2c06
     listType: whitelist
     memberSiteNodeIds:
-      - beta00000003
-      - alpha0000002
+      - b2db90165ec0
+      - f21b53e6bbbd

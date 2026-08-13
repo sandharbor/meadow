@@ -440,7 +440,7 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
 
   const files = walkFilesSorted(scrubbedContentDir)
     .map(toPosixPath)
-    .filter(relativePath => relativePath.split('/')[0] !== SiteConfigPaths.TAGPAGES_DIR);
+    .filter(relativePath => relativePath.split('/')[0] !== SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR);
   const markdownFiles = files.filter(file => file.endsWith('.md'));
   const sourcePathByTitleAndDir = buildSourcePathByTitleAndDir(options.siteNodeConfigs);
   const entrySourceGraphSubdirectory = options.entrySourceGraphSubdirectory || '';

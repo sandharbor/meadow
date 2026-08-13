@@ -83,7 +83,7 @@ pagespecs:
           - relativeLinkPath: Latticework of Mental Models.html
           - relativeLinkPath: Circle of Competence.html
           - relativeLinkPath: Latticework of Mental Models.html
-          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+          - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
         footerSectionBacklinks:
           - relativeLinkPath: Charlie Munger.html
             backlinkContexts:

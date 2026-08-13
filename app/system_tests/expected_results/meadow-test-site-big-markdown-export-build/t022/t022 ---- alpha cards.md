@@ -36,7 +36,7 @@ pagespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: ../x-tagpages/tag--t022-srs--alpha.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t022-srs--alpha.html
           - relativeLinkPath: t022 ---- beta cards.html
         footerSectionBacklinks:
           - relativeLinkPath: ../t022 - spaced repetition.html

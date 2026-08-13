@@ -78,7 +78,7 @@ pagespecs:
           - relativeLinkPath: Hanlon's Razor.html
           - relativeLinkPath: Occam's Razor.html
           - relativeLinkPath: Hanlon's Razor.html
-          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+          - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
         footerSectionBacklinks:
           - relativeLinkPath: Hanlon's Razor.html
             backlinkContexts:

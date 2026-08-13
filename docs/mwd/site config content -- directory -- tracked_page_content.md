@@ -4,7 +4,7 @@
 
 As part of saving the [[site config]], we copy the [[site page tracking state -- tracked]]'s [[source page]] markdown files into the `tracked_page_content` folder, and then do a [[commit point -- saving site config]].
 
-When we generate the [[local html preview site]], we use these `tracked_page_content` files, not the original source page markdown.
+When we generate the [[generated html site]], we use these `tracked_page_content` files, not the original source page markdown.
 ### Design motivation
 
 There are several motivations for using the tracked page content.  First, this is a part of the [[multi-stage processing]], driven by [[design motivation -- processing stage repeatability]].

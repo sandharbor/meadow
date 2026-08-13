@@ -20,7 +20,7 @@ It should show a table with two rows, each with three actions.  Open folder, sav
 	* save to disk does a `cp -a` of those files to the chosen destination directory.  Get confirmation if the directory is not empty
 	* save to .zip saves into a chosen destination directory.  No confirmation needed, since it's just generating a single zip file.  If it would override an existing zip file, append an incrementing number after a dash.
 * preview html
-	* open folder opens: [[meadow config directory path - site html preview - HOME slash .config slash meadow slash sites slash the site slash html slash preview]]
+	* open folder opens: [[meadow config directory path - site generated html - HOME slash .config slash meadow slash sites slash the site slash html slash generated]]
 	* save to disk (same as above)
 	* save to .zip  (same as above)
 

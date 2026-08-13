@@ -16,7 +16,6 @@ The "multi-headed" part refers to the fact that this attention process is done m
 
 role::user
 
-#flashcards/transformers 
+#flashcards/transformers
 
 What does the self in self attention mean?::: The tokens being attended to come from the input sequence, not from another sequence
-

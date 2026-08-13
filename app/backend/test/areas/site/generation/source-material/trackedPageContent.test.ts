@@ -78,18 +78,19 @@ describe('tracked page content for folder-derived sites', () => {
     expect(fs.readFileSync(trackedConfigPath, 'utf8')).toBe(trackedConfigBefore);
 
     await generateHtmlForSite(sitePath, { preview: true });
-    const preview = SiteConfigPaths.getPreviewDir(sitePath);
+    const generatedHtml = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const nestedFolderRoute = `_mw_gen/folderpages/nested-${derivedByName.get('Nested')!.siteNodeId}.html`;
     for (const relativePath of [
       'index.html',
       'Alpha/Alpha note.html',
-      'Alpha/Nested/index.html',
+      nestedFolderRoute,
       'Alpha/Nested/Nested note.html',
       'Outside/Outside note.html',
       'Outside/Beyond outside.html',
     ]) {
-      expect(fs.existsSync(path.join(preview, ...relativePath.split('/'))), relativePath).toBe(true);
+      expect(fs.existsSync(path.join(generatedHtml, ...relativePath.split('/'))), relativePath).toBe(true);
     }
-    const alphaFolderHtml = fs.readFileSync(path.join(preview, 'index.html'), 'utf8');
+    const alphaFolderHtml = fs.readFileSync(path.join(generatedHtml, 'index.html'), 'utf8');
     expect(alphaFolderHtml.match(/<h1>Alpha<\/h1>/g)).toHaveLength(1);
     expect(alphaFolderHtml).not.toContain('This folder is empty.');
     expect(alphaFolderHtml).toContain('Alpha/Alpha%20note.html');
@@ -100,9 +101,13 @@ describe('tracked page content for folder-derived sites', () => {
     expect(alphaFolderHtml).toContain('class="structural-child-preview structural-child-preview-image"');
     expect(alphaFolderHtml).toMatch(/href="_mw_assets\/cust\/structural-previews\/[a-f0-9]{12}\.[a-f0-9]{8}\.svg"/);
     expect(alphaFolderHtml).toMatch(/structural-pages\.[a-f0-9]{8}\.css/);
-    const structuralPreviewDirectory = path.join(preview, '_mw_assets', 'cust', 'structural-previews');
+    const structuralPreviewDirectory = path.join(generatedHtml, '_mw_assets', 'cust', 'structural-previews');
     expect(fs.readdirSync(structuralPreviewDirectory)).toEqual([
       expect.stringMatching(/^[a-f0-9]{12}\.[a-f0-9]{8}\.svg$/),
     ]);
+
+    const outsideHtml = fs.readFileSync(path.join(generatedHtml, 'Outside', 'Outside note.html'), 'utf8');
+    expect(outsideHtml).toContain('<a href="../index.html" class="breadcrumb-link">Alpha</a>');
+    expect(outsideHtml).not.toContain('folder%3AAlpha');
   });
 });

@@ -36,7 +36,7 @@ export class PreviewPublishModal {
   }
 
   private get shareTab() {
-    return this.page.locator("button", { hasText: "Share" });
+    return this.page.getByRole("button", { name: /^2\s*Share$/ });
   }
 
   private get customizeSidebarLabel() {

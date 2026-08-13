@@ -56,17 +56,49 @@ describe('folder navigation', () => {
     expect(script).toContain('"alpha\/deeper\/Normalized Current.html"');
   });
 
-  it('uses the visible structural projection for a folder-derived site', () => {
+  it('preserves source folders needed by linked pages in a folder-derived site', () => {
     const data = buildFolderNavigationData([
-      { directory: '', normalizedTitle: 'Home', outputPath: 'index.html', siteNodeId: 'home', siteNodeKind: 'collection', isEntry: true },
-      { directory: 'B', normalizedTitle: 'B', outputPath: 'B/index.html', siteNodeId: 'b', parentSiteNodeId: 'home', siteNodeKind: 'folder' },
-      { directory: 'A', normalizedTitle: 'A', outputPath: 'A/index.html', siteNodeId: 'a', parentSiteNodeId: 'home', siteNodeKind: 'folder' },
-      { directory: 'A', normalizedTitle: 'Direct', outputPath: 'A/Direct.html', siteNodeId: 'direct', parentSiteNodeId: 'a', siteNodeKind: 'file' },
-      { directory: '', normalizedTitle: 'Outside', outputPath: 'Outside.html', siteNodeId: 'outside', siteNodeKind: 'file' },
+      { directory: 'Vault/Work/Alpha', normalizedTitle: 'Alpha', outputPath: 'index.html', siteNodeId: 'alpha', siteNodeKind: 'folder', isEntry: true },
+      { directory: 'Vault/Work/Alpha/Nested', normalizedTitle: 'Nested', outputPath: 'Vault/Work/Alpha/Nested/index.html', siteNodeId: 'nested', parentSiteNodeId: 'alpha', siteNodeKind: 'folder' },
+      { directory: 'Vault/Work/Alpha', normalizedTitle: 'Direct', outputPath: 'Vault/Work/Alpha/Direct.html', siteNodeId: 'direct', parentSiteNodeId: 'alpha', siteNodeKind: 'file' },
+      { directory: 'Vault/Work/Alpha/Nested', normalizedTitle: 'Nested note', outputPath: 'Vault/Work/Alpha/Nested/Nested note.html', siteNodeId: 'nested-note', parentSiteNodeId: 'nested', siteNodeKind: 'file' },
+      { directory: 'Vault/Work/Outside', normalizedTitle: 'Outside', outputPath: 'Vault/Work/Outside/Outside.html', siteNodeId: 'outside', siteNodeKind: 'file' },
     ]);
-    expect(data.folders.map(folder => folder.name)).toEqual(['A', 'B']);
-    expect(data.folders[0].files).toEqual([{ name: 'Direct.html', path: 'A/Direct.html' }]);
-    expect(data.files).toEqual([{ name: 'Outside.html', path: 'Outside.html' }]);
-    expect(JSON.stringify(data)).not.toContain('index.html","path":"index.html');
+    expect(data.folders.map(folder => folder.name)).toEqual(['Alpha', 'Outside']);
+    expect(data.folders[0]).toMatchObject({
+      path: 'Vault/Work/Alpha',
+      files: [{ name: 'Direct.html', path: 'Vault/Work/Alpha/Direct.html' }],
+      folders: [{
+        name: 'Nested',
+        path: 'Vault/Work/Alpha/Nested',
+        files: [{ name: 'Nested note.html', path: 'Vault/Work/Alpha/Nested/Nested note.html' }],
+      }],
+    });
+    expect(data.folders[1].files).toEqual([
+      { name: 'Outside.html', path: 'Vault/Work/Outside/Outside.html' },
+    ]);
+    expect(data.files).toEqual([]);
+    expect(JSON.stringify(data)).not.toContain('index.html');
+  });
+
+  it('omits the complete common ancestor chain from a folder-derived site', () => {
+    const data = buildFolderNavigationData([
+      { directory: 'Vault/Projects/Alpha', normalizedTitle: 'Alpha', outputPath: 'index.html', siteNodeId: 'alpha', siteNodeKind: 'folder', isEntry: true },
+      { directory: 'Vault/Projects/Alpha', normalizedTitle: 'Alpha note', outputPath: 'Vault/Projects/Alpha/Alpha note.html', siteNodeId: 'alpha-note', parentSiteNodeId: 'alpha', siteNodeKind: 'file' },
+      { directory: 'Vault/Projects/Alpha/Nested', normalizedTitle: 'Nested note', outputPath: 'Vault/Projects/Alpha/Nested/Nested note.html', siteNodeId: 'nested-note', siteNodeKind: 'file' },
+    ]);
+
+    expect(data.files).toEqual([
+      { name: 'Alpha note.html', path: 'Vault/Projects/Alpha/Alpha note.html' },
+    ]);
+    expect(data.folders).toEqual([{
+      name: 'Nested',
+      path: 'Vault/Projects/Alpha/Nested',
+      folders: [],
+      files: [{
+        name: 'Nested note.html',
+        path: 'Vault/Projects/Alpha/Nested/Nested note.html',
+      }],
+    }]);
   });
 });

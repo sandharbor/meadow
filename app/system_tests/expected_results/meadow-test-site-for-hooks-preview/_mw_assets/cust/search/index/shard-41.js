@@ -1,1 +1,1 @@
-window.__meadowSearchReceiveShard([{"t":"concept - no binding international treaties","p":"ai/concept%20-%20no%20binding%20international%20treaties.html","b":""},{"t":"tag--well-explained","p":"x-tagpages/tag--well-explained.html","b":""}]);
+window.__meadowSearchReceiveShard([{"t":"concept - no binding international treaties","p":"ai/concept%20-%20no%20binding%20international%20treaties.html","b":""}]);

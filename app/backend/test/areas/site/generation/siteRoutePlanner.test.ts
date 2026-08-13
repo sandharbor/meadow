@@ -20,8 +20,8 @@ import { planSiteRoutes } from '../../../../src/areas/site/generation/html/siteR
 
 const id = (value: string) => value as SiteNodeId;
 
-describe('folder-derived route planning', () => {
-  it('reserves the entry route, lets files win non-entry collisions, and resolves case collisions', () => {
+describe('site route planning', () => {
+  it('keeps the folder-derived entry at index and isolates non-entry structural pages', () => {
     const configs: SiteNodeConfig[] = [
       { siteNodeKind: 'collection', siteNodeId: id('cccccc000000'), siteNodeName: 'Home', memberSiteNodeIds: [id('aaaaaa000000'), id('bbbbbb000000')], listType: 'whitelist' },
       { siteNodeKind: 'folder', siteNodeId: id('aaaaaa000000'), siteNodeName: 'A', sourceGraphSubdirectory: 'A', listType: 'whitelist' },
@@ -34,14 +34,34 @@ describe('folder-derived route planning', () => {
     expect(plan.routes.get(id('cccccc000000'))).toBe('index.html');
     expect(plan.routes.get(id('ffffff000000'))).toBe('index--file-ffffff.html');
     expect(plan.routes.get(id('111111000000'))).toBe('Docs/index.html');
-    expect(plan.routes.get(id('bbbbbb000000'))).toBe('Docs/_folder-bbbbbb.html');
+    expect(plan.routes.get(id('aaaaaa000000'))).toBe('_mw_gen/folderpages/a-aaaaaa000000.html');
+    expect(plan.routes.get(id('bbbbbb000000'))).toBe('_mw_gen/folderpages/docs-bbbbbb000000.html');
     expect(new Set([...plan.routes.values()].map(route => route.toLowerCase())).size).toBe(plan.routes.size);
   });
 
-  it('leaves page-derived preferred routes unchanged', () => {
+  it('leaves page-derived preferred routes and existing same-path behavior unchanged', () => {
     const entry = { siteNodeKind: 'file', siteNodeId: id('eeeeee000000'), siteNodeName: 'Entry', sourceGraphSubdirectory: 'Notes', fileType: 'md', listType: 'whitelist' } as const;
-    const plan = planSiteRoutes([entry], { entrySiteNodeId: entry.siteNodeId });
+    const duplicateA = { siteNodeKind: 'file', siteNodeId: id('aaaaaa000000'), siteNodeName: 'Same', sourceGraphSubdirectory: '', fileType: 'md', listType: 'whitelist' } as const;
+    const duplicateB = { siteNodeKind: 'file', siteNodeId: id('bbbbbb000000'), siteNodeName: 'Same', sourceGraphSubdirectory: '', fileType: 'md', listType: 'whitelist' } as const;
+    const plan = planSiteRoutes([entry, duplicateA, duplicateB], { entrySiteNodeId: entry.siteNodeId });
     expect(plan.folderDerived).toBe(false);
     expect(plan.routes.get(entry.siteNodeId)).toBe('Notes/Entry.html');
+    expect(plan.routes.get(duplicateA.siteNodeId)).toBe('Same.html');
+    expect(plan.routes.get(duplicateB.siteNodeId)).toBe('Same.html');
+  });
+
+  it('uses reserved routes for generated tag pages and relocates colliding source content', () => {
+    const entry = { siteNodeKind: 'file', siteNodeId: id('eeeeee000000'), siteNodeName: 'Entry', sourceGraphSubdirectory: '', fileType: 'md', listType: 'whitelist' } as const;
+    const generatedTag = { siteNodeKind: 'file', siteNodeId: id('tttttt000000'), siteNodeName: 'tag--ideas', sourceGraphSubdirectory: 'x-tagpages', fileType: 'md', listType: 'whitelist' } as const;
+    const reservedSource = { siteNodeKind: 'file', siteNodeId: id('ssssss000000'), siteNodeName: 'tag--ideas', sourceGraphSubdirectory: '_mw_gen/tagpages', fileType: 'md', listType: 'whitelist' } as const;
+
+    const plan = planSiteRoutes(
+      [entry, generatedTag, reservedSource],
+      { entrySiteNodeId: entry.siteNodeId },
+    );
+
+    expect(plan.routes.get(generatedTag.siteNodeId)).toBe('_mw_gen/tagpages/tag--ideas.html');
+    expect(plan.routes.get(reservedSource.siteNodeId))
+      .toBe('_mw_gen/sourcepages/tagpages/tag--ideas.html');
   });
 });

@@ -1,1 +1,1 @@
-[[to delete]] should centralize on [[local html preview site]]
+[[to delete]] should centralize on [[generated html site]]

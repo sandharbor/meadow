@@ -75,7 +75,7 @@ pagespecs:
           - relativeLinkPath: Circle of Competence.html
           - relativeLinkPath: Warren Buffett.html
           - relativeLinkPath: Second Order Thinking.html
-          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+          - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
         footerSectionBacklinks:
           - relativeLinkPath: Charlie Munger.html
             backlinkContexts:

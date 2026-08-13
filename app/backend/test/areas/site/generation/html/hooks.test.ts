@@ -39,8 +39,8 @@ describe('html preview', () => {
 
   it('should normalize page names', async () => {
     // Check that preview folder does not exist before generating HTML
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    expect(fs.existsSync(previewFolderPath)).toBe(false);
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    expect(fs.existsSync(generatedHtmlFolderPath)).toBe(false);
 
     // Generate HTML with preview option
     await generateHtmlForSite(sitePath, { preview: true });
@@ -50,10 +50,10 @@ describe('html preview', () => {
     expect(fs.existsSync(htmlFolderPath)).toBe(true);
 
     // Check that preview folder exists
-    expect(fs.existsSync(previewFolderPath)).toBe(true);
+    expect(fs.existsSync(generatedHtmlFolderPath)).toBe(true);
 
     // Check that the page name was normalized
-    const previewFiles = fs.readdirSync(previewFolderPath);
+    const previewFiles = fs.readdirSync(generatedHtmlFolderPath);
     const htmlFiles = previewFiles.filter(file => file.endsWith('.html'));
 
     // Verify that pages starting with "test " were transformed to start with "super - "
@@ -78,11 +78,11 @@ describe('html preview', () => {
     // Generate HTML with preview option
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const specialLinesHtmlPath = path.join(previewFolderPath, 'superduper - special lines.html');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const specialLinesHtmlPath = path.join(generatedHtmlFolderPath, 'superduper - special lines.html');
     
     // Debug: List all files in the preview folder
-    console.log('Preview folder contents:', fs.readdirSync(previewFolderPath));
+    console.log('Preview folder contents:', fs.readdirSync(generatedHtmlFolderPath));
     console.log('Looking for file:', 'superduper - special lines.html');
     
     // Check that the file was generated
@@ -102,8 +102,8 @@ describe('html preview', () => {
 
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const mainPageHtmlPath = path.join(previewFolderPath, 'main page.html');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const mainPageHtmlPath = path.join(generatedHtmlFolderPath, 'main page.html');
 
     expect(fs.existsSync(mainPageHtmlPath)).toBe(true);
 
@@ -121,11 +121,11 @@ describe('html preview', () => {
     // Generate HTML with preview option
     await generateHtmlForSite(sitePath, { preview: true });
 
-    const previewFolderPath = SiteConfigPaths.getPreviewDir(sitePath);
-    const videoTimestampsHtmlPath = path.join(previewFolderPath, 'superduper - video timestamps.html');
+    const generatedHtmlFolderPath = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const videoTimestampsHtmlPath = path.join(generatedHtmlFolderPath, 'superduper - video timestamps.html');
     
     // Debug: List all files in the preview folder
-    console.log('Preview folder contents:', fs.readdirSync(previewFolderPath));
+    console.log('Preview folder contents:', fs.readdirSync(generatedHtmlFolderPath));
     console.log('Looking for file:', 'superduper - video timestamps.html');
     
     // Check that the file was generated

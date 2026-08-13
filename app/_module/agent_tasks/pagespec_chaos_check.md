@@ -263,9 +263,9 @@ Or this one where the inlink was completely absent from the footerSectionBacklin
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: ../x-tagpages/tag--t018-unique-a.html
-          - relativeLinkPath: ../x-tagpages/tag--t018-unique-b.html
-          - relativeLinkPath: ../x-tagpages/tag--t018-unique-c.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-a.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-b.html
+          - relativeLinkPath: ../_mw_gen/tagpages/tag--t018-unique-c.html
         footerSectionBacklinks: []
     <snip>
 ```

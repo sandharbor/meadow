@@ -39,7 +39,7 @@ export interface TransclusionOptions {
   finalPageDirectory: string;
   /** Root directory of the active source content phase */
   baseContentDirectory: string;
-  /** Root directory of preview output (for images) */
+  /** Root directory of generated HTML output (for images) */
   baseOutputFolder: string;
 
   siteNodeConfigs: SiteNodeConfig[];

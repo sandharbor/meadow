@@ -97,7 +97,7 @@ pagespecs:
           - relativeLinkPath: Warren Buffett.html
           - relativeLinkPath: Howard Marks.html
           - relativeLinkPath: Mental Models Overview.html
-          - relativeLinkPath: x-tagpages/tag--flashcards--mental-models.html
+          - relativeLinkPath: _mw_gen/tagpages/tag--flashcards--mental-models.html
           - relativeLinkPath: images/Mental Models Diagram.svg
         footerSectionBacklinks: []
 ```

@@ -47,8 +47,8 @@ export function registerS3PublishRoute(router: Router): void {
         return res.status(404).json({ error: `Site '${siteSlug}' not found` });
       }
 
-      const previewDir = SiteConfigPaths.getPreviewDir(siteDirectory);
-      if (!fs.existsSync(previewDir)) {
+      const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
+      if (!fs.existsSync(generatedHtmlDir)) {
         return res.status(400).json({
           error: 'No preview found. Please generate a preview before publishing.',
         });
@@ -80,7 +80,7 @@ export function registerS3PublishRoute(router: Router): void {
 
       const client = createS3Client(resources, secrets);
       try {
-        const result = await uploadDirectory(client, bucket, siteConfig.publishSlug, previewDir);
+        const result = await uploadDirectory(client, bucket, siteConfig.publishSlug, generatedHtmlDir);
 
         try {
           updateSiteConfig(siteDirectory, { siteLastPublishedAt: new Date().toISOString() });

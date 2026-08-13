@@ -15,8 +15,9 @@ limitations under the License.
 */
 
 import path from 'path';
+import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
 import type { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
-import type { FileSiteNodeConfig, FolderSiteNodeConfig, SiteNodeConfig, SiteNodeId } from '../../../../../../shared_code/types/siteNodeConfig.js';
+import type { FileSiteNodeConfig, SiteNodeConfig, SiteNodeId } from '../../../../../../shared_code/types/siteNodeConfig.js';
 import { normalizePageTitle } from './shared.js';
 
 export type SiteRouteTable = ReadonlyMap<SiteNodeId, string>;
@@ -38,7 +39,41 @@ const posixJoin = (...parts: string[]): string => path.posix.join(...parts.filte
 
 function preferredFileRoute(config: SiteNodeConfig, siteConfig: SiteConfig, siteSlug?: string): string {
   const name = normalizePageTitle(config.siteNodeName, siteConfig, siteSlug);
-  return posixJoin(config.sourceGraphSubdirectory ?? '', `${name}.html`);
+  const sourceDirectory = config.sourceGraphSubdirectory ?? '';
+  if (sourceDirectory === SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR) {
+    return posixJoin(
+      SiteConfigPaths.GENERATED_SITE_INTERNAL_DIR,
+      SiteConfigPaths.GENERATED_TAGPAGES_DIR,
+      `${name}.html`,
+    );
+  }
+  const sourceSegments = sourceDirectory.split('/').filter(Boolean);
+  const outputDirectory = sourceSegments[0] === SiteConfigPaths.GENERATED_SITE_INTERNAL_DIR
+    ? posixJoin(
+        SiteConfigPaths.GENERATED_SITE_INTERNAL_DIR,
+        SiteConfigPaths.GENERATED_SOURCEPAGES_DIR,
+        ...sourceSegments.slice(1),
+      )
+    : sourceDirectory;
+  return posixJoin(outputDirectory, `${name}.html`);
+}
+
+function generatedStructuralRoute(
+  config: SiteNodeConfig,
+  siteConfig: SiteConfig,
+  siteSlug?: string,
+): string {
+  const normalizedTitle = normalizePageTitle(config.siteNodeName, siteConfig, siteSlug);
+  const slug = normalizedTitle
+    .normalize('NFKD')
+    .toLocaleLowerCase('en-US')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'folder';
+  return posixJoin(
+    SiteConfigPaths.GENERATED_SITE_INTERNAL_DIR,
+    SiteConfigPaths.GENERATED_FOLDERPAGES_DIR,
+    `${slug}-${config.siteNodeId}.html`,
+  );
 }
 
 function uniqueFallback(base: string, occupied: Set<string>): string {
@@ -62,19 +97,27 @@ export function planSiteRoutes(
   const rendered = configs.filter(config => config.listType === 'whitelist');
   const folderDerived = entry.siteNodeKind !== 'file';
 
+  const preferred = new Map<SiteNodeId, string>();
+  for (const config of rendered) {
+    if (folderDerived && config.siteNodeId === entry.siteNodeId) {
+      preferred.set(config.siteNodeId, 'index.html');
+    } else if (config.siteNodeKind === 'file') {
+      preferred.set(config.siteNodeId, preferredFileRoute(config, siteConfig, siteSlug));
+    } else {
+      preferred.set(config.siteNodeId, generatedStructuralRoute(config, siteConfig, siteSlug));
+    }
+  }
+
+  // Preserve the long-standing page-derived routing behavior, including
+  // duplicate preferred source routes. The reserved namespace makes the new
+  // generated routes collision-safe without changing how existing pages win
+  // same-path collisions during generation.
   if (!folderDerived) {
     return {
       folderDerived: false,
-      routes: new Map(rendered.map(config => [config.siteNodeId, preferredFileRoute(config, siteConfig, siteSlug)])),
+      routes: new Map(rendered.map(config => [config.siteNodeId, preferred.get(config.siteNodeId)!])),
       collisions: [],
     };
-  }
-
-  const preferred = new Map<SiteNodeId, string>();
-  for (const config of rendered) {
-    if (config.siteNodeId === entry.siteNodeId) preferred.set(config.siteNodeId, 'index.html');
-    else if (config.siteNodeKind === 'folder') preferred.set(config.siteNodeId, posixJoin(config.sourceGraphSubdirectory, 'index.html'));
-    else if (config.siteNodeKind === 'file') preferred.set(config.siteNodeId, preferredFileRoute(config, siteConfig, siteSlug));
   }
 
   const routes = new Map<SiteNodeId, string>();
@@ -88,8 +131,10 @@ export function planSiteRoutes(
     preferredOwners.set(canonicalRoute(route), owners);
   }
 
-  routes.set(entry.siteNodeId, 'index.html');
-  occupied.add(canonicalRoute('index.html'));
+  if (folderDerived) {
+    routes.set(entry.siteNodeId, 'index.html');
+    occupied.add(canonicalRoute('index.html'));
+  }
 
   const files = rendered
     .filter((config): config is FileSiteNodeConfig => config.siteNodeKind === 'file')
@@ -106,19 +151,13 @@ export function planSiteRoutes(
     occupied.add(canonicalRoute(route));
   }
 
-  const folders = rendered
-    .filter((config): config is FolderSiteNodeConfig => config.siteNodeKind === 'folder' && config.siteNodeId !== entry.siteNodeId)
-    .sort((left, right) => left.sourceGraphSubdirectory.localeCompare(right.sourceGraphSubdirectory) || left.siteNodeId.localeCompare(right.siteNodeId));
-  for (const folder of folders) {
-    const desired = preferred.get(folder.siteNodeId)!;
-    let route = desired;
-    if (occupied.has(canonicalRoute(route))) {
-      route = uniqueFallback(
-        posixJoin(folder.sourceGraphSubdirectory, `_folder-${folder.siteNodeId.slice(0, 6)}.html`),
-        occupied,
-      );
-    }
-    routes.set(folder.siteNodeId, route);
+  const structuralNodes = rendered
+    .filter(config => config.siteNodeKind !== 'file' && config.siteNodeId !== entry.siteNodeId)
+    .sort((left, right) => left.siteNodeId.localeCompare(right.siteNodeId));
+  for (const structuralNode of structuralNodes) {
+    const desired = preferred.get(structuralNode.siteNodeId)!;
+    const route = uniqueFallback(desired, occupied);
+    routes.set(structuralNode.siteNodeId, route);
     occupied.add(canonicalRoute(route));
   }
 
@@ -135,7 +174,7 @@ export function planSiteRoutes(
     }))
     .sort((left, right) => left.preferredRoute.localeCompare(right.preferredRoute));
 
-  return { folderDerived: true, routes, collisions };
+  return { folderDerived, routes, collisions };
 }
 
 export function routeForSiteNode(config: SiteNodeConfig, routeTable: SiteRouteTable): string {

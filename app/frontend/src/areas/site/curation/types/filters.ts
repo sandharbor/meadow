@@ -29,6 +29,7 @@ export {
   createFrontierNodeSelector,
   createFolderNodeSelector,
   createSiteNodeKindSelector,
+  createImageNodeSelector,
   createSelectedScopeRootSelector,
   createEffectiveBlacklistSelector,
   createSearchByTitleSelector,
@@ -50,8 +51,6 @@ import {
   createOutlinkDiscrepancySelector,
   createInlinkDiscrepancySelector,
   createFrontierNodeSelector,
-  createSiteNodeKindSelector,
-  createSelectedScopeRootSelector,
   createEffectiveBlacklistSelector,
   createCustomSiteNodeSelector as createCustomSiteNodeSelectorBase
 } from '../utils/filterSelectors';
@@ -83,6 +82,9 @@ export interface IFolderFilterState {
   isHidden: boolean;
 }
 
+export type NodeTypeFilterId = 'file' | 'image' | 'folder' | 'collection' | 'selected-scope-root';
+export type INodeTypeFilterState = IFolderFilterState;
+
 export interface IFilter {
   id: string;
   name: string;
@@ -104,6 +106,9 @@ export interface IFilter {
   descriptionNode?: React.ReactNode; // Rich tooltip content (takes precedence over description)
   isFolderFilter?: boolean; // Whether this built-in filter renders the folder tree UI
   folderStates?: Record<string, IFolderFilterState>; // Per-folder title, solo, and hide state
+  isNodeTypeFilter?: boolean; // Whether this built-in filter renders the graph type list UI
+  nodeTypeStates?: Partial<Record<NodeTypeFilterId, INodeTypeFilterState>>; // Per-type title, solo, and hide state
+  isGapFilter?: boolean; // Whether this built-in filter renders the grouped inlink/outlink gap UI
 }
 
 export interface IFilterState {
@@ -199,29 +204,18 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       isSolo: false,
       isHidden: false
     },
-    ...(['file', 'folder', 'collection'] as const).map(siteNodeKind => ({
-      id: `node-kind-${siteNodeKind}-filter`,
-      name: siteNodeKind === 'collection'
-        ? 'Site Homes'
-        : `${siteNodeKind[0].toUpperCase()}${siteNodeKind.slice(1)} Nodes`,
-      description: `Select ${siteNodeKind === 'collection' ? 'site home' : siteNodeKind} nodes`,
-      siteNodeSelectors: [createSiteNodeKindSelector(siteNodeKind)],
-      selectorApplicationCriteria: 'union' as const,
-      actions: [{ type: 'highlight' as const, color: siteNodeKind === 'folder' ? '#3B82F6' : siteNodeKind === 'collection' ? '#8B5CF6' : '#64748B', isDashed: false }],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-    })),
     {
-      id: 'selected-scope-root-filter',
-      name: 'Selected Scope Roots',
-      description: 'Folders explicitly selected when the site was created',
-      siteNodeSelectors: [createSelectedScopeRootSelector()],
+      id: 'node-types-filter',
+      name: 'Types',
+      description: 'Filter nodes by the roles and file types present in this graph',
+      siteNodeSelectors: [],
       selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#0EA5E9', isDashed: false }],
+      actions: [],
       enabled: false,
       isSolo: false,
       isHidden: false,
+      isNodeTypeFilter: true,
+      nodeTypeStates: {},
     },
     {
       id: 'effective-folder-blacklist-filter',
@@ -278,6 +272,18 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       isHidden: false
     },
     {
+      id: 'gap-filter',
+      name: 'Gap',
+      description: 'Find nodes whose source-graph links are missing from the working graph',
+      siteNodeSelectors: [],
+      selectorApplicationCriteria: 'union',
+      actions: [],
+      enabled: false,
+      isSolo: false,
+      isHidden: false,
+      isGapFilter: true,
+    },
+    {
       id: 'outlink-gap-filter',
       name: 'Outlink Gap',
       siteNodeSelectors: [createOutlinkDiscrepancySelector(5)],
@@ -287,7 +293,8 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       isSolo: false,
       isHidden: false,
       showThresholdInput: true,
-      thresholdValue: 5
+      thresholdValue: 5,
+      hideFromFilterList: true,
     },
     {
       id: 'inlink-gap-filter',
@@ -299,7 +306,8 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       isSolo: false,
       isHidden: false,
       showThresholdInput: true,
-      thresholdValue: 5
+      thresholdValue: 5,
+      hideFromFilterList: true,
     },
     {
       id: 'frontier-filter',

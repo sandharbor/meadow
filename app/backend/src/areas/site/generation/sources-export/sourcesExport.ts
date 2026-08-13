@@ -75,7 +75,7 @@ export function prepareSourcesExportFromScrubbedSourceDirectory(
   for (const filePath of walkFilesRecursively(scrubbedContentDir)) {
     const relativePath = path.relative(scrubbedContentDir, filePath);
     const topDir = relativePath.split(path.sep)[0];
-    if (topDir === SiteConfigPaths.TAGPAGES_DIR) {
+    if (topDir === SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR) {
       continue;
     }
 

@@ -24,7 +24,7 @@ import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils.j
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../../shared_code/utils/compressionManifestUtils.js';
 import { SiteConfig } from '../../../../../../shared_code/types/siteConfig.js';
 import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
-import { getConfigDirectory, getSiteDirectory, getSiteConfigPath, getSiteHtmlDirectory } from '../../../../shared/site-config/siteConfigPaths.js';
+import { getConfigDirectory, getSiteDirectory, getSiteConfigPath } from '../../../../shared/site-config/siteConfigPaths.js';
 import { generateHtmlForSite } from '../html/htmlService.js';
 import { normalizePageTitle } from '../html/shared.js';
 import { loadSiteConfig } from '../../../../shared/utils/siteConfigUtils.js';
@@ -161,10 +161,10 @@ router.post('/sites/:siteSlug/generation/preview', (req, res, next) => {
         );
 
         // Check if preview HTML directory exists
-        const previewHtmlDir = SiteConfigPaths.getPreviewDir(siteDirectory);
+        const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
         
-        if (!fs.existsSync(previewHtmlDir)) {
-          return res.status(500).json({ error: 'Preview HTML directory not found after generation' });
+        if (!fs.existsSync(generatedHtmlDir)) {
+          return res.status(500).json({ error: 'Generated HTML directory not found after generation' });
         }
 
         // Get the site config to determine the traversal page
@@ -195,7 +195,7 @@ router.post('/sites/:siteSlug/generation/preview', (req, res, next) => {
         // If no specific traversal page, look for any HTML file in root directory
         // (we don't pick alphabetically from subdirs to avoid unexpected behavior)
         if (!traversalPageUrl) {
-          const htmlFiles = fs.readdirSync(previewHtmlDir).filter(file => file.endsWith('.html'));
+          const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(file => file.endsWith('.html'));
           if (htmlFiles.length > 0) {
             // Use the first HTML file found, but log a warning since this is a fallback
             logger.warn(`No traversal page specified or found, falling back to first HTML file: ${htmlFiles[0]}`);
@@ -391,9 +391,9 @@ router.get('/sites/:siteSlug/generation/preview-stream', (req, res, _next) => {
       }
 
       // Check if preview HTML directory exists
-      const previewHtmlDir = SiteConfigPaths.getPreviewDir(siteDirectory);
-      if (!fs.existsSync(previewHtmlDir)) {
-        sendProgress({ stage: 'error', message: 'Preview HTML directory not found after generation', result: { success: false, error: 'Preview HTML directory not found after generation' } });
+      const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
+      if (!fs.existsSync(generatedHtmlDir)) {
+        sendProgress({ stage: 'error', message: 'Generated HTML directory not found after generation', result: { success: false, error: 'Generated HTML directory not found after generation' } });
         res.end();
         return;
       }
@@ -425,7 +425,7 @@ router.get('/sites/:siteSlug/generation/preview-stream', (req, res, _next) => {
 
       // If no specific traversal page, look for any HTML file in root directory
       if (!traversalPageUrl) {
-        const htmlFiles = fs.readdirSync(previewHtmlDir).filter(file => file.endsWith('.html'));
+        const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(file => file.endsWith('.html'));
         if (htmlFiles.length > 0) {
           logger.warn(`No traversal page specified or found, falling back to first HTML file: ${htmlFiles[0]}`);
           traversalPageUrl = `${requestOrigin}/api/sites/${siteSlug}/generation/published/${encodePathForUrl(htmlFiles[0])}`;
@@ -583,7 +583,8 @@ router.get('/sites/:siteSlug/generation/published/*', (req, res, next) => {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const filePath = join(getSiteHtmlDirectory(siteSlug), 'preview', filename);
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(getSiteDirectory(siteSlug));
+    const filePath = join(generatedHtmlDir, filename);
 
     if (!fs.existsSync(filePath)) {
       // Check if preview generation is in progress for this site
@@ -679,14 +680,14 @@ router.get('/sites/:siteSlug/generation/published/*', (req, res, next) => {
     const ASSETS_PREFIX = '_mw_assets/';
     if (filename.startsWith(ASSETS_PREFIX)) {
       const relativeAssetPath = filename.slice(ASSETS_PREFIX.length);
-      const assetsDir = join(getSiteHtmlDirectory(siteSlug), 'preview', '_mw_assets');
+      const assetsDir = join(generatedHtmlDir, '_mw_assets');
       const gzipped = loadGzipPathSet(assetsDir);
       if (gzipped?.has(relativeAssetPath)) {
         res.setHeader('Content-Encoding', 'gzip');
       }
     }
 
-    // The preview directory is replaced as one unit during regeneration. The
+    // The generated HTML directory is replaced as one unit during regeneration. The
     // file can therefore disappear after existsSync() but before sendFile()
     // opens it. Report that race as the same ordinary 404 as the preflight
     // check instead of forwarding ENOENT to the global 500 handler.
@@ -861,11 +862,11 @@ router.patch('/sites/:slug/generation/options', (req, res, next) => {
     clearSiteGuidCache(slug);
 
     // Commit only the conf directory (fire and forget).
-    // Important: we must NOT commit the preview directory here because preview
-    // regeneration (triggered by this config change) deletes and recreates the
-    // preview dir.  If this commit races with that deletion, git would record
-    // the preview files as deleted, causing getOriginalContent() to treat
-    // subsequently-regenerated preview files as "new" instead of "modified".
+    // Important: we must NOT commit the generated HTML directory here because
+    // regeneration (triggered by this config change) deletes and recreates it.
+    // If this commit races with that deletion, git would record the generated
+    // files as deleted, causing getOriginalContent() to treat subsequently
+    // regenerated files as "new" instead of "modified".
     const confDir = SiteConfigPaths.getConfDir(siteDirectory);
     if (fs.existsSync(confDir)) {
       void (async () => {

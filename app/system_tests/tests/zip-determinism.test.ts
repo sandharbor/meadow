@@ -93,7 +93,7 @@ describe('Generated archive determinism', () => {
 
     it('produces byte-identical ZIPs across two consecutive preview runs', async () => {
       const siteSlug = testSetup!.getSiteSlug();
-      const sourcesExportDir = testSetup!.getPathInSite('html/preview/_mw_assets/cust/sources-export');
+      const sourcesExportDir = testSetup!.getPathInSite('html/generated/_mw_assets/cust/sources-export');
 
       async function runPreviewAndReadZip(): Promise<{ filename: string; bytes: Buffer }> {
         const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
@@ -148,7 +148,7 @@ describe('Generated archive determinism', () => {
 
     it('produces byte-identical gzipped assets and stable URL hashes across two runs', async () => {
       const siteSlug = testSetup!.getSiteSlug();
-      const assetsDir = testSetup!.getPathInSite('html/preview/_mw_assets');
+      const assetsDir = testSetup!.getPathInSite('html/generated/_mw_assets');
 
       async function runPreviewAndReadGzipped(): Promise<Map<string, Buffer>> {
         const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {

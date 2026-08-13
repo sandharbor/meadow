@@ -25,7 +25,7 @@ interface AdvancedTabProps {
 interface LocalPaths {
   appConfigFile: string;
   rawMarkdown: string;
-  previewHtml: string;
+  generatedHtml: string;
   siteConfigFile: string;
   siteNodeConfigFile: string;
 }
@@ -82,7 +82,7 @@ export const AdvancedTab: React.FC<AdvancedTabProps> = ({ siteSlug }) => {
     { label: 'Site Config', path: paths.siteConfigFile },
     { label: 'Site Page Config', path: paths.siteNodeConfigFile },
     { label: 'Sources', path: paths.rawMarkdown },
-    { label: 'Rendered Preview Site', path: paths.previewHtml },
+    { label: 'Generated HTML Site', path: paths.generatedHtml },
   ];
 
   return (

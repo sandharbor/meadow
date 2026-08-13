@@ -26,7 +26,11 @@ import { logger } from '../../../../shared/utils/logger';
 import { ISiteNode } from '../../../../../../shared_code/types/ISiteNode';
 import { hasNodesInMultipleFolders } from '../utils/folderFilterUtils';
 import FolderFilterTree from './FolderFilterTree';
+import NodeTypeFilterList from './NodeTypeFilterList';
+import GapFilterList from './GapFilterList';
 import FilterExpressionComposer from './FilterExpressionComposer';
+import type { Graph } from '../../../../../../shared_code/types/graph';
+import { getPresentNodeTypeFilters } from '../utils/nodeTypeFilterUtils';
 import {
   FilterExpression,
   getActiveFilterExpressionTerms
@@ -41,6 +45,7 @@ interface FilterPanelProps {
   onCustomFiltersChange?: () => void;
   untrackedNodeCount?: number;
   pages?: ISiteNode[];
+  graph: Graph;
   filterExpression?: FilterExpression | null;
   filterExpressionFilters?: IFilter[];
   onFilterExpressionChange?: (expression: FilterExpression) => void;
@@ -53,6 +58,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   onCustomFiltersChange,
   untrackedNodeCount,
   pages = [],
+  graph,
   filterExpression = null,
   filterExpressionFilters,
   onFilterExpressionChange,
@@ -71,6 +77,9 @@ const FilterPanel = React.memo<FilterPanelProps>(({
 
   // Local state for threshold inputs
   const [thresholdInputs, setThresholdInputs] = useState<Record<string, number>>({});
+
+  // Disclosure state is presentation-only: collapsing a group does not disable active child filters.
+  const [expandedFilterGroups, setExpandedFilterGroups] = useState<Set<string>>(new Set());
 
   const debouncedSearchInputs = useDebounce(searchInputs, 150);
   const debouncedThresholdInputs = useDebounce(thresholdInputs, 300);
@@ -273,10 +282,17 @@ const FilterPanel = React.memo<FilterPanelProps>(({
   };
 
   const showFolderFilter = hasNodesInMultipleFolders(pages);
+  const showNodeTypeFilter = getPresentNodeTypeFilters(graph).length > 1;
+  const gapFilters = filters.filter(filter => (
+    filter.id === 'outlink-gap-filter' || filter.id === 'inlink-gap-filter'
+  ));
+  const showGapFilter = gapFilters.length > 1;
   const otherFilters = filters.filter(f =>
     !f.hideFromFilterList
     && f.id !== 'search-by-title-filter'
     && (!f.isFolderFilter || showFolderFilter)
+    && (!f.isNodeTypeFilter || showNodeTypeFilter)
+    && (!f.isGapFilter || showGapFilter)
   );
   const searchText = searchInputs['search-by-title-filter'] || '';
   const hasSearchText = searchText.length > 0;
@@ -290,6 +306,15 @@ const FilterPanel = React.memo<FilterPanelProps>(({
       ['search-by-title-filter']: ''
     }));
     setSearchHadContent(false);
+  };
+
+  const toggleFilterGroup = (filterId: string) => {
+    setExpandedFilterGroups(previous => {
+      const next = new Set(previous);
+      if (next.has(filterId)) next.delete(filterId);
+      else next.add(filterId);
+      return next;
+    });
   };
 
   return (
@@ -396,6 +421,8 @@ const FilterPanel = React.memo<FilterPanelProps>(({
         <div className="space-y-3">
           {otherFilters.map((filter) => {
             const threshold = thresholdInputs[filter.id] ?? filter.thresholdValue ?? 5;
+            const isExpandableFilter = Boolean(filter.isFolderFilter || filter.isNodeTypeFilter || filter.isGapFilter);
+            const isExpanded = expandedFilterGroups.has(filter.id);
             const gapDescription = filter.id === 'outlink-gap-filter'
               ? `Pages with ${threshold} or more outlinks that do not show in the graph`
               : filter.id === 'inlink-gap-filter'
@@ -409,21 +436,44 @@ const FilterPanel = React.memo<FilterPanelProps>(({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 min-w-0 flex-1">
-                  <input
-                    type="checkbox"
-                    id={`${filter.id}-enabled`}
-                    checked={filter.enabled}
-                    onChange={(e) => handleFilterEnabledChange(filter, e.target.checked)}
-                    className={`form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}
-                  />
-                  <label htmlFor={`${filter.id}-enabled`} className={`text-sm text-gray-700 flex items-center min-w-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}>
-                    <span className="truncate">{filter.name}</span>
-                    {filter.id === 'untracked-filter' && untrackedNodeCount !== undefined && untrackedNodeCount > 0 && (
-                      <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium bg-warning-100 text-warning-700 rounded flex-shrink-0">
-                        {untrackedNodeCount}
-                      </span>
-                    )}
-                  </label>
+                  {isExpandableFilter ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleFilterGroup(filter.id)}
+                      className="flex min-w-0 items-center gap-2 rounded text-sm text-gray-700 hover:text-gray-900"
+                      aria-expanded={isExpanded}
+                      aria-controls={`${filter.id}-contents`}
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${filter.name}`}
+                    >
+                      <svg
+                        className={`h-4 w-4 flex-shrink-0 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                        viewBox="0 0 16 16"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
+                      </svg>
+                      <span className="truncate">{filter.name}</span>
+                    </button>
+                  ) : (
+                    <>
+                      <input
+                        type="checkbox"
+                        id={`${filter.id}-enabled`}
+                        checked={filter.enabled}
+                        onChange={(e) => handleFilterEnabledChange(filter, e.target.checked)}
+                        className={`form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}
+                      />
+                      <label htmlFor={`${filter.id}-enabled`} className={`text-sm text-gray-700 flex items-center min-w-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}>
+                        <span className="truncate">{filter.name}</span>
+                        {filter.id === 'untracked-filter' && untrackedNodeCount !== undefined && untrackedNodeCount > 0 && (
+                          <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium bg-warning-100 text-warning-700 rounded flex-shrink-0">
+                            {untrackedNodeCount}
+                          </span>
+                        )}
+                      </label>
+                    </>
+                  )}
                   {tooltipDescription && (
                     <span className="relative ml-1 group cursor-default">
                       <span className={`w-3.5 h-3.5 inline-flex items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] -translate-y-0.5 transition-opacity duration-[125ms] ${isPanelHovered ? (filter.enabled ? 'opacity-100' : 'opacity-50') : 'opacity-0'}`}>
@@ -435,7 +485,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                     </span>
                   )}
                 </div>
-                {filter.enabled && !filter.isFolderFilter && (
+                {filter.enabled && !isExpandableFilter && (
                   <div className="flex space-x-1 flex-shrink-0 ml-2">
                     {filter.id.startsWith('custom-') && (
                       <button
@@ -502,12 +552,28 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                   </div>
                 )}
               </div>
-              {filter.enabled && filter.isFolderFilter && (
-                <FolderFilterTree
-                  filter={filter}
-                  pages={pages}
-                  onFilterChange={onFilterChange}
-                />
+              {isExpanded && isExpandableFilter && (
+                <div id={`${filter.id}-contents`}>
+                  {filter.isFolderFilter && (
+                    <FolderFilterTree filter={filter} pages={pages} onFilterChange={onFilterChange} />
+                  )}
+                  {filter.isNodeTypeFilter && (
+                    <NodeTypeFilterList filter={filter} graph={graph} onFilterChange={onFilterChange} />
+                  )}
+                  {filter.isGapFilter && (
+                    <GapFilterList
+                      filters={gapFilters}
+                      graph={graph}
+                      thresholdInputs={thresholdInputs}
+                      onEnabledChange={(gapFilter, enabled) => { void handleFilterEnabledChange(gapFilter, enabled); }}
+                      onFilterChange={onFilterChange}
+                      onThresholdChange={(filterId, value) => setThresholdInputs(previous => ({
+                        ...previous,
+                        [filterId]: value,
+                      }))}
+                    />
+                  )}
+                </div>
               )}
               {filter.enabled && filter.showSearchInput &&
                 filter.siteNodeSelectors.length > 0 && (

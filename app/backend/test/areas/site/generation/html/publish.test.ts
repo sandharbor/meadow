@@ -63,16 +63,16 @@ describe('html publish', () => {
 
     await createPreviewFolder();
 
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const htmlFiles = fs.readdirSync(previewDir).filter(f => f.endsWith('.html')).sort();
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(f => f.endsWith('.html')).sort();
     expect(htmlFiles.length).toBeGreaterThan(0);
 
-    const firstHtmlPath = path.join(previewDir, htmlFiles[0]);
+    const firstHtmlPath = path.join(generatedHtmlDir, htmlFiles[0]);
     const firstHtml = fs.readFileSync(firstHtmlPath, 'utf8');
-    const manifestPath = path.join(previewDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json');
+    const manifestPath = path.join(generatedHtmlDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json');
 
     expect(fs.existsSync(manifestPath)).toBe(true);
-    expect(fs.existsSync(path.join(previewDir, '_mw_assets', 'sources-export'))).toBe(false);
+    expect(fs.existsSync(path.join(generatedHtmlDir, '_mw_assets', 'sources-export'))).toBe(false);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { downloadFilename: string };
     expect(manifest.downloadFilename).toBe('minimal-test-site-sources.zip');
     expect(firstHtml).toContain('data-sources-export-manifest-url="_mw_assets/cust/sources-export/sources-export-manifest.json"');
@@ -91,16 +91,16 @@ describe('html publish', () => {
 
     await createPreviewFolder();
 
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const htmlFiles = fs.readdirSync(previewDir).filter(f => f.endsWith('.html')).sort();
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(f => f.endsWith('.html')).sort();
     expect(htmlFiles.length).toBeGreaterThan(0);
 
-    const firstHtml = fs.readFileSync(path.join(previewDir, htmlFiles[0]), 'utf8');
+    const firstHtml = fs.readFileSync(path.join(generatedHtmlDir, htmlFiles[0]), 'utf8');
     expect(firstHtml).toContain('data-meadow-srs-site-guid="x3d9p0k"');
     expect(firstHtml).toContain('data-meadow-srs-page-id=');
     expect(firstHtml).toMatch(/cust\/srs\/srs\.[a-f0-9]{8}\.css/);
     expect(firstHtml).toMatch(/cust\/srs\/srs\.[a-f0-9]{8}\.js/);
-    expect(fs.existsSync(path.join(previewDir, '_mw_assets', 'srs'))).toBe(false);
+    expect(fs.existsSync(path.join(generatedHtmlDir, '_mw_assets', 'srs'))).toBe(false);
   });
 
   it('should keep OKF artifacts under the customization assets directory', async () => {
@@ -109,13 +109,13 @@ describe('html publish', () => {
 
     await createPreviewFolder();
 
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const okfDirectory = path.join(previewDir, '_mw_assets', 'cust', 'okf');
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const okfDirectory = path.join(generatedHtmlDir, '_mw_assets', 'cust', 'okf');
     expect(fs.existsSync(path.join(okfDirectory, 'okf-download-manifest.json'))).toBe(true);
     expect(fs.existsSync(path.join(okfDirectory, 'bundle', 'index.md'))).toBe(true);
-    expect(fs.existsSync(path.join(previewDir, '_mw_assets', 'okf'))).toBe(false);
+    expect(fs.existsSync(path.join(generatedHtmlDir, '_mw_assets', 'okf'))).toBe(false);
 
-    const mainPageHtml = fs.readFileSync(path.join(previewDir, 'main page.html'), 'utf8');
+    const mainPageHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
     expect(mainPageHtml).toContain('_mw_assets/cust/okf/okf-download-manifest.json');
     expect(mainPageHtml).toContain('_mw_assets/cust/okf/bundle/index.md');
   });
@@ -149,8 +149,8 @@ describe('html publish', () => {
     expect(guidMatch).not.toBeNull();
     expect(rawTrackedMainPage).toContain('<!--SR:!2026-03-12,3,250-->');
 
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const previewHtml = fs.readFileSync(path.join(previewDir, 'main page.html'), 'utf8');
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const previewHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
     expect(previewHtml).toContain(`data-meadow-srs-site-guid="x3d9p0k"`);
     expect(previewHtml).toContain(`<meadow-srs-card guid="${guidMatch![1]}" kind="basic">`);
     expect(previewHtml).toContain('<meadow-srs-prompt>What color is <a href="another%20page.html">another page</a>?</meadow-srs-prompt>');
@@ -158,9 +158,9 @@ describe('html publish', () => {
     expect(previewHtml).not.toContain('<!--SR:!2026-03-12,3,250-->');
 
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(previewDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json'), 'utf8')
+      fs.readFileSync(path.join(generatedHtmlDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json'), 'utf8')
     ) as { zipFilename: string };
-    const zipPath = path.join(previewDir, '_mw_assets', 'cust', 'sources-export', manifest.zipFilename);
+    const zipPath = path.join(generatedHtmlDir, '_mw_assets', 'cust', 'sources-export', manifest.zipFilename);
     const zippedMarkdown = execFileSync('unzip', ['-p', zipPath, 'minimal-test-site/main page.md'], {
       encoding: 'utf8',
     });
@@ -235,7 +235,7 @@ describe('html publish', () => {
 
     await createPreviewFolder();
 
-    const previewHtml = fs.readFileSync(path.join(SiteConfigPaths.getPreviewDir(sitePath), 'main page.html'), 'utf8');
+    const previewHtml = fs.readFileSync(path.join(SiteConfigPaths.getGeneratedHtmlDir(sitePath), 'main page.html'), 'utf8');
     expect(previewHtml).toContain(`<meadow-srs-card guid="${sourceGuidMatch![1]}" kind="basic">`);
     expect(previewHtml).toContain('<meadow-srs-prompt>What color is the sky?</meadow-srs-prompt>');
     expect(previewHtml).toContain('<meadow-srs-answer>Blue</meadow-srs-answer>');
@@ -277,8 +277,8 @@ describe('html publish', () => {
       'All agents across all [[child page|Child Page]].\n\n\n<!--SR:!2026-03-10,3,250-->\n\n<!--MEADOW_SR_GUID:'
     );
 
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const previewHtml = fs.readFileSync(path.join(previewDir, 'main page.html'), 'utf8');
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const previewHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
     expect(previewHtml).toContain(`<meadow-srs-card guid="${guidMatch![1]}" kind="multiline-basic">`);
     expect(previewHtml).toContain('<meadow-srs-prompt>What does <a href="another%20page.html">Another Page</a> orchestrate?</meadow-srs-prompt>');
     expect(previewHtml).toContain('<meadow-srs-answer>All agents across all <a href="child%20page.html">Child Page</a>.</meadow-srs-answer>');
@@ -313,8 +313,8 @@ describe('html publish', () => {
     const guidMatch = rawTrackedMainPage.match(/<!--MEADOW_SR_GUID:([a-f0-9]{13})-->/);
     expect(guidMatch).not.toBeNull();
 
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const previewHtml = fs.readFileSync(path.join(previewDir, 'main page.html'), 'utf8');
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const previewHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
     expect(previewHtml).toContain(`<meadow-srs-card guid="${guidMatch![1]}:cloze:1" kind="cloze" cloze-type="simplified" sibling-group="${guidMatch![1]}">`);
     expect(previewHtml).toContain(`<meadow-srs-card guid="${guidMatch![1]}:cloze:2" kind="cloze" cloze-type="simplified" sibling-group="${guidMatch![1]}">`);
     expect(previewHtml).toContain('Brazilians speak <span class="meadow-srs-cloze-blank">...</span> and Argentinians speak Spanish.');
@@ -327,8 +327,8 @@ describe('html publish', () => {
     await createPreviewFolder();
 
     // Add a marker file to preview to track if it's copied (not regenerated)
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const markerFile = path.join(previewDir, 'test-marker.txt');
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const markerFile = path.join(generatedHtmlDir, 'test-marker.txt');
     const markerContent = 'This file proves preview was copied, not regenerated';
     fs.writeFileSync(markerFile, markerContent, 'utf8');
 
@@ -351,11 +351,11 @@ describe('html publish', () => {
     await createPreviewFolder();
 
     // Find any HTML file in the preview directory
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const htmlFiles = fs.readdirSync(previewDir).filter(f => f.endsWith('.html'));
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(f => f.endsWith('.html'));
     expect(htmlFiles.length).toBeGreaterThan(0);
     
-    const testHtmlFile = path.join(previewDir, htmlFiles[0]);
+    const testHtmlFile = path.join(generatedHtmlDir, htmlFiles[0]);
     
     // Read original content
     const originalContent = fs.readFileSync(testHtmlFile, 'utf8');
@@ -397,8 +397,8 @@ describe('html publish', () => {
     await new Promise(resolve => setTimeout(resolve, 10));
 
     // Modify preview
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const previewMarker = path.join(previewDir, 'preview-modified.txt');
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const previewMarker = path.join(generatedHtmlDir, 'preview-modified.txt');
     fs.writeFileSync(previewMarker, 'Preview was modified after first publish', 'utf8');
 
     // Publish again to same version (should overwrite)
@@ -429,8 +429,8 @@ describe('html publish', () => {
     fs.writeFileSync(marker1, 'Version 1', 'utf8');
 
     // Modify preview
-    const previewDir = SiteConfigPaths.getPreviewDir(sitePath);
-    const previewFile = path.join(previewDir, 'version2-content.txt');
+    const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(sitePath);
+    const previewFile = path.join(generatedHtmlDir, 'version2-content.txt');
     fs.writeFileSync(previewFile, 'New content for version 2', 'utf8');
 
     // Publish second version

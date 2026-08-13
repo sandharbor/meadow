@@ -106,17 +106,17 @@ describe('Preview System Tests', () => {
       expect(result.message).toContain('preview generated');
 
       // Verify preview folder was created
-      const previewFolderPath = testSetup!.getPathInSite('html/preview');
-      expect(fs.existsSync(previewFolderPath)).toBe(true);
+      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
+      expect(fs.existsSync(generatedHtmlFolderPath)).toBe(true);
 
       // Verify HTML files were generated
-      const previewFiles = fs.readdirSync(previewFolderPath);
+      const previewFiles = fs.readdirSync(generatedHtmlFolderPath);
       const htmlFiles = previewFiles.filter(file => file.endsWith('.html'));
       expect(htmlFiles.length).toBeGreaterThan(0);
 
       // Should contain _mw_assets directory with expected assets
       expect(previewFiles).toContain('_mw_assets');
-      const assetFiles = fs.readdirSync(path.join(previewFolderPath, '_mw_assets'));
+      const assetFiles = fs.readdirSync(path.join(generatedHtmlFolderPath, '_mw_assets'));
       expect(assetFiles.some(f => /^style\.[a-f0-9]{8}\.css$/i.test(f))).toBe(true);
       expect(assetFiles.some(f => /^javascript\.[a-f0-9]{8}\.js$/i.test(f))).toBe(true);
       expect(assetFiles.some(f => /^mermaid\.min\.[a-f0-9]{8}\.js$/i.test(f))).toBe(true);
@@ -169,7 +169,7 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Get paths
-      const previewFolderPath = testSetup!.getPathInSite('html/preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-preview');
 
       // Ensure the expected results folder exists
@@ -178,7 +178,7 @@ describe('Preview System Tests', () => {
       // Copy generated preview to expected results folder and check for git changes
       // This serves as a regression test - if output changes, we'll see git diffs
       fs.rmSync(expectedResultsFolder, { recursive: true, force: true });
-      fs.cpSync(previewFolderPath, expectedResultsFolder, { recursive: true });
+      fs.cpSync(generatedHtmlFolderPath, expectedResultsFolder, { recursive: true });
 
       // Check for UNSTAGED changes only - this allows staging expected_results incrementally
       // and committing code + expected_results together once everything looks good
@@ -289,13 +289,13 @@ describe('Preview System Tests', () => {
 
       expect(response.ok).toBe(true);
 
-      const previewFolderPath = testSetup!.getPathInSite('html/preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-srs-preview');
 
       expect(fs.existsSync(expectedResultsFolder)).toBe(true);
 
       fs.rmSync(expectedResultsFolder, { recursive: true, force: true });
-      fs.cpSync(previewFolderPath, expectedResultsFolder, { recursive: true });
+      fs.cpSync(generatedHtmlFolderPath, expectedResultsFolder, { recursive: true });
 
       const gitDiffStatus = execSync('git diff --name-status .', {
         cwd: expectedResultsFolder,
@@ -451,7 +451,7 @@ describe('Preview System Tests', () => {
 
       expect(response.ok).toBe(true);
 
-      const okfBundlePath = testSetup!.getPathInSite('html/preview/_mw_assets/cust/okf/bundle');
+      const okfBundlePath = testSetup!.getPathInSite('html/generated/_mw_assets/cust/okf/bundle');
       expect(fs.existsSync(okfBundlePath)).toBe(true);
 
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-okf-preview');
@@ -531,7 +531,7 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Get paths
-      const previewFolderPath = testSetup!.getPathInSite('html/preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-nested-preview');
 
       // Create expected results folder if it doesn't exist (first run)
@@ -544,7 +544,7 @@ describe('Preview System Tests', () => {
       // Copy generated preview to expected results folder and check for git changes
       // This serves as a regression test - if output changes, we'll see git diffs
       fs.rmSync(expectedResultsFolder, { recursive: true, force: true });
-      fs.cpSync(previewFolderPath, expectedResultsFolder, { recursive: true });
+      fs.cpSync(generatedHtmlFolderPath, expectedResultsFolder, { recursive: true });
 
       // Check for UNSTAGED changes only - this allows staging expected_results incrementally
       // and committing code + expected_results together once everything looks good
@@ -616,16 +616,16 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Get paths
-      const previewFolderPath = testSetup!.getPathInSite('html/preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'example-site-preview');
 
       // Verify no raw markdown links leaked into the HTML output.
       // This catches cases where markdown like [text](url) wasn't converted to
       // <a> tags, e.g. when an HTML block (like SRS custom elements) swallows
       // adjacent markdown content.
-      const htmlFiles = fs.readdirSync(previewFolderPath).filter(f => f.endsWith('.html'));
+      const htmlFiles = fs.readdirSync(generatedHtmlFolderPath).filter(f => f.endsWith('.html'));
       for (const htmlFile of htmlFiles) {
-        const htmlContent = fs.readFileSync(path.join(previewFolderPath, htmlFile), 'utf-8');
+        const htmlContent = fs.readFileSync(path.join(generatedHtmlFolderPath, htmlFile), 'utf-8');
         const rawMarkdownLinks = htmlContent.match(/^\[tag--[^\]]+\]\([^)]+\)$/gm);
         expect(rawMarkdownLinks, `Raw markdown tag link found in ${htmlFile}`).toBeNull();
       }
@@ -640,7 +640,7 @@ describe('Preview System Tests', () => {
       // Copy generated preview to expected results folder and check for git changes
       // This serves as a regression test - if output changes, we'll see git diffs
       fs.rmSync(expectedResultsFolder, { recursive: true, force: true });
-      fs.cpSync(previewFolderPath, expectedResultsFolder, { recursive: true });
+      fs.cpSync(generatedHtmlFolderPath, expectedResultsFolder, { recursive: true });
 
       // Check for UNSTAGED changes only - this allows staging expected_results incrementally
       // and committing code + expected_results together once everything looks good
@@ -721,7 +721,7 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Get paths
-      const previewFolderPath = testSetup!.getPathInSite('html/preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-for-hooks-preview');
 
       // Create expected results folder if it doesn't exist (first run)
@@ -734,7 +734,7 @@ describe('Preview System Tests', () => {
       // Copy generated preview to expected results folder and check for git changes
       // This serves as a regression test - if output changes, we'll see git diffs
       fs.rmSync(expectedResultsFolder, { recursive: true, force: true });
-      fs.cpSync(previewFolderPath, expectedResultsFolder, { recursive: true });
+      fs.cpSync(generatedHtmlFolderPath, expectedResultsFolder, { recursive: true });
 
       // Check for UNSTAGED changes only - this allows staging expected_results incrementally
       // and committing code + expected_results together once everything looks good

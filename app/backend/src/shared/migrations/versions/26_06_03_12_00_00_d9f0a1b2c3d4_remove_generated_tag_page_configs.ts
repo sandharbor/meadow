@@ -22,8 +22,8 @@ import { SiteConfigPaths } from '../../../../../shared_code/paths/siteConfigPath
 import { getDefaultConfigDirectory } from '../../../../../shared_code/utils/appConfigUtils.js';
 
 function isGeneratedTagPageConfig(item: Record<string, unknown>): boolean {
-  return item.sourceGraphSubdirectory === SiteConfigPaths.TAGPAGES_DIR ||
-    item.source_graph_subdirectory === SiteConfigPaths.TAGPAGES_DIR;
+  return item.sourceGraphSubdirectory === SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR ||
+    item.source_graph_subdirectory === SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;
 }
 
 function removeGeneratedTagPageConfigs(filePath: string): void {

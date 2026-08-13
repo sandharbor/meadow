@@ -93,6 +93,10 @@ export class SiteEditorPage {
     return this.listViewRows.count();
   }
 
+  async getListViewNodeTypes(): Promise<string[]> {
+    return this.listViewRows.locator("td:nth-child(4)").allTextContents();
+  }
+
   async expectGraphViewPageCount(count: number) {
     await this.expect(this.page.getByTestId("graph-page-node")).toHaveCount(count);
   }

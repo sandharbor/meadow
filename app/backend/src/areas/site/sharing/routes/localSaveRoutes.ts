@@ -33,7 +33,7 @@ export interface LocalSaveRoutesDependencies {
 
 // For 'raw' source: produces (and returns the path to) a filtered sources
 // export directory that excludes orphaned-tracked and non-whitelisted pages,
-// matching the site-publish path. For 'html': returns the preview directory
+// matching the site-publish path. For 'html': returns the generated HTML directory
 // as-is.
 async function resolveSourcePath(
   siteDir: string,
@@ -46,7 +46,7 @@ async function resolveSourcePath(
   if (sourceType === 'okf') {
     return await dependencies.buildOpenKnowledgeFormatForSite(siteDir);
   }
-  return SiteConfigPaths.getPreviewDir(siteDir);
+  return SiteConfigPaths.getGeneratedHtmlDir(siteDir);
 }
 
 /**
@@ -110,7 +110,7 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
     res.json({
       appConfigFile: AppConfigPaths.getAppConfigFile(configDir),
       rawMarkdown: SiteConfigPaths.getTrackedPageContentDir(siteDir),
-      previewHtml: SiteConfigPaths.getPreviewDir(siteDir),
+      generatedHtml: SiteConfigPaths.getGeneratedHtmlDir(siteDir),
       openKnowledgeFormat: SiteConfigPaths.getOpenKnowledgeFormatDir(siteDir),
       siteConfigFile: SiteConfigPaths.getSiteConfigFile(siteDir),
       siteNodeConfigFile: SiteConfigPaths.getSiteNodeConfigFile(siteDir),

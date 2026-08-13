@@ -204,7 +204,7 @@ export function publishToVersionedDirectory(
   siteDirectory: string,
   siteConfig: SiteConfig
 ): { version: string; directory: string } {
-  const previewHtmlDirectory = SiteConfigPaths.getPreviewDir(siteDirectory);
+  const generatedHtmlDirectory = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
 
   // Get the latest version or create a new one if none exists
   let latestVersion = getLatestGeneratedSiteVersionWithFallback(siteDirectory, siteConfig);
@@ -222,7 +222,7 @@ export function publishToVersionedDirectory(
   }
 
   // Copy from preview to versioned directory
-  fs.cpSync(previewHtmlDirectory, versionedDirectory, { recursive: true });
+  fs.cpSync(generatedHtmlDirectory, versionedDirectory, { recursive: true });
 
   // Record the version (ensures generatedSiteVersions in site_config.yaml + generated_site_versions.yaml)
   recordGeneratedSiteVersion(siteDirectory, latestVersion, { siteConfig });
@@ -235,7 +235,7 @@ export function publishToNewVersion(
   siteConfig: SiteConfig,
   notes: string = ''
 ): { version: string; directory: string } {
-  const previewHtmlDirectory = SiteConfigPaths.getPreviewDir(siteDirectory);
+  const generatedHtmlDirectory = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
 
   // Always create a new version
   const newVersion = generateVersionId();
@@ -244,7 +244,7 @@ export function publishToNewVersion(
   const versionedDirectory = path.join(SiteConfigPaths.getGeneratedSiteVersionsDir(siteDirectory), newVersion);
 
   // Copy from preview to versioned directory
-  fs.cpSync(previewHtmlDirectory, versionedDirectory, { recursive: true });
+  fs.cpSync(generatedHtmlDirectory, versionedDirectory, { recursive: true });
 
   // Record the version (ensures generatedSiteVersions in site_config.yaml + generated_site_versions.yaml)
   recordGeneratedSiteVersion(siteDirectory, newVersion, { isNewVersion: true, notes, siteConfig });
@@ -392,6 +392,7 @@ async function loadWorkingGraphData(options: {
   breadcrumbsEnabled: boolean;
 }): Promise<{
   breadcrumbPaths: { [pageKey: string]: string[] };
+  breadcrumbNodeKeysByNodeKey: Map<SiteNodeKey, SiteNodeKey[]>;
   allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>>;
   traversablePageKeys: Set<string>;
   graphNodes: ISiteNode[];
@@ -405,13 +406,14 @@ async function loadWorkingGraphData(options: {
   } = options;
 
   const breadcrumbPaths: { [pageKey: string]: string[] } = {};
+  const breadcrumbNodeKeysByNodeKey = new Map<SiteNodeKey, SiteNodeKey[]>();
   let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
   const traversablePageKeys: Set<string> = new Set();
   let graphNodes: ISiteNode[] = [];
   let graphEdges: IEdge[] = [];
 
   if (!siteConfig.entrySiteNodeId || !siteConfig.defaultTraversalSiteNodeId) {
-    return { breadcrumbPaths, allLinkResolutionMaps, traversablePageKeys, graphNodes, graphEdges };
+    return { breadcrumbPaths, breadcrumbNodeKeysByNodeKey, allLinkResolutionMaps, traversablePageKeys, graphNodes, graphEdges };
   }
 
   const raw = await runWorkingGraphRaw({
@@ -450,6 +452,7 @@ async function loadWorkingGraphData(options: {
     return { ...common, siteNodeKind: 'file', sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '', fileType: node.fileType };
   });
   graphEdges = (output.edges ?? []).map(edge => ({ ...edge }));
+  const graphNodeByKey = new Map(output.nodes.map(node => [node.siteNodeKey, node]));
 
   allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
 
@@ -457,7 +460,11 @@ async function loadWorkingGraphData(options: {
     traversablePageKeys.add(graphNode.siteNodeKey);
 
     if (breadcrumbsEnabled && graphNode.path) {
+      const nodeKeys = graphNode.path as SiteNodeKey[];
+      breadcrumbNodeKeysByNodeKey.set(graphNode.siteNodeKey as SiteNodeKey, nodeKeys);
       const titlePath = graphNode.path.map(ident => {
+        const pathNode = graphNodeByKey.get(ident);
+        if (pathNode) return pathNode.siteNodeName;
         const lastSlash = ident.lastIndexOf('/');
         const titleWithExt = lastSlash >= 0 ? ident.substring(lastSlash + 1) : ident;
         const lastDot = titleWithExt.lastIndexOf('.');
@@ -467,7 +474,7 @@ async function loadWorkingGraphData(options: {
     }
   }
 
-  return { breadcrumbPaths, allLinkResolutionMaps, traversablePageKeys, graphNodes, graphEdges };
+  return { breadcrumbPaths, breadcrumbNodeKeysByNodeKey, allLinkResolutionMaps, traversablePageKeys, graphNodes, graphEdges };
 }
 
 export async function generateHtmlForSite(
@@ -528,8 +535,8 @@ export async function generateHtmlForSite(
   const legacyRenderSourceContentDirectory = SiteConfigPaths.getLegacyRenderSourceContentDir(siteDirectory);
   const scrubbedSourceContentDirectory = SiteConfigPaths.getScrubbedSourceContentDir(siteDirectory);
   
-  // Use new directory structure: html/preview for preview, html/generated_site_versions/<version> for published
-  const previewHtmlDirectory = SiteConfigPaths.getPreviewDir(siteDirectory);
+  // Use html/generated for the current artifact and html/generated_site_versions/<version> for immutable versions.
+  const generatedHtmlDirectory = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
   
   const generationOptions = timeSync('site.generation.stage', { ...timingLabels, stage: 'resolve_generation_options' }, () => {
     const appConfig = loadAppConfig(getConfigDirectory());
@@ -669,14 +676,14 @@ export async function generateHtmlForSite(
   const renderContentDirectory = scrubbedSourceContentDirectory;
   
 
-  // Create and clean the preview directory
+  // Create and clean the current generated HTML directory.
   const prepareOutputStart = performance.now();
-  if (fs.existsSync(previewHtmlDirectory)) {
-    fs.rmSync(previewHtmlDirectory, { recursive: true, force: true });
+  if (fs.existsSync(generatedHtmlDirectory)) {
+    fs.rmSync(generatedHtmlDirectory, { recursive: true, force: true });
   }
-  fs.mkdirSync(previewHtmlDirectory, { recursive: true });
+  fs.mkdirSync(generatedHtmlDirectory, { recursive: true });
 
-  const assetsDirectory = path.join(previewHtmlDirectory, '_mw_assets');
+  const assetsDirectory = path.join(generatedHtmlDirectory, '_mw_assets');
   fs.mkdirSync(assetsDirectory, { recursive: true });
   recordStageTiming('prepare_output_directories', prepareOutputStart);
 
@@ -922,6 +929,7 @@ export async function generateHtmlForSite(
 
   // Key breadcrumbPaths by pageKey (title|directory|file_type) to handle duplicate titles correctly
   let breadcrumbPaths: { [pageKey: string]: string[] } = {};
+  let breadcrumbNodeKeysByNodeKey = new Map<SiteNodeKey, SiteNodeKey[]>();
   let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
   // Track which pages are reachable via traversal - only these should have HTML generated
   let traversablePageKeys: Set<string> = new Set();
@@ -947,6 +955,7 @@ export async function generateHtmlForSite(
       })
     );
     breadcrumbPaths = renderGraphData.breadcrumbPaths;
+    breadcrumbNodeKeysByNodeKey = renderGraphData.breadcrumbNodeKeysByNodeKey;
     allLinkResolutionMaps = renderGraphData.allLinkResolutionMaps;
     traversablePageKeys = renderGraphData.traversablePageKeys;
     renderGraphNodes = renderGraphData.graphNodes;
@@ -958,6 +967,7 @@ export async function generateHtmlForSite(
         siteConfig.entrySiteNodeId!,
       );
       for (const [nodeKey, structuralPath] of structuralProjection.breadcrumbNodeKeysByNodeKey) {
+        breadcrumbNodeKeysByNodeKey.set(nodeKey, structuralPath);
         breadcrumbPaths[nodeKey] = structuralPath
           .map(key => renderGraphData.graphNodes.find(node => node.siteNodeKey === key)?.siteNodeName)
           .filter((name): name is string => Boolean(name));
@@ -1173,7 +1183,7 @@ export async function generateHtmlForSite(
   }
   recordStageTiming('scan_backlinks', scanLinksStart, { page_count: traversableLinkScanPageKeys.length });
 
-  // Second pass: generate HTML for each traversable page to preview directory with subdirectories
+  // Second pass: generate HTML for each traversable page into the current generated artifact.
   // Only pages reachable via the working graph traversal will have HTML generated
   const traversableMdPageKeys = whitelistedMdPageKeys.filter(pageKey => traversablePageKeys.has(pageKey));
   const traversableExcalidrawPageKeys = Object.keys(siteNodeConfs).filter(key => {
@@ -1190,16 +1200,16 @@ export async function generateHtmlForSite(
     ...traversableExcalidrawPageKeys,
   ];
   const folderNavigationPages: FolderNavigationPage[] = generationOptions.folderNavigationEnabled
-    ? [...new Map(traversableRenderablePageKeys.map(pageKey => {
+    ? [...new Map(traversableRenderablePageKeys
+      .filter(pageKey => siteNodeConfs[pageKey].sourceGraphSubdirectory !== SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR)
+      .map(pageKey => {
         const conf = siteNodeConfs[pageKey];
         const normalizedTitle = normalizePageTitle(conf.siteNodeName, siteConfig, siteSlug || undefined);
-        if (!routePlan.folderDerived) {
-          const directory = conf.sourceGraphSubdirectory || '';
-          const outputPath = directory ? `${directory}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
-          return [outputPath, { directory, normalizedTitle, outputPath }] as const;
-        }
         const outputPath = routeForSiteNode(conf, routePlan.routes);
         const directory = path.posix.dirname(outputPath) === '.' ? '' : path.posix.dirname(outputPath);
+        if (!routePlan.folderDerived) {
+          return [outputPath, { directory, normalizedTitle, outputPath }] as const;
+        }
         const runtimeNode = renderGraphNodes.find(node => node.siteNodeId === conf.siteNodeId);
         const parentKey = runtimeNode && structuralProjection
           ? structuralProjection.parentByNodeKey.get(runtimeNode.siteNodeKey)
@@ -1293,6 +1303,8 @@ export async function generateHtmlForSite(
   let startPageRenderedEmitted = false;
   const renderNodeByKey = new Map(renderGraphNodes.map(node => [node.siteNodeKey, node]));
   const configById = new Map(siteNodeConfigsArray.map(config => [config.siteNodeId, config]));
+  const breadcrumbNodeKeysFor = (pageKey: string): SiteNodeKey[] =>
+    breadcrumbNodeKeysByNodeKey.get(pageKey as SiteNodeKey) ?? [];
 
   const outputDirectoryForRoute = (route: string): string => {
     const directory = path.posix.dirname(route);
@@ -1330,7 +1342,7 @@ export async function generateHtmlForSite(
       'structural-previews',
       `${config.siteNodeId}.${digest}${extension}`,
     );
-    const outputPath = path.join(previewHtmlDirectory, ...outputRelativePath.split('/'));
+    const outputPath = path.join(generatedHtmlDirectory, ...outputRelativePath.split('/'));
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     if (!fs.existsSync(outputPath)) fs.copyFileSync(sourcePath, outputPath);
     return outputRelativePath;
@@ -1408,7 +1420,7 @@ export async function generateHtmlForSite(
         ? `<ul class="structural-children">${childItems.join('')}</ul>`
         : '<p class="structural-empty">This folder is empty.</p>';
     const htmlPath = renderGeneratedSiteNodeToHtml({
-      outputRoot: previewHtmlDirectory,
+      outputRoot: generatedHtmlDirectory,
       outputRoute,
       pageTitle: config.siteNodeName,
       bodyHtml,
@@ -1449,8 +1461,8 @@ export async function generateHtmlForSite(
       : path.join(renderContentDirectory, `${conf.siteNodeName}.excalidraw.md`);
 
     const outputSubdir = outputDirectory
-      ? path.join(previewHtmlDirectory, ...outputDirectory.split('/'))
-      : previewHtmlDirectory;
+      ? path.join(generatedHtmlDirectory, ...outputDirectory.split('/'))
+      : generatedHtmlDirectory;
     if (outputDirectory && !fs.existsSync(outputSubdir)) {
       fs.mkdirSync(outputSubdir, { recursive: true });
     }
@@ -1471,16 +1483,19 @@ export async function generateHtmlForSite(
         if (isLast) {
           items.push(`<span class="breadcrumb-current">${normTitle}</span>`);
         } else {
-          const structuralKey = structuralProjection?.breadcrumbNodeKeysByNodeKey.get(pageKey as SiteNodeKey)?.[i];
-          const structuralNodeId = structuralKey ? renderNodeByKey.get(structuralKey)?.siteNodeId : undefined;
-          const bcConf = structuralNodeId
-            ? siteNodeConfigsArrayForLinks.find(c => c.siteNodeId === structuralNodeId)
+          const breadcrumbKey = breadcrumbNodeKeysFor(pageKey)[i];
+          const breadcrumbNodeId = breadcrumbKey ? renderNodeByKey.get(breadcrumbKey)?.siteNodeId : undefined;
+          const bcConf = breadcrumbNodeId
+            ? siteNodeConfigsArrayForLinks.find(c => c.siteNodeId === breadcrumbNodeId)
             : siteNodeConfigsArrayForLinks.find(c => c.siteNodeName === t);
           const bcDir = bcConf?.sourceGraphSubdirectory || '';
           const encoded = encodeURIComponent(normTitle);
-          const targetPath = routePlan.folderDerived && bcConf && routePlan.routes.has(bcConf.siteNodeId)
+          const conventionalTargetPath = bcDir ? `${bcDir}/${normTitle}.html` : `${normTitle}.html`;
+          const plannedRoute = bcConf && routePlan.routes.has(bcConf.siteNodeId)
             ? routeForSiteNode(bcConf, routePlan.routes)
-            : (bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`);
+            : undefined;
+          const plannedTargetPath = plannedRoute !== conventionalTargetPath ? plannedRoute : undefined;
+          const targetPath = plannedTargetPath ?? (bcDir ? `${bcDir}/${encoded}.html` : `${encoded}.html`);
           // Compute a relative href from this excalidraw page's directory.
           const fromDir = outputDirectory;
           const fromParts = fromDir ? fromDir.split('/').filter(Boolean) : [];
@@ -1488,7 +1503,8 @@ export async function generateHtmlForSite(
           let common = 0;
           while (common < fromParts.length && common < toParts.length - 1 && fromParts[common] === toParts[common]) common++;
           const up = '../'.repeat(fromParts.length - common);
-          const relative = up + toParts.slice(common).join('/');
+          const relativePath = up + toParts.slice(common).join('/');
+          const relative = plannedTargetPath ? encodePathForUrl(relativePath) : relativePath;
           items.push(`<a href="${relative}" class="breadcrumb-link">${normTitle}</a>`);
         }
       }
@@ -1503,7 +1519,7 @@ export async function generateHtmlForSite(
           siteNodeConfigsArrayForLinks,
           siteConfig,
           siteSlug || undefined,
-          routePlan.folderDerived ? routePlan.routes : undefined,
+          routePlan.routes,
           outputDirectory,
         )
       : '';
@@ -1530,8 +1546,8 @@ export async function generateHtmlForSite(
       allLinkResolutionMaps,
       siteConfig,
       siteSlug: siteSlug || undefined,
-      routeTable: routePlan.folderDerived ? routePlan.routes : undefined,
-      hostOutputDirectory: routePlan.folderDerived ? outputDirectory : undefined,
+      routeTable: routePlan.routes,
+      hostOutputDirectory: outputDirectory,
     });
     const { tracked: clientEmbeddedFileMap, untracked: clientUntrackedEmbeddedFiles } = buildExcalidrawClientEmbeddedFileData({
       excalidrawPageIdent: excalidrawIdent,
@@ -1542,7 +1558,7 @@ export async function generateHtmlForSite(
     copyExcalidrawEmbeddedFiles({
       excalidrawPageIdent: excalidrawIdent,
       contentDir: renderContentDirectory,
-      outputDir: previewHtmlDirectory,
+      outputDir: generatedHtmlDirectory,
       siteNodeConfigs: siteNodeConfigsArrayForLinks,
       allLinkResolutionMaps,
     });
@@ -1632,8 +1648,8 @@ export async function generateHtmlForSite(
     
     // Create output subdirectory if needed
     const outputSubdir = outputDirectory
-      ? path.join(previewHtmlDirectory, ...outputDirectory.split('/'))
-      : previewHtmlDirectory;
+      ? path.join(generatedHtmlDirectory, ...outputDirectory.split('/'))
+      : generatedHtmlDirectory;
     if (outputDirectory && !fs.existsSync(outputSubdir)) {
       fs.mkdirSync(outputSubdir, { recursive: true });
     }
@@ -1658,7 +1674,7 @@ export async function generateHtmlForSite(
     const showBreadcrumbs = breadcrumbsEnabled && !isEntryNode && breadcrumbPath.length > 0;
     const showBacklinks = generationOptions.backlinksEnabled;
 
-    // Generate to preview directory (with subdirectory)
+    // Generate into the current artifact (with subdirectory).
     const { htmlPath, srsCards } = renderPageToHtml(
       sourceDir,  // Source directory (includes subdir for finding the .md file)
       pageNameToPage,
@@ -1678,10 +1694,10 @@ export async function generateHtmlForSite(
         showBreadcrumbs,
         showHoverPreview: generationOptions.hoverPreviewEnabled,
         breadcrumbPath,
-        breadcrumbSiteNodeIds: routePlan.folderDerived ? structuralProjection?.breadcrumbNodeKeysByNodeKey.get(pageKey as SiteNodeKey)
+        breadcrumbSiteNodeIds: breadcrumbNodeKeysFor(pageKey)
           ?.map(key => renderNodeByKey.get(key)?.siteNodeId)
-          .filter((id): id is SiteNodeId => Boolean(id)) ?? [] : [],
-        routeTable: routePlan.folderDerived ? routePlan.routes : undefined,
+          .filter((id): id is SiteNodeId => Boolean(id)) ?? [],
+        routeTable: routePlan.routes,
         currentOutputDirectory: outputDirectory,
         entryNodeName,
         staticAssetNames,
@@ -1696,7 +1712,7 @@ export async function generateHtmlForSite(
       siteSlug || undefined,
       subdir,  // current page's source directory
       renderContentDirectory,  // base content directory for image lookups
-      previewHtmlDirectory,  // base output directory for image output
+      generatedHtmlDirectory,  // base output directory for image output
       linkResolutionMap,
       allLinkResolutionMaps
     );
@@ -1791,7 +1807,7 @@ export async function generateHtmlForSite(
     const searchIndexResult = timeSync(
       'site.generation.stage',
       { ...timingLabels, stage: 'write_search_index' },
-      () => writePublishedSiteSearchIndex(previewHtmlDirectory, assetsDirectory)
+      () => writePublishedSiteSearchIndex(generatedHtmlDirectory, assetsDirectory)
     );
     logger.info(
       `Generated search index for ${searchIndexResult.documentCount} pages in ${searchIndexResult.shardCount} shards`

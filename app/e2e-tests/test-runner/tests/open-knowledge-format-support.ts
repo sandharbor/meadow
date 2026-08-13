@@ -57,7 +57,7 @@ export class OpenKnowledgeFormatBundle {
     siteDir: string,
     private expect: Expect,
   ) {
-    this.directory = path.join(siteDir, "html", "preview", "_mw_assets", "cust", "okf", "bundle");
+    this.directory = path.join(siteDir, "html", "generated", "_mw_assets", "cust", "okf", "bundle");
   }
 
   filePath(relativePath: string): string {
