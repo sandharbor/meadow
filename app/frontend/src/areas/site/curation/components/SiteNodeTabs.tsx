@@ -38,6 +38,7 @@ import { logger } from '../../../../shared/utils/logger';
 import { useDisplayFilters } from '../utils/useDisplayFilters';
 import FolderScopeChangesBanner from './FolderScopeChangesBanner';
 import type { FolderScopeChangeExplanation } from '../../../../../../shared_code/types/folderScopeChanges';
+import { useIsFolderBasedSite } from '../utils/siteMode';
 
 interface SiteNodeTabsProps {
   graph: Graph;
@@ -100,6 +101,7 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
     return 'graph';
   });
   const [isOrphansModalOpen, setIsOrphansModalOpen] = useState(false);
+  const isFolderBasedSite = useIsFolderBasedSite(graph, entrySiteNodeId, graphUpdateTrigger);
 
   useEffect(() => {
     sessionStorage.setItem('graphActiveView', activeView);
@@ -663,11 +665,6 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
     setContextMenuPage({ siteNodeKey, x, y });
   }, []);
 
-  // Update session storage when active view changes
-  useEffect(() => {
-    sessionStorage.setItem('graphActiveView', activeView);
-  }, [activeView]);
-
   // Memoized handler to prevent unnecessary re-renders
   // Uses functional update to handle multiple rapid changes correctly
   const handleFilterChange = useCallback(
@@ -849,6 +846,7 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
                 onSiteNodeContextMenu={handleSiteNodeContextMenu}
                 isSitePreviewOnlyActive={isSitePreviewOnlyActive}
                 sitePreviewHover={sitePreviewHover}
+                isFolderBasedSite={isFolderBasedSite}
               />
             </div>
           ) : (
@@ -860,7 +858,6 @@ const SiteNodeTabs: React.FC<SiteNodeTabsProps> = ({
                 siteSlug={siteSlug}
                 onSiteNodeContextMenu={handleSiteNodeContextMenu}
                 selectedNodeKeys={selectedNodeKeys}
-                onSelectedNodeKeysChange={onSelectedNodeKeysChange}
               />
             </div>
           )}

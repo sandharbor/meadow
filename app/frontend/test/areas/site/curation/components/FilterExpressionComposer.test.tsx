@@ -40,7 +40,7 @@ function initialExpression(): FilterExpression {
 }
 
 describe('FilterExpressionComposer', () => {
-  it('only offers Mix view when at least two solo/hide controls are active', () => {
+  it('only offers Mix filters when at least two solo/hide controls are active', () => {
     const { rerender } = render(
       <FilterExpressionComposer
         expression={initialExpression()}
@@ -49,7 +49,7 @@ describe('FilterExpressionComposer', () => {
         onChange={vi.fn()}
       />
     );
-    expect(screen.queryByRole('button', { name: /mix view/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /mix filters/i })).not.toBeInTheDocument();
 
     rerender(
       <FilterExpressionComposer
@@ -59,7 +59,7 @@ describe('FilterExpressionComposer', () => {
         onChange={vi.fn()}
       />
     );
-    expect(screen.getByRole('button', { name: /mix view/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mix filters/i })).toBeInTheDocument();
   });
 
   it('opens a plain-language expression editor and changes the group operator', () => {
@@ -73,10 +73,14 @@ describe('FilterExpressionComposer', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
-    expect(screen.getByRole('heading', { name: 'Mix the view' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /mix filters/i }));
+    expect(screen.getByRole('heading', { name: 'Mix the filters' })).toBeInTheDocument();
     expect(screen.getByText('Alpha')).toBeInTheDocument();
     expect(screen.getByText('Beta')).toBeInTheDocument();
+
+    const anyButton = screen.getAllByRole('button', { name: 'Any' })[0];
+    expect(anyButton).toHaveClass('bg-main-100', 'text-main-700');
+    expect(anyButton).not.toHaveClass('bg-gray-800', 'text-white');
 
     fireEvent.click(screen.getByRole('button', { name: 'All' }));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ operator: 'intersection' }));
@@ -96,16 +100,16 @@ describe('FilterExpressionComposer', () => {
     };
     render(<Harness />);
 
-    expect(screen.queryByTestId('mix-view-customized-indicator')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
+    expect(screen.queryByTestId('mix-filters-customized-indicator')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /mix filters/i }));
     fireEvent.click(screen.getByRole('button', { name: 'All' }));
-    expect(screen.getByTestId('mix-view-customized-indicator')).toHaveTextContent('Customized');
+    expect(screen.getByTestId('mix-filters-customized-indicator')).toHaveTextContent('Customized');
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset mix' }));
-    expect(screen.queryByTestId('mix-view-customized-indicator')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mix-filters-customized-indicator')).not.toBeInTheDocument();
   });
 
-  it('moves the Mix view modal by dragging its title bar', () => {
+  it('moves the Mix filters modal by dragging its title bar', () => {
     render(
       <FilterExpressionComposer
         expression={initialExpression()}
@@ -114,7 +118,7 @@ describe('FilterExpressionComposer', () => {
         onChange={vi.fn()}
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
+    fireEvent.click(screen.getByRole('button', { name: /mix filters/i }));
 
     const panel = screen.getByTestId('movable-modal-panel');
     vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({
@@ -148,7 +152,7 @@ describe('FilterExpressionComposer', () => {
       );
     };
     render(<Harness />);
-    fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
+    fireEvent.click(screen.getByRole('button', { name: /mix filters/i }));
     fireEvent.click(screen.getByRole('button', { name: /add parentheses/i }));
 
     fireEvent.pointerDown(screen.getByTestId('filter:solo:alpha'), { button: 0 });
@@ -171,7 +175,7 @@ describe('FilterExpressionComposer', () => {
       );
     };
     render(<Harness />);
-    fireEvent.click(screen.getByRole('button', { name: /mix view/i }));
+    fireEvent.click(screen.getByRole('button', { name: /mix filters/i }));
 
     const root = screen.getByTestId('filter-expression-solos');
 

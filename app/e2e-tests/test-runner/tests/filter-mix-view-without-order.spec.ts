@@ -38,20 +38,20 @@ test("without mix terms can be reordered by dropping one directly on the other",
   await editor.clickSoloSelection();
   await filterPanel.enableAndSoloFilter("Untracked");
 
-  await filterPanel.openMixView();
+  await filterPanel.openMixFilters();
   await filterPanel.expectMixTermOrder(["Selection Solo", "Untracked"]);
   await filterPanel.chooseMixOperator("Without");
-  await filterPanel.closeMixView();
+  await filterPanel.closeMixFilters();
   await editor.expectGraphViewHasPages();
   await snapshot("selection without untracked pages");
 
-  await filterPanel.openMixView();
+  await filterPanel.openMixFilters();
   await filterPanel.dragMixTermOnto("Selection Solo", "Untracked");
   await filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]);
   await addKeyFrame(filters);
   await snapshot("without terms reordered directly");
 
-  await filterPanel.closeMixView();
+  await filterPanel.closeMixFilters();
   await editor.expectGraphViewPageCount(0);
   await snapshot("untracked without the selected pages is empty");
   void bigSite;

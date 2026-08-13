@@ -317,6 +317,16 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     });
   };
 
+  const filterGroupHasActiveSettings = (filter: IFilter): boolean => {
+    const stateIsActive = (state: { showTitles: boolean; isSolo: boolean; isHidden: boolean } | undefined) => Boolean(
+      state?.showTitles || state?.isSolo || state?.isHidden
+    );
+    if (filter.isFolderFilter) return Object.values(filter.folderStates || {}).some(stateIsActive);
+    if (filter.isNodeTypeFilter) return Object.values(filter.nodeTypeStates || {}).some(stateIsActive);
+    if (filter.isGapFilter) return gapFilters.some(gapFilter => gapFilter.enabled);
+    return false;
+  };
+
   return (
     <div
       className="flex flex-col space-y-4"
@@ -400,19 +410,18 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           </div>
         )}
 
-        {filterExpression && onFilterExpressionChange && (
-          <FilterExpressionComposer
-            expression={filterExpression}
-            activeTerms={activeExpressionTerms}
-            filterNames={expressionFilterNames}
-            onChange={onFilterExpressionChange}
-          />
-        )}
-
-        <div className="flex items-center justify-end mb-4">
+        <div className="mb-4 flex h-6 items-center" data-testid="filter-actions-row">
+          {filterExpression && onFilterExpressionChange && (
+            <FilterExpressionComposer
+              expression={filterExpression}
+              activeTerms={activeExpressionTerms}
+              filterNames={expressionFilterNames}
+              onChange={onFilterExpressionChange}
+            />
+          )}
           <button
             onClick={handleCreateCustomFilter}
-            className="w-6 h-6 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded flex items-center justify-center"
+            className="ml-auto w-6 h-6 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded flex items-center justify-center"
             title="Add custom filter"
           >
             +
@@ -423,6 +432,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
             const threshold = thresholdInputs[filter.id] ?? filter.thresholdValue ?? 5;
             const isExpandableFilter = Boolean(filter.isFolderFilter || filter.isNodeTypeFilter || filter.isGapFilter);
             const isExpanded = expandedFilterGroups.has(filter.id);
+            const hasActiveGroupSettings = isExpandableFilter && filterGroupHasActiveSettings(filter);
             const gapDescription = filter.id === 'outlink-gap-filter'
               ? `Pages with ${threshold} or more outlinks that do not show in the graph`
               : filter.id === 'inlink-gap-filter'
@@ -454,6 +464,14 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                         <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
                       </svg>
                       <span className="truncate">{filter.name}</span>
+                      {hasActiveGroupSettings && (
+                        <span
+                          className="h-2 w-2 flex-shrink-0 rounded-full bg-main-500 ring-2 ring-main-100"
+                          title={`${filter.name} has active settings`}
+                          data-testid={`active-filter-group-${filter.id}`}
+                          aria-label={`${filter.name} has active settings`}
+                        />
+                      )}
                     </button>
                   ) : (
                     <>

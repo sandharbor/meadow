@@ -359,6 +359,52 @@ describe('FilterPanel', () => {
     });
   });
 
+  it('keeps an active marker visible on an expandable group whether collapsed or expanded', () => {
+    const graph = new Graph();
+    graph.addNode(fileNode('note', 'md'));
+    graph.addNode(fileNode('drawing', 'excalidraw'));
+    const activeTypesFilter = {
+      ...nodeTypesFilter(),
+      nodeTypeStates: {
+        image: { showTitles: false, isSolo: true, isHidden: false },
+      },
+    };
+
+    render(
+      <FilterPanel
+        filters={[activeTypesFilter]}
+        onFilterChange={vi.fn()}
+        {...defaultPanelProps}
+        graph={graph}
+        pages={graph.getAllNodes()}
+      />
+    );
+
+    const marker = screen.getByTitle('Types has active settings');
+    expect(marker).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Expand Types' })).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Types' }));
+    expect(marker).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Collapse Types' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('marks Gap active when a nested gap filter is enabled', () => {
+    render(
+      <FilterPanel
+        filters={[
+          gapFilterGroup,
+          { ...gapFilter('outlink-gap-filter'), enabled: true },
+          gapFilter('inlink-gap-filter'),
+        ]}
+        onFilterChange={vi.fn()}
+        {...defaultPanelProps}
+      />
+    );
+
+    expect(screen.getByTitle('Gap has active settings')).toBeVisible();
+  });
+
   it('groups Outlink and Inlink under a chevron-based Gap disclosure', () => {
     const onFilterChange = vi.fn();
 

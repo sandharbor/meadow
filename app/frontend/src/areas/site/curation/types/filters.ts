@@ -31,7 +31,6 @@ export {
   createSiteNodeKindSelector,
   createImageNodeSelector,
   createSelectedScopeRootSelector,
-  createEffectiveBlacklistSelector,
   createSearchByTitleSelector,
   createNodeWithOverrideSelector,
   createOutlinkDiscrepancySelector,
@@ -51,7 +50,6 @@ import {
   createOutlinkDiscrepancySelector,
   createInlinkDiscrepancySelector,
   createFrontierNodeSelector,
-  createEffectiveBlacklistSelector,
   createCustomSiteNodeSelector as createCustomSiteNodeSelectorBase
 } from '../utils/filterSelectors';
 import type { CustomSiteNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
@@ -205,30 +203,6 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       isHidden: false
     },
     {
-      id: 'node-types-filter',
-      name: 'Types',
-      description: 'Filter nodes by the roles and file types present in this graph',
-      siteNodeSelectors: [],
-      selectorApplicationCriteria: 'union',
-      actions: [],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      isNodeTypeFilter: true,
-      nodeTypeStates: {},
-    },
-    {
-      id: 'effective-folder-blacklist-filter',
-      name: 'Excluded by Folder',
-      description: 'Nodes below a hard folder blacklist boundary',
-      siteNodeSelectors: [createEffectiveBlacklistSelector()],
-      selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#DC2626', isDashed: true }],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-    },
-    {
       id: 'sensitive-filter',
       name: 'Sensitive',
       description: 'Pages with meadow-sensitive: true property in the source page. Sensitive pages are automatically excluded from bulk tracking',
@@ -243,6 +217,32 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       enabled: true,
       isSolo: false,
       isHidden: false
+    },
+    {
+      id: 'node-types-filter',
+      name: 'Types',
+      description: 'Filter nodes by the roles and file types present in this graph',
+      siteNodeSelectors: [],
+      selectorApplicationCriteria: 'union',
+      actions: [],
+      enabled: false,
+      isSolo: false,
+      isHidden: false,
+      isNodeTypeFilter: true,
+      nodeTypeStates: {},
+    },
+    {
+      id: 'folder-filter',
+      name: 'Folders',
+      description: 'Filter pages by their folder in the source graph',
+      siteNodeSelectors: [],
+      selectorApplicationCriteria: 'union',
+      actions: [],
+      enabled: false,
+      isSolo: false,
+      isHidden: false,
+      isFolderFilter: true,
+      folderStates: {}
     },
     {
       id: 'blacklisted-filter',
@@ -324,19 +324,6 @@ export function useFilterState(siteSlug: string): [IFilter[], React.Dispatch<Rea
       thresholdValue: 1,
       thresholdLabel: 'Depth:',
       thresholdMax: 10
-    },
-    {
-      id: 'folder-filter',
-      name: 'Folders',
-      description: 'Filter pages by their folder in the source graph',
-      siteNodeSelectors: [],
-      selectorApplicationCriteria: 'union',
-      actions: [],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      isFolderFilter: true,
-      folderStates: {}
     }
   ]);
 

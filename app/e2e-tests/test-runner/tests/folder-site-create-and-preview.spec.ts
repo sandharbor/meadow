@@ -42,6 +42,7 @@ test("previews a configured site from one recursively scanned folder", async ({
   await siteList.clickSite(Site.FolderStructureSingle);
   await editor.waitForLoad(Site.FolderStructureSingle);
   await editor.expectGraphViewHasPages();
+  await editor.expectGraphEdgeKindControlsVisible();
   await snapshot("single folder graph with two linked depth rows");
   await addKeyFrame(folderSites);
   await editor.switchToListView();

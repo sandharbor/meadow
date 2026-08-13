@@ -15,8 +15,29 @@ limitations under the License.
 */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { renderHook } from '@testing-library/react';
 import { Graph, ISiteNode } from '../../../../../../shared_code/types/graph';
-import { createTrackedNodeSelector, createUntrackedNodeSelector, createBlacklistedNodeSelector, createSearchByTitleSelector, createSensitiveNodeSelector, createFolderNodeSelector } from '../../../../../src/areas/site/curation/types/filters';
+import { createTrackedNodeSelector, createUntrackedNodeSelector, createBlacklistedNodeSelector, createSearchByTitleSelector, createSensitiveNodeSelector, createFolderNodeSelector, useFilterState } from '../../../../../src/areas/site/curation/types/filters';
+
+describe('Built-in filter order', () => {
+  it('keeps primary filters in sidebar order before custom filters', () => {
+    const { result } = renderHook(() => useFilterState(''));
+    const sidebarFilterNames = result.current[0]
+      .filter(filter => !filter.showSearchInput && !filter.hideFromFilterList)
+      .map(filter => filter.name);
+
+    expect(sidebarFilterNames).toEqual([
+      'Untracked',
+      'Sensitive',
+      'Types',
+      'Folders',
+      'Blacklisted',
+      'Depth Override',
+      'Gap',
+      'Frontier',
+    ]);
+  });
+});
 
 describe('Site Node Selectors', () => {
   let graph: Graph;

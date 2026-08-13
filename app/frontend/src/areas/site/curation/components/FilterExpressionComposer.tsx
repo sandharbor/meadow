@@ -177,16 +177,16 @@ function GroupControls({
 }) {
   return (
     <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-      <div className="inline-flex rounded-md border border-gray-200 bg-white p-0.5" aria-label="How this group combines filters">
-        {OPERATOR_OPTIONS.map(option => (
+      <div className="inline-flex overflow-hidden rounded-md border border-neutral-300 bg-white" aria-label="How this group combines filters">
+        {OPERATOR_OPTIONS.map((option, index) => (
           <button
             key={option.value}
             type="button"
             onClick={() => onOperatorChange(group.id, option.value)}
-            className={`rounded px-2 py-1 text-xs font-medium ${
+            className={`px-2.5 py-1 text-xs font-medium transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-main-300 ${index > 0 ? 'border-l border-neutral-300' : ''} ${
               group.operator === option.value
-                ? 'bg-gray-800 text-white'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                ? 'bg-main-100 text-main-700'
+                : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
             }`}
             aria-pressed={group.operator === option.value}
           >
@@ -370,33 +370,29 @@ const FilterExpressionComposer: React.FC<FilterExpressionComposerProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`sticky top-0 z-10 mb-4 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium ${
+        className={`flex h-6 items-center gap-1.5 rounded border px-2 text-xs font-medium ${
           usesCustomizedMix
             ? 'border-amber-300 bg-amber-50 text-amber-800 hover:border-amber-400 hover:bg-amber-100'
             : 'border-main-200 bg-main-50 text-main-700 hover:border-main-300 hover:bg-main-100'
         }`}
       >
-        <span className="flex items-center gap-2">
-          <span aria-hidden="true">⑂</span>
-          Mix view
-        </span>
-        <span className="flex items-center gap-2">
-          {usesCustomizedMix && (
-            <span
-              className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900"
-              data-testid="mix-view-customized-indicator"
-            >
-              Customized
-            </span>
-          )}
-          <span className="rounded-full bg-white px-2 py-0.5 text-xs text-main-600">{activeTerms.length}</span>
-        </span>
+        <span aria-hidden="true">⑂</span>
+        <span>Mix filters</span>
+        {usesCustomizedMix && (
+          <span
+            className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-900"
+            data-testid="mix-filters-customized-indicator"
+          >
+            Customized
+          </span>
+        )}
+        <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-main-600">{activeTerms.length}</span>
       </button>
 
       <Modal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        title="Mix the view"
+        title="Mix the filters"
         className="w-full max-w-2xl"
         movable
       >

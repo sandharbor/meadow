@@ -47,6 +47,7 @@ interface GraphVisProps {
   onSiteNodeContextMenu?: (siteNodeKey: string, x: number, y: number) => void;
   isSitePreviewOnlyActive?: boolean;
   sitePreviewHover?: boolean;
+  isFolderBasedSite: boolean;
 }
 
 const GraphVis: React.FC<GraphVisProps> = ({
@@ -60,6 +61,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
   onSiteNodeContextMenu,
   isSitePreviewOnlyActive,
   sitePreviewHover,
+  isFolderBasedSite,
 }) => {
   const [positions, setPositions] = useState<Map<string, NodePosition>>(new Map());
   const [layoutGuides, setLayoutGuides] = useState<GraphLayoutGuide[]>([]);
@@ -538,24 +540,28 @@ const GraphVis: React.FC<GraphVisProps> = ({
     <div className="w-full relative bg-white min-h-[300px] h-full">
       {/* View control buttons */}
       <div className="absolute top-10 right-2 z-10 flex gap-1">
-        <button
-          type="button"
-          onClick={() => setShowSemanticEdges(value => !value)}
-          aria-pressed={showSemanticEdges}
-          className={`px-2 py-1 text-xs rounded border ${showSemanticEdges ? 'bg-neutral-100 border-neutral-300' : 'bg-white text-neutral-400 border-neutral-200'}`}
-          title="Toggle semantic-link edges"
-        >
-          Links
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowStructuralEdges(value => !value)}
-          aria-pressed={showStructuralEdges}
-          className={`px-2 py-1 text-xs rounded border ${showStructuralEdges ? 'bg-blue-50 border-blue-300' : 'bg-white text-neutral-400 border-neutral-200'}`}
-          title="Toggle folder and site-home structure"
-        >
-          Structure
-        </button>
+        {isFolderBasedSite && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowSemanticEdges(value => !value)}
+              aria-pressed={showSemanticEdges}
+              className={`px-2 py-1 text-xs rounded border ${showSemanticEdges ? 'bg-neutral-100 border-neutral-300' : 'bg-white text-neutral-400 border-neutral-200'}`}
+              title="Toggle semantic-link edges"
+            >
+              Links
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowStructuralEdges(value => !value)}
+              aria-pressed={showStructuralEdges}
+              className={`px-2 py-1 text-xs rounded border ${showStructuralEdges ? 'bg-blue-50 border-blue-300' : 'bg-white text-neutral-400 border-neutral-200'}`}
+              title="Toggle folder and site-home structure"
+            >
+              Structure
+            </button>
+          </>
+        )}
         {/* Fit to selection button - shown when pages are selected */}
         {hasSelection && (
           <button
@@ -756,7 +762,10 @@ const GraphVis: React.FC<GraphVisProps> = ({
           {/* Draw edges */}
           {graph.getAllEdges().map((edge, index) => {
             const isStructural = edge.siteEdgeKind !== 'semanticLink';
-            if ((isStructural && !showStructuralEdges) || (!isStructural && !showSemanticEdges)) return null;
+            const shouldShowEdge = isFolderBasedSite
+              ? (isStructural ? showStructuralEdges : showSemanticEdges)
+              : !isStructural;
+            if (!shouldShowEdge) return null;
             const sourcePage = displayGraph.getDisplayNode(edge.source);
             const targetPage = displayGraph.getDisplayNode(edge.target);
             if (!sourcePage || !targetPage) return null;

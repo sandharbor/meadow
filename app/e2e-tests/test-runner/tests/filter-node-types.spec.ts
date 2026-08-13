@@ -34,6 +34,7 @@ test("type filter soloing File Nodes excludes Image Nodes", async ({
   const filterPanel = new FilterPanelComponent(page, expect);
 
   await workflows.navigateToBigSite();
+  await editor.expectGraphEdgeKindControlsHidden();
   await filterPanel.expandFilterGroup("Types");
   const fileNodeCount = await filterPanel.getNodeTypeCount("File Nodes");
   const imageNodeCount = await filterPanel.getNodeTypeCount("Image Nodes");

@@ -45,6 +45,54 @@ interface SiteNodeGlyphProps {
   highlights: Highlight[];
   showLabel: boolean;
   label: string;
+  showImageIndicator?: boolean;
+}
+
+const FOLDER_PATH = 'M -3 -1.5 V -2.4 Q -3 -2.8 -2.6 -2.8 H -0.6 L 0.4 -1.8 H 2.6 Q 3 -1.8 3 -1.4 V 2.4 Q 3 2.8 2.6 2.8 H -2.6 Q -3 2.8 -3 2.4 Z';
+
+function HighlightBand({
+  highlight,
+  index,
+  siteNodeKind,
+}: {
+  highlight: Highlight;
+  index: number;
+  siteNodeKind: SiteNodeKind;
+}) {
+  const extent = BAND_OFFSET + index * BAND_STEP;
+  const sharedProps = {
+    fill: 'none',
+    stroke: highlight.color,
+    strokeWidth: BAND_STROKE_WIDTH,
+    strokeDasharray: highlight.isDashed ? '1.5,1.5' : 'none',
+    opacity: 0.8,
+  };
+
+  if (siteNodeKind === 'folder') {
+    return (
+      <path
+        {...sharedProps}
+        d={FOLDER_PATH}
+        transform={`scale(${extent / SITE_NODE_RADIUS})`}
+        vectorEffect="non-scaling-stroke"
+        data-highlight-shape="folder"
+      />
+    );
+  }
+  if (siteNodeKind === 'collection') {
+    return (
+      <rect
+        {...sharedProps}
+        x={-extent}
+        y={-extent}
+        width={extent * 2}
+        height={extent * 2}
+        rx={0.5}
+        data-highlight-shape="collection"
+      />
+    );
+  }
+  return <circle {...sharedProps} r={extent} data-highlight-shape="file" />;
 }
 
 function getStrokeColor(props: Pick<SiteNodeGlyphProps, 'isSelected' | 'isFrontierImageExtension' | 'isFrontierNode' | 'tracked'>): string {
@@ -65,6 +113,7 @@ const SiteNodeGlyph: React.FC<SiteNodeGlyphProps> = ({
   highlights,
   showLabel,
   label,
+  showImageIndicator = true,
 }) => {
   const strokeColor = getStrokeColor({ isSelected, isFrontierImageExtension, isFrontierNode, tracked });
 
@@ -72,35 +121,34 @@ const SiteNodeGlyph: React.FC<SiteNodeGlyphProps> = ({
     <>
       {/* Highlight bands — hug the node like tree rings */}
       {highlights.map((highlight, idx) => (
-        <circle
+        <HighlightBand
           key={idx}
-          r={BAND_OFFSET + idx * BAND_STEP}
-          fill="none"
-          stroke={highlight.color}
-          strokeWidth={BAND_STROKE_WIDTH}
-          strokeDasharray={highlight.isDashed ? '1.5,1.5' : 'none'}
-          opacity="0.8"
+          highlight={highlight}
+          index={idx}
+          siteNodeKind={siteNodeKind}
         />
       ))}
 
       <title>{siteNodeKind === 'collection' ? 'Site home' : siteNodeKind}</title>
       {siteNodeKind === 'folder' ? (
+        <path
+          d={FOLDER_PATH}
+          fill="#fff"
+          stroke={strokeColor}
+          strokeWidth={1}
+          data-node-shape="folder"
+        />
+      ) : siteNodeKind === 'collection' ? (
         <rect
           x={-SITE_NODE_RADIUS}
-          y={-SITE_NODE_RADIUS + 0.5}
+          y={-SITE_NODE_RADIUS}
           width={SITE_NODE_RADIUS * 2}
-          height={SITE_NODE_RADIUS * 1.7}
+          height={SITE_NODE_RADIUS * 2}
           rx={0.5}
           fill="#fff"
           stroke={strokeColor}
           strokeWidth={1}
-        />
-      ) : siteNodeKind === 'collection' ? (
-        <path
-          d="M -3 0 L 0 -3 L 3 0 L 3 3 L -3 3 Z"
-          fill="#fff"
-          stroke={strokeColor}
-          strokeWidth={1}
+          data-node-shape="collection"
         />
       ) : (
         <circle
@@ -109,11 +157,12 @@ const SiteNodeGlyph: React.FC<SiteNodeGlyphProps> = ({
           stroke={strokeColor}
           strokeWidth={1}
           strokeDasharray={isFrontierImageExtension ? '2,1' : 'none'}
+          data-node-shape="file"
         />
       )}
 
       {/* Image indicator icon for image file types */}
-      {siteNodeKind === 'file' && isImageFileType(fileType) && (
+      {showImageIndicator && siteNodeKind === 'file' && isImageFileType(fileType) && (
         <g transform="translate(-1.5, -1.5) scale(0.75)">
           <rect x="0" y="0" width="4" height="3" fill="none" stroke="#6366f1" strokeWidth="0.5" rx="0.3" />
           <circle cx="1" cy="1" r="0.4" fill="#6366f1" />

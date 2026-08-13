@@ -108,15 +108,6 @@ export const createSelectedScopeRootSelector = (): INormalSiteNodeSelector => ({
   },
 });
 
-export const createEffectiveBlacklistSelector = (): INormalSiteNodeSelector => ({
-  id: 'effective-folder-blacklist',
-  name: 'Excluded by Folder',
-  type: 'normal',
-  select: (graph: Graph) => new Set(
-    graph.getAllNodes().filter(node => Boolean(node.effectiveBlacklistingSiteNodeId)).map(node => node.siteNodeKey)
-  ),
-});
-
 export const createNodeWithOverrideSelector = (): INormalSiteNodeSelector => ({
   id: 'overrides',
   name: 'Depth Override',

@@ -46,6 +46,10 @@ test("previews a configured multiple-folder collection site", async ({
   await addKeyFrame(folderSites);
   await editor.switchToListView();
   await editor.switchToStructuralListView();
+  await editor.expectStructuralListHasNoSelectionColumn();
+  await editor.expectListViewNodeGlyph("Ordered Folders", "collection");
+  await editor.expectListViewNodeGlyph("Beta", "folder");
+  await editor.expectListViewNodeGlyph("Beta note", "file");
   await editor.expectListViewRowByExactNamePresent("Ordered Folders");
   await editor.expectListViewRowByExactNamePresent("Beta");
   await editor.expectListViewRowByExactNamePresent("Alpha");

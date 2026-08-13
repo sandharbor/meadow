@@ -22,6 +22,7 @@ import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './Imag
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 import SiteNodeHoverCard from './SiteNodeHoverCard';
 import StructuralTreeRows from './StructuralTreeRows';
+import ListNodeGlyph from './ListNodeGlyph';
 
 interface ListViewProps {
   displayGraph: DisplayGraph;
@@ -30,7 +31,6 @@ interface ListViewProps {
   siteSlug: string;
   onSiteNodeContextMenu?: (siteNodeKey: string, x: number, y: number) => void;
   selectedNodeKeys?: Set<string>;
-  onSelectedNodeKeysChange?: (siteNodeKeys: Set<string>) => void;
 }
 
 type SortField = 'title' | 'directory' | 'fileType' | 'depth';
@@ -44,7 +44,6 @@ const ListView: React.FC<ListViewProps> = ({
   siteSlug,
   onSiteNodeContextMenu,
   selectedNodeKeys,
-  onSelectedNodeKeysChange,
 }) => {
   const [sortField, setSortField] = useState<SortField>('depth');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -132,7 +131,7 @@ const ListView: React.FC<ListViewProps> = ({
   };
 
   const handleImageMouseEnter = (
-    e: React.MouseEvent<HTMLElement>,
+    e: React.MouseEvent<Element>,
     imageUrl: string,
     title: string
   ) => {
@@ -191,14 +190,8 @@ const ListView: React.FC<ListViewProps> = ({
     return `.${page.fileType}`;
   };
 
-  const nodeKindIcon = (page: DisplayNode): string => {
-    if (page.siteNodeKind === 'collection') return '⌂';
-    if (page.siteNodeKind === 'folder') return '▣';
-    return '●';
-  };
-
   const handleHighlightMouseEnter = (
-    e: React.MouseEvent<HTMLTableCellElement>,
+    e: React.MouseEvent<Element>,
     title: string,
     highlights: Highlight[]
   ) => {
@@ -262,7 +255,7 @@ const ListView: React.FC<ListViewProps> = ({
         <table className="min-w-full border-collapse border">
           <thead>
             <tr>
-              <th className="border px-4 py-2 bg-gray-50 w-8"></th>
+              {viewMode === 'flat' && <th className="border px-4 py-2 bg-gray-50 w-8"></th>}
               <th 
                 onClick={() => handleHeaderClick('title')}
                 className="border px-4 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
@@ -312,35 +305,10 @@ const ListView: React.FC<ListViewProps> = ({
                     onMouseEnter={(e) => handleHighlightMouseEnter(e, page.siteNodeName, page.highlights)}
                     onMouseLeave={() => setHoveredHighlights(null)}
                   >
-                    <div className="w-8 h-8 relative">
-                      <svg className="absolute inset-0" viewBox="0 0 32 32" width="32" height="32">
-                        <circle
-                          cx="16"
-                          cy="16"
-                          r="5"
-                          fill="#fff"
-                          stroke={page.isSelected ? '#f97316' : '#999'}
-                          strokeWidth={page.isSelected ? 2 : 1}
-                        />
-                        {page.highlights.map((highlight, idx) => (
-                          <circle
-                            key={idx}
-                            cx="16"
-                            cy="16"
-                            r={8 + (idx * 3)}
-                            fill="none"
-                            stroke={highlight.color}
-                            strokeWidth="4"
-                            strokeDasharray={highlight.isDashed ? "4,4" : "none"}
-                            opacity="0.8"
-                          />
-                        ))}
-                      </svg>
-                    </div>
+                    <ListNodeGlyph node={page} />
                   </td>
                   <td className="border px-4 py-2">
                     <div className="flex items-center gap-2">
-                      <span aria-label={nodeKindLabel(page)} title={nodeKindLabel(page)}>{nodeKindIcon(page)}</span>
                       {page.siteNodeName}
                       {page.siteNodeKind === 'file' && renderInlineThumbnail(page)}
                     </div>
@@ -361,9 +329,10 @@ const ListView: React.FC<ListViewProps> = ({
                 displayGraph={displayGraph}
                 entrySiteNodeId={entrySiteNodeId}
                 selectedNodeKeys={selectedNodeKeys}
-                onSelectedNodeKeysChange={onSelectedNodeKeysChange}
                 onNodeClick={onPageClick}
                 onNodeContextMenu={onSiteNodeContextMenu}
+                onGlyphMouseEnter={(event, node) => handleHighlightMouseEnter(event, node.siteNodeName, node.highlights)}
+                onGlyphMouseLeave={() => setHoveredHighlights(null)}
               />
             )}
           </tbody>

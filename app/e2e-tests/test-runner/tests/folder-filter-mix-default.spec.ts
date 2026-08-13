@@ -40,10 +40,13 @@ test("hidden folders are intersected with soloed folders by default", async ({
   await filterPanel.hideFolder("t024");
   await filterPanel.soloFolder("t023");
   await editor.expectGraphViewPageCount(4);
-  await filterPanel.expectMixViewCustomized(false);
-  await filterPanel.expectMixViewBelowSearchAndAboveFilter("Folders");
+  await filterPanel.expectFilterGroupActive("Folders");
+  await filterPanel.collapseFilterGroup("Folders");
+  await filterPanel.expectFilterGroupActive("Folders");
+  await filterPanel.expectMixFiltersCustomized(false);
+  await filterPanel.expectMixFiltersLeftAlignedWithAddCustomFilterOnRight();
 
-  await filterPanel.openMixView();
+  await filterPanel.openMixFilters();
   await filterPanel.expectDefaultHideAndSoloMix({
     hides: ["Folder: t024"],
     solos: ["Folder: t023"],
@@ -51,7 +54,7 @@ test("hidden folders are intersected with soloed folders by default", async ({
   await addKeyFrame(filters);
   await addKeyFrame(folderFilter);
   await snapshot("hidden and soloed folders use the default grouped mix");
-  await filterPanel.closeMixView();
+  await filterPanel.closeMixFilters();
 
   await editor.switchToListView();
   expect(await editor.getListViewPageCount()).toBe(4);

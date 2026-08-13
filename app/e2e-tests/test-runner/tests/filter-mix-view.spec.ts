@@ -22,7 +22,7 @@ import { bigSite } from "../src/site-docs/index.js";
 
 test.use({ siteMode: "single-file" });
 
-test("mix view intersects soloed untracked and sensitive filters in graph and list views", async ({
+test("mix filters intersects soloed untracked and sensitive filters in graph and list views", async ({
   page,
   snapshot,
   assertMeadowHomeState,
@@ -37,19 +37,19 @@ test("mix view intersects soloed untracked and sensitive filters in graph and li
 
   await filterPanel.enableAndSoloFilter("Untracked");
   await editor.expectGraphViewPageCount(11);
-  await filterPanel.expectMixViewHidden();
-  await snapshot("untracked filter soloed without mix view");
+  await filterPanel.expectMixFiltersHidden();
+  await snapshot("untracked filter soloed without mix filters");
 
   await filterPanel.clickSoloOnFilter("Sensitive");
-  await filterPanel.expectMixViewCustomized(false);
-  await filterPanel.openMixView();
-  await filterPanel.moveMixViewBy(80, 50);
+  await filterPanel.expectMixFiltersCustomized(false);
+  await filterPanel.openMixFilters();
+  await filterPanel.moveMixFiltersBy(80, 50);
   await addKeyFrame(filters);
-  await snapshot("mix view defaults to any and can move aside");
+  await snapshot("mix filters defaults to any and can move aside");
 
   await filterPanel.chooseMixOperator("All");
-  await filterPanel.closeMixView();
-  await filterPanel.expectMixViewCustomized(true);
+  await filterPanel.closeMixFilters();
+  await filterPanel.expectMixFiltersCustomized(true);
   await editor.expectGraphViewPageCount(1);
   await snapshot("graph view shows sensitive untracked intersection");
 
@@ -58,10 +58,10 @@ test("mix view intersects soloed untracked and sensitive filters in graph and li
   await snapshot("list view shows the same intersection");
   await addKeyFrame(filters);
 
-  await filterPanel.openMixView();
-  await filterPanel.resetMixView();
-  await filterPanel.expectMixViewCustomized(false);
-  await filterPanel.closeMixView();
+  await filterPanel.openMixFilters();
+  await filterPanel.resetMixFilters();
+  await filterPanel.expectMixFiltersCustomized(false);
+  await filterPanel.closeMixFilters();
   await snapshot("reset mix restores the default view");
   void bigSite;
 

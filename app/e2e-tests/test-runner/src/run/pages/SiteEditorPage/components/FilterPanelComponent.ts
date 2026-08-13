@@ -42,20 +42,20 @@ export class FilterPanelComponent {
     return this.page.locator('input[placeholder="Search"]');
   }
 
-  private get mixViewBtn() {
-    return this.page.getByRole("button", { name: /Mix view/ });
+  private get mixFiltersBtn() {
+    return this.page.getByRole("button", { name: /Mix filters/ });
   }
 
-  private get mixViewHeading() {
-    return this.page.getByRole("heading", { name: "Mix the view" });
+  private get mixFiltersHeading() {
+    return this.page.getByRole("heading", { name: "Mix the filters" });
   }
 
-  private get mixViewModal() {
-    return this.mixViewHeading.locator("xpath=ancestor::div[contains(@class, 'bg-white')][1]");
+  private get mixFiltersModal() {
+    return this.mixFiltersHeading.locator("xpath=ancestor::div[contains(@class, 'bg-white')][1]");
   }
 
   private mixTermCard(termName: string) {
-    return this.mixViewModal
+    return this.mixFiltersModal
       .locator('[data-testid^="filter:"]')
       .filter({ hasText: termName })
       .first();
@@ -208,17 +208,17 @@ export class FilterPanelComponent {
     await this.clickSoloOnFilter(filterName);
   }
 
-  async expectMixViewHidden() {
-    await this.expect(this.mixViewBtn).toHaveCount(0);
+  async expectMixFiltersHidden() {
+    await this.expect(this.mixFiltersBtn).toHaveCount(0);
   }
 
-  async openMixView() {
-    await this.expect(this.mixViewBtn).toBeVisible();
-    await this.mixViewBtn.click();
-    await this.expect(this.mixViewHeading).toBeVisible();
+  async openMixFilters() {
+    await this.expect(this.mixFiltersBtn).toBeVisible();
+    await this.mixFiltersBtn.click();
+    await this.expect(this.mixFiltersHeading).toBeVisible();
   }
 
-  async moveMixViewBy(deltaX: number, deltaY: number) {
+  async moveMixFiltersBy(deltaX: number, deltaY: number) {
     const panel = this.page.getByTestId("movable-modal-panel");
     const titleBar = this.page.getByTestId("movable-modal-title-bar");
     await this.expect(panel).toBeVisible();
@@ -226,7 +226,7 @@ export class FilterPanelComponent {
 
     const before = await panel.boundingBox();
     const handle = await titleBar.boundingBox();
-    if (!before || !handle) throw new Error("Mix view modal geometry is unavailable");
+    if (!before || !handle) throw new Error("Mix filters modal geometry is unavailable");
     await this.page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
     await this.page.mouse.down();
     await this.page.mouse.move(
@@ -237,13 +237,13 @@ export class FilterPanelComponent {
     await this.page.mouse.up();
 
     const after = await panel.boundingBox();
-    if (!after) throw new Error("Moved Mix view modal geometry is unavailable");
+    if (!after) throw new Error("Moved Mix filters modal geometry is unavailable");
     this.expect(after.x).toBeCloseTo(before.x + deltaX, 0);
     this.expect(after.y).toBeCloseTo(before.y + deltaY, 0);
   }
 
-  async expectMixViewCustomized(customized: boolean) {
-    const indicator = this.mixViewBtn.getByTestId("mix-view-customized-indicator");
+  async expectMixFiltersCustomized(customized: boolean) {
+    const indicator = this.mixFiltersBtn.getByTestId("mix-filters-customized-indicator");
     if (customized) {
       await this.expect(indicator).toHaveText("Customized");
     } else {
@@ -251,37 +251,39 @@ export class FilterPanelComponent {
     }
   }
 
-  async expectMixViewBelowSearchAndAboveFilter(filterName: string) {
-    await this.expect(this.mixViewBtn).toBeInViewport();
+  async expectMixFiltersLeftAlignedWithAddCustomFilterOnRight() {
+    await this.expect(this.mixFiltersBtn).toBeInViewport();
 
-    const [searchBox, mixBox, filterBox] = await Promise.all([
-      this.searchInput.boundingBox(),
-      this.mixViewBtn.boundingBox(),
-      (await this.filterControl(filterName)).boundingBox(),
+    const actionsRow = this.page.getByTestId("filter-actions-row");
+    const [rowBox, mixBox, addBox] = await Promise.all([
+      actionsRow.boundingBox(),
+      this.mixFiltersBtn.boundingBox(),
+      this.addCustomFilterBtn.boundingBox(),
     ]);
-    if (!searchBox || !mixBox || !filterBox) {
-      throw new Error("Filter panel geometry is unavailable");
+    if (!rowBox || !mixBox || !addBox) {
+      throw new Error("Filter action geometry is unavailable");
     }
 
-    this.expect(mixBox.y).toBeGreaterThanOrEqual(searchBox.y + searchBox.height);
-    this.expect(mixBox.y + mixBox.height).toBeLessThanOrEqual(filterBox.y);
+    this.expect(mixBox.x).toBeCloseTo(rowBox.x, 0);
+    this.expect(addBox.x + addBox.width).toBeCloseTo(rowBox.x + rowBox.width, 0);
+    this.expect(mixBox.y + mixBox.height / 2).toBeCloseTo(addBox.y + addBox.height / 2, 0);
   }
 
   async chooseMixOperator(operator: "Any" | "All" | "Without") {
-    const button = this.mixViewModal.getByRole("button", { name: operator, exact: true });
+    const button = this.mixFiltersModal.getByRole("button", { name: operator, exact: true });
     await this.expect(button).toBeVisible();
     await button.click();
     await this.expect(button).toHaveAttribute("aria-pressed", "true");
   }
 
-  async resetMixView() {
-    const button = this.mixViewModal.getByRole("button", { name: "Reset mix", exact: true });
+  async resetMixFilters() {
+    const button = this.mixFiltersModal.getByRole("button", { name: "Reset mix", exact: true });
     await this.expect(button).toBeVisible();
     await button.click();
   }
 
   async expectMixTermOrder(termNames: string[]) {
-    const cards = this.mixViewModal.locator('[data-testid^="filter:"]');
+    const cards = this.mixFiltersModal.locator('[data-testid^="filter:"]');
     await this.expect(cards).toHaveCount(termNames.length);
     for (const [index, termName] of termNames.entries()) {
       await this.expect(cards.nth(index)).toContainText(termName);
@@ -300,7 +302,7 @@ export class FilterPanelComponent {
       operator: "Any" | "All",
       termNames: string[],
     ) => {
-      const group = this.mixViewModal.getByTestId(groupId);
+      const group = this.mixFiltersModal.getByTestId(groupId);
       await this.expect(group).toBeVisible();
       await this.expect(
         group.locator(":scope > div").first().getByRole("button", { name: operator, exact: true }),
@@ -312,7 +314,7 @@ export class FilterPanelComponent {
       }
     };
 
-    const root = this.mixViewModal.getByTestId("filter-expression-visible");
+    const root = this.mixFiltersModal.getByTestId("filter-expression-visible");
     await this.expect(root).toBeVisible();
     await this.expect(
       root.locator(":scope > div").first().getByRole("button", { name: "All", exact: true }),
@@ -329,11 +331,11 @@ export class FilterPanelComponent {
     await source.dragTo(target);
   }
 
-  async closeMixView() {
-    const button = this.mixViewModal.getByRole("button", { name: "Done", exact: true });
+  async closeMixFilters() {
+    const button = this.mixFiltersModal.getByRole("button", { name: "Done", exact: true });
     await this.expect(button).toBeVisible();
     await button.click();
-    await this.expect(this.mixViewHeading).toBeHidden();
+    await this.expect(this.mixFiltersHeading).toBeHidden();
   }
 
   async clickShowTitlesOnFilter(filterName: string) {
@@ -374,6 +376,14 @@ export class FilterPanelComponent {
     await this.expect(disclosure).toBeVisible();
     if (await disclosure.getAttribute("aria-expanded") !== "false") await disclosure.click();
     await this.expect(disclosure).toHaveAttribute("aria-expanded", "false");
+  }
+
+  async expectFilterGroupActive(filterName: string) {
+    await this.expect(this.page.getByTitle(`${filterName} has active settings`)).toBeVisible();
+  }
+
+  async expectFilterGroupInactive(filterName: string) {
+    await this.expect(this.page.getByTitle(`${filterName} has active settings`)).toHaveCount(0);
   }
 
   async expectFolderVisible(folderPath: string) {

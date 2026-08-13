@@ -105,6 +105,16 @@ export class SiteEditorPage {
     await this.expect(this.page.getByTestId("graph-page-node").first()).toBeVisible();
   }
 
+  async expectGraphEdgeKindControlsVisible() {
+    await this.expect(this.page.getByRole("button", { name: "Links", exact: true })).toBeVisible();
+    await this.expect(this.page.getByRole("button", { name: "Structure", exact: true })).toBeVisible();
+  }
+
+  async expectGraphEdgeKindControlsHidden() {
+    await this.expect(this.page.getByRole("button", { name: "Links", exact: true })).toHaveCount(0);
+    await this.expect(this.page.getByRole("button", { name: "Structure", exact: true })).toHaveCount(0);
+  }
+
   async clickBackToSites() {
     const btn = this.page.locator("button", { hasText: "← Sites" });
     await this.expect(btn).toBeVisible();
@@ -196,6 +206,17 @@ export class SiteEditorPage {
       has: this.page.locator(`td >> text="${text}"`),
     }).first();
     await this.expect(row).toBeVisible();
+  }
+
+  async expectStructuralListHasNoSelectionColumn() {
+    await this.expect(this.page.locator("table thead th")).toHaveCount(4);
+  }
+
+  async expectListViewNodeGlyph(title: string, nodeKind: "file" | "folder" | "collection") {
+    const row = this.listViewRows.filter({
+      has: this.page.locator(`td >> text="${title}"`),
+    }).first();
+    await this.expect(row.getByTestId("list-node-glyph")).toHaveAttribute("data-node-kind", nodeKind);
   }
 
   /**

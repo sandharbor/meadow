@@ -16,14 +16,16 @@ limitations under the License.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import type { DisplayGraph, DisplayNode } from '../types/displayGraph';
+import ListNodeGlyph from './ListNodeGlyph';
 
 interface StructuralTreeRowsProps {
   displayGraph: DisplayGraph;
   entrySiteNodeId?: string;
   selectedNodeKeys?: Set<string>;
-  onSelectedNodeKeysChange?: (siteNodeKeys: Set<string>) => void;
   onNodeClick: (siteNodeKey: string) => void;
   onNodeContextMenu?: (siteNodeKey: string, x: number, y: number) => void;
+  onGlyphMouseEnter?: (event: React.MouseEvent<SVGSVGElement>, node: DisplayNode) => void;
+  onGlyphMouseLeave?: () => void;
 }
 
 interface StructuralRow {
@@ -36,17 +38,14 @@ const kindLabel = (node: DisplayNode): string => node.siteNodeKind === 'collecti
   ? 'Site home'
   : node.siteNodeKind === 'folder' ? 'Folder' : `.${node.fileType}`;
 
-const kindIcon = (node: DisplayNode): string => node.siteNodeKind === 'collection'
-  ? '⌂'
-  : node.siteNodeKind === 'folder' ? '▣' : '●';
-
 const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
   displayGraph,
   entrySiteNodeId,
   selectedNodeKeys,
-  onSelectedNodeKeysChange,
   onNodeClick,
   onNodeContextMenu,
+  onGlyphMouseEnter,
+  onGlyphMouseLeave,
 }) => {
   const graph = displayGraph.underlyingGraph;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -95,20 +94,6 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
           onNodeContextMenu(node.siteNodeKey, event.clientX, event.clientY);
         }}
       >
-        <td className="border px-3 py-2">
-          {selectedNodeKeys && onSelectedNodeKeysChange && (
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={() => {
-                const next = new Set(selectedNodeKeys);
-                if (selected) next.delete(node.siteNodeKey); else next.add(node.siteNodeKey);
-                onSelectedNodeKeysChange(next);
-              }}
-              onClick={event => event.stopPropagation()}
-            />
-          )}
-        </td>
         <td className="border px-3 py-2" style={{ paddingLeft: `${12 + item.depth * 22}px` }}>
           <span className="inline-flex items-center gap-2">
             {!semanticOnly && item.hasChildren ? (
@@ -126,7 +111,11 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
                 className="w-4 text-gray-500"
               >{collapsed.has(node.siteNodeKey) ? '▸' : '▾'}</button>
             ) : <span className="w-4" />}
-            <span aria-label={kindLabel(node)}>{kindIcon(node)}</span>
+            <ListNodeGlyph
+              node={node}
+              onMouseEnter={event => onGlyphMouseEnter?.(event, node)}
+              onMouseLeave={onGlyphMouseLeave}
+            />
             <span>{node.siteNodeName}</span>
             {node.tracked && <span className="text-xs text-green-700">Tracked</span>}
             {node.underlyingNode.effectiveBlacklistingSiteNodeId && <span className="text-xs text-red-700">Excluded by folder</span>}
@@ -141,12 +130,12 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
 
   return (
     <>
-      <tr><th colSpan={5} className="border px-3 py-2 text-left bg-gray-100">Selected folder structure</th></tr>
+      <tr><th colSpan={4} className="border px-3 py-2 text-left bg-gray-100">Selected folder structure</th></tr>
       {data.rows.map(item => row(item))}
-      <tr><th colSpan={5} className="border px-3 py-2 text-left bg-gray-100">Semantic-only / outside selected folders</th></tr>
+      <tr><th colSpan={4} className="border px-3 py-2 text-left bg-gray-100">Semantic-only / outside selected folders</th></tr>
       {data.semanticOnly.length > 0
         ? data.semanticOnly.map(node => row({ node, depth: 0, hasChildren: false }, true))
-        : <tr><td colSpan={5} className="border px-3 py-3 text-sm text-gray-500">No semantic-only nodes.</td></tr>}
+        : <tr><td colSpan={4} className="border px-3 py-3 text-sm text-gray-500">No semantic-only nodes.</td></tr>}
     </>
   );
 };
