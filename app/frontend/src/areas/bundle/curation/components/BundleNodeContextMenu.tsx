@@ -29,6 +29,12 @@ export interface ObsidianInfo {
   vaultNameGuess: string | null;
 }
 
+export const canMarkNodeSensitive = (node: IBundleNode): boolean =>
+  node.bundleNodeKind === 'file' && node.fileType === 'md';
+
+export const canFindNodeInBundles = (node: IBundleNode): boolean =>
+  node.bundleNodeKind === 'file';
+
 interface BundleNodeContextMenuProps {
   page: IBundleNode;
   graph: Graph;
@@ -113,6 +119,8 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
   }, [onClose]);
 
   const handleFindInBundles = () => {
+    if (!canFindNodeInBundles(page)) return;
+
     const pathParts = page.bundleNodeKey.split('/');
     const pageName = page.data?.title || page.label || pathParts[pathParts.length - 1];
 
@@ -254,7 +262,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
         Select Deeper Paths from Here
       </button>
       {/* Mark sensitive / not sensitive */}
-      {onMarkSensitive && (
+      {onMarkSensitive && canMarkNodeSensitive(page) && (
         <button
           onClick={() => { onMarkSensitive(page.bundleNodeKey, !page.sensitive); onClose(); }}
           className={buttonClass}
@@ -263,12 +271,14 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
         </button>
       )}
       {/* Find in Bundles */}
-      <button
-        onClick={handleFindInBundles}
-        className={buttonClass}
-      >
-        Find in Bundles
-      </button>
+      {canFindNodeInBundles(page) && (
+        <button
+          onClick={handleFindInBundles}
+          className={buttonClass}
+        >
+          Find in Bundles
+        </button>
+      )}
       {/* Open in Obsidian */}
       <button
         onClick={() => { void openInObsidian(); }}

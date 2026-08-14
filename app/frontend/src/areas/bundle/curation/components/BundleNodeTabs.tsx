@@ -25,7 +25,7 @@ import { OrphansBanner } from './OrphansBanner';
 import FilterPanel from './FilterPanel';
 import BundleNodeSelectionSidebar from './BundleNodeSelectionSidebar';
 import BundleNodeTabsDropdown from './BundleNodeTabsDropdown';
-import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';
+import BundleNodeContextMenu, { canMarkNodeSensitive, ObsidianInfo } from './BundleNodeContextMenu';
 import EmptySoloCallout from './EmptySoloCallout';
 import BundlePagesToggle from './BundlePagesToggle';
 import ResizableSidebar from './ResizableSidebar';
@@ -580,7 +580,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   // Core function that actually performs the sensitive marking operation
   const performMarkSensitive = async (bundleNodeKey: string, isSensitive: boolean) => {
     const page = graph.getNode(bundleNodeKey);
-    if (!page || page.bundleNodeKind !== 'file') return;
+    if (!page || !canMarkNodeSensitive(page)) return;
 
     try {
       // Call the API to update the file
