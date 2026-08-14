@@ -498,9 +498,8 @@ const BundleEditor: React.FC = () => {
     // Preserve configs for pages not in current view
     // Use nodeConfigMatchesNode for comparison to handle the case where old configs don't have fileType
     // (nodeConfigMatchesNode treats undefined fileType as "match any", matching the backend's behavior)
-    const nodesWithConfig = allNodes.filter(node => node.conf);
     const preservedConfigs = (bundleNodeConfigs || []).filter(cfg => {
-      const hasMatchingNodeInCurrentGraph = nodesWithConfig.some(node =>
+      const hasMatchingNodeInCurrentGraph = allNodes.some(node =>
         nodeConfigMatchesNode(cfg, node.bundleNodeName, node.sourceGraphSubdirectory, node.fileType)
       );
       return !hasMatchingNodeInCurrentGraph;
@@ -514,9 +513,8 @@ const BundleEditor: React.FC = () => {
 
     const allNodes = graph.getAllNodes();
     const currentConfigs = buildNodeConfigs(allNodes);
-    const nodesWithConfig = allNodes.filter(node => node.conf);
     const preservedConfigs = configs.filter(cfg => {
-      const hasMatchingNodeInCurrentGraph = nodesWithConfig.some(node =>
+      const hasMatchingNodeInCurrentGraph = allNodes.some(node =>
         nodeConfigMatchesNode(cfg, node.bundleNodeName, node.sourceGraphSubdirectory, node.fileType)
       );
       return !hasMatchingNodeInCurrentGraph;
