@@ -17,45 +17,45 @@ limitations under the License.
 import type { Router } from 'express';
 import fs from 'fs';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils.js';
-import { SiteConfigPaths } from '../../../../../shared_code/paths/siteConfigPaths.js';
-import { getSiteDirectory } from '../../../../../backend/src/shared/site-config/siteConfigPaths.js';
-import { loadSiteConfig, updateSiteConfig } from '../../../../../backend/src/shared/utils/siteConfigUtils.js';
+import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
+import { getBundleDirectory } from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
+import { loadBundleConfig, updateBundleConfig } from '../../../../../backend/src/shared/utils/bundleConfigUtils.js';
 import { getHtmlPathForPage } from '../../../../../backend/src/shared/utils/htmlPathLookup.js';
-import { loadValidatedSiteNodeConfiguration } from '../../../../../backend/src/shared/site-node/siteNodeConfigLoader.js';
+import { loadValidatedBundleNodeConfiguration } from '../../../../../backend/src/shared/bundle-node/bundleNodeConfigLoader.js';
 import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
 import { createS3Client, describeS3Error, requireBucket } from '../s3Client.js';
 import { uploadDirectory } from '../s3Operations.js';
-import { loadS3ConfigForSite, loadS3Resources, loadS3Secrets, normalizeWebBaseUrl } from '../s3Config.js';
+import { loadS3ConfigForBundle, loadS3Resources, loadS3Secrets, normalizeWebBaseUrl } from '../s3Config.js';
 
 /**
- * POST /sites/:siteSlug/publish — upload the site's preview directory to S3
+ * POST /bundles/:bundleSlug/publish — upload the bundle's preview directory to S3
  * under the configured publishSlug. Returns the published URL on success.
  *
  * Intentionally synchronous (no SSE) for MVP. The preview is expected to
  * already be generated; callers run the regenerate-preview step first.
  */
 export function registerS3PublishRoute(router: Router): void {
-  router.post('/sites/:siteSlug/publish', (req, res, next) => {
+  router.post('/bundles/:bundleSlug/publish', (req, res, next) => {
     (async () => {
-      const { siteSlug } = req.params;
-      if (!siteSlug) {
-        return res.status(400).json({ error: 'siteSlug is required' });
+      const { bundleSlug } = req.params;
+      if (!bundleSlug) {
+        return res.status(400).json({ error: 'bundleSlug is required' });
       }
 
-      const siteDirectory = getSiteDirectory(siteSlug);
-      if (!fs.existsSync(siteDirectory)) {
-        return res.status(404).json({ error: `Site '${siteSlug}' not found` });
+      const bundleDirectory = getBundleDirectory(bundleSlug);
+      if (!fs.existsSync(bundleDirectory)) {
+        return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
 
-      const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
+      const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
       if (!fs.existsSync(generatedHtmlDir)) {
         return res.status(400).json({
           error: 'No preview found. Please generate a preview before publishing.',
         });
       }
 
-      const siteConfig = loadS3ConfigForSite(siteSlug);
-      if (!siteConfig.publishSlug) {
+      const bundleConfig = loadS3ConfigForBundle(bundleSlug);
+      if (!bundleConfig.publishSlug) {
         return res.status(400).json({
           error: 'publishSlug is not set. Open the Publish tab and set it before publishing.',
         });
@@ -80,12 +80,12 @@ export function registerS3PublishRoute(router: Router): void {
 
       const client = createS3Client(resources, secrets);
       try {
-        const result = await uploadDirectory(client, bucket, siteConfig.publishSlug, generatedHtmlDir);
+        const result = await uploadDirectory(client, bucket, bundleConfig.publishSlug, generatedHtmlDir);
 
         try {
-          updateSiteConfig(siteDirectory, { siteLastPublishedAt: new Date().toISOString() });
+          updateBundleConfig(bundleDirectory, { bundleLastPublishedAt: new Date().toISOString() });
         } catch (error) {
-          logger.warn('[S3PublishingProvider] Could not update siteLastPublishedAt:', error);
+          logger.warn('[S3PublishingProvider] Could not update bundleLastPublishedAt:', error);
         }
 
         const normalizedBase = normalizeWebBaseUrl(resources.webBaseUrl);
@@ -93,17 +93,17 @@ export function registerS3PublishRoute(router: Router): void {
         if (normalizedBase) {
           let landingPath = 'index.html';
           try {
-            const { defaultTraversalNode } = loadValidatedSiteNodeConfiguration(siteDirectory);
+            const { defaultTraversalNode } = loadValidatedBundleNodeConfiguration(bundleDirectory);
             const foundPath = getHtmlPathForPage(
-              siteDirectory,
-              defaultTraversalNode.siteNodeName,
+              bundleDirectory,
+              defaultTraversalNode.bundleNodeName,
               defaultTraversalNode.sourceGraphSubdirectory,
             );
             if (foundPath) landingPath = foundPath;
           } catch (error) {
             logger.warn('[S3PublishingProvider] Could not resolve traversal page:', error);
           }
-          publishedUrl = `${normalizedBase}/${siteConfig.publishSlug}/${encodePathForUrl(landingPath)}`;
+          publishedUrl = `${normalizedBase}/${bundleConfig.publishSlug}/${encodePathForUrl(landingPath)}`;
         }
 
         res.json({

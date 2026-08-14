@@ -58,30 +58,30 @@ function writeFixtureTelemetry(): void {
   });
 
   const events = [
-    line(720, "site.preview.request.stage", 34.2, {
+    line(720, "bundle.preview.request.stage", 34.2, {
       stage: "sync_tracked_page_content",
-      site_slug: "fixture-site",
+      bundle_slug: "fixture-bundle",
     }),
-    line(820, "site.generation.stage", 4.8, {
+    line(820, "bundle.generation.stage", 4.8, {
       mode: "preview",
-      site_slug: "fixture-site",
-      stage: "load_site_config",
+      bundle_slug: "fixture-bundle",
+      stage: "load_bundle_config",
     }),
-    line(960, "site.generation.stage", 46.5, {
+    line(960, "bundle.generation.stage", 46.5, {
       mode: "preview",
-      site_slug: "fixture-site",
+      bundle_slug: "fixture-bundle",
       stage: "load_render_working_graph",
       page_count: 7,
     }),
-    line(1320, "site.generation.stage", 271.4, {
+    line(1320, "bundle.generation.stage", 271.4, {
       mode: "preview",
-      site_slug: "fixture-site",
+      bundle_slug: "fixture-bundle",
       stage: "render_markdown_pages",
       page_count: 7,
     }),
-    line(1390, "site.preview.request.stage", 585.2, {
+    line(1390, "bundle.preview.request.stage", 585.2, {
       stage: "generate_html",
-      site_slug: "fixture-site",
+      bundle_slug: "fixture-bundle",
     }),
     line(2550, "git.commit_changes.stage", 94.7, {
       stage: "fast_git_ops_commit_changes",
@@ -112,7 +112,7 @@ export async function generateFixtureScenario(): Promise<string> {
   writeFileSync(path.join(FIXTURE_DIR, "start-time.txt"), builder.ticker.startIso());
   writeFileSync(path.join(FIXTURE_DIR, "end-time.txt"), builder.ticker.endIso());
   writeFileSync(path.join(FIXTURE_DIR, "status.txt"), "passed");
-  writeFileSync(path.join(FIXTURE_DIR, "site-mode.txt"), "single-file");
+  writeFileSync(path.join(FIXTURE_DIR, "bundle-mode.txt"), "single-file");
   // Point test-file.txt at the scenario script so the viewer's source view
   // shows the very factories that produced this artifact — the most
   // self-documenting choice.

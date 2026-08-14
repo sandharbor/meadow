@@ -86,8 +86,8 @@ function buildArchiveEntryName(relativePath: string, archiveRootDirectory?: stri
   return pathSegments.join('/');
 }
 
-export function getSourcesExportDownloadFilename(siteSlug: string): string {
-  return `${siteSlug}-sources.zip`;
+export function getSourcesExportDownloadFilename(bundleSlug: string): string {
+  return `${bundleSlug}-sources.zip`;
 }
 
 /**

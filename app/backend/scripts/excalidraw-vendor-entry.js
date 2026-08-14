@@ -1,6 +1,6 @@
 // Build entry for the vendored Excalidraw renderer bundle.
 //
-// The bundled output is checked into `src/areas/site/generation/html/shared/excalidraw-vendor.js`
+// The bundled output is checked into `src/areas/bundle/generation/html/shared/excalidraw-vendor.js`
 // alongside `mermaid.min.js` — the model is "vendor a third-party renderer";
 // we don't maintain its source. Refresh by running:
 //

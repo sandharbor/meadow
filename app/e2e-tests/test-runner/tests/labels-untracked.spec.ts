@@ -15,17 +15,17 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
+import { BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { labels } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("enabling show titles on untracked filter displays page title labels", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSite();
-  await snapshot("site editor loaded");
+  await wf.navigateToBigBundle();
+  await snapshot("bundle editor loaded");
 
   // Enable the Untracked filter
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -37,7 +37,7 @@ test("enabling show titles on untracked filter displays page title labels", asyn
   await page.waitForTimeout(300);
 
   // Verify that a known untracked page title is visible as a label
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   await editor.expectLabelVisible("t012 - custom filters");
   await snapshot("titles shown for untracked pages");
 
@@ -51,7 +51,7 @@ test("enabling show titles on untracked filter displays page title labels", asyn
 
   // Take another keyframe in solo mode
   await addKeyFrame(labels);
-  void bigSite;
+  void bigBundle;
 
   await assertMeadowHomeState();
 });

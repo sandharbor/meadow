@@ -92,9 +92,9 @@ functionality under src/run/pages, then expose an intent-revealing action or
 assertion from that object. For example:
 
   // Spec
-  await generatedSite.search.expectTitleResults(expectedTitles);
+  await generatedBundle.search.expectTitleResults(expectedTitles);
 
-  // GeneratedSiteSearch page object
+  // GeneratedBundleSearch page object
   async expectTitleResults(expectedTitles: string[]) {
     await this.expect(this.titleResultNames).toHaveText(expectedTitles);
   }

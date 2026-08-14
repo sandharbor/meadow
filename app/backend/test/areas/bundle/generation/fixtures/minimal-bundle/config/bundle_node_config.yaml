@@ -1,0 +1,20 @@
+nodes:
+  - bundleNodeName: another page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5cc1ecd75517
+    listType: whitelist
+    outlinksDepth: 1
+    inlinksDepth: 0
+  - bundleNodeName: child page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7c1b502671e0
+    listType: whitelist
+    outlinksDepth: 1
+    inlinksDepth: 0
+  - bundleNodeName: main page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ed4ed1b9e5ce
+    listType: whitelist

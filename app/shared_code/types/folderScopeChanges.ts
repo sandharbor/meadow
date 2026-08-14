@@ -14,24 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { SiteEdgeKind } from './graph.js';
+import type { BundleEdgeKind } from './graph.js';
 
 export interface FolderScopeSnapshotNode {
-  siteNodeKey: string;
-  siteNodeId?: string;
-  siteNodeKind: 'file' | 'folder' | 'collection';
-  siteNodeName: string;
+  bundleNodeKey: string;
+  bundleNodeId?: string;
+  bundleNodeKind: 'file' | 'folder' | 'collection';
+  bundleNodeName: string;
   sourceGraphSubdirectory?: string;
   fileType?: string;
-  effectiveBlacklistingSiteNodeId?: string;
-  effectiveFolderPolicySiteNodeId?: string;
+  effectiveBlacklistingBundleNodeId?: string;
+  effectiveFolderPolicyBundleNodeId?: string;
   remaining_depth?: number;
   remaining_inlinks_depth?: number;
 }
 
 export interface FolderScopeGraphSnapshot {
   nodes: FolderScopeSnapshotNode[];
-  edges: Array<{ source: string; target: string; siteEdgeKind: SiteEdgeKind }>;
+  edges: Array<{ source: string; target: string; bundleEdgeKind: BundleEdgeKind }>;
   folderScope?: {
     skippedCounts: Record<string, number>;
     skippedPaths: Array<{ path: string; reason: string }>;
@@ -48,8 +48,8 @@ export interface FolderScopeChangeItem {
   category: FolderScopeChangeCategory;
   code: string;
   message: string;
-  siteNodeId?: string;
-  siteNodeKey?: string;
+  bundleNodeId?: string;
+  bundleNodeKey?: string;
   oldLocator?: string;
   newLocator?: string;
   affectedNodeCount?: number;

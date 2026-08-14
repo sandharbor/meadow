@@ -18,10 +18,10 @@ import type { Express } from 'express';
 import type { PublishingProviderManifest } from '../../../../shared_code/interfaces/IPublishingProvider.js';
 
 /**
- * SSE-friendly progress shape for cleanup flows. The core delete-site-stream
+ * SSE-friendly progress shape for cleanup flows. The core delete-bundle-stream
  * forwards each progress event to the browser unchanged.
  */
-export interface CleanupPublishedSiteProgress {
+export interface CleanupPublishedBundleProgress {
   stage: string;
   message: string;
   filesDeleted?: number;
@@ -29,21 +29,21 @@ export interface CleanupPublishedSiteProgress {
   version?: string;
 }
 
-export interface CleanupPublishedSiteResult {
+export interface CleanupPublishedBundleResult {
   warning?: string;
 }
 
-export interface CleanupPublishedSiteOptions {
-  siteSlug: string;
-  onProgress: (progress: CleanupPublishedSiteProgress) => void;
+export interface CleanupPublishedBundleOptions {
+  bundleSlug: string;
+  onProgress: (progress: CleanupPublishedBundleProgress) => void;
 }
 
 /**
  * Backend contract for a publishing provider. Providers expose a default
  * export of this shape so the core registry can mount their routes, ask
- * whether a site has been published, and trigger cleanup on delete.
+ * whether a bundle has been published, and trigger cleanup on delete.
  *
- * Capability methods (`isSitePublished`, `cleanupPublishedSite`) are
+ * Capability methods (`isBundlePublished`, `cleanupPublishedBundle`) are
  * optional so a provider can ship with a subset of behaviour — core
  * treats absent methods as "nothing to do".
  */
@@ -64,17 +64,17 @@ export interface IPublishingProviderBackend {
   ensureResourcesInitialized?(configDir: string, isDev: boolean): void;
 
   /**
-   * Whether this provider has artifacts for the given site that warrant a
+   * Whether this provider has artifacts for the given bundle that warrant a
    * cleanup pass on delete (remote files, cached state, etc.). Should return
-   * false (not throw) when the site simply isn't published by this provider.
+   * false (not throw) when the bundle simply isn't published by this provider.
    */
-  isSitePublished?(siteSlug: string): boolean;
+  isBundlePublished?(bundleSlug: string): boolean;
 
   /**
-   * Delete everything this provider published for the given site. Reports
+   * Delete everything this provider published for the given bundle. Reports
    * progress via onProgress; resolves with an optional `warning` string for
    * non-fatal issues (expired auth, missing credentials, etc.) so the core
    * can still proceed with local deletion.
    */
-  cleanupPublishedSite?(options: CleanupPublishedSiteOptions): Promise<CleanupPublishedSiteResult>;
+  cleanupPublishedBundle?(options: CleanupPublishedBundleOptions): Promise<CleanupPublishedBundleResult>;
 }

@@ -16,11 +16,11 @@ limitations under the License.
 
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteListPage, SiteEditorPage, CreateAndEditSiteModal } from "../src/run/pages/index.js";
+import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from "../src/run/pages/index.js";
 import { callout } from "../src/scenario-docs/index.js";
-import { customSite } from "../src/site-docs/index.js";
+import { customBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "none" });
 
@@ -31,23 +31,23 @@ test("Callout warns when previewing with only one tracked page", async ({
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
-  const siteList = new SiteListPage(page, expect);
-  await siteList.goto();
-  await siteList.expectCalloutVisible("Turn your notes into sites");
+  const bundleList = new BundleListPage(page, expect);
+  await bundleList.goto();
+  await bundleList.expectCalloutVisible("Turn your notes into bundles");
 
-  // Click "create a site" in the empty state callout
-  await siteList.clickCreateSiteLink();
+  // Click "create a bundle" in the empty state callout
+  await bundleList.clickCreateBundleLink();
 
-  // Fill in the Create New Site modal
-  const createModal = new CreateAndEditSiteModal(page, expect);
-  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-sites-data");
+  // Fill in the Create New Bundle modal
+  const createModal = new CreateAndEditBundleModal(page, expect);
+  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
   await createModal.fillSourceDirectory(sourceDir);
   await createModal.typeInitialPageTitle("main page");
   await createModal.selectSuggestion("main page");
-  await createModal.clickCreateSite();
+  await createModal.clickCreateBundle();
 
   // Wait for graph view to load
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("main-page");
 
   // Click Preview — should trigger single-page warning modal
@@ -62,7 +62,7 @@ test("Callout warns when previewing with only one tracked page", async ({
   // Verify we're back on the graph view (modal closed, not navigated to preview)
   await editor.expectGraphViewButtonVisible();
   await snapshot("back on graph view after dismissing warning");
-  void customSite;
+  void customBundle;
 
   await assertMeadowHomeState();
 });

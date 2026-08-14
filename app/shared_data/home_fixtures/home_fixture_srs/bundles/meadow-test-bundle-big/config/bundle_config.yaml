@@ -1,0 +1,13 @@
+archivedAt: null
+bundleGuid: p7s4k9m
+sourceDirectory: ./source_graphs/meadow-test-bundles-data
+bundleCreatedAt: 2025-06-02T16:25:00.000Z
+bundleLastPublishedAt: null
+bundleNotes: ""
+bundleUpdatedAt: 2025-06-02T16:25:00.000Z
+generatedBundleVersions: []
+generationSpacedRepetitionEnabled: true
+generationSpacedRepetitionTags:
+  - "#t022-srs/beta"
+entryBundleNodeId: 8a0338e11ca9
+defaultTraversalBundleNodeId: 8a0338e11ca9

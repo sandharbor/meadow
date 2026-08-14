@@ -36,7 +36,7 @@ app/e2e-tests/report-viewer/
 Specs should be thin. DOM selectors and interaction sequences belong in
 page-object components under `e2e/pages/`, mirroring the convention used
 by the main e2e suite (see
-`app/e2e-tests/test-runner/src/run/pages/SiteEditorPage/components/FilterPanelComponent.ts`
+`app/e2e-tests/test-runner/src/run/pages/BundleEditorPage/components/FilterPanelComponent.ts`
 for the reference).
 
 - One class per logical area of the UI (a tab, a panel, a modal).
@@ -218,7 +218,7 @@ the user asks to fix the underlying bug, use this tight loop:
      `app/native_utils/fast_git_ops/fast_git_ops_code/src/main.rs`) or in
      how `test-fixtures.ts` consumes its output.
 2. **Fix at the source.** For "file written but not committed" bugs,
-   the typical fix site is `app/backend/src/index.ts startServer()`
+   the typical fix location is `app/backend/src/index.ts startServer()`
    where init helpers like `ensureAppConfigInitialized` run. Have the
    init helper report whether it patched the file, and commit when it
    did — not only on first creation. See the existing

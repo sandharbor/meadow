@@ -16,17 +16,17 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { Workflows } from "../src/run/workflows.js";
-import { SiteEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
+import { BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { excalidraw } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
-test.use({ trackBigSiteExcalidrawPages: true });
+test.use({ trackBigBundleExcalidrawPages: true });
 
 /**
  * Verifies that a wikilink inside an Excalidraw drawing whose target page is
- * not whitelisted on the site renders as a non-clickable "link not tracked"
+ * not whitelisted on the bundle renders as a non-clickable "link not tracked"
  * label, matching the affordance regular pages already use.
  */
 test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
@@ -47,41 +47,41 @@ test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
   );
 
   const wf = new Workflows(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   const modal = new PreviewPublishModal(page, expect);
-  const generatedSite = modal.generatedSite;
+  const generatedBundle = modal.generatedBundle;
 
-  await wf.navigateToBigSite();
+  await wf.navigateToBigBundle();
   await editor.clickPreview();
   await modal.waitForPreviewComplete();
   await snapshot("preview completed");
 
-  await generatedSite.clickPageLink("t006 - embedded media");
-  await generatedSite.expectHeading("t006 - embedded media");
+  await generatedBundle.clickPageLink("t006 - embedded media");
+  await generatedBundle.expectHeading("t006 - embedded media");
 
-  await generatedSite.excalidraw.expectEmbedVisible();
-  await generatedSite.excalidraw.clickEmbed();
-  await generatedSite.expectHeading("t006 --- meadow-flower");
+  await generatedBundle.excalidraw.expectEmbedVisible();
+  await generatedBundle.excalidraw.clickEmbed();
+  await generatedBundle.expectHeading("t006 --- meadow-flower");
 
-  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
+  await generatedBundle.excalidraw.expectStandaloneDrawingVisible();
 
   // The untracked target should never be wrapped in an anchor — the original
   // page-title text is replaced with "link not tracked" before rendering.
   const untrackedHref =
     "page%20linked%20from%20Excalidraw%20that%20is%20not%20tracked.html";
-  await generatedSite.excalidraw.expectNoStandaloneDrawingLink(untrackedHref);
-  await generatedSite.excalidraw.expectNoStandaloneDrawingLinkContaining(
+  await generatedBundle.excalidraw.expectNoStandaloneDrawingLink(untrackedHref);
+  await generatedBundle.excalidraw.expectNoStandaloneDrawingLinkContaining(
     "not%20tracked",
   );
 
   // The replacement text shows up in the rendered SVG.
-  await generatedSite.excalidraw.expectStandaloneDrawingText("link not tracked");
+  await generatedBundle.excalidraw.expectStandaloneDrawingText("link not tracked");
   await snapshot("excalidraw untracked link rendered as 'link not tracked'");
   await addKeyFrame(excalidraw);
 
   releaseWorkerWarning();
   releaseFontWarning();
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

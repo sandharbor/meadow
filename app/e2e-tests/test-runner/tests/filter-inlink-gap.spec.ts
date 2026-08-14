@@ -15,21 +15,21 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteListPage, SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
+import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { linkGap } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("inlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
-  const siteList = new SiteListPage(page, expect);
-  await siteList.goto();
-  await snapshot("site list loaded");
+  const bundleList = new BundleListPage(page, expect);
+  await bundleList.goto();
+  await snapshot("bundle list loaded");
 
-  await siteList.clickSite("meadow-test-site-big");
-  const editor = new SiteEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-site-big");
-  await snapshot("site editor loaded");
+  await bundleList.clickBundle("meadow-test-bundle-big");
+  const editor = new BundleEditorPage(page, expect);
+  await editor.waitForLoad("meadow-test-bundle-big");
+  await snapshot("bundle editor loaded");
 
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.enableFilter("Inlink Gap");
@@ -50,7 +50,7 @@ test("inlink gap filter auto-calculates threshold and selects correct pages", as
   const titles = await editor.getSelectedPageTitles();
   expect(titles.length).toBe(1);
   await snapshot("verified one page selected with inlink gap");
-  void bigSite;
+  void bigBundle;
 
   await assertMeadowHomeState();
 });

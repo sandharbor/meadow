@@ -17,15 +17,15 @@ limitations under the License.
 /*
   Shared Graph Types and Class
 */
-import type { ISiteNode } from './ISiteNode.js';
-export type { ISiteNode } from './ISiteNode.js';
+import type { IBundleNode } from './IBundleNode.js';
+export type { IBundleNode } from './IBundleNode.js';
 
-export type SiteEdgeKind = 'semanticLink' | 'directoryContainment' | 'collectionMembership';
+export type BundleEdgeKind = 'semanticLink' | 'directoryContainment' | 'collectionMembership';
 
 export interface IEdge {
   source: string;
   target: string;
-  siteEdgeKind: SiteEdgeKind;
+  bundleEdgeKind: BundleEdgeKind;
   label?: string;
   isBidirectional?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,7 +33,7 @@ export interface IEdge {
 }
 
 export class Graph {
-  private nodes: Map<string, ISiteNode>;
+  private nodes: Map<string, IBundleNode>;
   private edges: IEdge[];
   private changeListeners: Set<() => void>;
   private allInlinkSources: Record<string, string[]>;
@@ -59,32 +59,32 @@ export class Graph {
     this.changeListeners.delete(listener);
   }
 
-  addNode(node: ISiteNode): void {
-    this.nodes.set(node.siteNodeKey, node);
+  addNode(node: IBundleNode): void {
+    this.nodes.set(node.bundleNodeKey, node);
     this.notifyChange();
   }
 
-  updateNode(siteNodeKey: string, node: ISiteNode): void {
-    if (!this.nodes.has(siteNodeKey)) {
+  updateNode(bundleNodeKey: string, node: IBundleNode): void {
+    if (!this.nodes.has(bundleNodeKey)) {
       throw new Error('Node does not exist');
     }
-    this.nodes.set(siteNodeKey, node);
+    this.nodes.set(bundleNodeKey, node);
     this.notifyChange();
   }
 
-  addEdge(edge: Omit<IEdge, 'siteEdgeKind'> & Partial<Pick<IEdge, 'siteEdgeKind'>>): void {
+  addEdge(edge: Omit<IEdge, 'bundleEdgeKind'> & Partial<Pick<IEdge, 'bundleEdgeKind'>>): void {
     if (!this.nodes.has(edge.source) || !this.nodes.has(edge.target)) {
       throw new Error('Source or target node does not exist');
     }
-    this.edges.push({ ...edge, siteEdgeKind: edge.siteEdgeKind ?? 'semanticLink' });
+    this.edges.push({ ...edge, bundleEdgeKind: edge.bundleEdgeKind ?? 'semanticLink' });
     this.notifyChange();
   }
 
-  getNode(siteNodeKey: string): ISiteNode | undefined {
-    return this.nodes.get(siteNodeKey);
+  getNode(bundleNodeKey: string): IBundleNode | undefined {
+    return this.nodes.get(bundleNodeKey);
   }
 
-  getAllNodes(): ISiteNode[] {
+  getAllNodes(): IBundleNode[] {
     return Array.from(this.nodes.values());
   }
 
@@ -92,12 +92,12 @@ export class Graph {
     return this.edges;
   }
 
-  getOutgoingEdges(siteNodeKey: string): IEdge[] {
-    return this.edges.filter(edge => edge.source === siteNodeKey);
+  getOutgoingEdges(bundleNodeKey: string): IEdge[] {
+    return this.edges.filter(edge => edge.source === bundleNodeKey);
   }
 
-  getIncomingEdges(siteNodeKey: string): IEdge[] {
-    return this.edges.filter(edge => edge.target === siteNodeKey);
+  getIncomingEdges(bundleNodeKey: string): IEdge[] {
+    return this.edges.filter(edge => edge.target === bundleNodeKey);
   }
 
   // tag-todo-depth: we don't really need to calculate distances here... we can just rely on the depth property
@@ -105,7 +105,7 @@ export class Graph {
   calculateDistances(): Map<string, number> {
     const distances = new Map<string, number>();
     this.nodes.forEach(node => {
-      distances.set(node.siteNodeKey, node.depth);
+      distances.set(node.bundleNodeKey, node.depth);
     });
     return distances;
   }
@@ -120,12 +120,12 @@ export class Graph {
   }
 
   // Returns all source-node keys that link to this node in the source graph.
-  getAllInlinkSources(siteNodeKey: string): string[] {
-    return this.allInlinkSources[siteNodeKey] || [];
+  getAllInlinkSources(bundleNodeKey: string): string[] {
+    return this.allInlinkSources[bundleNodeKey] || [];
   }
 
   // Returns all target-node keys that this node links to in the source graph.
-  getAllOutlinkTargets(siteNodeKey: string): string[] {
-    return this.allOutlinkTargets[siteNodeKey] || [];
+  getAllOutlinkTargets(bundleNodeKey: string): string[] {
+    return this.allOutlinkTargets[bundleNodeKey] || [];
   }
 }

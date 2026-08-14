@@ -20,7 +20,7 @@ export const tracking: ScenarioDoc = {
   id: "tracking",
   name: "Tracking",
   description:
-    "Tests covering page tracking — marking pages as included in the site. " +
+    "Tests covering page tracking — marking pages as included in the bundle. " +
     "Tracking a single page or using the 'Track All' button on a selection " +
     "are simple ops that auto-save and commit the config immediately, " +
     "without requiring a manual Save click.",

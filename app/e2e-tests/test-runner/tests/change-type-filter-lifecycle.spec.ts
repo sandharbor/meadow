@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import {
-  SiteEditorPage,
+  BundleEditorPage,
   PreviewPublishModal,
   ChangesTab,
   FilterPanelComponent,
@@ -25,9 +25,9 @@ import {
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { filters, htmlGeneration, changesTab as changesTabDoc, tracking } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("Change type filter shows correct counts and interacts with HTML section filter", async ({
   page,
@@ -38,7 +38,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   // ── Phase 1: Initial preview — only Added files ──
 
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSitePreview();
+  await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
 
@@ -91,7 +91,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   await filterPanel.enableAndSoloFilter("Untracked");
   await page.waitForTimeout(500);
 
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   await editor.switchToListView();
   await page.waitForTimeout(250);
 
@@ -133,7 +133,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   await page.waitForTimeout(500);
   await changesTab.expectSectionCount("<main>", 1);
   await snapshot("unchecked modified - main section drops to 1");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

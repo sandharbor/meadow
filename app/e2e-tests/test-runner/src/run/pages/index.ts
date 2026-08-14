@@ -14,24 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export { SiteListPage } from "./SiteListPage/SiteListPage.js";
-export { SiteEditorPage } from "./SiteEditorPage/SiteEditorPage.js";
-export { PreviewPublishModal } from "./SiteEditorPage/components/PreviewPublishModal/PreviewPublishModal.js";
-export { PublishToS3Tab } from "./SiteEditorPage/components/PreviewPublishModal/components/PublishToS3Tab.js";
-export { ChangesTab } from "./SiteEditorPage/components/PreviewPublishModal/components/ChangesTab.js";
-export { CustomizeTab } from "./SiteEditorPage/components/PreviewPublishModal/components/CustomizeTab.js";
-export { OpenKnowledgeFormatModal } from "./SiteEditorPage/components/PreviewPublishModal/components/OpenKnowledgeFormatModal.js";
-export { FilterPanelComponent } from "./SiteEditorPage/components/FilterPanelComponent.js";
-export { CreateAndEditSiteModal } from "./shared/CreateAndEditSiteModal.js";
-export { SelectedPageDetailComponent, Pill, ActionButton } from "./SiteEditorPage/components/SelectedPageDetailComponent.js";
-export { LinksModal } from "./SiteEditorPage/components/LinksModal.js";
-export { OrphansModal } from "./SiteEditorPage/components/OrphansModal.js";
-export { PublishedSitePage } from "./shared/PublishedSitePage.js";
-export { DeleteSiteModal } from "./shared/DeleteSiteModal.js";
+export { BundleListPage } from "./BundleListPage/BundleListPage.js";
+export { BundleEditorPage } from "./BundleEditorPage/BundleEditorPage.js";
+export { PreviewPublishModal } from "./BundleEditorPage/components/PreviewPublishModal/PreviewPublishModal.js";
+export { PublishToS3Tab } from "./BundleEditorPage/components/PreviewPublishModal/components/PublishToS3Tab.js";
+export { ChangesTab } from "./BundleEditorPage/components/PreviewPublishModal/components/ChangesTab.js";
+export { CustomizeTab } from "./BundleEditorPage/components/PreviewPublishModal/components/CustomizeTab.js";
+export { OpenKnowledgeFormatModal } from "./BundleEditorPage/components/PreviewPublishModal/components/OpenKnowledgeFormatModal.js";
+export { FilterPanelComponent } from "./BundleEditorPage/components/FilterPanelComponent.js";
+export { CreateAndEditBundleModal } from "./shared/CreateAndEditBundleModal.js";
+export { SelectedPageDetailComponent, Pill, ActionButton } from "./BundleEditorPage/components/SelectedPageDetailComponent.js";
+export { LinksModal } from "./BundleEditorPage/components/LinksModal.js";
+export { OrphansModal } from "./BundleEditorPage/components/OrphansModal.js";
+export { PublishedBundlePage } from "./shared/PublishedBundlePage.js";
+export { DeleteBundleModal } from "./shared/DeleteBundleModal.js";
 export {
-  GeneratedSite,
-  GeneratedSiteSearch,
-  GeneratedSiteSources,
-  GeneratedSiteExcalidraw,
-  GeneratedSiteFolderNavigation,
-} from "./shared/GeneratedSite.js";
+  GeneratedBundle,
+  GeneratedBundleSearch,
+  GeneratedBundleSources,
+  GeneratedBundleExcalidraw,
+  GeneratedBundleFolderNavigation,
+} from "./shared/GeneratedBundle.js";

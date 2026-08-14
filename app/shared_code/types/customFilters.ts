@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export type CustomFilterScope = 'global' | 'site';
+export type CustomFilterScope = 'global' | 'bundle';
 
 export type SelectorField = 'title' | 'path' | 'content';
 export type SelectorMatchType = 'substring' | 'regex';
 
-export interface CustomSiteNodeSelectorConfig {
+export interface CustomBundleNodeSelectorConfig {
   field: SelectorField;
   matchType: SelectorMatchType;
   value: string;
@@ -31,7 +31,7 @@ export interface CustomFilterConfig {
   name: string;
   note?: string;
   scope: CustomFilterScope;
-  selectors: CustomSiteNodeSelectorConfig[];
+  selectors: CustomBundleNodeSelectorConfig[];
   selectorApplicationCriteria: 'union' | 'intersection';
   actions: CustomFilterAction[];
   enabled: boolean;
@@ -50,7 +50,7 @@ export interface GlobalCustomFiltersConfig {
   version: string;
 }
 
-export interface SiteCustomFiltersConfig {
+export interface BundleCustomFiltersConfig {
   filters: CustomFilterConfig[];
   version: string;
 } 

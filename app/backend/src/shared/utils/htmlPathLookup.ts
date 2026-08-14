@@ -16,62 +16,62 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { SiteConfigPaths } from '../../../../shared_code/paths/siteConfigPaths.js';
-import { parseSiteNodeConfig } from '../../../../shared_code/utils/siteNodeConfigUtils.js';
-import { planSiteRoutes, routeForSiteNode } from '../../areas/site/generation/html/siteRoutePlanner.js';
-import { normalizePageTitle } from '../../areas/site/generation/html/shared.js';
-import { loadSiteConfig } from './siteConfigUtils.js';
+import { BundleConfigPaths } from '../../../../shared_code/paths/bundleConfigPaths.js';
+import { parseBundleNodeConfig } from '../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { planBundleRoutes, routeForBundleNode } from '../../areas/bundle/generation/html/bundleRoutePlanner.js';
+import { normalizePageTitle } from '../../areas/bundle/generation/html/shared.js';
+import { loadBundleConfig } from './bundleConfigUtils.js';
 import { logger } from './logging/backendLoggingUtils.js';
-import { getSiteDirectory } from '../site-config/siteConfigPaths.js';
+import { getBundleDirectory } from '../bundle-config/bundleConfigPaths.js';
 
 /**
  * Get the HTML file path for a page by looking up its subdirectory from
- * site_node_config.yaml. Returns a relative path (e.g. "subdir/title.html"
+ * bundle_node_config.yaml. Returns a relative path (e.g. "subdir/title.html"
  * or "title.html") or null if the page is not found.
  *
  * Provider-agnostic: any publishing provider that materializes pages as
  * HTML files can use this to compute the path within its published tree.
  */
 export function getHtmlPathForPage(
-  siteDirectory: string,
+  bundleDirectory: string,
   title: string,
   pageDirectory?: string,
 ): string | null {
   try {
-    const siteNodeConfPath = SiteConfigPaths.getSiteNodeConfigFile(siteDirectory);
-    if (!fs.existsSync(siteNodeConfPath)) {
+    const bundleNodeConfPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
+    if (!fs.existsSync(bundleNodeConfPath)) {
       return null;
     }
 
-    const content = fs.readFileSync(siteNodeConfPath, 'utf8');
-    const siteNodeConfigs = parseSiteNodeConfig(content);
+    const content = fs.readFileSync(bundleNodeConfPath, 'utf8');
+    const bundleNodeConfigs = parseBundleNodeConfig(content);
 
-    const matchingPageConfigs = siteNodeConfigs.filter(siteNodeConfig =>
-      siteNodeConfig.siteNodeName === title &&
-      (pageDirectory === undefined || (siteNodeConfig.sourceGraphSubdirectory || '') === (pageDirectory || ''))
+    const matchingPageConfigs = bundleNodeConfigs.filter(bundleNodeConfig =>
+      bundleNodeConfig.bundleNodeName === title &&
+      (pageDirectory === undefined || (bundleNodeConfig.sourceGraphSubdirectory || '') === (pageDirectory || ''))
     );
-    const siteConfig = loadSiteConfig(siteDirectory);
-    const roleMatch = matchingPageConfigs.find(config => config.siteNodeId === siteConfig.defaultTraversalSiteNodeId);
-    const siteNodeConfig = roleMatch
-      ?? matchingPageConfigs.find(config => config.siteNodeKind === 'file' && config.fileType === 'md')
+    const bundleConfig = loadBundleConfig(bundleDirectory);
+    const roleMatch = matchingPageConfigs.find(config => config.bundleNodeId === bundleConfig.defaultTraversalBundleNodeId);
+    const bundleNodeConfig = roleMatch
+      ?? matchingPageConfigs.find(config => config.bundleNodeKind === 'file' && config.fileType === 'md')
       ?? matchingPageConfigs[0];
 
-    if (!siteNodeConfig) {
+    if (!bundleNodeConfig) {
       return null;
     }
 
-    const inferredSiteSlug = path.basename(siteDirectory);
-    const siteSlug = path.resolve(getSiteDirectory(inferredSiteSlug)) === path.resolve(siteDirectory)
-      ? inferredSiteSlug
+    const inferredBundleSlug = path.basename(bundleDirectory);
+    const bundleSlug = path.resolve(getBundleDirectory(inferredBundleSlug)) === path.resolve(bundleDirectory)
+      ? inferredBundleSlug
       : undefined;
 
-    if (!siteConfig.entrySiteNodeId) {
-      const normalizedTitle = normalizePageTitle(title, siteConfig, siteSlug);
-      const subdir = siteNodeConfig.sourceGraphSubdirectory || '';
+    if (!bundleConfig.entryBundleNodeId) {
+      const normalizedTitle = normalizePageTitle(title, bundleConfig, bundleSlug);
+      const subdir = bundleNodeConfig.sourceGraphSubdirectory || '';
       return subdir ? `${subdir}/${normalizedTitle}.html` : `${normalizedTitle}.html`;
     }
-    const plan = planSiteRoutes(siteNodeConfigs, siteConfig, siteSlug);
-    return routeForSiteNode(siteNodeConfig, plan.routes);
+    const plan = planBundleRoutes(bundleNodeConfigs, bundleConfig, bundleSlug);
+    return routeForBundleNode(bundleNodeConfig, plan.routes);
   } catch (error) {
     logger.warn('Error looking up page path:', error);
     return null;

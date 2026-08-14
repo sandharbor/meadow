@@ -2,7 +2,7 @@ This page belongs to the second selectable folder.
 
 ```yaml
 pagespecs:
-  - site: single-folder-site
+  - bundle: single-folder-bundle
     curation:
       isTracked: false
       isInWorkingGraph: false
@@ -11,7 +11,7 @@ pagespecs:
       htmlRenderedLinks:
         mainSectionLinks: []
         footerSectionBacklinks: []
-  - site: ordered-folders
+  - bundle: ordered-folders
     curation:
       isTracked: false
       isInWorkingGraph: true

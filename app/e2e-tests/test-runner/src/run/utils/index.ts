@@ -17,10 +17,10 @@ limitations under the License.
 export { MeadowHomeGit, resolveFastGitOpsBinary } from "./MeadowHomeGit.js";
 export { MeadowHomeMigrations } from "./MeadowHomeMigrations.js";
 export { MeadowHomePublishingProviderConfig } from "./MeadowHomePublishingProviderConfig.js";
-export { MeadowHomeSiteConfig } from "./MeadowHomeSiteConfig.js";
+export { MeadowHomeBundleConfig } from "./MeadowHomeBundleConfig.js";
 export { MinioS3 } from "./MinioS3.js";
 export {
-  seedOkfBigSite,
+  seedOkfBigBundle,
   seedTrackedAndLinkedFile,
   seedTrackedFile,
 } from "./okfSeedUtils.js";

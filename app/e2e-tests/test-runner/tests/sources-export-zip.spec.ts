@@ -17,31 +17,31 @@ limitations under the License.
 import path from "path";
 import type { Page } from "@playwright/test";
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteEditorPage, PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
-import { Workflows, Site } from "../src/run/workflows.js";
+import { BundleEditorPage, PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
+import { Workflows, Bundle } from "../src/run/workflows.js";
 import { MeadowHomeGit } from "../src/run/utils/index.js";
 import { customize, sourcesExport, changesTab as changesTabDoc, filters, git } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
 async function applyGenerationOptionAndWait(page: Page, action: () => Promise<void>) {
   const previewResponse = page.waitForResponse(response => response.url().includes("/preview-stream"));
   await action();
-  await (await previewResponse).finished();
+  await previewResponse;
 }
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("Sources export ZIP: saved export can be disabled without hiding changed HTML", async ({
   page, snapshot, skipMeadowHomeStateCheck, addKeyFrame, testServer,
 }) => {
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSitePreview();
+  await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   await snapshot("preview loaded");
 
   // Use the wrapped generated-page layout that exposed the section-diff bug,
-  // then enable Sources ZIP at site level.
+  // then enable Sources ZIP at bundle level.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   const changesTab = new ChangesTab(page, expect);
@@ -56,18 +56,18 @@ test("Sources export ZIP: saved export can be disabled without hiding changed HT
   await snapshot("regeneration complete with sources export");
 
   // Save changes — commits generated files (HTML + sources ZIP) to MeadowHome
-  await modal.clickSitePreviewTab();
+  await modal.clickBundlePreviewTab();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
   await snapshot("save completed");
 
-  // Verify the site directory in MeadowHome is fully committed — no untracked
-  // or uncommitted files under the site (including build/sources_export/).
-  const siteDir = path.join(testServer.configDir, "sites", Site.Big);
+  // Verify the bundle directory in MeadowHome is fully committed — no untracked
+  // or uncommitted files under the bundle (including build/sources_export/).
+  const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const meadowGit = new MeadowHomeGit(testServer.configDir, expect);
-  await meadowGit.expectDirFullyCommitted(siteDir);
+  await meadowGit.expectDirFullyCommitted(bundleDir);
   await addKeyFrame(git);
-  await snapshot("site directory fully committed");
+  await snapshot("bundle directory fully committed");
 
   // Reopen Review, disable the saved Sources ZIP setting, and inspect the
   // resulting HTML changes through the filter dropdown.
@@ -91,7 +91,7 @@ test("Sources export ZIP: saved export can be disabled without hiding changed HT
   await addKeyFrame(changesTabDoc);
   await addKeyFrame(filters);
   await snapshot("all sources zip HTML changes remain visible");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

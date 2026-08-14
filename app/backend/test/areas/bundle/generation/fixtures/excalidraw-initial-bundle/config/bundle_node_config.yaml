@@ -1,0 +1,13 @@
+nodes:
+  - bundleNodeName: embedded media
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8be9eee5814d
+    listType: whitelist
+    outlinksDepth: 1
+    inlinksDepth: 0
+  - bundleNodeName: meadow flower
+    bundleNodeKind: file
+    fileType: excalidraw
+    bundleNodeId: 456175f97e4d
+    listType: whitelist

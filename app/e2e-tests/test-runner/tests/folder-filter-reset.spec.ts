@@ -15,12 +15,12 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { FilterPanelComponent, SiteEditorPage } from "../src/run/pages/index.js";
+import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { filters, folderFilter } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("folder filter exposes collapsed activity and reset restores all pages", async ({
   page,
@@ -29,10 +29,10 @@ test("folder filter exposes collapsed activity and reset restores all pages", as
   addKeyFrame,
 }) => {
   const workflows = new Workflows(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await workflows.navigateToBigSite();
+  await workflows.navigateToBigBundle();
   await filterPanel.enableFilter("Folders");
   await editor.switchToListView();
   const initialPageCount = await editor.getListViewPageCount();
@@ -52,7 +52,7 @@ test("folder filter exposes collapsed activity and reset restores all pages", as
   await filterPanel.expectNoDescendantActivity("t024");
   await filterPanel.expectFolderResetHidden();
   await snapshot("folder filters reset");
-  void bigSite;
+  void bigBundle;
 
   await assertMeadowHomeState();
 });

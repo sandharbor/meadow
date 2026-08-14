@@ -15,27 +15,27 @@ limitations under the License.
 */
 
 import type { IEdge } from '../types/graph.js';
-import type { ISiteNode } from '../types/ISiteNode.js';
-import type { SiteNodeConfig, SiteNodeId, SiteNodeKey } from '../types/siteNodeConfig.js';
+import type { IBundleNode } from '../types/IBundleNode.js';
+import type { BundleNodeConfig, BundleNodeId, BundleNodeKey } from '../types/bundleNodeConfig.js';
 
 export interface VisibleStructuralProjection {
-  renderedNodeKeys: SiteNodeKey[];
-  childrenByNodeKey: Map<SiteNodeKey, SiteNodeKey[]>;
-  parentByNodeKey: Map<SiteNodeKey, SiteNodeKey>;
-  breadcrumbNodeKeysByNodeKey: Map<SiteNodeKey, SiteNodeKey[]>;
-  semanticOnlyNodeKeys: SiteNodeKey[];
+  renderedNodeKeys: BundleNodeKey[];
+  childrenByNodeKey: Map<BundleNodeKey, BundleNodeKey[]>;
+  parentByNodeKey: Map<BundleNodeKey, BundleNodeKey>;
+  breadcrumbNodeKeysByNodeKey: Map<BundleNodeKey, BundleNodeKey[]>;
+  semanticOnlyNodeKeys: BundleNodeKey[];
 }
 
 const compareText = (left: string, right: string): number =>
   left.localeCompare(right, 'en', { sensitivity: 'base', numeric: true }) || left.localeCompare(right);
 
-function compareDirectoryChildren(left: ISiteNode, right: ISiteNode): number {
-  const rank = (node: ISiteNode): number => node.siteNodeKind === 'folder' ? 0 : node.siteNodeKind === 'file' ? 1 : 2;
+function compareDirectoryChildren(left: IBundleNode, right: IBundleNode): number {
+  const rank = (node: IBundleNode): number => node.bundleNodeKind === 'folder' ? 0 : node.bundleNodeKind === 'file' ? 1 : 2;
   return rank(left) - rank(right)
-    || compareText(left.siteNodeName, right.siteNodeName)
+    || compareText(left.bundleNodeName, right.bundleNodeName)
     || compareText(left.sourceGraphSubdirectory ?? '', right.sourceGraphSubdirectory ?? '')
-    || compareText(left.siteNodeKind, right.siteNodeKind)
-    || compareText(left.siteNodeId ?? left.siteNodeKey, right.siteNodeId ?? right.siteNodeKey);
+    || compareText(left.bundleNodeKind, right.bundleNodeKind)
+    || compareText(left.bundleNodeId ?? left.bundleNodeKey, right.bundleNodeId ?? right.bundleNodeKey);
 }
 
 /**
@@ -43,80 +43,80 @@ function compareDirectoryChildren(left: ISiteNode, right: ISiteNode): number {
  * It never mutates the raw graph and never invents semantic edges.
  */
 export function buildVisibleStructuralProjection(
-  nodes: ISiteNode[],
+  nodes: IBundleNode[],
   edges: IEdge[],
-  configs: SiteNodeConfig[],
-  entrySiteNodeId: SiteNodeId,
+  configs: BundleNodeConfig[],
+  entryBundleNodeId: BundleNodeId,
 ): VisibleStructuralProjection {
-  const nodesByKey = new Map(nodes.map(node => [node.siteNodeKey, node]));
-  const nodeById = new Map(nodes.flatMap(node => node.siteNodeId ? [[node.siteNodeId, node] as const] : []));
-  const configById = new Map(configs.map(config => [config.siteNodeId, config]));
-  const structuralChildren = new Map<SiteNodeKey, SiteNodeKey[]>();
+  const nodesByKey = new Map(nodes.map(node => [node.bundleNodeKey, node]));
+  const nodeById = new Map(nodes.flatMap(node => node.bundleNodeId ? [[node.bundleNodeId, node] as const] : []));
+  const configById = new Map(configs.map(config => [config.bundleNodeId, config]));
+  const structuralChildren = new Map<BundleNodeKey, BundleNodeKey[]>();
   for (const edge of edges) {
-    if (edge.siteEdgeKind === 'semanticLink') continue;
-    const children = structuralChildren.get(edge.source as SiteNodeKey) ?? [];
-    if (!children.includes(edge.target as SiteNodeKey)) children.push(edge.target as SiteNodeKey);
-    structuralChildren.set(edge.source as SiteNodeKey, children);
+    if (edge.bundleEdgeKind === 'semanticLink') continue;
+    const children = structuralChildren.get(edge.source as BundleNodeKey) ?? [];
+    if (!children.includes(edge.target as BundleNodeKey)) children.push(edge.target as BundleNodeKey);
+    structuralChildren.set(edge.source as BundleNodeKey, children);
   }
 
-  const isBlocked = (node: ISiteNode): boolean => {
-    if (node.effectiveBlacklistingSiteNodeId) return true;
-    return Boolean(node.siteNodeId && configById.get(node.siteNodeId)?.listType === 'blacklist');
+  const isBlocked = (node: IBundleNode): boolean => {
+    if (node.effectiveBlacklistingBundleNodeId) return true;
+    return Boolean(node.bundleNodeId && configById.get(node.bundleNodeId)?.listType === 'blacklist');
   };
-  const isRendered = (node: ISiteNode): boolean => Boolean(
-    node.siteNodeId && configById.get(node.siteNodeId)?.listType === 'whitelist' && !isBlocked(node)
+  const isRendered = (node: IBundleNode): boolean => Boolean(
+    node.bundleNodeId && configById.get(node.bundleNodeId)?.listType === 'whitelist' && !isBlocked(node)
   );
-  const renderedNodeKeys = nodes.filter(isRendered).map(node => node.siteNodeKey).sort(compareText);
+  const renderedNodeKeys = nodes.filter(isRendered).map(node => node.bundleNodeKey).sort(compareText);
 
-  const orderedRawChildren = (parent: ISiteNode): ISiteNode[] => {
-    const raw = (structuralChildren.get(parent.siteNodeKey) ?? [])
+  const orderedRawChildren = (parent: IBundleNode): IBundleNode[] => {
+    const raw = (structuralChildren.get(parent.bundleNodeKey) ?? [])
       .map(key => nodesByKey.get(key))
-      .filter((node): node is ISiteNode => Boolean(node));
-    if (parent.siteNodeKind === 'collection') {
-      const order = new Map(parent.memberSiteNodeIds.map((id, index) => [id, index]));
+      .filter((node): node is IBundleNode => Boolean(node));
+    if (parent.bundleNodeKind === 'collection') {
+      const order = new Map(parent.memberBundleNodeIds.map((id, index) => [id, index]));
       return raw.sort((left, right) =>
-        (order.get(left.siteNodeId as SiteNodeId) ?? Number.MAX_SAFE_INTEGER)
-        - (order.get(right.siteNodeId as SiteNodeId) ?? Number.MAX_SAFE_INTEGER)
+        (order.get(left.bundleNodeId as BundleNodeId) ?? Number.MAX_SAFE_INTEGER)
+        - (order.get(right.bundleNodeId as BundleNodeId) ?? Number.MAX_SAFE_INTEGER)
         || compareDirectoryChildren(left, right)
       );
     }
     return raw.sort(compareDirectoryChildren);
   };
 
-  const firstVisibleDescendants = (parent: ISiteNode): SiteNodeKey[] => {
-    const visible: SiteNodeKey[] = [];
-    const seen = new Set<SiteNodeKey>();
-    const visit = (candidate: ISiteNode, ancestry: Set<SiteNodeKey>): void => {
-      if (ancestry.has(candidate.siteNodeKey) || isBlocked(candidate)) return;
+  const firstVisibleDescendants = (parent: IBundleNode): BundleNodeKey[] => {
+    const visible: BundleNodeKey[] = [];
+    const seen = new Set<BundleNodeKey>();
+    const visit = (candidate: IBundleNode, ancestry: Set<BundleNodeKey>): void => {
+      if (ancestry.has(candidate.bundleNodeKey) || isBlocked(candidate)) return;
       if (isRendered(candidate)) {
-        if (!seen.has(candidate.siteNodeKey)) {
-          seen.add(candidate.siteNodeKey);
-          visible.push(candidate.siteNodeKey);
+        if (!seen.has(candidate.bundleNodeKey)) {
+          seen.add(candidate.bundleNodeKey);
+          visible.push(candidate.bundleNodeKey);
         }
         return;
       }
-      if (candidate.siteNodeKind !== 'folder') return;
-      const nextAncestry = new Set(ancestry).add(candidate.siteNodeKey);
+      if (candidate.bundleNodeKind !== 'folder') return;
+      const nextAncestry = new Set(ancestry).add(candidate.bundleNodeKey);
       for (const child of orderedRawChildren(candidate)) visit(child, nextAncestry);
     };
-    for (const child of orderedRawChildren(parent)) visit(child, new Set([parent.siteNodeKey]));
-    return parent.siteNodeKind === 'collection'
+    for (const child of orderedRawChildren(parent)) visit(child, new Set([parent.bundleNodeKey]));
+    return parent.bundleNodeKind === 'collection'
       ? visible
       : visible.sort((left, right) => compareDirectoryChildren(nodesByKey.get(left)!, nodesByKey.get(right)!));
   };
 
-  const childrenByNodeKey = new Map<SiteNodeKey, SiteNodeKey[]>();
+  const childrenByNodeKey = new Map<BundleNodeKey, BundleNodeKey[]>();
   for (const key of renderedNodeKeys) {
     const node = nodesByKey.get(key);
-    if (node && node.siteNodeKind !== 'file') childrenByNodeKey.set(key, firstVisibleDescendants(node));
+    if (node && node.bundleNodeKind !== 'file') childrenByNodeKey.set(key, firstVisibleDescendants(node));
   }
 
-  const entry = nodeById.get(entrySiteNodeId);
-  const parentByNodeKey = new Map<SiteNodeKey, SiteNodeKey>();
-  const breadcrumbNodeKeysByNodeKey = new Map<SiteNodeKey, SiteNodeKey[]>();
+  const entry = nodeById.get(entryBundleNodeId);
+  const parentByNodeKey = new Map<BundleNodeKey, BundleNodeKey>();
+  const breadcrumbNodeKeysByNodeKey = new Map<BundleNodeKey, BundleNodeKey[]>();
   if (entry && isRendered(entry)) {
-    breadcrumbNodeKeysByNodeKey.set(entry.siteNodeKey, [entry.siteNodeKey]);
-    const pending: SiteNodeKey[] = [entry.siteNodeKey];
+    breadcrumbNodeKeysByNodeKey.set(entry.bundleNodeKey, [entry.bundleNodeKey]);
+    const pending: BundleNodeKey[] = [entry.bundleNodeKey];
     while (pending.length > 0) {
       const parentKey = pending.shift()!;
       const parentPath = breadcrumbNodeKeysByNodeKey.get(parentKey) ?? [parentKey];

@@ -27,7 +27,7 @@ Pagespec entries are organized by system area:
 
 ```yaml
 pagespecs:
-  - site: meadow-test-site-big
+  - bundle: meadow-test-bundle-big
     curation:
       isTracked: true
       isInWorkingGraph: true
@@ -176,7 +176,7 @@ Rename a key within a pagespec to test whether keys are strictly validated.
 1. Select a pagespec.
 2. Modify the name of one of its keys. Prefer changing one nested key inside
    either `curation` or `generation` rather than only changing the top-level
-   `site` key.
+   `bundle` key.
 3. Run the root-level checks.
 
 This tests whether pagespec keys are validated strictly or silently ignored.
@@ -316,7 +316,7 @@ When debugging a failure, targeted pagespec tests may be run first:
 
 ```bash
 cd app/system_tests
-npx vitest run tests/pagespecs_general.test.ts tests/areas/site/curation/pagespecs_curation.test.ts tests/areas/site/generation/pagespecs_generation.test.ts
+npx vitest run tests/pagespecs_general.test.ts tests/areas/bundle/curation/pagespecs_curation.test.ts tests/areas/bundle/generation/pagespecs_generation.test.ts
 ```
 
 The final validation for a run must still be the root-level check.

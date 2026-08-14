@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/sandharbor/meadow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sandharbor/meadow/actions/workflows/ci.yml)
 
-Publish microsites from source graphs of notes
+Turn source graphs of notes into focused, shareable bundles and publish them as microsites.
 
 <img src="ui.png" alt="Meadow UI" width="500">
 
-The code behind [meadow-notes.com](https://meadow-notes.com).
+Learn more about Meadow at [meadow-notes.com](https://meadow-notes.com).
 
 # Dev
 

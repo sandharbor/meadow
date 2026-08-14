@@ -1,0 +1,18 @@
+nodes:
+  - bundleNodeName: Alpha
+    sourceGraphSubdirectory: Alpha
+    bundleNodeKind: folder
+    bundleNodeId: f21b53e6bbbd
+    listType: whitelist
+  - bundleNodeName: Beta
+    sourceGraphSubdirectory: Beta
+    bundleNodeKind: folder
+    bundleNodeId: b2db90165ec0
+    listType: whitelist
+  - bundleNodeName: Ordered Folders
+    bundleNodeKind: collection
+    bundleNodeId: 7e4a79dd2c06
+    listType: whitelist
+    memberBundleNodeIds:
+      - b2db90165ec0
+      - f21b53e6bbbd

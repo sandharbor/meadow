@@ -20,13 +20,13 @@ import {
   getFixturesPath,
   getSourceGraphsPath,
 } from '../../helpers/serverManager.js';
-import type { SystemTestSiteSetup } from '../../helpers/testSetup.js';
-import type { SiteNodeConfig } from '../../../shared_code/types/siteNodeConfig.js';
+import type { SystemTestBundleSetup } from '../../helpers/testSetup.js';
+import type { BundleNodeConfig } from '../../../shared_code/types/bundleNodeConfig.js';
 import { IMAGE_FILE_TYPES } from '../../../shared_code/utils/fileTypeUtils.js';
 
 export const pagespecSourceGraphDirs = [
-  path.join(getSourceGraphsPath(), 'meadow-test-sites-data'),
-  path.join(getSourceGraphsPath(), 'example-site-data'),
+  path.join(getSourceGraphsPath(), 'meadow-test-bundles-data'),
+  path.join(getSourceGraphsPath(), 'example-bundle-data'),
   path.join(getSourceGraphsPath(), 'folder-structure-test'),
 ];
 
@@ -100,13 +100,13 @@ export function getPageIdFromPath(
 }
 
 /**
- * Gets whether a page is tracked according to site_node_config.yaml.
+ * Gets whether a page is tracked according to bundle_node_config.yaml.
  * Returns true if the page has a config entry with tracked: true.
  * Returns false if no matching config entry exists or tracked is not set/false.
  */
 export function isPageTracked(
   pageId: string,
-  siteNodeConfigs: SiteNodeConfig[],
+  bundleNodeConfigs: BundleNodeConfig[],
   fileType: string = 'md'
 ): boolean {
   // pageId is like "t002/extra nested/t002 ---- dup" for md pages, or
@@ -117,7 +117,7 @@ export function isPageTracked(
 
   // If the title carries an embedded image-like extension (e.g. `.excalidraw`,
   // `.svg`), prefer that over the caller's default `fileType` and strip it
-  // from the title; that's how `site_node_config.yaml` stores image entries.
+  // from the title; that's how `bundle_node_config.yaml` stores image entries.
   let effectiveFileType = fileType;
   for (const imageType of IMAGE_FILE_TYPES) {
     const suffix = `.${imageType}`;
@@ -128,12 +128,12 @@ export function isPageTracked(
     }
   }
 
-  for (const config of siteNodeConfigs) {
+  for (const config of bundleNodeConfigs) {
     const configSubdir = config.sourceGraphSubdirectory || '';
     const configFileType = config.fileType;
 
     if (
-      config.siteNodeName === title &&
+      config.bundleNodeName === title &&
       configSubdir === subdirectory &&
       configFileType === effectiveFileType
     ) {
@@ -145,69 +145,69 @@ export function isPageTracked(
 }
 
 /**
- * Gets the available sites from home_fixtures.
+ * Gets the available bundles from home_fixtures.
  */
-export function getAvailableSites(): Set<string> {
+export function getAvailableBundles(): Set<string> {
   const fixturesPath = getFixturesPath();
-  const sites = new Set<string>();
+  const bundles = new Set<string>();
 
   const fixturesDirs = fs.readdirSync(fixturesPath, { withFileTypes: true });
   for (const fixtureDir of fixturesDirs) {
     if (!fixtureDir.isDirectory() || fixtureDir.name.startsWith('.')) continue;
 
-    const sitesDir = path.join(fixturesPath, fixtureDir.name, 'sites');
-    if (!fs.existsSync(sitesDir)) continue;
+    const bundlesDir = path.join(fixturesPath, fixtureDir.name, 'bundles');
+    if (!fs.existsSync(bundlesDir)) continue;
 
-    const siteDirs = fs.readdirSync(sitesDir, { withFileTypes: true });
-    for (const siteDir of siteDirs) {
-      if (siteDir.isDirectory() && !siteDir.name.startsWith('.')) {
-        sites.add(siteDir.name);
+    const bundleDirs = fs.readdirSync(bundlesDir, { withFileTypes: true });
+    for (const bundleDir of bundleDirs) {
+      if (bundleDir.isDirectory() && !bundleDir.name.startsWith('.')) {
+        bundles.add(bundleDir.name);
       }
     }
   }
 
-  return sites;
+  return bundles;
 }
 
-export interface PagespecSiteToCheck {
+export interface PagespecBundleToCheck {
   name: string;
-  setup: SystemTestSiteSetup;
+  setup: SystemTestBundleSetup;
   initialPage: string;
   sourceGraphDir: string;
 }
 
-export interface PagespecSiteSetups {
-  big: SystemTestSiteSetup;
-  small: SystemTestSiteSetup;
-  example: SystemTestSiteSetup;
-  folderStructureSingle: SystemTestSiteSetup;
-  folderStructureMultiple: SystemTestSiteSetup;
+export interface PagespecBundleSetups {
+  big: SystemTestBundleSetup;
+  small: SystemTestBundleSetup;
+  example: SystemTestBundleSetup;
+  folderStructureSingle: SystemTestBundleSetup;
+  folderStructureMultiple: SystemTestBundleSetup;
 }
 
-export function getPagespecSitesToCheck(
-  setups: PagespecSiteSetups,
-): PagespecSiteToCheck[] {
+export function getPagespecBundlesToCheck(
+  setups: PagespecBundleSetups,
+): PagespecBundleToCheck[] {
   return [
     {
-      name: 'meadow-test-site-big',
+      name: 'meadow-test-bundle-big',
       setup: setups.big,
       initialPage: 'main page',
-      sourceGraphDir: path.join(getSourceGraphsPath(), 'meadow-test-sites-data'),
+      sourceGraphDir: path.join(getSourceGraphsPath(), 'meadow-test-bundles-data'),
     },
     {
-      name: 'meadow-test-site-small',
+      name: 'meadow-test-bundle-small',
       setup: setups.small,
       initialPage: 't001 - deeply nested',
-      sourceGraphDir: path.join(getSourceGraphsPath(), 'meadow-test-sites-data'),
+      sourceGraphDir: path.join(getSourceGraphsPath(), 'meadow-test-bundles-data'),
     },
     {
-      name: 'example-site',
+      name: 'example-bundle',
       setup: setups.example,
       initialPage: 'Notable Mental Models',
-      sourceGraphDir: path.join(getSourceGraphsPath(), 'example-site-data'),
+      sourceGraphDir: path.join(getSourceGraphsPath(), 'example-bundle-data'),
     },
     {
-      name: 'single-folder-site',
+      name: 'single-folder-bundle',
       setup: setups.folderStructureSingle,
       initialPage: 'Alpha note',
       sourceGraphDir: path.join(getSourceGraphsPath(), 'folder-structure-test'),

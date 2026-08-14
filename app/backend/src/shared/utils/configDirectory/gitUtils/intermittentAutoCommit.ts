@@ -16,7 +16,7 @@ limitations under the License.
 
 import { commitChangesNative, runGitStatusNative } from './gitStatusUtils.js';
 import { getLastGitOperationTime } from './gitOperationTracker.js';
-import { getConfigDirectory } from '../../../site-config/siteConfigPaths.js';
+import { getConfigDirectory } from '../../../bundle-config/bundleConfigPaths.js';
 import { loadAppConfig } from '../../../../../../shared_code/utils/appConfigUtils.js';
 import { logger } from '../../logging/backendLoggingUtils.js';
 

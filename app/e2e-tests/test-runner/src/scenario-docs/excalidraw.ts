@@ -21,7 +21,7 @@ export const excalidraw: ScenarioDoc = {
   name: "Excalidraw",
   description:
     "Tests Obsidian-Excalidraw drawing support across the editor and the " +
-    "published site: list-view thumbnail, embedded thumbnail in another " +
+    "published bundle: list-view thumbnail, embedded thumbnail in another " +
     "page, and the standalone Excalidraw HTML page where the drawing is " +
     "rendered at full size.",
 };

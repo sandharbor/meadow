@@ -60,27 +60,27 @@ export function extractPagespecsBlock(content: string): PagespecsBlock | null {
 }
 
 /**
- * Gets the pagespec entry for a specific site from a pagespecs block.
+ * Gets the pagespec entry for a specific bundle from a pagespecs block.
  *
  * @param block - The pagespecs block to search
- * @param siteName - The site name to find
- * @returns The PagespecEntry for the site, or undefined if not found
+ * @param bundleName - The bundle name to find
+ * @returns The PagespecEntry for the bundle, or undefined if not found
  */
-export function getPagespecForSite(
+export function getPagespecForBundle(
   block: PagespecsBlock,
-  siteName: string
+  bundleName: string
 ): PagespecEntry | undefined {
-  return block.pagespecs.find((spec) => spec.site === siteName);
+  return block.pagespecs.find((spec) => spec.bundle === bundleName);
 }
 
 /**
- * Gets all site names referenced in a pagespecs block.
+ * Gets all bundle names referenced in a pagespecs block.
  *
  * @param block - The pagespecs block to examine
- * @returns Array of site names
+ * @returns Array of bundle names
  */
-export function getReferencedSites(block: PagespecsBlock): string[] {
-  return block.pagespecs.map((spec) => spec.site);
+export function getReferencedBundles(block: PagespecsBlock): string[] {
+  return block.pagespecs.map((spec) => spec.bundle);
 }
 
 /**

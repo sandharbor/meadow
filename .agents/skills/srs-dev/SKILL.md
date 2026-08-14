@@ -2,14 +2,14 @@
 
 Fast iteration on the SRS spaced-repetition UI and core logic.
 
-**Scope**: Only `app/published_site_utils/srs/`. Do not touch files outside this directory. Do not build artifacts for the main app (`npm run build`, `npm run sync:backend`) — those are done explicitly when needed.
+**Scope**: Only `app/published_bundle_utils/srs/`. Do not touch files outside this directory. Do not build artifacts for the main app (`npm run build`, `npm run sync:backend`) — those are done explicitly when needed.
 
 ## After making changes
 
 Run the quick checks (lint + unit tests only) from the project directory:
 
 ```bash
-cd app/published_site_utils/srs && npx tsc --noEmit && npx eslint . && npx vitest run --config vitest.config.ts --dir src/core_logic
+cd app/published_bundle_utils/srs && npx tsc --noEmit && npx eslint . && npx vitest run --config vitest.config.ts --dir src/core_logic
 ```
 
 Do **not** run e2e tests (`src/e2e`) unless explicitly asked. They are slower and involve heavier fixtures.
@@ -20,12 +20,12 @@ Do **not** run `./quickcheck` (the repo-wide check script). We stay scoped to th
 
 When this skill is invoked, **always start the dev server and open the browser right away**, even if the user hasn't asked for anything specific yet. Do not wait for further instructions.
 
-The Vite dev server (`npm run dev` in `app/published_site_utils/srs`) serves the SRS dev harness at the root URL. It hot-reloads on save. The dev harness lives in `src/dev/` and uses sample data from `src/dev/samplePages.ts` and mock global cards from `src/dev/globalCardsMock.ts`.
+The Vite dev server (`npm run dev` in `app/published_bundle_utils/srs`) serves the SRS dev harness at the root URL. It hot-reloads on save. The dev harness lives in `src/dev/` and uses sample data from `src/dev/samplePages.ts` and mock global cards from `src/dev/globalCardsMock.ts`.
 
 Start the dev server and open the browser:
 
 ```bash
-cd app/published_site_utils/srs && npx vite &
+cd app/published_bundle_utils/srs && npx vite &
 ```
 
 Wait for the "ready" line in the output to get the URL, then open it:

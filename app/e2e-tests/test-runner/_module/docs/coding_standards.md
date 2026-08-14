@@ -16,25 +16,25 @@ exist yet, add it to the `Workflows` class so future scenarios can reuse it.
 ```typescript
 // GOOD — use the workflow
 const wf = new Workflows(page, expect);
-await wf.navigateToBigSiteShareTab();
+await wf.navigateToBigBundleShareTab();
 
 // BAD — inlining navigation that a workflow already handles
-const siteList = new SiteListPage(page, expect);
-await siteList.goto();
-await siteList.clickSite("meadow-test-site-big");
+const bundleList = new BundleListPage(page, expect);
+await bundleList.goto();
+await bundleList.clickBundle("meadow-test-bundle-big");
 // ... etc
 ```
 
 The `Workflows` class composes page objects at a high level:
 
-- `navigateToBigSite()` → site list → editor loaded
-- `navigateToBigSitePreview()` → … → preview modal open
-- `navigateToBigSiteShareTab()` → … → Share / Publish to Meadow tab
+- `navigateToBigBundle()` → bundle list → editor loaded
+- `navigateToBigBundlePreview()` → … → preview modal open
+- `navigateToBigBundleShareTab()` → … → Share / Publish to Meadow tab
 
-It also exports typed enums for fixtures and sites:
+It also exports typed enums for fixtures and bundles:
 
 ```typescript
-import { Workflows, Fixture, Site } from "../src/run/workflows.js";
+import { Workflows, Fixture, Bundle } from "../src/run/workflows.js";
 ```
 
 ## Page objects own their selectors
@@ -112,7 +112,7 @@ single instance, rather than hard-coding a method per instance
 ## Page object folder structure
 
 Only two top-level items in `src/run/pages/` are actual pages in the UI:
-**SiteListPage** and **SiteEditorPage**. Everything else is a component (panel,
+**BundleListPage** and **BundleEditorPage**. Everything else is a component (panel,
 modal, tab, etc.) that lives inside one of those pages.
 
 The folder structure reflects this hierarchy:
@@ -121,12 +121,12 @@ The folder structure reflects this hierarchy:
 src/run/pages/
 ├── index.ts                          # barrel — re-exports everything
 ├── shared/                           # components used by multiple pages
-│   ├── CreateAndEditSiteModal.ts
-│   └── PublishedSitePage.ts
-├── SiteListPage/
-│   └── SiteListPage.ts
-└── SiteEditorPage/
-    ├── SiteEditorPage.ts
+│   ├── CreateAndEditBundleModal.ts
+│   └── PublishedBundlePage.ts
+├── BundleListPage/
+│   └── BundleListPage.ts
+└── BundleEditorPage/
+    ├── BundleEditorPage.ts
     └── components/
         ├── FilterPanelComponent.ts
         ├── SelectedPageDetailComponent.ts
@@ -139,7 +139,7 @@ src/run/pages/
 
 ### Naming conventions
 
-- **Pages** are suffixed with `Page` (e.g. `SiteEditorPage`, `SiteListPage`).
+- **Pages** are suffixed with `Page` (e.g. `BundleEditorPage`, `BundleListPage`).
 - **Components** are suffixed with `Component` (e.g. `FilterPanelComponent`,
   `SelectedPageDetailComponent`).
 - **Modals** are suffixed with `Modal` (e.g. `PreviewPublishModal`, `LinksModal`).

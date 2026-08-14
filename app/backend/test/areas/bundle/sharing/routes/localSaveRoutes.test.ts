@@ -1,0 +1,114 @@
+/*
+Copyright 2026 Sand Harbor Software, LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { execFileSync } from 'child_process';
+import express from 'express';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import request from 'supertest';
+import { createLocalSaveRoutes } from '../../../../../src/areas/bundle/sharing/routes/localSaveRoutes.js';
+import { buildFilteredSourcesExportForBundle } from '../../../../../src/areas/bundle/generation/sources-export/filteredSourcesExport.js';
+import { buildFilteredOpenKnowledgeFormatForBundle } from '../../../../../src/areas/bundle/generation/open-knowledge-format/filteredOpenKnowledgeFormat.js';
+import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
+
+describe('Advanced-tab sources export (localSaveRoutes)', () => {
+  const bundleSlug = 'sources-export-test';
+  const testSetup = new TestBundleSetup('shared/fixtures/sources-export-bundle', bundleSlug);
+  let app: express.Express;
+  let scratchDir: string;
+
+  beforeEach(() => {
+    testSetup.setUp();
+
+    app = express();
+    app.use(express.json());
+    app.use('/api', createLocalSaveRoutes({
+      buildRawSourcesExportForBundle: buildFilteredSourcesExportForBundle,
+      buildOpenKnowledgeFormatForBundle: buildFilteredOpenKnowledgeFormatForBundle,
+    }));
+
+    scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sources-export-advanced-'));
+  });
+
+  afterEach(() => {
+    if (fs.existsSync(scratchDir)) {
+      fs.rmSync(scratchDir, { recursive: true, force: true });
+    }
+    testSetup.tearDown();
+  });
+
+  it('create-zip with sourceType=raw should exclude orphaned and blacklisted pages from the ZIP', async () => {
+    const zipDestination = path.join(scratchDir, 'tracked-raw-markdown.zip');
+
+    const response = await request(app)
+      .post(`/api/bundles/${bundleSlug}/sharing/create-zip`)
+      .send({ sourceType: 'raw', destinationPath: zipDestination })
+      .expect(200);
+
+    const finalZipPath = (response.body as { path: string }).path;
+    expect(fs.existsSync(finalZipPath)).toBe(true);
+
+    const zipContents = execFileSync('unzip', ['-l', finalZipPath], { encoding: 'utf8' });
+
+    expect(zipContents).toContain(`${bundleSlug}/main page.md`);
+    expect(zipContents).toContain(`${bundleSlug}/connected page.md`);
+    expect(zipContents).not.toContain('orphaned page.md');
+    expect(zipContents).not.toContain('blacklisted page.md');
+  });
+
+  it('copy-to-directory with sourceType=raw should exclude orphaned and blacklisted pages from the destination', async () => {
+    const destDir = path.join(scratchDir, 'copied');
+    fs.mkdirSync(destDir, { recursive: true });
+
+    const response = await request(app)
+      .post(`/api/bundles/${bundleSlug}/sharing/copy-to-directory`)
+      .send({ sourceType: 'raw', destinationPath: destDir })
+      .expect(200);
+
+    const exportPath = (response.body as { exportPath: string }).exportPath;
+    expect(fs.existsSync(exportPath)).toBe(true);
+
+    const copiedFiles = fs.readdirSync(exportPath);
+    expect(copiedFiles).toContain('main page.md');
+    expect(copiedFiles).toContain('connected page.md');
+    expect(copiedFiles).not.toContain('orphaned page.md');
+    expect(copiedFiles).not.toContain('blacklisted page.md');
+  });
+
+  it('create-zip with sourceType=okf should export an OKF bundle', async () => {
+    const zipDestination = path.join(scratchDir, 'okf.zip');
+
+    const response = await request(app)
+      .post(`/api/bundles/${bundleSlug}/sharing/create-zip`)
+      .send({ sourceType: 'okf', destinationPath: zipDestination })
+      .expect(200);
+
+    const finalZipPath = (response.body as { path: string }).path;
+    expect(fs.existsSync(finalZipPath)).toBe(true);
+
+    const zipContents = execFileSync('unzip', ['-l', finalZipPath], { encoding: 'utf8' });
+    expect(zipContents).toContain(`${bundleSlug}/index.md`);
+    expect(zipContents).toContain(`${bundleSlug}/main page.md`);
+    expect(zipContents).not.toContain('orphaned page.md');
+
+    const indexContent = execFileSync('unzip', ['-p', finalZipPath, `${bundleSlug}/index.md`], { encoding: 'utf8' });
+    const mainPageContent = execFileSync('unzip', ['-p', finalZipPath, `${bundleSlug}/main page.md`], { encoding: 'utf8' });
+    expect(indexContent).toContain('okf_version: "0.1"');
+    expect(mainPageContent).toContain('type: Knowledge Page');
+  });
+});

@@ -2,7 +2,7 @@
 
 Playwright-driven visual + DOM check for the `t025 - extended syntax` test page.
 
-Loads the rendered preview HTML (from `app/system_tests/expected_results/meadow-test-site-big-preview/`) in a real Chromium browser, saves a full-page screenshot, and probes the DOM for each extended-syntax feature listed on <https://www.markdownguide.org/extended-syntax/>, reporting which features render properly vs. fall through as raw markdown.
+Loads the rendered preview HTML (from `app/system_tests/expected_results/meadow-test-bundle-big-preview/`) in a real Chromium browser, saves a full-page screenshot, and probes the DOM for each extended-syntax feature listed on <https://www.markdownguide.org/extended-syntax/>, reporting which features render properly vs. fall through as raw markdown.
 
 ## Usage
 

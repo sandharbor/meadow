@@ -83,17 +83,17 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { publishing, s3 } from "../src/scenario-docs/index.js";
 import { Workflows } from "../src/run/workflows.js";
 
-test("Site publishes to S3", async ({
+test("Bundle publishes to S3", async ({
   page, snapshot, addKeyFrame, testServer,
 }) => {
   await testServer.activateS3Provider();
 
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSiteShareTab();
+  await wf.navigateToBigBundleShareTab();
   // ... test-specific interactions ...
   await addKeyFrame(publishing);
   await addKeyFrame(s3);
-  await snapshot("site published to S3");
+  await snapshot("bundle published to S3");
 });
 ```
 

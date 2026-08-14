@@ -21,5 +21,5 @@ export const sourcesExport: ScenarioDoc = {
   name: "Sources Export",
   description:
     "Tests covering the sources export feature, including ZIP generation " +
-    "with filtered and sanitized markdown files published alongside the HTML site.",
+    "with filtered and sanitized markdown files published alongside the HTML bundle.",
 };

@@ -24,7 +24,7 @@
 
 [[design motivation -- processing stage repeatability]]
 
-[[design motivation -- publish a huge number of sites]]
+[[design motivation -- publish a huge number of bundles]]
 
 [[design motivation -- reviewability]]
 
@@ -34,6 +34,6 @@
 
 [[design motivation -- static files]]
 
-[[design motivation -- support large sites]]
+[[design motivation -- support large bundles]]
 
 [[design motivation -- understandability]]

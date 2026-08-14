@@ -6,13 +6,13 @@ This config is stored in [[meadow home directory]]
 
 [[app config]]
 
-[[site config]]
+[[bundle config]]
 
-[[site page config]]
+[[bundle page config]]
 
 ### Related
 
-[[site view option]]
+[[bundle view option]]
 
 
 

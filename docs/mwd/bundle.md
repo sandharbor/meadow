@@ -1,0 +1,1 @@
+The bundles we create are microsites, but that is too "in the details", so we just call them bundles in the documentation and code.

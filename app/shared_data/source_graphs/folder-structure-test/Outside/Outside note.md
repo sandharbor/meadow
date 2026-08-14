@@ -3,7 +3,7 @@ It links one step farther to [[Beyond outside]].
 
 ```yaml
 pagespecs:
-  - site: single-folder-site
+  - bundle: single-folder-bundle
     curation:
       isTracked: false
       isInWorkingGraph: true
@@ -25,7 +25,7 @@ pagespecs:
                 embeddedLinks:
                   - linkName: Nested note
                     linkRelativePath: ../Alpha/Nested/Nested note.html
-  - site: ordered-folders
+  - bundle: ordered-folders
     curation:
       isTracked: false
       isInWorkingGraph: true

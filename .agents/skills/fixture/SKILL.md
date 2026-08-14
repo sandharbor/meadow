@@ -146,7 +146,7 @@ b.snapshot("notes saved");
 
 // Drop an S3 object
 b.advance(100); // begin T_n
-b.putObject("sites/foo/index.html", "<!doctype html>");
+b.putObject("bundles/foo/index.html", "<!doctype html>");
 
 // Set a State record (the generic "State" tab)
 b.advance(100); // begin T_n
@@ -216,8 +216,8 @@ jq . ~/meadow-e2e-artifacts/current/__fixture/canonical/fixture-state-repo/_meta
    repo's working tree that isn't real "state" must be in
    `.git/info/exclude` (see how `timeline.jsonl` is handled in
    `StateRepoBase`).
-5. **Open-core boundary.** This fixture is part of the open-core
-   report viewer. Keep its tab labels and copy generic; the State tab
+5. **Standalone contract.** This fixture feeds the report viewer. Keep
+   its tab labels and copy generic; the State tab
    is deliberately labeled "State", not anything specific to a backing
    store.
 

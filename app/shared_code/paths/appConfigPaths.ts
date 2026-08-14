@@ -26,8 +26,8 @@ limitations under the License.
  *       hooks/
  *         pageTitleNormalization.ts
  *         markdownProcessing.ts
- *     sites/
- *       {siteSlug}/
+ *     bundles/
+ *       {bundleSlug}/
  *     migrations.yaml
  *
  * Usage:
@@ -42,10 +42,10 @@ import { join } from 'path';
 
 // Directory names (single source of truth)
 const APP_DIR = 'app';
-const SITES_DIR = 'sites';
+const BUNDLES_DIR = 'bundles';
 const HOOKS_DIR = 'hooks';
 const CUSTOM_ASSETS_DIR = 'custom_assets';
-const CONF_DIR = 'conf';
+const BUNDLE_CONFIG_DIR = 'config';
 
 // File names
 const APP_CONFIG_FILE = 'app_config.yaml';
@@ -53,8 +53,8 @@ const SECRET_APP_CONFIG_FILE = 'secret_app_config.yaml';
 const RESOURCES_FILE = 'resources.yaml';
 const RESOURCES_LOCAL_FILE = 'resources.local.yaml';
 const MIGRATIONS_FILE = 'migrations.yaml';
-const SITE_CONFIG_FILE = 'site_config.yaml';
-const SITE_NODE_CONFIG_FILE = 'site_node_config.yaml';
+const BUNDLE_CONFIG_FILE = 'bundle_config.yaml';
+const BUNDLE_NODE_CONFIG_FILE = 'bundle_node_config.yaml';
 const PAGE_TITLE_NORMALIZATION_HOOK_FILE = 'pageTitleNormalization.ts';
 const MARKDOWN_PROCESSING_HOOK_FILE = 'markdownProcessing.ts';
 const HTML_POST_PROCESSING_HOOK_FILE = 'htmlPostProcessing.ts';
@@ -70,14 +70,14 @@ export const AppConfigPaths = {
       return APP_DIR;
     },
 
-    /** sites/ */
-    sitesDir(): string {
-      return SITES_DIR;
+    /** bundles/ */
+    bundlesDir(): string {
+      return BUNDLES_DIR;
     },
 
-    /** sites/{siteSlug}/ */
-    siteDir(siteSlug: string): string {
-      return join(SITES_DIR, siteSlug);
+    /** bundles/{bundleSlug}/ */
+    bundleDir(bundleSlug: string): string {
+      return join(BUNDLES_DIR, bundleSlug);
     },
 
     /** app/hooks/ */
@@ -137,14 +137,14 @@ export const AppConfigPaths = {
       return join(APP_DIR, HOOKS_DIR, HTML_POST_PROCESSING_HOOK_FILE);
     },
 
-    /** sites/{siteSlug}/conf/site_config.yaml */
-    siteConfigFile(siteSlug: string): string {
-      return join(SITES_DIR, siteSlug, CONF_DIR, SITE_CONFIG_FILE);
+    /** bundles/{bundleSlug}/config/bundle_config.yaml */
+    bundleConfigFile(bundleSlug: string): string {
+      return join(BUNDLES_DIR, bundleSlug, BUNDLE_CONFIG_DIR, BUNDLE_CONFIG_FILE);
     },
 
-    /** sites/{siteSlug}/conf/site_node_config.yaml */
-    siteNodeConfigFile(siteSlug: string): string {
-      return join(SITES_DIR, siteSlug, CONF_DIR, SITE_NODE_CONFIG_FILE);
+    /** bundles/{bundleSlug}/config/bundle_node_config.yaml */
+    bundleNodeConfigFile(bundleSlug: string): string {
+      return join(BUNDLES_DIR, bundleSlug, BUNDLE_CONFIG_DIR, BUNDLE_NODE_CONFIG_FILE);
     },
   },
 
@@ -160,17 +160,17 @@ export const AppConfigPaths = {
   },
 
   /**
-   * Get the sites directory: CONF_DIR/sites/
+   * Get the bundles directory: CONF_DIR/bundles/
    */
-  getSitesDir(configDir: string): string {
-    return join(configDir, this.relative.sitesDir());
+  getBundlesDir(configDir: string): string {
+    return join(configDir, this.relative.bundlesDir());
   },
 
   /**
-   * Get a specific site directory: CONF_DIR/sites/{siteSlug}/
+   * Get a specific bundle directory: CONF_DIR/bundles/{bundleSlug}/
    */
-  getSiteDir(configDir: string, siteSlug: string): string {
-    return join(configDir, this.relative.siteDir(siteSlug));
+  getBundleDir(configDir: string, bundleSlug: string): string {
+    return join(configDir, this.relative.bundleDir(bundleSlug));
   },
 
   /**
@@ -268,8 +268,8 @@ export const AppConfigPaths = {
   /** The app subdirectory name: 'app' */
   APP_DIR,
 
-  /** The sites subdirectory name: 'sites' */
-  SITES_DIR,
+  /** The bundles subdirectory name: 'bundles' */
+  BUNDLES_DIR,
 
   /** The hooks subdirectory name: 'hooks' */
   HOOKS_DIR,

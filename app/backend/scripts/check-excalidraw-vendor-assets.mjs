@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GZIP_HEADER_OS_OFFSET = 9;
 const SHA256_HEX_RE = /^[a-f0-9]{64}$/;
 
-const sourcePath = path.join(__dirname, '..', 'src', 'areas', 'site', 'generation', 'html', 'shared', 'excalidraw-vendor.js');
+const sourcePath = path.join(__dirname, '..', 'src', 'areas', 'bundle', 'generation', 'html', 'shared', 'excalidraw-vendor.js');
 const gzipPath = `${sourcePath}.gz`;
 const metadataPath = `${gzipPath}.meta.json`;
 

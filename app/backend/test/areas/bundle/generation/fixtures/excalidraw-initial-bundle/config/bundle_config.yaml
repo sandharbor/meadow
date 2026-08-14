@@ -1,0 +1,14 @@
+bundleGuid: excalidraw-initial
+sourceDirectory: ./source_graphs/excalidraw-initial-data
+publishPrefix: test123
+publishSlug: excalidraw-initial-bundle
+bundleCreatedAt: 2025-01-01T00:00:00.000Z
+bundleLastPublishedAt: null
+bundleNotes: Excalidraw initial page test bundle
+bundleUpdatedAt: 2025-01-01T00:00:00.000Z
+generatedBundleVersions: []
+archivedAt: null
+defaultOutlinksDepth: 1
+defaultInlinksDepth: 0
+entryBundleNodeId: 456175f97e4d
+defaultTraversalBundleNodeId: 456175f97e4d

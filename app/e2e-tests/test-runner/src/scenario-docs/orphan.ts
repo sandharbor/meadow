@@ -20,7 +20,7 @@ export const orphan: ScenarioDoc = {
   id: "orphan",
   name: "Orphan",
   description:
-    "Tests that verify the app surfaces orphaned pages — site config entries " +
+    "Tests that verify the app surfaces orphaned pages — bundle config entries " +
     "that are no longer reachable in the working graph — via a callout banner " +
     "and review modal, with tooling to remove them from the config.",
 };

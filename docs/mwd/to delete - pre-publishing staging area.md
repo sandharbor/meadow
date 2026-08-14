@@ -1,1 +1,1 @@
-[[to delete]] should centralize on [[generated html site]]
+[[to delete]] should centralize on [[generated html bundle]]

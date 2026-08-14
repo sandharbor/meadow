@@ -18,7 +18,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { SiteConfigPaths } from '../../../../shared_code/paths/siteConfigPaths.js';
+import { BundleConfigPaths } from '../../../../shared_code/paths/bundleConfigPaths.js';
 import { migratePreviewOutputDirectory } from '../../../src/shared/migrations/versions/26_08_13_12_00_00_f3m8q1v6z2k9_rename_preview_output_to_generated.js';
 
 const temporaryDirectories: string[] = [];
@@ -39,8 +39,8 @@ describe('generated HTML directory migration', () => {
   it('moves legacy preview artifacts and is idempotent', () => {
     const home = makeHome();
     const siteDir = path.join(home, 'sites', 'garden');
-    const legacyDir = path.join(SiteConfigPaths.getHtmlDir(siteDir), 'preview');
-    const generatedDir = SiteConfigPaths.getGeneratedHtmlDir(siteDir);
+    const legacyDir = path.join(BundleConfigPaths.getHtmlDir(siteDir), 'preview');
+    const generatedDir = BundleConfigPaths.getGeneratedHtmlDir(siteDir);
     fs.mkdirSync(legacyDir, { recursive: true });
     fs.writeFileSync(path.join(legacyDir, 'index.html'), '<h1>Garden</h1>', 'utf8');
 
@@ -54,8 +54,8 @@ describe('generated HTML directory migration', () => {
   it('accepts an empty destination but refuses to overwrite generated content', () => {
     const home = makeHome();
     const siteDir = path.join(home, 'sites', 'garden');
-    const legacyDir = path.join(SiteConfigPaths.getHtmlDir(siteDir), 'preview');
-    const generatedDir = SiteConfigPaths.getGeneratedHtmlDir(siteDir);
+    const legacyDir = path.join(BundleConfigPaths.getHtmlDir(siteDir), 'preview');
+    const generatedDir = BundleConfigPaths.getGeneratedHtmlDir(siteDir);
     fs.mkdirSync(legacyDir, { recursive: true });
     fs.writeFileSync(path.join(legacyDir, 'index.html'), 'legacy', 'utf8');
     fs.mkdirSync(generatedDir, { recursive: true });

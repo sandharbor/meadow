@@ -1,5 +1,5 @@
 // One-off build of the Excalidraw vendor bundle. Output is checked into
-// src/areas/site/generation/html/shared/excalidraw-vendor.js. Re-run when bumping the
+// src/areas/bundle/generation/html/shared/excalidraw-vendor.js. Re-run when bumping the
 // @excalidraw/excalidraw version.
 
 import * as esbuild from 'esbuild';
@@ -14,7 +14,7 @@ const GZIP_HEADER_OS_OFFSET = 9;
 const gzipOnly = process.argv.includes('--gzip-only');
 
 const entry = path.join(__dirname, 'excalidraw-vendor-entry.js');
-const outfile = path.join(__dirname, '..', 'src', 'areas', 'site', 'generation', 'html', 'shared', 'excalidraw-vendor.js');
+const outfile = path.join(__dirname, '..', 'src', 'areas', 'bundle', 'generation', 'html', 'shared', 'excalidraw-vendor.js');
 
 function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');

@@ -24,7 +24,7 @@ import type { PublishingProviderManifest } from '../../../../shared_code/interfa
  * particular destination (auth, permissions, upload, delete, etc.).
  */
 export interface PublishTabProps {
-  siteSlug: string;
+  bundleSlug: string;
   changedFilesCount: number;
   onBusyChange: (busy: boolean) => void;
   onAuthError: () => void;
@@ -35,7 +35,7 @@ export interface PublishTabProps {
 
 /**
  * Frontend contract for a publishing provider. `PublishTabComponent` and the
- * site-scoped query methods are optional so a provider can register itself
+ * bundle-scoped query methods are optional so a provider can register itself
  * (and show up in provider-aware UI) before those capabilities are
  * implemented — the core UI falls back gracefully when a method is missing.
  *
@@ -48,26 +48,26 @@ export interface IPublishingProviderFrontend {
   readonly PublishTabComponent?: ComponentType<PublishTabProps>;
 
   /**
-   * Resolve to the currently-published URL for the given site (optionally
-   * for a specific version). Throws if the site has not been published or
+   * Resolve to the currently-published URL for the given bundle (optionally
+   * for a specific version). Throws if the bundle has not been published or
    * the provider cannot produce a URL.
    */
-  readonly fetchPublishedUrl?: (siteSlug: string, versionId?: string) => Promise<string>;
+  readonly fetchPublishedUrl?: (bundleSlug: string, versionId?: string) => Promise<string>;
 
   /**
    * Resolve to how many HTML pages and other files are currently published
-   * for the given site. Used by UI that wants to warn the user before
-   * destructive actions (e.g. deleting a site).
+   * for the given bundle. Used by UI that wants to warn the user before
+   * destructive actions (e.g. deleting a bundle).
    */
-  readonly fetchPublishedFileCounts?: (siteSlug: string) => Promise<{ htmlCount: number; otherCount: number }>;
+  readonly fetchPublishedFileCounts?: (bundleSlug: string) => Promise<{ htmlCount: number; otherCount: number }>;
 
   /**
-   * Publish a new version snapshot of the site. Resolves on success, throws
+   * Publish a new version snapshot of the bundle. Resolves on success, throws
    * with a descriptive message on failure. Providers that don't support
    * versioning simply don't implement this method.
    */
   readonly publishNewVersion?: (
-    siteSlug: string,
+    bundleSlug: string,
     notes: string,
     addPointersToOlderVersions: boolean,
   ) => Promise<void>;

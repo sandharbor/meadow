@@ -136,7 +136,7 @@ const server = http.createServer((req, res) => {
   }
 
   // If the file doesn't exist, fall back to index.html so client-side routing
-  // (BrowserRouter routes like /site/:slug) still resolves.
+  // (BrowserRouter routes like /bundle/:slug) still resolves.
   fs.stat(filePath, (err, stat) => {
     if (err || !stat.isFile()) {
       serveFile(res, path.join(absDistDir, "index.html"));

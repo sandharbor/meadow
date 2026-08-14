@@ -16,26 +16,27 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { SiteConfigPaths } from '../../../../../shared_code/paths/siteConfigPaths.js';
+import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import type { Migration } from '../../../../../shared_code/types/migrations.js';
 import { getDefaultConfigDirectory } from '../../../../../shared_code/utils/appConfigUtils.js';
 
 const LEGACY_PREVIEW_DIRECTORY = 'preview';
 
-/** Moves each site's current generated artifact to its canonical directory. */
+/** Moves each bundle's current generated artifact to its canonical directory. */
 export function migratePreviewOutputDirectory(configDir: string): string[] {
-  const sitesDir = path.join(configDir, 'sites');
-  if (!fs.existsSync(sitesDir)) return [];
+  // This migration predates and runs before the root is renamed to bundles/.
+  const bundlesDir = path.join(configDir, 'sites');
+  if (!fs.existsSync(bundlesDir)) return [];
 
-  const migratedSites: string[] = [];
-  const siteEntries = fs.readdirSync(sitesDir, { withFileTypes: true })
+  const migratedBundles: string[] = [];
+  const bundleEntries = fs.readdirSync(bundlesDir, { withFileTypes: true })
     .filter(entry => entry.isDirectory())
     .sort((left, right) => left.name.localeCompare(right.name));
 
-  for (const entry of siteEntries) {
-    const siteDir = path.join(sitesDir, entry.name);
-    const legacyDir = path.join(SiteConfigPaths.getHtmlDir(siteDir), LEGACY_PREVIEW_DIRECTORY);
-    const generatedDir = SiteConfigPaths.getGeneratedHtmlDir(siteDir);
+  for (const entry of bundleEntries) {
+    const bundleDir = path.join(bundlesDir, entry.name);
+    const legacyDir = path.join(BundleConfigPaths.getHtmlDir(bundleDir), LEGACY_PREVIEW_DIRECTORY);
+    const generatedDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDir);
     if (!fs.existsSync(legacyDir)) continue;
 
     if (fs.existsSync(generatedDir)) {
@@ -50,15 +51,15 @@ export function migratePreviewOutputDirectory(configDir: string): string[] {
 
     fs.mkdirSync(path.dirname(generatedDir), { recursive: true });
     fs.renameSync(legacyDir, generatedDir);
-    migratedSites.push(entry.name);
+    migratedBundles.push(entry.name);
   }
 
-  return migratedSites;
+  return migratedBundles;
 }
 
 export const migration: Migration = {
   name: 'Rename preview output to generated HTML',
-  description: 'Move each current generated site artifact from html/preview to html/generated.',
+  description: 'Move each current generated bundle artifact from html/preview to html/generated.',
   run: (): Promise<void> => {
     migratePreviewOutputDirectory(getDefaultConfigDirectory());
     return Promise.resolve();

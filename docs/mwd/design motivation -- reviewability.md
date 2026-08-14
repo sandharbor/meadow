@@ -8,10 +8,10 @@ straightforward, reliable, and fast.
 Key aspects:
 - Clear visibility of [[filter]] impacts
 - [[preview]] capabilities
-- Explicit control over content inclusion by differentiating between [[site page tracking state -- untracked]] and [[site page tracking state -- tracked]] and [[whitelist]] vs. [[blacklist]].  Addresses [[dim - sensitivity]]
+- Explicit control over content inclusion by differentiating between [[bundle page tracking state -- untracked]] and [[bundle page tracking state -- tracked]] and [[whitelist]] vs. [[blacklist]].  Addresses [[dim - sensitivity]]
 
 
-This is an area where [[UI]] patterns in the [[app component -- site page views]] will have the biggest impact.
+This is an area where [[UI]] patterns in the [[app component -- bundle page views]] will have the biggest impact.
 
 This motivation ensures users can confidently publish while maintaining control over [[dim - sensitivity -- high]] information.
 

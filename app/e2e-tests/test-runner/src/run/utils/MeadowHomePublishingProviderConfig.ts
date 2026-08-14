@@ -20,10 +20,10 @@ import YAML from "yaml";
 import type { Expect } from "@playwright/test";
 
 /**
- * Utility for reading a site-local publishing-provider `pp_config.yaml`.
+ * Utility for reading a bundle-local publishing-provider `pp_config.yaml`.
  *
  * Lives at:
- *   <configDir>/sites/<siteSlug>/config/publishing_providers/<providerId>/pp_config.yaml
+ *   <configDir>/bundles/<bundleSlug>/config/publishing_providers/<providerId>/pp_config.yaml
  *
  * Returns the parsed object so tests can assert on provider-specific fields
  * (e.g. publishSlug, publishPrefix) directly.
@@ -32,15 +32,15 @@ export class MeadowHomePublishingProviderConfig {
   constructor(
     private configDir: string,
     private providerId: string,
-    private siteSlug: string,
+    private bundleSlug: string,
     private expect: Expect,
   ) {}
 
   private ppConfigPath(): string {
     return path.join(
       this.configDir,
-      "sites",
-      this.siteSlug,
+      "bundles",
+      this.bundleSlug,
       "config",
       "publishing_providers",
       this.providerId,
@@ -48,7 +48,7 @@ export class MeadowHomePublishingProviderConfig {
     );
   }
 
-  /** Parse and return the site-local pp_config.yaml. Fails if absent or invalid. */
+  /** Parse and return the bundle-local pp_config.yaml. Fails if absent or invalid. */
   read(): Record<string, unknown> {
     const filePath = this.ppConfigPath();
     this.expect(

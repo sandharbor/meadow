@@ -1,4 +1,4 @@
-If you are not using the [[Meadow Obsidian plugin]], then when you [[create a new site from a source page]], you need to supply both the [[site page type -- initial]] and the [[source graph root directory]].
+If you are not using the [[Meadow Obsidian plugin]], then when you [[create a new bundle from a source page]], you need to supply both the [[bundle page type -- initial]] and the [[source graph root directory]].
 
 That's a bit of a pain, but it is necessary when you are [[doing things the first time]].
 

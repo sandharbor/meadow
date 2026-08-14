@@ -18,4 +18,5 @@ export interface ScenarioDoc {
   id: string           // URL-safe key, e.g. 'publishing'
   name: string         // Display name, e.g. 'Publishing'
   description: string  // Prose describing this area
+  appAreaDocIds?: string[] // Optional app-area ownership supplied by the scenario's module
 }

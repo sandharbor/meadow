@@ -1,1 +1,0 @@
-[[reader]] using tooling like [[app component -- site page views]] when accessing a [[published site type -- local html]].

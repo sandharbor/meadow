@@ -85,14 +85,14 @@ export function isValidLinkPath(linkPath: string): boolean {
  * @param spec - The link spec to validate
  * @param context - Context string for error messages (e.g., "outlinks[0]")
  * @param pageTitle - Title of the page containing this spec
- * @param site - Site name
+ * @param bundle - Bundle name
  * @returns Array of validation errors (empty if valid)
  */
 export function validateLinkSpec(
   spec: unknown,
   context: string,
   pageTitle: string,
-  site: string
+  bundle: string
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
@@ -100,7 +100,7 @@ export function validateLinkSpec(
     errors.push({
       message: `${context} must be an object`,
       pageTitle,
-      site,
+      bundle,
       field: 'links',
     });
     return errors;
@@ -115,7 +115,7 @@ export function validateLinkSpec(
       errors.push({
         message: `${context} has unknown key "${key}"`,
         pageTitle,
-        site,
+        bundle,
         field: 'links',
       });
     }
@@ -125,14 +125,14 @@ export function validateLinkSpec(
     errors.push({
       message: `${context}.linkPath must be a string`,
       pageTitle,
-      site,
+      bundle,
       field: 'links',
     });
   } else if (!isValidLinkPath(linkSpec.linkPath)) {
     errors.push({
       message: `${context}.linkPath "${linkSpec.linkPath}" is not a valid link path (must end with .md or an image extension)`,
       pageTitle,
-      site,
+      bundle,
       field: 'links',
     });
   }
@@ -141,7 +141,7 @@ export function validateLinkSpec(
     errors.push({
       message: `${context}.isInGraph must be a boolean`,
       pageTitle,
-      site,
+      bundle,
       field: 'links',
     });
   }
@@ -154,13 +154,13 @@ export function validateLinkSpec(
  *
  * @param links - The links object to validate
  * @param pageTitle - Title of the page containing this spec
- * @param site - Site name
+ * @param bundle - Bundle name
  * @returns Array of validation errors (empty if valid)
  */
 export function validateLinksSection(
   links: unknown,
   pageTitle: string,
-  site: string
+  bundle: string
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
@@ -168,7 +168,7 @@ export function validateLinksSection(
     errors.push({
       message: `links must be an object`,
       pageTitle,
-      site,
+      bundle,
       field: 'links',
     });
     return errors;
@@ -183,7 +183,7 @@ export function validateLinksSection(
       errors.push({
         message: `links has unknown key "${key}"`,
         pageTitle,
-        site,
+        bundle,
         field: 'links',
       });
     }
@@ -195,13 +195,13 @@ export function validateLinksSection(
       errors.push({
         message: `links.outlinks must be an array`,
         pageTitle,
-        site,
+        bundle,
         field: 'links',
       });
     } else {
       for (let i = 0; i < linksObj.outlinks.length; i++) {
         errors.push(
-          ...validateLinkSpec(linksObj.outlinks[i], `links.outlinks[${i}]`, pageTitle, site)
+          ...validateLinkSpec(linksObj.outlinks[i], `links.outlinks[${i}]`, pageTitle, bundle)
         );
       }
     }
@@ -213,13 +213,13 @@ export function validateLinksSection(
       errors.push({
         message: `links.inlinks must be an array`,
         pageTitle,
-        site,
+        bundle,
         field: 'links',
       });
     } else {
       for (let i = 0; i < linksObj.inlinks.length; i++) {
         errors.push(
-          ...validateLinkSpec(linksObj.inlinks[i], `links.inlinks[${i}]`, pageTitle, site)
+          ...validateLinkSpec(linksObj.inlinks[i], `links.inlinks[${i}]`, pageTitle, bundle)
         );
       }
     }
@@ -234,7 +234,7 @@ export function validateLinksSection(
 export function validateHtmlRenderedLinks(
   htmlRenderedLinks: unknown,
   pageTitle: string,
-  site: string
+  bundle: string
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
@@ -242,7 +242,7 @@ export function validateHtmlRenderedLinks(
     errors.push({
       message: `htmlRenderedLinks must be an object`,
       pageTitle,
-      site,
+      bundle,
       field: 'htmlRenderedLinks',
     });
     return errors;
@@ -257,7 +257,7 @@ export function validateHtmlRenderedLinks(
       errors.push({
         message: `htmlRenderedLinks has unknown key "${key}"`,
         pageTitle,
-        site,
+        bundle,
         field: 'htmlRenderedLinks',
       });
     }
@@ -267,7 +267,7 @@ export function validateHtmlRenderedLinks(
     errors.push({
       message: `htmlRenderedLinks.mainSectionLinks must be an array`,
       pageTitle,
-      site,
+      bundle,
       field: 'htmlRenderedLinks',
     });
   } else {
@@ -277,7 +277,7 @@ export function validateHtmlRenderedLinks(
         errors.push({
           message: `htmlRenderedLinks.mainSectionLinks[${i}] must have a relativeLinkPath string`,
           pageTitle,
-          site,
+          bundle,
           field: 'htmlRenderedLinks',
         });
       } else {
@@ -288,7 +288,7 @@ export function validateHtmlRenderedLinks(
             errors.push({
               message: `htmlRenderedLinks.mainSectionLinks[${i}] has unknown key "${key}"`,
               pageTitle,
-              site,
+              bundle,
               field: 'htmlRenderedLinks',
             });
           }
@@ -301,7 +301,7 @@ export function validateHtmlRenderedLinks(
     errors.push({
       message: `htmlRenderedLinks.footerSectionBacklinks must be an array`,
       pageTitle,
-      site,
+      bundle,
       field: 'htmlRenderedLinks',
     });
   } else {
@@ -311,7 +311,7 @@ export function validateHtmlRenderedLinks(
         errors.push({
           message: `htmlRenderedLinks.footerSectionBacklinks[${i}] must have a relativeLinkPath string`,
           pageTitle,
-          site,
+          bundle,
           field: 'htmlRenderedLinks',
         });
         continue;
@@ -324,7 +324,7 @@ export function validateHtmlRenderedLinks(
           errors.push({
             message: `htmlRenderedLinks.footerSectionBacklinks[${i}] has unknown key "${key}"`,
             pageTitle,
-            site,
+            bundle,
             field: 'htmlRenderedLinks',
           });
         }
@@ -335,7 +335,7 @@ export function validateHtmlRenderedLinks(
         errors.push({
           message: `htmlRenderedLinks.footerSectionBacklinks[${i}] must have a backlinkContexts array`,
           pageTitle,
-          site,
+          bundle,
           field: 'htmlRenderedLinks',
         });
       } else {
@@ -347,7 +347,7 @@ export function validateHtmlRenderedLinks(
             errors.push({
               message: `${prefix} must be an object`,
               pageTitle,
-              site,
+              bundle,
               field: 'htmlRenderedLinks',
             });
             continue;
@@ -360,7 +360,7 @@ export function validateHtmlRenderedLinks(
               errors.push({
                 message: `${prefix} has unknown key "${key}"`,
                 pageTitle,
-                site,
+                bundle,
                 field: 'htmlRenderedLinks',
               });
             }
@@ -370,7 +370,7 @@ export function validateHtmlRenderedLinks(
             errors.push({
               message: `${prefix}.seeInContextLinkRelativePath must be a string`,
               pageTitle,
-              site,
+              bundle,
               field: 'htmlRenderedLinks',
             });
           }
@@ -379,7 +379,7 @@ export function validateHtmlRenderedLinks(
             errors.push({
               message: `${prefix}.embeddedLinks must be an array`,
               pageTitle,
-              site,
+              bundle,
               field: 'htmlRenderedLinks',
             });
           } else {
@@ -390,7 +390,7 @@ export function validateHtmlRenderedLinks(
                 errors.push({
                   message: `${linkPrefix} must be an object`,
                   pageTitle,
-                  site,
+                  bundle,
                   field: 'htmlRenderedLinks',
                 });
               } else {
@@ -401,7 +401,7 @@ export function validateHtmlRenderedLinks(
                     errors.push({
                       message: `${linkPrefix} has unknown key "${key}"`,
                       pageTitle,
-                      site,
+                      bundle,
                       field: 'htmlRenderedLinks',
                     });
                   }
@@ -410,7 +410,7 @@ export function validateHtmlRenderedLinks(
                   errors.push({
                     message: `${linkPrefix}.linkName must be a string`,
                     pageTitle,
-                    site,
+                    bundle,
                     field: 'htmlRenderedLinks',
                   });
                 }
@@ -418,7 +418,7 @@ export function validateHtmlRenderedLinks(
                   errors.push({
                     message: `${linkPrefix}.linkRelativePath must be a string`,
                     pageTitle,
-                    site,
+                    bundle,
                     field: 'htmlRenderedLinks',
                   });
                 }
@@ -466,7 +466,7 @@ export function isValidFilterId(filterId: string): boolean {
 export interface ValidationError {
   message: string;
   pageTitle?: string;
-  site?: string;
+  bundle?: string;
   field?: string;
 }
 
@@ -474,14 +474,14 @@ export interface ValidationError {
  * Validates a single pagespec entry.
  *
  * @param spec - The pagespec entry to validate
- * @param availableSites - Set of valid site names
+ * @param availableBundles - Set of valid bundle names
  * @param pageTitle - Title of the page containing this spec (for error messages)
  * @param options - Optional validation options
  * @returns Array of validation errors (empty if valid)
  */
 export function validatePagespecEntry(
   spec: PagespecEntry,
-  availableSites: Set<string>,
+  availableBundles: Set<string>,
   pageTitle: string,
   options: ValidationOptions = {}
 ): ValidationError[] {
@@ -489,13 +489,13 @@ export function validatePagespecEntry(
   const { requireLinksWhenInWorkingGraph = true, requireHtmlRenderedLinks = true } = options;
   const { generation } = spec;
 
-  // Check that the site exists
-  if (!availableSites.has(spec.site)) {
+  // Check that the bundle exists
+  if (!availableBundles.has(spec.bundle)) {
     errors.push({
-      message: `Site "${spec.site}" not found in available sites`,
+      message: `Bundle "${spec.bundle}" not found in available bundles`,
       pageTitle,
-      site: spec.site,
-      field: 'site',
+      bundle: spec.bundle,
+      field: 'bundle',
     });
   }
 
@@ -505,7 +505,7 @@ export function validatePagespecEntry(
       errors.push({
         message: `When isInWorkingGraph is false, frontierDepthOrNullForOrphan must be specified`,
         pageTitle,
-        site: spec.site,
+        bundle: spec.bundle,
         field: 'frontierDepthOrNullForOrphan',
       });
     }
@@ -519,7 +519,7 @@ export function validatePagespecEntry(
           errors.push({
             message: `Invalid filter ID "${filterId}". Must be a built-in filter (${BUILTIN_FILTER_IDS.join(', ')}) or match pattern "custom-{id}"`,
             pageTitle,
-            site: spec.site,
+            bundle: spec.bundle,
             field: 'filtersSelected',
           });
         }
@@ -532,12 +532,12 @@ export function validatePagespecEntry(
         errors.push({
           message: `When isInWorkingGraph is true, links section must be specified`,
           pageTitle,
-          site: spec.site,
+          bundle: spec.bundle,
           field: 'links',
         });
       } else {
         // Validate the links section structure
-        errors.push(...validateLinksSection(curation.links, pageTitle, spec.site));
+        errors.push(...validateLinksSection(curation.links, pageTitle, spec.bundle));
       }
     }
   }
@@ -548,11 +548,11 @@ export function validatePagespecEntry(
       errors.push({
         message: `htmlRenderedLinks must be specified`,
         pageTitle,
-        site: spec.site,
+        bundle: spec.bundle,
         field: 'htmlRenderedLinks',
       });
     } else {
-      errors.push(...validateHtmlRenderedLinks(generation.htmlRenderedLinks, pageTitle, spec.site));
+      errors.push(...validateHtmlRenderedLinks(generation.htmlRenderedLinks, pageTitle, spec.bundle));
     }
   }
 
@@ -563,16 +563,16 @@ export function validatePagespecEntry(
  * Validates a complete pagespecs block.
  *
  * @param block - The pagespecs block to validate
- * @param requiredSites - Sites that must have a pagespec entry
- * @param availableSites - Set of valid site names
+ * @param requiredBundles - Bundles that must have a pagespec entry
+ * @param availableBundles - Set of valid bundle names
  * @param pageTitle - Title of the page containing this block (for error messages)
  * @param options - Optional validation options
  * @returns Array of validation errors (empty if valid)
  */
 export function validatePagespecsBlock(
   block: PagespecsBlock,
-  requiredSites: string[],
-  availableSites: Set<string>,
+  requiredBundles: string[],
+  availableBundles: Set<string>,
   pageTitle: string,
   options: ValidationOptions = {}
 ): ValidationError[] {
@@ -580,30 +580,30 @@ export function validatePagespecsBlock(
 
   // Validate each entry
   for (const spec of block.pagespecs) {
-    errors.push(...validatePagespecEntry(spec, availableSites, pageTitle, options));
+    errors.push(...validatePagespecEntry(spec, availableBundles, pageTitle, options));
   }
 
-  // Check for duplicate site entries
-  const seenSites = new Set<string>();
+  // Check for duplicate bundle entries
+  const seenBundles = new Set<string>();
   for (const spec of block.pagespecs) {
-    if (seenSites.has(spec.site)) {
+    if (seenBundles.has(spec.bundle)) {
       errors.push({
-        message: `Duplicate pagespec entry for site "${spec.site}"`,
+        message: `Duplicate pagespec entry for bundle "${spec.bundle}"`,
         pageTitle,
-        site: spec.site,
+        bundle: spec.bundle,
       });
     }
-    seenSites.add(spec.site);
+    seenBundles.add(spec.bundle);
   }
 
-  // Check that all required sites are covered
-  const coveredSites = new Set(block.pagespecs.map((s) => s.site));
-  for (const requiredSite of requiredSites) {
-    if (!coveredSites.has(requiredSite)) {
+  // Check that all required bundles are covered
+  const coveredBundles = new Set(block.pagespecs.map((s) => s.bundle));
+  for (const requiredBundle of requiredBundles) {
+    if (!coveredBundles.has(requiredBundle)) {
       errors.push({
-        message: `Missing pagespec for required site "${requiredSite}"`,
+        message: `Missing pagespec for required bundle "${requiredBundle}"`,
         pageTitle,
-        site: requiredSite,
+        bundle: requiredBundle,
       });
     }
   }
@@ -653,9 +653,9 @@ export function validatePagespecsBlockStructure(
       continue;
     }
 
-    if (typeof entry.site !== 'string') {
+    if (typeof entry.bundle !== 'string') {
       errors.push({
-        message: `Pagespec entry ${i} must have a "site" string`,
+        message: `Pagespec entry ${i} must have a "bundle" string`,
         pageTitle,
       });
     }
@@ -675,7 +675,7 @@ export function validatePagespecsBlockStructure(
     }
 
     // Validate that no unknown keys are present
-    const allowedKeys = new Set(['site', 'curation', 'generation']);
+    const allowedKeys = new Set(['bundle', 'curation', 'generation']);
     for (const key of Object.keys(entry)) {
       if (!allowedKeys.has(key)) {
         errors.push({

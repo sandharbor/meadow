@@ -20,7 +20,7 @@ import zlib from 'zlib';
 import { Buffer } from 'node:buffer';
 
 /**
- * Per-site manifest declaring which generated assets are stored on disk in a
+ * Per-bundle manifest declaring which generated assets are stored on disk in a
  * pre-compressed form. Lives at `_mw_assets/_compression.json` inside the
  * preview output (and is copied into the published / versioned output by the
  * normal copy-everything-to-the-versioned-dir step).
@@ -62,7 +62,7 @@ export function writeCompressionManifest(assetsDir: string, manifest: Compressio
  * in which the manifest lives.
  *
  * Returns null if no manifest is present, so callers can fast-path the
- * common "site has no pre-compressed assets" case.
+ * common "bundle has no pre-compressed assets" case.
  */
 export function loadGzipPathSet(assetsDir: string): Set<string> | null {
   const manifest = readCompressionManifest(assetsDir);

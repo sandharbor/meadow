@@ -20,6 +20,6 @@ export const customize: ScenarioDoc = {
   id: "customize",
   name: "Customize",
   description:
-    "Tests covering site customization options such as breadcrumbs, backlinks, " +
+    "Tests covering bundle customization options such as breadcrumbs, backlinks, " +
     "and other publish settings that affect generated HTML output.",
 };

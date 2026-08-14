@@ -18,7 +18,7 @@ export type CustomAssetType = 'style_css' | 'javascript_js';
 
 export interface CustomAssetMetadata {
   assetType: CustomAssetType;
-  scope: 'global' | 'site';
+  scope: 'global' | 'bundle';
   exists: boolean;
   content?: string;
   filePath?: string;

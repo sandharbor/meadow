@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { AppConfig } from '../types/appConfig.js';
-import { SiteConfig } from '../types/siteConfig.js';
+import { BundleConfig } from '../types/bundleConfig.js';
 
 export interface EffectiveGenerationOptions {
   breadcrumbsEnabled: boolean;
@@ -34,33 +34,33 @@ export interface EffectiveGenerationOptions {
 
 /**
  * Resolves the effective generation options using:
- * - site override (if present)
+ * - bundle override (if present)
  * - else global app config (if present)
  * - else default (true for most options, false for hover preview)
  *
- * OKF is currently site-specific because its root files require per-site source page choices.
+ * OKF is currently bundle-specific because its root files require per-bundle source page choices.
  * Note: tags require backlinks; if backlinks are disabled, tags are forced off.
  */
 export function resolveEffectiveGenerationOptions(
   appConfig: AppConfig | undefined,
-  siteConfig: SiteConfig | undefined
+  bundleConfig: BundleConfig | undefined
 ): EffectiveGenerationOptions {
-  const breadcrumbsEnabled = (siteConfig?.generationBreadcrumbsEnabled ?? appConfig?.generationBreadcrumbsEnabled) !== false;
-  const backlinksEnabled = (siteConfig?.generationBacklinksEnabled ?? appConfig?.generationBacklinksEnabled) !== false;
-  const rawTagsEnabled = (siteConfig?.generationTagsEnabled ?? appConfig?.generationTagsEnabled) !== false;
+  const breadcrumbsEnabled = (bundleConfig?.generationBreadcrumbsEnabled ?? appConfig?.generationBreadcrumbsEnabled) !== false;
+  const backlinksEnabled = (bundleConfig?.generationBacklinksEnabled ?? appConfig?.generationBacklinksEnabled) !== false;
+  const rawTagsEnabled = (bundleConfig?.generationTagsEnabled ?? appConfig?.generationTagsEnabled) !== false;
   const tagsEnabled = rawTagsEnabled && backlinksEnabled;
-  const searchEnabled = (siteConfig?.generationSearchEnabled ?? appConfig?.generationSearchEnabled) !== false;
-  const hoverPreviewEnabled = (siteConfig?.generationHoverPreviewEnabled ?? appConfig?.generationHoverPreviewEnabled) === true;
-  const folderNavigationEnabled = (siteConfig?.generationFolderNavigationEnabled ?? appConfig?.generationFolderNavigationEnabled) === true;
-  const sourcesExportEnabled = (siteConfig?.generationMarkdownZipEnabled ?? appConfig?.generationMarkdownZipEnabled) === true;
-  const openKnowledgeFormatEnabled = siteConfig?.generationOpenKnowledgeFormatEnabled === true;
-  const spacedRepetitionEnabled = (siteConfig?.generationSpacedRepetitionEnabled ?? appConfig?.generationSpacedRepetitionEnabled) === true;
-  const spacedRepetitionTags = siteConfig?.generationSpacedRepetitionTags
+  const searchEnabled = (bundleConfig?.generationSearchEnabled ?? appConfig?.generationSearchEnabled) !== false;
+  const hoverPreviewEnabled = (bundleConfig?.generationHoverPreviewEnabled ?? appConfig?.generationHoverPreviewEnabled) === true;
+  const folderNavigationEnabled = (bundleConfig?.generationFolderNavigationEnabled ?? appConfig?.generationFolderNavigationEnabled) === true;
+  const sourcesExportEnabled = (bundleConfig?.generationMarkdownZipEnabled ?? appConfig?.generationMarkdownZipEnabled) === true;
+  const openKnowledgeFormatEnabled = bundleConfig?.generationOpenKnowledgeFormatEnabled === true;
+  const spacedRepetitionEnabled = (bundleConfig?.generationSpacedRepetitionEnabled ?? appConfig?.generationSpacedRepetitionEnabled) === true;
+  const spacedRepetitionTags = bundleConfig?.generationSpacedRepetitionTags
     ?? appConfig?.generationSpacedRepetitionTags
     ?? [];
 
-  const baseStyleCssDisabled = (siteConfig?.disableBaseStyleCss ?? appConfig?.disableBaseStyleCss) === true;
-  const baseJavascriptJsDisabled = (siteConfig?.disableBaseJavascriptJs ?? appConfig?.disableBaseJavascriptJs) === true;
+  const baseStyleCssDisabled = (bundleConfig?.disableBaseStyleCss ?? appConfig?.disableBaseStyleCss) === true;
+  const baseJavascriptJsDisabled = (bundleConfig?.disableBaseJavascriptJs ?? appConfig?.disableBaseJavascriptJs) === true;
 
   return { breadcrumbsEnabled, backlinksEnabled, tagsEnabled, searchEnabled, hoverPreviewEnabled, folderNavigationEnabled, sourcesExportEnabled, openKnowledgeFormatEnabled, spacedRepetitionEnabled, spacedRepetitionTags, baseStyleCssDisabled, baseJavascriptJsDisabled };
 }

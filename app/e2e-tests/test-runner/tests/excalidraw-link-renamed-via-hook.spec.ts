@@ -17,25 +17,25 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { Workflows } from "../src/run/workflows.js";
 import {
-  SiteEditorPage,
+  BundleEditorPage,
   PreviewPublishModal,
   CustomizeTab,
 } from "../src/run/pages/index.js";
 import { excalidraw, hooks } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
-test.use({ trackBigSiteExcalidrawPages: true });
+test.use({ trackBigBundleExcalidrawPages: true });
 
-// A maximally-aggressive page-title hook: every page on the site gets a
+// A maximally-aggressive page-title hook: every page on the bundle gets a
 // "myprefix " prepended to its title. The point is to exercise three places
 // the prefix has to flow through for an Excalidraw drawing:
 //   1. The embedding page's heading (`myprefix t006 - embedded media`).
 //   2. The standalone Excalidraw HTML file (the embed link must resolve to
 //      `myprefix t006 --- meadow-flower.html`, not `t006 --- meadow-flower.html`).
 //   3. The label and href of every wikilink rendered inside the SVG.
-const PREFIX_HOOK_SOURCE = `function pageTitleNormalization(siteSlug: string, pageTitle: string): string {
+const PREFIX_HOOK_SOURCE = `function pageTitleNormalization(bundleSlug: string, pageTitle: string): string {
   return 'myprefix ' + pageTitle;
 }
 `;
@@ -58,11 +58,11 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   );
 
   const wf = new Workflows(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   const modal = new PreviewPublishModal(page, expect);
-  const generatedSite = modal.generatedSite;
+  const generatedBundle = modal.generatedBundle;
 
-  await wf.navigateToBigSite();
+  await wf.navigateToBigBundle();
   await editor.clickPreview();
   await modal.waitForPreviewComplete();
   await snapshot("preview completed before hook installed");
@@ -94,26 +94,26 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   // to settle before navigating, otherwise we could click a stale link.
   await modal.expectPreviewIframeHeading("myprefix main page");
 
-  await generatedSite.clickPageLink("myprefix t006 - embedded media");
-  await generatedSite.expectHeading("myprefix t006 - embedded media");
+  await generatedBundle.clickPageLink("myprefix t006 - embedded media");
+  await generatedBundle.expectHeading("myprefix t006 - embedded media");
   await snapshot("embedding page rendered with myprefix heading");
 
   // Click the embed thumbnail. The embed `<a>` href must use the normalized
   // drawing title — otherwise this navigates to a 404 page.
-  await generatedSite.excalidraw.expectEmbedVisible();
-  await generatedSite.excalidraw.clickEmbed();
-  await generatedSite.expectHeading("myprefix t006 --- meadow-flower");
+  await generatedBundle.excalidraw.expectEmbedVisible();
+  await generatedBundle.excalidraw.clickEmbed();
+  await generatedBundle.expectHeading("myprefix t006 --- meadow-flower");
   await snapshot("standalone excalidraw page rendered with myprefix heading");
   await addKeyFrame(excalidraw);
 
-  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
+  await generatedBundle.excalidraw.expectStandaloneDrawingVisible();
 
   // The first non-aliased wikilink in the drawing points at
   // `t006 --- linked-from-excalidraw`. After the hook, both the rendered text
   // and the href on the surrounding `<a>` should reflect the prefix.
   const renamedHref =
     "myprefix%20t006%20---%20linked-from-excalidraw.html";
-  await generatedSite.excalidraw.expectStandaloneDrawingLink(
+  await generatedBundle.excalidraw.expectStandaloneDrawingLink(
     renamedHref,
     "myprefix t006 --- linked-from-excalidraw",
   );
@@ -122,20 +122,20 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   await addKeyFrame(hooks);
 
   // Sanity: the un-prefixed forms must not appear as link targets in the SVG.
-  await generatedSite.excalidraw.expectNoStandaloneDrawingLink(
+  await generatedBundle.excalidraw.expectNoStandaloneDrawingLink(
     "t006%20---%20linked-from-excalidraw.html",
   );
 
   // Following the link should land on the renamed page.
-  await generatedSite.excalidraw.clickStandaloneDrawingLink(renamedHref);
-  await generatedSite.expectHeading(
+  await generatedBundle.excalidraw.clickStandaloneDrawingLink(renamedHref);
+  await generatedBundle.expectHeading(
     "myprefix t006 --- linked-from-excalidraw",
   );
   await snapshot("navigated to renamed link target page");
 
   releaseWorkerWarning();
   releaseFontWarning();
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

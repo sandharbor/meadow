@@ -16,9 +16,9 @@ in-links of inlinks?  [[inlink]]s (no hyphen) Also [[outlink]]s
 
 In YAML, single or double quotes?  **double quotes**.  Functionally equivalent to single quotes in YAML, but matches what's in the fixtures, and is more conventional in YAML.
 
-camelCase or `snake_case` for config variables?  [[camel case]], like [[site config -- initialSitePageDirectory]] s, because we're primarily using TypeScript, and it will aid in 1:1 grepability.  TODO - need a coding motivation (or principles) page like [[design motivation]]
+camelCase or `snake_case` for config variables?  [[camel case]], like [[bundle config -- initialBundlePageDirectory]] s, because we're primarily using TypeScript, and it will aid in 1:1 grepability.  TODO - need a coding motivation (or principles) page like [[design motivation]]
 
-An empty [[site config -- initialSitePageDirectory]] should be "/" because that matches Obsidian's root page.
+An empty [[bundle config -- initialBundlePageDirectory]] should be "/" because that matches Obsidian's root page.
 
 ### Camel or Snake Case
 

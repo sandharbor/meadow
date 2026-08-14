@@ -1,0 +1,12 @@
+archivedAt: null
+bundleGuid: 4k7s0hd
+sourceDirectory: ./source_graphs/meadow-test-bundles-data
+bundleCreatedAt: 2025-06-02T16:25:00.000Z
+bundleLastPublishedAt: null
+bundleNotes: nested initial page, in link depth of one, hooks for html generation
+bundleUpdatedAt: 2025-12-14T17:34:47.908Z
+generatedBundleVersions: []
+defaultOutlinksDepth: 4
+defaultInlinksDepth: 1
+entryBundleNodeId: 5b1158d75da6
+defaultTraversalBundleNodeId: 5b1158d75da6

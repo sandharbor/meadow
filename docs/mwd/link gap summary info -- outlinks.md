@@ -14,4 +14,4 @@ And here is an example where there is a gap in just the outlinks:
 Outlinks: 33 (20 not in graph)
 ```
 
-Used in [[app component -- site page card - details]] and _link not tracked_
+Used in [[app component -- bundle page card - details]] and _link not tracked_

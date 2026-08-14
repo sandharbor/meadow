@@ -17,8 +17,8 @@ limitations under the License.
 import express from 'express';
 import fs from 'fs';
 import path, { join } from 'path';
-import { getConfigDirectory } from '../site-config/siteConfigPaths.js';
-import { getOriginalContent, readFileContent, getGitStatusMap, buildFileTree, buildChangedFilesTree } from '../utils/confFileExplorerUtils.js';
+import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
+import { getOriginalContent, readFileContent, getGitStatusMap, buildFileTree, buildChangedFilesTree } from '../utils/configFileExplorerUtils.js';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
 
 const router = express.Router();

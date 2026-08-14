@@ -1,0 +1,14 @@
+bundleGuid: x3d9p0k
+sourceDirectory: ./source_graphs/minimal-bundle-data
+publishPrefix: test123
+publishSlug: minimal-test-bundle
+bundleCreatedAt: 2025-01-01T00:00:00.000Z
+bundleLastPublishedAt: null
+bundleNotes: Minimal test bundle for backend unit tests
+bundleUpdatedAt: 2025-01-01T00:00:00.000Z
+generatedBundleVersions: []
+archivedAt: null
+defaultOutlinksDepth: 2
+defaultInlinksDepth: 0
+entryBundleNodeId: ed4ed1b9e5ce
+defaultTraversalBundleNodeId: ed4ed1b9e5ce

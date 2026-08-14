@@ -21,6 +21,6 @@ export const initialPage: ScenarioDoc = {
   name: "Initial Page",
   description:
     "Tests verifying that the initial page (depth 0) is protected from " +
-    "actions that would break the site graph, such as blacklisting, " +
+    "actions that would break the bundle graph, such as blacklisting, " +
     "untracking, or removing depth constraints.",
 };

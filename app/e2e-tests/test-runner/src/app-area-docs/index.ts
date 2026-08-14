@@ -17,104 +17,103 @@ limitations under the License.
 import { AppAreaDoc } from "./types.js";
 export type { AppAreaDoc } from "./types.js";
 
-export const sites: AppAreaDoc = {
-  id: "sites",
-  name: "Sites",
+export const bundles: AppAreaDoc = {
+  id: "bundles",
+  name: "Bundles",
   description:
-    "Tests focused on the sites list, moving between sites, and site-level " +
-    "list actions such as find-in-sites, archiving, and navigation.",
+    "Tests focused on the bundles list, moving between bundles, and bundle-level " +
+    "list actions such as find-in-bundles, archiving, and navigation.",
 };
 
-export const siteCuration: AppAreaDoc = {
-  id: "site/curation",
+export const bundleCuration: AppAreaDoc = {
+  id: "bundle/curation",
   name: "Curation",
-  parentId: "site",
+  parentId: "bundle",
   description:
-    "Tests focused on deciding which source pages are in scope for a site: " +
+    "Tests focused on deciding which source pages are in scope for a bundle: " +
     "filters, graph boundaries, callouts, tracking, labels, and page-level configuration.",
 };
 
-export const siteGeneration: AppAreaDoc = {
-  id: "site/generation",
+export const bundleGeneration: AppAreaDoc = {
+  id: "bundle/generation",
   name: "Generation",
-  parentId: "site",
+  parentId: "bundle",
   description:
-    "Tests focused on producing site output: HTML generation, hooks, customizations, " +
+    "Tests focused on producing bundle output: HTML generation, hooks, customizations, " +
     "assets, sources export, and generated-page rendering.",
 };
 
-export const siteReview: AppAreaDoc = {
-  id: "site/review",
+export const bundleReview: AppAreaDoc = {
+  id: "bundle/review",
   name: "Review",
-  parentId: "site",
+  parentId: "bundle",
   description:
     "Tests focused on previewing generated output and reviewing pending file changes " +
     "before they are saved or shared.",
 };
 
-export const siteSharing: AppAreaDoc = {
-  id: "site/sharing",
+export const bundleSharing: AppAreaDoc = {
+  id: "bundle/sharing",
   name: "Sharing",
-  parentId: "site",
+  parentId: "bundle",
   description:
-    "Tests focused on sharing or removing generated sites: publishing flows, provider " +
+    "Tests focused on sharing or removing generated bundles: publishing flows, provider " +
     "state, storage uploads, account gates, and local export boundaries.",
 };
 
 export const allAppAreaDocs: AppAreaDoc[] = [
-  sites,
-  siteCuration,
-  siteGeneration,
-  siteReview,
-  siteSharing,
+  bundles,
+  bundleCuration,
+  bundleGeneration,
+  bundleReview,
+  bundleSharing,
 ];
 
 const scenarioDocToAppAreaIds: Record<string, string[]> = {
-  account: ["site/sharing"],
-  archived: ["sites", "site/curation"],
-  blacklist: ["site/curation"],
-  callout: ["site/curation"],
-  "changes-tab": ["site/review"],
-  customize: ["site/generation"],
-  deletion: ["site/sharing"],
-  excalidraw: ["site/generation"],
-  filters: ["site/curation"],
-  "find-in-sites": ["sites"],
-  "free-sites": ["site/sharing"],
-  "free-trial": ["site/sharing"],
-  frontier: ["site/curation"],
-  git: ["site/sharing"],
-  hooks: ["site/generation"],
-  "html-generation": ["site/generation", "site/review"],
-  images: ["site/generation"],
-  "initial-page": ["site/curation"],
-  labels: ["site/curation"],
-  lambda: ["site/sharing"],
-  links: ["site/curation"],
-  "link-gap": ["site/curation"],
-  okf: ["site/generation", "site/sharing"],
-  "sources-export": ["site/generation", "site/sharing"],
-  migration: ["site/generation"],
-  "multi-site": ["sites"],
-  orphan: ["site/curation"],
-  overrides: ["site/curation"],
-  publishing: ["site/sharing"],
-  s3: ["site/sharing"],
-  search: ["site/curation"],
-  sensitive: ["site/curation"],
-  "site-config": ["site/curation"],
-  "size-limits": ["site/generation", "site/sharing"],
-  stripe: ["site/sharing"],
-  tracking: ["site/curation", "site/review"],
+  archived: ["bundles", "bundle/curation"],
+  blacklist: ["bundle/curation"],
+  callout: ["bundle/curation"],
+  "changes-tab": ["bundle/review"],
+  customize: ["bundle/generation"],
+  deletion: ["bundle/sharing"],
+  excalidraw: ["bundle/generation"],
+  filters: ["bundle/curation"],
+  "find-in-bundles": ["bundles"],
+  frontier: ["bundle/curation"],
+  git: ["bundle/sharing"],
+  hooks: ["bundle/generation"],
+  "html-generation": ["bundle/generation", "bundle/review"],
+  images: ["bundle/generation"],
+  "initial-page": ["bundle/curation"],
+  labels: ["bundle/curation"],
+  links: ["bundle/curation"],
+  "link-gap": ["bundle/curation"],
+  okf: ["bundle/generation", "bundle/sharing"],
+  "sources-export": ["bundle/generation", "bundle/sharing"],
+  migration: ["bundle/generation"],
+  "multi-bundle": ["bundles"],
+  orphan: ["bundle/curation"],
+  overrides: ["bundle/curation"],
+  publishing: ["bundle/sharing"],
+  s3: ["bundle/sharing"],
+  search: ["bundle/curation"],
+  sensitive: ["bundle/curation"],
+  "bundle-config": ["bundle/curation"],
+  tracking: ["bundle/curation", "bundle/review"],
 };
 
 export function deriveAppAreaDocIds(
   scenarioDocIds: string[],
-  explicitAppAreaDocIds: string[] = []
+  explicitAppAreaDocIds: string[] = [],
+  moduleScenarioDocToAppAreaIds: ReadonlyMap<string, readonly string[]> = new Map()
 ): string[] {
   const ids = new Set<string>(explicitAppAreaDocIds);
   for (const scenarioDocId of scenarioDocIds) {
-    for (const appAreaDocId of scenarioDocToAppAreaIds[scenarioDocId] ?? []) {
+    const appAreaDocIds = [
+      ...(scenarioDocToAppAreaIds[scenarioDocId] ?? []),
+      ...(moduleScenarioDocToAppAreaIds.get(scenarioDocId) ?? []),
+    ];
+    for (const appAreaDocId of appAreaDocIds) {
       ids.add(appAreaDocId);
     }
   }

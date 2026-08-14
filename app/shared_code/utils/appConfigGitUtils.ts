@@ -57,7 +57,7 @@ app/secret_app_config.yaml
 app/resources.local.yaml
 app/publishing_providers/*/pp_secrets.yaml
 app/publishing_providers/*/pp_resources.local.yaml
-sites/*/config/publishing_providers/*/pp_secrets.yaml
+bundles/*/config/publishing_providers/*/pp_secrets.yaml
 `;
 
 /**

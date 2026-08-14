@@ -17,29 +17,29 @@ limitations under the License.
 import type { Router } from 'express';
 import fs from 'fs';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils.js';
-import { getSiteDirectory } from '../../../../../backend/src/shared/site-config/siteConfigPaths.js';
+import { getBundleDirectory } from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
 import { getHtmlPathForPage } from '../../../../../backend/src/shared/utils/htmlPathLookup.js';
-import { loadValidatedSiteNodeConfiguration } from '../../../../../backend/src/shared/site-node/siteNodeConfigLoader.js';
+import { loadValidatedBundleNodeConfiguration } from '../../../../../backend/src/shared/bundle-node/bundleNodeConfigLoader.js';
 import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
 import { createS3Client, requireBucket } from '../s3Client.js';
 import { countPrefix } from '../s3Operations.js';
-import { loadS3ConfigForSite, loadS3Resources, loadS3Secrets, normalizeWebBaseUrl } from '../s3Config.js';
+import { loadS3ConfigForBundle, loadS3Resources, loadS3Secrets, normalizeWebBaseUrl } from '../s3Config.js';
 
 export function registerS3PublishedReadRoutes(router: Router): void {
-  // Published URL for the site (latest = current, since this provider has no versions).
-  router.get('/sites/:siteSlug/published-url', (req, res, next) => {
+  // Published URL for the bundle (latest = current, since this provider has no versions).
+  router.get('/bundles/:bundleSlug/published-url', (req, res, next) => {
     try {
-      const { siteSlug } = req.params;
-      if (!siteSlug) return res.status(400).json({ error: 'siteSlug is required' });
+      const { bundleSlug } = req.params;
+      if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
 
-      const siteDirectory = getSiteDirectory(siteSlug);
-      if (!fs.existsSync(siteDirectory)) {
-        return res.status(404).json({ error: `Site '${siteSlug}' not found` });
+      const bundleDirectory = getBundleDirectory(bundleSlug);
+      if (!fs.existsSync(bundleDirectory)) {
+        return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
 
-      const siteConfig = loadS3ConfigForSite(siteSlug);
-      if (!siteConfig.publishSlug) {
-        return res.status(404).json({ error: 'Site has not been published yet' });
+      const bundleConfig = loadS3ConfigForBundle(bundleSlug);
+      if (!bundleConfig.publishSlug) {
+        return res.status(404).json({ error: 'Bundle has not been published yet' });
       }
 
       const resources = loadS3Resources();
@@ -52,10 +52,10 @@ export function registerS3PublishedReadRoutes(router: Router): void {
 
       let landingPath = 'index.html';
       try {
-        const { defaultTraversalNode } = loadValidatedSiteNodeConfiguration(siteDirectory);
+        const { defaultTraversalNode } = loadValidatedBundleNodeConfiguration(bundleDirectory);
         const foundPath = getHtmlPathForPage(
-          siteDirectory,
-          defaultTraversalNode.siteNodeName,
+          bundleDirectory,
+          defaultTraversalNode.bundleNodeName,
           defaultTraversalNode.sourceGraphSubdirectory,
         );
         if (foundPath) landingPath = foundPath;
@@ -63,24 +63,24 @@ export function registerS3PublishedReadRoutes(router: Router): void {
         logger.warn('[S3PublishingProvider] Could not resolve traversal page:', error);
       }
 
-      res.json({ url: `${webBaseUrl}/${siteConfig.publishSlug}/${encodePathForUrl(landingPath)}` });
+      res.json({ url: `${webBaseUrl}/${bundleConfig.publishSlug}/${encodePathForUrl(landingPath)}` });
     } catch (error) {
       next(error);
     }
   });
 
-  // File counts at the published prefix — drives the delete-site confirmation UI.
-  router.get('/sites/:siteSlug/published-file-counts', (req, res, _next) => {
-    const { siteSlug } = req.params;
+  // File counts at the published prefix — drives the delete-bundle confirmation UI.
+  router.get('/bundles/:bundleSlug/published-file-counts', (req, res, _next) => {
+    const { bundleSlug } = req.params;
     (async () => {
       try {
-        if (!siteSlug) {
-          res.status(400).json({ error: 'siteSlug is required' });
+        if (!bundleSlug) {
+          res.status(400).json({ error: 'bundleSlug is required' });
           return;
         }
 
-        const siteConfig = loadS3ConfigForSite(siteSlug);
-        if (!siteConfig.publishSlug) {
+        const bundleConfig = loadS3ConfigForBundle(bundleSlug);
+        if (!bundleConfig.publishSlug) {
           res.json({ htmlCount: 0, otherCount: 0 });
           return;
         }
@@ -100,7 +100,7 @@ export function registerS3PublishedReadRoutes(router: Router): void {
           return;
         }
         const client = createS3Client(resources, secrets);
-        const summary = await countPrefix(client, bucket, siteConfig.publishSlug);
+        const summary = await countPrefix(client, bucket, bundleConfig.publishSlug);
         res.json(summary);
       } catch (error) {
         const err = error as Error;

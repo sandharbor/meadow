@@ -38,7 +38,7 @@ import path from "path";
 import YAML from "yaml";
 import { resolveFastGitOpsBinary } from "./utils/MeadowHomeGit.js";
 import { MinioS3 } from "./utils/MinioS3.js";
-import type { SiteMode } from "./siteMode.js";
+import type { BundleMode } from "./bundleMode.js";
 // assembleTestArtifacts is called in assembleRun() post-run, not during fixture teardown
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -49,20 +49,20 @@ const E2E_DIR = path.join(import.meta.dirname, "../..");
 const MINIO_BUCKET_PREFIX = "meadow-e2e-test";
 const MAX_TICK_UNCOMMITTED_CONTENT_BYTES = 256 * 1024;
 const MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES = 1024 * 1024;
-const BIG_SITE_EXCALIDRAW_PAGE_CONFIGS = [
+const BIG_BUNDLE_EXCALIDRAW_PAGE_CONFIGS = [
   {
     fileType: "excalidraw",
     listType: "whitelist",
     sourceGraphSubdirectory: "t006 - second directory",
-    siteNodeKind: "file",
-    siteNodeName: "embedded in page in other t006 directory",
+    bundleNodeKind: "file",
+    bundleNodeName: "embedded in page in other t006 directory",
   },
   {
     fileType: "excalidraw",
     listType: "whitelist",
     sourceGraphSubdirectory: "t006",
-    siteNodeKind: "file",
-    siteNodeName: "t006 --- meadow-flower",
+    bundleNodeKind: "file",
+    bundleNodeName: "t006 --- meadow-flower",
   },
 ];
 
@@ -176,9 +176,10 @@ export function waitForHttpReady(
  * Seed the config dir from a pre-migration MeadowHome snapshot resolved
  * via preMigrationFixturePath() (under
  * e2e-tests/test-runner/fixtures/pre-migration/). Copies the whole tree,
- * then rewrites each site_config.yaml's sourceDirectory to point at the
- * shared source_graphs/ so the tests don't depend on absolute paths
- * captured in the snapshot.
+ * then rewrites each current or legacy entity config's sourceDirectory to
+ * point at the shared source_graphs/ so the tests don't depend on absolute
+ * paths captured in the snapshot. The legacy names must remain in these
+ * frozen inputs so startup migrations exercise the real upgrade shape.
  *
  * Unlike populateConfigDir, this deliberately preserves the snapshot's
  * migrations.yaml — the point of these tests is to run the app with the
@@ -223,21 +224,38 @@ function populateConfigDirFromSnapshot(configDir: string, snapshotPath: string) 
   }
 
   const sourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
-  const sitesDir = path.join(configDir, "sites");
-  if (!existsSync(sitesDir)) return;
+  for (const { directoryName, configFileName } of [
+    { directoryName: "bundles", configFileName: "bundle_config.yaml" },
+    { directoryName: "sites", configFileName: "site_config.yaml" },
+  ]) {
+    const entitiesDirectory = path.join(configDir, directoryName);
+    if (!existsSync(entitiesDirectory)) continue;
 
-  for (const siteName of readdirSync(sitesDir)) {
-    const destSiteDir = path.join(sitesDir, siteName);
-    if (!statSync(destSiteDir).isDirectory()) continue;
+    for (const entityName of readdirSync(entitiesDirectory)) {
+      const entityDirectory = path.join(entitiesDirectory, entityName);
+      if (!statSync(entityDirectory).isDirectory()) continue;
 
-    const siteConfigPath = path.join(destSiteDir, "conf", "site_config.yaml");
-    if (!existsSync(siteConfigPath)) continue;
+      // Frozen snapshots may predate the conf → config migration. Prefer the
+      // canonical directory when both exist, but hydrate either layout before
+      // the backend starts and runs the migration chain.
+      const configPath = ["config", "conf"]
+        .map((directoryName) => path.join(entityDirectory, directoryName, configFileName))
+        .find((candidate) => existsSync(candidate));
+      if (!configPath) continue;
 
-    const config = YAML.parse(readFileSync(siteConfigPath, "utf8")) as Record<string, unknown>;
-    if (typeof config.sourceDirectory === "string") {
-      const sourceFolder = path.basename(config.sourceDirectory);
-      config.sourceDirectory = path.join(sourceGraphsDir, sourceFolder);
-      writeFileSync(siteConfigPath, YAML.stringify(config), "utf8");
+      const config = YAML.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+      if (typeof config.sourceDirectory === "string") {
+        const sourceFolder = path.basename(config.sourceDirectory);
+        const capturedSourcePath = path.join(sourceGraphsDir, sourceFolder);
+        const canonicalSourceFolder = sourceFolder
+          .replace(/sites/g, "bundles")
+          .replace(/site/g, "bundle");
+        const canonicalSourcePath = path.join(sourceGraphsDir, canonicalSourceFolder);
+        config.sourceDirectory = canonicalSourceFolder !== sourceFolder && existsSync(canonicalSourcePath)
+          ? canonicalSourcePath
+          : capturedSourcePath;
+        writeFileSync(configPath, YAML.stringify(config), "utf8");
+      }
     }
   }
 }
@@ -273,24 +291,24 @@ function populateConfigDir(configDir: string, fixtureName = "home_fixture_big_an
     });
   }
 
-  // Copy site directories and rewrite sourceDirectory paths
-  const sitesDir = path.join(configDir, "sites");
-  mkdirSync(sitesDir, { recursive: true });
+  // Copy bundle directories and rewrite sourceDirectory paths
+  const bundlesDir = path.join(configDir, "bundles");
+  mkdirSync(bundlesDir, { recursive: true });
 
-  const fixtureSitesDir = path.join(fixtureDir, "sites");
-  for (const siteName of readdirSync(fixtureSitesDir)) {
-    const srcSiteDir = path.join(fixtureSitesDir, siteName);
-    if (!statSync(srcSiteDir).isDirectory()) continue;
+  const fixtureBundlesDir = path.join(fixtureDir, "bundles");
+  for (const bundleName of readdirSync(fixtureBundlesDir)) {
+    const srcBundleDir = path.join(fixtureBundlesDir, bundleName);
+    if (!statSync(srcBundleDir).isDirectory()) continue;
 
-    const destSiteDir = path.join(sitesDir, siteName);
-    cpSync(srcSiteDir, destSiteDir, {
+    const destBundleDir = path.join(bundlesDir, bundleName);
+    cpSync(srcBundleDir, destBundleDir, {
       recursive: true,
       filter: (src) => !src.includes(".DS_Store"),
     });
 
-    const siteConfigPath = path.join(destSiteDir, "conf", "site_config.yaml");
-    if (existsSync(siteConfigPath)) {
-      const yamlContent = readFileSync(siteConfigPath, "utf8");
+    const bundleConfigPath = path.join(destBundleDir, "config", "bundle_config.yaml");
+    if (existsSync(bundleConfigPath)) {
+      const yamlContent = readFileSync(bundleConfigPath, "utf8");
       const config = YAML.parse(yamlContent) as Record<string, unknown>;
 
       if (config.sourceDirectory && typeof config.sourceDirectory === "string") {
@@ -298,48 +316,48 @@ function populateConfigDir(configDir: string, fixtureName = "home_fixture_big_an
         config.sourceDirectory = path.join(sourceGraphsDir, sourceFolder);
       }
 
-      writeFileSync(siteConfigPath, YAML.stringify(config), "utf8");
+      writeFileSync(bundleConfigPath, YAML.stringify(config), "utf8");
     }
   }
 }
 
-function trackBigSiteExcalidrawPages(configDir: string) {
-  const siteNodeConfigPath = path.join(
+function trackBigBundleExcalidrawPages(configDir: string) {
+  const bundleNodeConfigPath = path.join(
     configDir,
-    "sites",
-    "meadow-test-site-big",
-    "conf",
-    "site_node_config.yaml",
+    "bundles",
+    "meadow-test-bundle-big",
+    "config",
+    "bundle_node_config.yaml",
   );
-  if (!existsSync(siteNodeConfigPath)) return;
+  if (!existsSync(bundleNodeConfigPath)) return;
 
-  const parsed = YAML.parse(readFileSync(siteNodeConfigPath, "utf8")) as {
+  const parsed = YAML.parse(readFileSync(bundleNodeConfigPath, "utf8")) as {
     nodes?: Array<Record<string, unknown>>;
   } | null;
   const nodes = Array.isArray(parsed?.nodes) ? parsed.nodes : [];
   const keyFor = (node: {
     sourceGraphSubdirectory?: unknown;
-    siteNodeName?: unknown;
+    bundleNodeName?: unknown;
     fileType?: unknown;
   }) => [
     typeof node.sourceGraphSubdirectory === "string" ? node.sourceGraphSubdirectory : "",
-    typeof node.siteNodeName === "string" ? node.siteNodeName : "",
+    typeof node.bundleNodeName === "string" ? node.bundleNodeName : "",
     typeof node.fileType === "string" ? node.fileType : "",
   ].join("\u0000");
   const existing = new Set(nodes.map(keyFor));
-  for (const config of BIG_SITE_EXCALIDRAW_PAGE_CONFIGS) {
+  for (const config of BIG_BUNDLE_EXCALIDRAW_PAGE_CONFIGS) {
     const existingNode = nodes.find((node) => keyFor(node) === keyFor(config));
     if (existingNode) {
       Object.assign(existingNode, config);
     } else if (!existing.has(keyFor(config))) {
       nodes.push({
         ...config,
-        siteNodeId: createHash("sha256").update(`e2e:${keyFor(config)}`).digest("hex").slice(0, 12),
+        bundleNodeId: createHash("sha256").update(`e2e:${keyFor(config)}`).digest("hex").slice(0, 12),
       });
     }
   }
   writeFileSync(
-    siteNodeConfigPath,
+    bundleNodeConfigPath,
     YAML.stringify({ ...(parsed ?? {}), nodes }),
     "utf8",
   );
@@ -490,10 +508,10 @@ export type PreSpawnSeed = (deps: {
 // ---------------------------------------------------------------------------
 
 export const test = base.extend<{
-  /** How the scenario's site was originally seeded. Required in every spec. */
-  siteMode: SiteMode;
+  /** How the scenario's bundle was originally seeded. Required in every spec. */
+  bundleMode: BundleMode;
   fixtureHome: string;
-  trackBigSiteExcalidrawPages: boolean;
+  trackBigBundleExcalidrawPages: boolean;
   /**
    * Absolute path to a pre-migration MeadowHome snapshot (typically
    * resolved via preMigrationFixturePath()). When set, the test's
@@ -560,9 +578,9 @@ export const test = base.extend<{
    */
   _preSpawnSeed: PreSpawnSeed;
 }>({
-  siteMode: ["single-file", { option: true }],
+  bundleMode: ["single-file", { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
-  trackBigSiteExcalidrawPages: [false, { option: true }],
+  trackBigBundleExcalidrawPages: [false, { option: true }],
   migrationBeforePath: [null, { option: true }],
   // _backendExtraEnv and _preSpawnSeed are declared as fixtures (rather than
   // options) because their values are objects/functions that Playwright's
@@ -598,7 +616,7 @@ export const test = base.extend<{
   },
 
   testServer: [
-    async ({ fixtureHome, trackBigSiteExcalidrawPages: shouldTrackBigSiteExcalidrawPages, migrationBeforePath, _backendExtraEnv, _preSpawnSeed }, use, testInfo) => {
+    async ({ fixtureHome, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, migrationBeforePath, _backendExtraEnv, _preSpawnSeed }, use, testInfo) => {
       const workerIndex = testInfo.parallelIndex;
       const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
 
@@ -615,8 +633,8 @@ export const test = base.extend<{
       } else {
         populateConfigDir(configDir, fixtureHome);
       }
-      if (shouldTrackBigSiteExcalidrawPages) {
-        trackBigSiteExcalidrawPages(configDir);
+      if (shouldTrackBigBundleExcalidrawPages) {
+        trackBigBundleExcalidrawPages(configDir);
       }
 
       // 3. Read allocated ports from resources.local.yaml
@@ -871,7 +889,7 @@ export const test = base.extend<{
   ],
 
   artifactDir: [
-    async ({ page, testServer, minioS3, siteMode, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
+    async ({ page, testServer, minioS3, bundleMode, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
       const { configDir } = testServer;
 
       // Create artifact directory
@@ -901,9 +919,9 @@ export const test = base.extend<{
         testInfo.file
       );
 
-      // Keep the site-origin classification beside the other scalar inputs
+      // Keep the bundle-origin classification beside the other scalar inputs
       // so assembly and the report viewer never have to infer it from names.
-      writeFileSync(path.join(artifactDir, "site-mode.txt"), siteMode);
+      writeFileSync(path.join(artifactDir, "bundle-mode.txt"), bundleMode);
 
       // --- Tick recording ---
       const tickLogPath = path.join(artifactDir, "ticks.jsonl");
@@ -935,7 +953,7 @@ export const test = base.extend<{
       // last result when neither has changed. This matters: running
       // `git ls-files --ignored` every tick across 16 parallel workers
       // caused I/O contention that destabilized
-      // unrelated tests (publish-flow, site-deletion) with empty-error
+      // unrelated tests (publish-flow, bundle-deletion) with empty-error
       // timeouts. The cache collapses the steady-state cost to zero
       // subprocess calls per tick while remaining correct when files
       // or .gitignore change. .gitignore changes very rarely (it's

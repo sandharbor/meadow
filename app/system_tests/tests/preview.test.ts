@@ -26,7 +26,7 @@ import {
   clearHooksCache,
   getSourceGraphsPath
 } from '../helpers/serverManager.js';
-import { SystemTestSiteSetup } from '../helpers/testSetup.js';
+import { SystemTestBundleSetup } from '../helpers/testSetup.js';
 
 function stripPagespecBlocks(content: string): string {
   const lines = content.split(/\r?\n/);
@@ -76,13 +76,13 @@ describe('Preview System Tests', () => {
   });
 
   describe('preview generation via API', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_big_and_small', 
         'preview-test',
-        { siteFolderName: 'meadow-test-site-big' }
+        { bundleFolderName: 'meadow-test-bundle-big' }
       );
       testSetup.setUp();
     });
@@ -92,10 +92,10 @@ describe('Preview System Tests', () => {
     });
 
     it('should generate preview HTML via API', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+      const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -106,7 +106,7 @@ describe('Preview System Tests', () => {
       expect(result.message).toContain('preview generated');
 
       // Verify preview folder was created
-      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
+      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
       expect(fs.existsSync(generatedHtmlFolderPath)).toBe(true);
 
       // Verify HTML files were generated
@@ -127,29 +127,29 @@ describe('Preview System Tests', () => {
     });
 
     it('should not create a published folder when previewing', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+      const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
       expect(response.ok).toBe(true);
 
       // Verify published folder was NOT created
-      const publishedFolderPath = testSetup!.getPathInSite('html/generated_site_versions');
+      const publishedFolderPath = testSetup!.getPathInBundle('html/generated_bundle_versions');
       expect(fs.existsSync(publishedFolderPath)).toBe(false);
     });
   });
 
-  describe('matching the expected preview site', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+  describe('matching the expected preview bundle', () => {
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_big_and_small', 
         'fixture-test',
-        { siteFolderName: 'meadow-test-site-big' }
+        { bundleFolderName: 'meadow-test-bundle-big' }
       );
       testSetup.setUp();
     });
@@ -158,19 +158,19 @@ describe('Preview System Tests', () => {
       testSetup?.tearDown();
     });
 
-    it('should create content matching the expected preview site', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+    it('should create content matching the expected preview bundle', async () => {
+      const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
       expect(response.ok).toBe(true);
 
       // Get paths
-      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
-      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-big-preview');
 
       // Ensure the expected results folder exists
       expect(fs.existsSync(expectedResultsFolder)).toBe(true);
@@ -197,7 +197,7 @@ describe('Preview System Tests', () => {
       const hasUntrackedFiles = gitUntrackedStatus.trim().length > 0;
       
       if (hasUnstagedChanges || hasUntrackedFiles) {
-        console.log('Unstaged changes detected in expected preview site folder:');
+        console.log('Unstaged changes detected in expected preview bundle folder:');
         if (hasUnstagedChanges) {
           console.log('Modified/Deleted files (unstaged):');
           console.log(gitDiffStatus);
@@ -223,14 +223,14 @@ describe('Preview System Tests', () => {
     });
   });
 
-  describe('matching the expected preview site (srs)', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+  describe('matching the expected preview bundle (srs)', () => {
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_srs',
         'fixture-test-srs',
-        { siteFolderName: 'meadow-test-site-big' }
+        { bundleFolderName: 'meadow-test-bundle-big' }
       );
       testSetup.setUp();
     });
@@ -240,10 +240,10 @@ describe('Preview System Tests', () => {
     });
 
     it('should backfill GUIDs into the isolated source graph without mutating the shared fixture', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+      const bundleSlug = testSetup!.getBundleSlug();
       const sharedBetaPath = path.join(
         getSourceGraphsPath(),
-        'meadow-test-sites-data',
+        'meadow-test-bundles-data',
         't022',
         't022 ---- beta cards.md'
       );
@@ -256,7 +256,7 @@ describe('Preview System Tests', () => {
 
       expect(isolatedBetaBefore).toBe(sharedBetaBefore);
 
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
@@ -280,17 +280,17 @@ describe('Preview System Tests', () => {
       expect(isolatedBetaAfter).toMatch(/<!--SR:!2026-03-14,4,250-->\n\n<!--MEADOW_SR_GUID:[a-f0-9]{13}-->/);
     });
 
-    it('should create content matching the expected preview site for srs', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+    it('should create content matching the expected preview bundle for srs', async () => {
+      const bundleSlug = testSetup!.getBundleSlug();
 
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
       expect(response.ok).toBe(true);
 
-      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
-      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-srs-preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-big-srs-preview');
 
       expect(fs.existsSync(expectedResultsFolder)).toBe(true);
 
@@ -311,7 +311,7 @@ describe('Preview System Tests', () => {
       const hasUntrackedFiles = gitUntrackedStatus.trim().length > 0;
 
       if (hasUnstagedChanges || hasUntrackedFiles) {
-        console.log('Unstaged changes detected in expected preview site folder:');
+        console.log('Unstaged changes detected in expected preview bundle folder:');
         if (hasUnstagedChanges) {
           console.log('Modified/Deleted files (unstaged):');
           console.log(gitDiffStatus);
@@ -336,20 +336,20 @@ describe('Preview System Tests', () => {
     });
   });
 
-  describe('matching the expected sources export build (big site)', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+  describe('matching the expected sources export build (big bundle)', () => {
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_big_and_small',
         'fixture-test-sources-export',
-        { siteFolderName: 'meadow-test-site-big' }
+        { bundleFolderName: 'meadow-test-bundle-big' }
       );
       testSetup.setUp();
 
-      // Enable sources ZIP export and SRS on the big site
-      const siteConfigPath = testSetup.getPathInSite('conf/site_config.yaml');
-      fs.appendFileSync(siteConfigPath, 'generationMarkdownZipEnabled: true\ngenerationSpacedRepetitionEnabled: true\ngenerationSpacedRepetitionTags:\n  - "#t022-srs"\n', 'utf8');
+      // Enable sources ZIP export and SRS on the big bundle
+      const bundleConfigPath = testSetup.getPathInBundle('config/bundle_config.yaml');
+      fs.appendFileSync(bundleConfigPath, 'generationMarkdownZipEnabled: true\ngenerationSpacedRepetitionEnabled: true\ngenerationSpacedRepetitionTags:\n  - "#t022-srs"\n', 'utf8');
     });
 
     afterEach(() => {
@@ -357,19 +357,19 @@ describe('Preview System Tests', () => {
     });
 
     it('should create build/sources_export matching the expected golden set', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+      const bundleSlug = testSetup!.getBundleSlug();
 
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
       expect(response.ok).toBe(true);
 
       // Verify the intermediate build directory was created
-      const sourcesExportPath = testSetup!.getPathInSite('build/sources_export');
+      const sourcesExportPath = testSetup!.getPathInBundle('build/sources_export');
       expect(fs.existsSync(sourcesExportPath)).toBe(true);
 
-      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-markdown-export-build');
+      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-big-markdown-export-build');
 
       // Create expected results folder if it doesn't exist (first run)
       if (!fs.existsSync(expectedResultsFolder)) {
@@ -422,20 +422,20 @@ describe('Preview System Tests', () => {
     });
   });
 
-  describe('matching the expected OKF bundle (big site)', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+  describe('matching the expected OKF bundle (big bundle)', () => {
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_big_and_small',
         'fixture-test-okf',
-        { siteFolderName: 'meadow-test-site-big' }
+        { bundleFolderName: 'meadow-test-bundle-big' }
       );
       testSetup.setUp();
       removePagespecBlocksFromMarkdownFiles(testSetup.getSourceGraphPath());
 
-      const siteConfigPath = testSetup.getPathInSite('conf/site_config.yaml');
-      fs.appendFileSync(siteConfigPath, 'generationOpenKnowledgeFormatEnabled: true\n', 'utf8');
+      const bundleConfigPath = testSetup.getPathInBundle('config/bundle_config.yaml');
+      fs.appendFileSync(bundleConfigPath, 'generationOpenKnowledgeFormatEnabled: true\n', 'utf8');
     });
 
     afterEach(() => {
@@ -443,18 +443,18 @@ describe('Preview System Tests', () => {
     });
 
     it('should create the OKF preview bundle matching the expected golden set', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+      const bundleSlug = testSetup!.getBundleSlug();
 
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
       expect(response.ok).toBe(true);
 
-      const okfBundlePath = testSetup!.getPathInSite('html/generated/_mw_assets/cust/okf/bundle');
+      const okfBundlePath = testSetup!.getPathInBundle('html/generated/_mw_assets/cust/okf/bundle');
       expect(fs.existsSync(okfBundlePath)).toBe(true);
 
-      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-big-okf-preview');
+      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-big-okf-preview');
 
       if (!fs.existsSync(expectedResultsFolder)) {
         fs.mkdirSync(expectedResultsFolder, { recursive: true });
@@ -504,14 +504,14 @@ describe('Preview System Tests', () => {
     });
   });
 
-  describe('matching the expected preview site (nested_and_hooks)', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+  describe('matching the expected preview bundle (nested_and_hooks)', () => {
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_nested', 
         'fixture-test-nested',
-        { siteFolderName: 'meadow-test-site-nested' }
+        { bundleFolderName: 'meadow-test-bundle-nested' }
       );
       testSetup.setUp();
     });
@@ -520,19 +520,19 @@ describe('Preview System Tests', () => {
       testSetup?.tearDown();
     });
 
-    it('should create content matching the expected preview site for nested_and_hooks', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+    it('should create content matching the expected preview bundle for nested_and_hooks', async () => {
+      const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
       expect(response.ok).toBe(true);
 
       // Get paths
-      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
-      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-nested-preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-nested-preview');
 
       // Create expected results folder if it doesn't exist (first run)
       if (!fs.existsSync(expectedResultsFolder)) {
@@ -563,7 +563,7 @@ describe('Preview System Tests', () => {
       const hasUntrackedFiles = gitUntrackedStatus.trim().length > 0;
       
       if (hasUnstagedChanges || hasUntrackedFiles) {
-        console.log('Unstaged changes detected in expected preview site folder:');
+        console.log('Unstaged changes detected in expected preview bundle folder:');
         if (hasUnstagedChanges) {
           console.log('Modified/Deleted files (unstaged):');
           console.log(gitDiffStatus);
@@ -589,14 +589,14 @@ describe('Preview System Tests', () => {
     });
   });
 
-  describe('matching the expected preview site (example)', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+  describe('matching the expected preview bundle (example)', () => {
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_example',
         'fixture-test-example',
-        { siteFolderName: 'example-site' }
+        { bundleFolderName: 'example-bundle' }
       );
       testSetup.setUp();
     });
@@ -605,19 +605,19 @@ describe('Preview System Tests', () => {
       testSetup?.tearDown();
     });
 
-    it('should create content matching the expected preview site for example', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+    it('should create content matching the expected preview bundle for example', async () => {
+      const bundleSlug = testSetup!.getBundleSlug();
 
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
       expect(response.ok).toBe(true);
 
       // Get paths
-      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
-      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'example-site-preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'example-bundle-preview');
 
       // Verify no raw markdown links leaked into the HTML output.
       // This catches cases where markdown like [text](url) wasn't converted to
@@ -659,7 +659,7 @@ describe('Preview System Tests', () => {
       const hasUntrackedFiles = gitUntrackedStatus.trim().length > 0;
 
       if (hasUnstagedChanges || hasUntrackedFiles) {
-        console.log('Unstaged changes detected in expected preview site folder:');
+        console.log('Unstaged changes detected in expected preview bundle folder:');
         if (hasUnstagedChanges) {
           console.log('Modified/Deleted files (unstaged):');
           console.log(gitDiffStatus);
@@ -685,14 +685,14 @@ describe('Preview System Tests', () => {
     });
   });
 
-  describe('matching the expected preview site (hooks)', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+  describe('matching the expected preview bundle (hooks)', () => {
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(async () => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_hooks', 
         'fixture-test-hooks',
-        { siteFolderName: 'meadow-test-site-for-hooks' }
+        { bundleFolderName: 'meadow-test-bundle-for-hooks' }
       );
       testSetup.setUp();
       
@@ -710,19 +710,19 @@ describe('Preview System Tests', () => {
       testSetup?.tearDown();
     });
 
-    it('should create content matching the expected preview site for hooks', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
+    it('should create content matching the expected preview bundle for hooks', async () => {
+      const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
-      const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
 
       expect(response.ok).toBe(true);
 
       // Get paths
-      const generatedHtmlFolderPath = testSetup!.getPathInSite('html/generated');
-      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-site-for-hooks-preview');
+      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-for-hooks-preview');
 
       // Create expected results folder if it doesn't exist (first run)
       if (!fs.existsSync(expectedResultsFolder)) {
@@ -753,7 +753,7 @@ describe('Preview System Tests', () => {
       const hasUntrackedFiles = gitUntrackedStatus.trim().length > 0;
       
       if (hasUnstagedChanges || hasUntrackedFiles) {
-        console.log('Unstaged changes detected in expected preview site folder:');
+        console.log('Unstaged changes detected in expected preview bundle folder:');
         if (hasUnstagedChanges) {
           console.log('Modified/Deleted files (unstaged):');
           console.log(gitDiffStatus);

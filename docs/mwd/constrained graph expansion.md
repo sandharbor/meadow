@@ -1,7 +1,7 @@
 
 ### Graph expansion from in-links
 
-Let's say you have this graph, which you got from starting at the [[site page type -- initial]] and doing a standard [[outlink]] graph expansion.  The initial page has [[outlink]]s to `e1_1` and `e1_2`, so the graph expands to include them.
+Let's say you have this graph, which you got from starting at the [[bundle page type -- initial]] and doing a standard [[outlink]] graph expansion.  The initial page has [[outlink]]s to `e1_1` and `e1_2`, so the graph expands to include them.
 
 ```mermaid
 graph TD
@@ -57,11 +57,11 @@ From this example, it is clear that the expansion of the graph is not *purely* b
 
 [[Meadow]] generally doesn't publish _entire_ [[source graph]]s, but rather [[to review - subgraph]]s.  That means we need to be able to constrain the publishing somehow.  
 
-meadow-todo we have subsequently added [[site page config -- outlinksDepth]] and [[site page config -- inlinksDepth]] .  Need to update the block below.
+meadow-todo we have subsequently added [[bundle page config -- outlinksDepth]] and [[bundle page config -- inlinksDepth]] .  Need to update the block below.
 :
-We do this with either [[site page tracking state -- tracked]], which is essentially whitelisting, or [[blacklist]]s.  Let's consider blacklists here.
+We do this with either [[bundle page tracking state -- tracked]], which is essentially whitelisting, or [[blacklist]]s.  Let's consider blacklists here.
 
-If the [[inlink]] is added to the [[blacklist]] or the [[filter example -- source page - page criteria matches]], then it does not show up in the [[backlink]] listing (and those pages from the second expansion do not become connected to the [[published site type -- local html]], either).  So, below, you do not see `e2_1` in the backlinks for `e1_2`.  This type of link is called [[link type - internal - in-link - quietly hidden]] and is [[published graph constraining]].
+If the [[inlink]] is added to the [[blacklist]] or the [[filter example -- source page - page criteria matches]], then it does not show up in the [[backlink]] listing (and those pages from the second expansion do not become connected to the [[published bundle type -- local html]], either).  So, below, you do not see `e2_1` in the backlinks for `e1_2`.  This type of link is called [[link type - internal - in-link - quietly hidden]] and is [[published graph constraining]].
 
 ```mermaid
 graph TD
@@ -71,7 +71,7 @@ graph TD
     classDef blacklisted stroke:#ff0000
 ```
 
-*Although the page is shown in the diagram, is only shown for illustrative purposes, to show it is blacklisted.  It would highlight to the [[publisher]] in the [[app component -- site page views]] if they enabled [[site pages filter option -- blacklisted]], however, it is not actually published to the [[published site type -- local html]], so no [[reader]] would ever see it*
+*Although the page is shown in the diagram, is only shown for illustrative purposes, to show it is blacklisted.  It would highlight to the [[publisher]] in the [[app component -- bundle page views]] if they enabled [[bundle pages filter option -- blacklisted]], however, it is not actually published to the [[published bundle type -- local html]], so no [[reader]] would ever see it*
 
 ### Blacklisting out-links
 
@@ -96,4 +96,4 @@ It depends on the sensitivity of the material in the blacklisted `e2_1` and the 
 	* [[link type - internal - out-link - quietly hidden]] (there's just a gap in the text, which can be [[surprising]])
 	* [[link type - internal - out-link - loudly blocked]] (makes it clear that the viewer was blocked from seeing something... but that there was a concept there)
 
-A more aggressive modification approach, which we mentioned earlier and called [[block modification]], might be to allow for more comprehensive [[source page section -- body]] modification, to allow the [[publisher]] to cleanly tie up the loose ends at [[leaf site page]]s.  They could reword sections to remove [[unfulfillable outlink]]s in a natural way, for example.  This could introduce a continual [[maintenance burden]], however, because it essentially forks the original blocks.  Dealing with that burden might be an [[meadow AI opportunity]].
+A more aggressive modification approach, which we mentioned earlier and called [[block modification]], might be to allow for more comprehensive [[source page section -- body]] modification, to allow the [[publisher]] to cleanly tie up the loose ends at [[leaf bundle page]]s.  They could reword sections to remove [[unfulfillable outlink]]s in a natural way, for example.  This could introduce a continual [[maintenance burden]], however, because it essentially forks the original blocks.  Dealing with that burden might be an [[meadow AI opportunity]].

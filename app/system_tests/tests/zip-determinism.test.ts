@@ -18,50 +18,50 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
-import { parseSiteNodeConfig, stringifySiteNodeConfig } from '../../shared_code/utils/siteNodeConfigUtils.js';
+import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../shared_code/utils/bundleNodeConfigUtils.js';
 import {
   startServer,
   stopServer,
   TEST_BASE_URL
 } from '../helpers/serverManager.js';
-import { SystemTestSiteSetup } from '../helpers/testSetup.js';
+import { SystemTestBundleSetup } from '../helpers/testSetup.js';
 import { readCompressionManifest } from '../../shared_code/utils/compressionManifestUtils.js';
 
-const BIG_SITE_EXCALIDRAW_PAGE_CONFIGS = [
+const BIG_BUNDLE_EXCALIDRAW_PAGE_CONFIGS = [
   {
     fileType: 'excalidraw',
     listType: 'whitelist',
     sourceGraphSubdirectory: 't006 - second directory',
-    siteNodeName: 'embedded in page in other t006 directory',
+    bundleNodeName: 'embedded in page in other t006 directory',
   },
   {
     fileType: 'excalidraw',
     listType: 'whitelist',
     sourceGraphSubdirectory: 't006',
-    siteNodeName: 't006 --- meadow-flower',
+    bundleNodeName: 't006 --- meadow-flower',
   },
 ] as const;
 
-function trackBigSiteExcalidrawPages(testSetup: SystemTestSiteSetup) {
-  const siteNodeConfigPath = testSetup.getPathInSite('conf/site_node_config.yaml');
-  const nodes = parseSiteNodeConfig(fs.readFileSync(siteNodeConfigPath, 'utf8'), siteNodeConfigPath);
+function trackBigBundleExcalidrawPages(testSetup: SystemTestBundleSetup) {
+  const bundleNodeConfigPath = testSetup.getPathInBundle('config/bundle_node_config.yaml');
+  const nodes = parseBundleNodeConfig(fs.readFileSync(bundleNodeConfigPath, 'utf8'), bundleNodeConfigPath);
   const keyFor = (node: {
     sourceGraphSubdirectory?: unknown;
-    siteNodeName?: unknown;
+    bundleNodeName?: unknown;
     fileType?: unknown;
   }) => [
     typeof node.sourceGraphSubdirectory === 'string' ? node.sourceGraphSubdirectory : '',
-    typeof node.siteNodeName === 'string' ? node.siteNodeName : '',
+    typeof node.bundleNodeName === 'string' ? node.bundleNodeName : '',
     typeof node.fileType === 'string' ? node.fileType : '',
   ].join('\u0000');
 
-  for (const config of BIG_SITE_EXCALIDRAW_PAGE_CONFIGS) {
+  for (const config of BIG_BUNDLE_EXCALIDRAW_PAGE_CONFIGS) {
     const existingNode = nodes.find((node) => keyFor(node) === keyFor(config));
-    if (!existingNode) throw new Error(`Fixture node missing: ${config.siteNodeName}`);
+    if (!existingNode) throw new Error(`Fixture node missing: ${config.bundleNodeName}`);
     existingNode.listType = config.listType;
   }
 
-  fs.writeFileSync(siteNodeConfigPath, stringifySiteNodeConfig(nodes), 'utf8');
+  fs.writeFileSync(bundleNodeConfigPath, stringifyBundleNodeConfig(nodes), 'utf8');
 }
 
 describe('Generated archive determinism', () => {
@@ -74,17 +74,17 @@ describe('Generated archive determinism', () => {
   });
 
   describe('sources export ZIP', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_big_and_small',
         'zip-determinism-sources-export',
-        { siteFolderName: 'meadow-test-site-big' }
+        { bundleFolderName: 'meadow-test-bundle-big' }
       );
       testSetup.setUp();
-      const siteConfigPath = testSetup.getPathInSite('conf/site_config.yaml');
-      fs.appendFileSync(siteConfigPath, 'generationMarkdownZipEnabled: true\n', 'utf8');
+      const bundleConfigPath = testSetup.getPathInBundle('config/bundle_config.yaml');
+      fs.appendFileSync(bundleConfigPath, 'generationMarkdownZipEnabled: true\n', 'utf8');
     });
 
     afterEach(() => {
@@ -92,11 +92,11 @@ describe('Generated archive determinism', () => {
     });
 
     it('produces byte-identical ZIPs across two consecutive preview runs', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
-      const sourcesExportDir = testSetup!.getPathInSite('html/generated/_mw_assets/cust/sources-export');
+      const bundleSlug = testSetup!.getBundleSlug();
+      const sourcesExportDir = testSetup!.getPathInBundle('html/generated/_mw_assets/cust/sources-export');
 
       async function runPreviewAndReadZip(): Promise<{ filename: string; bytes: Buffer }> {
-        const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+        const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);
@@ -104,7 +104,7 @@ describe('Generated archive determinism', () => {
         const manifestPath = path.join(sourcesExportDir, 'sources-export-manifest.json');
         expect(fs.existsSync(manifestPath)).toBe(true);
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { zipFilename: string; downloadFilename: string };
-        expect(manifest.downloadFilename).toBe('meadow-test-site-big-sources.zip');
+        expect(manifest.downloadFilename).toBe('meadow-test-bundle-big-sources.zip');
 
         const zipPath = path.join(sourcesExportDir, manifest.zipFilename);
         expect(fs.existsSync(zipPath)).toBe(true);
@@ -130,16 +130,16 @@ describe('Generated archive determinism', () => {
   });
 
   describe('pre-gzipped shared assets', () => {
-    let testSetup: SystemTestSiteSetup | undefined;
+    let testSetup: SystemTestBundleSetup | undefined;
 
     beforeEach(() => {
-      testSetup = new SystemTestSiteSetup(
+      testSetup = new SystemTestBundleSetup(
         'home_fixture_big_and_small',
         'zip-determinism-gzipped-assets',
-        { siteFolderName: 'meadow-test-site-big' }
+        { bundleFolderName: 'meadow-test-bundle-big' }
       );
       testSetup.setUp();
-      trackBigSiteExcalidrawPages(testSetup);
+      trackBigBundleExcalidrawPages(testSetup);
     });
 
     afterEach(() => {
@@ -147,11 +147,11 @@ describe('Generated archive determinism', () => {
     });
 
     it('produces byte-identical gzipped assets and stable URL hashes across two runs', async () => {
-      const siteSlug = testSetup!.getSiteSlug();
-      const assetsDir = testSetup!.getPathInSite('html/generated/_mw_assets');
+      const bundleSlug = testSetup!.getBundleSlug();
+      const assetsDir = testSetup!.getPathInBundle('html/generated/_mw_assets');
 
       async function runPreviewAndReadGzipped(): Promise<Map<string, Buffer>> {
-        const response = await fetch(`${TEST_BASE_URL}/api/sites/${siteSlug}/generation/preview`, {
+        const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);

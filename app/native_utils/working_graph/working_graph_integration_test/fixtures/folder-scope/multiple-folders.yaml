@@ -1,18 +1,18 @@
 nodes:
-  - siteNodeName: Empty
+  - bundleNodeName: Empty
     sourceGraphSubdirectory: Empty
-    siteNodeKind: folder
-    siteNodeId: e1b2c3d4e5f6
+    bundleNodeKind: folder
+    bundleNodeId: e1b2c3d4e5f6
     listType: whitelist
-  - siteNodeName: Projects
+  - bundleNodeName: Projects
     sourceGraphSubdirectory: Projects
-    siteNodeKind: folder
-    siteNodeId: p1b2c3d4e5f6
+    bundleNodeKind: folder
+    bundleNodeId: p1b2c3d4e5f6
     listType: whitelist
-  - siteNodeName: Folder site
-    siteNodeKind: collection
-    siteNodeId: c1b2c3d4e5f6
+  - bundleNodeName: Folder bundle
+    bundleNodeKind: collection
+    bundleNodeId: c1b2c3d4e5f6
     listType: whitelist
-    memberSiteNodeIds:
+    memberBundleNodeIds:
       - p1b2c3d4e5f6
       - e1b2c3d4e5f6

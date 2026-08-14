@@ -27,16 +27,20 @@ import os from "os";
 import path from "path";
 import { performance } from "perf_hooks";
 import * as scenarioDocExports from "../scenario-docs/index.ts";
-import * as siteDocExports from "../site-docs/index.ts";
+import * as bundleDocExports from "../bundle-docs/index.ts";
 import * as appAreaDocExports from "../app-area-docs/index.ts";
 import { deriveAppAreaDocIds } from "../app-area-docs/index.ts";
-import { isSiteMode, type SiteMode } from "../run/siteMode.ts";
+import { isBundleMode, type BundleMode } from "../run/bundleMode.ts";
 
 // Build a map from export name (e.g. "htmlGeneration") to doc ID (e.g. "html-generation")
 const exportNameToDocId = new Map<string, string>();
+const moduleScenarioDocToAppAreaIds = new Map<string, readonly string[]>();
 for (const [key, value] of Object.entries(scenarioDocExports)) {
   if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
     exportNameToDocId.set(key, value.id);
+    if ("appAreaDocIds" in value && Array.isArray(value.appAreaDocIds)) {
+      moduleScenarioDocToAppAreaIds.set(value.id, value.appAreaDocIds as string[]);
+    }
   }
 }
 
@@ -50,17 +54,21 @@ for (const [key, value] of Object.entries(scenarioDocExports)) {
     const mod = await import(extPath) as Record<string, unknown>;
     for (const [key, value] of Object.entries(mod)) {
       if (value && typeof value === "object" && "id" in value && typeof (value as { id: unknown }).id === "string") {
-        exportNameToDocId.set(key, (value as { id: string }).id);
+        const scenarioDoc = value as { id: string; appAreaDocIds?: string[] };
+        exportNameToDocId.set(key, scenarioDoc.id);
+        if (scenarioDoc.appAreaDocIds) {
+          moduleScenarioDocToAppAreaIds.set(scenarioDoc.id, scenarioDoc.appAreaDocIds);
+        }
       }
     }
   }
 }
 
-// Build a parallel map for site doc exports
-const siteExportNameToDocId = new Map<string, string>();
-for (const [key, value] of Object.entries(siteDocExports)) {
+// Build a parallel map for bundle doc exports
+const bundleExportNameToDocId = new Map<string, string>();
+for (const [key, value] of Object.entries(bundleDocExports)) {
   if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
-    siteExportNameToDocId.set(key, value.id);
+    bundleExportNameToDocId.set(key, value.id);
   }
 }
 
@@ -90,15 +98,15 @@ function extractScenarioDocIds(testSource: string): string[] {
   return ids;
 }
 
-function extractSiteDocIds(testSource: string): string[] {
+function extractBundleDocIds(testSource: string): string[] {
   const match = testSource.match(
-    /import\s+\{([^}]+)\}\s+from\s+["'][^"']*site-docs[^"']*["']/
+    /import\s+\{([^}]+)\}\s+from\s+["'][^"']*bundle-docs[^"']*["']/
   );
   if (!match) return [];
 
   const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
   return names
-    .map((name) => siteExportNameToDocId.get(name.split(/\s+as\s+/)[0]))
+    .map((name) => bundleExportNameToDocId.get(name.split(/\s+as\s+/)[0]))
     .filter((id): id is string => !!id);
 }
 
@@ -237,9 +245,9 @@ interface Manifest {
   uncommittedEntries: UncommittedEntry[];
   testSourceFile: string;
   testSource: string;
-  siteMode: SiteMode | null;
+  bundleMode: BundleMode | null;
   scenarioDocIds: string[];
-  siteDocIds: string[];
+  bundleDocIds: string[];
   appAreaDocIds: string[];
   keyFrames: KeyFrame[];
   ticks: ProcessedTick[];
@@ -319,9 +327,9 @@ interface ScenarioReportMeta {
   scenarioInfo: {
     testName: string;
     duration: number | null;
-    siteMode: SiteMode | null;
+    bundleMode: BundleMode | null;
     scenarioDocIds: string[];
-    siteDocIds: string[];
+    bundleDocIds: string[];
     appAreaDocIds: string[];
     keyFrames: { docId: string; filename: string; timestamp?: string }[];
     failureReason?: string;
@@ -1019,7 +1027,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, startTime, endTime, logs, uncommittedEntries, siteMode, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames } = manifest;
+  const { testName, startTime, endTime, logs, uncommittedEntries, bundleMode, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1032,7 +1040,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { testName, duration, siteMode, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { testName, duration, bundleMode, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1274,25 +1282,26 @@ export function assembleTestArtifacts(testDir: string): void {
     }
   });
 
-  const siteMode = measured(assemblySteps, "read site mode", () => {
-    const siteModePath = path.join(testDir, "site-mode.txt");
-    if (!existsSync(siteModePath)) return null;
-    const value = readFileSync(siteModePath, "utf8").trim();
-    if (!isSiteMode(value)) {
-      throw new Error(`Invalid site mode in ${siteModePath}: ${JSON.stringify(value)}`);
+  const bundleMode = measured(assemblySteps, "read bundle mode", () => {
+    const bundleModePath = path.join(testDir, "bundle-mode.txt");
+    if (!existsSync(bundleModePath)) return null;
+    const value = readFileSync(bundleModePath, "utf8").trim();
+    if (!isBundleMode(value)) {
+      throw new Error(`Invalid bundle mode in ${bundleModePath}: ${JSON.stringify(value)}`);
     }
     return value;
   });
 
-  // Extract scenario doc IDs, app area doc IDs, and site doc IDs from test source imports.
-  const { scenarioDocIds, siteDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
+  // Extract scenario doc IDs, app area doc IDs, and bundle doc IDs from test source imports.
+  const { scenarioDocIds, bundleDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
     const scenarioIds = extractScenarioDocIds(testSource);
     return {
       scenarioDocIds: scenarioIds,
-      siteDocIds: extractSiteDocIds(testSource),
+      bundleDocIds: extractBundleDocIds(testSource),
       appAreaDocIds: deriveAppAreaDocIds(
         scenarioIds,
-        extractExplicitAppAreaDocIds(testSource)
+        extractExplicitAppAreaDocIds(testSource),
+        moduleScenarioDocToAppAreaIds
       ),
     };
   });
@@ -1311,7 +1320,7 @@ export function assembleTestArtifacts(testDir: string): void {
   );
 
   // Write manifest
-  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, siteMode, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, bundleMode, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
   const manifestJson = measured(assemblySteps, "manifest stringify", () =>
     JSON.stringify(manifest, null, 2)
   );

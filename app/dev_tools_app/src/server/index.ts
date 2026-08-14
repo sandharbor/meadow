@@ -26,8 +26,8 @@ import { loadResourcesConfig } from "../../../shared_code/utils/resourcesConfigU
 import {
   findProjectRoot,
   getHomeFixturesPath,
-  copyTestSiteFixture,
-} from "../../../shared_code/shared_dev/testSitesConf.js";
+  copyTestBundleFixture,
+} from "../../../shared_code/shared_dev/testBundlesConfig.js";
 import type { ConfigFixture, PublishingProviderConfProfile } from "../shared/types.js";
 import {
   AppConfigGitUtils,
@@ -207,13 +207,13 @@ app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
 
       mkdirSync(configDir, { recursive: true });
 
-      const sitesPath = join(fixturePath, "sites");
-      if (existsSync(sitesPath)) {
-        const siteEntries = readdirSync(sitesPath, { withFileTypes: true });
-        for (const entry of siteEntries) {
+      const bundlesPath = join(fixturePath, "bundles");
+      if (existsSync(bundlesPath)) {
+        const bundleEntries = readdirSync(bundlesPath, { withFileTypes: true });
+        for (const entry of bundleEntries) {
           if (entry.isDirectory()) {
-            const siteSlug = entry.name;
-            copyTestSiteFixture(fixtureName, siteSlug, siteSlug, {
+            const bundleSlug = entry.name;
+            copyTestBundleFixture(fixtureName, bundleSlug, bundleSlug, {
               targetConfigDir: configDir,
               projectRoot,
             });

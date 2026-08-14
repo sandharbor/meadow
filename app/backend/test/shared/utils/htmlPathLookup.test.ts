@@ -19,28 +19,28 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getHtmlPathForPage } from '../../../src/shared/utils/htmlPathLookup.js';
-import { SiteConfigPaths } from '../../../../shared_code/paths/siteConfigPaths.js';
-import { stringifySiteNodeConfig } from '../../../../shared_code/utils/siteNodeConfigUtils.js';
-import { makeSiteNodeConfig } from '../support/siteNodeConfigTestUtils.js';
+import { BundleConfigPaths } from '../../../../shared_code/paths/bundleConfigPaths.js';
+import { stringifyBundleNodeConfig } from '../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { makeBundleNodeConfig } from '../support/bundleNodeConfigTestUtils.js';
 
 describe('getHtmlPathForPage', () => {
-  let siteDirectory: string;
+  let bundleDirectory: string;
 
   beforeEach(() => {
-    siteDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-html-path-'));
-    fs.mkdirSync(SiteConfigPaths.getConfDir(siteDirectory), { recursive: true });
-    fs.writeFileSync(SiteConfigPaths.getSiteConfigFile(siteDirectory), '{}\n', 'utf8');
+    bundleDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-html-path-'));
+    fs.mkdirSync(BundleConfigPaths.getConfigDir(bundleDirectory), { recursive: true });
+    fs.writeFileSync(BundleConfigPaths.getBundleConfigFile(bundleDirectory), '{}\n', 'utf8');
   });
 
   afterEach(() => {
-    fs.rmSync(siteDirectory, { recursive: true, force: true });
+    fs.rmSync(bundleDirectory, { recursive: true, force: true });
   });
 
   it('finds a non-markdown tracked page', () => {
     fs.writeFileSync(
-      SiteConfigPaths.getSiteNodeConfigFile(siteDirectory),
-      stringifySiteNodeConfig([
-        makeSiteNodeConfig('t006 --- meadow-flower', 'whitelist', {
+      BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory),
+      stringifyBundleNodeConfig([
+        makeBundleNodeConfig('t006 --- meadow-flower', 'whitelist', {
           sourceGraphSubdirectory: 't006',
           fileType: 'excalidraw',
         }),
@@ -48,20 +48,20 @@ describe('getHtmlPathForPage', () => {
       'utf8',
     );
 
-    expect(getHtmlPathForPage(siteDirectory, 't006 --- meadow-flower', 't006')).toBe(
+    expect(getHtmlPathForPage(bundleDirectory, 't006 --- meadow-flower', 't006')).toBe(
       't006/t006 --- meadow-flower.html',
     );
   });
 
   it('prefers markdown when multiple tracked pages share a title', () => {
     fs.writeFileSync(
-      SiteConfigPaths.getSiteNodeConfigFile(siteDirectory),
-      stringifySiteNodeConfig([
-        makeSiteNodeConfig('shared title', 'whitelist', {
+      BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory),
+      stringifyBundleNodeConfig([
+        makeBundleNodeConfig('shared title', 'whitelist', {
           sourceGraphSubdirectory: 't006',
           fileType: 'excalidraw',
         }),
-        makeSiteNodeConfig('shared title', 'whitelist', {
+        makeBundleNodeConfig('shared title', 'whitelist', {
           sourceGraphSubdirectory: 't006',
           fileType: 'md',
         }),
@@ -69,7 +69,7 @@ describe('getHtmlPathForPage', () => {
       'utf8',
     );
 
-    expect(getHtmlPathForPage(siteDirectory, 'shared title', 't006')).toBe(
+    expect(getHtmlPathForPage(bundleDirectory, 'shared title', 't006')).toBe(
       't006/shared title.html',
     );
   });
@@ -78,22 +78,22 @@ describe('getHtmlPathForPage', () => {
     const folderId = 'f1b2c3d4e5f6';
     const fileId = 'p1b2c3d4e5f6';
     fs.writeFileSync(
-      SiteConfigPaths.getSiteConfigFile(siteDirectory),
-      `entrySiteNodeId: ${folderId}\ndefaultTraversalSiteNodeId: ${folderId}\n`,
+      BundleConfigPaths.getBundleConfigFile(bundleDirectory),
+      `entryBundleNodeId: ${folderId}\ndefaultTraversalBundleNodeId: ${folderId}\n`,
       'utf8',
     );
     fs.writeFileSync(
-      SiteConfigPaths.getSiteNodeConfigFile(siteDirectory),
-      stringifySiteNodeConfig([{
-        siteNodeName: 'Project', sourceGraphSubdirectory: 'Project', siteNodeKind: 'folder',
-        siteNodeId: folderId as never, listType: 'whitelist',
+      BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory),
+      stringifyBundleNodeConfig([{
+        bundleNodeName: 'Project', sourceGraphSubdirectory: 'Project', bundleNodeKind: 'folder',
+        bundleNodeId: folderId as never, listType: 'whitelist',
       }, {
-        siteNodeName: 'index', sourceGraphSubdirectory: 'Project', siteNodeKind: 'file', fileType: 'md',
-        siteNodeId: fileId as never, listType: 'whitelist',
+        bundleNodeName: 'index', sourceGraphSubdirectory: 'Project', bundleNodeKind: 'file', fileType: 'md',
+        bundleNodeId: fileId as never, listType: 'whitelist',
       }]),
       'utf8',
     );
-    expect(getHtmlPathForPage(siteDirectory, 'Project', 'Project')).toBe('index.html');
-    expect(getHtmlPathForPage(siteDirectory, 'index', 'Project')).toBe('Project/index.html');
+    expect(getHtmlPathForPage(bundleDirectory, 'Project', 'Project')).toBe('index.html');
+    expect(getHtmlPathForPage(bundleDirectory, 'index', 'Project')).toBe('Project/index.html');
   });
 });

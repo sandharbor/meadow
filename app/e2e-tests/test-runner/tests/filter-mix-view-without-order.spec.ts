@@ -15,12 +15,12 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { FilterPanelComponent, SiteEditorPage } from "../src/run/pages/index.js";
+import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { filters } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("without mix terms can be reordered by dropping one directly on the other", async ({
   page,
@@ -29,9 +29,9 @@ test("without mix terms can be reordered by dropping one directly on the other",
   addKeyFrame,
 }) => {
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToBigSite();
+  await workflows.navigateToBigBundle();
 
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
   await editor.clickSelectAll();
@@ -54,7 +54,7 @@ test("without mix terms can be reordered by dropping one directly on the other",
   await filterPanel.closeMixFilters();
   await editor.expectGraphViewPageCount(0);
   await snapshot("untracked without the selected pages is empty");
-  void bigSite;
+  void bigBundle;
 
   await assertMeadowHomeState();
 });

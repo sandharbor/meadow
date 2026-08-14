@@ -1,0 +1,3 @@
+[[bundle page]]s start in the [[raw working graph]].  They must become [[bundle page tracking state -- tracked]] to become part of the [[tracked working graph]].  As part of tracking a bundle page, you must decide whether to [[whitelist]] the bundle page, or [[blacklist]] it.
+
+We have some tooling that allows whitelisting and tracking bundle pages in bulk, assuming they are not [[sensitive bundle page]].  If they _are_ sensitive, then we [[block casual bulk bundle page whitelisting for sensitive bundle pages]].

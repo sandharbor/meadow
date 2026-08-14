@@ -23,15 +23,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getFrontendPort: () => ipcRenderer.invoke('get-frontend-port'),
   getTargetPageInfo: () => ipcRenderer.invoke('get-target-page-info'),
 
-  onOpenFindInSites: (callback: (options: {
+  onOpenFindInBundles: (callback: (options: {
     vaultPath: string;
     folderPath: string;
     pageName: string;
   }) => void) => {
-    ipcRenderer.on('open-find-in-sites', (_event, options) => callback(options));
+    ipcRenderer.on('open-find-in-bundles', (_event, options) => callback(options));
   },
-  offOpenFindInSites: () => {
-    ipcRenderer.removeAllListeners('open-find-in-sites');
+  offOpenFindInBundles: () => {
+    ipcRenderer.removeAllListeners('open-find-in-bundles');
   },
 
   showOpenDialog: (options: OpenDialogOptions) =>
@@ -79,12 +79,12 @@ declare global {
         folderPath: string;
         pageName: string;
       } | null>;
-      onOpenFindInSites: (callback: (options: {
+      onOpenFindInBundles: (callback: (options: {
         vaultPath: string;
         folderPath: string;
         pageName: string;
       }) => void) => void;
-      offOpenFindInSites: () => void;
+      offOpenFindInBundles: () => void;
       showOpenDialog: (options: OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>;
       showSaveDialog: (options: SaveDialogOptions) => Promise<Electron.SaveDialogReturnValue>;
       openExternal: (url: string) => Promise<void>;

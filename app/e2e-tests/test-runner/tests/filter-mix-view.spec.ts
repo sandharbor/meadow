@@ -15,12 +15,12 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { FilterPanelComponent, SiteEditorPage } from "../src/run/pages/index.js";
+import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { filters } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("mix filters intersects soloed untracked and sensitive filters in graph and list views", async ({
   page,
@@ -29,10 +29,10 @@ test("mix filters intersects soloed untracked and sensitive filters in graph and
   addKeyFrame,
 }) => {
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToBigSite();
-  await snapshot("big site loaded");
+  await workflows.navigateToBigBundle();
+  await snapshot("big bundle loaded");
 
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
   await filterPanel.enableAndSoloFilter("Untracked");
@@ -63,7 +63,7 @@ test("mix filters intersects soloed untracked and sensitive filters in graph and
   await filterPanel.expectMixFiltersCustomized(false);
   await filterPanel.closeMixFilters();
   await snapshot("reset mix restores the default view");
-  void bigSite;
+  void bigBundle;
 
   await assertMeadowHomeState();
 });

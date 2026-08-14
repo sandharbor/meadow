@@ -2,7 +2,7 @@ This page links to [[Nested note]] inside the selected structure and [[Outside n
 
 ```yaml
 pagespecs:
-  - site: single-folder-site
+  - bundle: single-folder-bundle
     curation:
       isTracked: false
       isInWorkingGraph: true
@@ -19,7 +19,7 @@ pagespecs:
           - relativeLinkPath: Nested/Nested note.html
           - relativeLinkPath: ../Outside/Outside note.html
         footerSectionBacklinks: []
-  - site: ordered-folders
+  - bundle: ordered-folders
     curation:
       isTracked: false
       isInWorkingGraph: true

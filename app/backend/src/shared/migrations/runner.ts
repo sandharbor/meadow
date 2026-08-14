@@ -20,7 +20,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import YAML from 'yaml';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
 import { commitChangesNative } from '../utils/configDirectory/gitUtils/gitStatusUtils.js';
-import { getConfigDirectory } from '../site-config/siteConfigPaths.js';
+import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { PublishingProviderPaths } from '../../../../shared_code/paths/publishingProviderPaths.js';
 import { getAllBackendProviders } from '../publishing-provider-host/providerRegistry.js';
 import type { MigrationsYaml } from '../../../../shared_code/types/migrations.js';

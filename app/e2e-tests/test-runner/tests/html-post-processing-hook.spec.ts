@@ -18,14 +18,14 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { hooks, customize } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("HTML post-processing hook: create, validate, save, and verify diff", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
-  // Navigate to big site preview
+  // Navigate to big bundle preview
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSitePreview();
+  await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
   await snapshot("preview loaded");
@@ -67,7 +67,7 @@ test("HTML post-processing hook: create, validate, save, and verify diff", async
   await addKeyFrame(hooks);
   await addKeyFrame(customize);
   await snapshot("diff shows Hello from Meadow");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

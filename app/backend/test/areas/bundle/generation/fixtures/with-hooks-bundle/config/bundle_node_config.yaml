@@ -1,0 +1,138 @@
+nodes:
+  - bundleNodeName: blacklisted page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d625b4695184
+    listType: blacklist
+  - bundleNodeName: child 1
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 21634b9f7a5f
+    listType: whitelist
+  - bundleNodeName: child 2
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8d95d01d80cc
+    listType: whitelist
+  - bundleNodeName: dup page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e7b957746ae1
+    listType: whitelist
+  - bundleNodeName: has in link and points back to same page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 57adad7d02e4
+    listType: whitelist
+  - bundleNodeName: in-link to main page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 47afe81d3a80
+    listType: whitelist
+  - bundleNodeName: main page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1b6a43b1eebd
+    listType: whitelist
+  - bundleNodeName: meadow
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 54ce3fadeeef
+    listType: whitelist
+  - bundleNodeName: page with section to link to
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: af18b5ba870b
+    listType: whitelist
+  - bundleNodeName: points to nested dup page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 16ce17b5244e
+    listType: whitelist
+  - bundleNodeName: points to root dup page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a9a37eb2c2e4
+    listType: whitelist
+  - bundleNodeName: same depth 1 - 2 out 0 in
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 81b3fe3c4cb8
+    listType: whitelist
+  - bundleNodeName: same depth 2 - 1 out 2 in
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5d0ec212b803
+    listType: whitelist
+  - bundleNodeName: same depth 3 - 1 out 3 in
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 89e802d807c8
+    listType: whitelist
+  - bundleNodeName: same depth 4 - no connection
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3c304c6618db
+    listType: whitelist
+  - bundleNodeName: same depth 5 - 1 out 0 in
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b23c93863dd2
+    listType: whitelist
+  - bundleNodeName: test blacklisted
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 432f35228305
+    listType: whitelist
+  - bundleNodeName: test deeply nested
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 66bdc6e1d740
+    listType: whitelist
+  - bundleNodeName: test dup page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a621059f61e1
+    listType: whitelist
+  - bundleNodeName: test in and out links
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 71b8c82d4406
+    listType: whitelist
+  - bundleNodeName: test link to section
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ed1e224ce4ee
+    listType: whitelist
+  - bundleNodeName: test linking in same depth
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d42008648939
+    listType: whitelist
+  - bundleNodeName: test of png
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: aaf3edff85d1
+    listType: whitelist
+  - bundleNodeName: test page conf do not include inlinks
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b211564ee2c0
+    listType: whitelist
+    inlinksDepth: 0
+  - bundleNodeName: test page conf graph depth
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ffea9f4db0dc
+    listType: whitelist
+    outlinksDepth: 0
+  - bundleNodeName: test special lines
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 120fb7dc6a0d
+    listType: whitelist
+  - bundleNodeName: test video timestamps
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d52e3fb52cdf
+    listType: whitelist

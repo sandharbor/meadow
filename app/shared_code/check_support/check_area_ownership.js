@@ -77,11 +77,11 @@ function getOwner(sourceRoot, filePath) {
   const parts = relativePath.split('/');
 
   if (parts[0] === 'areas') {
-    if (parts[1] === 'sites') {
-      return 'area:sites';
+    if (parts[1] === 'bundles') {
+      return 'area:bundles';
     }
-    if (parts[1] === 'site' && parts[2]) {
-      return `area:site/${parts[2]}`;
+    if (parts[1] === 'bundle' && parts[2]) {
+      return `area:bundle/${parts[2]}`;
     }
     if (parts[1]) {
       return `area:${parts[1]}`;

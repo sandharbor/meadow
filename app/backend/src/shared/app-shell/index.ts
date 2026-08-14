@@ -19,24 +19,24 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import { AppConfigPaths } from '../../../../shared_code/paths/appConfigPaths.js';
-import siteConfigRoutes from '../../areas/site/curation/routes/siteConfigRoutes.js';
-import customFiltersRoutes from '../../areas/site/curation/routes/customFiltersRoutes.js';
-import siteCurationRoutes from '../../areas/site/curation/routes/siteCurationRoutes.js';
-import hooksRoutes from '../../areas/site/generation/routes/hooksRoutes.js';
-import customAssetsRoutes from '../../areas/site/generation/routes/customAssetsRoutes.js';
+import bundleConfigRoutes from '../../areas/bundle/curation/routes/bundleConfigRoutes.js';
+import customFiltersRoutes from '../../areas/bundle/curation/routes/customFiltersRoutes.js';
+import bundleCurationRoutes from '../../areas/bundle/curation/routes/bundleCurationRoutes.js';
+import hooksRoutes from '../../areas/bundle/generation/routes/hooksRoutes.js';
+import customAssetsRoutes from '../../areas/bundle/generation/routes/customAssetsRoutes.js';
 import appConfigRoutes from '../routes/appConfigRoutes.js';
-import { createLocalSaveRoutes } from '../../areas/site/sharing/routes/localSaveRoutes.js';
-import { buildFilteredSourcesExportForSite } from '../../areas/site/generation/sources-export/filteredSourcesExport.js';
-import { buildFilteredOpenKnowledgeFormatForSite } from '../../areas/site/generation/open-knowledge-format/filteredOpenKnowledgeFormat.js';
-import siteListingRoutes from '../../areas/sites/routes/siteListingRoutes.js';
-import siteGenerationRoutes from '../../areas/site/generation/routes/siteGenerationRoutes.js';
-import stylePresetsRoutes from '../../areas/site/generation/routes/stylePresetsRoutes.js';
+import { createLocalSaveRoutes } from '../../areas/bundle/sharing/routes/localSaveRoutes.js';
+import { buildFilteredSourcesExportForBundle } from '../../areas/bundle/generation/sources-export/filteredSourcesExport.js';
+import { buildFilteredOpenKnowledgeFormatForBundle } from '../../areas/bundle/generation/open-knowledge-format/filteredOpenKnowledgeFormat.js';
+import bundleListingRoutes from '../../areas/bundles/routes/bundleListingRoutes.js';
+import bundleGenerationRoutes from '../../areas/bundle/generation/routes/bundleGenerationRoutes.js';
+import stylePresetsRoutes from '../../areas/bundle/generation/routes/stylePresetsRoutes.js';
 import logRoutes from '../routes/logRoutes.js';
 import appConfigFileRoutes from '../routes/appConfigFileRoutes.js';
-import providerDiscoveryRoutes from '../../areas/site/sharing/routes/providerDiscoveryRoutes.js';
+import providerDiscoveryRoutes from '../../areas/bundle/sharing/routes/providerDiscoveryRoutes.js';
 import { createHealthRoutes } from '../routes/healthRoutes.js';
-import reviewRoutes from '../../areas/site/review/routes/reviewRoutes.js';
-import { getConfigDirectory } from '../site-config/siteConfigPaths.js';
+import reviewRoutes from '../../areas/bundle/review/routes/reviewRoutes.js';
+import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { ResourcesConfig } from '../../../../shared_code/types/resourcesConfig.js';
 import {
   ensureAllProviderResourcesInitialized,
@@ -57,7 +57,7 @@ dotenv.config();
 // Helper function to load resources config
 const loadResources = (): ResourcesConfig => loadResourcesConfig(getConfigDirectory());
 
-// Note: config directory helpers are imported from `shared/site-config/siteConfigPaths.ts`
+// Note: config directory helpers are imported from `shared/bundle-config/bundleConfigPaths.ts`
 
 import { runMigrationsOnStartup } from '../migrations/runner.js';
 
@@ -73,21 +73,21 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 
 // Use graph config routes
-app.use('/api', siteConfigRoutes);
+app.use('/api', bundleConfigRoutes);
 app.use('/api', customFiltersRoutes);
-app.use('/api', siteCurationRoutes);
+app.use('/api', bundleCurationRoutes);
 app.use('/api', hooksRoutes);
 app.use('/api', customAssetsRoutes);
 app.use('/api', appConfigRoutes);
 app.use('/api', createLocalSaveRoutes({
-  buildRawSourcesExportForSite: buildFilteredSourcesExportForSite,
-  buildOpenKnowledgeFormatForSite: buildFilteredOpenKnowledgeFormatForSite,
+  buildRawSourcesExportForBundle: buildFilteredSourcesExportForBundle,
+  buildOpenKnowledgeFormatForBundle: buildFilteredOpenKnowledgeFormatForBundle,
 }));
 app.use('/api', logRoutes);
 app.use('/api', appConfigFileRoutes);
 app.use('/api', providerDiscoveryRoutes);
-app.use('/api', siteListingRoutes);
-app.use('/api', siteGenerationRoutes);
+app.use('/api', bundleListingRoutes);
+app.use('/api', bundleGenerationRoutes);
 app.use('/api', reviewRoutes);
 app.use('/api', stylePresetsRoutes);
 app.use('/api', createHealthRoutes(() => port));

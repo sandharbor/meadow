@@ -24,7 +24,7 @@ import {
 } from '../../../../shared_code/utils/appConfigUtils.js';
 import { loadResourcesConfig } from '../../../../shared_code/utils/resourcesConfigUtils.js';
 import { CalloutDismissals } from '../../../../shared_code/types/appConfig.js';
-import { getConfigDirectory } from '../site-config/siteConfigPaths.js';
+import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../shared_code/utils/appConfigGitUtils.js';
 import { AppConfigPaths } from '../../../../shared_code/paths/appConfigPaths.js';
 

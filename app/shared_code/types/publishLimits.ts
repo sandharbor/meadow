@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 /**
- * Limits and constants for publishing sites to S3
+ * Limits and constants for publishing bundles to S3
  */
 
 /**

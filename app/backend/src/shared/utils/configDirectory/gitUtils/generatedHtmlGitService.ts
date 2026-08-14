@@ -17,8 +17,8 @@ limitations under the License.
 import * as fs from 'fs';
 import * as path from 'path';
 import { commitChangesNative } from './gitStatusUtils.js';
-import { getConfigDirectory } from '../../../site-config/siteConfigPaths.js';
-import { SiteConfigPaths } from '../../../../../../shared_code/paths/siteConfigPaths.js';
+import { getConfigDirectory } from '../../../bundle-config/bundleConfigPaths.js';
+import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { logger } from '../../logging/backendLoggingUtils.js';
 import { timeAsync } from '../../../telemetry/timingMetrics.js';
 
@@ -41,39 +41,39 @@ interface GeneratedHtmlChanges {
 }
 
 interface CommitOptions {
-  /** Include the conf directory (contains generated_site_versions.yaml). Default: false */
-  includeConfDir?: boolean;
+  /** Include the config directory (contains generated_bundle_versions.yaml). Default: false */
+  includeConfigDir?: boolean;
   /** Extra directories to include in the same commit (e.g. provider-owned caches). */
   additionalDirs?: string[];
 }
 
 /**
- * Commit site changes to git.
+ * Commit bundle changes to git.
  * Uses the native fast_git_ops binary for fast commits of multiple directories.
- * Commits html/generated_site_versions, html/generated, raw/tracked_page_content,
- * generated build intermediates, and cleanup paths. Optionally includes conf
+ * Commits html/generated_bundle_versions, html/generated, raw/tracked_page_content,
+ * generated build intermediates, and cleanup paths. Optionally includes the config
  * directory for publish operations. Callers (typically publishing providers)
  * can pass `additionalDirs` to include provider-scoped caches in the same commit.
  */
-export async function commitSiteChanges(
-  siteDirectory: string,
+export async function commitBundleChanges(
+  bundleDirectory: string,
   commitMessage: string,
   options: CommitOptions = {}
 ): Promise<string | null> {
-  const { includeConfDir = false, additionalDirs = [] } = options;
+  const { includeConfigDir = false, additionalDirs = [] } = options;
 
-  const publishedDir = SiteConfigPaths.getGeneratedSiteVersionsDir(siteDirectory);
-  const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
-  const trackedPageContentDir = SiteConfigPaths.getTrackedPageContentDir(siteDirectory);
-  const buildDir = SiteConfigPaths.getBuildDir(siteDirectory);
-  const confDir = SiteConfigPaths.getConfDir(siteDirectory);
+  const publishedDir = BundleConfigPaths.getGeneratedBundleVersionsDir(bundleDirectory);
+  const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
+  const trackedPageContentDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
+  const buildDir = BundleConfigPaths.getBuildDir(bundleDirectory);
+  const configDir = BundleConfigPaths.getConfigDir(bundleDirectory);
 
   // Check if at least one directory exists
   const publishedExists = fs.existsSync(publishedDir);
   const generatedHtmlExists = fs.existsSync(generatedHtmlDir);
   const trackedPageContentExists = fs.existsSync(trackedPageContentDir);
   const buildExists = fs.existsSync(buildDir);
-  const confExists = includeConfDir && fs.existsSync(confDir);
+  const configExists = includeConfigDir && fs.existsSync(configDir);
   const existingAdditionalDirs = additionalDirs.filter(d => fs.existsSync(d));
 
   if (
@@ -81,16 +81,16 @@ export async function commitSiteChanges(
     !generatedHtmlExists &&
     !trackedPageContentExists &&
     !buildExists &&
-    !confExists &&
+    !configExists &&
     existingAdditionalDirs.length === 0
   ) {
-    logger.warn(`[commitSiteChanges] No directories found to commit`);
+    logger.warn(`[commitBundleChanges] No directories found to commit`);
     logger.warn(`  Published: ${publishedDir}`);
     logger.warn(`  Generated HTML: ${generatedHtmlDir}`);
     logger.warn(`  Tracked Page Content: ${trackedPageContentDir}`);
     logger.warn(`  Build: ${buildDir}`);
-    if (includeConfDir) {
-      logger.warn(`  Conf: ${confDir}`);
+    if (includeConfigDir) {
+      logger.warn(`  Config: ${configDir}`);
     }
     for (const dir of additionalDirs) {
       logger.warn(`  Additional: ${dir}`);
@@ -102,37 +102,37 @@ export async function commitSiteChanges(
   const directoriesToCommit: string[] = [];
   if (publishedExists) {
     directoriesToCommit.push(publishedDir);
-    logger.info(`[commitSiteChanges] Will commit published dir: ${publishedDir}`);
+    logger.info(`[commitBundleChanges] Will commit published dir: ${publishedDir}`);
   }
   if (generatedHtmlExists) {
     directoriesToCommit.push(generatedHtmlDir);
-    logger.info(`[commitSiteChanges] Will commit generated HTML dir: ${generatedHtmlDir}`);
+    logger.info(`[commitBundleChanges] Will commit generated HTML dir: ${generatedHtmlDir}`);
   }
   if (trackedPageContentExists) {
     directoriesToCommit.push(trackedPageContentDir);
-    logger.info(`[commitSiteChanges] Will commit tracked_page_content dir: ${trackedPageContentDir}`);
+    logger.info(`[commitBundleChanges] Will commit tracked_page_content dir: ${trackedPageContentDir}`);
   }
   if (buildExists) {
     directoriesToCommit.push(buildDir);
-    logger.info(`[commitSiteChanges] Will commit build dir: ${buildDir}`);
+    logger.info(`[commitBundleChanges] Will commit build dir: ${buildDir}`);
   }
-  if (confExists) {
-    directoriesToCommit.push(confDir);
-    logger.info(`[commitSiteChanges] Will commit conf dir: ${confDir}`);
+  if (configExists) {
+    directoriesToCommit.push(configDir);
+    logger.info(`[commitBundleChanges] Will commit config dir: ${configDir}`);
   }
   for (const dir of existingAdditionalDirs) {
     directoriesToCommit.push(dir);
-    logger.info(`[commitSiteChanges] Will commit additional dir: ${dir}`);
+    logger.info(`[commitBundleChanges] Will commit additional dir: ${dir}`);
   }
 
   try {
     // Use native fast_git_ops for fast commit
     const sha = await timeAsync(
-      'site.git.stage',
+      'bundle.git.stage',
       {
-        stage: 'commit_site_changes',
+        stage: 'commit_bundle_changes',
         directory_count: directoriesToCommit.length,
-        include_conf_dir: includeConfDir,
+        include_config_dir: includeConfigDir,
         additional_dir_count: existingAdditionalDirs.length,
       },
       () => commitChangesNative(
@@ -143,14 +143,14 @@ export async function commitSiteChanges(
     );
 
     if (sha) {
-      logger.info(`[commitSiteChanges] Committed site changes: ${sha}`);
+      logger.info(`[commitBundleChanges] Committed bundle changes: ${sha}`);
     } else {
-      logger.info('[commitSiteChanges] No changes to commit');
+      logger.info('[commitBundleChanges] No changes to commit');
     }
 
     return sha;
   } catch (error) {
-    logger.error('[commitSiteChanges] Error committing site changes:', error);
+    logger.error('[commitBundleChanges] Error committing bundle changes:', error);
     return null;
   }
 }
@@ -375,9 +375,9 @@ function generateHunk(changes: Change[], _totalOldLines: number, _totalNewLines:
  * Compares the generated HTML directory against the latest immutable version on disk.
  * (Git is used for committing after publish, not for the diff comparison itself)
  */
-export function getGeneratedHtmlChanges(siteDirectory: string): GeneratedHtmlChanges {
-  const generatedHtmlDir = SiteConfigPaths.getGeneratedHtmlDir(siteDirectory);
-  const publishedDir = SiteConfigPaths.getGeneratedSiteVersionsDir(siteDirectory);
+export function getGeneratedHtmlChanges(bundleDirectory: string): GeneratedHtmlChanges {
+  const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
+  const publishedDir = BundleConfigPaths.getGeneratedBundleVersionsDir(bundleDirectory);
 
   const changedFiles: DiffResult[] = [];
   const fileDiffs: Record<string, FileDiff> = {};

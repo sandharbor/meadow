@@ -10,5 +10,5 @@ He is likely to play with the options in [[app component -- sidebar -- customize
 * the [[hooks config]]
 * [[fully custom html creation]]
 * [[spaced repetition]]
-* [[meadow sources export type -- published to site as zip file]]
+* [[meadow sources export type -- published to bundle as zip file]]
 

@@ -18,7 +18,7 @@ limitations under the License.
  * Type definitions for the pagespecs system tests.
  *
  * Pagespecs are YAML blocks at the end of source pages that define
- * expected test outcomes per-site (working graph inclusion, filter states, link paths).
+ * expected test outcomes per-bundle (working graph inclusion, filter states, link paths).
  */
 
 export interface PagespecLinkSpec {
@@ -73,13 +73,13 @@ export interface PagespecGeneration {
 }
 
 export interface PagespecInWorkingGraph {
-  site: string;
+  bundle: string;
   curation: PagespecCurationInWorkingGraph;
   generation: PagespecGeneration;
 }
 
 export interface PagespecNotInWorkingGraph {
-  site: string;
+  bundle: string;
   curation: PagespecCurationNotInWorkingGraph;
   generation: PagespecGeneration;
 }

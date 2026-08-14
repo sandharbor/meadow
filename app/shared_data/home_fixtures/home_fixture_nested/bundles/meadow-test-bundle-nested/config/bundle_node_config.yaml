@@ -1,0 +1,103 @@
+nodes:
+  - bundleNodeName: t002 - dup pages and images
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7c1cc857cc2a
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 6f32f146d270
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: b93a4465213b
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b14e056ec2b8
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 20e02153f864
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: t002/extra nested
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: "663926718e65"
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup 2
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 0e86bf751453
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup 2
+    sourceGraphSubdirectory: t002/extra nested
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 3fec7f72f0fa
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to extra nested dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: "770382996259"
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to nested dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2b63ed731f64
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to nested png dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f77f7ad11d54
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to png dup 2 with no path from extra nested
+    sourceGraphSubdirectory: t002/extra nested
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5b1158d75da6
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to png dup 2 with no path from root
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 71e9466cc461
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to png dup 2 with no path from second directory
+    sourceGraphSubdirectory: t002 - second directory
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9392a96a77ca
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to png dup 2 with no path from t002
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: da6f6f8f1f43
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to root dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: bb3ad5f67a36
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to root png dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 23293509ade7
+    listType: whitelist

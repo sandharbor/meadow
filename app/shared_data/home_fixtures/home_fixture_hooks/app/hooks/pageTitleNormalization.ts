@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-function pageTitleNormalization(siteSlug: string, pageTitle: string): string {
-    console.log('pageTitleNormalization hook called with:', siteSlug, pageTitle);
+function pageTitleNormalization(bundleSlug: string, pageTitle: string): string {
+    console.log('pageTitleNormalization hook called with:', bundleSlug, pageTitle);
 
-    // if (siteSlug === 'meadow-test-data') {
+    // if (bundleSlug === 'meadow-test-data') {
     //   // Remove private prefixes
     //   if (pageTitle.startsWith('test link to section')) {
     //     return pageTitle.substring(10);
@@ -47,7 +47,7 @@ function pageTitleNormalization(siteSlug: string, pageTitle: string): string {
         result = pageTitle.slice(7);
     }
     if (result !== pageTitle) {
-        console.log('pageTitleNormalization result differs', siteSlug, pageTitle, '->', result);
+        console.log('pageTitleNormalization result differs', bundleSlug, pageTitle, '->', result);
     }
 
     return result;

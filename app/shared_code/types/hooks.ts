@@ -15,23 +15,23 @@ limitations under the License.
 */
 
 export interface PageTitleNormalizationHook {
-  pageTitleNormalization(siteSlug: string, pageTitle: string): string;
+  pageTitleNormalization(bundleSlug: string, pageTitle: string): string;
 }
 
 export interface MarkdownProcessingHook {
-  markdownProcessingPage(siteSlug: string, mdContent: string): string;
-  markdownProcessingBacklinks(siteSlug: string, mdContent: string): string;
+  markdownProcessingPage(bundleSlug: string, mdContent: string): string;
+  markdownProcessingBacklinks(bundleSlug: string, mdContent: string): string;
 }
 
 export interface HtmlPostProcessingHook {
-  htmlPostProcessing(siteSlug: string, document: unknown, pageName: string): void;
+  htmlPostProcessing(bundleSlug: string, document: unknown, pageName: string): void;
 }
 
 // Hook types
 export type HookType = 'pageTitleNormalization' | 'markdownProcessing' | 'htmlPostProcessing';
 
 // Hook scope
-export type HookScope = 'global' | 'site';
+export type HookScope = 'global' | 'bundle';
 
 // Hook metadata
 export interface HookMetadata {

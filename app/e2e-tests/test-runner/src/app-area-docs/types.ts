@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 export interface AppAreaDoc {
-  id: string           // URL-safe key, e.g. 'site/curation'
+  id: string           // URL-safe key, e.g. 'bundle/curation'
   name: string         // Display name, e.g. 'Curation'
   description: string  // Prose describing the app area and what it covers
-  parentId?: string    // Grouping key for nested app areas, e.g. 'site'
+  parentId?: string    // Grouping key for nested app areas, e.g. 'bundle'
 }

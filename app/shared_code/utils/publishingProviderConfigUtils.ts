@@ -16,7 +16,7 @@ limitations under the License.
 
 /**
  * Loads pp_config.yaml / pp_secrets.yaml for a publishing provider, merging
- * the site-local override on top of the global file.
+ * the bundle-local override on top of the global file.
  */
 
 import { existsSync, readFileSync } from 'fs';
@@ -47,7 +47,7 @@ function mergeShallow<T extends object>(base: T, override: T | null): T {
 
 export interface LoadProviderConfigOptions {
   configDir?: string;
-  siteSlug?: string;
+  bundleSlug?: string;
 }
 
 export function loadProviderConfig<
@@ -56,13 +56,13 @@ export function loadProviderConfig<
   const configDir = options.configDir ?? getDefaultConfigDirectory();
   const globalPath = PublishingProviderPaths.getGlobalConfigFile(configDir, providerId);
   const base = readYaml<Config>(globalPath) ?? ({} as Config);
-  if (!options.siteSlug) return base;
-  const sitePath = PublishingProviderPaths.getSiteConfigFile(
+  if (!options.bundleSlug) return base;
+  const bundlePath = PublishingProviderPaths.getBundleConfigFile(
     configDir,
-    options.siteSlug,
+    options.bundleSlug,
     providerId,
   );
-  return mergeShallow(base, readYaml<Config>(sitePath));
+  return mergeShallow(base, readYaml<Config>(bundlePath));
 }
 
 export function loadProviderSecrets<
@@ -71,20 +71,20 @@ export function loadProviderSecrets<
   const configDir = options.configDir ?? getDefaultConfigDirectory();
   const globalPath = PublishingProviderPaths.getGlobalSecretsFile(configDir, providerId);
   const base = readYaml<Secrets>(globalPath) ?? ({} as Secrets);
-  if (!options.siteSlug) return base;
-  const sitePath = PublishingProviderPaths.getSiteSecretsFile(
+  if (!options.bundleSlug) return base;
+  const bundlePath = PublishingProviderPaths.getBundleSecretsFile(
     configDir,
-    options.siteSlug,
+    options.bundleSlug,
     providerId,
   );
-  return mergeShallow(base, readYaml<Secrets>(sitePath));
+  return mergeShallow(base, readYaml<Secrets>(bundlePath));
 }
 
 /**
  * Resources carry infrastructure settings (DNS names, bucket names, etc.)
  * that vary by deployment but aren't secret. Resolution order (lowest to
  * highest priority): global pp_resources.yaml → global pp_resources.local.yaml
- * → site-local pp_resources.yaml. The .local file lets a single MeadowHome
+ * → bundle-local pp_resources.yaml. The .local file lets a single MeadowHome
  * override infra without touching the committed global file.
  */
 export function loadProviderResources<
@@ -98,11 +98,11 @@ export function loadProviderResources<
   const globalLocalPath = PublishingProviderPaths.getGlobalResourcesLocalFile(configDir, providerId);
   resources = mergeShallow(resources, readYaml<Resources>(globalLocalPath));
 
-  if (!options.siteSlug) return resources;
-  const sitePath = PublishingProviderPaths.getSiteResourcesFile(
+  if (!options.bundleSlug) return resources;
+  const bundlePath = PublishingProviderPaths.getBundleResourcesFile(
     configDir,
-    options.siteSlug,
+    options.bundleSlug,
     providerId,
   );
-  return mergeShallow(resources, readYaml<Resources>(sitePath));
+  return mergeShallow(resources, readYaml<Resources>(bundlePath));
 }

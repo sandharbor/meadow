@@ -6,7 +6,7 @@ export default [
   js.configs.recommended,
   {
     ignores: [
-      'src/areas/site/generation/html/**/*',
+      'src/areas/bundle/generation/html/**/*',
       'dist/**/*',
       'test/**/*',
       'vitest.config.ts',

@@ -2,7 +2,7 @@
   "name": "obsidian-meadow-plugin",
   "version": "1.0.0",
   "type": "module",
-  "description": "Open Meadow with current file information for site management",
+  "description": "Open Meadow with current file information for bundle management",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

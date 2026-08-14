@@ -17,27 +17,27 @@ limitations under the License.
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
-import SiteEditor from './components/SiteEditor'
-import SiteList from '../../areas/sites/components/SiteList'
+import BundleEditor from './components/BundleEditor'
+import BundleList from '../../areas/bundles/components/BundleList'
 import TitleBar from './components/TitleBar'
 import UpdateModal from './components/UpdateModal'
 import { initializeApiConfig } from '../utils/apiConfig'
 import { logger } from '../utils/logger'
-import { FindInSitesOptions } from '../../../../shared_code/types/findInSitesOptions'
+import { FindInBundlesOptions } from '../../../../shared_code/types/findInBundlesOptions'
 import './index.css'
 
-const FindInSitesDeepLinkListener: React.FC = () => {
+const FindInBundlesDeepLinkListener: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!window.electronAPI) return;
 
-    window.electronAPI.onOpenFindInSites((findInSitesOptions: FindInSitesOptions) => {
-      navigate('/', { state: { findInSitesOptions } });
+    window.electronAPI.onOpenFindInBundles((findInBundlesOptions: FindInBundlesOptions) => {
+      navigate('/', { state: { findInBundlesOptions } });
     });
 
     return () => {
-      window.electronAPI.offOpenFindInSites();
+      window.electronAPI.offOpenFindInBundles();
     };
   }, [navigate]);
 
@@ -61,13 +61,13 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <FindInSitesDeepLinkListener />
+      <FindInBundlesDeepLinkListener />
       <TitleBar />
 
       <div className="h-[calc(100vh-28px)] mt-[28px] overflow-hidden">
         <Routes>
-          <Route path="/" element={<SiteList />} />
-          <Route path="/site/:slug" element={<SiteEditor />} />
+          <Route path="/" element={<BundleList />} />
+          <Route path="/bundle/:slug" element={<BundleEditor />} />
         </Routes>
       </div>
 

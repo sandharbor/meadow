@@ -15,30 +15,30 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
+import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
 import { initialPage } from "../src/scenario-docs/index.js";
-import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index.js";
+import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
 test("a publisher should not be able to blacklist the initial page", async ({
   page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
-  const siteList = new SiteListPage(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const bundleList = new BundleListPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
 
-  // Add the example site and switch to list view
-  await siteList.goto();
-  await siteList.clickAddExampleSiteLink();
-  await editor.waitForLoad("example-site");
+  // Add the example bundle and switch to list view
+  await bundleList.goto();
+  await bundleList.clickAddExampleBundleLink();
+  await editor.waitForLoad("example-bundle");
   await editor.switchToListView();
   await page.waitForTimeout(250);
 
   // Right-click the initial page — Blacklist should NOT appear
-  await editor.rightClickRow(exampleSiteInitialPageTitle);
+  await editor.rightClickRow(exampleBundleInitialPageTitle);
   await editor.expectContextMenuItemNotVisible("Blacklist");
   await addKeyFrame(initialPage);
   await snapshot("initial page context menu has no blacklist");
@@ -51,7 +51,7 @@ test("a publisher should not be able to blacklist the initial page", async ({
   await editor.expectContextMenuItemVisible("Blacklist");
   await snapshot("non-initial page context menu has blacklist");
 
-  void exampleSite;
+  void exampleBundle;
 
   await assertMeadowHomeState();
 });

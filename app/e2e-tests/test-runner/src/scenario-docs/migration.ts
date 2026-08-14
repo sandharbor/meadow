@@ -22,7 +22,7 @@ export const migration: ScenarioDoc = {
   description:
     "Tests that boot the app against a pre-migration MeadowHome snapshot and " +
     "verify the startup migration runner recognises the pending migration, " +
-    "runs it cleanly, records it in migrations.yaml, and leaves the site in a " +
+    "runs it cleanly, records it in migrations.yaml, and leaves the bundle in a " +
     "usable state — real-world coverage that the on-disk rewrites don't just " +
     "succeed on fresh data but on snapshots captured from earlier app versions.",
 };

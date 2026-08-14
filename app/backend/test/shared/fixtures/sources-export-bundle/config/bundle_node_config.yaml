@@ -1,0 +1,27 @@
+nodes:
+  - bundleNodeName: blacklisted page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e19327a3da5b
+    listType: blacklist
+    outlinksDepth: 0
+    inlinksDepth: 0
+  - bundleNodeName: connected page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 390bfbf00196
+    listType: whitelist
+    outlinksDepth: 1
+    inlinksDepth: 0
+  - bundleNodeName: main page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c4ad5f89900d
+    listType: whitelist
+  - bundleNodeName: orphaned page
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b95c5b451569
+    listType: whitelist
+    outlinksDepth: 1
+    inlinksDepth: 0

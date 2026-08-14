@@ -20,9 +20,9 @@ import { execSync } from "child_process";
 import os from "os";
 import path from "path";
 import { allDocs } from "../../../test-runner/src/scenario-docs/index.ts";
-import { allSiteDocs } from "../../../test-runner/src/site-docs/index.ts";
+import { allBundleDocs } from "../../../test-runner/src/bundle-docs/index.ts";
 import { allAppAreaDocs } from "../../../test-runner/src/app-area-docs/index.ts";
-import { isSiteMode, type SiteMode } from "../siteModes.ts";
+import { isBundleMode, type BundleMode } from "../bundleModes.ts";
 import {
   generateFixtureScenario,
   FIXTURE_RUN_ID,
@@ -200,9 +200,9 @@ app.get("/api/scenario-docs", (_req, res) => {
   res.json([...base, ...extension]);
 });
 
-// GET /api/site-docs — return all site doc definitions
-app.get("/api/site-docs", (_req, res) => {
-  res.json(allSiteDocs);
+// GET /api/bundle-docs — return all bundle doc definitions
+app.get("/api/bundle-docs", (_req, res) => {
+  res.json(allBundleDocs);
 });
 
 // GET /api/app-area-docs — return all app area doc definitions
@@ -375,9 +375,9 @@ app.get("/api/runs/:runId", (req, res) => {
       let status = "unknown";
       let testName = slug;
       let duration: number | null = null;
-      let siteMode: SiteMode | null = null;
+      let bundleMode: BundleMode | null = null;
       let scenarioDocIds: string[] = [];
-      let siteDocIds: string[] = [];
+      let bundleDocIds: string[] = [];
       let appAreaDocIds: string[] = [];
       let keyFrames: { docId: string; filename: string }[] = [];
       let failureReason: string | undefined;
@@ -396,11 +396,11 @@ app.get("/api/runs/:runId", (req, res) => {
           if (meta.version === 1 && meta.scenarioInfo) {
             testName = meta.scenarioInfo.testName || slug;
             duration = meta.scenarioInfo.duration ?? null;
-            siteMode = isSiteMode(meta.scenarioInfo.siteMode)
-              ? meta.scenarioInfo.siteMode
+            bundleMode = isBundleMode(meta.scenarioInfo.bundleMode)
+              ? meta.scenarioInfo.bundleMode
               : null;
             scenarioDocIds = meta.scenarioInfo.scenarioDocIds || [];
-            siteDocIds = meta.scenarioInfo.siteDocIds || [];
+            bundleDocIds = meta.scenarioInfo.bundleDocIds || [];
             appAreaDocIds = meta.scenarioInfo.appAreaDocIds || [];
             keyFrames = meta.scenarioInfo.keyFrames || [];
             failureReason = meta.scenarioInfo.failureReason;
@@ -419,9 +419,9 @@ app.get("/api/runs/:runId", (req, res) => {
           try {
             const manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
             testName = manifest.testName || slug;
-            siteMode = isSiteMode(manifest.siteMode) ? manifest.siteMode : null;
+            bundleMode = isBundleMode(manifest.bundleMode) ? manifest.bundleMode : null;
             scenarioDocIds = manifest.scenarioDocIds || [];
-            siteDocIds = manifest.siteDocIds || [];
+            bundleDocIds = manifest.bundleDocIds || [];
             appAreaDocIds = manifest.appAreaDocIds || [];
             keyFrames = manifest.keyFrames || [];
             if (manifest.startTime && manifest.endTime) {
@@ -458,7 +458,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, testBasename, status, duration, siteMode, scenarioDocIds, siteDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { slug, testName, testBasename, status, duration, bundleMode, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read targeted-scenarios metadata (written when --scenarios flag was used)

@@ -284,10 +284,10 @@ fn extract_sections(html: &str) -> (String, String, String, String, String, Stri
     let sel_head = Selector::parse("head").unwrap();
     let sel_aside = Selector::parse("body > aside").unwrap();
     let sel_header =
-        Selector::parse("body > header, body > .meadow-site-content > header").unwrap();
-    let sel_main = Selector::parse("body > main, body > .meadow-site-content > main").unwrap();
+        Selector::parse("body > header, body > .meadow-bundle-content > header").unwrap();
+    let sel_main = Selector::parse("body > main, body > .meadow-bundle-content > main").unwrap();
     let sel_footer =
-        Selector::parse("body > footer, body > .meadow-site-content > footer").unwrap();
+        Selector::parse("body > footer, body > .meadow-bundle-content > footer").unwrap();
 
     let head = doc
         .select(&sel_head)

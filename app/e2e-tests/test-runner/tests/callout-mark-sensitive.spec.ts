@@ -15,12 +15,12 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
+import { BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { callout } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("callout for marking source node sensitive the first time", async ({
   page,
@@ -29,10 +29,10 @@ test("callout for marking source node sensitive the first time", async ({
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSite();
-  await snapshot("site editor loaded");
+  await wf.navigateToBigBundle();
+  await snapshot("bundle editor loaded");
 
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
 
   // Switch to list view so we can reliably target a specific non-sensitive page
   await editor.switchToListView();
@@ -102,7 +102,7 @@ test("callout for marking source node sensitive the first time", async ({
   const selectedTitlesAfter = await editor.getSelectedPageTitles();
   expect(selectedTitlesAfter.length).toBe(1);
   await snapshot("1 sensitive page remaining after unmarking two");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

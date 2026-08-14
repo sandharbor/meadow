@@ -15,24 +15,24 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteListPage, SiteEditorPage, PreviewPublishModal, CustomizeTab } from "../src/run/pages/index.js";
+import { BundleListPage, BundleEditorPage, PreviewPublishModal, CustomizeTab } from "../src/run/pages/index.js";
 import { htmlGeneration, hooks } from "../src/scenario-docs/index.js";
-import { hooksSite } from "../src/site-docs/index.js";
+import { hooksBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "home_fixture_hooks" });
 
 test("Hooks preview shows normalized title and editing hook updates it", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
-  // Navigate to site list and click the hooks test site
-  const siteList = new SiteListPage(page, expect);
-  await siteList.goto();
-  await snapshot("site list loaded");
+  // Navigate to bundle list and click the hooks test bundle
+  const bundleList = new BundleListPage(page, expect);
+  await bundleList.goto();
+  await snapshot("bundle list loaded");
 
-  await siteList.clickSite("meadow-test-site-for-hooks");
-  const editor = new SiteEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-site-for-hooks");
-  await snapshot("site editor loaded - graph view, nothing untracked");
+  await bundleList.clickBundle("meadow-test-bundle-for-hooks");
+  const editor = new BundleEditorPage(page, expect);
+  await editor.waitForLoad("meadow-test-bundle-for-hooks");
+  await snapshot("bundle editor loaded - graph view, nothing untracked");
 
   // Click Preview and wait for it to complete
   await editor.clickPreview();
@@ -76,7 +76,7 @@ test("Hooks preview shows normalized title and editing hook updates it", async (
   await modal.expectPreviewIframeHeading("vulkan - Dwarkesh and Anthropic CEO in 2023");
   await addKeyFrame(hooks);
   await snapshot("verified updated page title with vulkan hook");
-  void hooksSite;
+  void hooksBundle;
 
   await skipMeadowHomeStateCheck();
 });

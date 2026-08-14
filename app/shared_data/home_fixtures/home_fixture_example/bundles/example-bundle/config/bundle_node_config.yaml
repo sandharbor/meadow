@@ -1,0 +1,116 @@
+nodes:
+  - bundleNodeName: 2026-02-02
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c0b3baeaf879
+    listType: blacklist
+  - bundleNodeName: Charlie Munger
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0f8db8808fcd
+    listType: whitelist
+  - bundleNodeName: Circle of Competence
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: fe1577b870ca
+    listType: whitelist
+  - bundleNodeName: Cognitive Biases
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 39145d165089
+    listType: whitelist
+    outlinksDepth: 0
+  - bundleNodeName: First Principles Thinking
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 04eda3a5b117
+    listType: whitelist
+  - bundleNodeName: Hanlon's Razor
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2003293f5ea8
+    listType: whitelist
+  - bundleNodeName: Howard Marks
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: dbc8dee79f6c
+    listType: whitelist
+  - bundleNodeName: Inversion
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 12d450f2d870
+    listType: whitelist
+  - bundleNodeName: Latticework of Mental Models
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8da3c4d1d4b6
+    listType: whitelist
+  - bundleNodeName: Man with a Hammer
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c9dbd298c894
+    listType: whitelist
+  - bundleNodeName: Margin of Safety
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 74bda59575a8
+    listType: whitelist
+  - bundleNodeName: Mental Models Diagram
+    sourceGraphSubdirectory: images
+    bundleNodeKind: file
+    fileType: svg
+    bundleNodeId: 0828268017f6
+    listType: whitelist
+  - bundleNodeName: Mental Models Overview
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d2a063bedab9
+    listType: whitelist
+  - bundleNodeName: Notable Mental Models
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7fe9ab3fa811
+    listType: whitelist
+  - bundleNodeName: Occam's Razor
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d40772aab5c5
+    listType: whitelist
+  - bundleNodeName: Probabilistic Thinking
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 644a5e8e09c4
+    listType: whitelist
+  - bundleNodeName: Razors
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 91f3e10a54aa
+    listType: whitelist
+  - bundleNodeName: Second Order Thinking
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: fa497d93b1fd
+    listType: whitelist
+  - bundleNodeName: Warren Buffett
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: fc2dea7624f6
+    listType: whitelist

@@ -6,9 +6,9 @@ import { chromium } from "playwright";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
-const SITE_DIR = path.join(
+const BUNDLE_DIR = path.join(
   REPO_ROOT,
-  "app/system_tests/expected_results/meadow-test-site-big-preview"
+  "app/system_tests/expected_results/meadow-test-bundle-big-preview"
 );
 const PAGE_FILE = "t025 - extended syntax.html";
 const PORT = 4789;
@@ -56,13 +56,13 @@ function check(label, passed, detail = "") {
 }
 
 async function run() {
-  if (!fs.existsSync(path.join(SITE_DIR, PAGE_FILE))) {
-    console.error(`Missing rendered page: ${path.join(SITE_DIR, PAGE_FILE)}`);
+  if (!fs.existsSync(path.join(BUNDLE_DIR, PAGE_FILE))) {
+    console.error(`Missing rendered page: ${path.join(BUNDLE_DIR, PAGE_FILE)}`);
     console.error(`Run the system tests first so expected_results is populated.`);
     process.exit(1);
   }
 
-  const server = serve(SITE_DIR);
+  const server = serve(BUNDLE_DIR);
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
 

@@ -17,21 +17,21 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import {
-  SiteListPage,
-  SiteEditorPage,
-  CreateAndEditSiteModal,
+  BundleListPage,
+  BundleEditorPage,
+  CreateAndEditBundleModal,
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
 import { excalidraw, images, initialPage } from "../src/scenario-docs/index.js";
-import { customSite } from "../src/site-docs/index.js";
+import { customBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
 /**
- * Build a fresh site against meadow-test-sites-data with "t006 - embedded
+ * Build a fresh bundle against meadow-test-bundles-data with "t006 - embedded
  * media" as the initial page. The "main page" of that source graph links into
  * t006, so the editor opens with several depth-1 inlink pages visible. After
  * setting Inlink Depth to 0 on the initial page, the depth-1 outlink media
@@ -54,22 +54,22 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
     /Failed to use workers for subsetting, falling back to the main thread/,
   );
 
-  const siteList = new SiteListPage(page, expect);
-  const editor = new SiteEditorPage(page, expect);
-  const createModal = new CreateAndEditSiteModal(page, expect);
+  const bundleList = new BundleListPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
+  const createModal = new CreateAndEditBundleModal(page, expect);
 
-  // Empty home → click "create a site" in the empty-state callout
-  await siteList.goto();
-  await siteList.expectCalloutVisible("Turn your notes into sites");
-  await siteList.clickCreateSiteLink();
+  // Empty home → click "create a bundle" in the empty-state callout
+  await bundleList.goto();
+  await bundleList.expectCalloutVisible("Turn your notes into bundles");
+  await bundleList.clickCreateBundleLink();
 
-  // Point the new site at the shared meadow-test-sites-data graph and pick
+  // Point the new bundle at the shared meadow-test-bundles-data graph and pick
   // "t006 - embedded media" as the initial page.
-  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-sites-data");
+  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
   await createModal.fillSourceDirectory(sourceDir);
   await createModal.typeInitialPageTitle("t006 - embedded media");
   await createModal.selectSuggestion("t006 - embedded media");
-  await createModal.clickCreateSite();
+  await createModal.clickCreateBundle();
 
   // Slug is derived from the title via lowercase → spaces+dashes collapse.
   await editor.waitForLoad("t006-embedded-media");
@@ -106,7 +106,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   await addKeyFrame(excalidraw);
   await snapshot("depth-1 outlink media still present in list view");
 
-  void customSite;
+  void customBundle;
 
   releaseWorkerWarning();
 

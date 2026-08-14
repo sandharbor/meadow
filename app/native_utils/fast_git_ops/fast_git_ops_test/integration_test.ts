@@ -357,7 +357,7 @@ test('fast_git_ops html-section-diff: preserves caller path prefix and reports c
     );
     createFile(
       wrappedPagePath,
-      '<html><head><title>Wrapped</title></head><body><aside>Old navigation</aside><div class="meadow-site-content"><header>Old action</header><section>Old auxiliary content</section><main>Body</main><footer>Footer</footer></div></body></html>'
+      '<html><head><title>Wrapped</title></head><body><aside>Old navigation</aside><div class="meadow-bundle-content"><header>Old action</header><section>Old auxiliary content</section><main>Body</main><footer>Footer</footer></div></body></html>'
     );
 
     await git.add({ fs, dir: repoRoot, filepath: 'pages/index.html' });
@@ -375,7 +375,7 @@ test('fast_git_ops html-section-diff: preserves caller path prefix and reports c
     );
     createFile(
       wrappedPagePath,
-      '<html><head><title>Wrapped</title></head><body><aside>Updated navigation</aside><div class="meadow-site-content"><header>Updated action</header><section>Updated auxiliary content</section><main>Body</main><footer>Footer</footer></div></body></html>'
+      '<html><head><title>Wrapped</title></head><body><aside>Updated navigation</aside><div class="meadow-bundle-content"><header>Updated action</header><section>Updated auxiliary content</section><main>Body</main><footer>Footer</footer></div></body></html>'
     );
 
     fs.symlinkSync(repoRoot, aliasRoot, 'dir');
@@ -645,7 +645,7 @@ test('fast_git_ops commit_changes: overlapping directories are deduplicated and 
   const repoDir = path.join(import.meta.dirname, 'overlapping_dirs_repo');
   fs.rmSync(repoDir, { recursive: true, force: true });
   fs.mkdirSync(path.join(repoDir, 'app', 'publishing_providers', 'Provider'), { recursive: true });
-  fs.mkdirSync(path.join(repoDir, 'sites', 'example-site'), { recursive: true });
+  fs.mkdirSync(path.join(repoDir, 'bundles', 'example-bundle'), { recursive: true });
   await git.init({ fs, dir: repoDir });
 
   function commitOverlap(dirs: string[], msg: string): CommitResult {
@@ -660,7 +660,7 @@ test('fast_git_ops commit_changes: overlapping directories are deduplicated and 
   try {
     createFile(path.join(repoDir, 'app', 'publishing_providers', 'Provider', 'pp_config.yaml'), 'provider: test\n');
     createFile(path.join(repoDir, 'app', 'publishing_providers', 'Provider', 'pp_resources.yaml'), 'bucket: test\n');
-    createFile(path.join(repoDir, 'sites', 'example-site', 'site_config.yaml'), 'slug: example-site\n');
+    createFile(path.join(repoDir, 'bundles', 'example-bundle', 'bundle_config.yaml'), 'slug: example-bundle\n');
 
     const result = commitOverlap(
       [repoDir, path.join(repoDir, 'app'), path.join(repoDir, 'app', 'publishing_providers')],
@@ -685,7 +685,7 @@ test('fast_git_ops commit_changes: allow-empty rebuilds duplicate HEAD tree from
   const repoDir = path.join(import.meta.dirname, 'allow_empty_duplicate_tree_repo');
   fs.rmSync(repoDir, { recursive: true, force: true });
   fs.mkdirSync(path.join(repoDir, 'app'), { recursive: true });
-  fs.mkdirSync(path.join(repoDir, 'sites', 'example-site'), { recursive: true });
+  fs.mkdirSync(path.join(repoDir, 'bundles', 'example-bundle'), { recursive: true });
 
   try {
     execSync('git init -q -b main', { cwd: repoDir });
@@ -693,19 +693,19 @@ test('fast_git_ops commit_changes: allow-empty rebuilds duplicate HEAD tree from
     execSync('git config user.email test@test.com', { cwd: repoDir });
 
     createFile(path.join(repoDir, 'app', 'file.txt'), 'app\n');
-    createFile(path.join(repoDir, 'sites', 'example-site', 'file.txt'), 'site\n');
+    createFile(path.join(repoDir, 'bundles', 'example-bundle', 'file.txt'), 'bundle\n');
     execSync('git add . && git commit -q -m base', { cwd: repoDir });
 
     const baseCommitOid = execSync('git rev-parse HEAD', { cwd: repoDir, encoding: 'utf8' }).trim();
     const appTreeOid = execSync('git rev-parse HEAD:app', { cwd: repoDir, encoding: 'utf8' }).trim();
-    const sitesTreeOid = execSync('git rev-parse HEAD:sites', { cwd: repoDir, encoding: 'utf8' }).trim();
+    const bundlesTreeOid = execSync('git rev-parse HEAD:bundles', { cwd: repoDir, encoding: 'utf8' }).trim();
     const duplicateRootTreeOid = writeLooseGitObject(
       repoDir,
       'tree',
       Buffer.concat([
         gitTreeEntry('40000', 'app', appTreeOid),
-        gitTreeEntry('40000', 'sites', sitesTreeOid),
-        gitTreeEntry('40000', 'sites', sitesTreeOid),
+        gitTreeEntry('40000', 'bundles', bundlesTreeOid),
+        gitTreeEntry('40000', 'bundles', bundlesTreeOid),
       ]),
     );
     const badCommitOid = writeLooseGitObject(
@@ -717,12 +717,12 @@ test('fast_git_ops commit_changes: allow-empty rebuilds duplicate HEAD tree from
         'author Test <test@example.com> 0 +0000\n' +
         'committer Test <test@example.com> 0 +0000\n' +
         '\n' +
-        'bad duplicate sites tree\n',
+        'bad duplicate bundles tree\n',
       ),
     );
     execSync(`git update-ref refs/heads/main ${badCommitOid}`, { cwd: repoDir });
 
-    t.equal(countRootTreeEntries(repoDir, 'HEAD^{tree}', 'sites'), 2, 'Fixture HEAD starts with duplicate sites entries');
+    t.equal(countRootTreeEntries(repoDir, 'HEAD^{tree}', 'bundles'), 2, 'Fixture HEAD starts with duplicate bundles entries');
 
     const args = [
       'commit-changes',
@@ -748,7 +748,7 @@ test('fast_git_ops commit_changes: allow-empty rebuilds duplicate HEAD tree from
       duplicateRootTreeOid,
       'Checkpoint should not reuse malformed HEAD tree',
     );
-    t.equal(countRootTreeEntries(repoDir, 'HEAD^{tree}', 'sites'), 1, 'Checkpoint tree has one sites entry');
+    t.equal(countRootTreeEntries(repoDir, 'HEAD^{tree}', 'bundles'), 1, 'Checkpoint tree has one bundles entry');
   } finally {
     fs.rmSync(repoDir, { recursive: true, force: true });
   }
@@ -1009,7 +1009,7 @@ test('fast_git_ops commit_changes: mixed new, modified, and deleted files in one
   //   1. copy-tracked-pages commits flat files to tracked_page_content/
   //   2. ensureTrackedPageContent clears and rebuilds with subdirectories,
   //      modifying some content (tag rewriting) and removing pages no longer tracked
-  //   3. commitSiteChanges must commit all three kinds of changes in one shot
+  //   3. commitBundleChanges must commit all three kinds of changes in one shot
   //
   // IMPORTANT: This test uses an isolated repo so the ONLY index entries are
   // in the target directory. With extra entries from other directories (like

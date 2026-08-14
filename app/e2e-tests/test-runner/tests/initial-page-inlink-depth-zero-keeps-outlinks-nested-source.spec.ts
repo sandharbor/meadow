@@ -18,24 +18,24 @@ import path from "path";
 import { cpSync, rmSync } from "fs";
 import { test, expect } from "../src/run/test-fixtures.js";
 import {
-  SiteListPage,
-  SiteEditorPage,
-  CreateAndEditSiteModal,
+  BundleListPage,
+  BundleEditorPage,
+  CreateAndEditBundleModal,
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
 import { excalidraw, images, initialPage } from "../src/scenario-docs/index.js";
-import { customSite } from "../src/site-docs/index.js";
+import { customBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
 /**
  * Variant of `initial-page-inlink-depth-zero-keeps-outlinks` that points the
- * site at a *wrapper* directory which itself contains the
- * `meadow-test-sites-data` folder, instead of pointing directly at
- * `meadow-test-sites-data`. The traversal should produce the same result —
+ * bundle at a *wrapper* directory which itself contains the
+ * `meadow-test-bundles-data` folder, instead of pointing directly at
+ * `meadow-test-bundles-data`. The traversal should produce the same result —
  * depth-1 outlink media still visible after Inlink Depth → 0 — because
  * nesting the source graph one level deeper shouldn't change anything the
  * graph builder cares about.
@@ -53,14 +53,14 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
     /Failed to use workers for subsetting, falling back to the main thread/,
   );
 
-  // Build wrapper-around-meadow-test-sites-data/meadow-test-sites-data/ from
+  // Build wrapper-around-meadow-test-bundles-data/meadow-test-bundles-data/ from
   // the shared source graph. Idempotent: clear any leftover wrapper from a
   // prior run before copying.
-  const wrapperDir = path.join(testServer.sourceGraphsDir, "wrapper-around-meadow-test-sites-data");
+  const wrapperDir = path.join(testServer.sourceGraphsDir, "wrapper-around-meadow-test-bundles-data");
   rmSync(wrapperDir, { recursive: true, force: true });
   cpSync(
-    path.join(testServer.sourceGraphsDir, "meadow-test-sites-data"),
-    path.join(wrapperDir, "meadow-test-sites-data"),
+    path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data"),
+    path.join(wrapperDir, "meadow-test-bundles-data"),
     {
       recursive: true,
       filter: (src) => !src.includes(".DS_Store"),
@@ -68,22 +68,22 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   );
 
   try {
-    const siteList = new SiteListPage(page, expect);
-    const editor = new SiteEditorPage(page, expect);
-    const createModal = new CreateAndEditSiteModal(page, expect);
+    const bundleList = new BundleListPage(page, expect);
+    const editor = new BundleEditorPage(page, expect);
+    const createModal = new CreateAndEditBundleModal(page, expect);
 
-    // Empty home → click "create a site" in the empty-state callout
-    await siteList.goto();
-    await siteList.expectCalloutVisible("Turn your notes into sites");
-    await siteList.clickCreateSiteLink();
+    // Empty home → click "create a bundle" in the empty-state callout
+    await bundleList.goto();
+    await bundleList.expectCalloutVisible("Turn your notes into bundles");
+    await bundleList.clickCreateBundleLink();
 
-    // Point the new site at the *wrapper* directory and pick "t006 - embedded
+    // Point the new bundle at the *wrapper* directory and pick "t006 - embedded
     // media" as the initial page.
-    const sourceDir = path.join(testServer.sourceGraphsDir, "wrapper-around-meadow-test-sites-data");
+    const sourceDir = path.join(testServer.sourceGraphsDir, "wrapper-around-meadow-test-bundles-data");
     await createModal.fillSourceDirectory(sourceDir);
     await createModal.typeInitialPageTitle("t006 - embedded media");
     await createModal.selectSuggestion("t006 - embedded media");
-    await createModal.clickCreateSite();
+    await createModal.clickCreateBundle();
 
     // Slug is derived from the title via lowercase → spaces+dashes collapse.
     await editor.waitForLoad("t006-embedded-media");
@@ -120,7 +120,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
     await addKeyFrame(excalidraw);
     await snapshot("depth-1 outlink media still present in list view");
 
-    void customSite;
+    void customBundle;
 
     releaseWorkerWarning();
   } finally {
@@ -130,8 +130,8 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   }
 
   // The test ends with the inlink-depth change still un-saved, so the draft
-  // site_node_config is expected to be present as an untracked file.
+  // bundle_node_config is expected to be present as an untracked file.
   await assertMeadowHomeState({
-    allowedUntracked: ["sites/t006-embedded-media/conf/draft_site_node_config.yaml"],
+    allowedUntracked: ["bundles/t006-embedded-media/config/draft_bundle_node_config.yaml"],
   });
 });

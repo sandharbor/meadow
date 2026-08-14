@@ -1,6 +1,6 @@
-use crate::site_node_config::SiteNodeConfig;
+use crate::bundle_node_config::BundleNodeConfig;
 use crate::traversal::MultiSeed;
-use crate::types::FileSiteNode;
+use crate::types::FileBundleNode;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 const HARD_EXCLUDED_DIRECTORY_NAMES: &[&str] = &[".git", ".meadow", "_meadow"];
@@ -9,19 +9,19 @@ const HARD_EXCLUDED_DIRECTORY_NAMES: &[&str] = &[".git", ".meadow", "_meadow"];
 pub struct StructuralEdge {
     pub source: String,
     pub target: String,
-    pub site_edge_kind: &'static str,
+    pub bundle_edge_kind: &'static str,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolderScopeNode {
-    pub site_node_key: String,
-    pub site_node_id: Option<String>,
-    pub site_node_kind: &'static str,
-    pub site_node_name: String,
+    pub bundle_node_key: String,
+    pub bundle_node_id: Option<String>,
+    pub bundle_node_kind: &'static str,
+    pub bundle_node_name: String,
     pub source_graph_subdirectory: Option<String>,
-    pub member_site_node_ids: Option<Vec<String>>,
-    pub effective_blacklisting_site_node_id: Option<String>,
-    pub effective_folder_policy_site_node_id: Option<String>,
+    pub member_bundle_node_ids: Option<Vec<String>>,
+    pub effective_blacklisting_bundle_node_id: Option<String>,
+    pub effective_folder_policy_bundle_node_id: Option<String>,
     pub path: Vec<String>,
 }
 
@@ -34,7 +34,7 @@ pub struct FolderScopeProjection {
     pub contained_file_keys: HashSet<String>,
     pub blocked_file_keys: HashSet<String>,
     pub missing_selected_roots: Vec<String>,
-    pub effective_policy_site_node_ids: HashMap<String, String>,
+    pub effective_policy_bundle_node_ids: HashMap<String, String>,
 }
 
 fn is_same_or_descendant(locator: &str, ancestor: &str) -> bool {
@@ -114,41 +114,41 @@ fn selected_root_indexes_for_locator(locator: &str, roots: &[String]) -> Vec<usi
 }
 
 fn folder_config_at<'a>(
-    configs: &'a [SiteNodeConfig],
+    configs: &'a [BundleNodeConfig],
     locator: &str,
-) -> Option<&'a SiteNodeConfig> {
+) -> Option<&'a BundleNodeConfig> {
     configs.iter().find(|config| {
-        matches!(config, SiteNodeConfig::Folder { .. })
+        matches!(config, BundleNodeConfig::Folder { .. })
             && config.source_graph_subdirectory() == Some(locator)
     })
 }
 
 fn selected_folder_configs<'a>(
-    configs: &'a [SiteNodeConfig],
-    entry_site_node_id: &str,
-) -> anyhow::Result<(Option<&'a SiteNodeConfig>, Vec<&'a SiteNodeConfig>)> {
+    configs: &'a [BundleNodeConfig],
+    entry_bundle_node_id: &str,
+) -> anyhow::Result<(Option<&'a BundleNodeConfig>, Vec<&'a BundleNodeConfig>)> {
     let entry = configs
         .iter()
-        .find(|config| config.site_node_id() == entry_site_node_id)
-        .ok_or_else(|| anyhow::anyhow!("entrySiteNodeId does not resolve: {entry_site_node_id}"))?;
+        .find(|config| config.bundle_node_id() == entry_bundle_node_id)
+        .ok_or_else(|| anyhow::anyhow!("entryBundleNodeId does not resolve: {entry_bundle_node_id}"))?;
     match entry {
-        SiteNodeConfig::Folder { .. } => Ok((None, vec![entry])),
-        SiteNodeConfig::Collection {
-            member_site_node_ids,
+        BundleNodeConfig::Folder { .. } => Ok((None, vec![entry])),
+        BundleNodeConfig::Collection {
+            member_bundle_node_ids,
             ..
         } => {
-            let members = member_site_node_ids
+            let members = member_bundle_node_ids
                 .iter()
                 .map(|member_id| {
                     configs
                         .iter()
-                        .find(|config| config.site_node_id() == member_id)
+                        .find(|config| config.bundle_node_id() == member_id)
                         .ok_or_else(|| anyhow::anyhow!("collection member does not resolve: {member_id}"))
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?;
             Ok((Some(entry), members))
         }
-        SiteNodeConfig::File { .. } => {
+        BundleNodeConfig::File { .. } => {
             anyhow::bail!("folder scope requires a folder or collection entry")
         }
     }
@@ -179,13 +179,13 @@ fn materialize_chain(folders: &mut HashSet<String>, root: &str, descendant: &str
 }
 
 fn most_specific_folder_config<'a>(
-    configs: &'a [SiteNodeConfig],
+    configs: &'a [BundleNodeConfig],
     locator: &str,
-) -> Option<&'a SiteNodeConfig> {
+) -> Option<&'a BundleNodeConfig> {
     configs
         .iter()
         .filter(|config| {
-            matches!(config, SiteNodeConfig::Folder { .. })
+            matches!(config, BundleNodeConfig::Folder { .. })
                 && config
                     .source_graph_subdirectory()
                     .is_some_and(|folder| is_same_or_descendant(locator, folder))
@@ -195,18 +195,18 @@ fn most_specific_folder_config<'a>(
                 .unwrap_or("")
                 .len()
                 .cmp(&b.source_graph_subdirectory().unwrap_or("").len())
-                .then_with(|| b.site_node_key().cmp(&a.site_node_key()))
+                .then_with(|| b.bundle_node_key().cmp(&a.bundle_node_key()))
         })
 }
 
 fn nearest_blacklisted_folder<'a>(
-    configs: &'a [SiteNodeConfig],
+    configs: &'a [BundleNodeConfig],
     locator: &str,
-) -> Option<&'a SiteNodeConfig> {
+) -> Option<&'a BundleNodeConfig> {
     configs
         .iter()
         .filter(|config| {
-            matches!(config, SiteNodeConfig::Folder { .. })
+            matches!(config, BundleNodeConfig::Folder { .. })
                 && config.list_type() == "blacklist"
                 && config
                     .source_graph_subdirectory()
@@ -232,15 +232,15 @@ fn parent_folder(locator: &str, materialized: &HashSet<String>) -> Option<String
 }
 
 pub fn build_folder_scope_projection(
-    configs: &[SiteNodeConfig],
-    entry_site_node_id: &str,
-    supported_files: &[FileSiteNode],
+    configs: &[BundleNodeConfig],
+    entry_bundle_node_id: &str,
+    supported_files: &[FileBundleNode],
     existing_directories: &HashSet<String>,
     default_outlinks_depth: i32,
     default_inlinks_depth: i32,
 ) -> anyhow::Result<FolderScopeProjection> {
     let (collection, selected_configs) =
-        selected_folder_configs(configs, entry_site_node_id)?;
+        selected_folder_configs(configs, entry_bundle_node_id)?;
     let selected_roots: Vec<String> = selected_configs
         .iter()
         .map(|config| config.source_graph_subdirectory().unwrap_or("").to_string())
@@ -256,7 +256,7 @@ pub fn build_folder_scope_projection(
         materialized_folders.insert(root.clone());
     }
 
-    for config in configs.iter().filter(|config| matches!(config, SiteNodeConfig::Folder { .. })) {
+    for config in configs.iter().filter(|config| matches!(config, BundleNodeConfig::Folder { .. })) {
         let locator = config.source_graph_subdirectory().unwrap_or("");
         for root_index in selected_root_indexes_for_locator(locator, &selected_roots) {
             if existing_directories.contains(locator) {
@@ -265,7 +265,7 @@ pub fn build_folder_scope_projection(
         }
     }
 
-    let mut contained_files: Vec<FileSiteNode> = supported_files
+    let mut contained_files: Vec<FileBundleNode> = supported_files
         .iter()
         .filter(|file| {
             !selected_root_indexes_for_locator(
@@ -276,8 +276,8 @@ pub fn build_folder_scope_projection(
         })
         .cloned()
         .collect();
-    contained_files.sort_by_key(|file| file.site_node_key());
-    contained_files.dedup_by_key(|file| file.site_node_key());
+    contained_files.sort_by_key(|file| file.bundle_node_key());
+    contained_files.dedup_by_key(|file| file.bundle_node_key());
     for file in &contained_files {
         for root_index in selected_root_indexes_for_locator(
             &file.source_graph_subdirectory,
@@ -299,15 +299,15 @@ pub fn build_folder_scope_projection(
             containment_edges.push(StructuralEdge {
                 source: format!("folder:{parent}"),
                 target: format!("folder:{locator}"),
-                site_edge_kind: "directoryContainment",
+                bundle_edge_kind: "directoryContainment",
             });
         }
     }
     for file in &contained_files {
         containment_edges.push(StructuralEdge {
             source: format!("folder:{}", file.source_graph_subdirectory),
-            target: file.site_node_key(),
-            site_edge_kind: "directoryContainment",
+            target: file.bundle_node_key(),
+            bundle_edge_kind: "directoryContainment",
         });
     }
     containment_edges.sort_by(|a, b| {
@@ -320,17 +320,17 @@ pub fn build_folder_scope_projection(
     if let Some(collection) = collection {
         for selected in &selected_configs {
             structural_edges.push(StructuralEdge {
-                source: collection.site_node_key(),
-                target: selected.site_node_key(),
-                site_edge_kind: "collectionMembership",
+                source: collection.bundle_node_key(),
+                target: selected.bundle_node_key(),
+                bundle_edge_kind: "collectionMembership",
             });
         }
     }
     structural_edges.extend(containment_edges);
 
     let entry_key = collection
-        .map(SiteNodeConfig::site_node_key)
-        .unwrap_or_else(|| selected_configs[0].site_node_key());
+        .map(BundleNodeConfig::bundle_node_key)
+        .unwrap_or_else(|| selected_configs[0].bundle_node_key());
     let mut paths: HashMap<String, Vec<String>> = HashMap::from([(entry_key.clone(), vec![entry_key])]);
     let mut queue: VecDeque<String> = paths.keys().cloned().collect();
     while let Some(source) = queue.pop_front() {
@@ -352,15 +352,15 @@ pub fn build_folder_scope_projection(
     let mut structural_nodes = Vec::new();
     if let Some(collection) = collection {
         structural_nodes.push(FolderScopeNode {
-            site_node_key: collection.site_node_key(),
-            site_node_id: Some(collection.site_node_id().to_string()),
-            site_node_kind: "collection",
-            site_node_name: collection.site_node_name().to_string(),
+            bundle_node_key: collection.bundle_node_key(),
+            bundle_node_id: Some(collection.bundle_node_id().to_string()),
+            bundle_node_kind: "collection",
+            bundle_node_name: collection.bundle_node_name().to_string(),
             source_graph_subdirectory: None,
-            member_site_node_ids: collection.member_site_node_ids().map(<[String]>::to_vec),
-            effective_blacklisting_site_node_id: None,
-            effective_folder_policy_site_node_id: None,
-            path: paths.get(&collection.site_node_key()).cloned().unwrap_or_default(),
+            member_bundle_node_ids: collection.member_bundle_node_ids().map(<[String]>::to_vec),
+            effective_blacklisting_bundle_node_id: None,
+            effective_folder_policy_bundle_node_id: None,
+            path: paths.get(&collection.bundle_node_key()).cloned().unwrap_or_default(),
         });
     }
     for locator in &folder_locators {
@@ -368,48 +368,48 @@ pub fn build_folder_scope_projection(
         let blacklist = nearest_blacklisted_folder(configs, locator);
         let policy = most_specific_folder_config(configs, locator);
         structural_nodes.push(FolderScopeNode {
-            site_node_key: format!("folder:{locator}"),
-            site_node_id: config.map(|config| config.site_node_id().to_string()),
-            site_node_kind: "folder",
-            site_node_name: config
-                .map(|config| config.site_node_name().to_string())
+            bundle_node_key: format!("folder:{locator}"),
+            bundle_node_id: config.map(|config| config.bundle_node_id().to_string()),
+            bundle_node_kind: "folder",
+            bundle_node_name: config
+                .map(|config| config.bundle_node_name().to_string())
                 .unwrap_or_else(|| locator.rsplit('/').next().unwrap_or(locator).to_string()),
             source_graph_subdirectory: Some(locator.clone()),
-            member_site_node_ids: None,
-            effective_blacklisting_site_node_id: blacklist
-                .map(|config| config.site_node_id().to_string()),
-            effective_folder_policy_site_node_id: policy
-                .map(|config| config.site_node_id().to_string()),
+            member_bundle_node_ids: None,
+            effective_blacklisting_bundle_node_id: blacklist
+                .map(|config| config.bundle_node_id().to_string()),
+            effective_folder_policy_bundle_node_id: policy
+                .map(|config| config.bundle_node_id().to_string()),
             path: paths
                 .get(&format!("folder:{locator}"))
                 .cloned()
                 .unwrap_or_default(),
         });
     }
-    structural_nodes.sort_by(|a, b| a.site_node_key.cmp(&b.site_node_key));
+    structural_nodes.sort_by(|a, b| a.bundle_node_key.cmp(&b.bundle_node_key));
 
     let mut seeds = Vec::new();
     let mut blocked_file_keys = HashSet::new();
     let mut contained_file_keys = HashSet::new();
-    let mut effective_policy_site_node_ids = HashMap::new();
+    let mut effective_policy_bundle_node_ids = HashMap::new();
     for file in contained_files {
-        let key = file.site_node_key();
+        let key = file.bundle_node_key();
         contained_file_keys.insert(key.clone());
         if nearest_blacklisted_folder(configs, &file.source_graph_subdirectory).is_some() {
             blocked_file_keys.insert(key.clone());
         }
         let policy = most_specific_folder_config(configs, &file.source_graph_subdirectory);
         if let Some(policy) = policy {
-            effective_policy_site_node_ids.insert(key.clone(), policy.site_node_id().to_string());
+            effective_policy_bundle_node_ids.insert(key.clone(), policy.bundle_node_id().to_string());
         }
         seeds.push(MultiSeed {
             structural_path: paths.get(&key).cloned().unwrap_or_else(|| vec![key.clone()]),
             file,
             outlinks_depth: policy
-                .and_then(SiteNodeConfig::outlinks_depth)
+                .and_then(BundleNodeConfig::outlinks_depth)
                 .unwrap_or(default_outlinks_depth),
             inlinks_depth: policy
-                .and_then(SiteNodeConfig::inlinks_depth)
+                .and_then(BundleNodeConfig::inlinks_depth)
                 .unwrap_or(default_inlinks_depth),
         });
     }
@@ -422,7 +422,7 @@ pub fn build_folder_scope_projection(
         contained_file_keys,
         blocked_file_keys,
         missing_selected_roots,
-        effective_policy_site_node_ids,
+        effective_policy_bundle_node_ids,
     })
 }
 
@@ -430,12 +430,12 @@ pub fn build_folder_scope_projection(
 mod tests {
     use super::*;
 
-    fn file(directory: &str, name: &str) -> FileSiteNode {
-        FileSiteNode {
+    fn file(directory: &str, name: &str) -> FileBundleNode {
+        FileBundleNode {
             source_graph_subdirectory: directory.to_string(),
-            site_node_name: name.to_string(),
+            bundle_node_name: name.to_string(),
             file_type: "md".to_string(),
-            site_node_id: None,
+            bundle_node_id: None,
             is_sensitive: false,
             conf_outlinks_depth: None,
             conf_inlinks_depth: None,
@@ -443,11 +443,11 @@ mod tests {
         }
     }
 
-    fn folder(name: &str, locator: &str, id: &str, list_type: &str) -> SiteNodeConfig {
-        SiteNodeConfig::Folder {
-            site_node_name: name.to_string(),
+    fn folder(name: &str, locator: &str, id: &str, list_type: &str) -> BundleNodeConfig {
+        BundleNodeConfig::Folder {
+            bundle_node_name: name.to_string(),
             source_graph_subdirectory: locator.to_string(),
-            site_node_id: id.to_string(),
+            bundle_node_id: id.to_string(),
             list_type: list_type.to_string(),
             outlinks_depth: None,
             inlinks_depth: None,
@@ -459,11 +459,11 @@ mod tests {
         let configs = vec![
             folder("Projects", "Projects", "p1b2c3d4e5f6", "whitelist"),
             folder("Sub", "Projects/Sub", "s1b2c3d4e5f6", "whitelist"),
-            SiteNodeConfig::Collection {
-                site_node_name: "Research".to_string(),
-                site_node_id: "c1b2c3d4e5f6".to_string(),
+            BundleNodeConfig::Collection {
+                bundle_node_name: "Research".to_string(),
+                bundle_node_id: "c1b2c3d4e5f6".to_string(),
                 list_type: "whitelist".to_string(),
-                member_site_node_ids: vec![
+                member_bundle_node_ids: vec![
                     "p1b2c3d4e5f6".to_string(),
                     "s1b2c3d4e5f6".to_string(),
                 ],
@@ -488,11 +488,11 @@ mod tests {
         assert!(projection
             .structural_nodes
             .iter()
-            .any(|node| node.site_node_key == "folder:Projects/Sub/Deep" && node.site_node_id.is_none()));
+            .any(|node| node.bundle_node_key == "folder:Projects/Sub/Deep" && node.bundle_node_id.is_none()));
         assert!(projection.structural_edges.iter().any(|edge| {
             edge.source == "collection:c1b2c3d4e5f6"
                 && edge.target == "folder:Projects/Sub"
-                && edge.site_edge_kind == "collectionMembership"
+                && edge.bundle_edge_kind == "collectionMembership"
         }));
     }
 
@@ -530,11 +530,11 @@ mod tests {
     #[test]
     fn deepest_folder_policy_wins_and_blacklist_is_a_hard_seed_boundary() {
         let mut selected = folder("Projects", "Projects", "p1b2c3d4e5f6", "whitelist");
-        if let SiteNodeConfig::Folder { outlinks_depth, .. } = &mut selected {
+        if let BundleNodeConfig::Folder { outlinks_depth, .. } = &mut selected {
             *outlinks_depth = Some(2);
         }
         let mut nested = folder("Blocked", "Projects/Blocked", "b1b2c3d4e5f6", "blacklist");
-        if let SiteNodeConfig::Folder { outlinks_depth, inlinks_depth, .. } = &mut nested {
+        if let BundleNodeConfig::Folder { outlinks_depth, inlinks_depth, .. } = &mut nested {
             *outlinks_depth = Some(9);
             *inlinks_depth = Some(3);
         }
@@ -555,6 +555,6 @@ mod tests {
         assert_eq!(projection.seeds[0].inlinks_depth, 3);
         assert!(projection
             .blocked_file_keys
-            .contains(&projection.seeds[0].file.site_node_key()));
+            .contains(&projection.seeds[0].file.bundle_node_key()));
     }
 }

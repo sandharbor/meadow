@@ -15,13 +15,13 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { FilterPanelComponent, SiteEditorPage } from "../src/run/pages/index.js";
+import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { filters } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 import { isImageFileType } from "../../../shared_code/utils/fileTypeUtils.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("type filter soloing File Nodes excludes Image Nodes", async ({
   page,
@@ -30,10 +30,10 @@ test("type filter soloing File Nodes excludes Image Nodes", async ({
   addKeyFrame,
 }) => {
   const workflows = new Workflows(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await workflows.navigateToBigSite();
+  await workflows.navigateToBigBundle();
   await editor.expectGraphEdgeKindControlsHidden();
   await filterPanel.expandFilterGroup("Types");
   const fileNodeCount = await filterPanel.getNodeTypeCount("File Nodes");
@@ -51,7 +51,7 @@ test("type filter soloing File Nodes excludes Image Nodes", async ({
   expect(visibleTypes.some(type => isImageFileType(type.trim().replace(/^\./, "")))).toBe(false);
   await addKeyFrame(filters);
   await snapshot("file nodes soloed with image nodes excluded");
-  void bigSite;
+  void bigBundle;
 
   await assertMeadowHomeState();
 });

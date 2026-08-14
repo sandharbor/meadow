@@ -79,7 +79,7 @@ try {
     dir: gitRoot,
   });
   
-  // Count changed files (same logic as confFileExplorerUtils.ts)
+  // Count changed files (same logic as configFileExplorerUtils.ts)
   let changedCount = 0;
   for (const [_filepath, head, workdir, stage] of statusMatrix) {
     if (head === 0 && workdir === 2) changedCount++; // new

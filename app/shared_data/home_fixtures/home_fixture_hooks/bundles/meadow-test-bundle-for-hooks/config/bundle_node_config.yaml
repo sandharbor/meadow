@@ -1,0 +1,1198 @@
+nodes:
+  - bundleNodeName: a race dynamic
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 057835e2eaee
+    listType: whitelist
+  - bundleNodeName: activation function
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d95ffff300d1
+    listType: whitelist
+  - bundleNodeName: active learning
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7fc67a444622
+    listType: whitelist
+  - bundleNodeName: AGI definition
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 57a5539988e7
+    listType: whitelist
+  - bundleNodeName: AI research
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1f42923c0931
+    listType: whitelist
+  - bundleNodeName: alias - training loss = entropy
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 911441bafe2d
+    listType: whitelist
+  - bundleNodeName: aligned by default
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 69962ab61548
+    listType: whitelist
+  - bundleNodeName: alternative attention mechanisms
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e3ccf9a98f46
+    listType: whitelist
+  - bundleNodeName: architectural breakthrough
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: "0980607e8463"
+    listType: whitelist
+  - bundleNodeName: Artificial general intelligence - AGI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a13d8a0c2811
+    listType: whitelist
+  - bundleNodeName: ASI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c6cd370b224c
+    listType: whitelist
+  - bundleNodeName: automatic AI researcher
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 75f3e67368e5
+    listType: whitelist
+  - bundleNodeName: automatic domain randomization - ADR
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: "284059941789"
+    listType: whitelist
+  - bundleNodeName: b evals in phoenix
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 60abe2500639
+    listType: whitelist
+  - bundleNodeName: breakthrough
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c6f921d5cf30
+    listType: whitelist
+  - bundleNodeName: C how transformers work
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 419376eeb08f
+    listType: whitelist
+  - bundleNodeName: c Statquest - transformer neural networks - ChatGPT's foundation
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7d750db194cf
+    listType: whitelist
+  - bundleNodeName: C statquest long short term memory LSTM
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7d531a6c5bbf
+    listType: whitelist
+  - bundleNodeName: C the attention mechanism demystified
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 361349de7143
+    listType: whitelist
+  - bundleNodeName: C transformers from scratch
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: "885795418271"
+    listType: whitelist
+  - bundleNodeName: capacity
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2be19aa2ad99
+    listType: whitelist
+  - bundleNodeName: certainty
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a5cec11cda6d
+    listType: whitelist
+  - bundleNodeName: certainty, probability, and confidence
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: df2cedfe63e0
+    listType: whitelist
+  - bundleNodeName: chat - dot product
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8183c2bfd658
+    listType: whitelist
+  - bundleNodeName: chat - positional encoding values
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d31cea197608
+    listType: whitelist
+  - bundleNodeName: chat - self-attention
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5fe017c2a60e
+    listType: whitelist
+  - bundleNodeName: chat - SSM architecture
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3cd3c19d34dd
+    listType: whitelist
+  - bundleNodeName: chat - training generalization
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 736cc76daac5
+    listType: whitelist
+  - bundleNodeName: chat – constitutional AI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f858d6782af6
+    listType: whitelist
+  - bundleNodeName: China
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7dcffdc7f119
+    listType: whitelist
+  - bundleNodeName: circuit
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c02d10724361
+    listType: whitelist
+  - bundleNodeName: company - Anthropic
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4556af792946
+    listType: whitelist
+  - bundleNodeName: company - Google
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8ea53916c979
+    listType: whitelist
+  - bundleNodeName: company - OpenAI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 98fc0bd663f5
+    listType: whitelist
+  - bundleNodeName: Company Goverance
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 756bd39a86dc
+    listType: whitelist
+  - bundleNodeName: compute multiplier - CM
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 30b265d436f8
+    listType: whitelist
+  - bundleNodeName: con - AI can speed up AI research
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0ff9bd598728
+    listType: whitelist
+  - bundleNodeName: con - AI secret technique proliferation
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d23090bf29ab
+    listType: whitelist
+  - bundleNodeName: con - arms-race dynamics
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 703d9930eccd
+    listType: whitelist
+  - bundleNodeName: con - asking humans about areas of uncertainty
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7d0ae845f92b
+    listType: whitelist
+  - bundleNodeName: con - capabilities that you actually care about
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1f1a8e4822bf
+    listType: whitelist
+  - bundleNodeName: con - Geo Hotz somehow knew the GPT4 architecture
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a3508881282c
+    listType: whitelist
+  - bundleNodeName: con - in most places, AI is about as good as an intern
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4cce06e2de53
+    listType: whitelist
+  - bundleNodeName: con - incentives can be so powerful that they override explicit
+      governing structures
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4e21571bdda2
+    listType: whitelist
+  - bundleNodeName: con - inference can be cheaper with one bit models
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2b2e624653c9
+    listType: whitelist
+  - bundleNodeName: con - maybe we should train smaller models for longer
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b35a6d85506a
+    listType: whitelist
+  - bundleNodeName: con - no binding international treaties
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0bc8f4a92ad6
+    listType: whitelist
+  - bundleNodeName: con - one million token context window
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 33645bd3aecf
+    listType: whitelist
+  - bundleNodeName: con - scaling plateaus before reaching human level intelligence
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1fc54210dc55
+    listType: whitelist
+  - bundleNodeName: con - self improvement
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 556cc6aa0d89
+    listType: whitelist
+  - bundleNodeName: con - smaller models cost less to run inference on
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 11beac5defd1
+    listType: whitelist
+  - bundleNodeName: con - the data advantage is going to drive value creation
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d5fee3a78977
+    listType: whitelist
+  - bundleNodeName: con - the KV Cache is only used during inference because it is
+      done serially
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b3feb747fe2e
+    listType: whitelist
+  - bundleNodeName: con - using bigger models to interpret smaller models
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 48213cc80ec3
+    listType: whitelist
+  - bundleNodeName: con - we don't need completely new capabilities
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7c4523d0642d
+    listType: whitelist
+  - bundleNodeName: con - you should never train for interpretability
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 74ae3a059171
+    listType: whitelist
+  - bundleNodeName: con - YouTube has a big data advantage
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f71fbbcb7610
+    listType: whitelist
+  - bundleNodeName: constitutional AI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 94ac961dc6e7
+    listType: whitelist
+  - bundleNodeName: convergence
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 33a6e2de535e
+    listType: whitelist
+  - bundleNodeName: core metrics
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 06984771d1ce
+    listType: whitelist
+  - bundleNodeName: cosine similarity
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ce7da4d3bd83
+    listType: whitelist
+  - bundleNodeName: create relevance and force curiosity
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 31308118f21f
+    listType: whitelist
+  - bundleNodeName: critical model size
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f038a6bf2031
+    listType: whitelist
+  - bundleNodeName: cross-validation
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 348775f1528b
+    listType: whitelist
+  - bundleNodeName: D all in 111 - Microsoft stake in open AI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: fdf78e4c17c5
+    listType: whitelist
+  - bundleNodeName: diff - core metric like training loss vs. a capability that you
+      actually care about
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: de71d0a15e07
+    listType: whitelist
+  - bundleNodeName: diff - discovered vs. invented
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 23e117d6a48c
+    listType: whitelist
+  - bundleNodeName: diff - empiricist vs. theoretician
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7ff48fabd796
+    listType: whitelist
+  - bundleNodeName: diff - fundamental theory vs. practical issue
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 44d914b1956d
+    listType: whitelist
+  - bundleNodeName: diff - model capacity vs. generalizability
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 47ad9b304a56
+    listType: whitelist
+  - bundleNodeName: diff - open vs. closed models
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d1bc01b4fd47
+    listType: whitelist
+  - bundleNodeName: diff - training vs inference
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 53d1a73a487d
+    listType: whitelist
+  - bundleNodeName: diff - vanishing vs. exploding gradient
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3eb561003c89
+    listType: whitelist
+  - bundleNodeName: dim - capacity density
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a855f52ece82
+    listType: whitelist
+  - bundleNodeName: dim - context window length
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 31531abc42b8
+    listType: whitelist
+  - bundleNodeName: dim - context window length -- long
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3f3de1c894bb
+    listType: whitelist
+  - bundleNodeName: dim - inference cost
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 01ccf5aca58c
+    listType: whitelist
+  - bundleNodeName: dim - inference cost -- lower
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4b0dedba5b91
+    listType: whitelist
+  - bundleNodeName: dim - inference speed -- faster
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 455d0aa8dc8c
+    listType: whitelist
+  - bundleNodeName: dim - model capacity
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 97bc173a8fb1
+    listType: whitelist
+  - bundleNodeName: dim - model size
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9f3f7824412d
+    listType: whitelist
+  - bundleNodeName: dim - model size -- smaller
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 97c4afe4fdce
+    listType: whitelist
+  - bundleNodeName: dim - number of parameters
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 58f214f7e493
+    listType: whitelist
+  - bundleNodeName: dim - number of parameters -- higher
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 99fe009c36a4
+    listType: whitelist
+  - bundleNodeName: dim - prediction generalizability
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0323004cafe3
+    listType: whitelist
+  - bundleNodeName: dim - training time
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b1839f53efaa
+    listType: whitelist
+  - bundleNodeName: dim - training time -- long
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4dcf6fea7d8a
+    listType: whitelist
+  - bundleNodeName: diminishing returns
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9b95aaa8a1f2
+    listType: whitelist
+  - bundleNodeName: discovery fiction
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4d63eabd0563
+    listType: whitelist
+  - bundleNodeName: domain randomization
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d6b5f7fa883b
+    listType: whitelist
+  - bundleNodeName: doomed by default
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b2f36a5e3896
+    listType: whitelist
+  - bundleNodeName: economically valuable
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4cd7c96520e8
+    listType: whitelist
+  - bundleNodeName: empiricist
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: de031bcbad4f
+    listType: whitelist
+  - bundleNodeName: ensemble multiple attempts
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 10c0b48dcd26
+    listType: whitelist
+  - bundleNodeName: entropy
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4125f211dd02
+    listType: whitelist
+  - bundleNodeName: evals
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 819d7fcba080
+    listType: whitelist
+  - bundleNodeName: exploding gradient problem
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2a5ea6c6716f
+    listType: whitelist
+  - bundleNodeName: exponential progress
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5aec5dec48a1
+    listType: whitelist
+  - bundleNodeName: exponential thinking
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f4143d35552f
+    listType: whitelist
+  - bundleNodeName: forward pass
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1287e4a52508
+    listType: whitelist
+  - bundleNodeName: frontier models
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 204a821577c3
+    listType: whitelist
+  - bundleNodeName: generalization
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 93cfc0883379
+    listType: whitelist
+  - bundleNodeName: GPT-4
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 96de4e9546d5
+    listType: whitelist
+  - bundleNodeName: gradient descent
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 712b806d953c
+    listType: whitelist
+  - bundleNodeName: grokking
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 80b516862b8a
+    listType: whitelist
+  - bundleNodeName: hold out
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 16b143a8dfdf
+    listType: whitelist
+  - bundleNodeName: human
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9e71bb868c4a
+    listType: whitelist
+  - bundleNodeName: human in the loop - HITL
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 36122f75ef44
+    listType: whitelist
+  - bundleNodeName: hypothesis articulation
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b0ffdde19c79
+    listType: whitelist
+  - bundleNodeName: identity function
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 23e7c4b58a6d
+    listType: whitelist
+  - bundleNodeName: inference
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 503addd93372
+    listType: whitelist
+  - bundleNodeName: inference might cost more than training
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 394c95fb88ea
+    listType: whitelist
+  - bundleNodeName: information on constructing evals
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1730295cb3a7
+    listType: whitelist
+  - bundleNodeName: input sequence
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b6b98718546c
+    listType: whitelist
+  - bundleNodeName: interpretability research
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 791f8412bdbc
+    listType: whitelist
+  - bundleNodeName: knowledge schema
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: aef1ea43ea4a
+    listType: whitelist
+  - bundleNodeName: leakage
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 14860fb4283b
+    listType: whitelist
+  - bundleNodeName: leave one out
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2b5eec8afd8d
+    listType: whitelist
+  - bundleNodeName: loss function
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e5b7c2661883
+    listType: whitelist
+  - bundleNodeName: LSTMs could not be trained in parallel
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b765331eeabc
+    listType: whitelist
+  - bundleNodeName: mechanistic interpretability
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 85366f41cc12
+    listType: whitelist
+  - bundleNodeName: misuse
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ad83cc04517e
+    listType: whitelist
+  - bundleNodeName: mixture of experts - MoE
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d019c5acd901
+    listType: whitelist
+  - bundleNodeName: moc - architectures
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 92941253d44f
+    listType: whitelist
+  - bundleNodeName: moc - plateaus
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 25637b3f1701
+    listType: whitelist
+  - bundleNodeName: moc - scaling
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 974bb42d25d6
+    listType: whitelist
+  - bundleNodeName: model - o3
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3c568b02ee8d
+    listType: whitelist
+  - bundleNodeName: multiple models
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: fc758be49b52
+    listType: whitelist
+  - bundleNodeName: narrow ASI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ee77115f0bda
+    listType: whitelist
+  - bundleNodeName: new information
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8a8532525775
+    listType: whitelist
+  - bundleNodeName: next token prediction
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 20796d0fad48
+    listType: whitelist
+  - bundleNodeName: open model
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c193c0b66c20
+    listType: whitelist
+  - bundleNodeName: P GPQA - A Graduate-Level Google-Proof Q&A Benchmark
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2411b6cf96c7
+    listType: whitelist
+  - bundleNodeName: performance benchmarks
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d3933726f671
+    listType: whitelist
+  - bundleNodeName: person - Albert Gu
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5c2235df2b2f
+    listType: whitelist
+  - bundleNodeName: person - Alexander Rush
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 03e95632617b
+    listType: whitelist
+  - bundleNodeName: person - Andrej Karpathy
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2c37d9664ed9
+    listType: whitelist
+  - bundleNodeName: person - Chamath Palihapitiya
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 877aa098c8b6
+    listType: whitelist
+  - bundleNodeName: person - Dario Amodei
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9a9e66e6f78e
+    listType: whitelist
+  - bundleNodeName: person - David Friedberg
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 13dc32f39480
+    listType: whitelist
+  - bundleNodeName: person - Dwarkesh Patel
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1710b3af06b2
+    listType: whitelist
+  - bundleNodeName: person - Geo Hotz
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: bbd07d996f0d
+    listType: whitelist
+  - bundleNodeName: person - Ilya Sutskever
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5fc0cce72fbf
+    listType: whitelist
+  - bundleNodeName: person - Michael Nielsen
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0068aa68a51b
+    listType: whitelist
+  - bundleNodeName: person - Tri Dao
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ed03f6f794c9
+    listType: whitelist
+  - bundleNodeName: positional encoding
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 376499c388bd
+    listType: whitelist
+  - bundleNodeName: practical issue - it was hard to get data for robotics
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: fed471754e31
+    listType: whitelist
+  - bundleNodeName: practical issue - running out of data
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 71a4462085bc
+    listType: whitelist
+  - bundleNodeName: practical issues
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 19de70006093
+    listType: whitelist
+  - bundleNodeName: project - Claude
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c68a216b7095
+    listType: whitelist
+  - bundleNodeName: project - mamba
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 106f5ae9ee7c
+    listType: whitelist
+  - bundleNodeName: race with China
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3170a54dfa02
+    listType: whitelist
+  - bundleNodeName: reasoning model
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ee671d4c9cd9
+    listType: whitelist
+  - bundleNodeName: recurrent neural networks - RNN
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: bb529f4c7557
+    listType: whitelist
+  - bundleNodeName: ref - mamba the easy way
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8cf360318454
+    listType: whitelist
+  - bundleNodeName: ref - mamba the hard way
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 92254448566b
+    listType: whitelist
+  - bundleNodeName: ref - statquest recurrent neural networks
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: cc7cdd29760a
+    listType: whitelist
+  - bundleNodeName: ref- podcast-data-skeptic-cross-validation
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: dec1367c22a7
+    listType: whitelist
+  - bundleNodeName: reinforcement learning - RL
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5d81aff64c64
+    listType: whitelist
+  - bundleNodeName: reinforcement learning with human feedback - RLHF
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a53536f3d634
+    listType: whitelist
+  - bundleNodeName: risks
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 89d2a1dcdb33
+    listType: whitelist
+  - bundleNodeName: robotics
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1fd03556a9de
+    listType: whitelist
+  - bundleNodeName: scaling problems
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b20e436d3f9c
+    listType: whitelist
+  - bundleNodeName: school - CMU
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e2bf09f8f0bd
+    listType: whitelist
+  - bundleNodeName: school - Princeton
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 6c2f9897c15d
+    listType: whitelist
+  - bundleNodeName: self-attention
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4c175ad14ad1
+    listType: whitelist
+  - bundleNodeName: self-supervised learning - SSL
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b9aa79477094
+    listType: whitelist
+  - bundleNodeName: simulation
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 6220481dfda4
+    listType: whitelist
+  - bundleNodeName: slang - groks
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3c586657b820
+    listType: whitelist
+  - bundleNodeName: State Space Model - SSM architecture
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 08bad52d7368
+    listType: whitelist
+  - bundleNodeName: synthetic data
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 24b0ab811807
+    listType: whitelist
+  - bundleNodeName: T ai government race to ASI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4f4c626c37c9
+    listType: whitelist
+  - bundleNodeName: T discovery fiction
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1e8cc6799f26
+    listType: whitelist
+  - bundleNodeName: T Geo Hotz what GPT-4 is
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2edf5904742f
+    listType: whitelist
+  - bundleNodeName: T the chinchilla trap
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 52538f89fc5c
+    listType: whitelist
+  - bundleNodeName: tag--consumption-notes
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 17de4df27222
+    listType: whitelist
+  - bundleNodeName: tag--flashcards
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5a77378d02b6
+    listType: whitelist
+  - bundleNodeName: tag--flashcards--transformers
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 6880509271c5
+    listType: whitelist
+  - bundleNodeName: tag--podcast
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 22e5f6ab0702
+    listType: whitelist
+  - bundleNodeName: tag--podcast-data-skeptic
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 00c485b412b5
+    listType: whitelist
+  - bundleNodeName: tag--pub-to-machnotes
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e3327699e4e3
+    listType: whitelist
+  - bundleNodeName: tag--srs--ml
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 70236e76add6
+    listType: whitelist
+  - bundleNodeName: tag--visualizations
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c5223594086d
+    listType: whitelist
+  - bundleNodeName: tag--well-explained
+    sourceGraphSubdirectory: x-tagpages
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 44504e08e1b5
+    listType: whitelist
+  - bundleNodeName: test-time compute
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b8b75d26c6e4
+    listType: whitelist
+  - bundleNodeName: the data wall
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: fd776d6d634b
+    listType: whitelist
+  - bundleNodeName: The OpenAI leadership drama and board turnover
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 86673bf7bfd7
+    listType: whitelist
+  - bundleNodeName: token
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f202b5b6c483
+    listType: whitelist
+  - bundleNodeName: trade secrets
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 38c9cd59c4d5
+    listType: whitelist
+  - bundleNodeName: training
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f9c2a1915a03
+    listType: whitelist
+  - bundleNodeName: training loss
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 96dec2e1a8ea
+    listType: whitelist
+  - bundleNodeName: training with inference efficiency as the goal
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 854d8c77157b
+    listType: whitelist
+  - bundleNodeName: transformers
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 6403f9cf788a
+    listType: whitelist
+  - bundleNodeName: true AGI
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 93326b241605
+    listType: whitelist
+  - bundleNodeName: V Dwarkesh and Anthropic CEO in 2023
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 989eb6ecc274
+    listType: whitelist
+  - bundleNodeName: V how a transformer is used at inference time versus training time
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8e99a8bf79b2
+    listType: whitelist
+  - bundleNodeName: vanishing gradient problem
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: "134570152245"
+    listType: whitelist
+  - bundleNodeName: very hard challenge
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ced14cebedb9
+    listType: whitelist
+  - bundleNodeName: X single head
+    sourceGraphSubdirectory: ai
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 6f46a1e16fc4
+    listType: whitelist

@@ -20,7 +20,7 @@ export const publishing: ScenarioDoc = {
   id: "publishing",
   name: "Publishing",
   description:
-    "Tests that cover the publish flow: previewing a site, reviewing files to publish, " +
+    "Tests that cover the publish flow: previewing a bundle, reviewing files to publish, " +
     "uploading to object storage (MinIO/S3), browsing the published result, " +
-    "and deleting published sites (object-storage cleanup and any provider-side bookkeeping).",
+    "and deleting published bundles (object-storage cleanup and any provider-side bookkeeping).",
 };

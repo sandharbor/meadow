@@ -1,0 +1,1 @@
+[[reader]] using tooling like [[app component -- bundle page views]] when accessing a [[published bundle type -- local html]].

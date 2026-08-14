@@ -15,8 +15,8 @@ echo "Type checking passed."
 echo "Linting one-test-per-spec rule..."
 npx tsx _module/scripts/lint-single-test-per-spec.ts
 
-echo "Linting site-mode classification..."
-npx tsx _module/scripts/lint-site-mode.ts
+echo "Linting bundle-mode classification..."
+npx tsx _module/scripts/lint-bundle-mode.ts
 
 echo "Linting page-object boundary in specs..."
 npx tsx _module/scripts/lint-no-direct-locators.ts

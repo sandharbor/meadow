@@ -20,22 +20,22 @@ export interface CalloutDismissals {
   calloutInitialPageOutlinksDepth?: boolean; // Dismissed the callout about setting depth on initial page
   calloutPreviewSinglePage?: boolean; // Dismissed the warning about previewing with only the initial page tracked
   allowAddMeadowSensitivePropertyToSourcePages?: boolean; // Consented to adding meadow-sensitive property to source pages
-  customizeSidebarAutoShown?: boolean; // The customize sidebar has been auto-shown on first site preview modal open
+  customizeSidebarAutoShown?: boolean; // The customize sidebar has been auto-shown on first bundle preview modal open
 }
 
 export interface AppConfig {
   version?: string;
   manageGitAutomatically?: boolean; // Whether Meadow should automatically run git operations (init/commit) for you (default: true)
   allowImagesToExtendToFrontier?: boolean; // Whether images linked from frontier-edge pages should be included (default: true)
-  // Site-generation defaults: options that control what gets produced when
-  // Meadow turns raw notes into site artifacts (HTML and side-artifacts).
+  // Bundle-generation defaults: options that control what gets produced when
+  // Meadow turns raw notes into bundle artifacts (HTML and side-artifacts).
   // Applies to both preview and publish since they share the same pipeline.
   generationBreadcrumbsEnabled?: boolean; // Default for whether to render breadcrumbs (default: true)
   generationBacklinksEnabled?: boolean; // Default for whether to render backlinks (default: true)
   generationTagsEnabled?: boolean; // Default for whether to generate tag pages + convert #tags to links (default: true; requires backlinks)
-  generationSearchEnabled?: boolean; // Default for whether to generate site search UI + index (default: true)
+  generationSearchEnabled?: boolean; // Default for whether to generate bundle search UI + index (default: true)
   generationHoverPreviewEnabled?: boolean; // Default for whether to render hover previews on links (default: false)
-  generationFolderNavigationEnabled?: boolean; // Default for whether to render the generated-site folder navigation sidebar (default: false)
+  generationFolderNavigationEnabled?: boolean; // Default for whether to render the generated-bundle folder navigation sidebar (default: false)
   generationMarkdownZipEnabled?: boolean; // Default for whether to generate a downloadable sources ZIP (default: false)
   generationOpenKnowledgeFormatEnabled?: boolean; // Default for whether to generate an Open Knowledge Format bundle (default: false)
   generationSpacedRepetitionEnabled?: boolean; // Default for whether to render client-side spaced repetition widgets (default: false)

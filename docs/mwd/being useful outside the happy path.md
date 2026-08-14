@@ -12,8 +12,8 @@ TODO - pull this into a concept better... make something like a [[design motivat
 
 [[identifying and expanding a graph is separately valuable from publishing it]]
 
-[[copy selected site page details in text or json or yaml]]
+[[copy selected bundle page details in text or json or yaml]]
 
-[[make it easy to access the preview html so you can publish your own site easily if you want to]]
+[[make it easy to access the preview html so you can publish your own bundle easily if you want to]]
 
 [[command line or API access to internal commands for easy orchestration]]

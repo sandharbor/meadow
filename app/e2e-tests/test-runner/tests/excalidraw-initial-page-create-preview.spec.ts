@@ -17,20 +17,20 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import {
-  SiteListPage,
-  SiteEditorPage,
-  CreateAndEditSiteModal,
+  BundleListPage,
+  BundleEditorPage,
+  CreateAndEditBundleModal,
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
 import { excalidraw, initialPage } from "../src/scenario-docs/index.js";
-import { customSite } from "../src/site-docs/index.js";
+import { customBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
-test("create a custom site with an excalidraw initial page and follow a drawing link", async ({
+test("create a custom bundle with an excalidraw initial page and follow a drawing link", async ({
   page,
   testServer,
   snapshot,
@@ -42,21 +42,21 @@ test("create a custom site with an excalidraw initial page and follow a drawing 
     /Failed to use workers for subsetting, falling back to the main thread/,
   );
 
-  const siteList = new SiteListPage(page, expect);
-  const editor = new SiteEditorPage(page, expect);
-  const createModal = new CreateAndEditSiteModal(page, expect);
+  const bundleList = new BundleListPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
+  const createModal = new CreateAndEditBundleModal(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
-  const generatedSite = previewModal.generatedSite;
+  const generatedBundle = previewModal.generatedBundle;
 
-  await siteList.goto();
-  await siteList.expectCalloutVisible("Turn your notes into sites");
-  await siteList.clickCreateSiteLink();
+  await bundleList.goto();
+  await bundleList.expectCalloutVisible("Turn your notes into bundles");
+  await bundleList.clickCreateBundleLink();
 
-  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-sites-data");
+  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
   await createModal.fillSourceDirectory(sourceDir);
   await createModal.typeInitialPageTitle("t006 --- meadow-flower");
   await createModal.selectSuggestion("t006 --- meadow-flower");
-  await createModal.clickCreateSite();
+  await createModal.clickCreateBundle();
 
   await editor.waitForLoad("t006-meadow-flower");
   await snapshot("graph view loaded with excalidraw initial page");
@@ -77,23 +77,23 @@ test("create a custom site with an excalidraw initial page and follow a drawing 
   await editor.clickPreview();
   await previewModal.waitForPreviewCompleteAllTracked();
 
-  await generatedSite.expectHeading("t006 --- meadow-flower", 30_000);
-  await generatedSite.excalidraw.expectStandaloneDrawingVisible();
+  await generatedBundle.expectHeading("t006 --- meadow-flower", 30_000);
+  await generatedBundle.excalidraw.expectStandaloneDrawingVisible();
   await snapshot("preview shows excalidraw initial page");
   await addKeyFrame(excalidraw);
 
   const firstDrawingLinkHref =
     "t006%20---%20linked-from-excalidraw.html";
-  await generatedSite.excalidraw.expectStandaloneDrawingLink(
+  await generatedBundle.excalidraw.expectStandaloneDrawingLink(
     firstDrawingLinkHref,
   );
-  await generatedSite.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref);
+  await generatedBundle.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref);
 
-  await generatedSite.expectHeading("t006 --- linked-from-excalidraw");
+  await generatedBundle.expectHeading("t006 --- linked-from-excalidraw");
   await snapshot("preview after clicking first excalidraw link");
   await addKeyFrame(excalidraw);
 
-  void customSite;
+  void customBundle;
 
   releaseWorkerWarning();
   await skipMeadowHomeStateCheck();

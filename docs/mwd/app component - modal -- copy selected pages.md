@@ -9,4 +9,4 @@
 
 ### Details
 
-[[copy selected site page details in text or json or yaml]]
+[[copy selected bundle page details in text or json or yaml]]

@@ -16,7 +16,7 @@ limitations under the License.
 
 /**
  * Centralized path definitions for publishing-provider configuration and
- * site-scoped cache.
+ * bundle-scoped cache.
  *
  * Layout:
  *   CONF_DIR/
@@ -26,8 +26,8 @@ limitations under the License.
  *           pp_config.yaml
  *           pp_resources.yaml
  *           pp_secrets.yaml         (gitignored)
- *     sites/
- *       {siteSlug}/
+ *     bundles/
+ *       {bundleSlug}/
  *         config/
  *           publishing_providers/
  *             {providerId}/
@@ -38,7 +38,7 @@ limitations under the License.
  *           publishing_providers/
  *             {providerId}/         (provider-private cache; subdirs are up to the provider)
  *
- * Site-local config files override global ones via shallow merge. The cache
+ * Bundle-local config files override global ones via shallow merge. The cache
  * folder is opaque to core: each provider decides what subdirectories and
  * files it wants to keep there.
  */
@@ -47,8 +47,8 @@ import { join } from 'path';
 import { AppConfigPaths } from './appConfigPaths.js';
 
 const PUBLISHING_PROVIDERS_DIR = 'publishing_providers';
-const SITE_CONFIG_DIR = 'config';
-const SITE_CACHE_DIR = 'cache';
+const BUNDLE_CONFIG_DIR = 'config';
+const BUNDLE_CACHE_DIR = 'cache';
 const PP_CONFIG_FILE = 'pp_config.yaml';
 const PP_RESOURCES_FILE = 'pp_resources.yaml';
 const PP_RESOURCES_LOCAL_FILE = 'pp_resources.local.yaml';
@@ -85,36 +85,36 @@ export const PublishingProviderPaths = {
     return join(this.getGlobalProviderDir(configDir, providerId), PP_SECRETS_FILE);
   },
 
-  /** sites/{siteSlug}/config/publishing_providers/{providerId}/ */
-  getSiteProviderDir(configDir: string, siteSlug: string, providerId: string): string {
+  /** bundles/{bundleSlug}/config/publishing_providers/{providerId}/ */
+  getBundleProviderDir(configDir: string, bundleSlug: string, providerId: string): string {
     return join(
-      AppConfigPaths.getSiteDir(configDir, siteSlug),
-      SITE_CONFIG_DIR,
+      AppConfigPaths.getBundleDir(configDir, bundleSlug),
+      BUNDLE_CONFIG_DIR,
       PUBLISHING_PROVIDERS_DIR,
       providerId,
     );
   },
 
-  /** sites/{siteSlug}/config/publishing_providers/{providerId}/pp_config.yaml */
-  getSiteConfigFile(configDir: string, siteSlug: string, providerId: string): string {
-    return join(this.getSiteProviderDir(configDir, siteSlug, providerId), PP_CONFIG_FILE);
+  /** bundles/{bundleSlug}/config/publishing_providers/{providerId}/pp_config.yaml */
+  getBundleConfigFile(configDir: string, bundleSlug: string, providerId: string): string {
+    return join(this.getBundleProviderDir(configDir, bundleSlug, providerId), PP_CONFIG_FILE);
   },
 
-  /** sites/{siteSlug}/config/publishing_providers/{providerId}/pp_resources.yaml */
-  getSiteResourcesFile(configDir: string, siteSlug: string, providerId: string): string {
-    return join(this.getSiteProviderDir(configDir, siteSlug, providerId), PP_RESOURCES_FILE);
+  /** bundles/{bundleSlug}/config/publishing_providers/{providerId}/pp_resources.yaml */
+  getBundleResourcesFile(configDir: string, bundleSlug: string, providerId: string): string {
+    return join(this.getBundleProviderDir(configDir, bundleSlug, providerId), PP_RESOURCES_FILE);
   },
 
-  /** sites/{siteSlug}/config/publishing_providers/{providerId}/pp_secrets.yaml */
-  getSiteSecretsFile(configDir: string, siteSlug: string, providerId: string): string {
-    return join(this.getSiteProviderDir(configDir, siteSlug, providerId), PP_SECRETS_FILE);
+  /** bundles/{bundleSlug}/config/publishing_providers/{providerId}/pp_secrets.yaml */
+  getBundleSecretsFile(configDir: string, bundleSlug: string, providerId: string): string {
+    return join(this.getBundleProviderDir(configDir, bundleSlug, providerId), PP_SECRETS_FILE);
   },
 
-  /** sites/{siteSlug}/cache/publishing_providers/{providerId}/ */
-  getSiteProviderCacheDir(configDir: string, siteSlug: string, providerId: string): string {
+  /** bundles/{bundleSlug}/cache/publishing_providers/{providerId}/ */
+  getBundleProviderCacheDir(configDir: string, bundleSlug: string, providerId: string): string {
     return join(
-      AppConfigPaths.getSiteDir(configDir, siteSlug),
-      SITE_CACHE_DIR,
+      AppConfigPaths.getBundleDir(configDir, bundleSlug),
+      BUNDLE_CACHE_DIR,
       PUBLISHING_PROVIDERS_DIR,
       providerId,
     );

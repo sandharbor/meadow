@@ -31,7 +31,7 @@ import { logger } from '../utils/logging/backendLoggingUtils.js';
  * folder there — no edit to this file.
  *
  * Discovery runs once at module load via top-level await. The rest of the
- * module exposes synchronous lookups that match the existing call sites.
+ * module exposes synchronous lookups that match the existing call bundles.
  * Folders are visited in lexical order so display order is deterministic.
  */
 

@@ -8,13 +8,13 @@ At a very high level, the ultimate aim of these filters is to help a user turn a
 
 ### Examples
 
-[[example - site pages impacted by regex filter marking the sensitive are not bulk-added by track to whitelist tooling]]
+[[example - bundle pages impacted by regex filter marking the sensitive are not bulk-added by track to whitelist tooling]]
 
 Key characteristics:
 - [[filters can be toggled on-off to preview their impact without deletion]]
-- Impact of filters is immediately visible on both existing and potential new notes X [[app component -- site page views]] [[design motivation -- speed]]
+- Impact of filters is immediately visible on both existing and potential new notes X [[app component -- bundle page views]] [[design motivation -- speed]]
 - [[filter page selector type -- registered working graph]]
-- [[filters can be used to highlight or make the site page sensitive]]
+- [[filters can be used to highlight or make the bundle page sensitive]]
 - [[filters alter graph view batch registration behavior]]
 - [[to delete - there are default filters, custom filters, and AI filters]]
-- [[filter soft deletion to keep site page filter ignores explainable]]
+- [[filter soft deletion to keep bundle page filter ignores explainable]]

@@ -1,22 +1,22 @@
 {
   "temporaryLineLimitExceptions": {
-    "areas/site/generation/html/htmlGenerator.ts": {
-      "reason": "Large site-generation renderer kept intact during route and package moves to avoid behavior churn.",
+    "areas/bundle/generation/html/htmlGenerator.ts": {
+      "reason": "Large bundle-generation renderer kept intact during route and package moves to avoid behavior churn.",
       "followUp": "Split rendering helpers by page assembly, asset copying, and document construction after inventory enforcement is in place."
     },
-    "areas/site/generation/html/htmlService.ts": {
-      "reason": "Large site-generation orchestration service still owns preview, publish, export, and version pointer flows.",
-      "followUp": "Split preview, publish, sources export, and version pointer services under the site/generation area."
+    "areas/bundle/generation/html/htmlService.ts": {
+      "reason": "Large bundle-generation orchestration service still owns preview, publish, export, and version pointer flows.",
+      "followUp": "Split preview, publish, sources export, and version pointer services under the bundle/generation area."
     },
-    "areas/site/generation/html/shared/excalidraw-vendor.js": {
+    "areas/bundle/generation/html/shared/excalidraw-vendor.js": {
       "reason": "Generated vendor bundle served as a static asset for Excalidraw rendering.",
       "followUp": "Keep generated bundles exempt or move them under a generated-assets path excluded from source line limits."
     },
-    "areas/site/generation/html/shared/mermaid.min.js": {
-      "reason": "Vendored minified Mermaid runtime served as a static asset for generated sites.",
+    "areas/bundle/generation/html/shared/mermaid.min.js": {
+      "reason": "Vendored minified Mermaid runtime served as a static asset for generated bundles.",
       "followUp": "Keep vendored runtime assets exempt or move them under a generated-assets path excluded from source line limits."
     },
-    "areas/site/generation/render-source/srsMarkdown.ts": {
+    "areas/bundle/generation/render-source/srsMarkdown.ts": {
       "reason": "Spaced-repetition markdown transforms are generation render-source logic and exceed the line limit.",
       "followUp": "Split card parsing, GUID preparation, and render-element replacement helpers within the generation render-source area."
     }

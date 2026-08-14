@@ -19,7 +19,7 @@ import type { FileType } from './FileType.js';
 /**
  * Minimal file-identifying info for a "source page" file in a sourceDirectory.
  * This is used for duplicate-title resolution and typeahead selection when choosing
- * an initial site page.
+ * an initial bundle page.
  */
 export interface SourcePageFileInfo {
   title: string;

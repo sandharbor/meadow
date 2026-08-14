@@ -3,7 +3,7 @@
  * Verifies that app areas stay partitioned from each other.
  *
  * The check walks `<sourceRoot>/areas`, assigns every source file to an area
- * based on its path (`sites` or `site/<name>`), and rejects relative imports
+ * based on its path (`bundles` or `bundle/<name>`), and rejects relative imports
  * that resolve into a different area. Shared code sits outside `areas`, so
  * area-to-shared imports are allowed.
  *
@@ -56,8 +56,8 @@ function walkFiles(directory) {
 
 function areaForRelativePath(relativePath) {
   const parts = relativePath.split(path.sep);
-  if (parts[0] === 'sites') return 'sites';
-  if (parts[0] === 'site' && parts[1]) return `site/${parts[1]}`;
+  if (parts[0] === 'bundles') return 'bundles';
+  if (parts[0] === 'bundle' && parts[1]) return `bundle/${parts[1]}`;
   return parts[0] || null;
 }
 
@@ -188,10 +188,10 @@ function listAreaNames() {
   const names = [];
   for (const entry of fs.readdirSync(areasRoot, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    if (entry.name === 'site') {
-      const siteAreasRoot = path.join(areasRoot, entry.name);
-      for (const siteArea of fs.readdirSync(siteAreasRoot, { withFileTypes: true })) {
-        if (siteArea.isDirectory()) names.push(`site/${siteArea.name}`);
+    if (entry.name === 'bundle') {
+      const bundleAreasRoot = path.join(areasRoot, entry.name);
+      for (const bundleArea of fs.readdirSync(bundleAreasRoot, { withFileTypes: true })) {
+        if (bundleArea.isDirectory()) names.push(`bundle/${bundleArea.name}`);
       }
     } else {
       names.push(entry.name);

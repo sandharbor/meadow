@@ -15,28 +15,28 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteListPage, SiteEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
+import { BundleListPage, BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
 import { callout } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("Callout preview warns about untracked pages", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
-  const siteList = new SiteListPage(page, expect);
-  await siteList.goto();
-  await snapshot("site list loaded");
+  const bundleList = new BundleListPage(page, expect);
+  await bundleList.goto();
+  await snapshot("bundle list loaded");
 
-  await siteList.clickSite("meadow-test-site-big");
-  const editor = new SiteEditorPage(page, expect);
-  await editor.waitForLoad("meadow-test-site-big");
-  await snapshot("site editor loaded");
+  await bundleList.clickBundle("meadow-test-bundle-big");
+  const editor = new BundleEditorPage(page, expect);
+  await editor.waitForLoad("meadow-test-bundle-big");
+  await snapshot("bundle editor loaded");
 
   await editor.clickPreview();
   const modal = new PreviewPublishModal(page, expect);
   await modal.waitForPreviewComplete();
   await addKeyFrame(callout);
   await snapshot("preview shows untracked warning");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

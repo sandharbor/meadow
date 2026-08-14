@@ -19,18 +19,18 @@ import { createHash } from "crypto";
 import os from "os";
 import path from "path";
 import YAML from "yaml";
-import { Site } from "../workflows.js";
+import { Bundle } from "../workflows.js";
 
-interface SiteNodeConfigYaml {
+interface BundleNodeConfigYaml {
   nodes?: Array<{
     fileType: string;
     inlinksDepth?: number;
     listType: "blacklist" | "whitelist";
     outlinksDepth?: number;
     sourceGraphSubdirectory?: string;
-    siteNodeId: string;
-    siteNodeKind: "file";
-    siteNodeName: string;
+    bundleNodeId: string;
+    bundleNodeKind: "file";
+    bundleNodeName: string;
   }>;
 }
 
@@ -41,7 +41,7 @@ export interface OkfSeedPage {
   linkFromMain?: boolean;
 }
 
-export interface OkfBigSiteSeedOptions {
+export interface OkfBigBundleSeedOptions {
   pages: OkfSeedPage[];
   mainPageAppend?: string[];
 }
@@ -76,20 +76,20 @@ function writeSourceFile(sourceGraphDir: string, relativePath: string, content: 
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-export function seedOkfBigSite(configDir: string, options: OkfBigSiteSeedOptions): string {
-  const siteDir = path.join(configDir, "sites", Site.Big);
-  const siteConfigPath = path.join(siteDir, "conf", "site_config.yaml");
-  const siteNodeConfigPath = path.join(siteDir, "conf", "site_node_config.yaml");
-  const siteConfig = YAML.parse(fs.readFileSync(siteConfigPath, "utf8")) as Record<string, unknown>;
-  const originalSourceDirectory = String(siteConfig.sourceDirectory || "");
+export function seedOkfBigBundle(configDir: string, options: OkfBigBundleSeedOptions): string {
+  const bundleDir = path.join(configDir, "bundles", Bundle.Big);
+  const bundleConfigPath = path.join(bundleDir, "config", "bundle_config.yaml");
+  const bundleNodeConfigPath = path.join(bundleDir, "config", "bundle_node_config.yaml");
+  const bundleConfig = YAML.parse(fs.readFileSync(bundleConfigPath, "utf8")) as Record<string, unknown>;
+  const originalSourceDirectory = String(bundleConfig.sourceDirectory || "");
   const sourceGraphCopy = fs.mkdtempSync(path.join(os.tmpdir(), "meadow-okf-source-graph-"));
 
   fs.cpSync(originalSourceDirectory, sourceGraphCopy, {
     recursive: true,
     filter: (src) => !src.includes(".DS_Store"),
   });
-  siteConfig.sourceDirectory = sourceGraphCopy;
-  fs.writeFileSync(siteConfigPath, YAML.stringify(siteConfig), "utf8");
+  bundleConfig.sourceDirectory = sourceGraphCopy;
+  fs.writeFileSync(bundleConfigPath, YAML.stringify(bundleConfig), "utf8");
 
   const linkedPages = options.pages.filter(page => page.linkFromMain);
   if (linkedPages.length > 0 || options.mainPageAppend?.length) {
@@ -112,25 +112,25 @@ export function seedOkfBigSite(configDir: string, options: OkfBigSiteSeedOptions
     writeSourceFile(sourceGraphCopy, page.relativePath, page.content);
   }
 
-  const siteNodeConfig = YAML.parse(fs.readFileSync(siteNodeConfigPath, "utf8")) as SiteNodeConfigYaml;
-  const nodes = Array.isArray(siteNodeConfig.nodes) ? siteNodeConfig.nodes : [];
+  const bundleNodeConfig = YAML.parse(fs.readFileSync(bundleNodeConfigPath, "utf8")) as BundleNodeConfigYaml;
+  const nodes = Array.isArray(bundleNodeConfig.nodes) ? bundleNodeConfig.nodes : [];
   const ensureNode = (seedPage: OkfSeedPage) => {
     const sourceGraphSubdirectory = sourceGraphSubdirectoryFor(seedPage.relativePath);
-    const siteNodeName = titleFor(seedPage.relativePath);
+    const bundleNodeName = titleFor(seedPage.relativePath);
     const exists = nodes.some((node) =>
-      node.siteNodeName === siteNodeName &&
+      node.bundleNodeName === bundleNodeName &&
       (node.sourceGraphSubdirectory || "") === sourceGraphSubdirectory &&
       node.fileType === "md"
     );
     if (!exists) {
-      const locator = `${sourceGraphSubdirectory}\u0000${siteNodeName}\u0000md`;
+      const locator = `${sourceGraphSubdirectory}\u0000${bundleNodeName}\u0000md`;
       nodes.push({
         fileType: "md",
         listType: "whitelist",
         sourceGraphSubdirectory,
-        siteNodeId: createHash("sha256").update(`okf-e2e:${locator}`).digest("hex").slice(0, 12),
-        siteNodeKind: "file",
-        siteNodeName,
+        bundleNodeId: createHash("sha256").update(`okf-e2e:${locator}`).digest("hex").slice(0, 12),
+        bundleNodeKind: "file",
+        bundleNodeName,
       });
     }
   };
@@ -140,7 +140,7 @@ export function seedOkfBigSite(configDir: string, options: OkfBigSiteSeedOptions
       ensureNode(page);
     }
   }
-  fs.writeFileSync(siteNodeConfigPath, YAML.stringify({ ...siteNodeConfig, nodes }), "utf8");
+  fs.writeFileSync(bundleNodeConfigPath, YAML.stringify({ ...bundleNodeConfig, nodes }), "utf8");
 
   return sourceGraphCopy;
 }
@@ -151,7 +151,7 @@ export function seedTrackedAndLinkedFile(
   content: string,
   options: OkfTrackedFileSeedOptions = {},
 ): void {
-  seedOkfBigSite(configDir, {
+  seedOkfBigBundle(configDir, {
     pages: [
       {
         relativePath: relativePathForPageName(pageName, options),
@@ -168,7 +168,7 @@ export function seedTrackedFile(
   content: string,
   options: OkfTrackedFileSeedOptions = {},
 ): void {
-  seedOkfBigSite(configDir, {
+  seedOkfBigBundle(configDir, {
     pages: [
       {
         relativePath: relativePathForPageName(pageName, options),

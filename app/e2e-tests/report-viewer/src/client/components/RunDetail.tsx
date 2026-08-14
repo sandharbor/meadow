@@ -26,7 +26,7 @@ import {
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
-import { isSiteMode, SITE_MODE_OPTIONS, type SiteMode } from '../../siteModes.ts'
+import { isBundleMode, BUNDLE_MODE_OPTIONS, type BundleMode } from '../../bundleModes.ts'
 
 interface ScenarioDoc {
   id: string
@@ -35,7 +35,7 @@ interface ScenarioDoc {
   isMeadowExtension?: boolean
 }
 
-interface SiteDoc {
+interface BundleDoc {
   id: string
   name: string
   description: string
@@ -59,9 +59,9 @@ interface Scenario {
   testBasename?: string
   status: string
   duration: number | null
-  siteMode: SiteMode | null
+  bundleMode: BundleMode | null
   scenarioDocIds: string[]
-  siteDocIds: string[]
+  bundleDocIds: string[]
   appAreaDocIds: string[]
   failureReason?: string
   keyFrames: KeyFrame[]
@@ -83,7 +83,7 @@ export default function RunDetail() {
   const [data, setData] = useState<RunData | null>(null)
   const [healthMap, setHealthMap] = useState<Record<string, HealthSummary>>({})
   const [docs, setDocs] = useState<ScenarioDoc[]>([])
-  const [siteDocs, setSiteDocs] = useState<SiteDoc[]>([])
+  const [bundleDocs, setBundleDocs] = useState<BundleDoc[]>([])
   const [appAreaDocs, setAppAreaDocs] = useState<AppAreaDoc[]>([])
   const [notes, setNotes] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -96,9 +96,9 @@ export default function RunDetail() {
   const selectedAreas = appAreaDocs.filter((d) => selectedAreaIds.includes(d.id))
   const selectedDocIds = searchParams.getAll('doc')
   const selectedDocs = docs.filter((d) => selectedDocIds.includes(d.id))
-  const selectedSiteIds = searchParams.getAll('site')
-  const selectedSites = siteDocs.filter((d) => selectedSiteIds.includes(d.id))
-  const selectedSiteModes = searchParams.getAll('mode').filter(isSiteMode)
+  const selectedBundleIds = searchParams.getAll('bundle')
+  const selectedBundles = bundleDocs.filter((d) => selectedBundleIds.includes(d.id))
+  const selectedBundleModes = searchParams.getAll('mode').filter(isBundleMode)
 
   // Track which scenario doc IDs appear in this run's data
   const presentDocIds = new Set(
@@ -118,16 +118,16 @@ export default function RunDetail() {
       .flatMap((s) => s.scenarioDocIds)
   )
 
-  const setFilters = (next: { areaIds?: string[]; docIds?: string[]; siteIds?: string[]; siteModes?: SiteMode[] }) => {
+  const setFilters = (next: { areaIds?: string[]; docIds?: string[]; bundleIds?: string[]; bundleModes?: BundleMode[] }) => {
     const areaIds = next.areaIds ?? selectedAreaIds
     const docIds = next.docIds ?? selectedDocIds
-    const siteIds = next.siteIds ?? selectedSiteIds
-    const siteModes = next.siteModes ?? selectedSiteModes
+    const bundleIds = next.bundleIds ?? selectedBundleIds
+    const bundleModes = next.bundleModes ?? selectedBundleModes
     setSearchParams([
-      ...siteModes.map((mode): [string, string] => ['mode', mode]),
+      ...bundleModes.map((mode): [string, string] => ['mode', mode]),
       ...areaIds.map((id): [string, string] => ['area', id]),
       ...docIds.map((id): [string, string] => ['doc', id]),
-      ...siteIds.map((id): [string, string] => ['site', id]),
+      ...bundleIds.map((id): [string, string] => ['bundle', id]),
     ])
   }
 
@@ -160,9 +160,9 @@ export default function RunDetail() {
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setDocs([...d].sort((a, b) => a.name.localeCompare(b.name))))
       .catch(() => {})
-    fetch('/api/site-docs')
+    fetch('/api/bundle-docs')
       .then((r) => r.ok ? r.json() : [])
-      .then((d) => setSiteDocs(d))
+      .then((d) => setBundleDocs(d))
       .catch(() => {})
     fetch('/api/app-area-docs')
       .then((r) => r.ok ? r.json() : [])
@@ -219,8 +219,8 @@ export default function RunDetail() {
   // Sort scenarios by slug descending (higher t-numbers = newer scenarios first)
   const sortedScenarios = [...data.scenarios].sort((a, b) => b.slug.localeCompare(a.slug))
 
-  const modeFiltered = selectedSiteModes.length > 0
-    ? sortedScenarios.filter((s) => s.siteMode && selectedSiteModes.includes(s.siteMode))
+  const modeFiltered = selectedBundleModes.length > 0
+    ? sortedScenarios.filter((s) => s.bundleMode && selectedBundleModes.includes(s.bundleMode))
     : sortedScenarios
 
   const areaFiltered = selectedAreas.length > 0
@@ -235,9 +235,9 @@ export default function RunDetail() {
       )
     : areaFiltered
 
-  const filteredScenarios = selectedSites.length > 0
+  const filteredScenarios = selectedBundles.length > 0
     ? docFiltered.filter((s) =>
-        selectedSites.some((site) => s.siteDocIds.includes(site.id))
+        selectedBundles.some((bundle) => s.bundleDocIds.includes(bundle.id))
       )
     : docFiltered
 
@@ -286,23 +286,23 @@ export default function RunDetail() {
       )}
       {!notes && <div className="mb-3" />}
 
-      {/* Site-origin mode filter */}
+      {/* Bundle-origin mode filter */}
       <div className="mb-3">
         <div className="flex flex-wrap gap-1.5 items-center">
           <span className="text-xs text-neutral-400 font-medium mr-1">Starts with:</span>
           <button
             className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-              selectedSiteModes.length === 0
+              selectedBundleModes.length === 0
                 ? 'bg-violet-500 text-white'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
-            onClick={() => setFilters({ siteModes: [] })}
+            onClick={() => setFilters({ bundleModes: [] })}
           >
             All
           </button>
-          {SITE_MODE_OPTIONS.map((mode) => {
-            const isSelected = selectedSiteModes.includes(mode.id)
-            const count = data.scenarios.filter((scenario) => scenario.siteMode === mode.id).length
+          {BUNDLE_MODE_OPTIONS.map((mode) => {
+            const isSelected = selectedBundleModes.includes(mode.id)
+            const count = data.scenarios.filter((scenario) => scenario.bundleMode === mode.id).length
             return (
               <button
                 key={mode.id}
@@ -313,9 +313,9 @@ export default function RunDetail() {
                 }`}
                 aria-pressed={isSelected}
                 onClick={() => setFilters({
-                  siteModes: isSelected
-                    ? selectedSiteModes.filter((selected) => selected !== mode.id)
-                    : [...selectedSiteModes, mode.id],
+                  bundleModes: isSelected
+                    ? selectedBundleModes.filter((selected) => selected !== mode.id)
+                    : [...selectedBundleModes, mode.id],
                 })}
               >
                 {mode.label} ({count})
@@ -328,7 +328,7 @@ export default function RunDetail() {
       {/* App area filter chips */}
       {appAreaDocs.length > 0 && (() => {
         const rootAreas = appAreaDocs.filter((d) => !d.parentId)
-        const siteAreas = appAreaDocs.filter((d) => d.parentId === 'site')
+        const bundleAreas = appAreaDocs.filter((d) => d.parentId === 'bundle')
 
         const renderAreaPill = (area: AppAreaDoc) => {
           const isSelected = selectedAreaIds.includes(area.id)
@@ -374,10 +374,10 @@ export default function RunDetail() {
                 All
               </button>
               {rootAreas.map(renderAreaPill)}
-              {siteAreas.length > 0 && (
-                <span className="text-xs text-neutral-400 font-medium mr-1">Site:</span>
+              {bundleAreas.length > 0 && (
+                <span className="text-xs text-neutral-400 font-medium mr-1">Bundle:</span>
               )}
-              {siteAreas.map(renderAreaPill)}
+              {bundleAreas.map(renderAreaPill)}
             </div>
             {selectedAreas.length === 1 && (
               <p className="mt-2 text-xs text-neutral-500">{selectedAreas[0].description}</p>
@@ -468,35 +468,35 @@ export default function RunDetail() {
         )
       })()}
 
-      {/* Site filter chips */}
-      {siteDocs.length > 0 && (
+      {/* Bundle filter chips */}
+      {bundleDocs.length > 0 && (
         <div className="mb-3">
           <div className="flex flex-wrap gap-1.5 items-center">
-            <span className="text-xs text-neutral-400 font-medium mr-1">Sites:</span>
-            {siteDocs.map((site) => {
-              const isSelected = selectedSiteIds.includes(site.id)
+            <span className="text-xs text-neutral-400 font-medium mr-1">Bundles:</span>
+            {bundleDocs.map((bundle) => {
+              const isSelected = selectedBundleIds.includes(bundle.id)
               return (
                 <button
-                  key={site.id}
+                  key={bundle.id}
                   className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
                     isSelected
                       ? 'bg-emerald-500 text-white'
                       : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                   }`}
                   onClick={() => {
-                    const nextSites = isSelected
-                      ? selectedSiteIds.filter((id) => id !== site.id)
-                      : [...selectedSiteIds, site.id]
-                    setFilters({ siteIds: nextSites })
+                    const nextBundles = isSelected
+                      ? selectedBundleIds.filter((id) => id !== bundle.id)
+                      : [...selectedBundleIds, bundle.id]
+                    setFilters({ bundleIds: nextBundles })
                   }}
                 >
-                  {site.name}
+                  {bundle.name}
                 </button>
               )
             })}
           </div>
-          {selectedSites.length === 1 && (
-            <p className="mt-2 text-xs text-neutral-500">{selectedSites[0].description}</p>
+          {selectedBundles.length === 1 && (
+            <p className="mt-2 text-xs text-neutral-500">{selectedBundles[0].description}</p>
           )}
         </div>
       )}
@@ -580,7 +580,7 @@ export default function RunDetail() {
                           <div className="flex flex-wrap gap-2">
                             {keyFrameUrls.map(({ docId, url }) => (
                               <img
-                                key={docId}
+                                key={url}
                                 src={url}
                                 alt={`${scenario.testName} - ${docId}`}
                                 className={`${mediaSizeClass} aspect-video object-cover bg-neutral-100 rounded`}

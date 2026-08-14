@@ -18,9 +18,9 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { FilterPanelComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { callout, sensitive } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("Callout tooltip shown when hovering sensitive filter question mark", async ({
   page,
@@ -29,8 +29,8 @@ test("Callout tooltip shown when hovering sensitive filter question mark", async
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSite();
-  await snapshot("site editor loaded");
+  await wf.navigateToBigBundle();
+  await snapshot("bundle editor loaded");
 
   // Enable the sensitive filter so the question mark icon appears
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -52,7 +52,7 @@ test("Callout tooltip shown when hovering sensitive filter question mark", async
   await addKeyFrame(callout);
   await addKeyFrame(sensitive);
   await snapshot("sensitive filter callout tooltip visible");
-  void bigSite;
+  void bigBundle;
 
   await assertMeadowHomeState();
 });

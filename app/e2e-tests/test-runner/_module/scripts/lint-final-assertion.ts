@@ -122,8 +122,8 @@ either, and the second one is the deliberate opt-out:
       // actions and then commit, or that don't write to MeadowHome at all.
 
   await assertMeadowHomeState({
-    allowedUntracked: ["sites/<slug>/conf/draft_site_node_config.yaml"],
-    allowedModified:  ["sites/<slug>/conf/site_node_config.yaml"],
+    allowedUntracked: ["bundles/<slug>/config/draft_bundle_node_config.yaml"],
+    allowedModified:  ["bundles/<slug>/config/bundle_node_config.yaml"],
   });
       // Assert: only these specific paths are allowed to be uncommitted.
       // Match is by exact relative path (no globs). Use this when the test

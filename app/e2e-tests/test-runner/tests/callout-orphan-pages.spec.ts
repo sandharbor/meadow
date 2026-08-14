@@ -15,27 +15,27 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteEditorPage, OrphansModal } from "../src/run/pages/index.js";
+import { BundleEditorPage, OrphansModal } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { orphan, callout } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
 const EXPECTED_ORPHAN_COUNT = 13;
 const CHILD_OF_BLACKLISTED = "t007 ---- child of blacklisted page";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
-test("Callout banner warns about orphaned pages in site config", async ({
+test("Callout banner warns about orphaned pages in bundle config", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSite();
-  await snapshot("site editor loaded");
+  await wf.navigateToBigBundle();
+  await snapshot("bundle editor loaded");
 
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   await editor.expectOrphansBannerCount(EXPECTED_ORPHAN_COUNT);
   await addKeyFrame(callout);
   await snapshot("orphans callout banner visible");
@@ -52,7 +52,7 @@ test("Callout banner warns about orphaned pages in site config", async ({
   await orphansModal.expectClosed();
   await editor.expectOrphansBannerNotVisible();
   await snapshot("orphans callout and modal gone after remove all");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

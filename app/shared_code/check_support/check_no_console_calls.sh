@@ -26,7 +26,7 @@ check_no_console_calls() {
         grep -v "backendLoggingUtils" | \
         grep -v "utils/logging/logfiles" | \
         grep -v "utils/logger\.ts" | \
-        grep -v "siteLogger" | \
+        grep -v "bundleLogger" | \
         grep -v "\.test\." | \
         grep -v "__tests__" | \
         grep -v "migrations/versions" || true)

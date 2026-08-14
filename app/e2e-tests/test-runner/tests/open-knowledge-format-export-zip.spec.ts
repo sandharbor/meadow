@@ -18,16 +18,16 @@ import { execFileSync } from "child_process";
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
-import { Workflows, Site } from "../src/run/workflows.js";
+import { Workflows, Bundle } from "../src/run/workflows.js";
 import { customize, sourcesExport, openKnowledgeFormat, changesTab as changesTabDoc, git } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 import { MeadowHomeGit, seedTrackedAndLinkedFile } from "../src/run/utils/index.js";
 
 const reservedIndexPageName = "index";
 const rootLogPageName = "log";
 const nestedLogDirectory = "t001";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({
   _preSpawnSeed: async ({}, use) => {
@@ -49,9 +49,9 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   testServer,
 }) => {
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSitePreview();
+  await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
-  const generatedSite = modal.generatedSite;
+  const generatedBundle = modal.generatedBundle;
   await snapshot("preview loaded");
 
   await modal.openCustomizeSidebar();
@@ -90,40 +90,40 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await addKeyFrame(changesTabDoc);
   await snapshot("changes include okf files");
 
-  await modal.clickSitePreviewTab();
+  await modal.clickBundlePreviewTab();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
   await snapshot("save completed");
 
-  const siteDir = path.join(testServer.configDir, "sites", Site.Big);
+  const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const meadowGit = new MeadowHomeGit(testServer.configDir, expect);
-  await meadowGit.expectDirFullyCommitted(siteDir);
+  await meadowGit.expectDirFullyCommitted(bundleDir);
   await addKeyFrame(git);
 
   await modal.clickStep1Review();
-  await modal.clickSitePreviewTab();
-  await generatedSite.sources.expectControlsAligned();
-  await generatedSite.sources.openOkfMenuWithoutShiftingPage();
-  await generatedSite.sources.dismissOkfMenu();
-  await generatedSite.sources.openOkfMenu();
+  await modal.clickBundlePreviewTab();
+  await generatedBundle.sources.expectControlsAligned();
+  await generatedBundle.sources.openOkfMenuWithoutShiftingPage();
+  await generatedBundle.sources.dismissOkfMenu();
+  await generatedBundle.sources.openOkfMenu();
   await snapshot("okf website package menu open");
 
-  const download = await generatedSite.sources.downloadOkfZip();
-  expect(download.suggestedFilename()).toBe("meadow-test-site-big-okf.zip");
+  const download = await generatedBundle.sources.downloadOkfZip();
+  expect(download.suggestedFilename()).toBe("meadow-test-bundle-big-okf.zip");
   const okfZipPath = await download.path();
   expect(okfZipPath).toBeTruthy();
   await snapshot("okf zip downloaded from website button");
 
   const zipContents = execFileSync("unzip", ["-l", okfZipPath!], { encoding: "utf8" });
-  expect(zipContents).toContain("meadow-test-site-big/index.md");
-  expect(zipContents).toContain("meadow-test-site-big/index-original.md");
-  expect(zipContents).toContain("meadow-test-site-big/log.md");
-  expect(zipContents).toContain("meadow-test-site-big/t001/log-original.md");
+  expect(zipContents).toContain("meadow-test-bundle-big/index.md");
+  expect(zipContents).toContain("meadow-test-bundle-big/index-original.md");
+  expect(zipContents).toContain("meadow-test-bundle-big/log.md");
+  expect(zipContents).toContain("meadow-test-bundle-big/t001/log-original.md");
 
-  await generatedSite.sources.openOkfBundleIndex();
+  await generatedBundle.sources.openOkfBundleIndex();
   await modal.expectPreviewIframeUrlContains("_mw_assets/cust/okf/bundle/index.md");
   await snapshot("okf bundle index browsed from website button");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

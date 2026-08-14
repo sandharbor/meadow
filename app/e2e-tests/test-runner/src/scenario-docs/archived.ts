@@ -18,8 +18,8 @@ import { ScenarioDoc } from "./types.js";
 
 export const archived: ScenarioDoc = {
   id: "archived",
-  name: "Archived Sites",
+  name: "Archived Bundles",
   description:
-    "Tests archiving and unarchiving sites, including the archived sites tab in the site list, " +
-    "badge indicators for matches in the archived tab, and interaction with filters like Find in Sites.",
+    "Tests archiving and unarchiving bundles, including the archived bundles tab in the bundle list, " +
+    "badge indicators for matches in the archived tab, and interaction with filters like Find in Bundles.",
 };

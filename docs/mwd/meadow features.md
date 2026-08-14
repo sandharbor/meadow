@@ -1,2 +1,2 @@
-[[meadow workflow -- SRS markdown to SRS interactive elements on the published site|SRS]]
+[[meadow workflow -- SRS markdown to SRS interactive elements on the published bundle|SRS]]
 

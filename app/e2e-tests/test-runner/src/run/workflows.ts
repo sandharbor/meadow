@@ -16,8 +16,8 @@ limitations under the License.
 
 import type { Page, Expect } from "@playwright/test";
 import {
-  SiteListPage,
-  SiteEditorPage,
+  BundleListPage,
+  BundleEditorPage,
   PreviewPublishModal,
 } from "./pages/index.js";
 
@@ -35,15 +35,15 @@ export enum Fixture {
   None = "none",
 }
 
-/** Site names available in fixtures. */
-export enum Site {
-  Big = "meadow-test-site-big",
+/** Bundle names available in fixtures. */
+export enum Bundle {
+  Big = "meadow-test-bundle-big",
   FolderStructureMultiple = "ordered-folders",
-  FolderStructureSingle = "single-folder-site",
-  Small = "meadow-test-site-small",
-  Hooks = "meadow-test-site-for-hooks",
-  Nested = "meadow-test-site-nested",
-  Example = "example-site",
+  FolderStructureSingle = "single-folder-bundle",
+  Small = "meadow-test-bundle-small",
+  Hooks = "meadow-test-bundle-for-hooks",
+  Nested = "meadow-test-bundle-nested",
+  Example = "example-bundle",
 }
 
 // ---------------------------------------------------------------------------
@@ -56,48 +56,48 @@ export enum Site {
  * Each method builds on the previous one, so callers can enter at whatever
  * level of the app they need:
  *
- *   navigateToBigSite()          → site list → editor loaded
- *   navigateToBigSitePreview()   → … → preview modal, Site Preview tab
- *   navigateToBigSiteShareTab()  → … → Share / Publish to Meadow tab
+ *   navigateToBigBundle()          → bundle list → editor loaded
+ *   navigateToBigBundlePreview()   → … → preview modal, Bundle Preview tab
+ *   navigateToBigBundleShareTab()  → … → Share / Publish to Meadow tab
  */
 export class Workflows {
-  private siteList: SiteListPage;
-  private editor: SiteEditorPage;
+  private bundleList: BundleListPage;
+  private editor: BundleEditorPage;
   private previewModal: PreviewPublishModal;
 
   constructor(
     private page: Page,
     private expect: Expect,
   ) {
-    this.siteList = new SiteListPage(page, expect);
-    this.editor = new SiteEditorPage(page, expect);
+    this.bundleList = new BundleListPage(page, expect);
+    this.editor = new BundleEditorPage(page, expect);
     this.previewModal = new PreviewPublishModal(page, expect);
   }
 
-  /** Navigate to site list → open the big site → wait for editor to load. */
-  async navigateToBigSite() {
-    await this.siteList.goto();
-    await this.siteList.clickSite(Site.Big);
-    await this.editor.waitForLoad(Site.Big);
+  /** Navigate to bundle list → open the big bundle → wait for editor to load. */
+  async navigateToBigBundle() {
+    await this.bundleList.goto();
+    await this.bundleList.clickBundle(Bundle.Big);
+    await this.editor.waitForLoad(Bundle.Big);
   }
 
-  /** Navigate to site list → open the small site → wait for editor to load. */
-  async navigateToSmallSite() {
-    await this.siteList.goto();
-    await this.siteList.clickSite(Site.Small);
-    await this.editor.waitForLoad(Site.Small);
+  /** Navigate to bundle list → open the small bundle → wait for editor to load. */
+  async navigateToSmallBundle() {
+    await this.bundleList.goto();
+    await this.bundleList.clickBundle(Bundle.Small);
+    await this.editor.waitForLoad(Bundle.Small);
   }
 
-  /** navigateToBigSite → click Preview → wait for preview to complete. */
-  async navigateToBigSitePreview() {
-    await this.navigateToBigSite();
+  /** navigateToBigBundle → click Preview → wait for preview to complete. */
+  async navigateToBigBundlePreview() {
+    await this.navigateToBigBundle();
     await this.editor.clickPreview();
     await this.previewModal.waitForPreviewComplete();
   }
 
-  /** navigateToBigSitePreview → save changes if needed → click Share tab. */
-  async navigateToBigSiteShareTab() {
-    await this.navigateToBigSitePreview();
+  /** navigateToBigBundlePreview → save changes if needed → click Share tab. */
+  async navigateToBigBundleShareTab() {
+    await this.navigateToBigBundlePreview();
     await this.previewModal.saveChangesIfNeeded();
     await this.previewModal.clickShareTab();
   }

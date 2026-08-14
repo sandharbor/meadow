@@ -1,0 +1,16 @@
+archivedAt: null
+bundleGuid: placeholder
+sourceDirectory: ./source_graphs/example-bundle-data
+publishSlug: example-bundle
+bundleCreatedAt: 2026-03-20T00:00:00.000Z
+bundleLastPublishedAt: null
+bundleNotes: ""
+bundleUpdatedAt: 2026-03-20T00:00:00.000Z
+generationSpacedRepetitionEnabled: true
+generationSpacedRepetitionTags:
+  - "#flashcards/mental-models"
+generationMarkdownZipEnabled: true
+generatedBundleVersions: []
+defaultOutlinksDepth: 3
+entryBundleNodeId: 7fe9ab3fa811
+defaultTraversalBundleNodeId: 7fe9ab3fa811

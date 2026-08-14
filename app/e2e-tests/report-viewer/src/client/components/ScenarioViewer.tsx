@@ -38,7 +38,7 @@ import {
   videoTimeToReal,
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
-import { siteModeLabel, type SiteMode } from '../../siteModes.ts'
+import { bundleModeLabel, type BundleMode } from '../../bundleModes.ts'
 
 // --- Types ---
 
@@ -52,7 +52,7 @@ interface Manifest {
   testName: string
   startTime?: string
   endTime?: string
-  siteMode?: SiteMode | null
+  bundleMode?: BundleMode | null
   logs: LogEntry[]
   scenarioDocIds?: string[]
   appAreaDocIds?: string[]
@@ -2053,15 +2053,15 @@ export default function ScenarioViewer() {
           )}
         </div>
 
-        {/* Site-origin mode, app area, and scenario doc chips */}
-        {manifest?.siteMode && (
+        {/* Bundle-origin mode, app area, and scenario doc chips */}
+        {manifest?.bundleMode && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200">
             <span className="text-[11px] text-neutral-400">Starts with:</span>
             <Link
-              to={`/${runId}?mode=${encodeURIComponent(manifest.siteMode)}`}
+              to={`/${runId}?mode=${encodeURIComponent(manifest.bundleMode)}`}
               className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors bg-violet-100 text-violet-700 hover:bg-violet-200"
             >
-              {siteModeLabel(manifest.siteMode)}
+              {bundleModeLabel(manifest.bundleMode)}
             </Link>
           </div>
         )}

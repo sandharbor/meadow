@@ -20,6 +20,6 @@ export const hooks: ScenarioDoc = {
   id: "hooks",
   name: "Hooks",
   description:
-    "Tests covering hook configuration, editing global and site-level hooks, " +
+    "Tests covering hook configuration, editing global and bundle-level hooks, " +
     "and verifying their effects on page titles and markdown processing.",
 };

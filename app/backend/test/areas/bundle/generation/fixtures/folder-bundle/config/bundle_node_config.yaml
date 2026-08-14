@@ -1,0 +1,52 @@
+nodes:
+  - bundleNodeName: Project
+    sourceGraphSubdirectory: Project
+    bundleNodeKind: folder
+    bundleNodeId: '111111111111'
+    listType: whitelist
+  - bundleNodeName: Empty
+    sourceGraphSubdirectory: Empty
+    bundleNodeKind: folder
+    bundleNodeId: '222222222222'
+    listType: whitelist
+  - bundleNodeName: Folder Test
+    bundleNodeKind: collection
+    bundleNodeId: cccccccccccc
+    listType: whitelist
+    memberBundleNodeIds:
+      - '111111111111'
+      - '222222222222'
+  - bundleNodeName: Deep
+    sourceGraphSubdirectory: Project/Middle
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: dddddddddddd
+    listType: whitelist
+  - bundleNodeName: Stop
+    sourceGraphSubdirectory: Project/Stop
+    bundleNodeKind: folder
+    bundleNodeId: ssssssssssss
+    listType: whitelist
+  - bundleNodeName: Child
+    sourceGraphSubdirectory: Project/Stop
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: aaaaaaaaaaaa
+    listType: whitelist
+  - bundleNodeName: index
+    sourceGraphSubdirectory: Project
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: iiiiiiiiiiii
+    listType: whitelist
+  - bundleNodeName: Folder sketch
+    sourceGraphSubdirectory: Project
+    bundleNodeKind: file
+    fileType: excalidraw
+    bundleNodeId: eeeeeeeeeeee
+    listType: whitelist
+  - bundleNodeName: Outside
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: oooooooooooo
+    listType: whitelist

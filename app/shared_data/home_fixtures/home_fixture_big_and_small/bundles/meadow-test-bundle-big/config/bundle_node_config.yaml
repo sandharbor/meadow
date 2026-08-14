@@ -1,0 +1,691 @@
+nodes:
+  - bundleNodeName: embedded in page in other t006 directory
+    sourceGraphSubdirectory: t006 - second directory
+    bundleNodeKind: file
+    fileType: excalidraw
+    bundleNodeId: 1c806b5a27a2
+    listType: blacklist
+  - bundleNodeName: main page
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ef63f962db68
+    listType: whitelist
+  - bundleNodeName: page linked from Excalidraw from a non-text element
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3b9de4a4eff2
+    listType: whitelist
+  - bundleNodeName: page linked from tracked sunflower image in Excalidraw
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: cfa20ad5fabe
+    listType: whitelist
+  - bundleNodeName: t001 - deeply nested
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e05f1727991f
+    listType: whitelist
+  - bundleNodeName: t001 ---- child 1
+    sourceGraphSubdirectory: t001
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 75418b8d0960
+    listType: whitelist
+  - bundleNodeName: t001 ---- child 2
+    sourceGraphSubdirectory: t001/deeper
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c6336fa338e1
+    listType: whitelist
+  - bundleNodeName: t001 ---- child 3 in same dir as child 1
+    sourceGraphSubdirectory: t001
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 52cf2ab95f0b
+    listType: whitelist
+  - bundleNodeName: t002 - dup pages and images
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 92df9e3aaee4
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c70b1c5bc103
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 30919df3c5be
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3c3600f18828
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: e9bd14761bc9
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup 2
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 6d3c81e8d1f6
+    listType: whitelist
+  - bundleNodeName: t002 ---- dup 2
+    sourceGraphSubdirectory: t002/extra nested
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 35407b370cd8
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to extra nested dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3a6703076d45
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to nested dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7ea2aad70b28
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to nested png dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 54f383fd64e7
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to png dup 2 with no path from extra nested
+    sourceGraphSubdirectory: t002/extra nested
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9cdf94b49259
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to png dup 2 with no path from root
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 50f988a3c3bc
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to png dup 2 with no path from second directory
+    sourceGraphSubdirectory: t002 - second directory
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 273d836bc199
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to png dup 2 with no path from t002
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 51d13d1ee83f
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to root dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: cab53beb16b2
+    listType: whitelist
+  - bundleNodeName: t002 ---- points to root png dup
+    sourceGraphSubdirectory: t002
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b88129baf1be
+    listType: whitelist
+  - bundleNodeName: t003 - link to section
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1f145a703ed8
+    listType: whitelist
+  - bundleNodeName: t003 ---- page with section to link to
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 91ca7d8e3243
+    listType: whitelist
+  - bundleNodeName: t005 - in and out links
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e379c075ebd1
+    listType: whitelist
+  - bundleNodeName: t005 ---- has in link and points back to same page
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5decc3079ce7
+    listType: whitelist
+  - bundleNodeName: t006 - embedded media
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 87f8a32781f5
+    listType: whitelist
+  - bundleNodeName: t006 --- dup-linked-from-excalidraw
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: aab8058fa464
+    listType: whitelist
+  - bundleNodeName: t006 --- dup-linked-from-excalidraw
+    sourceGraphSubdirectory: t006 - second directory
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9e4b5bd4bd1b
+    listType: whitelist
+  - bundleNodeName: t006 --- dup-linked-from-excalidraw
+    sourceGraphSubdirectory: t006/t006 - nested
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: bd3fa390356f
+    listType: whitelist
+  - bundleNodeName: t006 --- linked-from-excalidraw
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2a77d4348b6a
+    listType: whitelist
+  - bundleNodeName: t006 --- meadow
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 2d458e352f9c
+    listType: whitelist
+  - bundleNodeName: t006 --- meadow-flower
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: excalidraw
+    bundleNodeId: 3c880d54b39a
+    listType: blacklist
+  - bundleNodeName: t006 --- meadow-flower
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: svg
+    bundleNodeId: 9f4d7387b266
+    listType: whitelist
+  - bundleNodeName: t006 --- meadow-flower-petals-ani
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: gif
+    bundleNodeId: bb0a06325a33
+    listType: whitelist
+  - bundleNodeName: t006 --- page that embeds Excalidraw in another directory
+    sourceGraphSubdirectory: t006
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 40ba94eb2b84
+    listType: whitelist
+  - bundleNodeName: t007 - blacklisted
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ea3f6f947564
+    listType: whitelist
+  - bundleNodeName: t007 ---- blacklisted image
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 63fd80817171
+    listType: blacklist
+  - bundleNodeName: t007 ---- blacklisted page
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4e51234d02c9
+    listType: blacklist
+  - bundleNodeName: t007 ---- child of blacklisted page
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1fdb1fac82a3
+    listType: whitelist
+  - bundleNodeName: t008 - page conf do not include inlinks
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e5dfd9c6cefb
+    listType: whitelist
+    inlinksDepth: 0
+  - bundleNodeName: t008 ---- has in link to page conf test
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 59e981bc37e3
+    listType: whitelist
+  - bundleNodeName: t009 - page conf graph depth
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8d86983d7f98
+    listType: whitelist
+    outlinksDepth: 0
+  - bundleNodeName: t009 ---- page conf graph depth 2
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2084c70e8458
+    listType: whitelist
+  - bundleNodeName: t009 ---- page conf graph depth 3
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0d182d8f6539
+    listType: whitelist
+  - bundleNodeName: t010 - linking in same depth
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d8b7535e1403
+    listType: whitelist
+  - bundleNodeName: t010 ---- same depth 1 - 2 out 0 in
+    sourceGraphSubdirectory: t010
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a0ac819282f6
+    listType: whitelist
+  - bundleNodeName: t010 ---- same depth 2 - 1 out 2 in
+    sourceGraphSubdirectory: t010
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2e5930ff8a07
+    listType: whitelist
+  - bundleNodeName: t010 ---- same depth 3 - 1 out 3 in
+    sourceGraphSubdirectory: t010
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ee01b027279a
+    listType: whitelist
+  - bundleNodeName: t010 ---- same depth 4 - no connection
+    sourceGraphSubdirectory: t010
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3e29bf68f47d
+    listType: whitelist
+  - bundleNodeName: t010 ---- same depth 5 - 1 out 0 in
+    sourceGraphSubdirectory: t010
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c1138bc724d8
+    listType: whitelist
+  - bundleNodeName: t011 - special links
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 63ff6d0db735
+    listType: whitelist
+  - bundleNodeName: t011 --- pointed to by an escaped alias outside a table
+    sourceGraphSubdirectory: t011
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9a32a6046026
+    listType: whitelist
+  - bundleNodeName: t011 --- table test row 1 column 1
+    sourceGraphSubdirectory: t011
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9e2877bc1621
+    listType: whitelist
+  - bundleNodeName: t011 --- table test row 1 column 3
+    sourceGraphSubdirectory: t011
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: bc5925f7246b
+    listType: whitelist
+  - bundleNodeName: t011 --- table test row 2 column 1
+    sourceGraphSubdirectory: t011
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7d14e28faf65
+    listType: whitelist
+  - bundleNodeName: t011 --- table test row 2 column 3
+    sourceGraphSubdirectory: t011
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 120e46bb4992
+    listType: whitelist
+  - bundleNodeName: t011 ---- page name with special characters -- before dot . and after dot
+    sourceGraphSubdirectory: t011
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: cec9d23569be
+    listType: whitelist
+  - bundleNodeName: t011 ---- page name with special characters -- single quote ' in name
+    sourceGraphSubdirectory: t011
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e03c9c45e94f
+    listType: whitelist
+  - bundleNodeName: t013 - inlinks_depth
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f0f0c26c6543
+    listType: whitelist
+    inlinksDepth: 1
+  - bundleNodeName: t013 ---- inlinks_depth - branch 1 - depth 1
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 89f959ba8cd5
+    listType: whitelist
+  - bundleNodeName: t013 ---- inlinks_depth - branch 1 - depth 2
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2142f3ab71cf
+    listType: whitelist
+  - bundleNodeName: t013 ---- inlinks_depth - branch 1 - depth 3
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0192f8149b43
+    listType: whitelist
+  - bundleNodeName: t013 ---- inlinks_depth - branch 2 - depth 1
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0acc3c8f8510
+    listType: whitelist
+  - bundleNodeName: t013 ---- inlinks_depth - branch 2 - depth 2 from outlink
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c0bac643ec28
+    listType: whitelist
+  - bundleNodeName: t014 ---- in-link in nested folder to main page
+    sourceGraphSubdirectory: t014
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f9e57149ee19
+    listType: whitelist
+  - bundleNodeName: t015 - block anchors
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5a7c27fbd009
+    listType: whitelist
+  - bundleNodeName: t015 ---- page 1 with backlinks to block anchors
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: aa5abb7759d8
+    listType: whitelist
+  - bundleNodeName: t015 ---- page 2 with backlinks to block anchors
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a8cd5e818793
+    listType: whitelist
+  - bundleNodeName: t017 - transclusion
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: eb8e5af9a57e
+    listType: whitelist
+  - bundleNodeName: t017 ---- block source
+    sourceGraphSubdirectory: t017
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5792d2008047
+    listType: whitelist
+  - bundleNodeName: t017 ---- block transclusion
+    sourceGraphSubdirectory: t017
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: aac5f9727580
+    listType: whitelist
+  - bundleNodeName: t017 ---- deep transclusion
+    sourceGraphSubdirectory: t017
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ca81b430c6df
+    listType: whitelist
+  - bundleNodeName: t017 ---- deep transclusion - level 3
+    sourceGraphSubdirectory: t017/deep transclusion levels 3 and 4
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 62e8f80fa88f
+    listType: whitelist
+  - bundleNodeName: t017 ---- deep transclusion - level 4
+    sourceGraphSubdirectory: t017/deep transclusion levels 3 and 4
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e41e496344dd
+    listType: whitelist
+  - bundleNodeName: t017 ---- full page source
+    sourceGraphSubdirectory: t017
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9ad54489a9f3
+    listType: whitelist
+  - bundleNodeName: t017 ---- full page transclusion
+    sourceGraphSubdirectory: t017
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 5f5846b0faf1
+    listType: whitelist
+  - bundleNodeName: t017 ---- linked from deep transclusion level 3
+    sourceGraphSubdirectory: t017 - second directory
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c42f65620a6a
+    listType: whitelist
+    outlinksDepth: 1
+  - bundleNodeName: t017 ---- linked from within this second directory
+    sourceGraphSubdirectory: t017 - second directory
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: eac9028d9c0d
+    listType: whitelist
+  - bundleNodeName: t017 ---- section source
+    sourceGraphSubdirectory: t017
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 37b6c92ff960
+    listType: whitelist
+  - bundleNodeName: t017 ---- section transclusion
+    sourceGraphSubdirectory: t017
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 70604d708ebd
+    listType: whitelist
+  - bundleNodeName: t018 - tags
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: f50303645095
+    listType: whitelist
+  - bundleNodeName: t018 ---- code blocks and inline code should not create tag links
+    sourceGraphSubdirectory: t018
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9911380dd5da
+    listType: whitelist
+  - bundleNodeName: t018 ---- shared tags page 1
+    sourceGraphSubdirectory: t018
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: "75e681819585"
+    listType: whitelist
+  - bundleNodeName: t018 ---- shared tags page 2
+    sourceGraphSubdirectory: t018
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d3a285313e8b
+    listType: whitelist
+  - bundleNodeName: t018 ---- unique tags
+    sourceGraphSubdirectory: t018
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 2752773a95f2
+    listType: whitelist
+  - bundleNodeName: t019 - embeds
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9f9001f0539a
+    listType: whitelist
+  - bundleNodeName: t019 ---- mermaid
+    sourceGraphSubdirectory: t019
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: bb4d1ac0a258
+    listType: whitelist
+  - bundleNodeName: t019 ---- typescript
+    sourceGraphSubdirectory: t019
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7d94965cfe77
+    listType: whitelist
+  - bundleNodeName: t020 - code blocks
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 76380bb61a81
+    listType: whitelist
+  - bundleNodeName: t020 ---- code blocks should end properly
+    sourceGraphSubdirectory: t020
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3c5fd5ce4b24
+    listType: whitelist
+  - bundleNodeName: t020 ---- page links in code blocks should not become links
+    sourceGraphSubdirectory: t020
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9a089e676374
+    listType: whitelist
+  - bundleNodeName: t020 ---- tags in code blocks should not become tag links
+    sourceGraphSubdirectory: t020
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b4ab82510701
+    listType: whitelist
+  - bundleNodeName: t021 - link gaps
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: c21190e85b52
+    listType: whitelist
+  - bundleNodeName: t021 ---- inlink gap
+    sourceGraphSubdirectory: t021
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 422a8eef5d4a
+    listType: whitelist
+    inlinksDepth: 0
+  - bundleNodeName: t021 ---- outlink gap
+    sourceGraphSubdirectory: t021
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e61a96d5dee8
+    listType: whitelist
+    outlinksDepth: 0
+  - bundleNodeName: t022 - spaced repetition
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e9d5ec97a979
+    listType: whitelist
+  - bundleNodeName: t022 ---- alpha cards
+    sourceGraphSubdirectory: t022
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a3e9607bd863
+    listType: whitelist
+  - bundleNodeName: t022 ---- beta cards
+    sourceGraphSubdirectory: t022
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 63ed8044d5f8
+    listType: whitelist
+  - bundleNodeName: t023 - backlinks
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 0d0c02f0a4b5
+    listType: whitelist
+  - bundleNodeName: t023 ---- page a
+    sourceGraphSubdirectory: t023/multiple_links
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: bf7eead52e4f
+    listType: whitelist
+  - bundleNodeName: t023 ---- page b
+    sourceGraphSubdirectory: t023/multiple_links
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4b5f7f9ec324
+    listType: whitelist
+  - bundleNodeName: t023 ---- table row 1
+    sourceGraphSubdirectory: t023/table
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: a7b154747856
+    listType: whitelist
+  - bundleNodeName: t023 ---- table row 2
+    sourceGraphSubdirectory: t023/table
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: bb352c3962e4
+    listType: whitelist
+  - bundleNodeName: t024 - markdown links
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 1990d453592f
+    listType: whitelist
+  - bundleNodeName: t024 ---- deep page
+    sourceGraphSubdirectory: t024/deeper
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: d11a871157dd
+    listType: whitelist
+  - bundleNodeName: t024 ---- inlink only
+    sourceGraphSubdirectory: t024
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: b395820a5039
+    listType: whitelist
+  - bundleNodeName: t024 ---- linked page
+    sourceGraphSubdirectory: t024
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4062eaad66f7
+    listType: whitelist
+  - bundleNodeName: t024 ---- test image
+    sourceGraphSubdirectory: t024
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 4704cafdc856
+    listType: whitelist
+  - bundleNodeName: t025 - extended syntax
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 4db86c964375
+    listType: whitelist
+  - bundleNodeName: test.io which looks like a filename suffix
+    sourceGraphSubdirectory: t011
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: "261057732566"
+    listType: whitelist
+  - bundleNodeName: tracked-sunflower
+    sourceGraphSubdirectory: t006/images-used-in-excalidraw
+    bundleNodeKind: file
+    fileType: png
+    bundleNodeId: 3e9bc91b1b45
+    listType: whitelist

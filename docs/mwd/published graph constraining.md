@@ -1,1 +1,1 @@
-Constraining the [[published site type -- local html]]
+Constraining the [[published bundle type -- local html]]

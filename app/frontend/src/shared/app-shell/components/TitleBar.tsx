@@ -30,12 +30,12 @@ declare global {
         folderPath: string;
         pageName: string;
       } | null>;
-      onOpenFindInSites: (callback: (options: {
+      onOpenFindInBundles: (callback: (options: {
         vaultPath: string;
         folderPath: string;
         pageName: string;
       }) => void) => void;
-      offOpenFindInSites: () => void;
+      offOpenFindInBundles: () => void;
       showOpenDialog: (options: {
     title?: string;
     defaultPath?: string;

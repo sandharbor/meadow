@@ -1,0 +1,23 @@
+pagespecs:
+  - bundle: meadow-test-bundle-big
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /t006/t006 --- page that embeds Excalidraw in another directory.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
+  - bundle: meadow-test-bundle-small
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

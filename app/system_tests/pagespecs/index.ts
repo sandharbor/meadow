@@ -16,8 +16,8 @@ limitations under the License.
 
 export {
   extractPagespecsBlock,
-  getPagespecForSite,
-  getReferencedSites,
+  getPagespecForBundle,
+  getReferencedBundles,
   extractContentWithoutPagespecs,
   hasPagespecsBlock,
   isExcalidrawMarkdown,

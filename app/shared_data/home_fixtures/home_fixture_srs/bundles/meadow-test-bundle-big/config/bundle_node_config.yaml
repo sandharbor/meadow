@@ -1,0 +1,19 @@
+nodes:
+  - bundleNodeName: t022 - spaced repetition
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 8a0338e11ca9
+    listType: whitelist
+  - bundleNodeName: t022 ---- alpha cards
+    sourceGraphSubdirectory: t022
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 416db9d23105
+    listType: whitelist
+  - bundleNodeName: t022 ---- beta cards
+    sourceGraphSubdirectory: t022
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: ce40852ef691
+    listType: whitelist

@@ -20,40 +20,40 @@ import YAML from 'yaml';
 import { PublishingProviderPaths } from '../../../../../shared_code/paths/publishingProviderPaths.js';
 import {
   getConfigDirectory,
-  getSiteDirectory,
-} from '../../../../../backend/src/shared/site-config/siteConfigPaths.js';
+  getBundleDirectory,
+} from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
 import {
-  loadS3ConfigForSite,
+  loadS3ConfigForBundle,
   PUBLISH_SLUG_PATTERN,
   S3_PROVIDER_ID,
   type S3ProviderConfig,
 } from '../s3Config.js';
 
 /**
- * Per-site S3 provider config routes. Unlike Meadow, there's no prefix — a
- * site's S3 destination is just its publishSlug.
+ * Per-bundle S3 provider config routes. Unlike Meadow, there's no prefix — a
+ * bundle's S3 destination is just its publishSlug.
  */
 export function registerS3ProviderConfigRoutes(router: Router): void {
-  router.get('/sites/:siteSlug/provider-config', (req, res, next) => {
+  router.get('/bundles/:bundleSlug/provider-config', (req, res, next) => {
     try {
-      const { siteSlug } = req.params;
-      if (!siteSlug) return res.status(400).json({ error: 'siteSlug is required' });
-      if (!fs.existsSync(getSiteDirectory(siteSlug))) {
-        return res.status(404).json({ error: `Site '${siteSlug}' not found` });
+      const { bundleSlug } = req.params;
+      if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
+      if (!fs.existsSync(getBundleDirectory(bundleSlug))) {
+        return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
-      const { publishSlug } = loadS3ConfigForSite(siteSlug);
+      const { publishSlug } = loadS3ConfigForBundle(bundleSlug);
       res.json({ publishSlug: publishSlug ?? null });
     } catch (error) {
       next(error);
     }
   });
 
-  router.put('/sites/:siteSlug/provider-config', (req, res, next) => {
+  router.put('/bundles/:bundleSlug/provider-config', (req, res, next) => {
     try {
-      const { siteSlug } = req.params;
-      if (!siteSlug) return res.status(400).json({ error: 'siteSlug is required' });
-      if (!fs.existsSync(getSiteDirectory(siteSlug))) {
-        return res.status(404).json({ error: `Site '${siteSlug}' not found` });
+      const { bundleSlug } = req.params;
+      if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
+      if (!fs.existsSync(getBundleDirectory(bundleSlug))) {
+        return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
 
       const { publishSlug } = req.body as { publishSlug?: string };
@@ -63,7 +63,7 @@ export function registerS3ProviderConfigRoutes(router: Router): void {
         });
       }
 
-      saveSiteConfig(siteSlug, { publishSlug });
+      saveBundleConfig(bundleSlug, { publishSlug });
       res.json({ publishSlug });
     } catch (error) {
       next(error);
@@ -71,10 +71,10 @@ export function registerS3ProviderConfigRoutes(router: Router): void {
   });
 }
 
-function saveSiteConfig(siteSlug: string, patch: Partial<S3ProviderConfig>): void {
-  const target = PublishingProviderPaths.getSiteConfigFile(
+function saveBundleConfig(bundleSlug: string, patch: Partial<S3ProviderConfig>): void {
+  const target = PublishingProviderPaths.getBundleConfigFile(
     getConfigDirectory(),
-    siteSlug,
+    bundleSlug,
     S3_PROVIDER_ID,
   );
   let existing: S3ProviderConfig = {};
@@ -86,7 +86,7 @@ function saveSiteConfig(siteSlug: string, patch: Partial<S3ProviderConfig>): voi
     }
   } else {
     fs.mkdirSync(
-      PublishingProviderPaths.getSiteProviderDir(getConfigDirectory(), siteSlug, S3_PROVIDER_ID),
+      PublishingProviderPaths.getBundleProviderDir(getConfigDirectory(), bundleSlug, S3_PROVIDER_ID),
       { recursive: true },
     );
   }

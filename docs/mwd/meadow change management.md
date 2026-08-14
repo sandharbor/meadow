@@ -2,9 +2,9 @@
 
 new [[filter]]s can be added
 
-new [[site page]]s can be added
+new [[bundle page]]s can be added
 
-[[orphaned tracked site page]]
+[[orphaned tracked bundle page]]
 
 Maybe we should have the ability to mark specific pages as sensitive to change. For example, if you are linking to a page that is external to your core export, maybe you want it to unregistered and become marked as sensitive if it's content changes. Or perhaps only if it changes substantively or links to some new page. Deciding that a change, a substantive might be a good [[meadow AI opportunity]]
 ...

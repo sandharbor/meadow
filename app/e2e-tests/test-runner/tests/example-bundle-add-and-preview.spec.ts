@@ -1,0 +1,60 @@
+/*
+Copyright 2026 Sand Harbor Software, LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+import { test, expect } from "../src/run/test-fixtures.js";
+import { BundleListPage, BundleEditorPage, PreviewPublishModal } from "../src/run/pages/index.js";
+import { Fixture } from "../src/run/workflows.js";
+import { htmlGeneration } from "../src/scenario-docs/index.js";
+import { exampleBundle } from "../src/bundle-docs/index.js";
+import { bundles } from "../src/app-area-docs/index.js";
+
+test.use({ bundleMode: "single-file" });
+
+test.use({ fixtureHome: Fixture.None });
+
+test("add example bundle from empty state and preview it", async ({
+  page, snapshot, skipMeadowHomeStateCheck, addKeyFrame,
+}) => {
+  const bundleList = new BundleListPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
+  const previewModal = new PreviewPublishModal(page, expect);
+
+  // Start at empty bundle list
+  await bundleList.goto();
+  await snapshot("empty bundle list");
+
+  // Click the "add the example bundle" link in the empty state
+  await bundleList.clickAddExampleBundleLink();
+
+  // Wait for navigation into the example bundle editor
+  await editor.waitForLoad("example-bundle");
+  await snapshot("example bundle editor loaded");
+
+  // Click Preview and wait for it to complete
+  await editor.clickPreview();
+  await previewModal.waitForPreviewComplete();
+  await snapshot("preview complete");
+
+  // Verify the preview iframe shows the example bundle content
+  await previewModal.expectPreviewIframeHeading("Notable Mental Models");
+  await addKeyFrame(htmlGeneration);
+  await snapshot("example bundle preview visible");
+
+  void exampleBundle;
+  void bundles;
+
+  await skipMeadowHomeStateCheck();
+});

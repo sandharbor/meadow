@@ -15,23 +15,23 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteListPage } from "../src/run/pages/index.js";
+import { BundleListPage } from "../src/run/pages/index.js";
 import { callout } from "../src/scenario-docs/index.js";
-import { sites } from "../src/app-area-docs/index.js";
+import { bundles } from "../src/app-area-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "none" });
 
-test("Callout turn your notes into sites shown on empty state", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
-  const siteList = new SiteListPage(page, expect);
-  await siteList.goto();
-  await snapshot("empty site list loaded");
+test("Callout turn your notes into bundles shown on empty state", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+  const bundleList = new BundleListPage(page, expect);
+  await bundleList.goto();
+  await snapshot("empty bundle list loaded");
 
-  await siteList.expectCalloutVisible("Turn your notes into sites");
+  await bundleList.expectCalloutVisible("Turn your notes into bundles");
   await addKeyFrame(callout);
-  await snapshot("turn your notes into sites callout visible");
-  void sites;
+  await snapshot("turn your notes into bundles callout visible");
+  void bundles;
 
   await assertMeadowHomeState();
 });

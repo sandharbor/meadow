@@ -84,7 +84,7 @@ export async function uploadDirectory(
   }
 
   // Prune any existing objects under the prefix that are no longer present
-  // locally. Keeps the published site in-sync with the preview.
+  // locally. Keeps the published bundle in-sync with the preview.
   const existing = await listPrefix(client, bucket, prefixWithSlash);
   const toDelete = existing.filter((key) => !newKeys.has(key));
   if (toDelete.length > 0) {

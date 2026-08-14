@@ -1,1 +1,1 @@
-[[source graph]] [[published site type -- local html]]
+[[source graph]] [[published bundle type -- local html]]

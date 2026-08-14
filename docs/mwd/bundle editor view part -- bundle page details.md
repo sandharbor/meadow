@@ -1,0 +1,1 @@
+[[bundle editor view part]] [[bundle page]] details

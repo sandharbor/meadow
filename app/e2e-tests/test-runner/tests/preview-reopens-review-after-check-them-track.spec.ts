@@ -16,14 +16,14 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import {
-  SiteEditorPage,
+  BundleEditorPage,
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { tracking, callout } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("Preview reopens on Review step after tracking pages via Check Them link", async ({
   page,
@@ -32,12 +32,12 @@ test("Preview reopens on Review step after tracking pages via Check Them link", 
   addKeyFrame,
 }) => {
   const wf = new Workflows(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   const modal = new PreviewPublishModal(page, expect);
 
-  // ── Navigate to big site preview → save → share tab ──
+  // ── Navigate to big bundle preview → save → share tab ──
 
-  await wf.navigateToBigSiteShareTab();
+  await wf.navigateToBigBundleShareTab();
   await snapshot("share tab with untracked warning");
 
   // ── Click "Check them" to close modal and filter to untracked pages ──
@@ -67,7 +67,7 @@ test("Preview reopens on Review step after tracking pages via Check Them link", 
   await modal.waitForPreviewComplete();
   await modal.expectOnReviewStep();
   await snapshot("preview reopens on review step not share step");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

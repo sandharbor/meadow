@@ -18,20 +18,20 @@ import { execSync } from 'child_process';
 import test from 'tape';
 
 type WorkingGraphNode = {
-  siteNodeKey: string;
-  siteNodeId?: string;
-  siteNodeKind: 'file' | 'folder' | 'collection';
-  siteNodeName: string;
+  bundleNodeKey: string;
+  bundleNodeId?: string;
+  bundleNodeKind: 'file' | 'folder' | 'collection';
+  bundleNodeName: string;
   sourceGraphSubdirectory?: string;
   fileType?: string;
-  memberSiteNodeIds?: string[];
+  memberBundleNodeIds?: string[];
   depth: number;
 };
 
 type WorkingGraphEdge = {
   source: string;
   target: string;
-  siteEdgeKind: 'semanticLink' | 'directoryContainment' | 'collectionMembership';
+  bundleEdgeKind: 'semanticLink' | 'directoryContainment' | 'collectionMembership';
   link_original_text: string;
   link_resolved_target_directory: string;
   link_resolved_target_path: string | null;
@@ -45,24 +45,24 @@ type WorkingGraphOutput = {
 };
 
 function runWorkingGraph(args: {
-  entrySiteNodeId: string;
-  defaultTraversalSiteNodeId: string;
+  entryBundleNodeId: string;
+  defaultTraversalBundleNodeId: string;
   defaultOutlinksDepth?: number;
   defaultInlinksDepth?: number;
   frontierDepth?: number;
   graphRoot?: string;
-  siteNodeConfig?: string;
+  bundleNodeConfig?: string;
 }): WorkingGraphOutput {
   // Path relative to working_graph_code working directory
-  const graphRoot = args.graphRoot ?? "../../../shared_data/source_graphs/meadow-test-sites-data";
-  const siteNodeConfig = args.siteNodeConfig ?? "../../../shared_data/home_fixtures/home_fixture_big_and_small/sites/meadow-test-site-big/conf/site_node_config.yaml";
+  const graphRoot = args.graphRoot ?? "../../../shared_data/source_graphs/meadow-test-bundles-data";
+  const bundleNodeConfig = args.bundleNodeConfig ?? "../../../shared_data/home_fixtures/home_fixture_big_and_small/bundles/meadow-test-bundle-big/config/bundle_node_config.yaml";
 
   const cmd = [
     `cargo run --quiet --bin working_graph_bin --`,
     `--graph-root "${graphRoot}"`,
-    `--site-node-config "${siteNodeConfig}"`,
-    `--entry-site-node-id "${args.entrySiteNodeId}"`,
-    `--default-traversal-site-node-id "${args.defaultTraversalSiteNodeId}"`,
+    `--bundle-node-config "${bundleNodeConfig}"`,
+    `--entry-bundle-node-id "${args.entryBundleNodeId}"`,
+    `--default-traversal-bundle-node-id "${args.defaultTraversalBundleNodeId}"`,
     ...(args.defaultOutlinksDepth === undefined ? [] : [`--default-outlinks-depth ${args.defaultOutlinksDepth}`]),
     ...(args.defaultInlinksDepth === undefined ? [] : [`--default-inlinks-depth ${args.defaultInlinksDepth}`]),
     `--frontier-depth ${args.frontierDepth ?? 0}`,
@@ -73,47 +73,47 @@ function runWorkingGraph(args: {
 }
 
 const resultMain = runWorkingGraph({
-  entrySiteNodeId: 'ef63f962db68',
-  defaultTraversalSiteNodeId: 'ef63f962db68',
+  entryBundleNodeId: 'ef63f962db68',
+  defaultTraversalBundleNodeId: 'ef63f962db68',
   defaultOutlinksDepth: 4,
   defaultInlinksDepth: 100,
   frontierDepth: 0
 });
 
 const resultDepth0 = runWorkingGraph({
-  entrySiteNodeId: '8d86983d7f98',
-  defaultTraversalSiteNodeId: '8d86983d7f98',
+  entryBundleNodeId: '8d86983d7f98',
+  defaultTraversalBundleNodeId: '8d86983d7f98',
   defaultOutlinksDepth: 4,
   defaultInlinksDepth: 100,
   frontierDepth: 0
 });
 
 const singleFolder = runWorkingGraph({
-  entrySiteNodeId: 'p1b2c3d4e5f6',
-  defaultTraversalSiteNodeId: 'p1b2c3d4e5f6',
+  entryBundleNodeId: 'p1b2c3d4e5f6',
+  defaultTraversalBundleNodeId: 'p1b2c3d4e5f6',
   defaultOutlinksDepth: 1,
   defaultInlinksDepth: 0,
   graphRoot: '../working_graph_integration_test/fixtures/folder-scope/source',
-  siteNodeConfig: '../working_graph_integration_test/fixtures/folder-scope/single-folder.yaml',
+  bundleNodeConfig: '../working_graph_integration_test/fixtures/folder-scope/single-folder.yaml',
 });
 
 const multipleFolders = runWorkingGraph({
-  entrySiteNodeId: 'c1b2c3d4e5f6',
-  defaultTraversalSiteNodeId: 'c1b2c3d4e5f6',
+  entryBundleNodeId: 'c1b2c3d4e5f6',
+  defaultTraversalBundleNodeId: 'c1b2c3d4e5f6',
   defaultOutlinksDepth: 1,
   defaultInlinksDepth: 0,
   graphRoot: '../working_graph_integration_test/fixtures/folder-scope/source',
-  siteNodeConfig: '../working_graph_integration_test/fixtures/folder-scope/multiple-folders.yaml',
+  bundleNodeConfig: '../working_graph_integration_test/fixtures/folder-scope/multiple-folders.yaml',
 });
 
 function nodeByNameAndDir(nodes: WorkingGraphNode[], name: string, dir: string): WorkingGraphNode | undefined {
-  return nodes.find(node => node.siteNodeName === name && (node.sourceGraphSubdirectory || '') === (dir || ''));
+  return nodes.find(node => node.bundleNodeName === name && (node.sourceGraphSubdirectory || '') === (dir || ''));
 }
 
 test('working_graph integration', (t) => {
   t.test('outlinks_depth=0 yields only the initial page', (st) => {
     st.equal(resultDepth0.nodes.length, 1, 'should only contain the entry node');
-    st.equal(resultDepth0.nodes[0].siteNodeName, 't009 - page conf graph depth', 'entry node name');
+    st.equal(resultDepth0.nodes[0].bundleNodeName, 't009 - page conf graph depth', 'entry node name');
     st.end();
   });
 
@@ -150,22 +150,22 @@ test('working_graph integration', (t) => {
   });
 
   t.test('single-folder scope recursively seeds supported files and retains typed structure', (st) => {
-    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'folder:Projects'), 'selected folder is present');
-    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'folder:Projects/Sub'), 'required nested folder is present');
-    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'Projects/A.md'), 'direct file seed is present');
-    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'Projects/Sub/B.md'), 'nested file seed is present');
-    st.ok(singleFolder.nodes.some(node => node.siteNodeKey === 'Elsewhere/Outside.md'), 'semantic expansion outside scope is present');
-    st.notOk(singleFolder.nodes.some(node => node.siteNodeName === 'Hidden'), 'hidden descendant is omitted');
-    st.ok(singleFolder.edges.some(edge => edge.siteEdgeKind === 'directoryContainment'
+    st.ok(singleFolder.nodes.some(node => node.bundleNodeKey === 'folder:Projects'), 'selected folder is present');
+    st.ok(singleFolder.nodes.some(node => node.bundleNodeKey === 'folder:Projects/Sub'), 'required nested folder is present');
+    st.ok(singleFolder.nodes.some(node => node.bundleNodeKey === 'Projects/A.md'), 'direct file seed is present');
+    st.ok(singleFolder.nodes.some(node => node.bundleNodeKey === 'Projects/Sub/B.md'), 'nested file seed is present');
+    st.ok(singleFolder.nodes.some(node => node.bundleNodeKey === 'Elsewhere/Outside.md'), 'semantic expansion outside scope is present');
+    st.notOk(singleFolder.nodes.some(node => node.bundleNodeName === 'Hidden'), 'hidden descendant is omitted');
+    st.ok(singleFolder.edges.some(edge => edge.bundleEdgeKind === 'directoryContainment'
       && edge.source === 'folder:Projects/Sub' && edge.target === 'Projects/Sub/B.md'), 'typed containment edge is present');
     st.end();
   });
 
   t.test('multiple-folder scope has one collection entry and preserves empty selected members', (st) => {
-    const home = multipleFolders.nodes.find(node => node.siteNodeKey === 'collection:c1b2c3d4e5f6');
-    st.deepEqual(home?.memberSiteNodeIds, ['p1b2c3d4e5f6', 'e1b2c3d4e5f6'], 'member order is preserved');
-    st.ok(multipleFolders.nodes.some(node => node.siteNodeKey === 'folder:Empty'), 'selected empty folder is present');
-    const memberships = multipleFolders.edges.filter(edge => edge.siteEdgeKind === 'collectionMembership');
+    const home = multipleFolders.nodes.find(node => node.bundleNodeKey === 'collection:c1b2c3d4e5f6');
+    st.deepEqual(home?.memberBundleNodeIds, ['p1b2c3d4e5f6', 'e1b2c3d4e5f6'], 'member order is preserved');
+    st.ok(multipleFolders.nodes.some(node => node.bundleNodeKey === 'folder:Empty'), 'selected empty folder is present');
+    const memberships = multipleFolders.edges.filter(edge => edge.bundleEdgeKind === 'collectionMembership');
     st.deepEqual(memberships.map(edge => edge.target), ['folder:Projects', 'folder:Empty'], 'membership edges preserve selection order');
     st.end();
   });

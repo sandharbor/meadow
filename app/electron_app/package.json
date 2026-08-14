@@ -22,7 +22,7 @@
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "fix-backend": "mkdir -p build/mac/Meadow.app/Contents/Resources/backend && cp -r ../backend/dist/backend/* build/mac/Meadow.app/Contents/Resources/backend/ && cp ../backend/package.json build/mac/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/node_modules build/mac/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/dist/shared_code build/mac/Meadow.app/Contents/Resources/shared_code && cp -r ../backend/src/areas/site/generation/html/templates build/mac/Meadow.app/Contents/Resources/backend/src/areas/site/generation/html/templates && cp -r ../backend/src/areas/site/generation/html/shared build/mac/Meadow.app/Contents/Resources/backend/src/areas/site/generation/html/shared && cp -r ../backend/src/areas/site/generation/html/presets build/mac/Meadow.app/Contents/Resources/backend/src/areas/site/generation/html/presets && cp node-wrapper.sh build/mac/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac/Meadow.app/Contents/Resources/node && mkdir -p build/mac-arm64/Meadow.app/Contents/Resources/backend && cp -r ../backend/dist/backend/* build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp ../backend/package.json build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/node_modules build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/dist/shared_code build/mac-arm64/Meadow.app/Contents/Resources/shared_code && cp -r ../backend/src/areas/site/generation/html/templates build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/site/generation/html/templates && cp -r ../backend/src/areas/site/generation/html/shared build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/site/generation/html/shared && cp -r ../backend/src/areas/site/generation/html/presets build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/site/generation/html/presets && cp node-wrapper.sh build/mac-arm64/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac-arm64/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac-arm64/Meadow.app/Contents/Resources/node",
+    "fix-backend": "mkdir -p build/mac/Meadow.app/Contents/Resources/backend && cp -r ../backend/dist/backend/* build/mac/Meadow.app/Contents/Resources/backend/ && cp ../backend/package.json build/mac/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/node_modules build/mac/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/dist/shared_code build/mac/Meadow.app/Contents/Resources/shared_code && cp -r ../backend/src/areas/bundle/generation/html/templates build/mac/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/templates && cp -r ../backend/src/areas/bundle/generation/html/shared build/mac/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/shared && cp -r ../backend/src/areas/bundle/generation/html/presets build/mac/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/presets && cp node-wrapper.sh build/mac/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac/Meadow.app/Contents/Resources/node && mkdir -p build/mac-arm64/Meadow.app/Contents/Resources/backend && cp -r ../backend/dist/backend/* build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp ../backend/package.json build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/node_modules build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp -r ../backend/dist/shared_code build/mac-arm64/Meadow.app/Contents/Resources/shared_code && cp -r ../backend/src/areas/bundle/generation/html/templates build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/templates && cp -r ../backend/src/areas/bundle/generation/html/shared build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/shared && cp -r ../backend/src/areas/bundle/generation/html/presets build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/presets && cp node-wrapper.sh build/mac-arm64/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac-arm64/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac-arm64/Meadow.app/Contents/Resources/node",
     "postinstall": "electron-builder install-app-deps",
     "clean": "rimraf dist build",
     "generate-icons": "./generate-icons.sh"
@@ -32,7 +32,7 @@
     "productName": "Meadow",
     "protocols": [
       {
-        "name": "Meadow Find in Sites",
+        "name": "Meadow Find in Bundles",
         "schemes": ["meadow"]
       }
     ],
@@ -96,23 +96,23 @@
         "filter": ["**/*"]
       },
       {
-        "from": "../backend/src/areas/site/generation/html/templates",
-        "to": "backend/src/areas/site/generation/html/templates",
+        "from": "../backend/src/areas/bundle/generation/html/templates",
+        "to": "backend/src/areas/bundle/generation/html/templates",
         "filter": ["**/*"]
       },
       {
-        "from": "../backend/src/areas/site/generation/html/shared",
-        "to": "backend/src/areas/site/generation/html/shared",
+        "from": "../backend/src/areas/bundle/generation/html/shared",
+        "to": "backend/src/areas/bundle/generation/html/shared",
         "filter": ["**/*"]
       },
       {
-        "from": "../backend/src/areas/site/generation/html/presets",
-        "to": "backend/src/areas/site/generation/html/presets",
+        "from": "../backend/src/areas/bundle/generation/html/presets",
+        "to": "backend/src/areas/bundle/generation/html/presets",
         "filter": ["**/*"]
       },
       {
-        "from": "../backend/src/areas/site/generation/html/published_site_utils/srs",
-        "to": "backend/src/areas/site/generation/html/published_site_utils/srs",
+        "from": "../backend/src/areas/bundle/generation/html/published_bundle_utils/srs",
+        "to": "backend/src/areas/bundle/generation/html/published_bundle_utils/srs",
         "filter": ["**/*"]
       },
       {
@@ -142,12 +142,12 @@
       },
       {
         "from": "../shared_data/home_fixtures/home_fixture_example",
-        "to": "example_site/home_fixture",
+        "to": "example_bundle/home_fixture",
         "filter": ["**/*"]
       },
       {
-        "from": "../shared_data/source_graphs/example-site-data",
-        "to": "example_site/source_graph",
+        "from": "../shared_data/source_graphs/example-bundle-data",
+        "to": "example_bundle/source_graph",
         "filter": ["**/*"]
       }
     ],

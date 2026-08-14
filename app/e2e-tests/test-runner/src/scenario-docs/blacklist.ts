@@ -22,7 +22,7 @@ export const blacklist: ScenarioDoc = {
   description:
     "Tests covering per-page blacklisting. Blacklisting a single page is a " +
     "simple op that auto-saves immediately, removing the page from the " +
-    "generated site preview. Blacklisting is not transitive — pages linked " +
+    "generated bundle preview. Blacklisting is not transitive — pages linked " +
     "from a blacklisted page remain visible as long as they are reachable " +
     "through another tracked path.",
 };

@@ -18,12 +18,12 @@ import type { Migration } from '../../../../../shared_code/types/migrations.js';
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import { SiteConfigPaths } from '../../../../../shared_code/paths/siteConfigPaths.js';
+import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import { getDefaultConfigDirectory } from '../../../../../shared_code/utils/appConfigUtils.js';
 
 function isGeneratedTagPageConfig(item: Record<string, unknown>): boolean {
-  return item.sourceGraphSubdirectory === SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR ||
-    item.source_graph_subdirectory === SiteConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;
+  return item.sourceGraphSubdirectory === BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR ||
+    item.source_graph_subdirectory === BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;
 }
 
 function removeGeneratedTagPageConfigs(filePath: string): void {
@@ -47,12 +47,12 @@ function removeGeneratedTagPageConfigs(filePath: string): void {
   fs.writeFileSync(filePath, YAML.stringify(doc, { sortMapEntries: true }), 'utf8');
 }
 
-function removeStaleGeneratedTagContent(siteDir: string): void {
+function removeStaleGeneratedTagContent(bundleDir: string): void {
   const paths = [
-    SiteConfigPaths.getTrackedPageContentTagpagesDir(siteDir),
-    SiteConfigPaths.getPreparedSourceContentDir(siteDir),
-    path.join(siteDir, 'build', 'prepared_site_page_config.yaml'),
-    SiteConfigPaths.getLegacyRenderSourceContentDir(siteDir),
+    BundleConfigPaths.getTrackedPageContentTagpagesDir(bundleDir),
+    BundleConfigPaths.getPreparedSourceContentDir(bundleDir),
+    path.join(bundleDir, 'build', 'prepared_site_page_config.yaml'),
+    BundleConfigPaths.getLegacyRenderSourceContentDir(bundleDir),
   ];
 
   for (const targetPath of paths) {
@@ -62,16 +62,17 @@ function removeStaleGeneratedTagContent(siteDir: string): void {
   }
 }
 
-function migrateSites(configDir: string): void {
-  const sitesDir = path.join(configDir, 'sites');
-  if (!fs.existsSync(sitesDir)) return;
+function migrateBundles(configDir: string): void {
+  // This historical migration runs before the bundle-domain migration.
+  const bundlesDir = path.join(configDir, 'sites');
+  if (!fs.existsSync(bundlesDir)) return;
 
-  const siteEntries = fs.readdirSync(sitesDir, { withFileTypes: true });
-  for (const entry of siteEntries) {
+  const bundleEntries = fs.readdirSync(bundlesDir, { withFileTypes: true });
+  for (const entry of bundleEntries) {
     if (!entry.isDirectory()) continue;
 
-    const siteDir = path.join(sitesDir, entry.name);
-    const confDir = SiteConfigPaths.getConfDir(siteDir);
+    const bundleDir = path.join(bundlesDir, entry.name);
+    const confDir = path.join(bundleDir, 'conf');
     if (fs.existsSync(confDir)) {
       for (const filename of ['site_page_config.yaml', 'draft_site_page_config.yaml']) {
         const filePath = path.join(confDir, filename);
@@ -81,15 +82,15 @@ function migrateSites(configDir: string): void {
       }
     }
 
-    removeStaleGeneratedTagContent(siteDir);
+    removeStaleGeneratedTagContent(bundleDir);
   }
 }
 
 export const migration: Migration = {
   name: 'Remove generated tag page configs',
-  description: 'Remove generated tag page entries from persisted site page configs and clean stale generated source material.',
+  description: 'Remove generated tag page entries from legacy page configs and clean stale generated source material.',
   run: (): Promise<void> => {
-    migrateSites(getDefaultConfigDirectory());
+    migrateBundles(getDefaultConfigDirectory());
     return Promise.resolve();
   }
 };

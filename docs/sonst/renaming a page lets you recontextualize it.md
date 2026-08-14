@@ -1,1 +1,1 @@
-[[site page config -- title]]
+[[bundle page config -- title]]

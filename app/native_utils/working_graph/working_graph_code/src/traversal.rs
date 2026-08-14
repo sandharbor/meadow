@@ -1,6 +1,6 @@
-use crate::site_node_config::{find_matching_config, SiteNodeConfig};
+use crate::bundle_node_config::{find_matching_config, BundleNodeConfig};
 use crate::types::{
-    is_image_file_type, BasicEdge, FileSiteNode, LinkType, SiteEdgeKind, TraversalDetails,
+    is_image_file_type, BasicEdge, FileBundleNode, LinkType, BundleEdgeKind, TraversalDetails,
     TraversalStateSummary, WorkingEdge, WorkingNode,
 };
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -19,55 +19,55 @@ pub struct TraverseOpts {
 }
 
 #[derive(Debug)]
-pub struct SiteNodeGraph {
+pub struct BundleNodeGraph {
     pub nodes: HashMap<String, WorkingNode>,
     pub edges: Vec<WorkingEdge>,
-    site_node_configs: Vec<SiteNodeConfig>,
+    bundle_node_configs: Vec<BundleNodeConfig>,
     opts: BuildOpts,
 }
 
-impl SiteNodeGraph {
+impl BundleNodeGraph {
     pub fn new(
         raw_edges: &[BasicEdge],
-        start: &FileSiteNode,
-        site_node_configs: Vec<SiteNodeConfig>,
+        start: &FileBundleNode,
+        bundle_node_configs: Vec<BundleNodeConfig>,
         opts: BuildOpts,
     ) -> Self {
         let mut g = Self {
             nodes: HashMap::new(),
             edges: Vec::new(),
-            site_node_configs,
+            bundle_node_configs,
             opts,
         };
         g.build_graph(raw_edges, start);
         g
     }
 
-    fn apply_config_to_file(configs: &[SiteNodeConfig], f: &mut FileSiteNode) {
+    fn apply_config_to_file(configs: &[BundleNodeConfig], f: &mut FileBundleNode) {
         if let Some(conf) = find_matching_config(
             configs,
-            &f.site_node_name,
+            &f.bundle_node_name,
             &f.source_graph_subdirectory,
             &f.file_type,
         ) {
-            f.site_node_id = Some(conf.site_node_id().to_string());
+            f.bundle_node_id = Some(conf.bundle_node_id().to_string());
             f.conf_outlinks_depth = conf.outlinks_depth();
             f.conf_inlinks_depth = conf.inlinks_depth();
             f.conf_is_blacklisted = Some(conf.list_type() == "blacklist");
         }
     }
 
-    fn build_graph(&mut self, raw_edges: &[BasicEdge], start_file: &FileSiteNode) {
+    fn build_graph(&mut self, raw_edges: &[BasicEdge], start_file: &FileBundleNode) {
         let frontier_depth = self.opts.frontier_depth.max(0);
 
         // Pre-build adjacency lists to avoid O(V*E) scanning.
         let mut out_map: HashMap<String, Vec<(String, bool)>> = HashMap::new();
         let mut in_map: HashMap<String, Vec<(String, bool)>> = HashMap::new();
-        let mut file_map: HashMap<String, FileSiteNode> = HashMap::new();
+        let mut file_map: HashMap<String, FileBundleNode> = HashMap::new();
 
         for e in raw_edges {
-            let sid = e.source.site_node_key();
-            let tid = e.target.site_node_key();
+            let sid = e.source.bundle_node_key();
+            let tid = e.target.bundle_node_key();
             file_map
                 .entry(sid.clone())
                 .or_insert_with(|| e.source.clone());
@@ -85,14 +85,14 @@ impl SiteNodeGraph {
         }
 
         // Ensure start exists in file_map.
-        let start_id = start_file.site_node_key();
+        let start_id = start_file.bundle_node_key();
         file_map
             .entry(start_id.clone())
             .or_insert_with(|| start_file.clone());
 
         // Apply configs to all files (mirrors TS where conf_* is assigned across all edge endpoints).
         for f in file_map.values_mut() {
-            Self::apply_config_to_file(&self.site_node_configs, f);
+            Self::apply_config_to_file(&self.bundle_node_configs, f);
         }
 
         let start_file_conf = file_map
@@ -100,7 +100,7 @@ impl SiteNodeGraph {
             .cloned()
             .unwrap_or_else(|| start_file.clone());
         let mut start_file_with_conf = start_file_conf.clone();
-        Self::apply_config_to_file(&self.site_node_configs, &mut start_file_with_conf);
+        Self::apply_config_to_file(&self.bundle_node_configs, &mut start_file_with_conf);
 
         let initial_remaining_depth_for_start = start_file_with_conf
             .conf_outlinks_depth
@@ -156,7 +156,7 @@ impl SiteNodeGraph {
 
             // Update the node's conf fields from configs (mirrors TS behavior).
             if let Some(n) = self.nodes.get_mut(&current_key) {
-                Self::apply_config_to_file(&self.site_node_configs, &mut n.file);
+                Self::apply_config_to_file(&self.bundle_node_configs, &mut n.file);
             }
 
             if let Some(prev) = visited_at_min_depth.get(&current_key) {
@@ -317,7 +317,7 @@ impl SiteNodeGraph {
                             self.edges.push(WorkingEdge {
                                 from: current_key.clone(),
                                 to: target_key.to_string(),
-                                site_edge_kind: SiteEdgeKind::SemanticLink,
+                                bundle_edge_kind: BundleEdgeKind::SemanticLink,
                                 is_bidirectional: raw_edge_is_bidirectional,
                                 is_traversal_only: false,
                             })
@@ -325,7 +325,7 @@ impl SiteNodeGraph {
                         LinkType::Inlink => self.edges.push(WorkingEdge {
                             from: current_key.clone(),
                             to: target_key.to_string(),
-                            site_edge_kind: SiteEdgeKind::SemanticLink,
+                            bundle_edge_kind: BundleEdgeKind::SemanticLink,
                             is_bidirectional: false,
                             is_traversal_only: true,
                         }),
@@ -356,8 +356,8 @@ impl SiteNodeGraph {
         }
     }
 
-    pub fn traverse(&self, from: &FileSiteNode, opts: TraverseOpts) -> Vec<WorkingNode> {
-        let start_key = from.site_node_key();
+    pub fn traverse(&self, from: &FileBundleNode, opts: TraverseOpts) -> Vec<WorkingNode> {
+        let start_key = from.bundle_node_key();
         let start_node = match self.nodes.get(&start_key) {
             Some(n) => n.clone(),
             None => return vec![],
@@ -368,14 +368,14 @@ impl SiteNodeGraph {
         let mut visited: HashMap<String, i32> = HashMap::new();
 
         fn dfs(
-            g: &SiteNodeGraph,
+            g: &BundleNodeGraph,
             node: &WorkingNode,
             opts: &TraverseOpts,
             min_depth: i32,
             visited: &mut HashMap<String, i32>,
             result: &mut Vec<WorkingNode>,
         ) {
-            let key = node.file.site_node_key();
+            let key = node.file.bundle_node_key();
             if !opts.allow_lower_depths && node.depth < min_depth {
                 return;
             }
@@ -418,7 +418,7 @@ impl SiteNodeGraph {
 
 #[derive(Debug, Clone)]
 pub struct MultiSeed {
-    pub file: FileSiteNode,
+    pub file: FileBundleNode,
     pub outlinks_depth: i32,
     pub inlinks_depth: i32,
     pub structural_path: Vec<String>,
@@ -453,18 +453,18 @@ fn display_state_cmp(a: &MultiTraversalState, b: &MultiTraversalState) -> std::c
 /// frontiers retain independently useful outlink/inlink budgets while emitted nodes stay unique.
 pub fn get_multi_seed_working_nodes(
     edges: &[BasicEdge],
-    site_node_configs: &[SiteNodeConfig],
+    bundle_node_configs: &[BundleNodeConfig],
     seeds: &[MultiSeed],
     blocked_file_keys: &HashSet<String>,
     frontier_depth: i32,
     allow_images_to_extend_to_frontier: bool,
 ) -> Vec<WorkingNode> {
-    let mut file_map: HashMap<String, FileSiteNode> = HashMap::new();
+    let mut file_map: HashMap<String, FileBundleNode> = HashMap::new();
     let mut outgoing: HashMap<String, Vec<(String, bool)>> = HashMap::new();
     let mut incoming: HashMap<String, Vec<(String, bool)>> = HashMap::new();
     for edge in edges {
-        let source = edge.source.site_node_key();
-        let target = edge.target.site_node_key();
+        let source = edge.source.bundle_node_key();
+        let target = edge.target.bundle_node_key();
         file_map.entry(source.clone()).or_insert_with(|| edge.source.clone());
         file_map.entry(target.clone()).or_insert_with(|| edge.target.clone());
         outgoing
@@ -478,7 +478,7 @@ pub fn get_multi_seed_working_nodes(
     }
     for seed in seeds {
         file_map
-            .entry(seed.file.site_node_key())
+            .entry(seed.file.bundle_node_key())
             .or_insert_with(|| seed.file.clone());
     }
     for adjacent in outgoing.values_mut() {
@@ -490,14 +490,14 @@ pub fn get_multi_seed_working_nodes(
         adjacent.dedup();
     }
 
-    let apply_file_config = |file: &mut FileSiteNode| {
+    let apply_file_config = |file: &mut FileBundleNode| {
         if let Some(config) = find_matching_config(
-            site_node_configs,
-            &file.site_node_name,
+            bundle_node_configs,
+            &file.bundle_node_name,
             &file.source_graph_subdirectory,
             &file.file_type,
         ) {
-            file.site_node_id = Some(config.site_node_id().to_string());
+            file.bundle_node_id = Some(config.bundle_node_id().to_string());
             file.conf_outlinks_depth = config.outlinks_depth();
             file.conf_inlinks_depth = config.inlinks_depth();
             file.conf_is_blacklisted = Some(config.list_type() == "blacklist");
@@ -540,12 +540,12 @@ pub fn get_multi_seed_working_nodes(
     let mut sorted_seeds = seeds.to_vec();
     sorted_seeds.sort_by(|a, b| {
         a.file
-            .site_node_key()
-            .cmp(&b.file.site_node_key())
+            .bundle_node_key()
+            .cmp(&b.file.bundle_node_key())
             .then_with(|| a.structural_path.cmp(&b.structural_path))
     });
     for seed in sorted_seeds {
-        let key = seed.file.site_node_key();
+        let key = seed.file.bundle_node_key();
         let file = file_map.get(&key).expect("seed file exists");
         let mut path = seed.structural_path;
         if path.last() != Some(&key) {
@@ -721,7 +721,7 @@ pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
                     WorkingEdge {
                         from: e.from.clone(),
                         to: e.to.clone(),
-                        site_edge_kind: e.site_edge_kind,
+                        bundle_edge_kind: e.bundle_edge_kind,
                         is_bidirectional: e.is_bidirectional,
                         is_traversal_only: e.is_traversal_only,
                     },
@@ -738,7 +738,7 @@ pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
                     WorkingEdge {
                         from: e.from.clone(),
                         to: e.to.clone(),
-                        site_edge_kind: e.site_edge_kind,
+                        bundle_edge_kind: e.bundle_edge_kind,
                         is_bidirectional: e.is_bidirectional,
                         is_traversal_only: e.is_traversal_only,
                     },
@@ -750,7 +750,7 @@ pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
                 WorkingEdge {
                     from: e.from.clone(),
                     to: e.to.clone(),
-                    site_edge_kind: e.site_edge_kind,
+                    bundle_edge_kind: e.bundle_edge_kind,
                     is_bidirectional: e.is_bidirectional,
                     is_traversal_only: e.is_traversal_only,
                 },
@@ -763,9 +763,9 @@ pub fn deduplicate_edges(edges: &[WorkingEdge]) -> Vec<WorkingEdge> {
 
 pub fn get_working_graph(
     edges: &[BasicEdge],
-    site_node_configs: &[SiteNodeConfig],
-    entry_node: &FileSiteNode,
-    default_traversal_node: &FileSiteNode,
+    bundle_node_configs: &[BundleNodeConfig],
+    entry_node: &FileBundleNode,
+    default_traversal_node: &FileBundleNode,
     default_outlinks_depth: Option<i32>,
     default_inlinks_depth: Option<i32>,
     traversal_opts: TraverseOpts,
@@ -773,15 +773,15 @@ pub fn get_working_graph(
     allow_images_to_extend_to_frontier: bool,
 ) -> anyhow::Result<(Vec<WorkingNode>, Vec<WorkingEdge>)> {
     find_matching_config(
-        site_node_configs,
-        &entry_node.site_node_name,
+        bundle_node_configs,
+        &entry_node.bundle_node_name,
         &entry_node.source_graph_subdirectory,
         &entry_node.file_type,
     )
     .ok_or_else(|| {
         anyhow::anyhow!(
             "Entry node config not found for {} (directory: {}, file_type: {})",
-            entry_node.site_node_name,
+            entry_node.bundle_node_name,
             if entry_node.source_graph_subdirectory.is_empty() {
                 "(root)"
             } else {
@@ -794,10 +794,10 @@ pub fn get_working_graph(
     let max_depth = default_outlinks_depth.unwrap_or(i32::MAX);
     let inlinks_depth = default_inlinks_depth.unwrap_or(0);
 
-    let graph = SiteNodeGraph::new(
+    let graph = BundleNodeGraph::new(
         edges,
         entry_node,
-        site_node_configs.to_vec(),
+        bundle_node_configs.to_vec(),
         BuildOpts {
             max_depth,
             inlinks_depth,
@@ -809,7 +809,7 @@ pub fn get_working_graph(
     let traversed_nodes = graph.traverse(default_traversal_node, traversal_opts);
     let traversed_keys: HashSet<String> = traversed_nodes
         .iter()
-        .map(|node| node.file.site_node_key())
+        .map(|node| node.file.bundle_node_key())
         .collect();
 
     let filtered_edges: Vec<WorkingEdge> = graph
@@ -826,15 +826,15 @@ pub fn get_working_graph(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::site_node_config::SiteNodeConfig;
-    use crate::types::{BasicEdge, FileSiteNode, LinkType, WorkingNode};
+    use crate::bundle_node_config::BundleNodeConfig;
+    use crate::types::{BasicEdge, FileBundleNode, LinkType, WorkingNode};
 
-    fn file(title: &str, file_type: &str) -> FileSiteNode {
-        FileSiteNode {
+    fn file(title: &str, file_type: &str) -> FileBundleNode {
+        FileBundleNode {
             source_graph_subdirectory: "".to_string(),
-            site_node_name: title.to_string(),
+            bundle_node_name: title.to_string(),
             file_type: file_type.to_string(),
-            site_node_id: None,
+            bundle_node_id: None,
             is_sensitive: false,
             conf_outlinks_depth: None,
             conf_inlinks_depth: None,
@@ -848,7 +848,7 @@ mod tests {
             if a.depth != b.depth {
                 a.depth.cmp(&b.depth)
             } else {
-                a.file.site_node_name.cmp(&b.file.site_node_name)
+                a.file.bundle_node_name.cmp(&b.file.bundle_node_name)
             }
         });
         out
@@ -857,21 +857,21 @@ mod tests {
     fn name_and_depth(nodes: &[WorkingNode]) -> Vec<String> {
         sorted_nodes(nodes)
             .into_iter()
-            .map(|n| format!("{}:{}", n.file.site_node_name, n.depth))
+            .map(|n| format!("{}:{}", n.file.bundle_node_name, n.depth))
             .collect()
     }
 
     fn name_and_remaining_depth(nodes: &[WorkingNode]) -> Vec<String> {
         sorted_nodes(nodes)
             .into_iter()
-            .map(|n| format!("{}:{}", n.file.site_node_name, n.remaining_depth))
+            .map(|n| format!("{}:{}", n.file.bundle_node_name, n.remaining_depth))
             .collect()
     }
 
     fn name_and_remaining_inlinks_depth(nodes: &[WorkingNode]) -> Vec<String> {
         sorted_nodes(nodes)
             .into_iter()
-            .map(|n| format!("{}:{}", n.file.site_node_name, n.remaining_inlinks_depth))
+            .map(|n| format!("{}:{}", n.file.bundle_node_name, n.remaining_inlinks_depth))
             .collect()
     }
 
@@ -890,10 +890,10 @@ mod tests {
             .map(|n| {
                 let details = n.traversal_details.clone();
                 if details.is_none() {
-                    return format!("{}: no details", n.file.site_node_name);
+                    return format!("{}: no details", n.file.bundle_node_name);
                 }
                 let d = details.unwrap();
-                let mut parts: Vec<String> = vec![format!("{}:", n.file.site_node_name)];
+                let mut parts: Vec<String> = vec![format!("{}:", n.file.bundle_node_name)];
                 if let Some(v) = d.outlinks_depth_set_first_time {
                     parts.push(format!("gd_first={}", v));
                 }
@@ -921,23 +921,23 @@ mod tests {
     }
 
     fn conf(
-        site_node_name: &str,
+        bundle_node_name: &str,
         list_type: &str,
         outlinks_depth: Option<i32>,
         inlinks_depth: Option<i32>,
-    ) -> SiteNodeConfig {
-        SiteNodeConfig::file(
-            site_node_name.to_string(),
+    ) -> BundleNodeConfig {
+        BundleNodeConfig::file(
+            bundle_node_name.to_string(),
             None,
             "md".to_string(),
-            format!("{:0<12}", site_node_name.to_ascii_lowercase()),
+            format!("{:0<12}", bundle_node_name.to_ascii_lowercase()),
             list_type.to_string(),
             outlinks_depth,
             inlinks_depth,
         )
     }
 
-    fn default_confs() -> Vec<SiteNodeConfig> {
+    fn default_confs() -> Vec<BundleNodeConfig> {
         vec![conf("A", "whitelist", None, None)]
     }
 
@@ -973,10 +973,10 @@ mod tests {
             0,
             false,
         );
-        let names: HashSet<&str> = nodes.iter().map(|node| node.file.site_node_name.as_str()).collect();
+        let names: HashSet<&str> = nodes.iter().map(|node| node.file.bundle_node_name.as_str()).collect();
         assert!(names.contains("D"), "outlink-useful state must be explored");
         assert!(names.contains("E"), "inlink-useful state must be explored");
-        let b_node = nodes.iter().find(|node| node.file.site_node_name == "B").unwrap();
+        let b_node = nodes.iter().find(|node| node.file.bundle_node_name == "B").unwrap();
         assert_eq!(
             b_node.traversal_states.as_ref().unwrap(),
             &vec![
@@ -1022,7 +1022,7 @@ mod tests {
             false,
         );
         assert_eq!(nodes.len(), 2);
-        let b_node = nodes.iter().find(|node| node.file.site_node_name == "B").unwrap();
+        let b_node = nodes.iter().find(|node| node.file.bundle_node_name == "B").unwrap();
         assert_eq!(
             b_node.traversal_states.as_ref().unwrap(),
             &vec![TraversalStateSummary { remaining_outlinks_depth: 2, remaining_inlinks_depth: 2 }]
@@ -1032,9 +1032,9 @@ mod tests {
     fn default_conf_with_overrides(
         outlinks_depth: Option<i32>,
         inlinks_depth: Option<i32>,
-    ) -> SiteNodeConfig {
+    ) -> BundleNodeConfig {
         let mut c = default_confs()[0].clone();
-        if let SiteNodeConfig::File {
+        if let BundleNodeConfig::File {
             outlinks_depth: configured_outlinks_depth,
             inlinks_depth: configured_inlinks_depth,
             ..
@@ -1052,16 +1052,16 @@ mod tests {
 
     fn my_get_working_graph(
         edges: &[BasicEdge],
-        site_node_configs: &[SiteNodeConfig],
-        entry_node: &FileSiteNode,
-        default_traversal_node: &FileSiteNode,
+        bundle_node_configs: &[BundleNodeConfig],
+        entry_node: &FileBundleNode,
+        default_traversal_node: &FileBundleNode,
         allow_lower_depths: bool,
         frontier_depth: i32,
         allow_images_to_extend_to_frontier: bool,
     ) -> (Vec<WorkingNode>, Vec<WorkingEdge>) {
         get_working_graph(
             edges,
-            site_node_configs,
+            bundle_node_configs,
             entry_node,
             default_traversal_node,
             Some(4),
@@ -1076,7 +1076,7 @@ mod tests {
     fn edge_descriptions(edges: &[WorkingEdge], nodes: &[WorkingNode]) -> Vec<String> {
         let id_to_title: HashMap<String, String> = nodes
             .iter()
-            .map(|n| (n.file.site_node_key(), n.file.site_node_name.clone()))
+            .map(|n| (n.file.bundle_node_key(), n.file.bundle_node_name.clone()))
             .collect();
         let mut out: Vec<String> = edges
             .iter()
@@ -1432,7 +1432,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![
+        let confs: Vec<BundleNodeConfig> = vec![
             conf("A", "whitelist", Some(1), Some(max_inlinks_depth)),
             conf("B", "whitelist", Some(1), None),
         ];
@@ -1504,7 +1504,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![
+        let confs: Vec<BundleNodeConfig> = vec![
             conf("A", "whitelist", Some(1), Some(max_inlinks_depth)),
             conf("B", "whitelist", Some(2), None),
         ];
@@ -1570,7 +1570,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![
+        let confs: Vec<BundleNodeConfig> = vec![
             conf("A", "whitelist", Some(2), Some(max_inlinks_depth)),
             conf("B", "whitelist", None, Some(0)),
         ];
@@ -1639,7 +1639,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![
+        let confs: Vec<BundleNodeConfig> = vec![
             conf("A", "whitelist", Some(1), Some(0)),
             conf("B", "whitelist", Some(3), Some(max_inlinks_depth)),
         ];
@@ -1718,7 +1718,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(2))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(2))];
 
         let (nodes, _edges) =
             my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
@@ -1771,7 +1771,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(1))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(1))];
 
         let (nodes, _edges) =
             my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
@@ -1816,7 +1816,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
         let (nodes, _edges) =
             my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
@@ -1852,7 +1852,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> =
+        let confs: Vec<BundleNodeConfig> =
             vec![conf("A", "whitelist", Some(1), Some(max_inlinks_depth))];
 
         let (nodes, _edges) =
@@ -1907,7 +1907,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> =
+        let confs: Vec<BundleNodeConfig> =
             vec![conf("A", "whitelist", Some(2), Some(max_inlinks_depth))];
 
         let (nodes, _edges) =
@@ -1950,7 +1950,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![
+        let confs: Vec<BundleNodeConfig> = vec![
             conf("A", "whitelist", Some(2), Some(max_inlinks_depth)),
             conf("B", "blacklist", None, None),
         ];
@@ -2004,7 +2004,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![
+        let confs: Vec<BundleNodeConfig> = vec![
             conf("A", "whitelist", Some(1), Some(max_inlinks_depth)),
             conf("B", "blacklist", Some(2), None),
         ];
@@ -2224,7 +2224,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(1))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(1))];
 
         let (nodes, result_edges) =
             my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
@@ -2283,7 +2283,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
         let (nodes, result_edges) =
             my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
@@ -2312,7 +2312,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
         let (nodes, result_edges) =
             my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
@@ -2348,7 +2348,7 @@ mod tests {
             }, // inlink to A
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(1))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(1))];
 
         let (nodes, result_edges) =
             my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
@@ -2397,7 +2397,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![
+        let confs: Vec<BundleNodeConfig> = vec![
             conf("A", "whitelist", None, None),
             conf("B", "whitelist", Some(1), Some(0)),
         ];
@@ -2476,7 +2476,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(0))];
 
         let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         assert_eq!(
@@ -2520,14 +2520,14 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
         let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1", "C:2", "IMG:3"]);
 
         let img_page = nodes
             .iter()
-            .find(|p| p.file.site_node_name == "IMG")
+            .find(|p| p.file.bundle_node_name == "IMG")
             .unwrap();
         assert_eq!(img_page.is_frontier_image_extension, Some(true));
         assert_eq!(img_page.is_frontier_node, Some(false));
@@ -2558,7 +2558,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
         let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, false);
         assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1", "C:2"]);
@@ -2589,7 +2589,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(1), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(1), Some(0))];
 
         let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         assert_eq!(name_and_depth(&nodes), vec!["A:0", "B:1"]);
@@ -2626,7 +2626,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(2), Some(0))];
 
         let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         assert_eq!(
@@ -2636,11 +2636,11 @@ mod tests {
 
         let img1_page = nodes
             .iter()
-            .find(|p| p.file.site_node_name == "IMG")
+            .find(|p| p.file.bundle_node_name == "IMG")
             .unwrap();
         let img2_page = nodes
             .iter()
-            .find(|p| p.file.site_node_name == "IMG2")
+            .find(|p| p.file.bundle_node_name == "IMG2")
             .unwrap();
         assert_eq!(img1_page.is_frontier_image_extension, Some(true));
         assert_eq!(img2_page.is_frontier_image_extension, Some(true));
@@ -2671,12 +2671,12 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(0))];
+        let confs: Vec<BundleNodeConfig> = vec![conf("A", "whitelist", Some(4), Some(0))];
 
         let (nodes, _) = my_get_working_graph(&edges, &confs, &node_a, &node_a, false, 0, true);
         let img_page = nodes
             .iter()
-            .find(|p| p.file.site_node_name == "IMG")
+            .find(|p| p.file.bundle_node_name == "IMG")
             .unwrap();
         assert_ne!(img_page.is_frontier_image_extension, Some(true));
     }
@@ -2737,7 +2737,7 @@ mod tests {
             },
         ];
 
-        let confs: Vec<SiteNodeConfig> = vec![
+        let confs: Vec<BundleNodeConfig> = vec![
             conf("A", "whitelist", Some(1), Some(0)),
             conf("B", "whitelist", Some(3), Some(max_inlinks_depth)),
             conf("G", "whitelist", None, Some(0)),

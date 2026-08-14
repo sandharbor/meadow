@@ -2,6 +2,6 @@ TODO: we do all this now with [[git operation]]s, but I feel like this page was 
 
 ---
 
-versioning the [[raw working graph]], the [[filter]]s, the [[site page config]], the [[tracked working graph]]... all of it.
+versioning the [[raw working graph]], the [[filter]]s, the [[bundle page config]], the [[tracked working graph]]... all of it.
 ...
 [[design motivation -- great change management]]

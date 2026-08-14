@@ -14,13 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-function markdownProcessingPage(siteSlug: string, mdContent: string): string {
+function markdownProcessingPage(bundleSlug: string, mdContent: string): string {
   mdContent = addBreaksAroundSpecialLines(mdContent);
   mdContent = turnVideoTimestampsIntoLinks(mdContent);
   return mdContent;
 }
 
-function markdownProcessingBacklinks(siteSlug: string, mdContent: string): string {
+function markdownProcessingBacklinks(bundleSlug: string, mdContent: string): string {
   mdContent = addBreaksAroundSpecialLines(mdContent);
   return mdContent;
 }

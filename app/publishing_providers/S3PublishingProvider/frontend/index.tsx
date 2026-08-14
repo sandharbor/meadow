@@ -35,8 +35,8 @@ async function readError(res: Response, fallback: string): Promise<string> {
   return fallback;
 }
 
-async function fetchPublishedUrl(siteSlug: string): Promise<string> {
-  const res = await fetch(s3Api(`sites/${siteSlug}/published-url`));
+async function fetchPublishedUrl(bundleSlug: string): Promise<string> {
+  const res = await fetch(s3Api(`bundles/${bundleSlug}/published-url`));
   if (!res.ok) {
     throw new Error(await readError(res, `Failed to fetch published URL (${res.status})`));
   }
@@ -46,9 +46,9 @@ async function fetchPublishedUrl(siteSlug: string): Promise<string> {
 }
 
 async function fetchPublishedFileCounts(
-  siteSlug: string,
+  bundleSlug: string,
 ): Promise<{ htmlCount: number; otherCount: number }> {
-  const res = await fetch(s3Api(`sites/${siteSlug}/published-file-counts`));
+  const res = await fetch(s3Api(`bundles/${bundleSlug}/published-file-counts`));
   if (!res.ok) {
     throw new Error(await readError(res, `Failed to fetch published file counts (${res.status})`));
   }

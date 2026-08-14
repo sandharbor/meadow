@@ -2,26 +2,26 @@
 
 ---
 
-Part of [[app component - modal -- site preview]]
+Part of [[app component - modal -- bundle preview]]
 
 [[navigational component -- ncPreviewModalTab -- customization]]
 
-In the future it will also have potentially.  At a certain point, though, we should encourage the users to [[make fully custom sites from the tracked page content and site page config]]
+In the future it will also have potentially.  At a certain point, though, we should encourage the users to [[make fully custom bundles from the tracked page content and bundle page config]]
 
 ## Sections
 
 ### Publish Options
 
-* [[html site component -- breadcrumbs]]
+* [[html bundle component -- breadcrumbs]]
 * [[backlink]]
 * [[html generation hooks]]
-* [[tag site page]]s
-* [[meadow sources export type -- published to site as zip file|sources ZIP file]]
-* [[meadow workflow -- SRS markdown to SRS interactive elements on the published site|SRS]]
+* [[tag bundle page]]s
+* [[meadow sources export type -- published to bundle as zip file|sources ZIP file]]
+* [[meadow workflow -- SRS markdown to SRS interactive elements on the published bundle|SRS]]
 
 ### Presets
 
-[[site customization preset]]s
+[[bundle customization preset]]s
 
 ### Custom Assets
 

@@ -15,14 +15,14 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { PublishToS3Tab, PublishedSitePage } from "../src/run/pages/index.js";
-import { Workflows, Site } from "../src/run/workflows.js";
+import { PublishToS3Tab, PublishedBundlePage } from "../src/run/pages/index.js";
+import { Workflows, Bundle } from "../src/run/workflows.js";
 import { publishing, s3, deletion } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
-test("S3 provider publishes and deletes a site via MinIO", async ({
+test("S3 provider publishes and deletes a bundle via MinIO", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
@@ -35,12 +35,12 @@ test("S3 provider publishes and deletes a site via MinIO", async ({
   await testServer.activateS3Provider();
 
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSiteShareTab();
+  await wf.navigateToBigBundleShareTab();
 
   const publishPage = new PublishToS3Tab(page, expect);
   await publishPage.expectVisible();
 
-  const publishSlug = `${Site.Big}-s3`;
+  const publishSlug = `${Bundle.Big}-s3`;
   await publishPage.setPublishSlug(publishSlug);
   await snapshot("S3 publish slug saved");
 
@@ -59,13 +59,13 @@ test("S3 provider publishes and deletes a site via MinIO", async ({
   await minioS3.expectHasFiles(`${publishSlug}/`);
   await minioS3.expectHasHtmlFiles(`${publishSlug}/`);
 
-  const publishedSite = new PublishedSitePage(page, expect);
-  await publishedSite.goto(publishedUrl);
-  await publishedSite.expectMainHeadingVisible();
-  await snapshot("browsed S3-published site");
+  const publishedBundle = new PublishedBundlePage(page, expect);
+  await publishedBundle.goto(publishedUrl);
+  await publishedBundle.expectMainHeadingVisible();
+  await snapshot("browsed S3-published bundle");
 
   // Return to the app to exercise the Settings → Delete Published flow.
-  await wf.navigateToBigSiteShareTab();
+  await wf.navigateToBigBundleShareTab();
   await publishPage.expectVisible();
 
   await publishPage.openSettingsDropdown();
@@ -77,7 +77,7 @@ test("S3 provider publishes and deletes a site via MinIO", async ({
   await snapshot("S3 published files deleted");
 
   await minioS3.expectEmpty(`${publishSlug}/`);
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

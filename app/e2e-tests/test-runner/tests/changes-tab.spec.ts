@@ -18,14 +18,14 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { htmlGeneration, customize, changesTab as changesTabDoc } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("Changes tab lifecycle: new files, save, modify via config, verify diff headers", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
-  // Navigate to big site preview (starts on step 1 — Review)
+  // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSitePreview();
+  await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
   await snapshot("step 1 - preview loaded");
@@ -52,8 +52,8 @@ test("Changes tab lifecycle: new files, save, modify via config, verify diff hea
   await addKeyFrame(changesTabDoc);
   await snapshot("new file diff header shown");
 
-  // Go back to step 1 (Site Preview tab) to click Save Changes
-  await modal.clickSitePreviewTab();
+  // Go back to step 1 (Bundle Preview tab) to click Save Changes
+  await modal.clickBundlePreviewTab();
 
   // Click "Save Changes" — saves and auto-navigates to step 2 (Share)
   await modal.clickSaveChanges();
@@ -72,11 +72,11 @@ test("Changes tab lifecycle: new files, save, modify via config, verify diff hea
   await changesTab.expectNoChangedFiles();
   await snapshot("no changed files after save");
 
-  // Go to Customize tab and disable backlinks at site level
+  // Go to Customize tab and disable backlinks at bundle level
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   await customizeTab.generationOptions.disableBreadcrumbs();
-  await snapshot("breadcrumbs disabled at site level");
+  await snapshot("breadcrumbs disabled at bundle level");
 
   // Wait for preview regeneration to complete
   await changesTab.waitForRegenerationComplete();
@@ -101,7 +101,7 @@ test("Changes tab lifecycle: new files, save, modify via config, verify diff hea
   await changesTab.fileDetails.expectChangesHeader();
   await addKeyFrame(customize);
   await snapshot("changes diff header shown for modified file");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

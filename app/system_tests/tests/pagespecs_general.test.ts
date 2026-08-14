@@ -20,8 +20,8 @@ import path from 'path';
 import {
   extractPagespecsBlock,
   getEffectivePagespecBlock,
-  getPagespecForSite,
-  getReferencedSites,
+  getPagespecForBundle,
+  getReferencedBundles,
   getSidecarPagespecPath,
   hasPagespecsBlock,
   isExcalidrawMarkdown,
@@ -34,7 +34,7 @@ import type { PagespecsBlock } from '../pagespecs/index.js';
 import {
   findAllMarkdownFiles,
   findAllSidecarPagespecFiles,
-  getAvailableSites,
+  getAvailableBundles,
   getPageTitle,
   pagespecSourceGraphDirs,
 } from './support/pagespecTestHelpers.js';
@@ -74,8 +74,8 @@ describe('Pagespecs General System Tests', () => {
       }
     });
 
-    it('all site references should exist in home_fixtures', () => {
-      const availableSites = getAvailableSites();
+    it('all bundle references should exist in home_fixtures', () => {
+      const availableBundles = getAvailableBundles();
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
@@ -86,17 +86,17 @@ describe('Pagespecs General System Tests', () => {
           const block = getEffectivePagespecBlock(mdFile, content).block;
           if (!block) continue;
 
-          const referencedSites = getReferencedSites(block);
-          for (const site of referencedSites) {
-            if (!availableSites.has(site)) {
-              errors.push(`${mdFile}: references unknown site "${site}"`);
+          const referencedBundles = getReferencedBundles(block);
+          for (const bundle of referencedBundles) {
+            if (!availableBundles.has(bundle)) {
+              errors.push(`${mdFile}: references unknown bundle "${bundle}"`);
             }
           }
         }
       }
 
       if (errors.length > 0) {
-        throw new Error(`Site reference errors:\n${errors.join('\n')}`);
+        throw new Error(`Bundle reference errors:\n${errors.join('\n')}`);
       }
     });
   });
@@ -119,26 +119,26 @@ describe('Pagespecs General System Tests', () => {
       expect(pagesWithSpecs).toBeGreaterThan(0);
     });
 
-    it('all pages should have pagespecs for every site that is used across any page', () => {
+    it('all pages should have pagespecs for every bundle that is used across any page', () => {
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
         const mdFiles = findAllMarkdownFiles(sourceGraphDir);
-        const allReferencedSites = new Set<string>();
+        const allReferencedBundles = new Set<string>();
 
         for (const mdFile of mdFiles) {
           const content = fs.readFileSync(mdFile, 'utf-8');
           const block = getEffectivePagespecBlock(mdFile, content).block;
           if (block) {
-            for (const site of getReferencedSites(block)) {
-              allReferencedSites.add(site);
+            for (const bundle of getReferencedBundles(block)) {
+              allReferencedBundles.add(bundle);
             }
           }
         }
 
-        if (allReferencedSites.size === 0) continue;
+        if (allReferencedBundles.size === 0) continue;
 
-        const missingBySite = new Map<string, string[]>();
-        for (const site of allReferencedSites) {
-          missingBySite.set(site, []);
+        const missingByBundle = new Map<string, string[]>();
+        for (const bundle of allReferencedBundles) {
+          missingByBundle.set(bundle, []);
         }
 
         for (const mdFile of mdFiles) {
@@ -147,23 +147,23 @@ describe('Pagespecs General System Tests', () => {
           const relativePath = path.relative(sourceGraphDir, mdFile);
 
           if (!block) {
-            for (const site of allReferencedSites) {
-              missingBySite.get(site)!.push(relativePath);
+            for (const bundle of allReferencedBundles) {
+              missingByBundle.get(bundle)!.push(relativePath);
             }
           } else {
-            const sitesInFile = new Set(getReferencedSites(block));
-            for (const site of allReferencedSites) {
-              if (!sitesInFile.has(site)) {
-                missingBySite.get(site)!.push(relativePath);
+            const bundlesInFile = new Set(getReferencedBundles(block));
+            for (const bundle of allReferencedBundles) {
+              if (!bundlesInFile.has(bundle)) {
+                missingByBundle.get(bundle)!.push(relativePath);
               }
             }
           }
         }
 
         const errors: string[] = [];
-        for (const [site, missingFiles] of missingBySite) {
+        for (const [bundle, missingFiles] of missingByBundle) {
           if (missingFiles.length > 0) {
-            errors.push(`\nSite "${site}" is missing in ${missingFiles.length} file(s):`);
+            errors.push(`\nBundle "${bundle}" is missing in ${missingFiles.length} file(s):`);
             for (const file of missingFiles) {
               errors.push(`  - ${file}`);
             }
@@ -171,7 +171,7 @@ describe('Pagespecs General System Tests', () => {
         }
 
         if (errors.length > 0) {
-          throw new Error(`Pagespec site completeness errors (${path.basename(sourceGraphDir)}):${errors.join('\n')}`);
+          throw new Error(`Pagespec bundle completeness errors (${path.basename(sourceGraphDir)}):${errors.join('\n')}`);
         }
       }
     });
@@ -183,7 +183,7 @@ describe('Pagespecs General System Tests', () => {
 
 \`\`\`yaml
 pagespecs:
-  - site: meadow-test-site-big
+  - bundle: meadow-test-bundle-big
     curation:
       isTracked: true
       isInWorkingGraph: true
@@ -193,7 +193,7 @@ pagespecs:
       htmlRenderedLinks:
         mainSectionLinks: []
         footerSectionBacklinks: []
-  - site: meadow-test-site-small
+  - bundle: meadow-test-bundle-small
     curation:
       isTracked: false
       isInWorkingGraph: false
@@ -208,28 +208,28 @@ pagespecs:
       expect(block).not.toBeNull();
       expect(block!.pagespecs).toHaveLength(2);
 
-      const bigSiteSpec = getPagespecForSite(block!, 'meadow-test-site-big');
-      expect(bigSiteSpec).toBeDefined();
-      expect(bigSiteSpec!.curation.isInWorkingGraph).toBe(true);
+      const bigBundleSpec = getPagespecForBundle(block!, 'meadow-test-bundle-big');
+      expect(bigBundleSpec).toBeDefined();
+      expect(bigBundleSpec!.curation.isInWorkingGraph).toBe(true);
 
-      const smallSiteSpec = getPagespecForSite(block!, 'meadow-test-site-small');
-      expect(smallSiteSpec).toBeDefined();
-      expect(smallSiteSpec!.curation.isInWorkingGraph).toBe(false);
-      if (isPagespecNotInWorkingGraph(smallSiteSpec!)) {
-        expect(smallSiteSpec.curation.frontierDepthOrNullForOrphan).toBe(1);
+      const smallBundleSpec = getPagespecForBundle(block!, 'meadow-test-bundle-small');
+      expect(smallBundleSpec).toBeDefined();
+      expect(smallBundleSpec!.curation.isInWorkingGraph).toBe(false);
+      if (isPagespecNotInWorkingGraph(smallBundleSpec!)) {
+        expect(smallBundleSpec.curation.frontierDepthOrNullForOrphan).toBe(1);
       }
     });
 
-    it('getReferencedSites should return all site names', () => {
+    it('getReferencedBundles should return all bundle names', () => {
       const block: PagespecsBlock = {
         pagespecs: [
           {
-            site: 'site-a',
+            bundle: 'bundle-a',
             curation: { isTracked: true, isInWorkingGraph: true },
             generation: { htmlRenderedLinks: { mainSectionLinks: [], footerSectionBacklinks: [] } },
           },
           {
-            site: 'site-b',
+            bundle: 'bundle-b',
             curation: {
               isTracked: true,
               isInWorkingGraph: false,
@@ -240,8 +240,8 @@ pagespecs:
         ],
       };
 
-      const sites = getReferencedSites(block);
-      expect(sites).toEqual(['site-a', 'site-b']);
+      const bundles = getReferencedBundles(block);
+      expect(bundles).toEqual(['bundle-a', 'bundle-b']);
     });
 
     it('hasPagespecsBlock should detect pagespecs blocks', () => {
@@ -249,7 +249,7 @@ pagespecs:
 
 \`\`\`yaml
 pagespecs:
-  - site: test
+  - bundle: test
     curation:
       isTracked: true
       isInWorkingGraph: true

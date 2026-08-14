@@ -32,20 +32,20 @@ const slugArbitrary = fc
 
 describe('findUniqueName', () => {
   test('returns base name when it does not exist', () => {
-    const result = findUniqueName('my-site', () => false);
-    expect(result).toBe('my-site');
+    const result = findUniqueName('my-bundle', () => false);
+    expect(result).toBe('my-bundle');
   });
 
   test('appends -1 when base name exists', () => {
-    const existing = new Set(['my-site']);
-    const result = findUniqueName('my-site', (name) => existing.has(name));
-    expect(result).toBe('my-site-1');
+    const existing = new Set(['my-bundle']);
+    const result = findUniqueName('my-bundle', (name) => existing.has(name));
+    expect(result).toBe('my-bundle-1');
   });
 
   test('increments until a unique name is found', () => {
-    const existing = new Set(['my-site', 'my-site-1', 'my-site-2']);
-    const result = findUniqueName('my-site', (name) => existing.has(name));
-    expect(result).toBe('my-site-3');
+    const existing = new Set(['my-bundle', 'my-bundle-1', 'my-bundle-2']);
+    const result = findUniqueName('my-bundle', (name) => existing.has(name));
+    expect(result).toBe('my-bundle-3');
   });
 
   test('works with names that already end in a number', () => {
@@ -59,7 +59,7 @@ describe('findUniqueName', () => {
    * baseName, baseName-1, baseName-2, ... this should return the first
    * unoccupied candidate in that sequence.
    *
-   * Example: if site and site-1 are occupied, it should return site-2.
+   * Example: if bundle and bundle-1 are occupied, it should return bundle-2.
    * Example: if notes is free, it should return notes even if notes-1 exists.
    */
   test('property: returns the first available generated name', () => {

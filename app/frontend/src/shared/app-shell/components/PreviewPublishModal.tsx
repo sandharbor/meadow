@@ -15,13 +15,13 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import HtmlGenerationProgress from '../../../areas/site/generation/components/HtmlGenerationProgress';
-import { SaveLocallyTab } from '../../../areas/site/sharing/components/SaveLocallyTab';
-import { AdvancedTab } from '../../../areas/site/sharing/components/AdvancedTab';
+import HtmlGenerationProgress from '../../../areas/bundle/generation/components/HtmlGenerationProgress';
+import { SaveLocallyTab } from '../../../areas/bundle/sharing/components/SaveLocallyTab';
+import { AdvancedTab } from '../../../areas/bundle/sharing/components/AdvancedTab';
 import { useActivePublishingProvider } from '../../publishing-provider-host/useActivePublishingProvider';
-import CustomizeSidebar from '../../../areas/site/generation/components/CustomizeSidebar';
-import { UntrackedPagesButton } from '../../../areas/site/review/components/UntrackedPagesButton';
-import PreviewChangesTab from '../../../areas/site/review/components/PreviewChangesTab';
+import CustomizeSidebar from '../../../areas/bundle/generation/components/CustomizeSidebar';
+import { UntrackedPagesButton } from '../../../areas/bundle/review/components/UntrackedPagesButton';
+import PreviewChangesTab from '../../../areas/bundle/review/components/PreviewChangesTab';
 import { ConfigFileExplorerApi } from '../../../../../shared_components/ConfigFileExplorer/index';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils';
 import { API_BASE_URL } from '../../utils/apiConfig';
@@ -29,11 +29,11 @@ import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import Modal from '../../components/Modal';
-import type { OpenKnowledgeFormatSettings } from '../../../areas/site/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
+import type { OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 type TopLevelTab = 'review' | 'share';
-type PreviewSubTab = 'sitePreview' | 'changes';
+type PreviewSubTab = 'bundlePreview' | 'changes';
 type ShareSubTab = 'localExport' | 'publish' | 'advanced';
 type PreviewModalTab = PreviewSubTab | ShareSubTab | 'customization';  // customization kept for URL param backward compat
 
@@ -63,7 +63,7 @@ interface PreviewPublishModalProps {
     openKnowledgeFormatEnabled: boolean;
     spacedRepetitionEnabled: boolean;
   };
-  siteGenerationOptions: {
+  bundleGenerationOptions: {
     breadcrumbsSetting: OverrideSetting;
     backlinksSetting: OverrideSetting;
     tagsSetting: OverrideSetting;
@@ -75,13 +75,13 @@ interface PreviewPublishModalProps {
     spacedRepetitionSetting: OverrideSetting;
   };
   globalSrsTags: string[];
-  siteSrsTagsOverride: string[] | null;
+  bundleSrsTagsOverride: string[] | null;
   onGlobalGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', enabled: boolean) => Promise<void>;
-  onSiteGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
+  onBundleGenerationOptionChange: (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => Promise<void>;
   onGlobalSrsTagsChange: (tags: string[]) => Promise<void>;
-  onSiteSrsTagsChange: (tags: string[] | null) => Promise<void>;
-  onSiteOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
-  onSiteOkfEnable: (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  onBundleSrsTagsChange: (tags: string[] | null) => Promise<void>;
+  onBundleOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  onBundleOkfEnable: (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => Promise<void>;
 
   // Version management
   hasPublishedVersions: boolean;
@@ -112,15 +112,15 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   slug,
   startPage,
   globalGenerationOptions,
-  siteGenerationOptions,
+  bundleGenerationOptions,
   globalSrsTags,
-  siteSrsTagsOverride,
+  bundleSrsTagsOverride,
   onGlobalGenerationOptionChange,
-  onSiteGenerationOptionChange,
+  onBundleGenerationOptionChange,
   onGlobalSrsTagsChange,
-  onSiteSrsTagsChange,
-  onSiteOkfLogSettingsChange,
-  onSiteOkfEnable,
+  onBundleSrsTagsChange,
+  onBundleOkfLogSettingsChange,
+  onBundleOkfEnable,
   hasPublishedVersions: _hasPublishedVersions,
   onOpenVersionsModal: _onOpenVersionsModal,
   onBusyChange,
@@ -158,9 +158,9 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     return 'review';
   });
   const [previewSubTab, setPreviewSubTab] = useState<PreviewSubTab>(
-    initialTab === 'sitePreview' || initialTab === 'changes'
+    initialTab === 'bundlePreview' || initialTab === 'changes'
       ? initialTab
-      : 'sitePreview'
+      : 'bundlePreview'
   );
   const [shareSubTab, setShareSubTab] = useState<ShareSubTab>(
     initialTab === 'localExport' || initialTab === 'publish'
@@ -213,7 +213,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     onTabChange?.(combinedTab);
   }, [topLevelTab, previewSubTab, shareSubTab, onTabChange]);
 
-  // Auto-open customize sidebar on first-ever site preview modal open
+  // Auto-open customize sidebar on first-ever bundle preview modal open
   useEffect(() => {
     const load = async () => {
       try {
@@ -252,7 +252,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     fetchTree: async (options) => {
       const params = new URLSearchParams();
       if (options?.changedOnly) params.set('changedOnly', 'true');
-      const url = `${API_BASE_URL}/sites/${slug}/review/preview-files/tree${params.toString() ? `?${params}` : ''}`;
+      const url = `${API_BASE_URL}/bundles/${slug}/review/preview-files/tree${params.toString() ? `?${params}` : ''}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch preview file tree');
       const data = await res.json();
@@ -262,12 +262,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       return data;
     },
     fetchContent: async (path: string) => {
-      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/file-content?path=${encodeURIComponent(path)}`);
+      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/file-content?path=${encodeURIComponent(path)}`);
       if (!res.ok) throw new Error('Failed to fetch file content');
       return res.json();
     },
     fetchOriginal: async (path: string) => {
-      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/file-original?path=${encodeURIComponent(path)}`);
+      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/file-original?path=${encodeURIComponent(path)}`);
       if (!res.ok) {
         return { content: null, path, isNew: true };
       }
@@ -275,14 +275,14 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     },
     fetchDirLog: async (dirPath: string, limit = 50) => {
       const res = await fetch(
-        `${API_BASE_URL}/sites/${slug}/review/git/dir-log?dir=${encodeURIComponent(dirPath)}&limit=${encodeURIComponent(String(limit))}`
+        `${API_BASE_URL}/bundles/${slug}/review/git/dir-log?dir=${encodeURIComponent(dirPath)}&limit=${encodeURIComponent(String(limit))}`
       );
       if (!res.ok) throw new Error('Failed to fetch directory log');
       return res.json();
     },
     fetchCommitFiles: async (sha: string, contextDir: string) => {
       const res = await fetch(
-        `${API_BASE_URL}/sites/${slug}/review/git/commit-files?sha=${encodeURIComponent(sha)}&contextDir=${encodeURIComponent(contextDir)}`
+        `${API_BASE_URL}/bundles/${slug}/review/git/commit-files?sha=${encodeURIComponent(sha)}&contextDir=${encodeURIComponent(contextDir)}`
       );
       if (!res.ok) {
         const body = await res.text().catch(() => '');
@@ -293,7 +293,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     fetchCommitFileContent: async (sha: string, pathStr: string, contextDir?: string) => {
       const params = new URLSearchParams({ sha, path: pathStr });
       if (contextDir) params.set('contextDir', contextDir);
-      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/git/commit-file-content?${params.toString()}`);
+      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/git/commit-file-content?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch commit file content');
       return res.json();
     },
@@ -301,7 +301,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       const params = new URLSearchParams({ sha, path: pathStr });
       if (parentSha) params.set('parentSha', parentSha);
       if (contextDir) params.set('contextDir', contextDir);
-      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/git/commit-file-original?${params.toString()}`);
+      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/git/commit-file-original?${params.toString()}`);
       if (!res.ok) {
         return { content: null, path: pathStr, isNew: true };
       }
@@ -309,7 +309,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     },
     fetchFileLog: async (pathStr: string, limit = 50) => {
       const res = await fetch(
-        `${API_BASE_URL}/sites/${slug}/review/git/file-log?path=${encodeURIComponent(pathStr)}&limit=${encodeURIComponent(String(limit))}`
+        `${API_BASE_URL}/bundles/${slug}/review/git/file-log?path=${encodeURIComponent(pathStr)}&limit=${encodeURIComponent(String(limit))}`
       );
       if (!res.ok) throw new Error('Failed to fetch file log');
       return res.json();
@@ -340,7 +340,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     }
 
     let cancelled = false;
-    fetch(`${API_BASE_URL}/sites/${slug}/generation/open-knowledge-format/manifest`)
+    fetch(`${API_BASE_URL}/bundles/${slug}/generation/open-knowledge-format/manifest`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to fetch OKF manifest (${res.status})`);
         return res.json() as Promise<{ renames?: OpenKnowledgeFormatRename[] }>;
@@ -394,8 +394,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         }
 
         const url = startPage
-          ? `${API_BASE_URL}/sites/${slug}/generation/preview-stream?${params.toString()}`
-          : `${API_BASE_URL}/sites/${slug}/generation/preview-stream`;
+          ? `${API_BASE_URL}/bundles/${slug}/generation/preview-stream?${params.toString()}`
+          : `${API_BASE_URL}/bundles/${slug}/generation/preview-stream`;
 
         const eventSource = new EventSource(url);
 
@@ -498,7 +498,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     const completion = await new Promise<{ stage: 'complete' | 'error'; traversalPageUrl?: string }>((resolve) => {
       // Pass the current page path so the backend renders it first
       const currentFilePath = getCurrentPreviewFilePath();
-      let streamUrl = `${API_BASE_URL}/sites/${slug}/generation/preview-stream`;
+      let streamUrl = `${API_BASE_URL}/bundles/${slug}/generation/preview-stream`;
       if (currentFilePath && previewRootPath) {
         const relativePath = currentFilePath.startsWith(previewRootPath)
           ? currentFilePath.slice(previewRootPath.length + 1)
@@ -606,7 +606,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     setSaveChangesMessage(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/sites/${slug}/review/save-changes`);
+      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/save-changes`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -685,7 +685,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     const previewUrl = `${baseUrl}${encodePathForUrl(relativePath)}`;
 
     setCurrentPreviewUrl(previewUrl);
-    setPreviewSubTab('sitePreview');
+    setPreviewSubTab('bundlePreview');
   }, [previewRootPath, previewResult?.traversalPageUrl]);
 
   // Handle view changes from preview tab
@@ -699,7 +699,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
 
   const handleOpenPreviewExternal = useCallback(async () => {
     if (previewUrl) {
-      await openExternal(previewUrl, 'sitePreview');
+      await openExternal(previewUrl, 'bundlePreview');
     } else {
       logger.warn('[PreviewPublishModal] No preview URL available to open externally');
     }
@@ -717,20 +717,20 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     await regeneratePreviewAndReload();
   }, [onGlobalGenerationOptionChange, regeneratePreviewAndReload]);
 
-  const handleSiteOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => {
-    await onSiteGenerationOptionChange(option, setting);
+  const handleBundleOptionChange = useCallback(async (option: 'breadcrumbs' | 'backlinks' | 'tags' | 'search' | 'hoverPreview' | 'folderNavigation' | 'sourcesExport' | 'openKnowledgeFormat' | 'spacedRepetition', setting: OverrideSetting) => {
+    await onBundleGenerationOptionChange(option, setting);
     await regeneratePreviewAndReload();
-  }, [onSiteGenerationOptionChange, regeneratePreviewAndReload]);
+  }, [onBundleGenerationOptionChange, regeneratePreviewAndReload]);
 
   const handleGlobalSrsTagsChange = useCallback(async (tags: string[]) => {
     await onGlobalSrsTagsChange(tags);
     await regeneratePreviewAndReload();
   }, [onGlobalSrsTagsChange, regeneratePreviewAndReload]);
 
-  const handleSiteSrsTagsChange = useCallback(async (tags: string[] | null) => {
-    await onSiteSrsTagsChange(tags);
+  const handleBundleSrsTagsChange = useCallback(async (tags: string[] | null) => {
+    await onBundleSrsTagsChange(tags);
     await regeneratePreviewAndReload();
-  }, [onSiteSrsTagsChange, regeneratePreviewAndReload]);
+  }, [onBundleSrsTagsChange, regeneratePreviewAndReload]);
 
   const handleGlobalSrsEnable = useCallback(async (tags: string[]) => {
     await onGlobalGenerationOptionChange('spacedRepetition', true);
@@ -738,21 +738,21 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     await regeneratePreviewAndReload();
   }, [onGlobalGenerationOptionChange, onGlobalSrsTagsChange, regeneratePreviewAndReload]);
 
-  const handleSiteSrsEnable = useCallback(async (setting: OverrideSetting, tags: string[]) => {
-    await onSiteGenerationOptionChange('spacedRepetition', setting);
-    await onSiteSrsTagsChange(tags);
+  const handleBundleSrsEnable = useCallback(async (setting: OverrideSetting, tags: string[]) => {
+    await onBundleGenerationOptionChange('spacedRepetition', setting);
+    await onBundleSrsTagsChange(tags);
     await regeneratePreviewAndReload();
-  }, [onSiteGenerationOptionChange, onSiteSrsTagsChange, regeneratePreviewAndReload]);
+  }, [onBundleGenerationOptionChange, onBundleSrsTagsChange, regeneratePreviewAndReload]);
 
-  const handleSiteOkfLogSettingsChange = useCallback(async (settings: OpenKnowledgeFormatSettings) => {
-    await onSiteOkfLogSettingsChange(settings);
+  const handleBundleOkfLogSettingsChange = useCallback(async (settings: OpenKnowledgeFormatSettings) => {
+    await onBundleOkfLogSettingsChange(settings);
     await regeneratePreviewAndReload();
-  }, [onSiteOkfLogSettingsChange, regeneratePreviewAndReload]);
+  }, [onBundleOkfLogSettingsChange, regeneratePreviewAndReload]);
 
-  const handleSiteOkfEnable = useCallback(async (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => {
-    await onSiteOkfEnable(setting, settings);
+  const handleBundleOkfEnable = useCallback(async (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => {
+    await onBundleOkfEnable(setting, settings);
     await regeneratePreviewAndReload();
-  }, [onSiteOkfEnable, regeneratePreviewAndReload]);
+  }, [onBundleOkfEnable, regeneratePreviewAndReload]);
 
   // Handle refresh from external editor changes
   const handleCustomizeRefresh = useCallback(async () => {
@@ -954,16 +954,16 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
               <div className="flex space-x-4">
                 <button
                   className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    previewSubTab === 'sitePreview'
+                    previewSubTab === 'bundlePreview'
                       ? 'border-main-500 text-main-600'
                       : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
                   }`}
                   onClick={() => {
-                    setPreviewSubTab('sitePreview');
+                    setPreviewSubTab('bundlePreview');
                     setChangesInitialFile(undefined);
                   }}
                 >
-                  Site Preview
+                  Bundle Preview
                 </button>
                 <button
                   className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -1009,7 +1009,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         )}
 
         {/* Back button and Open in Browser for preview */}
-        {topLevelTab === 'review' && previewSubTab === 'sitePreview' && previewResult?.success && (
+        {topLevelTab === 'review' && previewSubTab === 'bundlePreview' && previewResult?.success && (
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="flex items-center gap-2">
               <DisabledTooltip disabled={previewHistory.length === 0} tooltip="No history" align="left">
@@ -1105,12 +1105,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                 {/* Share subtab content */}
                 <div className="flex-1 overflow-hidden">
                   {shareSubTab === 'advanced' ? (
-                    <AdvancedTab siteSlug={slug || ''} />
+                    <AdvancedTab bundleSlug={slug || ''} />
                   ) : shareSubTab === 'localExport' ? (
-                    <SaveLocallyTab siteSlug={slug || ''} />
+                    <SaveLocallyTab bundleSlug={slug || ''} />
                   ) : shareSubTab === 'publish' && PublishTabComponent ? (
                     <PublishTabComponent
-                      siteSlug={slug || ''}
+                      bundleSlug={slug || ''}
                       changedFilesCount={changedFiles.size}
                       onBusyChange={setProviderBusy}
                       onAuthError={onAuthError}
@@ -1125,7 +1125,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
               <div className="h-full flex flex-row">
                 {/* Main content area */}
                 <div className="flex-1 min-w-0 h-full">
-                  {previewSubTab === 'sitePreview' ? (
+                  {previewSubTab === 'bundlePreview' ? (
                     <iframe
                       ref={iframeRef}
                       src={currentPreviewUrl || previewResult.traversalPageUrl}
@@ -1166,20 +1166,20 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                     });
                   }}
                   width={customizeSidebarWidth}
-                  siteSlug={slug || ''}
+                  bundleSlug={slug || ''}
                   hooksHaveErrors={hooksHaveErrors}
                   globalGenerationOptions={globalGenerationOptions}
-                  siteGenerationOptions={siteGenerationOptions}
+                  bundleGenerationOptions={bundleGenerationOptions}
                   globalSrsTags={globalSrsTags}
-                  siteSrsTagsOverride={siteSrsTagsOverride}
+                  bundleSrsTagsOverride={bundleSrsTagsOverride}
                   onGlobalOptionChange={handleGlobalOptionChange}
-                  onSiteOptionChange={handleSiteOptionChange}
+                  onBundleOptionChange={handleBundleOptionChange}
                   onGlobalSrsTagsChange={handleGlobalSrsTagsChange}
-                  onSiteSrsTagsChange={handleSiteSrsTagsChange}
+                  onBundleSrsTagsChange={handleBundleSrsTagsChange}
                   onGlobalSrsEnable={handleGlobalSrsEnable}
-                  onSiteSrsEnable={handleSiteSrsEnable}
-                  onSiteOkfLogSettingsChange={handleSiteOkfLogSettingsChange}
-                  onSiteOkfEnable={handleSiteOkfEnable}
+                  onBundleSrsEnable={handleBundleSrsEnable}
+                  onBundleOkfLogSettingsChange={handleBundleOkfLogSettingsChange}
+                  onBundleOkfEnable={handleBundleOkfEnable}
                   openKnowledgeFormatRenameCount={openKnowledgeFormatRenames.length}
                   onOpenKnowledgeFormatRenameDetails={() => setIsOkfRenameModalOpen(true)}
                   disabled={providerBusy || isRegeneratingPreview}

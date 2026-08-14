@@ -19,9 +19,9 @@ import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  FindInSitesOptions,
-  parseFindInSitesDeepLink,
-} from '../../shared_code/types/findInSitesOptions';
+  FindInBundlesOptions,
+  parseFindInBundlesDeepLink,
+} from '../../shared_code/types/findInBundlesOptions';
 import { ensureResourcesConfigInitialized, loadResourcesConfig } from '../../shared_code/utils/resourcesConfigUtils';
 import { getDefaultConfigDirectory } from '../../shared_code/utils/appConfigUtils';
 import { resolveNativeRustBinaryPathFromNativeUtilsParent } from '../../shared_code/utils/nativeRustBinaryPath';
@@ -71,7 +71,7 @@ class MeadowApp {
   private backendPort: number = 0;
   private frontendPort: number = 0;
   private isDev: boolean = !app.isPackaged;
-  private findInSitesOptions: FindInSitesOptions | null = null;
+  private findInBundlesOptions: FindInBundlesOptions | null = null;
   private updateManager: UpdateManager;
 
   constructor() {
@@ -84,8 +84,8 @@ class MeadowApp {
       version: app.getVersion()
     });
     
-    // Parse command line arguments for find in sites options
-    this.parseFindInSitesArgs(process.argv);
+    // Parse command line arguments for find in bundles options
+    this.parseFindInBundlesArgs(process.argv);
     
     if (isTestMode) {
       // Clear previous test log
@@ -103,14 +103,14 @@ class MeadowApp {
     log('SUCCESS', 'MeadowApp initialization completed');
   }
   
-  private parseFindInSitesArgs(args: string[]): void {
+  private parseFindInBundlesArgs(args: string[]): void {
     log('INFO', 'Parsing command line arguments', { args });
 
     const deepLinkOptions = args
-      .map(argument => parseFindInSitesDeepLink(argument))
-      .find((options): options is FindInSitesOptions => options !== null);
+      .map(argument => parseFindInBundlesDeepLink(argument))
+      .find((options): options is FindInBundlesOptions => options !== null);
     if (deepLinkOptions) {
-      this.applyFindInSitesOptions(deepLinkOptions, 'deep link argument');
+      this.applyFindInBundlesOptions(deepLinkOptions, 'deep link argument');
       return;
     }
     
@@ -119,35 +119,35 @@ class MeadowApp {
     const pageNameIndex = args.indexOf('--page-name');
 
     if (vaultPathIndex !== -1 && folderPathIndex !== -1 && pageNameIndex !== -1) {
-      this.applyFindInSitesOptions({
+      this.applyFindInBundlesOptions({
         vaultPath: args[vaultPathIndex + 1],
         folderPath: args[folderPathIndex + 1],
         pageName: args[pageNameIndex + 1]
       }, 'CLI');
     } else {
-      log('INFO', 'No find in sites arguments found, running in normal mode');
+      log('INFO', 'No find in bundles arguments found, running in normal mode');
     }
   }
 
-  private applyFindInSitesOptions(options: FindInSitesOptions, source: string): void {
-    this.findInSitesOptions = options;
-    log('SUCCESS', `Find in sites options received from ${source}`, options);
+  private applyFindInBundlesOptions(options: FindInBundlesOptions, source: string): void {
+    this.findInBundlesOptions = options;
+    log('SUCCESS', `Find in bundles options received from ${source}`, options);
 
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents.send('open-find-in-sites', options);
+      this.mainWindow.webContents.send('open-find-in-bundles', options);
       if (this.mainWindow.isMinimized()) this.mainWindow.restore();
       this.mainWindow.show();
       this.mainWindow.focus();
     }
   }
 
-  private handleFindInSitesDeepLink(url: string): void {
-    const options = parseFindInSitesDeepLink(url);
+  private handleFindInBundlesDeepLink(url: string): void {
+    const options = parseFindInBundlesDeepLink(url);
     if (!options) {
       log('WARN', 'Ignoring invalid Meadow deep link', { url });
       return;
     }
-    this.applyFindInSitesOptions(options, 'deep link');
+    this.applyFindInBundlesOptions(options, 'deep link');
   }
 
   private setupPaths(): void {
@@ -232,11 +232,11 @@ class MeadowApp {
 
     app.on('open-url', (event, url) => {
       event.preventDefault();
-      this.handleFindInSitesDeepLink(url);
+      this.handleFindInBundlesDeepLink(url);
     });
 
     app.on('second-instance', (_event, commandLine) => {
-      this.parseFindInSitesArgs(commandLine);
+      this.parseFindInBundlesArgs(commandLine);
       if (this.mainWindow && !this.mainWindow.isDestroyed()) {
         if (this.mainWindow.isMinimized()) this.mainWindow.restore();
         this.mainWindow.show();
@@ -357,7 +357,7 @@ class MeadowApp {
     });
 
     ipcMain.handle('get-target-page-info', () => {
-      return this.findInSitesOptions;
+      return this.findInBundlesOptions;
     });
 
     ipcMain.handle('show-open-dialog', async (event: any, options: any) => {
@@ -653,7 +653,7 @@ class MeadowApp {
             SOURCE_PAGE_SEARCH_BY_TITLE_PATH: this.sourcePageSearchByTitlePath,
             FAST_GIT_OPS_PATH: this.fastGitOpsPath,
             WORKING_GRAPH_PATH: this.workingGraphPath,
-            MEADOW_EXAMPLE_SITE_PATH: path.join((process as any).resourcesPath, 'example_site'),
+            MEADOW_EXAMPLE_BUNDLE_PATH: path.join((process as any).resourcesPath, 'example_bundle'),
             MEADOW_APP_VERSION: app.getVersion(),
             MEADOW_IS_DEV: 'false'
           },

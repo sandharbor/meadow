@@ -1,0 +1,6 @@
+nodes:
+  - bundleNodeName: Alpha
+    sourceGraphSubdirectory: Alpha
+    bundleNodeKind: folder
+    bundleNodeId: 3fef494a5c4d
+    listType: whitelist

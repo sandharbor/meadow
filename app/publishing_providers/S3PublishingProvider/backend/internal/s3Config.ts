@@ -25,11 +25,11 @@ limitations under the License.
  *     pp_resources.local.yaml  (same shape; per-copy overrides, gitignored)
  *     pp_secrets.yaml        { s3AccessKeyId, s3SecretAccessKey } (gitignored)
  *
- *   <CONF_DIR>/sites/<slug>/config/publishing_providers/S3PublishingProvider/
+ *   <CONF_DIR>/bundles/<slug>/config/publishing_providers/S3PublishingProvider/
  *     pp_config.yaml         { publishSlug }
  *
- * No `publishPrefix` here — the S3 provider doesn't partition user sites
- * from each other. A single MeadowHome instance maps a site to exactly one
+ * No `publishPrefix` here — the S3 provider doesn't partition user bundles
+ * from each other. A single MeadowHome instance maps a bundle to exactly one
  * S3 prefix equal to `publishSlug`.
  */
 
@@ -41,7 +41,7 @@ import {
   loadProviderSecrets,
 } from '../../../../shared_code/utils/publishingProviderConfigUtils.js';
 import { PublishingProviderPaths } from '../../../../shared_code/paths/publishingProviderPaths.js';
-import { getConfigDirectory } from '../../../../backend/src/shared/site-config/siteConfigPaths.js';
+import { getConfigDirectory } from '../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
 import type {
   PublishingProviderConfigBase,
   PublishingProviderSecretsBase,
@@ -60,7 +60,7 @@ export interface S3ProviderResources extends PublishingProviderConfigBase {
   s3ForcePathStyle?: boolean;
   s3Region?: string;
   /**
-   * Base URL under which published sites are served. E.g. with
+   * Base URL under which published bundles are served. E.g. with
    * `https://cdn.example.com` and publishSlug `foo`, the published URL is
    * `https://cdn.example.com/foo/index.html`.
    */
@@ -78,10 +78,10 @@ export function loadS3Config(): S3ProviderConfig {
   });
 }
 
-export function loadS3ConfigForSite(siteSlug: string): S3ProviderConfig {
+export function loadS3ConfigForBundle(bundleSlug: string): S3ProviderConfig {
   return loadProviderConfig<S3ProviderConfig>(S3_PROVIDER_ID, {
     configDir: getConfigDirectory(),
-    siteSlug,
+    bundleSlug,
   });
 }
 

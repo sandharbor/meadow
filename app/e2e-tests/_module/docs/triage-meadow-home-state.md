@@ -26,20 +26,20 @@ Triage workflow per spec:
 
 ## Specs currently using `skipMeadowHomeStateCheck()` (need real review)
 
-- [ ] add example site from empty state and preview it
+- [ ] add example bundle from empty state and preview it
 - [ ] blacklisting a single page removes it from the rendered preview
 - [ ] callout for marking source node sensitive the first time
 - [ ] Callout preview warns about untracked pages
 - [ ] Change type filter shows correct counts and interacts with HTML section filter
 - [ ] Changes tab lifecycle: new files, save, modify via config, verify diff headers
-- [ ] Delete unpublished site from within site editor
+- [ ] Delete unpublished bundle from within bundle editor
 - [ ] empty solo callout appears when solo filter hides all pages
 - [ ] excalidraw thumbnail in list view, embedded in preview, and standalone page
 - [ ] filter custom inlink title substring selects expected pages
-- [ ] find in sites shows archived match indicator and archived tab
+- [ ] find in bundles shows archived match indicator and archived tab
 - [ ] Hooks preview shows normalized title and editing hook updates it
 - [ ] HTML post-processing hook: create, validate, save, and verify diff
 - [ ] HTML section changes filter correctly reflects changes after save and customization
 - [ ] Preview reopens on Review step after tracking pages via Check Them link
-- [ ] S3 provider publishes and deletes a site via MinIO
+- [ ] S3 provider publishes and deletes a bundle via MinIO
 - [ ] setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible

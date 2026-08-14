@@ -1,4 +1,4 @@
-This is bootstrap config... not [[app config]] and not [[site config]] or [[site page config]]
+This is bootstrap config... not [[app config]] and not [[bundle config]] or [[bundle page config]]
 
 It lives in `~/.config/meadow/bootstrap_config.yaml` if needed
 

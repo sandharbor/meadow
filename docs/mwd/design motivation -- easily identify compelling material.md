@@ -1,6 +1,6 @@
 [[design motivation]]
 
-We spend a lot of time being careful about keeping the [[tracked working graph]] small.  Basically not publishing [[sensitive site page]]s.
+We spend a lot of time being careful about keeping the [[tracked working graph]] small.  Basically not publishing [[sensitive bundle page]]s.
 
 But this is the opposite.  This is helping to _expand_ the graph to ensure it includes good content.
 

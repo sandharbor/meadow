@@ -20,6 +20,6 @@ export const htmlGeneration: ScenarioDoc = {
   id: "html-generation",
   name: "HTML Generation",
   description:
-    "Tests covering HTML site generation, preview rendering, and " +
+    "Tests covering HTML bundle generation, preview rendering, and " +
     "hook-based transformations that affect the generated output.",
 };

@@ -99,7 +99,7 @@ test("playback speed cannot reach an unsupported rate", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "E2E Report Viewer" })).toBeVisible();
 });
 
-test("run detail filters scenarios by site-origin mode", async ({ page }) => {
+test("run detail filters scenarios by bundle-origin mode", async ({ page }) => {
   const { runId } = fixture;
 
   await page.goto(`/${runId}`);

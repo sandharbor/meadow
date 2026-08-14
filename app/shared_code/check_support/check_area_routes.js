@@ -2,9 +2,9 @@
 /**
  * Verifies that area-owned backend route files declare routes for their area.
  *
- * For example, files under `areas/site/curation/routes` may expose
- * `/curation/...` or `/sites/:siteSlug/curation/...` paths, while
- * `areas/site/review/routes` may expose review paths. This catches handlers
+ * For example, files under `areas/bundle/curation/routes` may expose
+ * `/curation/...` or `/bundles/:bundleSlug/curation/...` paths, while
+ * `areas/bundle/review/routes` may expose review paths. This catches handlers
  * that drift into the wrong route file even when imports still respect area
  * boundaries.
  */
@@ -39,8 +39,8 @@ function walkFiles(directory) {
 
 function areaForRelativePath(relativePath) {
   const parts = relativePath.split(path.sep);
-  if (parts[0] === 'sites') return 'sites';
-  if (parts[0] === 'site' && parts[1]) return `site/${parts[1]}`;
+  if (parts[0] === 'bundles') return 'bundles';
+  if (parts[0] === 'bundle' && parts[1]) return `bundle/${parts[1]}`;
   return parts[0] || null;
 }
 
@@ -132,15 +132,15 @@ function routeSegments(routePath) {
 function routeMatchesArea(area, routePath) {
   const segments = routeSegments(routePath);
 
-  if (area === 'sites') {
-    return segments[0] === 'sites';
+  if (area === 'bundles') {
+    return segments[0] === 'bundles';
   }
 
-  if (area.startsWith('site/')) {
-    const expectedSegment = area.slice('site/'.length);
+  if (area.startsWith('bundle/')) {
+    const expectedSegment = area.slice('bundle/'.length);
     return (
       segments[0] === expectedSegment ||
-      (segments[0] === 'sites' && segments[2] === expectedSegment)
+      (segments[0] === 'bundles' && segments[2] === expectedSegment)
     );
   }
 

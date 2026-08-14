@@ -21,11 +21,11 @@ We have partitioned the app code, in both the `frontend` and `backend` into
 
 The areas are:
 
-areas/sites           - the site listing page that comes up when you boot the app
-areas/site/curation   - the site editing page.  Filters, selection, tracking, blacklisting
-areas/site/generation - actually generating the files for the website.  Includes customization options.
-areas/site/review     - browsing the preview site or looking at the page changes in the diff viewer
-areas/site/sharing    - publishing or downloading the artifacts to you local computer
+areas/bundles           - the bundle listing page that comes up when you boot the app
+areas/bundle/curation   - the bundle editing page.  Filters, selection, tracking, blacklisting
+areas/bundle/generation - actually generating the files for the website.  Includes customization options.
+areas/bundle/review     - browsing the preview bundle or looking at the page changes in the diff viewer
+areas/bundle/sharing    - publishing or downloading the artifacts to you local computer
 shared                - the code that doesn't nicely fit in a single area.  Should be minimal
 
 These areas are intended to be silo'd from each other.  For example no "area"

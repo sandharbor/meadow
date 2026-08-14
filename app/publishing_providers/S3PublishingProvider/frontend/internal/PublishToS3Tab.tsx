@@ -38,7 +38,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
   return fallback;
 }
 
-export const PublishToS3Tab: React.FC<PublishTabProps> = ({ siteSlug, onBusyChange, onPublishSuccess }) => {
+export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyChange, onPublishSuccess }) => {
   const [publishSlug, setPublishSlug] = useState('');
   const [draftSlug, setDraftSlug] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -56,20 +56,20 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ siteSlug, onBusyChan
 
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch(s3Api(`sites/${siteSlug}/provider-config`));
+      const res = await fetch(s3Api(`bundles/${bundleSlug}/provider-config`));
       if (!res.ok) return;
       const body = await res.json() as { publishSlug?: string | null };
       const value = body.publishSlug ?? '';
       setPublishSlug(value);
-      setDraftSlug(value || siteSlug);
+      setDraftSlug(value || bundleSlug);
     } catch (err) {
-      logger.error('[S3PublishingProvider] failed to load site config:', err);
+      logger.error('[S3PublishingProvider] failed to load bundle config:', err);
     }
-  }, [siteSlug]);
+  }, [bundleSlug]);
 
   const loadFileCounts = useCallback(async () => {
     try {
-      const res = await fetch(s3Api(`sites/${siteSlug}/published-file-counts`));
+      const res = await fetch(s3Api(`bundles/${bundleSlug}/published-file-counts`));
       if (!res.ok) return;
       const body = await res.json() as FileCounts;
       setFileCounts(body);
@@ -77,7 +77,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ siteSlug, onBusyChan
     } catch (err) {
       logger.error('[S3PublishingProvider] failed to load file counts:', err);
     }
-  }, [siteSlug]);
+  }, [bundleSlug]);
 
   useEffect(() => {
     loadConfig();
@@ -107,7 +107,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ siteSlug, onBusyChan
     }
     setIsSaving(true);
     try {
-      const res = await fetch(s3Api(`sites/${siteSlug}/provider-config`), {
+      const res = await fetch(s3Api(`bundles/${bundleSlug}/provider-config`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ publishSlug: draftSlug }),
@@ -129,7 +129,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ siteSlug, onBusyChan
     setFilesUploaded(null);
     setIsPublishing(true);
     try {
-      const res = await fetch(s3Api(`sites/${siteSlug}/publish`), { method: 'POST' });
+      const res = await fetch(s3Api(`bundles/${bundleSlug}/publish`), { method: 'POST' });
       if (!res.ok) {
         setError(await readError(res, `Publish failed (${res.status})`));
         return;
@@ -156,7 +156,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ siteSlug, onBusyChan
     setError(null);
     setIsDeleting(true);
     try {
-      const res = await fetch(s3Api(`sites/${siteSlug}/published`), { method: 'DELETE' });
+      const res = await fetch(s3Api(`bundles/${bundleSlug}/published`), { method: 'DELETE' });
       if (!res.ok) {
         setError(await readError(res, `Delete failed (${res.status})`));
         return;
@@ -204,7 +204,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ siteSlug, onBusyChan
                 }}
                 className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-neutral-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
               >
-                Delete site&apos;s published files
+                Delete bundle&apos;s published files
               </button>
             </div>
           )}
@@ -291,7 +291,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ siteSlug, onBusyChan
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-2 text-neutral-800">
-              Delete site&apos;s published files?
+              Delete bundle&apos;s published files?
             </h3>
             <p className="text-sm text-neutral-600 mb-4">
               This will permanently remove every object under <code>{publishSlug}/</code> from

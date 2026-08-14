@@ -23,7 +23,7 @@ import {
   getSourceGraphsPath
 } from './serverManager.js';
 import { AppConfigPaths } from '../../shared_code/paths/appConfigPaths.js';
-import { SiteConfigPaths } from '../../shared_code/paths/siteConfigPaths.js';
+import { BundleConfigPaths } from '../../shared_code/paths/bundleConfigPaths.js';
 
 interface ResolvedFixtureSourceGraph {
   sharedPath: string;
@@ -60,65 +60,65 @@ function resolveFixtureSourceGraph(sourceDirectory: string): ResolvedFixtureSour
 }
 
 /**
- * Helper class for setting up test sites for system tests.
- * Creates sites directly in the TEST_CONFIG_DIR/sites/ directory
+ * Helper class for setting up test bundles for system tests.
+ * Creates bundles directly in the TEST_CONFIG_DIR/bundles/ directory
  * that the server is configured to use.
  */
-export class SystemTestSiteSetup {
-  private readonly testSiteSlug: string;
+export class SystemTestBundleSetup {
+  private readonly testBundleSlug: string;
   private readonly sourceFixturePath: string;
-  private readonly destinationSitePath: string;
+  private readonly destinationBundlePath: string;
   private readonly fixtureFolderName: string;
   private hasHooks: boolean = false;
   private isolatedSourceGraphPath: string | null = null;
 
   constructor(
     fixtureFolderName: string, 
-    baseSiteSlug: string = 'test-site',
-    options: { siteFolderName?: string } = {}
+    baseBundleSlug: string = 'test-bundle',
+    options: { bundleFolderName?: string } = {}
   ) {
     this.fixtureFolderName = fixtureFolderName;
     
-    // Create a unique site slug to avoid conflicts between tests
+    // Create a unique bundle slug to avoid conflicts between tests
     const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    this.testSiteSlug = `${baseSiteSlug}-${uniqueId}`;
+    this.testBundleSlug = `${baseBundleSlug}-${uniqueId}`;
     
-    // Allow specifying which site folder to use within the fixture
-    const siteFolderName = options.siteFolderName || 'test-site';
-    this.sourceFixturePath = path.join(getFixturesPath(), fixtureFolderName, 'sites', siteFolderName);
+    // Allow specifying which bundle folder to use within the fixture
+    const bundleFolderName = options.bundleFolderName || 'test-bundle';
+    this.sourceFixturePath = path.join(getFixturesPath(), fixtureFolderName, 'bundles', bundleFolderName);
     
-    // Site goes directly into the server's sites directory
-    this.destinationSitePath = path.join(TEST_CONFIG_DIR, 'sites', this.testSiteSlug);
+    // Bundle goes directly into the server's bundles directory
+    this.destinationBundlePath = path.join(TEST_CONFIG_DIR, 'bundles', this.testBundleSlug);
   }
 
   /**
-   * Sets up the test site by copying the fixture to the workspace
-   * Updates the site config to point to the correct source_graphs path
+   * Sets up the test bundle by copying the fixture to the workspace
+   * Updates the bundle config to point to the correct source_graphs path
    */
   setUp(): void {
     this.isolatedSourceGraphPath = null;
 
-    // Ensure the sites directory exists
-    const sitesDir = path.join(TEST_CONFIG_DIR, 'sites');
-    if (!fs.existsSync(sitesDir)) {
-      fs.mkdirSync(sitesDir, { recursive: true });
+    // Ensure the bundles directory exists
+    const bundlesDir = path.join(TEST_CONFIG_DIR, 'bundles');
+    if (!fs.existsSync(bundlesDir)) {
+      fs.mkdirSync(bundlesDir, { recursive: true });
     }
 
-    // Clean up any existing test site with the same slug
-    if (fs.existsSync(this.destinationSitePath)) {
-      fs.rmSync(this.destinationSitePath, { recursive: true, force: true });
+    // Clean up any existing test bundle with the same slug
+    if (fs.existsSync(this.destinationBundlePath)) {
+      fs.rmSync(this.destinationBundlePath, { recursive: true, force: true });
     }
 
     // Copy the test fixture to the workspace, excluding .DS_Store files
-    fs.cpSync(this.sourceFixturePath, this.destinationSitePath, { 
+    fs.cpSync(this.sourceFixturePath, this.destinationBundlePath, {
       recursive: true,
       filter: (src) => !src.includes('.DS_Store')
     });
 
-    // Update the site_config.yaml with an isolated copy of the source graph.
-    const siteYamlPath = SiteConfigPaths.getSiteConfigFile(this.destinationSitePath);
-    if (fs.existsSync(siteYamlPath)) {
-      const yamlContent = fs.readFileSync(siteYamlPath, 'utf8');
+    // Update the bundle_config.yaml with an isolated copy of the source graph.
+    const bundleYamlPath = BundleConfigPaths.getBundleConfigFile(this.destinationBundlePath);
+    if (fs.existsSync(bundleYamlPath)) {
+      const yamlContent = fs.readFileSync(bundleYamlPath, 'utf8');
       const config = YAML.parse(yamlContent) as Record<string, unknown>;
 
       if (config.sourceDirectory && typeof config.sourceDirectory === 'string') {
@@ -131,7 +131,7 @@ export class SystemTestSiteSetup {
         }
 
         this.isolatedSourceGraphPath = path.join(
-          this.destinationSitePath,
+          this.destinationBundlePath,
           'source_graphs',
           resolvedSourceGraph.relativePathWithinSourceGraphs
         );
@@ -144,7 +144,7 @@ export class SystemTestSiteSetup {
         config.sourceDirectory = this.isolatedSourceGraphPath;
       }
 
-      fs.writeFileSync(siteYamlPath, YAML.stringify(config), 'utf8');
+      fs.writeFileSync(bundleYamlPath, YAML.stringify(config), 'utf8');
     }
 
     // Copy hooks if they exist in the fixture (check both root and app/hooks paths)
@@ -167,11 +167,11 @@ export class SystemTestSiteSetup {
   }
 
   /**
-   * Cleans up the test site after testing
+   * Cleans up the test bundle after testing
    */
   tearDown(): void {
-    if (fs.existsSync(this.destinationSitePath)) {
-      fs.rmSync(this.destinationSitePath, { recursive: true, force: true });
+    if (fs.existsSync(this.destinationBundlePath)) {
+      fs.rmSync(this.destinationBundlePath, { recursive: true, force: true });
     }
     this.isolatedSourceGraphPath = null;
     
@@ -185,32 +185,32 @@ export class SystemTestSiteSetup {
   }
 
   /**
-   * Gets the test site slug for API calls
+   * Gets the test bundle slug for API calls
    */
-  getSiteSlug(): string {
-    return this.testSiteSlug;
+  getBundleSlug(): string {
+    return this.testBundleSlug;
   }
 
   /**
-   * Gets the path to the test site in the workspace
+   * Gets the path to the test bundle in the workspace
    */
-  getSitePath(): string {
-    return this.destinationSitePath;
+  getBundlePath(): string {
+    return this.destinationBundlePath;
   }
 
   /**
-   * Gets the path to a specific folder within the test site
+   * Gets the path to a specific folder within the test bundle
    */
-  getPathInSite(relativePath: string): string {
-    return path.join(this.destinationSitePath, relativePath);
+  getPathInBundle(relativePath: string): string {
+    return path.join(this.destinationBundlePath, relativePath);
   }
 
   /**
-   * Gets the isolated source graph path for this test site.
+   * Gets the isolated source graph path for this test bundle.
    */
   getSourceGraphPath(): string {
     if (!this.isolatedSourceGraphPath) {
-      throw new Error('This test site does not have an isolated source graph path');
+      throw new Error('This test bundle does not have an isolated source graph path');
     }
     return this.isolatedSourceGraphPath;
   }

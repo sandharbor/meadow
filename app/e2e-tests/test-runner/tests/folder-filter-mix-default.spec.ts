@@ -15,12 +15,12 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { FilterPanelComponent, SiteEditorPage } from "../src/run/pages/index.js";
+import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { filters, folderFilter } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("hidden folders are intersected with soloed folders by default", async ({
   page,
@@ -29,10 +29,10 @@ test("hidden folders are intersected with soloed folders by default", async ({
   addKeyFrame,
 }) => {
   const workflows = new Workflows(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await workflows.navigateToBigSite();
+  await workflows.navigateToBigBundle();
   await filterPanel.enableFilter("Folders");
   await filterPanel.expectFolderCount("t024", 4);
   await filterPanel.expectFolderCount("t023", 4);
@@ -59,7 +59,7 @@ test("hidden folders are intersected with soloed folders by default", async ({
   await editor.switchToListView();
   expect(await editor.getListViewPageCount()).toBe(4);
   await snapshot("only the soloed folder remains visible");
-  void bigSite;
+  void bigBundle;
 
   await assertMeadowHomeState();
 });

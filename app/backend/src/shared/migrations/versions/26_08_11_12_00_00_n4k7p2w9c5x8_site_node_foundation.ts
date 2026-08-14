@@ -20,49 +20,49 @@ import YAML from 'yaml';
 import type { FileType } from '../../../../../shared_code/types/FileType.js';
 import { FILE_TYPES } from '../../../../../shared_code/types/FileType.js';
 import type { Migration } from '../../../../../shared_code/types/migrations.js';
-import type { SiteConfig } from '../../../../../shared_code/types/siteConfig.js';
-import type { SiteNodeConfig, SiteNodeId } from '../../../../../shared_code/types/siteNodeConfig.js';
+import type { BundleConfig } from '../../../../../shared_code/types/bundleConfig.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../../../../shared_code/types/bundleNodeConfig.js';
 import { getDefaultConfigDirectory } from '../../../../../shared_code/utils/appConfigUtils.js';
 import {
-  generateSiteNodeId,
-  parseSiteNodeConfig,
-  siteNodeLocatorKey,
-  stringifySiteNodeConfig,
-  validateCanonicalSiteConfiguration,
-} from '../../../../../shared_code/utils/siteNodeConfigUtils.js';
+  generateBundleNodeId,
+  parseBundleNodeConfig,
+  bundleNodeLocatorKey,
+  stringifyBundleNodeConfig,
+  validateCanonicalBundleConfiguration,
+} from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { logger } from '../../utils/logging/backendLoggingUtils.js';
 
 const LEGACY_COMMITTED = 'site_page_config.yaml';
 const LEGACY_DRAFT = 'draft_site_page_config.yaml';
-const CANONICAL_COMMITTED = 'site_node_config.yaml';
-const CANONICAL_DRAFT = 'draft_site_node_config.yaml';
-const SITE_CONFIG = 'site_config.yaml';
+const CANONICAL_COMMITTED = 'bundle_node_config.yaml';
+const CANONICAL_DRAFT = 'draft_bundle_node_config.yaml';
+const BUNDLE_CONFIG = 'site_config.yaml';
 const validFileTypes = new Set<string>(FILE_TYPES);
 
 type LegacyRecord = Record<string, unknown>;
-type LegacySiteConfig = SiteConfig & {
+type LegacyBundleConfig = BundleConfig & {
   initialSitePageTitle?: string;
   initialSitePageDirectory?: string;
   defaultTraversalSitePageTitle?: string;
   defaultTraversalSitePageDirectory?: string;
 };
 
-export interface SiteNodeMigrationCleanup {
-  siteSlug: string;
+export interface BundleNodeMigrationCleanup {
+  bundleSlug: string;
   file: string;
   record: number;
   locator: string;
   reason: 'tracked-false' | 'missing-file-type-source-not-found';
 }
 
-export interface SiteNodeMigrationReport {
-  migratedSites: string[];
-  cleanups: SiteNodeMigrationCleanup[];
+export interface BundleNodeMigrationReport {
+  migratedBundles: string[];
+  cleanups: BundleNodeMigrationCleanup[];
 }
 
-export interface SiteNodeMigrationOptions {
+export interface BundleNodeMigrationOptions {
   /** Test hook for deterministic IDs and collision recovery. */
-  generateId?: (existingIds: Iterable<string>) => SiteNodeId;
+  generateId?: (existingIds: Iterable<string>) => BundleNodeId;
   /** Test hook that simulates interruption after an atomic write. */
   afterWrite?: (filePath: string) => void;
 }
@@ -130,15 +130,15 @@ function legacyDisplayLocator(record: LegacyRecord): string {
 
 function normalizeLegacyRecords(options: {
   filePath: string;
-  siteSlug: string;
+  bundleSlug: string;
   records: LegacyRecord[];
   sourceDirectory: string;
-  idsByLocator: Map<string, SiteNodeId>;
+  idsByLocator: Map<string, BundleNodeId>;
   locatorById: Map<string, string>;
-  generateId: (existingIds: Iterable<string>) => SiteNodeId;
-  cleanups: SiteNodeMigrationCleanup[];
-}): SiteNodeConfig[] {
-  const result: SiteNodeConfig[] = [];
+  generateId: (existingIds: Iterable<string>) => BundleNodeId;
+  cleanups: BundleNodeMigrationCleanup[];
+}): BundleNodeConfig[] {
+  const result: BundleNodeConfig[] = [];
   const locators = new Map<string, number>();
 
   options.records.forEach((record, index) => {
@@ -146,7 +146,7 @@ function normalizeLegacyRecords(options: {
     const tracked = record.tracked ?? config.tracked;
     if (tracked === false) {
       options.cleanups.push({
-        siteSlug: options.siteSlug,
+        bundleSlug: options.bundleSlug,
         file: path.basename(options.filePath),
         record: index + 1,
         locator: legacyDisplayLocator(record),
@@ -169,7 +169,7 @@ function normalizeLegacyRecords(options: {
     if (fileTypeValue === undefined) {
       if (!exactFileExists(options.sourceDirectory, sourceGraphSubdirectory ?? '', `${title}.md`)) {
         options.cleanups.push({
-          siteSlug: options.siteSlug,
+          bundleSlug: options.bundleSlug,
           file: path.basename(options.filePath),
           record: index + 1,
           locator: legacyDisplayLocator(record),
@@ -196,31 +196,31 @@ function normalizeLegacyRecords(options: {
     }
 
     const locatorNode = {
-      siteNodeName: title,
+      bundleNodeName: title,
       ...(sourceGraphSubdirectory !== undefined && { sourceGraphSubdirectory }),
-      siteNodeKind: 'file' as const,
+      bundleNodeKind: 'file' as const,
       fileType: fileTypeValue as FileType,
     };
-    const locator = siteNodeLocatorKey(locatorNode);
+    const locator = bundleNodeLocatorKey(locatorNode);
     const prior = locators.get(locator);
     if (prior !== undefined) {
       throw migrationError(options.filePath, index, 'source locator', `duplicates record ${prior + 1}`);
     }
     locators.set(locator, index);
 
-    let siteNodeId = options.idsByLocator.get(locator);
-    if (!siteNodeId) {
-      siteNodeId = options.generateId(options.locatorById.keys());
-      const conflictingLocator = options.locatorById.get(siteNodeId);
+    let bundleNodeId = options.idsByLocator.get(locator);
+    if (!bundleNodeId) {
+      bundleNodeId = options.generateId(options.locatorById.keys());
+      const conflictingLocator = options.locatorById.get(bundleNodeId);
       if (conflictingLocator !== undefined) {
-        throw migrationError(options.filePath, index, 'siteNodeId', `generator returned ID already assigned to ${conflictingLocator}`);
+        throw migrationError(options.filePath, index, 'bundleNodeId', `generator returned ID already assigned to ${conflictingLocator}`);
       }
-      options.idsByLocator.set(locator, siteNodeId);
-      options.locatorById.set(siteNodeId, locator);
+      options.idsByLocator.set(locator, bundleNodeId);
+      options.locatorById.set(bundleNodeId, locator);
     }
     result.push({
       ...locatorNode,
-      siteNodeId,
+      bundleNodeId,
       listType,
       ...(outlinksDepth !== undefined && { outlinksDepth: outlinksDepth as number }),
       ...(inlinksDepth !== undefined && { inlinksDepth: inlinksDepth as number }),
@@ -230,23 +230,23 @@ function normalizeLegacyRecords(options: {
 }
 
 function registerExistingIds(
-  nodes: SiteNodeConfig[],
+  nodes: BundleNodeConfig[],
   filePath: string,
-  idsByLocator: Map<string, SiteNodeId>,
+  idsByLocator: Map<string, BundleNodeId>,
   locatorById: Map<string, string>,
 ): void {
   nodes.forEach((node, index) => {
-    const locator = siteNodeLocatorKey(node);
+    const locator = bundleNodeLocatorKey(node);
     const priorId = idsByLocator.get(locator);
-    if (priorId && priorId !== node.siteNodeId) {
-      throw migrationError(filePath, index, 'siteNodeId', `conflicts with existing ID ${priorId} for the same logical node`);
+    if (priorId && priorId !== node.bundleNodeId) {
+      throw migrationError(filePath, index, 'bundleNodeId', `conflicts with existing ID ${priorId} for the same logical node`);
     }
-    const priorLocator = locatorById.get(node.siteNodeId);
+    const priorLocator = locatorById.get(node.bundleNodeId);
     if (priorLocator && priorLocator !== locator) {
-      throw migrationError(filePath, index, 'siteNodeId', `is already assigned to a different logical node (${priorLocator})`);
+      throw migrationError(filePath, index, 'bundleNodeId', `is already assigned to a different logical node (${priorLocator})`);
     }
-    idsByLocator.set(locator, node.siteNodeId);
-    locatorById.set(node.siteNodeId, locator);
+    idsByLocator.set(locator, node.bundleNodeId);
+    locatorById.set(node.bundleNodeId, locator);
   });
 }
 
@@ -255,8 +255,8 @@ function resolveLegacyRole(options: {
   field: string;
   title: unknown;
   directory: unknown;
-  nodes: SiteNodeConfig[];
-}): SiteNodeConfig {
+  nodes: BundleNodeConfig[];
+}): BundleNodeConfig {
   if (typeof options.title !== 'string' || options.title.trim().length === 0) {
     throw migrationError(options.filePath, null, options.field, 'must name a configured node');
   }
@@ -265,7 +265,7 @@ function resolveLegacyRole(options: {
   }
   const directory = options.directory ?? '';
   const candidates = options.nodes.filter(node =>
-    node.siteNodeName === options.title
+    node.bundleNodeName === options.title
     && (node.sourceGraphSubdirectory ?? '') === directory);
   const markdownCandidates = candidates.filter(node => node.fileType === 'md');
   const excalidrawCandidates = candidates.filter(node => node.fileType === 'excalidraw');
@@ -298,23 +298,23 @@ function atomicWrite(filePath: string, content: string, afterWrite?: (filePath: 
   }
 }
 
-function siteConfigYaml(siteConfig: Record<string, unknown>): string {
-  return YAML.stringify(siteConfig);
+function bundleConfigYaml(bundleConfig: Record<string, unknown>): string {
+  return YAML.stringify(bundleConfig);
 }
 
-function planAndMigrateSite(
-  siteSlug: string,
-  siteDir: string,
-  report: SiteNodeMigrationReport,
-  options: SiteNodeMigrationOptions,
+function planAndMigrateBundle(
+  bundleSlug: string,
+  bundleDir: string,
+  report: BundleNodeMigrationReport,
+  options: BundleNodeMigrationOptions,
 ): boolean {
-  const confDir = path.join(siteDir, 'conf');
+  const confDir = path.join(bundleDir, 'conf');
   const paths = {
     legacyCommitted: path.join(confDir, LEGACY_COMMITTED),
     legacyDraft: path.join(confDir, LEGACY_DRAFT),
     canonicalCommitted: path.join(confDir, CANONICAL_COMMITTED),
     canonicalDraft: path.join(confDir, CANONICAL_DRAFT),
-    siteConfig: path.join(confDir, SITE_CONFIG),
+    bundleConfig: path.join(confDir, BUNDLE_CONFIG),
   };
   const hasAnyNodeConfig = [
     paths.legacyCommitted,
@@ -323,34 +323,34 @@ function planAndMigrateSite(
     paths.canonicalDraft,
   ].some(candidate => fs.existsSync(candidate));
   if (!hasAnyNodeConfig) return false;
-  if (!fs.existsSync(paths.siteConfig)) {
-    throw migrationError(paths.siteConfig, null, 'document', 'is required when a node configuration exists');
+  if (!fs.existsSync(paths.bundleConfig)) {
+    throw migrationError(paths.bundleConfig, null, 'document', 'is required when a node configuration exists');
   }
 
-  const siteConfigRecord = readYamlMapping(paths.siteConfig);
-  const siteConfig = siteConfigRecord as LegacySiteConfig;
-  if (typeof siteConfig.sourceDirectory !== 'string' || siteConfig.sourceDirectory.length === 0) {
-    throw migrationError(paths.siteConfig, null, 'sourceDirectory', 'must be a non-empty string');
+  const bundleConfigRecord = readYamlMapping(paths.bundleConfig);
+  const bundleConfig = bundleConfigRecord as LegacyBundleConfig;
+  if (typeof bundleConfig.sourceDirectory !== 'string' || bundleConfig.sourceDirectory.length === 0) {
+    throw migrationError(paths.bundleConfig, null, 'sourceDirectory', 'must be a non-empty string');
   }
 
-  const idsByLocator = new Map<string, SiteNodeId>();
+  const idsByLocator = new Map<string, BundleNodeId>();
   const locatorById = new Map<string, string>();
   let committedNodes = fs.existsSync(paths.canonicalCommitted)
-    ? parseSiteNodeConfig(fs.readFileSync(paths.canonicalCommitted, 'utf8'), paths.canonicalCommitted)
+    ? parseBundleNodeConfig(fs.readFileSync(paths.canonicalCommitted, 'utf8'), paths.canonicalCommitted)
     : undefined;
   let draftNodes = fs.existsSync(paths.canonicalDraft)
-    ? parseSiteNodeConfig(fs.readFileSync(paths.canonicalDraft, 'utf8'), paths.canonicalDraft)
+    ? parseBundleNodeConfig(fs.readFileSync(paths.canonicalDraft, 'utf8'), paths.canonicalDraft)
     : undefined;
   if (committedNodes) registerExistingIds(committedNodes, paths.canonicalCommitted, idsByLocator, locatorById);
   if (draftNodes) registerExistingIds(draftNodes, paths.canonicalDraft, idsByLocator, locatorById);
 
-  const generateId = options.generateId ?? (existingIds => generateSiteNodeId(existingIds));
+  const generateId = options.generateId ?? (existingIds => generateBundleNodeId(existingIds));
   if (fs.existsSync(paths.legacyCommitted)) {
     committedNodes = normalizeLegacyRecords({
       filePath: paths.legacyCommitted,
-      siteSlug,
+      bundleSlug,
       records: readLegacyRecords(paths.legacyCommitted),
-      sourceDirectory: siteConfig.sourceDirectory,
+      sourceDirectory: bundleConfig.sourceDirectory,
       idsByLocator,
       locatorById,
       generateId,
@@ -363,9 +363,9 @@ function planAndMigrateSite(
   if (fs.existsSync(paths.legacyDraft)) {
     draftNodes = normalizeLegacyRecords({
       filePath: paths.legacyDraft,
-      siteSlug,
+      bundleSlug,
       records: readLegacyRecords(paths.legacyDraft),
-      sourceDirectory: siteConfig.sourceDirectory,
+      sourceDirectory: bundleConfig.sourceDirectory,
       idsByLocator,
       locatorById,
       generateId,
@@ -374,43 +374,43 @@ function planAndMigrateSite(
   }
 
   const roleNodes = committedNodes;
-  let entryNode: SiteNodeConfig;
-  if (typeof siteConfig.entrySiteNodeId === 'string') {
-    entryNode = roleNodes.find(node => node.siteNodeId === siteConfig.entrySiteNodeId) as SiteNodeConfig;
-    if (!entryNode) throw migrationError(paths.siteConfig, null, 'entrySiteNodeId', 'does not resolve to a configured node');
+  let entryNode: BundleNodeConfig;
+  if (typeof bundleConfig.entryBundleNodeId === 'string') {
+    entryNode = roleNodes.find(node => node.bundleNodeId === bundleConfig.entryBundleNodeId) as BundleNodeConfig;
+    if (!entryNode) throw migrationError(paths.bundleConfig, null, 'entryBundleNodeId', 'does not resolve to a configured node');
   } else {
     entryNode = resolveLegacyRole({
-      filePath: paths.siteConfig,
+      filePath: paths.bundleConfig,
       field: 'initialSitePageTitle',
-      title: siteConfig.initialSitePageTitle,
-      directory: siteConfig.initialSitePageDirectory,
+      title: bundleConfig.initialSitePageTitle,
+      directory: bundleConfig.initialSitePageDirectory,
       nodes: roleNodes,
     });
-    siteConfigRecord.entrySiteNodeId = entryNode.siteNodeId;
+    bundleConfigRecord.entryBundleNodeId = entryNode.bundleNodeId;
   }
 
-  if (typeof siteConfig.defaultTraversalSiteNodeId !== 'string') {
-    if (siteConfig.defaultTraversalSitePageTitle === undefined) {
-      siteConfigRecord.defaultTraversalSiteNodeId = entryNode.siteNodeId;
+  if (typeof bundleConfig.defaultTraversalBundleNodeId !== 'string') {
+    if (bundleConfig.defaultTraversalSitePageTitle === undefined) {
+      bundleConfigRecord.defaultTraversalBundleNodeId = entryNode.bundleNodeId;
     } else {
-      siteConfigRecord.defaultTraversalSiteNodeId = resolveLegacyRole({
-        filePath: paths.siteConfig,
+      bundleConfigRecord.defaultTraversalBundleNodeId = resolveLegacyRole({
+        filePath: paths.bundleConfig,
         field: 'defaultTraversalSitePageTitle',
-        title: siteConfig.defaultTraversalSitePageTitle,
-        directory: siteConfig.defaultTraversalSitePageDirectory,
+        title: bundleConfig.defaultTraversalSitePageTitle,
+        directory: bundleConfig.defaultTraversalSitePageDirectory,
         nodes: roleNodes,
-      }).siteNodeId;
+      }).bundleNodeId;
     }
   }
 
-  const entryLocator = siteNodeLocatorKey(entryNode);
-  const moveEntryDepths = (nodes: SiteNodeConfig[]): SiteNodeConfig[] => nodes.map(node => {
-    if (siteNodeLocatorKey(node) !== entryLocator) return node;
-    if (siteConfigRecord.defaultOutlinksDepth === undefined && node.outlinksDepth !== undefined) {
-      siteConfigRecord.defaultOutlinksDepth = node.outlinksDepth;
+  const entryLocator = bundleNodeLocatorKey(entryNode);
+  const moveEntryDepths = (nodes: BundleNodeConfig[]): BundleNodeConfig[] => nodes.map(node => {
+    if (bundleNodeLocatorKey(node) !== entryLocator) return node;
+    if (bundleConfigRecord.defaultOutlinksDepth === undefined && node.outlinksDepth !== undefined) {
+      bundleConfigRecord.defaultOutlinksDepth = node.outlinksDepth;
     }
-    if (siteConfigRecord.defaultInlinksDepth === undefined && node.inlinksDepth !== undefined) {
-      siteConfigRecord.defaultInlinksDepth = node.inlinksDepth;
+    if (bundleConfigRecord.defaultInlinksDepth === undefined && node.inlinksDepth !== undefined) {
+      bundleConfigRecord.defaultInlinksDepth = node.inlinksDepth;
     }
     const withoutDepths = { ...node };
     delete withoutDepths.outlinksDepth;
@@ -420,68 +420,69 @@ function planAndMigrateSite(
   committedNodes = moveEntryDepths(committedNodes);
   if (draftNodes) draftNodes = moveEntryDepths(draftNodes);
 
-  delete siteConfigRecord.initialSitePageTitle;
-  delete siteConfigRecord.initialSitePageDirectory;
-  delete siteConfigRecord.defaultTraversalSitePageTitle;
-  delete siteConfigRecord.defaultTraversalSitePageDirectory;
+  delete bundleConfigRecord.initialSitePageTitle;
+  delete bundleConfigRecord.initialSitePageDirectory;
+  delete bundleConfigRecord.defaultTraversalSitePageTitle;
+  delete bundleConfigRecord.defaultTraversalSitePageDirectory;
 
-  validateCanonicalSiteConfiguration({
+  validateCanonicalBundleConfiguration({
     committedNodes,
     committedPath: paths.canonicalCommitted,
     ...(draftNodes && { draftNodes, draftPath: paths.canonicalDraft }),
-    siteConfig: siteConfigRecord as SiteConfig,
-    siteConfigPath: paths.siteConfig,
+    bundleConfig: bundleConfigRecord as BundleConfig,
+    bundleConfigPath: paths.bundleConfig,
   });
 
-  // Node files precede their site-level references. A retry sees and reuses
-  // these IDs if interruption occurs before site_config.yaml is replaced.
-  atomicWrite(paths.canonicalCommitted, stringifySiteNodeConfig(committedNodes), options.afterWrite);
-  if (draftNodes) atomicWrite(paths.canonicalDraft, stringifySiteNodeConfig(draftNodes), options.afterWrite);
-  atomicWrite(paths.siteConfig, siteConfigYaml(siteConfigRecord), options.afterWrite);
+  // Node files precede their bundle-level references. A retry sees and reuses
+  // these IDs if interruption occurs before bundle_config.yaml is replaced.
+  atomicWrite(paths.canonicalCommitted, stringifyBundleNodeConfig(committedNodes), options.afterWrite);
+  if (draftNodes) atomicWrite(paths.canonicalDraft, stringifyBundleNodeConfig(draftNodes), options.afterWrite);
+  atomicWrite(paths.bundleConfig, bundleConfigYaml(bundleConfigRecord), options.afterWrite);
 
-  const writtenCommitted = parseSiteNodeConfig(fs.readFileSync(paths.canonicalCommitted, 'utf8'), paths.canonicalCommitted);
+  const writtenCommitted = parseBundleNodeConfig(fs.readFileSync(paths.canonicalCommitted, 'utf8'), paths.canonicalCommitted);
   const writtenDraft = fs.existsSync(paths.canonicalDraft)
-    ? parseSiteNodeConfig(fs.readFileSync(paths.canonicalDraft, 'utf8'), paths.canonicalDraft)
+    ? parseBundleNodeConfig(fs.readFileSync(paths.canonicalDraft, 'utf8'), paths.canonicalDraft)
     : undefined;
-  const writtenSiteConfig = readYamlMapping(paths.siteConfig) as SiteConfig;
-  validateCanonicalSiteConfiguration({
+  const writtenBundleConfig = readYamlMapping(paths.bundleConfig) as BundleConfig;
+  validateCanonicalBundleConfiguration({
     committedNodes: writtenCommitted,
     committedPath: paths.canonicalCommitted,
     ...(writtenDraft && { draftNodes: writtenDraft, draftPath: paths.canonicalDraft }),
-    siteConfig: writtenSiteConfig,
-    siteConfigPath: paths.siteConfig,
+    bundleConfig: writtenBundleConfig,
+    bundleConfigPath: paths.bundleConfig,
   });
 
-  // Legacy inputs are retired only after the complete canonical site validates.
+  // Legacy inputs are retired only after the complete canonical bundle validates.
   for (const legacyPath of [paths.legacyCommitted, paths.legacyDraft]) {
     if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath);
   }
-  report.migratedSites.push(siteSlug);
+  report.migratedBundles.push(bundleSlug);
   return true;
 }
 
 /**
- * Convert every site in one operation. Throwing for any site leaves the
- * migration pending in the startup runner, while already-written sites are
+ * Convert every bundle in one operation. Throwing for any bundle leaves the
+ * migration pending in the startup runner, while already-written bundles are
  * safe to resume because their locator-to-ID assignments are canonical.
  */
-export function migrateSiteNodeFoundation(
+export function migrateBundleNodeFoundation(
   configDir: string,
-  options: SiteNodeMigrationOptions = {},
-): SiteNodeMigrationReport {
-  const report: SiteNodeMigrationReport = { migratedSites: [], cleanups: [] };
-  const sitesDir = path.join(configDir, 'sites');
-  if (!fs.existsSync(sitesDir)) return report;
-  const sites = fs.readdirSync(sitesDir, { withFileTypes: true })
+  options: BundleNodeMigrationOptions = {},
+): BundleNodeMigrationReport {
+  const report: BundleNodeMigrationReport = { migratedBundles: [], cleanups: [] };
+  // Read the legacy root; the later bundle-domain migration moves it.
+  const bundlesDir = path.join(configDir, 'sites');
+  if (!fs.existsSync(bundlesDir)) return report;
+  const bundles = fs.readdirSync(bundlesDir, { withFileTypes: true })
     .filter(entry => entry.isDirectory())
     .map(entry => entry.name)
     .sort();
-  for (const siteSlug of sites) {
-    planAndMigrateSite(siteSlug, path.join(sitesDir, siteSlug), report, options);
+  for (const bundleSlug of bundles) {
+    planAndMigrateBundle(bundleSlug, path.join(bundlesDir, bundleSlug), report, options);
   }
   for (const cleanup of report.cleanups) {
     logger.warn(
-      `[migrations] site-node cleanup ${cleanup.siteSlug}/${cleanup.file} record ${cleanup.record} `
+      `[migrations] bundle-node cleanup ${cleanup.bundleSlug}/${cleanup.file} record ${cleanup.record} `
       + `${cleanup.locator}: ${cleanup.reason}`,
     );
   }
@@ -489,10 +490,10 @@ export function migrateSiteNodeFoundation(
 }
 
 export const migration: Migration = {
-  name: 'Site node foundation',
-  description: 'Replace legacy page configuration with stable file-node identities and site-level role references.',
+  name: 'Bundle node foundation',
+  description: 'Replace legacy page configuration with stable file-node identities and bundle-level role references.',
   run: (): Promise<void> => {
-    migrateSiteNodeFoundation(getDefaultConfigDirectory());
+    migrateBundleNodeFoundation(getDefaultConfigDirectory());
     return Promise.resolve();
   },
 };

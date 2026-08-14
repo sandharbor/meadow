@@ -2,7 +2,7 @@ This page is linked from Outside note at the second configured outlink depth.
 
 ```yaml
 pagespecs:
-  - site: single-folder-site
+  - bundle: single-folder-bundle
     curation:
       isTracked: false
       isInWorkingGraph: true
@@ -19,7 +19,7 @@ pagespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: Outside note.html
                 embeddedLinks: []
-  - site: ordered-folders
+  - bundle: ordered-folders
     curation:
       isTracked: false
       isInWorkingGraph: true

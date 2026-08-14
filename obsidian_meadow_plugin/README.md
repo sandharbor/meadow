@@ -1,12 +1,12 @@
 # Meadow Obsidian Plugin
 
-This plugin allows you to open Meadow directly from Obsidian with information about the current file, making it easy to manage sites that track specific pages.
+This plugin allows you to open Meadow directly from Obsidian with information about the current file, making it easy to manage bundles that track specific pages.
 
 ## Features
 
 - **Open in Meadow**: Command to open Meadow with current file information
-- **Site Filtering**: Meadow automatically filters sites to show only those that track the current page
-- **Quick Site Creation**: Pre-fills the "Create New Site" form with the current page information
+- **Bundle Filtering**: Meadow automatically filters bundles to show only those that track the current page
+- **Quick Bundle Creation**: Pre-fills the "Create New Bundle" form with the current page information
 - **Easy Integration**: Works seamlessly with your existing Obsidian workflow
 
 ## Installation
@@ -40,14 +40,14 @@ When you invoke the plugin command:
 
 2. **Meadow Launch**: Meadow opens with this information passed via command line arguments
 
-3. **Automatic Filtering**: In Meadow's Sites page:
+3. **Automatic Filtering**: In Meadow's Bundles page:
    - A blue filter indicator shows the current page name
-   - The sites list is filtered to show only sites that track this page
+   - The bundles list is filtered to show only bundles that track this page
    - You can easily remove the filter by clicking the × button
 
-4. **Quick Site Creation**: When creating a new site:
+4. **Quick Bundle Creation**: When creating a new bundle:
    - The "Initial Page Title" is pre-filled with the page name
-   - Site slugs are automatically generated from the page name
+   - Bundle slugs are automatically generated from the page name
 
 ## Requirements
 
@@ -100,10 +100,10 @@ obsidian_meadow_plugin/
 - Try restarting Obsidian after enabling the plugin
 - Check the Obsidian developer console for any error messages
 
-### Sites aren't filtering correctly
-- Ensure the sites in Meadow actually track the current page
-- The filtering checks if a site's configuration includes the current page in its tracked pages
-- Try refreshing the sites list in Meadow
+### Bundles aren't filtering correctly
+- Ensure the bundles in Meadow actually track the current page
+- The filtering checks if a bundle's configuration includes the current page in its tracked pages
+- Try refreshing the bundles list in Meadow
 
 ## Contributing
 

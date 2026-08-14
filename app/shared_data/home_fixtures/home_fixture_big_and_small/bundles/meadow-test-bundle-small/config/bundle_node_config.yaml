@@ -1,0 +1,19 @@
+nodes:
+  - bundleNodeName: t001 - deeply nested
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 9199e7df80fa
+    listType: whitelist
+  - bundleNodeName: t001 ---- child 1
+    sourceGraphSubdirectory: t001
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: def2182907d1
+    listType: whitelist
+  - bundleNodeName: t001 ---- child 2
+    sourceGraphSubdirectory: t001/deeper
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 729081fe7312
+    listType: whitelist

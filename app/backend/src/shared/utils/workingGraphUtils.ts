@@ -62,9 +62,9 @@ export function getWorkingGraphPath(): string {
 
 export type WorkingGraphRunArgs = {
   graphRoot: string;
-  siteNodeConfigPath: string;
-  entrySiteNodeId: string;
-  defaultTraversalSiteNodeId: string;
+  bundleNodeConfigPath: string;
+  entryBundleNodeId: string;
+  defaultTraversalBundleNodeId: string;
   defaultOutlinksDepth?: number;
   defaultInlinksDepth?: number;
   frontierDepth: number;
@@ -78,12 +78,12 @@ export async function runWorkingGraphRaw(runArgs: WorkingGraphRunArgs): Promise<
   const args: string[] = [
     '--graph-root',
     runArgs.graphRoot,
-    '--site-node-config',
-    runArgs.siteNodeConfigPath,
-    '--entry-site-node-id',
-    runArgs.entrySiteNodeId,
-    '--default-traversal-site-node-id',
-    runArgs.defaultTraversalSiteNodeId,
+    '--bundle-node-config',
+    runArgs.bundleNodeConfigPath,
+    '--entry-bundle-node-id',
+    runArgs.entryBundleNodeId,
+    '--default-traversal-bundle-node-id',
+    runArgs.defaultTraversalBundleNodeId,
     '--frontier-depth',
     String(runArgs.frontierDepth),
     '--allow-images-to-extend-to-frontier',

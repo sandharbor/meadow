@@ -22,12 +22,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import {
-  migrateSiteNodeFoundation,
-  type SiteNodeMigrationOptions,
+  migrateBundleNodeFoundation,
+  type BundleNodeMigrationOptions,
 } from '../../../src/shared/migrations/versions/26_08_11_12_00_00_n4k7p2w9c5x8_site_node_foundation.js';
-import type { SiteNodeId } from '../../../../shared_code/types/siteNodeConfig.js';
-import { parseSiteNodeConfig } from '../../../../shared_code/utils/siteNodeConfigUtils.js';
-import siteConfigRoutes from '../../../src/areas/site/curation/routes/siteConfigRoutes.js';
+import { migrateSitesToBundles } from '../../../src/shared/migrations/versions/26_08_13_13_00_00_b7n2r5k8w4q1_rename_sites_to_bundles.js';
+import { migrateBundleConfToConfig } from '../../../src/shared/migrations/versions/26_08_14_13_00_00_c4g7m2p9v6x1_rename_bundle_conf_to_config.js';
+import type { BundleNodeId } from '../../../../shared_code/types/bundleNodeConfig.js';
+import { parseBundleNodeConfig } from '../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import bundleConfigRoutes from '../../../src/areas/bundle/curation/routes/bundleConfigRoutes.js';
 
 const temporaryDirectories: string[] = [];
 
@@ -69,12 +71,12 @@ function setupSite(home: string, slug: string, options: {
   return { confDir, sourceDirectory };
 }
 
-function deterministicIds(): SiteNodeMigrationOptions['generateId'] {
+function deterministicIds(): BundleNodeMigrationOptions['generateId'] {
   let next = 1;
   return existingIds => {
     const existing = new Set(existingIds);
     while (true) {
-      const candidate = `n${String(next).padStart(11, '0')}` as SiteNodeId;
+      const candidate = `n${String(next).padStart(11, '0')}` as BundleNodeId;
       next += 1;
       if (!existing.has(candidate)) return candidate;
     }
@@ -110,28 +112,28 @@ describe('site-node foundation startup migration', () => {
       ],
     });
 
-    const report = migrateSiteNodeFoundation(home, { generateId: deterministicIds() });
-    const committedPath = path.join(confDir, 'site_node_config.yaml');
-    const draftPath = path.join(confDir, 'draft_site_node_config.yaml');
-    const committed = parseSiteNodeConfig(fs.readFileSync(committedPath, 'utf8'), committedPath);
-    const draft = parseSiteNodeConfig(fs.readFileSync(draftPath, 'utf8'), draftPath);
+    const report = migrateBundleNodeFoundation(home, { generateId: deterministicIds() });
+    const committedPath = path.join(confDir, 'bundle_node_config.yaml');
+    const draftPath = path.join(confDir, 'draft_bundle_node_config.yaml');
+    const committed = parseBundleNodeConfig(fs.readFileSync(committedPath, 'utf8'), committedPath);
+    const draft = parseBundleNodeConfig(fs.readFileSync(draftPath, 'utf8'), draftPath);
     const siteConfig = YAML.parse(fs.readFileSync(path.join(confDir, 'site_config.yaml'), 'utf8'));
 
-    expect(report.migratedSites).toEqual(['garden']);
+    expect(report.migratedBundles).toEqual(['garden']);
     expect(report.cleanups.map(cleanup => cleanup.reason)).toEqual([
       'missing-file-type-source-not-found',
       'tracked-false',
     ]);
-    expect(committed.map(node => node.siteNodeName)).toEqual(['Entry', 'Photo']);
-    expect(committed.find(node => node.siteNodeName === 'Entry')?.fileType).toBe('md');
-    expect(draft.find(node => node.siteNodeName === 'Entry')?.siteNodeId)
-      .toBe(committed.find(node => node.siteNodeName === 'Entry')?.siteNodeId);
-    expect(draft.find(node => node.siteNodeName === 'Draft only')?.listType).toBe('blacklist');
-    expect(committed.find(node => node.siteNodeName === 'Entry')).not.toHaveProperty('outlinksDepth');
-    expect(draft.find(node => node.siteNodeName === 'Entry')).not.toHaveProperty('inlinksDepth');
+    expect(committed.map(node => node.bundleNodeName)).toEqual(['Entry', 'Photo']);
+    expect(committed.find(node => node.bundleNodeName === 'Entry')?.fileType).toBe('md');
+    expect(draft.find(node => node.bundleNodeName === 'Entry')?.bundleNodeId)
+      .toBe(committed.find(node => node.bundleNodeName === 'Entry')?.bundleNodeId);
+    expect(draft.find(node => node.bundleNodeName === 'Draft only')?.listType).toBe('blacklist');
+    expect(committed.find(node => node.bundleNodeName === 'Entry')).not.toHaveProperty('outlinksDepth');
+    expect(draft.find(node => node.bundleNodeName === 'Entry')).not.toHaveProperty('inlinksDepth');
     expect(siteConfig).toMatchObject({
-      entrySiteNodeId: committed.find(node => node.siteNodeName === 'Entry')?.siteNodeId,
-      defaultTraversalSiteNodeId: committed.find(node => node.siteNodeName === 'Entry')?.siteNodeId,
+      entryBundleNodeId: committed.find(node => node.bundleNodeName === 'Entry')?.bundleNodeId,
+      defaultTraversalBundleNodeId: committed.find(node => node.bundleNodeName === 'Entry')?.bundleNodeId,
       defaultOutlinksDepth: 3,
       defaultInlinksDepth: 1,
     });
@@ -146,11 +148,11 @@ describe('site-node foundation startup migration', () => {
       sources: ['Entry.md'],
       pages: [{ title: 'Entry', fileType: 'md', listType: 'whitelist' }],
     });
-    migrateSiteNodeFoundation(home, { generateId: deterministicIds() });
-    const files = ['site_node_config.yaml', 'site_config.yaml'];
+    migrateBundleNodeFoundation(home, { generateId: deterministicIds() });
+    const files = ['bundle_node_config.yaml', 'site_config.yaml'];
     const before = files.map(file => fs.readFileSync(path.join(confDir, file), 'utf8'));
 
-    migrateSiteNodeFoundation(home, {
+    migrateBundleNodeFoundation(home, {
       generateId: () => { throw new Error('an idempotent retry must not generate IDs'); },
     });
 
@@ -159,48 +161,51 @@ describe('site-node foundation startup migration', () => {
 
   it('supports canonical draft save and discard after migration while enforcing role holders', async () => {
     const home = makeHome();
-    const { confDir } = setupSite(home, 'garden', {
+    setupSite(home, 'garden', {
       sources: ['Entry.md', 'Notes.md'],
       pages: [
         { title: 'Entry', fileType: 'md', listType: 'whitelist' },
         { title: 'Notes', fileType: 'md', listType: 'whitelist' },
       ],
     });
-    migrateSiteNodeFoundation(home, { generateId: deterministicIds() });
+    migrateBundleNodeFoundation(home, { generateId: deterministicIds() });
+    migrateSitesToBundles(home);
+    migrateBundleConfToConfig(home);
     process.env.MEADOW_HOME_DIRECTORY_OVERRIDE = home;
+    const configDir = path.join(home, 'bundles', 'garden', 'config');
 
     const app = express();
     app.use(express.json());
-    app.use('/api', siteConfigRoutes);
+    app.use('/api', bundleConfigRoutes);
     app.use((_error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
       res.status(400).json({ error: 'invalid canonical configuration' });
     });
 
-    const committedPath = path.join(confDir, 'site_node_config.yaml');
-    const draftPath = path.join(confDir, 'draft_site_node_config.yaml');
-    const committed = parseSiteNodeConfig(fs.readFileSync(committedPath, 'utf8'), committedPath);
-    const entry = committed.find(node => node.siteNodeName === 'Entry')!;
+    const committedPath = path.join(configDir, 'bundle_node_config.yaml');
+    const draftPath = path.join(configDir, 'draft_bundle_node_config.yaml');
+    const committed = parseBundleNodeConfig(fs.readFileSync(committedPath, 'utf8'), committedPath);
+    const entry = committed.find(node => node.bundleNodeName === 'Entry')!;
 
     await request(app)
-      .post('/api/sites/garden/curation/site-config')
-      .send({ configs: committed.map(node => node.siteNodeId === entry.siteNodeId ? { ...node, listType: 'blacklist' } : node), isDraft: true })
+      .post('/api/bundles/garden/curation/bundle-config')
+      .send({ configs: committed.map(node => node.bundleNodeId === entry.bundleNodeId ? { ...node, listType: 'blacklist' } : node), isDraft: true })
       .expect(400);
     expect(fs.existsSync(draftPath)).toBe(false);
 
-    const editedDraft = committed.map(node => node.siteNodeId === entry.siteNodeId
+    const editedDraft = committed.map(node => node.bundleNodeId === entry.bundleNodeId
       ? { ...node, outlinksDepth: 7 }
       : node);
     await request(app)
-      .post('/api/sites/garden/curation/site-config')
+      .post('/api/bundles/garden/curation/bundle-config')
       .send({ configs: editedDraft, isDraft: true })
       .expect(200);
-    expect(parseSiteNodeConfig(fs.readFileSync(draftPath, 'utf8'), draftPath)).toEqual(editedDraft);
+    expect(parseBundleNodeConfig(fs.readFileSync(draftPath, 'utf8'), draftPath)).toEqual(editedDraft);
 
     await request(app)
-      .delete('/api/sites/garden/curation/site-config-draft')
+      .delete('/api/bundles/garden/curation/bundle-config-draft')
       .expect(200);
     expect(fs.existsSync(draftPath)).toBe(false);
-    expect(parseSiteNodeConfig(fs.readFileSync(committedPath, 'utf8'), committedPath)).toEqual(committed);
+    expect(parseBundleNodeConfig(fs.readFileSync(committedPath, 'utf8'), committedPath)).toEqual(committed);
   });
 
   it('reuses IDs written before an interruption and retires legacy inputs only after validation', () => {
@@ -209,25 +214,25 @@ describe('site-node foundation startup migration', () => {
       pages: [{ title: 'Entry', fileType: 'md', listType: 'whitelist' }],
     });
     let interrupted = false;
-    expect(() => migrateSiteNodeFoundation(home, {
+    expect(() => migrateBundleNodeFoundation(home, {
       generateId: deterministicIds(),
       afterWrite: filePath => {
-        if (!interrupted && filePath.endsWith('site_node_config.yaml')) {
+        if (!interrupted && filePath.endsWith('bundle_node_config.yaml')) {
           interrupted = true;
           throw new Error('simulated interruption');
         }
       },
     })).toThrow('simulated interruption');
-    const writtenId = parseSiteNodeConfig(
-      fs.readFileSync(path.join(confDir, 'site_node_config.yaml'), 'utf8'),
-    )[0].siteNodeId;
+    const writtenId = parseBundleNodeConfig(
+      fs.readFileSync(path.join(confDir, 'bundle_node_config.yaml'), 'utf8'),
+    )[0].bundleNodeId;
     expect(fs.existsSync(path.join(confDir, 'site_page_config.yaml'))).toBe(true);
 
-    migrateSiteNodeFoundation(home, {
+    migrateBundleNodeFoundation(home, {
       generateId: () => { throw new Error('retry must reuse the canonical ID'); },
     });
 
-    expect(parseSiteNodeConfig(fs.readFileSync(path.join(confDir, 'site_node_config.yaml'), 'utf8'))[0].siteNodeId)
+    expect(parseBundleNodeConfig(fs.readFileSync(path.join(confDir, 'bundle_node_config.yaml'), 'utf8'))[0].bundleNodeId)
       .toBe(writtenId);
     expect(fs.existsSync(path.join(confDir, 'site_page_config.yaml'))).toBe(false);
   });
@@ -240,10 +245,10 @@ describe('site-node foundation startup migration', () => {
         { title: 'Entry', fileType: 'md', listType: 'whitelist' },
       ],
     });
-    migrateSiteNodeFoundation(home, { generateId: deterministicIds() });
-    const nodes = parseSiteNodeConfig(fs.readFileSync(path.join(confDir, 'site_node_config.yaml'), 'utf8'));
+    migrateBundleNodeFoundation(home, { generateId: deterministicIds() });
+    const nodes = parseBundleNodeConfig(fs.readFileSync(path.join(confDir, 'bundle_node_config.yaml'), 'utf8'));
     const siteConfig = YAML.parse(fs.readFileSync(path.join(confDir, 'site_config.yaml'), 'utf8'));
-    expect(siteConfig.entrySiteNodeId).toBe(nodes.find(node => node.fileType === 'md')?.siteNodeId);
+    expect(siteConfig.entryBundleNodeId).toBe(nodes.find(node => node.fileType === 'md')?.bundleNodeId);
   });
 
   it('selects a unique Excalidraw role candidate over a same-basename rendered asset', () => {
@@ -262,14 +267,14 @@ describe('site-node foundation startup migration', () => {
       siteConfig: { defaultTraversalSitePageTitle: 'Entry' },
     });
 
-    migrateSiteNodeFoundation(home, { generateId: deterministicIds() });
+    migrateBundleNodeFoundation(home, { generateId: deterministicIds() });
 
-    const nodes = parseSiteNodeConfig(fs.readFileSync(path.join(confDir, 'site_node_config.yaml'), 'utf8'));
+    const nodes = parseBundleNodeConfig(fs.readFileSync(path.join(confDir, 'bundle_node_config.yaml'), 'utf8'));
     const siteConfig = YAML.parse(fs.readFileSync(path.join(confDir, 'site_config.yaml'), 'utf8'));
     const drawingNode = nodes.find(node => node.fileType === 'excalidraw');
     expect(siteConfig).toMatchObject({
-      entrySiteNodeId: drawingNode?.siteNodeId,
-      defaultTraversalSiteNodeId: drawingNode?.siteNodeId,
+      entryBundleNodeId: drawingNode?.bundleNodeId,
+      defaultTraversalBundleNodeId: drawingNode?.bundleNodeId,
       defaultOutlinksDepth: 3,
       defaultInlinksDepth: 1,
     });
@@ -285,9 +290,9 @@ describe('site-node foundation startup migration', () => {
         { title: 'Entry', fileType: 'pdf', listType: 'whitelist' },
       ],
     });
-    expect(() => migrateSiteNodeFoundation(ambiguousHome, { generateId: deterministicIds() }))
+    expect(() => migrateBundleNodeFoundation(ambiguousHome, { generateId: deterministicIds() }))
       .toThrow("field 'initialSitePageTitle': is ambiguous across configured nodes");
-    expect(fs.existsSync(path.join(ambiguousConf, 'site_node_config.yaml'))).toBe(false);
+    expect(fs.existsSync(path.join(ambiguousConf, 'bundle_node_config.yaml'))).toBe(false);
     expect(fs.existsSync(path.join(ambiguousConf, 'site_page_config.yaml'))).toBe(true);
 
     const missingHome = makeHome();
@@ -295,7 +300,7 @@ describe('site-node foundation startup migration', () => {
       pages: [{ title: 'Other', fileType: 'md', listType: 'whitelist' }],
       siteConfig: { defaultTraversalSitePageTitle: 'Gone' },
     });
-    expect(() => migrateSiteNodeFoundation(missingHome, { generateId: deterministicIds() }))
+    expect(() => migrateBundleNodeFoundation(missingHome, { generateId: deterministicIds() }))
       .toThrow("field 'initialSitePageTitle': does not resolve to a configured node");
   });
 
@@ -305,7 +310,7 @@ describe('site-node foundation startup migration', () => {
       pages: [{ title: 'Entry', fileType: 'md', listType: 'whitelist' }],
       siteConfig: { defaultTraversalSitePageTitle: 'Gone' },
     });
-    expect(() => migrateSiteNodeFoundation(home, { generateId: deterministicIds() }))
+    expect(() => migrateBundleNodeFoundation(home, { generateId: deterministicIds() }))
       .toThrow("field 'defaultTraversalSitePageTitle': does not resolve to a configured node");
   });
 });

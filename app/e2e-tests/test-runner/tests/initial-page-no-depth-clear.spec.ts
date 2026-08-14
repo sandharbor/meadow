@@ -15,31 +15,31 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
-import { SelectedPageDetailComponent } from "../src/run/pages/SiteEditorPage/components/SelectedPageDetailComponent.js";
+import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
+import { SelectedPageDetailComponent } from "../src/run/pages/BundleEditorPage/components/SelectedPageDetailComponent.js";
 import { Fixture } from "../src/run/workflows.js";
-import { initialPage, siteConfig } from "../src/scenario-docs/index.js";
-import { exampleSite, exampleSiteInitialPageTitle } from "../src/site-docs/index.js";
+import { initialPage, bundleConfig } from "../src/scenario-docs/index.js";
+import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
 test("a publisher should not be able to remove the depth on the initial page", async ({
   page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
-  const siteList = new SiteListPage(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const bundleList = new BundleListPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
 
-  // Add the example site and switch to list view
-  await siteList.goto();
-  await siteList.clickAddExampleSiteLink();
-  await editor.waitForLoad("example-site");
+  // Add the example bundle and switch to list view
+  await bundleList.goto();
+  await bundleList.clickAddExampleBundleLink();
+  await editor.waitForLoad("example-bundle");
   await editor.switchToListView();
   await page.waitForTimeout(250);
 
   // Click the initial page — its details auto-expand (depth 0)
-  await editor.clickListViewRowByExactName(exampleSiteInitialPageTitle);
+  await editor.clickListViewRowByExactName(exampleBundleInitialPageTitle);
   await page.waitForTimeout(250);
 
   // The initial page has a depth set but the Remove override button should NOT be visible
@@ -57,10 +57,10 @@ test("a publisher should not be able to remove the depth on the initial page", a
   await overrideDetail.openDetails();
   await page.waitForTimeout(250);
   await overrideDetail.expectRemoveOutlinksDepthVisible();
-  await addKeyFrame(siteConfig);
+  await addKeyFrame(bundleConfig);
   await snapshot("non-initial page depth has remove override button");
 
-  void exampleSite;
+  void exampleBundle;
 
   await assertMeadowHomeState();
 });

@@ -18,14 +18,14 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { htmlGeneration, customize, changesTab as changesTabDoc } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test("HTML section changes filter correctly reflects changes after save and customization", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
-  // Navigate to big site preview (starts on step 1 — Review)
+  // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSitePreview();
+  await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
   await snapshot("step 1 - preview loaded");
@@ -48,11 +48,11 @@ test("HTML section changes filter correctly reflects changes after save and cust
   await addKeyFrame(htmlGeneration);
   await snapshot("changes tab has no badge after save");
 
-  // Go to Customize tab and disable breadcrumbs at site level
+  // Go to Customize tab and disable breadcrumbs at bundle level
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   await customizeTab.generationOptions.disableBreadcrumbs();
-  await snapshot("breadcrumbs disabled at site level");
+  await snapshot("breadcrumbs disabled at bundle level");
 
   // Wait for preview regeneration to complete
   await changesTab.waitForRegenerationComplete();
@@ -77,7 +77,7 @@ test("HTML section changes filter correctly reflects changes after save and cust
   await addKeyFrame(customize);
   await addKeyFrame(changesTabDoc);
   await snapshot("only header section has changes");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

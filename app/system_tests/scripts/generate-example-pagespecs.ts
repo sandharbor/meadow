@@ -15,14 +15,14 @@ limitations under the License.
 */
 
 /**
- * Generates correct pagespecs for all markdown files in example-site-data
+ * Generates correct pagespecs for all markdown files in example-bundle-data
  * (SVG files are skipped — they don't get pagespecs blocks).
  *
  * Usage:  npx tsx system_tests/scripts/generate-example-pagespecs.ts
  *
  * This script:
  *  1. Starts the test server
- *  2. Sets up the example-site fixture
+ *  2. Sets up the example-bundle fixture
  *  3. Calls the working graph API (normal + frontier)
  *  4. Generates preview HTML
  *  5. Computes correct pagespecs for every markdown file
@@ -39,8 +39,8 @@ import {
   TEST_BASE_URL,
   getSourceGraphsPath,
 } from '../helpers/serverManager.js';
-import { SystemTestSiteSetup } from '../helpers/testSetup.js';
-import { parseSiteNodeConfig } from '../../shared_code/utils/siteNodeConfigUtils.js';
+import { SystemTestBundleSetup } from '../helpers/testSetup.js';
+import { parseBundleNodeConfig } from '../../shared_code/utils/bundleNodeConfigUtils.js';
 import {
   extractMainSectionLinkPaths,
   extractBacklinkDetails,
@@ -51,9 +51,9 @@ import {
   pageIdToLinkPath,
 } from '../pagespecs/index.js';
 
-const SITE_NAME = 'example-site';
+const BUNDLE_NAME = 'example-bundle';
 const INITIAL_PAGE = 'Notable Mental Models';
-const SOURCE_GRAPH_DIR = path.join(getSourceGraphsPath(), 'example-site-data');
+const SOURCE_GRAPH_DIR = path.join(getSourceGraphsPath(), 'example-bundle-data');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -85,22 +85,22 @@ async function main() {
   console.log('Starting server…');
   await startServer();
 
-  const setup = new SystemTestSiteSetup('home_fixture_example', 'generate-pagespecs', {
-    siteFolderName: 'example-site',
+  const setup = new SystemTestBundleSetup('home_fixture_example', 'generate-pagespecs', {
+    bundleFolderName: 'example-bundle',
   });
   setup.setUp();
 
-  const slug = setup.getSiteSlug();
+  const slug = setup.getBundleSlug();
 
   try {
     // 1. Fetch normal working graph (no frontier)
     console.log('Fetching working graph (normal)…');
     const normalResp = await fetch(
-      `${TEST_BASE_URL}/api/sites/${slug}/curation/working-graph?initialPageTitle=${encodeURIComponent(INITIAL_PAGE)}&traversalPageTitle=${encodeURIComponent(INITIAL_PAGE)}`
+      `${TEST_BASE_URL}/api/bundles/${slug}/curation/working-graph?initialPageTitle=${encodeURIComponent(INITIAL_PAGE)}&traversalPageTitle=${encodeURIComponent(INITIAL_PAGE)}`
     );
     if (!normalResp.ok) throw new Error(`Working graph API failed: ${normalResp.status}`);
     const normalGraph = (await normalResp.json()) as {
-      nodes: { siteNodeKey: string; remaining_depth: number }[];
+      nodes: { bundleNodeKey: string; remaining_depth: number }[];
       allOutlinkTargets: Record<string, string[]>;
       allInlinkSources: Record<string, string[]>;
     };
@@ -108,26 +108,26 @@ async function main() {
     // 2. Fetch frontier working graph
     console.log('Fetching working graph (frontier depth=10)…');
     const frontierResp = await fetch(
-      `${TEST_BASE_URL}/api/sites/${slug}/curation/working-graph?initialPageTitle=${encodeURIComponent(INITIAL_PAGE)}&traversalPageTitle=${encodeURIComponent(INITIAL_PAGE)}&frontierDepth=10`
+      `${TEST_BASE_URL}/api/bundles/${slug}/curation/working-graph?initialPageTitle=${encodeURIComponent(INITIAL_PAGE)}&traversalPageTitle=${encodeURIComponent(INITIAL_PAGE)}&frontierDepth=10`
     );
     if (!frontierResp.ok) throw new Error(`Working graph frontier API failed: ${frontierResp.status}`);
     const frontierGraph = (await frontierResp.json()) as {
-      nodes: { siteNodeKey: string; remaining_depth: number }[];
+      nodes: { bundleNodeKey: string; remaining_depth: number }[];
     };
 
     // 3. Generate preview HTML
     console.log('Generating preview…');
-    const previewResp = await fetch(`${TEST_BASE_URL}/api/sites/${slug}/generation/preview`, { method: 'POST' });
+    const previewResp = await fetch(`${TEST_BASE_URL}/api/bundles/${slug}/generation/preview`, { method: 'POST' });
     if (!previewResp.ok) throw new Error(`Preview API failed: ${previewResp.status}`);
 
-    // 4. Load site-node configuration
-    const siteConfigPath = path.join(setup.getSitePath(), 'conf', 'site_node_config.yaml');
-    const siteNodeConfigs = fs.existsSync(siteConfigPath)
-      ? parseSiteNodeConfig(fs.readFileSync(siteConfigPath, 'utf-8'))
+    // 4. Load bundle-node configuration
+    const bundleConfigPath = path.join(setup.getBundlePath(), 'config', 'bundle_node_config.yaml');
+    const bundleNodeConfigs = fs.existsSync(bundleConfigPath)
+      ? parseBundleNodeConfig(fs.readFileSync(bundleConfigPath, 'utf-8'))
       : [];
 
     // 5. Build lookup structures
-    const normalPageIds = new Set(normalGraph.nodes.map(node => linkPathToPageId(node.siteNodeKey)));
+    const normalPageIds = new Set(normalGraph.nodes.map(node => linkPathToPageId(node.bundleNodeKey)));
 
     const outlinkMap = new Map<string, string[]>();
     for (const [pathKey, targets] of Object.entries(normalGraph.allOutlinkTargets)) {
@@ -142,14 +142,14 @@ async function main() {
     // Frontier page remaining-depth map (only pages NOT in normal graph)
     const frontierRemainingDepth = new Map<string, number>();
     for (const node of frontierGraph.nodes) {
-      const pageId = linkPathToPageId(node.siteNodeKey);
+      const pageId = linkPathToPageId(node.bundleNodeKey);
       if (!normalPageIds.has(pageId)) {
         frontierRemainingDepth.set(pageId, node.remaining_depth);
       }
     }
 
     // Preview folder
-    const generatedHtmlDir = setup.getPathInSite('html/generated');
+    const generatedHtmlDir = setup.getPathInBundle('html/generated');
 
     // 6. Process each source file
     const sourceFiles = findAllMarkdownFiles(SOURCE_GRAPH_DIR);
@@ -159,7 +159,7 @@ async function main() {
       const pageId = getPageIdFromPath(srcFile, SOURCE_GRAPH_DIR);
 
       // Determine isTracked from canonical node-record presence
-      const isTracked = computeIsTracked(pageId, siteNodeConfigs, 'md');
+      const isTracked = computeIsTracked(pageId, bundleNodeConfigs, 'md');
 
       const isInWorkingGraph = normalPageIds.has(pageId);
 
@@ -181,7 +181,7 @@ async function main() {
         const htmlRenderedLinks = buildHtmlRenderedLinks(pageId, generatedHtmlDir);
 
         entry = {
-          site: SITE_NAME,
+          bundle: BUNDLE_NAME,
           curation: {
             isTracked,
             isInWorkingGraph: true,
@@ -200,7 +200,7 @@ async function main() {
         const htmlRenderedLinks = { mainSectionLinks: [] as unknown[], footerSectionBacklinks: [] as unknown[] };
 
         entry = {
-          site: SITE_NAME,
+          bundle: BUNDLE_NAME,
           curation: {
             isTracked,
             isInWorkingGraph: false,
@@ -235,7 +235,7 @@ async function main() {
 
 function computeIsTracked(
   pageId: string,
-  siteNodeConfigs: ReturnType<typeof parseSiteNodeConfig>,
+  bundleNodeConfigs: ReturnType<typeof parseBundleNodeConfig>,
   fileType: string
 ): boolean {
   const lastSlashIndex = pageId.lastIndexOf('/');
@@ -245,12 +245,12 @@ function computeIsTracked(
   const titleForMatch = fileType !== 'md' ? title.replace(/\.\w+$/, '') : title;
   const subdirectory = lastSlashIndex >= 0 ? pageId.slice(0, lastSlashIndex) : '';
 
-  for (const config of siteNodeConfigs) {
+  for (const config of bundleNodeConfigs) {
     const configSubdir = config.sourceGraphSubdirectory || '';
     const configFileType = config.fileType;
 
     if (
-      config.siteNodeName === titleForMatch &&
+      config.bundleNodeName === titleForMatch &&
       configSubdir === subdirectory &&
       configFileType === fileType
     ) {

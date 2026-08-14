@@ -2,7 +2,7 @@ This page is nested below the selected Alpha folder.
 
 ```yaml
 pagespecs:
-  - site: single-folder-site
+  - bundle: single-folder-bundle
     curation:
       isTracked: false
       isInWorkingGraph: true
@@ -21,7 +21,7 @@ pagespecs:
                 embeddedLinks:
                   - linkName: Outside note
                     linkRelativePath: ../../Outside/Outside note.html
-  - site: ordered-folders
+  - bundle: ordered-folders
     curation:
       isTracked: false
       isInWorkingGraph: true

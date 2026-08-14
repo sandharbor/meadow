@@ -2,6 +2,6 @@
 
 _link not tracked_
 
-[[filter page selector scope -- site page]]
+[[filter page selector scope -- bundle page]]
 
 See also the broader _link not tracked_s

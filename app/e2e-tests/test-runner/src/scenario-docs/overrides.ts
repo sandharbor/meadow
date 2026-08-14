@@ -22,5 +22,5 @@ export const overrides: ScenarioDoc = {
   description:
     "Tests covering the Overrides filter, which highlights pages that have " +
     "per-page depth overrides. The initial page is excluded because its " +
-    "depth settings are part of the base site configuration.",
+    "depth settings are part of the base bundle configuration.",
 };

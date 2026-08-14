@@ -17,16 +17,16 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
-import { Workflows, Site } from "../src/run/workflows.js";
+import { Workflows, Bundle } from "../src/run/workflows.js";
 import { customize, openKnowledgeFormat } from "../src/scenario-docs/index.js";
-import { bigSite } from "../src/site-docs/index.js";
+import { bigBundle } from "../src/bundle-docs/index.js";
 import { seedTrackedAndLinkedFile, seedTrackedFile } from "../src/run/utils/index.js";
 import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";
 
 const releaseNotesPageName = "OKF custom release notes";
 const orphanLogChoicePageName = "OKF orphan log choice";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({
   _preSpawnSeed: async ({}, use) => {
@@ -45,7 +45,7 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   testServer,
 }) => {
   const wf = new Workflows(page, expect);
-  await wf.navigateToBigSitePreview();
+  await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   await snapshot("preview loaded");
 
@@ -63,10 +63,10 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   await addKeyFrame(openKnowledgeFormat);
   await snapshot("okf generation complete with custom log page");
 
-  const siteDir = path.join(testServer.configDir, "sites", Site.Big);
-  const okfBundle = new OpenKnowledgeFormatBundle(siteDir, expect);
+  const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
+  const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
   await okfBundle.expectFileToContain("log.md", "Custom OKF release notes.");
-  void bigSite;
+  void bigBundle;
 
   await skipMeadowHomeStateCheck();
 });

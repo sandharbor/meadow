@@ -27,7 +27,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  *
  *   e2e-tests/test-runner/fixtures/pre-migration/
  *     <migrationId>/                  e.g. 26_01_21_12_00_00_some_example
- *       <fixtureName>/                a MeadowHome tree (app/, sites/, migrations.yaml, …)
+ *       <fixtureName>/                a MeadowHome tree (app/, bundles/, migrations.yaml, …)
  *     <extensionId>/                  e.g. meadow-extension
  *       <migrationId>/
  *         <fixtureName>/

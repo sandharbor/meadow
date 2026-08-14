@@ -1,1 +1,0 @@
-[[site editor view part]] [[site page]] details

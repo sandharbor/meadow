@@ -6,6 +6,6 @@ meadow-sensitive: true
 ---
 ```
 
-If the source page is sensitive, then that automatically makes the [[sensitive site page]].
+If the source page is sensitive, then that automatically makes the [[sensitive bundle page]].
 
 This is one place we deviate from [[design motivation -- do not modify source pages]]

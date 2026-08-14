@@ -59,7 +59,7 @@ async function getOrBuildSourcePageIndex(sourceDirectory: string): Promise<Sourc
  * Uses the source_page_search_by_title Rust utility to find markdown files under a sourceDirectory.
  *
  * Note: This intentionally shares the same underlying file discovery mechanism as duplicate-title
- * resolution and the create/edit site modal typeahead.
+ * resolution and the create/edit bundle modal typeahead.
  */
 export async function listMarkdownSourcePages(sourceDirectory: string): Promise<SourcePageFileInfo[]> {
   // Note: despite the name, this returns the cached index of markdown files discovered by the

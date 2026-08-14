@@ -10,12 +10,12 @@ use working_graph::folder_scope::{
     build_folder_scope_projection, classify_directory_for_selected_roots,
     ScopePathClassification,
 };
-use working_graph::site_node_config::{
-    find_config_by_id, parse_site_node_config_yaml, SiteNodeConfig,
+use working_graph::bundle_node_config::{
+    find_config_by_id, parse_bundle_node_config_yaml, BundleNodeConfig,
 };
 use working_graph::traversal::{get_multi_seed_working_nodes, get_working_graph, TraverseOpts};
 use working_graph::types::{
-    BasicEdge, FileSiteNode, TraversalDetails, TraversalStateSummary, WorkingNode,
+    BasicEdge, FileBundleNode, TraversalDetails, TraversalStateSummary, WorkingNode,
 };
 
 #[derive(Parser, Debug)]
@@ -25,13 +25,13 @@ struct Args {
     graph_root: PathBuf,
 
     #[arg(long)]
-    site_node_config: PathBuf,
+    bundle_node_config: PathBuf,
 
     #[arg(long)]
-    entry_site_node_id: String,
+    entry_bundle_node_id: String,
 
     #[arg(long)]
-    default_traversal_site_node_id: String,
+    default_traversal_bundle_node_id: String,
 
     #[arg(long)]
     default_outlinks_depth: Option<i32>,
@@ -94,21 +94,21 @@ struct ScanResult {
 #[allow(non_snake_case)]
 #[derive(Serialize)]
 struct OutputNode {
-    siteNodeKey: String,
+    bundleNodeKey: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    siteNodeId: Option<String>,
-    siteNodeKind: &'static str,
-    siteNodeName: String,
+    bundleNodeId: Option<String>,
+    bundleNodeKind: &'static str,
+    bundleNodeName: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     sourceGraphSubdirectory: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     fileType: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    memberSiteNodeIds: Option<Vec<String>>,
+    memberBundleNodeIds: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    effectiveBlacklistingSiteNodeId: Option<String>,
+    effectiveBlacklistingBundleNodeId: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    effectiveFolderPolicySiteNodeId: Option<String>,
+    effectiveFolderPolicyBundleNodeId: Option<String>,
     depth: i32,
     remaining_depth: i32,
     remaining_inlinks_depth: i32,
@@ -129,7 +129,7 @@ struct OutputNode {
 struct OutputEdge {
     source: String,
     target: String,
-    siteEdgeKind: &'static str,
+    bundleEdgeKind: &'static str,
     isBidirectional: bool,
     link_source_page_path: String,
     link_original_text: String,
@@ -1015,12 +1015,12 @@ fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
     scans
 }
 
-fn file_site_node_from_identifier(file: &FileIdentifier, is_sensitive: bool) -> FileSiteNode {
-    FileSiteNode {
+fn file_bundle_node_from_identifier(file: &FileIdentifier, is_sensitive: bool) -> FileBundleNode {
+    FileBundleNode {
         source_graph_subdirectory: file.directory.clone(),
-        site_node_name: file.title.clone(),
+        bundle_node_name: file.title.clone(),
         file_type: file.file_type.clone(),
-        site_node_id: None,
+        bundle_node_id: None,
         is_sensitive,
         conf_outlinks_depth: None,
         conf_inlinks_depth: None,
@@ -1028,12 +1028,12 @@ fn file_site_node_from_identifier(file: &FileIdentifier, is_sensitive: bool) -> 
     }
 }
 
-fn file_site_node_from_config(config: &SiteNodeConfig) -> FileSiteNode {
-    FileSiteNode {
+fn file_bundle_node_from_config(config: &BundleNodeConfig) -> FileBundleNode {
+    FileBundleNode {
         source_graph_subdirectory: config.source_graph_subdirectory().unwrap_or("").to_string(),
-        site_node_name: config.site_node_name().to_string(),
+        bundle_node_name: config.bundle_node_name().to_string(),
         file_type: config.file_type().unwrap_or("").to_string(),
-        site_node_id: Some(config.site_node_id().to_string()),
+        bundle_node_id: Some(config.bundle_node_id().to_string()),
         is_sensitive: false,
         conf_outlinks_depth: config.outlinks_depth(),
         conf_inlinks_depth: config.inlinks_depth(),
@@ -1045,8 +1045,8 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let graph_root = args.graph_root.canonicalize()?;
-    let config_content = fs::read_to_string(&args.site_node_config)?;
-    let site_node_configs: Vec<SiteNodeConfig> = parse_site_node_config_yaml(&config_content)?;
+    let config_content = fs::read_to_string(&args.bundle_node_config)?;
+    let bundle_node_configs: Vec<BundleNodeConfig> = parse_bundle_node_config_yaml(&config_content)?;
 
     // Scan and resolve links
     let scans = resolve_links(scan_graph(&graph_root)?);
@@ -1071,8 +1071,8 @@ fn main() -> anyhow::Result<()> {
         HashMap::new();
 
     for s in &scans {
-        let source_tf = file_site_node_from_identifier(&s.source_file, s.is_sensitive);
-        let source_id = source_tf.site_node_key();
+        let source_tf = file_bundle_node_from_identifier(&s.source_file, s.is_sensitive);
+        let source_id = source_tf.bundle_node_key();
         let entry = all_link_resolution_maps
             .entry(source_id.clone())
             .or_default();
@@ -1095,7 +1095,7 @@ fn main() -> anyhow::Result<()> {
                 l.link_parsed_file_type.clone(),
             );
             if let Some((target_file, target_sensitive)) = file_lookup.get(&target_key) {
-                let target_tf = file_site_node_from_identifier(target_file, *target_sensitive);
+                let target_tf = file_bundle_node_from_identifier(target_file, *target_sensitive);
 
                 basic_edges.push(BasicEdge {
                     source: source_tf.clone(),
@@ -1104,9 +1104,9 @@ fn main() -> anyhow::Result<()> {
                 });
 
                 per_link_edges.push(OutputEdge {
-                    source: source_tf.site_node_key(),
-                    target: target_tf.site_node_key(),
-                    siteEdgeKind: "semanticLink",
+                    source: source_tf.bundle_node_key(),
+                    target: target_tf.bundle_node_key(),
+                    bundleEdgeKind: "semanticLink",
                     isBidirectional: false, // filled in after we build the full set
                     link_source_page_path: l.link_source_page_path.clone(),
                     link_original_text: l.link_original_text.clone(),
@@ -1136,43 +1136,43 @@ fn main() -> anyhow::Result<()> {
     }
 
     let entry_config =
-        find_config_by_id(&site_node_configs, &args.entry_site_node_id).ok_or_else(|| {
+        find_config_by_id(&bundle_node_configs, &args.entry_bundle_node_id).ok_or_else(|| {
             anyhow::anyhow!(
-                "entrySiteNodeId does not resolve: {}",
-                args.entry_site_node_id
+                "entryBundleNodeId does not resolve: {}",
+                args.entry_bundle_node_id
             )
         })?;
     anyhow::ensure!(
         entry_config.list_type() == "whitelist",
-        "entrySiteNodeId must reference a whitelisted node"
+        "entryBundleNodeId must reference a whitelisted node"
     );
     let traversal_config =
-        find_config_by_id(&site_node_configs, &args.default_traversal_site_node_id).ok_or_else(
+        find_config_by_id(&bundle_node_configs, &args.default_traversal_bundle_node_id).ok_or_else(
             || {
                 anyhow::anyhow!(
-                    "defaultTraversalSiteNodeId does not resolve: {}",
-                    args.default_traversal_site_node_id
+                    "defaultTraversalBundleNodeId does not resolve: {}",
+                    args.default_traversal_bundle_node_id
                 )
             },
         )?;
     anyhow::ensure!(
         traversal_config.list_type() == "whitelist",
-        "defaultTraversalSiteNodeId must reference a whitelisted node"
+        "defaultTraversalBundleNodeId must reference a whitelisted node"
     );
     let mut structural_output_nodes: Vec<OutputNode> = Vec::new();
     let mut structural_output_edges: Vec<OutputEdge> = Vec::new();
-    let mut effective_policy_site_node_ids: HashMap<String, String> = HashMap::new();
+    let mut effective_policy_bundle_node_ids: HashMap<String, String> = HashMap::new();
     let mut folder_scope_report: Option<FolderScopeReport> = None;
-    let working_nodes: Vec<WorkingNode> = if matches!(entry_config, SiteNodeConfig::File { .. }) {
-        let entry_node = file_site_node_from_config(entry_config);
+    let working_nodes: Vec<WorkingNode> = if matches!(entry_config, BundleNodeConfig::File { .. }) {
+        let entry_node = file_bundle_node_from_config(entry_config);
         anyhow::ensure!(
-            matches!(traversal_config, SiteNodeConfig::File { .. }),
-            "file-entry sites require a file default traversal node"
+            matches!(traversal_config, BundleNodeConfig::File { .. }),
+            "file-entry bundles require a file default traversal node"
         );
-        let traversal_node = file_site_node_from_config(traversal_config);
+        let traversal_node = file_bundle_node_from_config(traversal_config);
         get_working_graph(
             &basic_edges,
-            &site_node_configs,
+            &bundle_node_configs,
             &entry_node,
             &traversal_node,
             args.default_outlinks_depth,
@@ -1185,13 +1185,13 @@ fn main() -> anyhow::Result<()> {
         )?
         .0
     } else {
-        let supported_files: Vec<FileSiteNode> = scans
+        let supported_files: Vec<FileBundleNode> = scans
             .iter()
-            .map(|scan| file_site_node_from_identifier(&scan.source_file, scan.is_sensitive))
+            .map(|scan| file_bundle_node_from_identifier(&scan.source_file, scan.is_sensitive))
             .collect();
         let projection = build_folder_scope_projection(
-            &site_node_configs,
-            &args.entry_site_node_id,
+            &bundle_node_configs,
+            &args.entry_bundle_node_id,
             &supported_files,
             &scan_source_directories(&graph_root),
             args.default_outlinks_depth.unwrap_or(1),
@@ -1209,26 +1209,26 @@ fn main() -> anyhow::Result<()> {
             projection
                 .structural_nodes
                 .iter()
-                .filter(|node| node.site_node_kind == "folder")
+                .filter(|node| node.bundle_node_kind == "folder")
                 .count(),
         ));
-        effective_policy_site_node_ids = projection.effective_policy_site_node_ids.clone();
+        effective_policy_bundle_node_ids = projection.effective_policy_bundle_node_ids.clone();
         structural_output_nodes = projection
             .structural_nodes
             .iter()
             .map(|node| OutputNode {
-                siteNodeKey: node.site_node_key.clone(),
-                siteNodeId: node.site_node_id.clone(),
-                siteNodeKind: node.site_node_kind,
-                siteNodeName: node.site_node_name.clone(),
+                bundleNodeKey: node.bundle_node_key.clone(),
+                bundleNodeId: node.bundle_node_id.clone(),
+                bundleNodeKind: node.bundle_node_kind,
+                bundleNodeName: node.bundle_node_name.clone(),
                 sourceGraphSubdirectory: node.source_graph_subdirectory.clone(),
                 fileType: None,
-                memberSiteNodeIds: node.member_site_node_ids.clone(),
-                effectiveBlacklistingSiteNodeId: node
-                    .effective_blacklisting_site_node_id
+                memberBundleNodeIds: node.member_bundle_node_ids.clone(),
+                effectiveBlacklistingBundleNodeId: node
+                    .effective_blacklisting_bundle_node_id
                     .clone(),
-                effectiveFolderPolicySiteNodeId: node
-                    .effective_folder_policy_site_node_id
+                effectiveFolderPolicyBundleNodeId: node
+                    .effective_folder_policy_bundle_node_id
                     .clone(),
                 depth: node.path.len().saturating_sub(1) as i32,
                 remaining_depth: 0,
@@ -1247,7 +1247,7 @@ fn main() -> anyhow::Result<()> {
             .map(|edge| OutputEdge {
                 source: edge.source.clone(),
                 target: edge.target.clone(),
-                siteEdgeKind: edge.site_edge_kind,
+                bundleEdgeKind: edge.bundle_edge_kind,
                 isBidirectional: false,
                 link_source_page_path: String::new(),
                 link_original_text: String::new(),
@@ -1264,7 +1264,7 @@ fn main() -> anyhow::Result<()> {
             .collect();
         get_multi_seed_working_nodes(
             &basic_edges,
-            &site_node_configs,
+            &bundle_node_configs,
             &projection.seeds,
             &projection.blocked_file_keys,
             args.frontier_depth,
@@ -1274,7 +1274,7 @@ fn main() -> anyhow::Result<()> {
 
     let working_node_keys: HashSet<String> = working_nodes
         .iter()
-        .map(|n| n.file.site_node_key())
+        .map(|n| n.file.bundle_node_key())
         .collect();
 
     // Build source graph link count maps from basic_edges
@@ -1284,8 +1284,8 @@ fn main() -> anyhow::Result<()> {
     let mut inlink_sources: HashMap<String, HashSet<String>> = HashMap::new();
 
     for e in &basic_edges {
-        let source_id = e.source.site_node_key();
-        let target_id = e.target.site_node_key();
+        let source_id = e.source.bundle_node_key();
+        let target_id = e.target.bundle_node_key();
         outlink_targets
             .entry(source_id.clone())
             .or_default()
@@ -1299,16 +1299,16 @@ fn main() -> anyhow::Result<()> {
     let mut out_nodes: Vec<OutputNode> = working_nodes
         .iter()
         .map(|n| OutputNode {
-            siteNodeKey: n.file.site_node_key(),
-            siteNodeId: n.file.site_node_id.clone(),
-            siteNodeKind: "file",
-            siteNodeName: n.file.site_node_name.clone(),
+            bundleNodeKey: n.file.bundle_node_key(),
+            bundleNodeId: n.file.bundle_node_id.clone(),
+            bundleNodeKind: "file",
+            bundleNodeName: n.file.bundle_node_name.clone(),
             sourceGraphSubdirectory: Some(n.file.source_graph_subdirectory.clone()),
             fileType: Some(n.file.file_type.clone()),
-            memberSiteNodeIds: None,
-            effectiveBlacklistingSiteNodeId: None,
-            effectiveFolderPolicySiteNodeId: effective_policy_site_node_ids
-                .get(&n.file.site_node_key())
+            memberBundleNodeIds: None,
+            effectiveBlacklistingBundleNodeId: None,
+            effectiveFolderPolicyBundleNodeId: effective_policy_bundle_node_ids
+                .get(&n.file.bundle_node_key())
                 .cloned(),
             depth: n.depth,
             remaining_depth: n.remaining_depth,

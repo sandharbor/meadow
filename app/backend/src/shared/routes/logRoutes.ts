@@ -20,12 +20,12 @@ import { join } from 'path';
 
 const router = express.Router();
 
-// Get recent backend logs (optionally filtered by siteGuid)
+// Get recent backend logs (optionally filtered by bundleGuid)
 router.get('/logs', (req, res) => {
   const sinceBytesRaw = typeof req.query.sinceBytes === 'string' ? req.query.sinceBytes : undefined;
   const limitLinesRaw = typeof req.query.limitLines === 'string' ? req.query.limitLines : undefined;
-  const siteGuid = typeof req.query.siteGuid === 'string' ? req.query.siteGuid.trim() : undefined;
-  const siteFilter = typeof req.query.siteFilter === 'string' ? req.query.siteFilter.trim() : undefined;
+  const bundleGuid = typeof req.query.bundleGuid === 'string' ? req.query.bundleGuid.trim() : undefined;
+  const bundleFilter = typeof req.query.bundleFilter === 'string' ? req.query.bundleFilter.trim() : undefined;
 
   const sinceBytes = sinceBytesRaw ? Number.parseInt(sinceBytesRaw, 10) : 0;
   const limitLines = limitLinesRaw ? Number.parseInt(limitLinesRaw, 10) : 500;
@@ -86,7 +86,7 @@ router.get('/logs', (req, res) => {
   }
 
   const rawLines = chunk.split('\n').filter(l => l.trim().length > 0);
-  const filterToken = siteFilter || (siteGuid ? `[site ${siteGuid}]` : undefined);
+  const filterToken = bundleFilter || (bundleGuid ? `[bundle ${bundleGuid}]` : undefined);
   const filteredLines = filterToken ? rawLines.filter(l => l.includes(filterToken)) : rawLines;
 
   const safeLimit = Number.isFinite(limitLines) ? Math.max(1, Math.min(limitLines, 5000)) : 500;

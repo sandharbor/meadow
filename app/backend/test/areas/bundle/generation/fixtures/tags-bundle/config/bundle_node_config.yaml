@@ -1,0 +1,31 @@
+nodes:
+  - bundleNodeName: t018 - tags
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 6fedb3d923d2
+    listType: whitelist
+  - bundleNodeName: t018 ---- code blocks and inline code should not create tag links
+    sourceGraphSubdirectory: t018
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 900d51973085
+    listType: whitelist
+  - bundleNodeName: t018 ---- shared tags page 1
+    sourceGraphSubdirectory: t018
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 830616dcc90c
+    listType: whitelist
+  - bundleNodeName: t018 ---- shared tags page 2
+    sourceGraphSubdirectory: t018
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: e6cae7f2a4e7
+    listType: whitelist
+  - bundleNodeName: t018 ---- unique tags
+    sourceGraphSubdirectory: t018
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3073ee58beea
+    listType: whitelist

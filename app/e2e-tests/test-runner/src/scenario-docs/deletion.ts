@@ -20,6 +20,6 @@ export const deletion: ScenarioDoc = {
   id: "deletion",
   name: "Deletion",
   description:
-    "Tests that cover deleting user-created resources such as sites, " +
+    "Tests that cover deleting user-created resources such as bundles, " +
     "including confirmation modals, S3 cleanup, and verifying removal from the UI.",
 };

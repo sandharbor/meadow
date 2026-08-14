@@ -16,29 +16,29 @@ limitations under the License.
 
 import { execSync } from "child_process";
 import { test, expect } from "../src/run/test-fixtures.js";
-import { SiteListPage, SiteEditorPage } from "../src/run/pages/index.js";
+import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
 import { git } from "../src/scenario-docs/index.js";
-import { exampleSite } from "../src/site-docs/index.js";
+import { exampleBundle } from "../src/bundle-docs/index.js";
 
-test.use({ siteMode: "single-file" });
+test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
-test("MeadowHome is a real (non-bare) git repo after creating the example site", async ({
+test("MeadowHome is a real (non-bare) git repo after creating the example bundle", async ({
   page, snapshot, assertMeadowHomeState, addKeyFrame, testServer,
 }) => {
-  const siteList = new SiteListPage(page, expect);
-  const editor = new SiteEditorPage(page, expect);
+  const bundleList = new BundleListPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
 
-  // Empty-state path: no fixture, click the "add the example site" link
-  // in the empty site list, then land in the editor for example-site.
-  await siteList.goto();
-  await snapshot("empty site list");
+  // Empty-state path: no fixture, click the "add the example bundle" link
+  // in the empty bundle list, then land in the editor for example-bundle.
+  await bundleList.goto();
+  await snapshot("empty bundle list");
 
-  await siteList.clickAddExampleSiteLink();
-  await editor.waitForLoad("example-site");
-  await snapshot("example site editor loaded");
+  await bundleList.clickAddExampleBundleLink();
+  await editor.waitForLoad("example-bundle");
+  await snapshot("example bundle editor loaded");
 
   // Use the system `git` CLI (not fast_git_ops) to confirm MeadowHome is
   // a normal repo with a working tree. fast_git_ops initializes the repo
@@ -78,12 +78,12 @@ test("MeadowHome is a real (non-bare) git repo after creating the example site",
   expect(
     status,
     `Expected MeadowHome to have no untracked or changed files after ` +
-    `creating the example site, but \`git status --porcelain\` reports:\n${status}`,
+    `creating the example bundle, but \`git status --porcelain\` reports:\n${status}`,
   ).toBe("");
 
   await addKeyFrame(git);
   await snapshot("MeadowHome clean via real git status");
-  void exampleSite;
+  void exampleBundle;
 
   await assertMeadowHomeState();
 });

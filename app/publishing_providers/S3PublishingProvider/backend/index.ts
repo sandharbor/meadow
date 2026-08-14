@@ -17,15 +17,15 @@ limitations under the License.
 import type { Express } from 'express';
 import type { PublishingProviderManifest } from '../../../shared_code/interfaces/IPublishingProvider.js';
 import type {
-  CleanupPublishedSiteOptions,
-  CleanupPublishedSiteResult,
+  CleanupPublishedBundleOptions,
+  CleanupPublishedBundleResult,
   IPublishingProviderBackend,
 } from '../../../backend/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
-import { getSiteDirectory } from '../../../backend/src/shared/site-config/siteConfigPaths.js';
-import { loadSiteConfig } from '../../../backend/src/shared/utils/siteConfigUtils.js';
+import { getBundleDirectory } from '../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
+import { loadBundleConfig } from '../../../backend/src/shared/utils/bundleConfigUtils.js';
 import { registerS3Routes } from './internal/routes/registerS3Routes.js';
-import { cleanupS3PublishedFiles } from './internal/cleanupPublishedSite.js';
-import { loadS3ConfigForSite, loadS3Resources, S3_PROVIDER_ID } from './internal/s3Config.js';
+import { cleanupS3PublishedFiles } from './internal/cleanupPublishedBundle.js';
+import { loadS3ConfigForBundle, loadS3Resources, S3_PROVIDER_ID } from './internal/s3Config.js';
 
 const manifest: PublishingProviderManifest = {
   id: S3_PROVIDER_ID,
@@ -33,15 +33,15 @@ const manifest: PublishingProviderManifest = {
   publishTabLabel: 'Publish to S3',
 };
 
-function isSitePublished(siteSlug: string): boolean {
+function isBundlePublished(bundleSlug: string): boolean {
   try {
-    const siteDirectory = getSiteDirectory(siteSlug);
-    const siteConfig = loadSiteConfig(siteDirectory);
-    const s3SiteConfig = loadS3ConfigForSite(siteSlug);
+    const bundleDirectory = getBundleDirectory(bundleSlug);
+    const bundleConfig = loadBundleConfig(bundleDirectory);
+    const s3BundleConfig = loadS3ConfigForBundle(bundleSlug);
     const resources = loadS3Resources();
     return !!(
-      siteConfig.siteLastPublishedAt &&
-      s3SiteConfig.publishSlug &&
+      bundleConfig.bundleLastPublishedAt &&
+      s3BundleConfig.publishSlug &&
       resources.s3BucketName
     );
   } catch {
@@ -49,9 +49,9 @@ function isSitePublished(siteSlug: string): boolean {
   }
 }
 
-async function cleanupPublishedSite(
-  options: CleanupPublishedSiteOptions,
-): Promise<CleanupPublishedSiteResult> {
+async function cleanupPublishedBundle(
+  options: CleanupPublishedBundleOptions,
+): Promise<CleanupPublishedBundleResult> {
   return cleanupS3PublishedFiles(options);
 }
 
@@ -60,8 +60,8 @@ const s3Provider: IPublishingProviderBackend = {
   registerRoutes(app: Express): void {
     registerS3Routes(app);
   },
-  isSitePublished,
-  cleanupPublishedSite,
+  isBundlePublished,
+  cleanupPublishedBundle,
 };
 
 export default s3Provider;

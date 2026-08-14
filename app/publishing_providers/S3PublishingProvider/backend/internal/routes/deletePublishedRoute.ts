@@ -16,32 +16,32 @@ limitations under the License.
 
 import type { Router } from 'express';
 import fs from 'fs';
-import { getSiteDirectory } from '../../../../../backend/src/shared/site-config/siteConfigPaths.js';
-import { updateSiteConfig } from '../../../../../backend/src/shared/utils/siteConfigUtils.js';
+import { getBundleDirectory } from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
+import { updateBundleConfig } from '../../../../../backend/src/shared/utils/bundleConfigUtils.js';
 import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
 import { createS3Client, describeS3Error, requireBucket } from '../s3Client.js';
 import { deletePrefix } from '../s3Operations.js';
-import { loadS3ConfigForSite, loadS3Resources, loadS3Secrets } from '../s3Config.js';
+import { loadS3ConfigForBundle, loadS3Resources, loadS3Secrets } from '../s3Config.js';
 
 /**
- * DELETE /sites/:siteSlug/published — remove every object under the site's
- * publishSlug prefix and clear siteLastPublishedAt. Used by the "Delete
- * site's published files" option in the publish tab's Settings dropdown.
+ * DELETE /bundles/:bundleSlug/published — remove every object under the bundle's
+ * publishSlug prefix and clear bundleLastPublishedAt. Used by the "Delete
+ * bundle's published files" option in the publish tab's Settings dropdown.
  */
 export function registerS3DeletePublishedRoute(router: Router): void {
-  router.delete('/sites/:siteSlug/published', (req, res, next) => {
+  router.delete('/bundles/:bundleSlug/published', (req, res, next) => {
     (async () => {
-      const { siteSlug } = req.params;
-      if (!siteSlug) return res.status(400).json({ error: 'siteSlug is required' });
+      const { bundleSlug } = req.params;
+      if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
 
-      const siteDirectory = getSiteDirectory(siteSlug);
-      if (!fs.existsSync(siteDirectory)) {
-        return res.status(404).json({ error: `Site '${siteSlug}' not found` });
+      const bundleDirectory = getBundleDirectory(bundleSlug);
+      if (!fs.existsSync(bundleDirectory)) {
+        return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
 
-      const siteConfig = loadS3ConfigForSite(siteSlug);
-      if (!siteConfig.publishSlug) {
-        // No publishSlug means the site was never published through this
+      const bundleConfig = loadS3ConfigForBundle(bundleSlug);
+      if (!bundleConfig.publishSlug) {
+        // No publishSlug means the bundle was never published through this
         // provider — treat as success so the UI can reflect "nothing to
         // delete" without a blocking error.
         return res.json({ success: true, filesDeleted: 0 });
@@ -59,11 +59,11 @@ export function registerS3DeletePublishedRoute(router: Router): void {
       const secrets = loadS3Secrets();
       const client = createS3Client(resources, secrets);
       try {
-        const { filesDeleted } = await deletePrefix(client, bucket, siteConfig.publishSlug);
+        const { filesDeleted } = await deletePrefix(client, bucket, bundleConfig.publishSlug);
         try {
-          updateSiteConfig(siteDirectory, { siteLastPublishedAt: null });
+          updateBundleConfig(bundleDirectory, { bundleLastPublishedAt: null });
         } catch (error) {
-          logger.warn('[S3PublishingProvider] Could not clear siteLastPublishedAt:', error);
+          logger.warn('[S3PublishingProvider] Could not clear bundleLastPublishedAt:', error);
         }
         res.json({ success: true, filesDeleted });
       } catch (err) {
