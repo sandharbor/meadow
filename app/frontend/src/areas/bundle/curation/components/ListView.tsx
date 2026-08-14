@@ -287,6 +287,7 @@ const ListView: React.FC<ListViewProps> = ({
               sortedNodes.map(page => (
                 <tr
                   key={page.bundleNodeKey}
+                  data-bundle-node-key={page.bundleNodeKey}
                   onClick={() => onPageClick(page.bundleNodeKey)}
                   onContextMenu={(e) => {
                     if (onBundleNodeContextMenu) {

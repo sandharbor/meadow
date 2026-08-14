@@ -460,7 +460,14 @@ const BundleEditor: React.FC = () => {
     // This triggers graph change listeners
     bundleNodeConfigs.forEach(cfg => {
       const node = allNodes.find(candidate =>
-        nodeConfigMatchesNode(cfg, candidate.bundleNodeName, candidate.sourceGraphSubdirectory, candidate.fileType)
+        nodeConfigMatchesNode(
+          cfg,
+          candidate.bundleNodeName,
+          candidate.sourceGraphSubdirectory,
+          candidate.fileType,
+          candidate.bundleNodeKind,
+          candidate.bundleNodeId,
+        )
       );
       if (node) {
         graph.updateNode(node.bundleNodeKey, node);
@@ -500,7 +507,14 @@ const BundleEditor: React.FC = () => {
     // (nodeConfigMatchesNode treats undefined fileType as "match any", matching the backend's behavior)
     const preservedConfigs = (bundleNodeConfigs || []).filter(cfg => {
       const hasMatchingNodeInCurrentGraph = allNodes.some(node =>
-        nodeConfigMatchesNode(cfg, node.bundleNodeName, node.sourceGraphSubdirectory, node.fileType)
+        nodeConfigMatchesNode(
+          cfg,
+          node.bundleNodeName,
+          node.sourceGraphSubdirectory,
+          node.fileType,
+          node.bundleNodeKind,
+          node.bundleNodeId,
+        )
       );
       return !hasMatchingNodeInCurrentGraph;
     });
@@ -515,7 +529,14 @@ const BundleEditor: React.FC = () => {
     const currentConfigs = buildNodeConfigs(allNodes);
     const preservedConfigs = configs.filter(cfg => {
       const hasMatchingNodeInCurrentGraph = allNodes.some(node =>
-        nodeConfigMatchesNode(cfg, node.bundleNodeName, node.sourceGraphSubdirectory, node.fileType)
+        nodeConfigMatchesNode(
+          cfg,
+          node.bundleNodeName,
+          node.sourceGraphSubdirectory,
+          node.fileType,
+          node.bundleNodeKind,
+          node.bundleNodeId,
+        )
       );
       return !hasMatchingNodeInCurrentGraph;
     });
@@ -610,7 +631,7 @@ const BundleEditor: React.FC = () => {
       // Copy tracked pages and commit changes after saving configuration
       // This endpoint also commits both config and tracked content together
       const trackedNodes = graph.getAllNodes()
-        .filter(page => page.tracked && !page.blacklisted)
+        .filter(page => page.bundleNodeKind === 'file' && page.tracked && !page.blacklisted)
         .map(page => ({
           sourceGraphSubdirectory: page.sourceGraphSubdirectory,
           title: page.bundleNodeName,

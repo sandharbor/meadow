@@ -654,6 +654,7 @@ pub fn get_multi_seed_working_nodes(
     let mut keys: Vec<String> = frontiers.keys().cloned().collect();
     keys.sort();
     keys.into_iter()
+        .filter(|key| !blocked_file_keys.contains(key))
         .filter_map(|key| {
             let mut states = frontiers.remove(&key)?;
             states.sort_by(display_state_cmp);
@@ -1027,6 +1028,33 @@ mod tests {
             b_node.traversal_states.as_ref().unwrap(),
             &vec![TraversalStateSummary { remaining_outlinks_depth: 2, remaining_inlinks_depth: 2 }]
         );
+    }
+
+    #[test]
+    fn multi_seed_traversal_omits_folder_blacklisted_seeds_and_their_links() {
+        let a = file("A", "md");
+        let b = file("B", "md");
+        let a_key = a.bundle_node_key();
+        let edges = vec![BasicEdge {
+            source: a.clone(),
+            target: b,
+            is_bidirectional: false,
+        }];
+        let nodes = get_multi_seed_working_nodes(
+            &edges,
+            &[],
+            &[MultiSeed {
+                file: a,
+                outlinks_depth: 2,
+                inlinks_depth: 0,
+                structural_path: vec!["folder:Alpha".to_string()],
+            }],
+            &HashSet::from([a_key]),
+            0,
+            false,
+        );
+
+        assert!(nodes.is_empty());
     }
 
     fn default_conf_with_overrides(

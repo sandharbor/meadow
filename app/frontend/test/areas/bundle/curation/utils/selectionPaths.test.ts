@@ -120,6 +120,30 @@ describe('selectionPaths', () => {
       expect(getSelectionDeeperPathsFromHereOrdered(g, 'B')).toEqual(['B', 'C']);
     });
 
+    it('treats structural descendants as deeper even when their semantic depth is lower', () => {
+      const g = new Graph();
+      g.addNode(makePage('Alpha', { depth: 1 }));
+      g.addNode(makePage('Alpha note', { depth: 0 }));
+      g.addNode(makePage('Nested', { depth: 2 }));
+      g.addNode(makePage('Nested note', { depth: 0 }));
+      g.addNode(makePage('Outside', { depth: 1 }));
+      g.addNode(makePage('Beyond outside', { depth: 2 }));
+      g.addEdge({ source: 'Alpha', target: 'Alpha note', bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: 'Alpha', target: 'Nested', bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: 'Nested', target: 'Nested note', bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: 'Alpha note', target: 'Outside' });
+      g.addEdge({ source: 'Outside', target: 'Beyond outside' });
+
+      expect(getSelectionDeeperPathsFromHereOrdered(g, 'Alpha')).toEqual([
+        'Alpha',
+        'Alpha note',
+        'Outside',
+        'Beyond outside',
+        'Nested',
+        'Nested note',
+      ]);
+    });
+
     it('returns just the start node when no deeper neighbors exist', () => {
       const g = new Graph();
       g.addNode(makePage('A', { depth: 5 }));
@@ -159,6 +183,26 @@ describe('selectionPaths', () => {
       g.addEdge({ source: 'A', target: 'C' });
 
       expect(getSelectionChildrenOrdered(g, 'A')).toEqual(['A', 'B']);
+    });
+
+    it('selects direct structural children regardless of semantic depth', () => {
+      const g = new Graph();
+      g.addNode(makePage('Alpha', { depth: 1 }));
+      g.addNode(makePage('Alpha note', { depth: 0 }));
+      g.addNode(makePage('Visual map', { depth: 0 }));
+      g.addNode(makePage('Nested', { depth: 2 }));
+      g.addNode(makePage('Nested note', { depth: 0 }));
+      g.addEdge({ source: 'Alpha', target: 'Alpha note', bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: 'Alpha', target: 'Visual map', bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: 'Alpha', target: 'Nested', bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: 'Nested', target: 'Nested note', bundleEdgeKind: 'directoryContainment' });
+
+      expect(getSelectionChildrenOrdered(g, 'Alpha')).toEqual([
+        'Alpha',
+        'Alpha note',
+        'Visual map',
+        'Nested',
+      ]);
     });
 
     it('returns only the node when it has no children', () => {

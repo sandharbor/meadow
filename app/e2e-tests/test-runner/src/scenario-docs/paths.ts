@@ -16,15 +16,10 @@ limitations under the License.
 
 import { ScenarioDoc } from "./types.js";
 
-export const blacklist: ScenarioDoc = {
-  id: "blacklist",
-  name: "Blacklist",
+export const paths: ScenarioDoc = {
+  id: "paths",
+  name: "Paths",
   description:
-    "Tests covering per-page blacklisting. Blacklisting a single page is a " +
-    "simple op that auto-saves immediately, removing the page from the " +
-    "generated bundle preview. Blacklisting is not transitive — pages linked " +
-    "from a blacklisted page remain visible as long as they are reachable " +
-    "through another tracked path. Folder blacklists are hard subtree boundaries: " +
-    "their descendants leave the working graph while the folder remains available " +
-    "to remove the blacklist and restore the subtree.",
+    "Tests path-oriented curation workflows, including selecting structural and traversal paths " +
+    "and inspecting how Meadow reached a node.",
 };

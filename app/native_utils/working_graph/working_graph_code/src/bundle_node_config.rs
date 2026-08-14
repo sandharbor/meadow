@@ -331,9 +331,8 @@ pub fn parse_bundle_node_config_yaml(yaml_content: &str) -> anyhow::Result<Vec<B
                     anyhow::anyhow!("collection memberBundleNodeId does not resolve: {member_id}")
                 })?;
                 anyhow::ensure!(
-                    matches!(member, BundleNodeConfig::Folder { .. })
-                        && member.list_type() == "whitelist",
-                    "collection member must resolve to a whitelisted folder: {member_id}"
+                    matches!(member, BundleNodeConfig::Folder { .. }),
+                    "collection member must resolve to a folder: {member_id}"
                 );
             }
         }
@@ -424,7 +423,7 @@ nodes:
     sourceGraphSubdirectory: Projects
     bundleNodeKind: folder
     bundleNodeId: f1b2c3d4e5f6
-    listType: whitelist
+    listType: blacklist
     outlinksDepth: 1
     inlinksDepth: 0
   - bundleNodeName: Research

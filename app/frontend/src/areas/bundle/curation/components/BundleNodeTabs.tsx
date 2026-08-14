@@ -119,13 +119,12 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     }
   }, [orphanConfigs.length]);
 
-  const allProtectedBundleNodeIds = useMemo(() => {
+  const untrackProtectedBundleNodeIds = useMemo(() => {
     const ids = new Set(protectedBundleNodeIds);
     for (const config of bundleNodeConfigs ?? []) {
-      if (config.bundleNodeKind === 'collection') {
-        for (const memberId of config.memberBundleNodeIds) ids.add(memberId);
-        ids.add(config.bundleNodeId);
-      }
+      if (config.bundleNodeKind !== 'collection') continue;
+      ids.add(config.bundleNodeId);
+      for (const memberId of config.memberBundleNodeIds) ids.add(memberId);
     }
     return ids;
   }, [protectedBundleNodeIds, bundleNodeConfigs]);
@@ -151,13 +150,13 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
 
   const canBlacklistNode = useCallback((node: IBundleNode): boolean => {
     if (node.bundleNodeKind === 'collection') return false;
-    if (node.bundleNodeId && allProtectedBundleNodeIds.has(node.bundleNodeId)) return false;
+    if (node.bundleNodeId && protectedBundleNodeIds.has(node.bundleNodeId)) return false;
     if (node.bundleNodeKind === 'folder') {
       return !structuralDescendants(node.bundleNodeKey)
-        .some(descendant => descendant.bundleNodeId && allProtectedBundleNodeIds.has(descendant.bundleNodeId));
+        .some(descendant => descendant.bundleNodeId && protectedBundleNodeIds.has(descendant.bundleNodeId));
     }
     return true;
-  }, [allProtectedBundleNodeIds, structuralDescendants]);
+  }, [protectedBundleNodeIds, structuralDescendants]);
 
   const confirmFolderBlacklist = useCallback((nodes: IBundleNode[]): boolean => {
     const folders = nodes.filter(node => node.bundleNodeKind === 'folder' && !node.blacklisted);
@@ -444,7 +443,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     if (page) {
       if (page.bundleNodeKind === 'collection' || page.effectiveBlacklistingBundleNodeId) return;
       const newTracked = !page.tracked;
-      if (!newTracked && page.bundleNodeId && allProtectedBundleNodeIds.has(page.bundleNodeId)) return;
+      if (!newTracked && page.bundleNodeId && untrackProtectedBundleNodeIds.has(page.bundleNodeId)) return;
       page.tracked = newTracked;
 
       if (page.tracked) {

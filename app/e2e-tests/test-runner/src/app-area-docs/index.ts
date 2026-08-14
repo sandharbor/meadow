@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { AppAreaDoc } from "./types.js";
+import type { ScenarioDocAppAreaAssignment } from "./validation.js";
 export type { AppAreaDoc } from "./types.js";
 
 export const bundles: AppAreaDoc = {
@@ -69,7 +70,7 @@ export const allAppAreaDocs: AppAreaDoc[] = [
   bundleSharing,
 ];
 
-const scenarioDocToAppAreaIds: Record<string, string[]> = {
+export const scenarioDocToAppAreaIds: Readonly<Record<string, ScenarioDocAppAreaAssignment>> = {
   archived: ["bundles", "bundle/curation"],
   blacklist: ["bundle/curation"],
   callout: ["bundle/curation"],
@@ -79,6 +80,8 @@ const scenarioDocToAppAreaIds: Record<string, string[]> = {
   excalidraw: ["bundle/generation"],
   filters: ["bundle/curation"],
   "find-in-bundles": ["bundles"],
+  "folder-bundles": ["bundles", "bundle/curation"],
+  "folder-filter": ["bundle/curation"],
   frontier: ["bundle/curation"],
   git: ["bundle/sharing"],
   hooks: ["bundle/generation"],
@@ -88,6 +91,7 @@ const scenarioDocToAppAreaIds: Record<string, string[]> = {
   labels: ["bundle/curation"],
   links: ["bundle/curation"],
   "link-gap": ["bundle/curation"],
+  paths: ["bundle/curation"],
   okf: ["bundle/generation", "bundle/sharing"],
   "sources-export": ["bundle/generation", "bundle/sharing"],
   migration: ["bundle/generation"],

@@ -105,6 +105,18 @@ export class BundleEditorPage {
     await this.expect(this.page.getByTestId("graph-page-node").first()).toBeVisible();
   }
 
+  async expectGraphNodePresent(bundleNodeKey: string) {
+    await this.expect(
+      this.page.locator(`[data-testid="graph-page-node"][data-page-id="${bundleNodeKey}"]`),
+    ).toBeVisible();
+  }
+
+  async expectGraphNodeNotPresent(bundleNodeKey: string) {
+    await this.expect(
+      this.page.locator(`[data-testid="graph-page-node"][data-page-id="${bundleNodeKey}"]`),
+    ).toHaveCount(0);
+  }
+
   async expectGraphEdgeKindControlsVisible() {
     await this.expect(this.page.getByRole("button", { name: "Links", exact: true })).toBeVisible();
     await this.expect(this.page.getByRole("button", { name: "Structure", exact: true })).toBeVisible();
@@ -188,6 +200,18 @@ export class BundleEditorPage {
     const row = this.listViewRows.filter({
       has: this.page.locator(`td >> text="${text}"`),
     }).first();
+    await this.expect(row).toBeVisible();
+    await row.click();
+  }
+
+  private listViewRowByNodeKey(bundleNodeKey: string) {
+    return this.page.locator(
+      `table tbody tr[data-bundle-node-key=${JSON.stringify(bundleNodeKey)}]`,
+    );
+  }
+
+  async clickListViewRowByNodeKey(bundleNodeKey: string) {
+    const row = this.listViewRowByNodeKey(bundleNodeKey);
     await this.expect(row).toBeVisible();
     await row.click();
   }
@@ -397,6 +421,22 @@ export class BundleEditorPage {
     await this.page.waitForTimeout(250);
   }
 
+  async rightClickListViewRowByExactName(text: string) {
+    const row = this.listViewRows.filter({
+      has: this.page.locator(`td >> text="${text}"`),
+    }).first();
+    await this.expect(row).toBeVisible();
+    await row.click({ button: "right" });
+    await this.page.waitForTimeout(250);
+  }
+
+  async rightClickListViewRowByNodeKey(bundleNodeKey: string) {
+    const row = this.listViewRowByNodeKey(bundleNodeKey);
+    await this.expect(row).toBeVisible();
+    await row.click({ button: "right" });
+    await this.page.waitForTimeout(250);
+  }
+
   /** Right-click a list-view row by its zero-based index to open the context menu. */
   async rightClickListViewRow(rowIndex: number) {
     const row = this.listViewRows.nth(rowIndex);
@@ -452,7 +492,23 @@ export class BundleEditorPage {
   // ---------------------------------------------------------------------------
 
   private contextMenuItem(text: string) {
-    return this.page.locator(".fixed.w-48 button", { hasText: text });
+    return this.page.locator(".fixed.w-48").getByRole("button", {
+      name: text,
+      exact: true,
+    });
+  }
+
+  async clickContextMenuItem(text: string) {
+    const item = this.contextMenuItem(text);
+    await this.expect(item).toBeVisible();
+    await this.expect(item).toBeEnabled();
+    await item.click();
+  }
+
+  async expectSelectedPageBadge(bundleNodeKey: string, badge: string) {
+    const selectedPage = this.page.getByTestId(`selected-page-${bundleNodeKey}`);
+    await this.expect(selectedPage).toBeVisible();
+    await this.expect(selectedPage.getByText(badge, { exact: true })).toBeVisible();
   }
 
   async expectContextMenuItemVisible(text: string) {
@@ -489,6 +545,27 @@ export class BundleEditorPage {
         (r) =>
           r.url().includes("/copy-tracked-pages") &&
           r.request().method() === "POST",
+        { timeout: 15000 },
+      ),
+      item.click(),
+    ]);
+  }
+
+  async clickContextMenuItemAndAwaitAutoSaveAndGraphReload(text: string) {
+    const item = this.contextMenuItem(text);
+    await this.expect(item).toBeVisible();
+    await this.expect(item).toBeEnabled();
+    await Promise.all([
+      this.page.waitForResponse(
+        (r) =>
+          r.url().includes("/copy-tracked-pages") &&
+          r.request().method() === "POST",
+        { timeout: 15000 },
+      ),
+      this.page.waitForResponse(
+        (r) =>
+          r.url().includes("/curation/working-graph") &&
+          r.request().method() === "GET",
         { timeout: 15000 },
       ),
       item.click(),

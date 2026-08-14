@@ -21,14 +21,15 @@ import path from "path";
 import { performance } from "perf_hooks";
 import { assembleRun } from "./artifacts/assemble.ts";
 import { allDocs as baseDocs } from "./scenario-docs/index.ts";
-import { allAppAreaDocs, deriveAppAreaDocIds } from "./app-area-docs/index.ts";
+import { allAppAreaDocs, deriveAppAreaDocIds, scenarioDocToAppAreaIds } from "./app-area-docs/index.ts";
+import { assertScenarioDocAppAreaAssignments } from "./app-area-docs/validation.ts";
 
 const E2E_DIR = path.join(import.meta.dirname, "..");
 
 // Optionally load an extension scenario-doc layer. When no extension is
 // mounted, this folder is gone and the import no-ops.
 // Runtime-computed path so tsc doesn't require the module to exist.
-type ScenarioDocLike = { id: string; appAreaDocIds?: string[] };
+type ScenarioDocLike = { id: string; appAreaDocIds?: readonly string[] | null };
 let meadowExtensionDocs: ScenarioDocLike[] = [];
 let meadowExtensionScenarioDocExports: Record<string, unknown> = {};
 {
@@ -61,10 +62,16 @@ function countSpecFiles(dir: string): number {
 const ARTIFACTS_BASE = path.join(os.homedir(), "meadow-e2e-artifacts", "current");
 
 const allDocs = [...baseDocs, ...meadowExtensionDocs];
+assertScenarioDocAppAreaAssignments({
+  baseScenarioDocs: baseDocs,
+  moduleScenarioDocs: meadowExtensionDocs,
+  appAreaDocs: allAppAreaDocs,
+  baseAssignments: scenarioDocToAppAreaIds,
+});
 const moduleScenarioDocToAppAreaIds = new Map<string, readonly string[]>(
   allDocs
-    .filter((doc) => doc.appAreaDocIds)
-    .map((doc) => [doc.id, doc.appAreaDocIds!])
+    .filter((doc): doc is typeof doc & { appAreaDocIds: readonly string[] } => Array.isArray(doc.appAreaDocIds))
+    .map((doc) => [doc.id, doc.appAreaDocIds])
 );
 
 // Build a map from scenario doc export name to doc ID (mirrors assemble.ts logic)

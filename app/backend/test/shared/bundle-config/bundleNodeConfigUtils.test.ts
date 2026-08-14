@@ -111,7 +111,7 @@ describe('canonical bundle node configuration', () => {
       folder(),
       folder({ bundleNodeName: 'Writing', sourceGraphSubdirectory: 'Writing', bundleNodeId: id('g1b2c3d4e5f6'), listType: 'blacklist' }),
       collection(),
-    ])).toThrow(/whitelisted folder/);
+    ])).not.toThrow();
     expect(() => stringifyBundleNodeConfig([
       folder(),
       folder({ bundleNodeName: 'Writing', sourceGraphSubdirectory: 'Writing', bundleNodeId: id('g1b2c3d4e5f6') }),
@@ -219,6 +219,18 @@ describe('canonical bundle node configuration', () => {
         defaultTraversalBundleNodeId: id('e1b2c3d4e5f6'),
       },
     })).toThrow(/lies below blacklisted folder/);
+
+    expect(() => validateCanonicalBundleConfiguration({
+      committedNodes: [
+        folder({ listType: 'blacklist' }),
+        folder({ bundleNodeName: 'Writing', sourceGraphSubdirectory: 'Writing', bundleNodeId: id('g1b2c3d4e5f6') }),
+        collection(),
+      ],
+      bundleConfig: {
+        entryBundleNodeId: id('c1b2c3d4e5f6'),
+        defaultTraversalBundleNodeId: id('c1b2c3d4e5f6'),
+      },
+    })).not.toThrow();
   });
 
   it('retries collisions in the bundle-wide ID namespace', () => {

@@ -274,8 +274,8 @@ function validateNodeSet(nodes: BundleNodeConfig[], filePath: string): void {
     for (const memberId of collection.memberBundleNodeIds) {
       const member = nodes.find(node => node.bundleNodeId === memberId);
       if (!member) fail(filePath, collectionIndex, 'memberBundleNodeIds', `does not resolve (${memberId})`);
-      if (member.bundleNodeKind !== 'folder' || member.listType !== 'whitelist') {
-        fail(filePath, collectionIndex, 'memberBundleNodeIds', `must resolve to a whitelisted folder (${memberId})`);
+      if (member.bundleNodeKind !== 'folder') {
+        fail(filePath, collectionIndex, 'memberBundleNodeIds', `must resolve to a folder (${memberId})`);
       }
     }
   }
@@ -404,10 +404,6 @@ function validateBundleNodeStrategy(nodes: BundleNodeConfig[], bundleConfig: Bun
   }
 
   const strongNodes: BundleNodeConfig[] = [roles.entryNode, roles.defaultTraversalNode];
-  if (collection) {
-    strongNodes.push(...collection.memberBundleNodeIds.map(memberId =>
-      nodes.find(node => node.bundleNodeId === memberId)!).filter(Boolean));
-  }
   for (const strongNode of strongNodes) {
     const boundary = nearestBlacklistedAncestor(strongNode, nodes);
     if (boundary) {

@@ -60,8 +60,9 @@ export function getSelectionPathToHereOrdered(node: IBundleNode): string[] {
 /**
  * Returns an ordered list of node IDs representing the selection for "select children".
  *
- * Selects the node itself plus its direct children — nodes connected by an
- * outgoing edge whose depth is exactly one more than the start node's depth.
+ * Selects the node itself plus its direct children. Structural containment
+ * edges already encode a direct parent/child relationship, while semantic
+ * links retain the legacy depth + 1 behavior.
  */
 export function getSelectionChildrenOrdered(graph: Graph, startNodeKey: string): string[] {
   const startPage = graph.getNode(startNodeKey);
@@ -74,7 +75,7 @@ export function getSelectionChildrenOrdered(graph: Graph, startNodeKey: string):
     if (e.source !== startNodeKey) continue;
     const targetPage = graph.getNode(e.target);
     if (!targetPage) continue;
-    if (targetPage.depth === startDepth + 1) {
+    if (e.bundleEdgeKind !== 'semanticLink' || targetPage.depth === startDepth + 1) {
       result.push(e.target);
     }
   }
@@ -90,13 +91,14 @@ export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startNodeKe
   const startPage = graph.getNode(startNodeKey);
   if (!startPage) return [];
 
-  const adjacency = new Map<string, string[]>();
+  const adjacency = new Map<string, Array<{ id: string; isStructural: boolean }>>();
   for (const e of graph.getAllEdges()) {
     if (!adjacency.has(e.source)) adjacency.set(e.source, []);
-    adjacency.get(e.source)!.push(e.target);
+    const isStructural = e.bundleEdgeKind !== 'semanticLink';
+    adjacency.get(e.source)!.push({ id: e.target, isStructural });
     if (e.isBidirectional) {
       if (!adjacency.has(e.target)) adjacency.set(e.target, []);
-      adjacency.get(e.target)!.push(e.source);
+      adjacency.get(e.target)!.push({ id: e.source, isStructural });
     }
   }
 
@@ -118,10 +120,10 @@ export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startNodeKe
     if (!next || next.length === 0) continue;
 
     for (let i = next.length - 1; i >= 0; i--) {
-      const to = next[i];
+      const { id: to, isStructural } = next[i];
       if (visited.has(to)) continue;
       const neighborPage = graph.getNode(to);
-      if (neighborPage && neighborPage.depth > depth) {
+      if (neighborPage && (isStructural || neighborPage.depth > depth)) {
         stack.push({ id: to, depth: neighborPage.depth });
       }
     }
@@ -167,5 +169,4 @@ export function getSelectionPathFromHereOrdered(graph: Graph, startNodeKey: stri
 
   return result;
 }
-
 

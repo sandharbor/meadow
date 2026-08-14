@@ -1216,6 +1216,11 @@ fn main() -> anyhow::Result<()> {
         structural_output_nodes = projection
             .structural_nodes
             .iter()
+            .filter(|node| {
+                node.effective_blacklisting_bundle_node_id
+                    .as_ref()
+                    .is_none_or(|blacklist_id| node.bundle_node_id.as_ref() == Some(blacklist_id))
+            })
             .map(|node| OutputNode {
                 bundleNodeKey: node.bundle_node_key.clone(),
                 bundleNodeId: node.bundle_node_id.clone(),
@@ -1322,12 +1327,18 @@ fn main() -> anyhow::Result<()> {
         })
         .collect();
     out_nodes.extend(structural_output_nodes);
+    let output_node_keys: HashSet<String> = out_nodes
+        .iter()
+        .map(|node| node.bundleNodeKey.clone())
+        .collect();
 
     let mut out_edges: Vec<OutputEdge> = per_link_edges
         .into_iter()
         .filter(|e| working_node_keys.contains(&e.source) && working_node_keys.contains(&e.target))
         .collect();
-    out_edges.extend(structural_output_edges);
+    out_edges.extend(structural_output_edges.into_iter().filter(|edge| {
+        output_node_keys.contains(&edge.source) && output_node_keys.contains(&edge.target)
+    }));
     if let Some(report) = &mut folder_scope_report {
         report.predictedRawNodeCount = out_nodes.len();
         report.predictedTypedEdgeCount = out_edges.len();

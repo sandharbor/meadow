@@ -86,6 +86,7 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
     return (
       <tr
         key={`${semanticOnly ? 'semantic-' : 'structural-'}${node.bundleNodeKey}`}
+        data-bundle-node-key={node.bundleNodeKey}
         className={`cursor-pointer hover:bg-gray-50 ${selected ? 'bg-orange-100' : ''}`}
         onClick={() => onNodeClick(node.bundleNodeKey)}
         onContextMenu={event => {
