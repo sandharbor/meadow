@@ -1,0 +1,52 @@
+Code block tests live in the `t020/` folder.
+
+[[t020/t020 ---- tags in code blocks should not become tag links]]
+
+[[t020/t020 ---- page links in code blocks should not become links]]
+
+[[t020/t020 ---- code blocks should end properly]]
+
+```yaml
+pagespecs:
+  - bundle: meadow-test-bundle-big
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t020/t020 ---- tags in code blocks should not become tag links.md
+            isInGraph: true
+          - linkPath: /t020/t020 ---- page links in code blocks should not become links.md
+            isInGraph: true
+          - linkPath: /t020/t020 ---- code blocks should end properly.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /main page.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: t020/t020 ---- tags in code blocks should not become tag links.html
+          - relativeLinkPath: t020/t020 ---- page links in code blocks should not become links.html
+          - relativeLinkPath: t020/t020 ---- code blocks should end properly.html
+        footerSectionBacklinks:
+          - relativeLinkPath: main page.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: main page.html
+                embeddedLinks: []
+          - relativeLinkPath: t020/t020 ---- page links in code blocks should not become links.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: t020/t020 ---- page links in code blocks should not become links.html
+                embeddedLinks: []
+              - seeInContextLinkRelativePath: t020/t020 ---- page links in code blocks should not become links.html
+                embeddedLinks: []
+  - bundle: meadow-test-bundle-small
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
+```

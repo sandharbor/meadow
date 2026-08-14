@@ -1,0 +1,35 @@
+```yaml
+pagespecs:
+  - bundle: meadow-test-bundle-big
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /t021 - link gaps.md
+            isInGraph: true
+          - linkPath: /t021/t021 ---- inlink gap pages/t021 ---- inlink source 1.md
+            isInGraph: false
+          - linkPath: /t021/t021 ---- inlink gap pages/t021 ---- inlink source 2.md
+            isInGraph: false
+          - linkPath: /t021/t021 ---- inlink gap pages/t021 ---- inlink source 3.md
+            isInGraph: false
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: ../t021 - link gaps.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../t021 - link gaps.html
+                embeddedLinks: []
+  - bundle: meadow-test-bundle-small
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
+```
