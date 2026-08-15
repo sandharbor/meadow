@@ -20,7 +20,7 @@ import Modal from '../../../shared/components/Modal';
 import { API_BASE_URL } from '../../../shared/utils/apiConfig';
 import type { SourcePageFileInfo } from '../../../../../shared_code/types/sourcePageFileInfo';
 import { logger } from '../../../shared/utils/logger';
-import FolderBundleFields, { type FolderBundlePreflight } from './FolderBundleFields';
+import FolderBundleFields from './FolderBundleFields';
 import PagePickerButton from './PagePickerButton';
 import {
   EntryStrategyPicker,
@@ -38,6 +38,20 @@ interface MatchingPage {
   file_type: string;
   fullPath: string;
   modifiedTimeMs?: number;
+}
+
+interface FolderBundlePreflight {
+  fingerprint: string;
+  plan: {
+    sourceDirectory: string;
+    normalizedSelectedFolders: string[];
+    folderBundleNodeIds: string[];
+    collectionBundleNodeId?: string;
+    entryBundleNodeId: string;
+    defaultOutlinksDepth: number;
+    defaultInlinksDepth: number;
+  };
+  supportedSeedFileCount: number;
 }
 
 const sourcePageFallbackPath = (page: { title: string; directory: string; file_type: string }): string => {
@@ -59,22 +73,6 @@ const findUniqueSlug = (baseSlug: string, existingSlugs: string[]): string => {
 
 const normalizeDirectory = (dir: string): string => {
   return dir === '/' ? '' : dir;
-};
-
-// Find the most common source directory
-const getMostCommonSourceDirectory = (directories: string[]): string => {
-  if (directories.length === 0) return '';
-  
-  // Count occurrences of each directory
-  const directoryCounts = directories.reduce((counts: Record<string, number>, dir) => {
-    counts[dir] = (counts[dir] || 0) + 1;
-    return counts;
-  }, {});
-  
-  // Find the directory with the highest count
-  return Object.entries(directoryCounts).reduce((mostCommon, [dir, count]) => {
-    return count > (directoryCounts[mostCommon] || 0) ? dir : mostCommon;
-  }, directories[0]);
 };
 
 const EMPTY_SLUGS: string[] = [];
@@ -127,15 +125,13 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [entryStrategy, setEntryStrategy] = useState<EntryStrategy>('page');
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
-  const [folderPreflight, setFolderPreflight] = useState<FolderBundlePreflight | null>(null);
-  const [confirmHighImpact, setConfirmHighImpact] = useState(false);
   const [defaultOutlinksDepth, setDefaultOutlinksDepth] = useState('3');
   const [defaultInlinksDepth, setDefaultInlinksDepth] = useState('1');
 
   // Reset and initialize form when modal opens
   useEffect(() => {
     if (isOpen) {
-      const commonSourceDirectory = getMostCommonSourceDirectory(directories);
+      const recentSourceDirectory = directories[0] ?? '';
       const initialForm: CreateBundleForm =
         mode === 'edit' && editBundle
           ? {
@@ -148,7 +144,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
             }
           : {
               slug: '',
-              sourceDirectory: commonSourceDirectory,
+              sourceDirectory: recentSourceDirectory,
               entryBundleNodeName: '',
               entrySourceGraphSubdirectory: '',
               entryFileType: '',
@@ -159,7 +155,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
         const pageName = findInBundlesOptions.pageName || findInBundlesOptions.pageName || '';
         initialForm.entryBundleNodeName = pageName;
         // Use vault path as source directory when page is specified via find in bundles
-        // (only override if vaultPath is non-empty; otherwise keep commonSourceDirectory)
+        // (only override if vaultPath is non-empty; otherwise keep recentSourceDirectory)
         if (findInBundlesOptions.vaultPath) {
           initialForm.sourceDirectory = findInBundlesOptions.vaultPath;
         }
@@ -183,7 +179,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
       setIsSourceDirectoryManuallyEdited(
         mode === 'edit'
           ? false
-          : (!commonSourceDirectory && !findInBundlesOptions?.vaultPath)
+          : (!recentSourceDirectory && !findInBundlesOptions?.vaultPath)
       );
       
       // Reset validation state
@@ -217,8 +213,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
       setShowMoreDetails(mode === 'edit');
       setEntryStrategy(mode === 'edit' && editBundle?.folderDerived ? 'folders' : 'page');
       setSelectedFolders([]);
-      setFolderPreflight(null);
-      setConfirmHighImpact(false);
       setDefaultOutlinksDepth(String(editBundle?.defaultOutlinksDepth ?? (editBundle?.folderDerived ? 1 : 3)));
       setDefaultInlinksDepth(String(editBundle?.defaultInlinksDepth ?? (editBundle?.folderDerived ? 0 : 1)));
 
@@ -328,11 +322,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
       setSelectedInitialPage(null);
       setIsEditingInitialPage(false);
       setInitialPageEditBackup(null);
-      setSelectedFolders([]);
-    }
-    if (field === 'sourceDirectory' || field === 'entryBundleNodeName') {
-      setFolderPreflight(null);
-      setConfirmHighImpact(false);
     }
   };
 
@@ -359,8 +348,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
     setDuplicatePages([]);
     setShowDuplicatePicker(false);
     setSelectedInitialPage(null);
-    setFolderPreflight(null);
-    setConfirmHighImpact(false);
     // Note: Don't clear typeaheadCandidates here - let them remain visible until
     // the debounced fetch returns new results to avoid flickering
 
@@ -390,8 +377,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
       });
       if (!result || result.canceled || result.filePaths.length === 0) return;
       setSelectedFolders(previous => [...previous, ...result.filePaths]);
-      setFolderPreflight(null);
-      setConfirmHighImpact(false);
       if (!form.entryBundleNodeName) {
         const name = result.filePaths[0].split(/[\\/]/).filter(Boolean).pop() || 'Folder bundle';
         setForm(previous => ({
@@ -409,8 +394,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
 
   const removeSelectedFolder = (index: number) => {
     setSelectedFolders(previous => previous.filter((_folder, candidateIndex) => candidateIndex !== index));
-    setFolderPreflight(null);
-    setConfirmHighImpact(false);
   };
 
   const moveSelectedFolder = (index: number, direction: -1 | 1) => {
@@ -421,20 +404,14 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
-    setFolderPreflight(null);
-    setConfirmHighImpact(false);
   };
 
   const handleDefaultOutlinksDepthChange = (value: string) => {
     setDefaultOutlinksDepth(value);
-    setFolderPreflight(null);
-    setConfirmHighImpact(false);
   };
 
   const handleDefaultInlinksDepthChange = (value: string) => {
     setDefaultInlinksDepth(value);
-    setFolderPreflight(null);
-    setConfirmHighImpact(false);
   };
 
   const parsedTraversalDefaults = (): { defaultOutlinksDepth: number; defaultInlinksDepth: number } => {
@@ -593,8 +570,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Folder-bundle preflight failed');
-    setFolderPreflight(result as FolderBundlePreflight);
-    setConfirmHighImpact(false);
     return result as FolderBundlePreflight;
   };
 
@@ -610,14 +585,10 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
         bundleNotes: form.bundleNotes,
         fingerprint: preflight.fingerprint,
         plan: preflight.plan,
-        confirmHighImpact,
       }),
     });
     const result = await response.json();
     if (!response.ok) {
-      if (response.status === 409 && result.preflight) {
-        setFolderPreflight(result.preflight as FolderBundlePreflight);
-      }
       throw new Error(result.error || 'Failed to create folder bundle');
     }
     onSuccess(result.slug);
@@ -685,15 +656,8 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
         if (selectedFolders.length === 0) throw new Error('Please choose at least one folder.');
         if (!form.entryBundleNodeName.trim()) throw new Error('Please enter a bundle name.');
         if (!form.slug) throw new Error('Please enter a bundle config folder name.');
-        if (!folderPreflight) {
-          await runFolderPreflight();
-          setIsValidating(false);
-          return;
-        }
-        if (folderPreflight.highImpactWarning && !confirmHighImpact) {
-          throw new Error('Confirm the high-impact warning before creating this bundle.');
-        }
-        await createFolderBundle(folderPreflight);
+        const preflight = await runFolderPreflight();
+        await createFolderBundle(preflight);
         setIsValidating(false);
         return;
       }
@@ -803,7 +767,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
             value={entryStrategy}
             onChange={strategy => {
               setEntryStrategy(strategy);
-              setFolderPreflight(null);
               setDefaultOutlinksDepth(strategy === 'folders' ? '1' : '3');
               setDefaultInlinksDepth(strategy === 'folders' ? '0' : '1');
               if (strategy === 'folders') {
@@ -814,28 +777,30 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
           />
         )}
 
+        {mode === 'create' && entryStrategy === 'folders' && (
+          <FolderBundleFields
+            bundleName={form.entryBundleNodeName}
+            selectedFolders={selectedFolders}
+            onBundleNameChange={handleInitialTitleChange}
+            onAddFolders={handleAddSelectedFolders}
+            onMoveFolder={moveSelectedFolder}
+            onRemoveFolder={removeSelectedFolder}
+          />
+        )}
+
         <SourceDirectoryField
           value={form.sourceDirectory}
           directories={directories}
           isManuallyEdited={isSourceDirectoryManuallyEdited}
           readOnly={mode === 'edit' && editBundle?.folderDerived === true}
+          label={entryStrategy === 'folders' ? 'Notes Root' : 'Source Directory'}
+          helpText={entryStrategy === 'folders'
+            ? 'The top-level notes folder Meadow uses to resolve links and assets—not the folders that start the bundle. Every selected folder must be inside it. In Obsidian, this is usually your vault folder.'
+            : 'The folder Meadow searches for source pages, links, and assets.'}
           onStartManualEdit={() => setIsSourceDirectoryManuallyEdited(true)}
           onChange={value => handleFormChange('sourceDirectory', value)}
           onBrowse={handleSelectFolder}
         />
-        {mode === 'create' && entryStrategy === 'folders' && (
-          <FolderBundleFields
-            bundleName={form.entryBundleNodeName}
-            selectedFolders={selectedFolders}
-            preflight={folderPreflight}
-            confirmHighImpact={confirmHighImpact}
-            onBundleNameChange={handleInitialTitleChange}
-            onAddFolders={handleAddSelectedFolders}
-            onMoveFolder={moveSelectedFolder}
-            onRemoveFolder={removeSelectedFolder}
-            onConfirmHighImpactChange={setConfirmHighImpact}
-          />
-        )}
 
         {mode === 'edit' && editBundle?.folderDerived && (
           <section className="rounded-md border border-blue-200 bg-blue-50 p-3" aria-label="Folder-derived bundle scope">
@@ -969,10 +934,10 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
             disabled={isValidating || !!slugConflictError}
           >
             {isValidating
-              ? 'Validating...'
+              ? (entryStrategy === 'folders' ? 'Creating...' : 'Validating...')
               : (mode === 'edit'
                 ? 'Update Bundle'
-                : (entryStrategy === 'folders' && !folderPreflight ? 'Review Folders' : 'Create Bundle'))}
+                : 'Create Bundle')}
           </button>
         </div>
       </form>

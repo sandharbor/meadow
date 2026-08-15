@@ -16,16 +16,13 @@ limitations under the License.
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import FolderBundleFields, {
-  type FolderBundlePreflight,
-} from '../../../../src/areas/bundles/components/FolderBundleFields';
+import FolderBundleFields from '../../../../src/areas/bundles/components/FolderBundleFields';
 
 const callbacks = () => ({
   onBundleNameChange: vi.fn(),
   onAddFolders: vi.fn(),
   onMoveFolder: vi.fn(),
   onRemoveFolder: vi.fn(),
-  onConfirmHighImpactChange: vi.fn(),
 });
 
 describe('FolderBundleFields', () => {
@@ -35,8 +32,6 @@ describe('FolderBundleFields', () => {
       <FolderBundleFields
         bundleName="Research"
         selectedFolders={['/vault/Alpha', '/vault/Beta']}
-        preflight={null}
-        confirmHighImpact={false}
         {...handlers}
       />
     );
@@ -49,49 +44,5 @@ describe('FolderBundleFields', () => {
     expect(handlers.onRemoveFolder).toHaveBeenCalledWith(0);
     fireEvent.click(screen.getByRole('button', { name: 'Add folders' }));
     expect(handlers.onAddFolders).toHaveBeenCalledOnce();
-  });
-
-  it('renders exact preflight evidence and requires explicit high-impact confirmation', () => {
-    const handlers = callbacks();
-    const preflight: FolderBundlePreflight = {
-      fingerprint: 'fingerprint',
-      plan: {
-        sourceDirectory: '/vault',
-        normalizedSelectedFolders: ['Alpha'],
-        folderBundleNodeIds: ['aaaaaaaaaaaa'],
-        entryBundleNodeId: 'aaaaaaaaaaaa',
-        defaultOutlinksDepth: 1,
-        defaultInlinksDepth: 0,
-      },
-      duplicateSelections: [],
-      overlaps: [],
-      supportedSeedFileCount: 21,
-      requiredRawFolderNodeCount: 4,
-      skippedCounts: { hidden: 1 },
-      skippedPaths: [{ path: 'Alpha/.hidden.md', reason: 'hidden' }],
-      skippedPathCount: 1,
-      predictedRawNodeCount: 44,
-      predictedTypedEdgeCount: 58,
-      sensitiveNodeCount: 0,
-      preferredRouteCollisions: [],
-      highImpactWarning: true,
-    };
-    render(
-      <FolderBundleFields
-        bundleName="Research"
-        selectedFolders={['/vault/Alpha']}
-        preflight={preflight}
-        confirmHighImpact={false}
-        {...handlers}
-      />
-    );
-
-    const prediction = screen.getByRole('region', { name: 'Folder bundle prediction' });
-    expect(within(prediction).getByText('21')).toBeInTheDocument();
-    expect(within(prediction).getByText('58')).toBeInTheDocument();
-    fireEvent.click(within(prediction).getByText('1 skipped paths'));
-    expect(within(prediction).getByText('Alpha/.hidden.md — hidden')).toBeInTheDocument();
-    fireEvent.click(within(prediction).getByRole('checkbox'));
-    expect(handlers.onConfirmHighImpactChange).toHaveBeenCalledWith(true);
   });
 });

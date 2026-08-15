@@ -31,8 +31,6 @@ import {
 import { runWorkingGraphRaw } from '../../../shared/utils/workingGraphUtils.js';
 import {
   canonicalFolderBundleSourceDirectory,
-  FOLDER_BUNDLE_HIGH_IMPACT_RAW_NODES,
-  FOLDER_BUNDLE_HIGH_IMPACT_SEED_FILES,
   FOLDER_BUNDLE_MAX_RAW_NODES,
   FOLDER_BUNDLE_MAX_TYPED_EDGES,
   folderName,
@@ -40,8 +38,6 @@ import {
   updateFingerprintWithFolderSource,
 } from '../../../shared/bundle-config/folderBundleSource.js';
 export {
-  FOLDER_BUNDLE_HIGH_IMPACT_SEED_FILES,
-  FOLDER_BUNDLE_HIGH_IMPACT_RAW_NODES,
   FOLDER_BUNDLE_MAX_RAW_NODES,
   FOLDER_BUNDLE_MAX_TYPED_EDGES,
 } from '../../../shared/bundle-config/folderBundleSource.js';
@@ -82,7 +78,6 @@ export interface FolderBundlePreflightResult {
   predictedTypedEdgeCount: number;
   sensitiveNodeCount: number;
   preferredRouteCollisions: string[];
-  highImpactWarning: boolean;
 }
 
 type FolderScopeOutput = {
@@ -236,6 +231,9 @@ export async function preflightFolderBundle(
     const output = JSON.parse(raw) as FolderScopeOutput;
     if (!output.folderScope) throw new Error('Folder graph builder did not return a scope report');
     const report = output.folderScope;
+    if (report.supportedSeedFileCount === 0) {
+      throw new Error('Selected folders do not contain any supported files');
+    }
     if (report.predictedRawNodeCount >= FOLDER_BUNDLE_MAX_RAW_NODES
       || report.predictedTypedEdgeCount >= FOLDER_BUNDLE_MAX_TYPED_EDGES) {
       throw new Error(
@@ -259,8 +257,6 @@ export async function preflightFolderBundle(
       predictedTypedEdgeCount: report.predictedTypedEdgeCount,
       sensitiveNodeCount: output.nodes.filter(node => node.is_sensitive).length,
       preferredRouteCollisions: [],
-      highImpactWarning: report.supportedSeedFileCount >= FOLDER_BUNDLE_HIGH_IMPACT_SEED_FILES
-        || report.predictedRawNodeCount >= FOLDER_BUNDLE_HIGH_IMPACT_RAW_NODES,
     };
   } finally {
     fs.rmSync(temporaryDirectory, { recursive: true, force: true });

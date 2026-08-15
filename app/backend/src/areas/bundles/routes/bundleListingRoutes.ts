@@ -51,6 +51,7 @@ import {
 import selectedFolderRepairRoutes from './selectedFolderRepairRoutes.js';
 import bundleSettingsRoutes from './bundleSettingsRoutes.js';
 import { resolveDefaultDepth } from '../services/bundleTraversalDefaults.js';
+import { sourceDirectorySuggestions } from '../services/sourceDirectorySuggestions.js';
 
 const router = express.Router();
 router.use(selectedFolderRepairRoutes);
@@ -215,7 +216,8 @@ router.get('/bundles/detailed', (req, res, next) => {
   }
 });
 
-// Get unique directories from all bundle configs for the form dropdown
+// Get user source directories for creation defaults and suggestions. The first
+// item is the source used by the most recently created non-example bundle.
 router.get('/bundles/directories', (req, res, next) => {
   const bundlesDir = getBundlesDirectory();
   try {
@@ -223,21 +225,21 @@ router.get('/bundles/directories', (req, res, next) => {
       .filter(dirent => dirent.isDirectory())
       .map(dirent => dirent.name);
     
-    const directories = new Set<string>();
-    
-    bundleSlugs.forEach(slug => {
+    const candidates = bundleSlugs.flatMap(slug => {
       try {
         const bundleDirectory = join(bundlesDir, slug);
         const config = loadBundleConfig(bundleDirectory);
-        if (config.sourceDirectory) {
-          directories.add(config.sourceDirectory);
-        }
+        return [{
+          slug,
+          ...config,
+          configModifiedAtMs: fs.statSync(getBundleConfigPath(slug)).mtimeMs,
+        }];
       } catch {
-        // Skip invalid configs
+        return [];
       }
     });
 
-    res.json(Array.from(directories).sort());
+    res.json(sourceDirectorySuggestions(candidates, getConfigDirectory()));
   } catch (error) {
     next(error);
   }
@@ -631,6 +633,7 @@ router.post('/bundles/add-example', (req, res, next) => {
 
     bundleConfig.bundleGuid = generateBundleGuid();
     bundleConfig.sourceDirectory = sourceGraphDest;
+    bundleConfig.createdFromExample = true;
     bundleConfig.bundleCreatedAt = new Date().toISOString();
     bundleConfig.bundleUpdatedAt = new Date().toISOString();
 
@@ -696,7 +699,6 @@ router.post('/bundles/folders', (req, res, next) => {
       bundleNotes,
       fingerprint,
       plan,
-      confirmHighImpact,
     } = req.body as {
       slug?: string;
       sourceDirectory?: string;
@@ -705,7 +707,6 @@ router.post('/bundles/folders', (req, res, next) => {
       bundleNotes?: string;
       fingerprint?: string;
       plan?: FolderBundleCreationPlan;
-      confirmHighImpact?: boolean;
     };
     if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
       return res.status(400).json({ error: 'Bundle slug must contain only lowercase letters, numbers, and dashes' });
@@ -722,12 +723,6 @@ router.post('/bundles/folders', (req, res, next) => {
       plannedFolderBundleNodeIds: plan.folderBundleNodeIds,
       plannedCollectionBundleNodeId: plan.collectionBundleNodeId,
     }, fingerprint);
-    if (verified.highImpactWarning && confirmHighImpact !== true) {
-      return res.status(409).json({
-        error: 'This folder bundle requires explicit high-impact confirmation',
-        preflight: verified,
-      });
-    }
 
     const actualSlug = findUniqueName(slug, name => fs.existsSync(getBundleDirectory(name)));
     const bundleDir = getBundleDirectory(actualSlug);

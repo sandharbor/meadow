@@ -87,6 +87,8 @@ interface SourceDirectoryFieldProps {
   directories: string[];
   isManuallyEdited: boolean;
   readOnly?: boolean;
+  label?: string;
+  helpText?: string;
   onStartManualEdit: () => void;
   onChange: (value: string) => void;
   onBrowse: () => void;
@@ -97,21 +99,25 @@ export const SourceDirectoryField: React.FC<SourceDirectoryFieldProps> = ({
   directories,
   isManuallyEdited,
   readOnly = false,
+  label = 'Source Directory',
+  helpText = 'The folder Meadow searches for source pages, links, and assets.',
   onStartManualEdit,
   onChange,
   onBrowse,
-}) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">Source Directory *</label>
-    {(readOnly || (!isManuallyEdited && value)) ? (
-      <div className="flex items-center space-x-2">
-        <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700 truncate" title={value}>{value}</div>
-        {!readOnly && (
-          <button type="button" onClick={event => { event.stopPropagation(); onStartManualEdit(); }} className="text-blue-600 hover:text-blue-900" title="Edit manually">✏️</button>
-        )}
-      </div>
-    ) : (
-      <div>
+}) => {
+  const existingDirectoryOptions = directories.filter(directory => directory && directory !== value);
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label} *</label>
+      {(readOnly || (!isManuallyEdited && value)) ? (
+        <div className="flex items-center space-x-2">
+          <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700 truncate" title={value}>{value}</div>
+          {!readOnly && (
+            <button type="button" onClick={event => { event.stopPropagation(); onStartManualEdit(); }} className="text-blue-600 hover:text-blue-900" title="Choose a different folder">✏️</button>
+          )}
+        </div>
+      ) : (
         <div className="flex items-center space-x-2">
           <input
             type="text"
@@ -123,20 +129,25 @@ export const SourceDirectoryField: React.FC<SourceDirectoryFieldProps> = ({
           />
           <button type="button" onClick={event => { event.stopPropagation(); onBrowse(); }} className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 text-gray-700 text-sm whitespace-nowrap" title="Browse for folder">📁 Select</button>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Path to the directory containing your source files</p>
-        {directories.length > 1 && (
-          <div className="mt-2">
-            <label className="block text-xs text-gray-500 mb-1">Or pick from existing directories:</label>
-            <select value="" onChange={event => onChange(event.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
-              <option value="">Select an existing directory</option>
-              {directories.map(directory => <option key={directory} value={directory}>{directory}</option>)}
-            </select>
-          </div>
-        )}
-      </div>
-    )}
-  </div>
-);
+      )}
+      <p className="text-xs text-gray-500 mt-1">{helpText}</p>
+      {!readOnly && existingDirectoryOptions.length > 0 && (
+        <div className="mt-2">
+          <label className="block text-xs text-gray-500 mb-1">Or use a directory from another bundle:</label>
+          <select
+            aria-label="Use a directory from another bundle"
+            value=""
+            onChange={event => onChange(event.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+          >
+            <option value="">Select a recent directory</option>
+            {existingDirectoryOptions.map(directory => <option key={directory} value={directory}>{directory}</option>)}
+          </select>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface BundleTraversalDefaultsFieldsProps {
   outlinksDepth: string;

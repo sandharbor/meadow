@@ -16,7 +16,50 @@ limitations under the License.
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { BundleTraversalDefaultsFields } from '../../../../src/areas/bundles/components/BundleCreationBasics';
+import {
+  BundleTraversalDefaultsFields,
+  SourceDirectoryField,
+} from '../../../../src/areas/bundles/components/BundleCreationBasics';
+
+describe('SourceDirectoryField', () => {
+  it('keeps other bundle directories available when the recent default is collapsed', () => {
+    const onChange = vi.fn();
+    render(
+      <SourceDirectoryField
+        value="/notes/recent"
+        directories={['/notes/recent', '/notes/older']}
+        isManuallyEdited={false}
+        onStartManualEdit={vi.fn()}
+        onChange={onChange}
+        onBrowse={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTitle('/notes/recent')).toBeInTheDocument();
+    const existingDirectoryPicker = screen.getByRole('combobox', { name: 'Use a directory from another bundle' });
+    expect(screen.queryByRole('option', { name: '/notes/recent' })).not.toBeInTheDocument();
+    fireEvent.change(existingDirectoryPicker, { target: { value: '/notes/older' } });
+    expect(onChange).toHaveBeenCalledWith('/notes/older');
+  });
+
+  it('can explain the broader notes root used by folder bundles', () => {
+    render(
+      <SourceDirectoryField
+        value="/notes"
+        directories={['/notes']}
+        isManuallyEdited={false}
+        label="Notes Root"
+        helpText="Every selected folder must be inside it. In Obsidian, this is usually your vault folder."
+        onStartManualEdit={vi.fn()}
+        onChange={vi.fn()}
+        onBrowse={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Notes Root *')).toBeInTheDocument();
+    expect(screen.getByText(/Every selected folder must be inside it/)).toBeInTheDocument();
+  });
+});
 
 describe('BundleTraversalDefaultsFields', () => {
   it('exposes both bundle-wide depths and explains that nodes may override them', () => {

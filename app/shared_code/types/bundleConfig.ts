@@ -43,6 +43,8 @@ export interface BundleConfig {
   bundleUpdatedAt?: string;
   bundleLastPublishedAt?: string | null;
   bundleNotes?: string;
+  /** True when Meadow created this bundle through the built-in example flow. */
+  createdFromExample?: boolean;
   publishSlug?: string; // Stable slug to use for published/exported filenames when present
   disabledGlobalFilters?: string[]; // Array of global filter IDs that are disabled for this bundle
   disabledGlobalHooks?: string[]; // Array of global hook types that are disabled for this bundle

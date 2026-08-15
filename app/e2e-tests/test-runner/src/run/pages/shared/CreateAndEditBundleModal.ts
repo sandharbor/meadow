@@ -104,21 +104,6 @@ export class CreateAndEditBundleModal {
     await button.click();
   }
 
-  async clickReviewFolders() {
-    const button = this.page.getByRole("button", {
-      name: "Review Folders",
-      exact: true,
-    });
-    await this.expect(button).toBeVisible();
-    await button.click();
-  }
-
-  async expectFolderPrediction() {
-    await this.expect(
-      this.page.getByRole("region", { name: "Folder bundle prediction" }),
-    ).toBeVisible({ timeout: 30_000 });
-  }
-
   async showDetails() {
     const toggle = this.page.locator("button", { hasText: "More details" });
     await this.expect(toggle).toBeVisible();

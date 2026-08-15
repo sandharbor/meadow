@@ -131,6 +131,16 @@ describe('folder-bundle creation preflight', () => {
       .rejects.toThrow(/too large.*Narrow the selected folders/s);
   });
 
+  it('rejects selected folders that contain no supported files', async () => {
+    const sourceDirectory = sourceFixture();
+    await expect(preflightFolderBundle({
+      sourceDirectory,
+      selectedFolders: ['Empty'],
+      bundleName: 'Empty bundle',
+    }, async () => graphResult({ supportedSeedFileCount: 0 })))
+      .rejects.toThrow('Selected folders do not contain any supported files');
+  });
+
   it('uses the production graph builder for exact recursive predictions', async () => {
     const sourceDirectory = sourceFixture();
     const result = await preflightFolderBundle({
