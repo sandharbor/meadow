@@ -60,20 +60,29 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
     }
     const entry = graph.getAllNodes().find(node => node.bundleNodeId === entryBundleNodeId)
       ?? graph.getAllNodes().find(node => node.bundleNodeKind !== 'file' && !graph.getIncomingEdges(node.bundleNodeKey).some(edge => edge.bundleEdgeKind !== 'semanticLink'));
-    const reached = new Set<string>();
+    const structurallyReached = new Set<string>();
+    const collectStructuralDescendants = (key: string): void => {
+      if (structurallyReached.has(key)) return;
+      structurallyReached.add(key);
+      for (const child of children.get(key) ?? []) collectStructuralDescendants(child);
+    };
     const rows: StructuralRow[] = [];
+    const rendered = new Set<string>();
     const visit = (key: string, depth: number): void => {
-      if (reached.has(key)) return;
-      reached.add(key);
+      if (rendered.has(key)) return;
+      rendered.add(key);
       const displayNode = displayGraph.getDisplayNode(key);
       const isVisible = Boolean(displayNode && visible.has(key));
       if (isVisible) rows.push({ node: displayNode!, depth, hasChildren: (children.get(key)?.length ?? 0) > 0 });
       if (collapsed.has(key)) return;
       for (const child of children.get(key) ?? []) visit(child, isVisible ? depth + 1 : depth);
     };
-    if (entry) visit(entry.bundleNodeKey, 0);
+    if (entry) {
+      collectStructuralDescendants(entry.bundleNodeKey);
+      visit(entry.bundleNodeKey, 0);
+    }
     const semanticOnly = displayGraph.visibleDisplayNodes
-      .filter(node => !reached.has(node.bundleNodeKey))
+      .filter(node => !structurallyReached.has(node.bundleNodeKey))
       .sort((left, right) => left.bundleNodeName.localeCompare(right.bundleNodeName));
     return { rows, semanticOnly };
   }, [collapsed, displayGraph, entryBundleNodeId, graph]);
