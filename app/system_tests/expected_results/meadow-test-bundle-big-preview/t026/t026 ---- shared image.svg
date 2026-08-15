@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-labelledby="title description">
+  <title id="title">A stylized purple flower</title>
+  <desc id="description">Six lavender petals around a warm yellow center.</desc>
+  <rect width="320" height="240" rx="48" fill="#ede9fe"/>
+  <g transform="translate(160 120)">
+    <g fill="#8b5cf6" stroke="#5b21b6" stroke-width="5">
+      <ellipse cy="-62" rx="35" ry="61"/>
+      <ellipse cy="62" rx="35" ry="61"/>
+      <ellipse cx="-55" cy="-32" rx="35" ry="61" transform="rotate(-60 -55 -32)"/>
+      <ellipse cx="55" cy="-32" rx="35" ry="61" transform="rotate(60 55 -32)"/>
+      <ellipse cx="-55" cy="32" rx="35" ry="61" transform="rotate(60 -55 32)"/>
+      <ellipse cx="55" cy="32" rx="35" ry="61" transform="rotate(-60 55 32)"/>
+    </g>
+    <circle r="43" fill="#fbbf24" stroke="#92400e" stroke-width="6"/>
+  </g>
+</svg>

@@ -50,6 +50,8 @@ _link not tracked_ (note: untracked in dev conf)
 
 [[t025 - extended syntax]]
 
+[[t026 - HTML node]]
+
 ```yaml
 pagespecs:
   - bundle: meadow-test-bundle-big
@@ -106,6 +108,8 @@ pagespecs:
             isInGraph: true
           - linkPath: /t025 - extended syntax.md
             isInGraph: true
+          - linkPath: /t026 - HTML node.md
+            isInGraph: true
         inlinks:
           - linkPath: /t014/t014 ---- in-link in nested folder to main page.md
             isInGraph: true
@@ -133,6 +137,7 @@ pagespecs:
           - relativeLinkPath: t023 - backlinks.html
           - relativeLinkPath: t024 - markdown links.html
           - relativeLinkPath: t025 - extended syntax.html
+          - relativeLinkPath: t026 - HTML node.html
         footerSectionBacklinks:
           - relativeLinkPath: t014/t014 ---- in-link in nested folder to main page.html
             backlinkContexts:

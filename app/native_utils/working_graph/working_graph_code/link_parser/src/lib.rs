@@ -34,7 +34,7 @@ const IMAGE_EXTENSIONS: &[&str] = &[".jpg", ".jpeg", ".png", ".gif", ".svg", ".w
 /// All file type extensions recognized by the link parser.
 /// Used for stripping extensions from titles and categorizing file types.
 pub const KNOWN_FILE_TYPE_EXTENSIONS: &[&str] = &[
-    "md", "jpg", "jpeg", "png", "gif", "svg", "webp", "pdf", "txt", "excalidraw",
+    "md", "html", "css", "js", "jpg", "jpeg", "png", "gif", "svg", "webp", "pdf", "txt", "excalidraw",
 ];
 
 // Helper to strip anchor markers for robust extension checking
@@ -542,6 +542,13 @@ mod tests {
     #[test]
     fn test_md_href_simple_file() {
         check_md_href("file.md", "file", "md", "", None, None);
+    }
+
+    #[test]
+    fn test_html_and_web_asset_hrefs() {
+        check_md_href("page.html", "page", "html", "", None, None);
+        check_md_href("assets/site.css", "site", "css", "assets/", None, None);
+        check_md_href("assets/site.js", "site", "js", "assets/", None, None);
     }
 
     #[test]

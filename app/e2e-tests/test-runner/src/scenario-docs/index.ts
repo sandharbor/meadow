@@ -50,6 +50,7 @@ export { orphan } from "./orphan.js";
 export { tracking } from "./tracking.js";
 export { migration } from "./migration.js";
 export { excalidraw } from "./excalidraw.js";
+export { htmlNode } from "./html-node.js";
 
 import { publishing } from "./publishing.js";
 import { filters } from "./filters.js";
@@ -84,5 +85,6 @@ import { orphan } from "./orphan.js";
 import { tracking } from "./tracking.js";
 import { migration } from "./migration.js";
 import { excalidraw } from "./excalidraw.js";
+import { htmlNode } from "./html-node.js";
 
-export const allDocs: ScenarioDoc[] = [publishing, filters, folderFilter, folderBundles, frontier, callout, htmlGeneration, hooks, s3, deletion, linkGap, labels, sensitive, search, links, paths, customize, changesTab, multiBundle, bundleConfig, overrides, initialPage, images, sourcesExport, openKnowledgeFormat, git, findInBundles, archived, blacklist, orphan, tracking, migration, excalidraw];
+export const allDocs: ScenarioDoc[] = [publishing, filters, folderFilter, folderBundles, frontier, callout, htmlGeneration, htmlNode, hooks, s3, deletion, linkGap, labels, sensitive, search, links, paths, customize, changesTab, multiBundle, bundleConfig, overrides, initialPage, images, sourcesExport, openKnowledgeFormat, git, findInBundles, archived, blacklist, orphan, tracking, migration, excalidraw];

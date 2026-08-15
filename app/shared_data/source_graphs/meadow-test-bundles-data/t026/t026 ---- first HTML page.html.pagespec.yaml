@@ -1,0 +1,38 @@
+pagespecs:
+  - bundle: meadow-test-bundle-big
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /t026 - HTML node.md
+            isInGraph: true
+          - linkPath: /t026/t026 ---- second HTML page.html
+            isInGraph: true
+          - linkPath: /t026/t026 ---- shared behavior.js
+            isInGraph: true
+          - linkPath: /t026/t026 ---- shared image.svg
+            isInGraph: true
+          - linkPath: /t026/t026 ---- shared style.css
+            isInGraph: true
+        inlinks:
+          - linkPath: /t026 - HTML node.md
+            isInGraph: true
+          - linkPath: /t026/t026 ---- second HTML page.html
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../t026 - HTML node.html
+          - relativeLinkPath: t026 ---- second HTML page.html
+          - relativeLinkPath: t026 ---- shared image.svg
+        footerSectionBacklinks: []
+  - bundle: meadow-test-bundle-small
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

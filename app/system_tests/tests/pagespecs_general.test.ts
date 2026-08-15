@@ -32,7 +32,7 @@ import {
 } from '../pagespecs/index.js';
 import type { PagespecsBlock } from '../pagespecs/index.js';
 import {
-  findAllMarkdownFiles,
+  findAllPagespecSourceFiles,
   findAllSidecarPagespecFiles,
   getAvailableBundles,
   getPageTitle,
@@ -51,18 +51,18 @@ describe('Pagespecs General System Tests', () => {
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const { block, source, sourcePath } = getEffectivePagespecBlock(mdFile, content);
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const { block, source, sourcePath } = getEffectivePagespecBlock(sourceFile, content);
           if (source === 'none') continue;
           if (block === null) {
             errors.push(`Failed to parse pagespecs in ${sourcePath}`);
             continue;
           }
 
-          const structureErrors = validatePagespecsBlockStructure(block, getPageTitle(mdFile));
+          const structureErrors = validatePagespecsBlockStructure(block, getPageTitle(sourceFile));
           for (const err of structureErrors) {
             errors.push(`${sourcePath}: ${err.message}`);
           }
@@ -79,17 +79,17 @@ describe('Pagespecs General System Tests', () => {
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (!block) continue;
 
           const referencedBundles = getReferencedBundles(block);
           for (const bundle of referencedBundles) {
             if (!availableBundles.has(bundle)) {
-              errors.push(`${mdFile}: references unknown bundle "${bundle}"`);
+              errors.push(`${sourceFile}: references unknown bundle "${bundle}"`);
             }
           }
         }
@@ -106,11 +106,11 @@ describe('Pagespecs General System Tests', () => {
       let pagesWithSpecs = 0;
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          if (getEffectivePagespecBlock(mdFile, content).source !== 'none') {
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          if (getEffectivePagespecBlock(sourceFile, content).source !== 'none') {
             pagesWithSpecs++;
           }
         }
@@ -121,12 +121,12 @@ describe('Pagespecs General System Tests', () => {
 
     it('all pages should have pagespecs for every bundle that is used across any page', () => {
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
         const allReferencedBundles = new Set<string>();
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (block) {
             for (const bundle of getReferencedBundles(block)) {
               allReferencedBundles.add(bundle);
@@ -141,10 +141,10 @@ describe('Pagespecs General System Tests', () => {
           missingByBundle.set(bundle, []);
         }
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
-          const relativePath = path.relative(sourceGraphDir, mdFile);
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
+          const relativePath = path.relative(sourceGraphDir, sourceFile);
 
           if (!block) {
             for (const bundle of allReferencedBundles) {
@@ -300,19 +300,19 @@ pagespecs:
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
           if (!isExcalidrawMarkdown(content)) continue;
 
-          const sidecarPath = getSidecarPagespecPath(mdFile, content);
+          const sidecarPath = getSidecarPagespecPath(sourceFile, content);
           if (!sidecarPath) {
-            errors.push(`${mdFile}: Excalidraw file but could not derive sidecar path`);
+            errors.push(`${sourceFile}: Excalidraw file but could not derive sidecar path`);
             continue;
           }
           if (!fs.existsSync(sidecarPath)) {
-            const relative = path.relative(sourceGraphDir, mdFile);
+            const relative = path.relative(sourceGraphDir, sourceFile);
             errors.push(`${relative}: Excalidraw drawing is missing sidecar pagespec ${path.basename(sidecarPath)}`);
           }
         }
@@ -323,17 +323,43 @@ pagespecs:
       }
     });
 
+    it('every HTML file should have a sidecar pagespec.yaml', () => {
+      const errors: string[] = [];
+
+      for (const sourceGraphDir of pagespecSourceGraphDirs) {
+        const htmlFiles = findAllPagespecSourceFiles(sourceGraphDir)
+          .filter(sourceFile => path.extname(sourceFile).toLowerCase() === '.html');
+
+        for (const htmlFile of htmlFiles) {
+          const content = fs.readFileSync(htmlFile, 'utf-8');
+          const sidecarPath = getSidecarPagespecPath(htmlFile, content);
+          if (!sidecarPath) {
+            errors.push(`${htmlFile}: HTML file but could not derive sidecar path`);
+            continue;
+          }
+          if (!fs.existsSync(sidecarPath)) {
+            const relative = path.relative(sourceGraphDir, htmlFile);
+            errors.push(`${relative}: HTML file is missing sidecar pagespec ${path.basename(sidecarPath)}`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Missing HTML sidecars:\n${errors.join('\n')}`);
+      }
+    });
+
     it('Excalidraw markdown files should not contain inline pagespecs blocks', () => {
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
           if (!isExcalidrawMarkdown(content)) continue;
           if (hasPagespecsBlock(content)) {
-            const relative = path.relative(sourceGraphDir, mdFile);
+            const relative = path.relative(sourceGraphDir, sourceFile);
             errors.push(`${relative}: Excalidraw drawing has an inline pagespecs block (move it to the sidecar .pagespec.yaml)`);
           }
         }
@@ -341,6 +367,27 @@ pagespecs:
 
       if (errors.length > 0) {
         throw new Error(`Inline pagespecs in Excalidraw drawings:\n${errors.join('\n')}`);
+      }
+    });
+
+    it('HTML files should not contain inline pagespecs blocks', () => {
+      const errors: string[] = [];
+
+      for (const sourceGraphDir of pagespecSourceGraphDirs) {
+        const htmlFiles = findAllPagespecSourceFiles(sourceGraphDir)
+          .filter(sourceFile => path.extname(sourceFile).toLowerCase() === '.html');
+
+        for (const htmlFile of htmlFiles) {
+          const content = fs.readFileSync(htmlFile, 'utf-8');
+          if (hasPagespecsBlock(content)) {
+            const relative = path.relative(sourceGraphDir, htmlFile);
+            errors.push(`${relative}: HTML file has an inline pagespecs block (move it to the sidecar .pagespec.yaml)`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Inline pagespecs in HTML files:\n${errors.join('\n')}`);
       }
     });
   });

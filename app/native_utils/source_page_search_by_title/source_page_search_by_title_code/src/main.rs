@@ -12,7 +12,7 @@ use walkdir::WalkDir;
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
-    /// Root directory to scan for markdown files.
+    /// Root directory to scan for supported source-page files.
     #[clap(long, required = true, value_parser = clap::value_parser!(PathBuf))]
     root: PathBuf,
 }
@@ -37,13 +37,16 @@ fn os_str_to_string_lossy(s: &OsStr) -> String {
     s.to_string_lossy().into_owned()
 }
 
-fn is_markdown_file(path: &Path) -> bool {
+fn supported_file_type(path: &Path) -> Option<&'static str> {
     if !path.is_file() {
-        return false;
+        return None;
     }
     match path.extension().and_then(|e| e.to_str()) {
-        Some(ext) => ext.eq_ignore_ascii_case("md"),
-        None => false,
+        Some(ext) if ext.eq_ignore_ascii_case("md") => Some("md"),
+        Some(ext) if ext.eq_ignore_ascii_case("html") => Some("html"),
+        Some(ext) if ext.eq_ignore_ascii_case("css") => Some("css"),
+        Some(ext) if ext.eq_ignore_ascii_case("js") => Some("js"),
+        _ => None,
     }
 }
 
@@ -103,9 +106,9 @@ fn main() -> Result<()> {
         };
 
         let path = entry.path();
-        if !is_markdown_file(path) {
+        let Some(detected_file_type) = supported_file_type(path) else {
             continue;
-        }
+        };
 
         let rel = match path.strip_prefix(&root) {
             Ok(r) => r,
@@ -117,9 +120,10 @@ fn main() -> Result<()> {
             None => continue,
         };
         let mut title = strip_block_id_suffix(&file_stem).to_string();
-        let mut file_type = "md".to_string();
+        let mut file_type = detected_file_type.to_string();
 
-        if let Ok(content) = std::fs::read_to_string(path) {
+        if detected_file_type == "md" {
+            let content = std::fs::read_to_string(path).unwrap_or_default();
             if is_excalidraw_markdown(&content) {
                 file_type = "excalidraw".to_string();
                 if let Some(stripped) = title.strip_suffix(".excalidraw") {

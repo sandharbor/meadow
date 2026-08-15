@@ -345,16 +345,16 @@ describe('FilterPanel', () => {
     );
 
     expect(screen.getByText('Types')).toBeInTheDocument();
-    expect(screen.queryByText('File Nodes')).not.toBeInTheDocument();
+    expect(screen.queryByText('Markdown')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Expand Types' }));
-    expect(screen.getByText('File Nodes')).toBeInTheDocument();
-    expect(screen.getByText('Image Nodes')).toBeInTheDocument();
+    expect(screen.getByText('Markdown')).toBeInTheDocument();
+    expect(screen.getByText('Excalidraw')).toBeInTheDocument();
     expect(screen.queryByText('Folder Nodes')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTitle('Solo Image Nodes'));
+    fireEvent.click(screen.getByTitle('Solo Excalidraw'));
     expect(onFilterChange).toHaveBeenCalledWith('node-types-filter', {
       nodeTypeStates: {
-        image: { showTitles: false, isSolo: true, isHidden: false },
+        excalidraw: { showTitles: false, isSolo: true, isHidden: false },
       },
     });
   });
@@ -366,7 +366,7 @@ describe('FilterPanel', () => {
     const activeTypesFilter = {
       ...nodeTypesFilter(),
       nodeTypeStates: {
-        image: { showTitles: false, isSolo: true, isHidden: false },
+        excalidraw: { showTitles: false, isSolo: true, isHidden: false },
       },
     };
 

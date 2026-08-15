@@ -28,9 +28,9 @@ import { IMAGE_EXTENSIONS } from '../../shared_code/utils/fileTypeUtils.js';
 
 /**
  * Valid file extensions for link paths.
- * Includes markdown and image extensions.
+ * Includes traversable text nodes and image extensions.
  */
-const VALID_LINK_EXTENSIONS = ['.md', ...IMAGE_EXTENSIONS] as const;
+const VALID_LINK_EXTENSIONS = ['.md', '.html', '.css', '.js', ...IMAGE_EXTENSIONS] as const;
 
 /**
  * Built-in filter IDs that are always valid.
@@ -50,8 +50,8 @@ const CUSTOM_FILTER_PATTERN = /^custom-[a-zA-Z0-9-]+$/;
 
 /**
  * Checks if a link path is valid.
- * Valid link paths are paths to markdown files or images that can be absolute (starting with /)
- * or relative, and must end with a valid extension (.md, .png, .jpg, etc).
+ * Valid link paths are paths to traversable text files or images that can be
+ * absolute (starting with /) or relative, and must end with a valid extension.
  *
  * @param linkPath - The link path to check
  * @returns true if the link path is valid
@@ -130,7 +130,7 @@ export function validateLinkSpec(
     });
   } else if (!isValidLinkPath(linkSpec.linkPath)) {
     errors.push({
-      message: `${context}.linkPath "${linkSpec.linkPath}" is not a valid link path (must end with .md or an image extension)`,
+      message: `${context}.linkPath "${linkSpec.linkPath}" is not a valid link path (must end with a supported text or image extension)`,
       pageTitle,
       bundle,
       field: 'links',

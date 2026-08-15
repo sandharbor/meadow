@@ -93,6 +93,7 @@ import {
 } from '../customizationAssets.js';
 import { planBundleRoutes, routeForBundleNode } from './bundleRoutePlanner.js';
 import { canonicalPageFilename, isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils.js';
+import { rewriteNativeHtmlUrls } from './nativeHtml.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -601,7 +602,8 @@ export async function generateHtmlForBundle(
     });
   }
   
-  // Filter for whitelisted markdown pages only (we only render HTML for markdown files)
+  // Markdown pages use Meadow's renderer. Native HTML pages are emitted by a
+  // separate pass below so their document structure remains intact.
   const whitelistedMdPageKeys = Object.keys(bundleNodeConfs).filter(key => {
     const conf = bundleNodeConfs[key];
     return conf.bundleNodeKind === 'file' && conf.listType === 'whitelist' && conf.fileType === 'md';
@@ -1100,8 +1102,7 @@ export async function generateHtmlForBundle(
   }
 
   // Build the inverse_links mappings by scanning all traversable text-content
-  // pages (markdown and Excalidraw drawings, since the latter store
-  // wikilinks in the Text Elements section of their .md). This excludes
+  // pages (Markdown, native HTML, and Excalidraw drawings). This excludes
   // orphaned tracked pages (isTracked: true but isInWorkingGraph: false).
   const inverseLinks: InverseLinks = {};
   const pageNameToPage: PageNameToPage = {};
@@ -1111,16 +1112,13 @@ export async function generateHtmlForBundle(
   const traversableLinkScanPageKeys = Object.keys(bundleNodeConfs).filter(pageKey => {
     const conf = bundleNodeConfs[pageKey];
     const ft = conf.fileType;
-    const isScannable = conf.bundleNodeKind === 'file' && (ft === 'md' || ft === 'excalidraw');
+    const isScannable = conf.bundleNodeKind === 'file' && (ft === 'md' || ft === 'html' || ft === 'excalidraw');
     return isScannable && conf.listType === 'whitelist' && traversablePageKeys.has(pageKey);
   });
   for (const pageKey of traversableLinkScanPageKeys) {
     const conf = bundleNodeConfs[pageKey];
     const subdir = conf.sourceGraphSubdirectory || '';
-    // Excalidraw drawings live as `<title>.excalidraw.md` on disk.
-    const filename = conf.fileType === 'excalidraw'
-      ? `${conf.bundleNodeName}.excalidraw.md`
-      : `${conf.bundleNodeName}.md`;
+    const filename = canonicalPageFilename(conf.bundleNodeName, conf.fileType);
     const pageContentPath = subdir
       ? path.join(renderContentDirectory, subdir, filename)
       : path.join(renderContentDirectory, filename);
@@ -1129,18 +1127,24 @@ export async function generateHtmlForBundle(
       continue;
     }
 
-    // Read the markdown content
+    // Read the text content.
     const content = fs.readFileSync(pageContentPath, 'utf-8');
 
-    // Find all wiki-style links [[link name]] and standard markdown links [text](path.md)
-    const links = markdownContentToPageLinkFilenames(content);
+    // Native HTML uses the Rust graph's resolved URL-attribute map. Markdown
+    // and Excalidraw retain the richer existing backlink-context extraction.
+    const links = conf.fileType === 'html'
+      ? [...new Set(Object.values(allLinkResolutionMaps.get(bundleNodeConfigToKey(conf)) ?? {})
+          .map(resolved => resolved.link_resolved_target_path ?? '')
+          .filter(targetPath => /\.(?:md|html|excalidraw)$/i.test(targetPath))
+          .map(targetPath => path.posix.basename(targetPath).replace(/\.(?:md|html|excalidraw)$/i, '')))]
+      : markdownContentToPageLinkFilenames(content);
 
     // Also capture excalidraw embeds `![[X.excalidraw]]` as inlinks to the
     // X drawing — the markdown link extractor skips them (image-typed) but we
     // want backlinks to render on the standalone Excalidraw page.
     const excalidrawEmbedRe = /!\[\[([^\]]+)\]\]/g;
     let exMatch;
-    while ((exMatch = excalidrawEmbedRe.exec(content)) !== null) {
+    while (conf.fileType !== 'html' && (exMatch = excalidrawEmbedRe.exec(content)) !== null) {
       const inner = exMatch[1].split('|')[0]; // strip size/alias
       if (!/\.excalidraw$/i.test(inner)) continue;
       const stripped = inner.replace(/\.excalidraw$/i, '');
@@ -1154,7 +1158,7 @@ export async function generateHtmlForBundle(
     // Also scan for standard markdown file links [text](path.md)
     const mdLinkPattern = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
     let mdLinkMatch;
-    while ((mdLinkMatch = mdLinkPattern.exec(content)) !== null) {
+    while (conf.fileType !== 'html' && (mdLinkMatch = mdLinkPattern.exec(content)) !== null) {
       const href = mdLinkMatch[2].trim();
       // Skip external links and anchor-only links
       if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('#')) continue;
@@ -1190,6 +1194,22 @@ export async function generateHtmlForBundle(
     const conf = bundleNodeConfs[key];
     return conf.listType === 'whitelist' && conf.fileType === 'excalidraw' && traversablePageKeys.has(key);
   });
+  const traversableHtmlPageKeys = Object.keys(bundleNodeConfs).filter(key => {
+    const conf = bundleNodeConfs[key];
+    return conf.bundleNodeKind === 'file'
+      && conf.listType === 'whitelist'
+      && conf.fileType === 'html'
+      && traversablePageKeys.has(key);
+  });
+  const traversableAssetPageKeys = Object.keys(bundleNodeConfs).filter(key => {
+    const conf = bundleNodeConfs[key];
+    return conf.bundleNodeKind === 'file'
+      && conf.listType === 'whitelist'
+      && conf.fileType !== 'md'
+      && conf.fileType !== 'html'
+      && conf.fileType !== 'excalidraw'
+      && traversablePageKeys.has(key);
+  });
   const traversableStructuralPageKeys = Object.keys(bundleNodeConfs).filter(key => {
     const conf = bundleNodeConfs[key];
     return conf.bundleNodeKind !== 'file' && conf.listType === 'whitelist' && traversablePageKeys.has(key);
@@ -1197,6 +1217,7 @@ export async function generateHtmlForBundle(
   const traversableRenderablePageKeys = [
     ...traversableStructuralPageKeys,
     ...traversableMdPageKeys,
+    ...traversableHtmlPageKeys,
     ...traversableExcalidrawPageKeys,
   ];
   const folderNavigationPages: FolderNavigationPage[] = generationOptions.folderNavigationEnabled
@@ -1289,11 +1310,18 @@ export async function generateHtmlForBundle(
   const excalidrawRenderOrder: string[] = startPageKey && traversableExcalidrawPageKeys.includes(startPageKey)
     ? [startPageKey, ...traversableExcalidrawPageKeys.filter(k => k !== startPageKey)]
     : [...traversableExcalidrawPageKeys];
+  const htmlRenderOrder: string[] = startPageKey && traversableHtmlPageKeys.includes(startPageKey)
+    ? [startPageKey, ...traversableHtmlPageKeys.filter(k => k !== startPageKey)]
+    : [...traversableHtmlPageKeys];
   const structuralRenderOrder: string[] = startPageKey && traversableStructuralPageKeys.includes(startPageKey)
     ? [startPageKey, ...traversableStructuralPageKeys.filter(key => key !== startPageKey)]
     : [...traversableStructuralPageKeys];
 
-  const totalToRender = structuralRenderOrder.length + mdRenderOrder.length + excalidrawRenderOrder.length;
+  const totalToRender = structuralRenderOrder.length
+    + mdRenderOrder.length
+    + htmlRenderOrder.length
+    + excalidrawRenderOrder.length
+    + traversableAssetPageKeys.length;
   let renderedOrSkipped = 0;
   let lastPercent = -1;
   emitProgress({ stage: 'rendering-pages', message: `Rendering HTML pages...`, current: 0, total: totalToRender, percent: 0 });
@@ -1397,6 +1425,7 @@ export async function generateHtmlForBundle(
       const pageRoute = routeForBundleNode(childConfig, routePlan.routes);
       const directAssetRoute = childConfig.bundleNodeKind === 'file'
         && childConfig.fileType !== 'md'
+        && childConfig.fileType !== 'html'
         && childConfig.fileType !== 'excalidraw'
         ? copyStructuralFileAsset(childConfig)
         : undefined;
@@ -1449,6 +1478,79 @@ export async function generateHtmlForBundle(
     emitRenderProgressIfChanged();
     await delay(AFTER_HTML_GENERATION_PAUSE_MS);
   }
+
+  // Copy traversable native assets before signaling that any native HTML page
+  // is ready. Shared CSS/JS and media are therefore available on first paint.
+  for (const pageKey of traversableAssetPageKeys) {
+    if (options.shouldCancel?.()) break;
+    const config = bundleNodeConfs[pageKey];
+    if (config.bundleNodeKind !== 'file') continue;
+    const sourceFilename = canonicalPageFilename(config.bundleNodeName, config.fileType);
+    const relativePath = config.sourceGraphSubdirectory
+      ? path.posix.join(config.sourceGraphSubdirectory, sourceFilename)
+      : sourceFilename;
+    const sourcePath = path.join(renderContentDirectory, ...relativePath.split('/'));
+    const outputPath = path.join(generatedHtmlDirectory, ...relativePath.split('/'));
+    if (fs.existsSync(sourcePath)) {
+      fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+      fs.copyFileSync(sourcePath, outputPath);
+    } else {
+      logger.warn(`Native bundle asset not found: ${sourcePath}`);
+    }
+    renderedOrSkipped += 1;
+    emitRenderProgressIfChanged();
+  }
+
+  const renderNativeHtmlPage = async (pageKey: string) => {
+    const conf = bundleNodeConfs[pageKey];
+    if (conf.bundleNodeKind !== 'file' || conf.fileType !== 'html') return;
+    const subdir = conf.sourceGraphSubdirectory || '';
+    const sourcePath = subdir
+      ? path.join(renderContentDirectory, ...subdir.split('/'), `${conf.bundleNodeName}.html`)
+      : path.join(renderContentDirectory, `${conf.bundleNodeName}.html`);
+    const outputRoute = routeForBundleNode(conf, routePlan.routes);
+    const outputDirectory = outputDirectoryForRoute(outputRoute);
+    const outputPath = path.join(generatedHtmlDirectory, ...outputRoute.split('/'));
+
+    if (!fs.existsSync(sourcePath)) {
+      logger.warn(`Native HTML source not found for ${conf.bundleNodeName} at ${sourcePath}`);
+      renderedOrSkipped += 1;
+      emitRenderProgressIfChanged();
+      return;
+    }
+
+    const content = fs.readFileSync(sourcePath, 'utf8');
+    const rewritten = rewriteNativeHtmlUrls({
+      content,
+      currentOutputDirectory: outputDirectory,
+      linkResolutionMap: allLinkResolutionMaps.get(bundleNodeConfigToKey(conf)),
+      bundleNodeConfigs: bundleNodeConfigsArrayForLinks,
+      bundleConfig,
+      bundleSlug: bundleSlug || undefined,
+      routeTable: routePlan.routes,
+    });
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    fs.writeFileSync(outputPath, rewritten, 'utf8');
+
+    if (!startPageRenderedEmitted && startPageKey === pageKey && await waitForFileExists(outputPath)) {
+      startPageRenderedEmitted = true;
+      options.onStartPageRendered?.({
+        title: conf.bundleNodeName,
+        directory: subdir,
+        relativeHtmlPath: outputRoute,
+      });
+    }
+    renderedOrSkipped += 1;
+    emitRenderProgressIfChanged();
+    await delay(AFTER_HTML_GENERATION_PAUSE_MS);
+  };
+
+  const renderNativeHtmlStart = performance.now();
+  for (const pageKey of htmlRenderOrder) {
+    if (options.shouldCancel?.()) break;
+    await renderNativeHtmlPage(pageKey);
+  }
+  recordStageTiming('render_native_html_pages', renderNativeHtmlStart, { page_count: htmlRenderOrder.length });
 
   const renderStandaloneExcalidrawPage = async (pageKey: string) => {
     const conf = bundleNodeConfs[pageKey];

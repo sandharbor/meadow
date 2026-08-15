@@ -24,7 +24,7 @@ import { IBundleNode } from '../../../../../../shared_code/types/IBundleNode.js'
 import { CustomBundleNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
 import { nodeIsInFolder } from './folderFilterUtils.js';
 import type { BundleNodeKind } from '../../../../../../shared_code/types/bundleNodeConfig.js';
-import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils.js';
+import type { FileType } from '../../../../../../shared_code/types/FileType.js';
 
 export interface SelectorBase {
   id: string;
@@ -67,27 +67,22 @@ export const createBundleNodeKindSelector = (bundleNodeKind: BundleNodeKind): IN
   ),
 });
 
-export const createNonImageFileNodeSelector = (): INormalBundleNodeSelector => ({
-  id: 'non-image-file-nodes',
-  name: 'File Nodes',
-  type: 'normal',
-  select: (graph: Graph) => new Set(
-    graph.getAllNodes()
-      .filter(node => node.bundleNodeKind === 'file' && !isImageFileType(node.fileType))
-      .map(node => node.bundleNodeKey)
-  ),
-});
-
-export const createImageNodeSelector = (): INormalBundleNodeSelector => ({
-  id: 'image-nodes',
-  name: 'Image Nodes',
-  type: 'normal',
-  select: (graph: Graph) => new Set(
-    graph.getAllNodes()
-      .filter(node => node.bundleNodeKind === 'file' && isImageFileType(node.fileType))
-      .map(node => node.bundleNodeKey)
-  ),
-});
+export const createFileTypeNodeSelector = (
+  fileTypes: readonly FileType[],
+  name: string,
+): INormalBundleNodeSelector => {
+  const matchingFileTypes = new Set(fileTypes);
+  return {
+    id: `file-type-${fileTypes.join('-')}`,
+    name,
+    type: 'normal',
+    select: (graph: Graph) => new Set(
+      graph.getAllNodes()
+        .filter(node => node.bundleNodeKind === 'file' && matchingFileTypes.has(node.fileType))
+        .map(node => node.bundleNodeKey)
+    ),
+  };
+};
 
 export const createSelectedScopeRootSelector = (): INormalBundleNodeSelector => ({
   id: 'selected-scope-roots',

@@ -36,7 +36,7 @@ import {
   extractBacklinkDetails,
 } from '../../../../helpers/htmlLinkExtractor.js';
 import {
-  findAllMarkdownFiles,
+  findAllPagespecSourceFiles,
   getAvailableBundles,
   getPagespecBundlesToCheck,
   getPageTitle,
@@ -50,14 +50,14 @@ describe('Pagespecs Generation System Tests', () => {
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (!block) continue;
 
-          const pageTitle = getPageTitle(mdFile);
+          const pageTitle = getPageTitle(sourceFile);
           const validationErrors = validatePagespecsBlock(
             block,
             [],
@@ -68,7 +68,7 @@ describe('Pagespecs Generation System Tests', () => {
 
           for (const err of validationErrors) {
             if (err.field === 'htmlRenderedLinks') {
-              errors.push(`${mdFile}: ${err.message}`);
+              errors.push(`${sourceFile}: ${err.message}`);
             }
           }
         }
@@ -120,11 +120,11 @@ Just normal content.`;
       let pagesChecked = 0;
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (!block) continue;
 
           for (const spec of block.pagespecs) {
@@ -135,7 +135,7 @@ Just normal content.`;
             const backlinks = spec.generation.htmlRenderedLinks?.footerSectionBacklinks ?? [];
 
             if (mainLinks.length > 0 || backlinks.length > 0) {
-              const relativePath = path.relative(sourceGraphDir, mdFile);
+              const relativePath = path.relative(sourceGraphDir, sourceFile);
               errors.push(
                 `[${spec.bundle}] ${relativePath}: page is not in working graph but has non-empty htmlRenderedLinks (mainSectionLinks: ${mainLinks.length}, footerSectionBacklinks: ${backlinks.length})`
               );
@@ -236,17 +236,17 @@ describe('Runtime Pagespec Generation Validation', () => {
 
     for (const { name: bundleName, setup: bundleSetup, sourceGraphDir } of bundlesToCheck) {
       const generatedHtmlFolderPath = bundleSetup.getPathInBundle('html/generated');
-      const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+      const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-      for (const mdFile of mdFiles) {
-        const content = fs.readFileSync(mdFile, 'utf-8');
-        const block = getEffectivePagespecBlock(mdFile, content).block;
+      for (const sourceFile of pagespecSourceFiles) {
+        const content = fs.readFileSync(sourceFile, 'utf-8');
+        const block = getEffectivePagespecBlock(sourceFile, content).block;
         if (!block) continue;
 
         const bundleSpec = getPagespecForBundle(block, bundleName);
         if (!bundleSpec || !bundleSpec.curation.isInWorkingGraph) continue;
 
-        const relativePath = path.relative(sourceGraphDir, mdFile).replace(/\.md$/, '.html');
+        const relativePath = path.relative(sourceGraphDir, sourceFile).replace(/\.md$/, '.html');
         const htmlPath = path.join(generatedHtmlFolderPath, relativePath);
 
         if (!fs.existsSync(htmlPath)) {

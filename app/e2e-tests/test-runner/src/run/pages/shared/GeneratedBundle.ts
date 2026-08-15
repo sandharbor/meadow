@@ -660,6 +660,20 @@ export class GeneratedBundle {
     await this.root.getByRole("link", { name }).first().click();
   }
 
+  async expectNativeHtmlCardColor(color: string) {
+    await this.expect(this.root.locator(".html-node-card")).toHaveCSS("background-color", color);
+  }
+
+  async expectNativeHtmlSharedImageVisible() {
+    await this.expect(
+      this.root.getByRole("img", { name: "Purple flower shared by both HTML pages" }),
+    ).toBeVisible();
+  }
+
+  async expectNativeHtmlSharedScriptLoaded() {
+    await this.expect(this.root.locator("#script-status")).toHaveText("Shared JavaScript loaded.");
+  }
+
   async close() {
     await this.hostPage.close();
   }

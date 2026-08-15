@@ -15,13 +15,13 @@ limitations under the License.
 */
 
 import type { Graph } from '../../../../../../shared_code/types/graph.js';
+import type { FileType } from '../../../../../../shared_code/types/FileType.js';
 import type { INormalBundleNodeSelector } from './filterSelectors.js';
 import type { NodeTypeFilterId } from '../types/filters.js';
 import {
-  createImageNodeSelector,
-  createNonImageFileNodeSelector,
-  createSelectedScopeRootSelector,
   createBundleNodeKindSelector,
+  createFileTypeNodeSelector,
+  createSelectedScopeRootSelector,
 } from './filterSelectors.js';
 
 interface NodeTypeFilterDefinition {
@@ -36,9 +36,30 @@ export interface PresentNodeTypeFilter {
   nodeCount: number;
 }
 
+const fileTypeDefinition = (
+  id: NodeTypeFilterId,
+  label: string,
+  fileTypes: readonly FileType[],
+): NodeTypeFilterDefinition => ({
+  id,
+  label,
+  createSelector: () => createFileTypeNodeSelector(fileTypes, label),
+});
+
 const NODE_TYPE_FILTER_DEFINITIONS: NodeTypeFilterDefinition[] = [
-  { id: 'file', label: 'File Nodes', createSelector: createNonImageFileNodeSelector },
-  { id: 'image', label: 'Image Nodes', createSelector: createImageNodeSelector },
+  fileTypeDefinition('md', 'Markdown', ['md']),
+  fileTypeDefinition('html', 'HTML', ['html']),
+  fileTypeDefinition('js', 'JavaScript', ['js']),
+  fileTypeDefinition('css', 'CSS', ['css']),
+  fileTypeDefinition('txt', 'Text', ['txt']),
+  fileTypeDefinition('pdf', 'PDF', ['pdf']),
+  fileTypeDefinition('other', 'Other Files', ['other']),
+  fileTypeDefinition('png', 'PNG', ['png']),
+  fileTypeDefinition('jpeg', 'JPEG', ['jpg', 'jpeg']),
+  fileTypeDefinition('gif', 'GIF', ['gif']),
+  fileTypeDefinition('svg', 'SVG', ['svg']),
+  fileTypeDefinition('webp', 'WebP', ['webp']),
+  fileTypeDefinition('excalidraw', 'Excalidraw', ['excalidraw']),
   { id: 'folder', label: 'Folder Nodes', createSelector: () => createBundleNodeKindSelector('folder') },
   { id: 'collection', label: 'Bundle Homes', createSelector: () => createBundleNodeKindSelector('collection') },
   { id: 'selected-scope-root', label: 'Selected Scope Roots', createSelector: createSelectedScopeRootSelector },

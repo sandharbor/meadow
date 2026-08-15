@@ -54,3 +54,5 @@ _link not tracked_ (note: untracked in dev conf)
 
 [t025 - extended syntax](/t025%20-%20extended%20syntax.md)
 
+[t026 - HTML node](/t026%20-%20HTML%20node.md)
+

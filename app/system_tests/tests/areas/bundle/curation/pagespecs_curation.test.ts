@@ -43,7 +43,7 @@ import {
 import type { WorkingGraphData, PagespecInWorkingGraph } from '../../../../pagespecs/index.js';
 import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import {
-  findAllMarkdownFiles,
+  findAllPagespecSourceFiles,
   getAvailableBundles,
   getPageIdFromPath,
   getPageTitle,
@@ -59,14 +59,14 @@ describe('Pagespecs Curation System Tests', () => {
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (!block) continue;
 
-          const pageTitle = getPageTitle(mdFile);
+          const pageTitle = getPageTitle(sourceFile);
           const validationErrors = validatePagespecsBlock(
             block,
             [],
@@ -77,7 +77,7 @@ describe('Pagespecs Curation System Tests', () => {
 
           for (const err of validationErrors) {
             if (err.field === 'filtersSelected') {
-              errors.push(`${mdFile}: ${err.message}`);
+              errors.push(`${sourceFile}: ${err.message}`);
             }
           }
         }
@@ -93,14 +93,14 @@ describe('Pagespecs Curation System Tests', () => {
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (!block) continue;
 
-          const pageTitle = getPageTitle(mdFile);
+          const pageTitle = getPageTitle(sourceFile);
           const validationErrors = validatePagespecsBlock(
             block,
             [],
@@ -111,7 +111,7 @@ describe('Pagespecs Curation System Tests', () => {
 
           for (const err of validationErrors) {
             if (err.field === 'links') {
-              errors.push(`${mdFile}: ${err.message}`);
+              errors.push(`${sourceFile}: ${err.message}`);
             }
           }
         }
@@ -127,12 +127,12 @@ describe('Pagespecs Curation System Tests', () => {
       const errors: string[] = [];
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
         const allReferencedBundles: string[] = [];
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (block) {
             for (const bundle of getReferencedBundles(block)) {
               if (!allReferencedBundles.includes(bundle)) {
@@ -142,12 +142,12 @@ describe('Pagespecs Curation System Tests', () => {
           }
         }
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (!block) continue;
 
-          const pageTitle = getPageTitle(mdFile);
+          const pageTitle = getPageTitle(sourceFile);
           const validationErrors = validatePagespecsBlock(
             block,
             allReferencedBundles,
@@ -157,7 +157,7 @@ describe('Pagespecs Curation System Tests', () => {
           );
 
           for (const err of validationErrors) {
-            errors.push(`${mdFile}: [${err.field ?? 'general'}] ${err.message}`);
+            errors.push(`${sourceFile}: [${err.field ?? 'general'}] ${err.message}`);
           }
         }
       }
@@ -173,11 +173,11 @@ describe('Pagespecs Curation System Tests', () => {
       let orphanPagesFound = 0;
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (!block) continue;
 
           for (const spec of block.pagespecs) {
@@ -197,11 +197,11 @@ describe('Pagespecs Curation System Tests', () => {
       let frontierPagesFound = 0;
 
       for (const sourceGraphDir of pagespecSourceGraphDirs) {
-        const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+        const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-        for (const mdFile of mdFiles) {
-          const content = fs.readFileSync(mdFile, 'utf-8');
-          const block = getEffectivePagespecBlock(mdFile, content).block;
+        for (const sourceFile of pagespecSourceFiles) {
+          const content = fs.readFileSync(sourceFile, 'utf-8');
+          const block = getEffectivePagespecBlock(sourceFile, content).block;
           if (!block) continue;
 
           for (const spec of block.pagespecs) {
@@ -230,6 +230,9 @@ describe('Pagespecs Curation System Tests', () => {
       expect(isValidLinkPath('/page_with_underscores.md')).toBe(true);
       expect(isValidLinkPath('/page.with.dots.md')).toBe(true);
       expect(isValidLinkPath('/t001 ---- child 1.md')).toBe(true);
+      expect(isValidLinkPath('/folder/page.html')).toBe(true);
+      expect(isValidLinkPath('/assets/shared.css')).toBe(true);
+      expect(isValidLinkPath('/assets/behavior.js')).toBe(true);
     });
 
     it('isValidLinkPath should accept valid image link paths', () => {
@@ -260,6 +263,9 @@ describe('Pagespecs Curation System Tests', () => {
       expect(linkPathToPageId('/folder/page.md')).toBe('folder/page');
       expect(linkPathToPageId('page.md')).toBe('page');
       expect(linkPathToPageId('folder/page.md')).toBe('folder/page');
+      expect(linkPathToPageId('/folder/page.html')).toBe('folder/page.html');
+      expect(linkPathToPageId('/assets/shared.css')).toBe('assets/shared.css');
+      expect(linkPathToPageId('/assets/behavior.js')).toBe('assets/behavior.js');
     });
 
     it('linkPathToPageId should handle image paths', () => {
@@ -273,6 +279,9 @@ describe('Pagespecs Curation System Tests', () => {
     it('pageIdToLinkPath should convert correctly', () => {
       expect(pageIdToLinkPath('main page')).toBe('/main page.md');
       expect(pageIdToLinkPath('folder/page')).toBe('/folder/page.md');
+      expect(pageIdToLinkPath('folder/page.html')).toBe('/folder/page.html');
+      expect(pageIdToLinkPath('assets/shared.css')).toBe('/assets/shared.css');
+      expect(pageIdToLinkPath('assets/behavior.js')).toBe('/assets/behavior.js');
     });
 
     it('pageIdToLinkPath should handle image page IDs', () => {
@@ -502,16 +511,16 @@ async function validatePagespecLinksForBundle(
     inlinkMap.set(pageTitle, sourceTitles);
   }
 
-  const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+  const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
   const errors: string[] = [];
   let pagesValidated = 0;
 
-  for (const mdFile of mdFiles) {
-    const content = fs.readFileSync(mdFile, 'utf-8');
-    const block = getEffectivePagespecBlock(mdFile, content).block;
+  for (const sourceFile of pagespecSourceFiles) {
+    const content = fs.readFileSync(sourceFile, 'utf-8');
+    const block = getEffectivePagespecBlock(sourceFile, content).block;
     if (!block) continue;
 
-    const pageTitle = getPageIdFromPath(mdFile, sourceGraphDir, content, isExcalidrawMarkdown);
+    const pageTitle = getPageIdFromPath(sourceFile, sourceGraphDir, content, isExcalidrawMarkdown);
     const bundleSpec = getPagespecForBundle(block, bundleName);
 
     if (!bundleSpec || !bundleSpec.curation.isInWorkingGraph) continue;
@@ -520,7 +529,7 @@ async function validatePagespecLinksForBundle(
 
     if (!workingGraphPageIds.has(pageTitle)) {
       errors.push(
-        `[${bundleName}] ${path.basename(mdFile)}: claims isInWorkingGraph: true but is NOT in working graph`
+        `[${bundleName}] ${path.basename(sourceFile)}: claims isInWorkingGraph: true but is NOT in working graph`
       );
       continue;
     }
@@ -540,7 +549,7 @@ async function validatePagespecLinksForBundle(
 
     if (!result.isValid) {
       for (const err of result.errors) {
-        errors.push(`[${bundleName}] ${path.basename(mdFile)}: ${err.message}`);
+        errors.push(`[${bundleName}] ${path.basename(sourceFile)}: ${err.message}`);
       }
     }
   }
@@ -652,14 +661,14 @@ describe('Runtime Pagespec Curation Validation', () => {
       };
 
       const workingGraphPageIds = new Set(graphData.nodes.map((node) => linkPathToPageId(node.bundleNodeKey)));
-      const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+      const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-      for (const mdFile of mdFiles) {
-        const content = fs.readFileSync(mdFile, 'utf-8');
-        const block = getEffectivePagespecBlock(mdFile, content).block;
+      for (const sourceFile of pagespecSourceFiles) {
+        const content = fs.readFileSync(sourceFile, 'utf-8');
+        const block = getEffectivePagespecBlock(sourceFile, content).block;
         if (!block) continue;
 
-        const pageId = getPageIdFromPath(mdFile, sourceGraphDir, content, isExcalidrawMarkdown);
+        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir, content, isExcalidrawMarkdown);
         const bundleSpec = getPagespecForBundle(block, bundleName);
         if (!bundleSpec || bundleSpec.curation.isInWorkingGraph !== false) continue;
 
@@ -691,14 +700,14 @@ describe('Runtime Pagespec Curation Validation', () => {
         ? parseBundleNodeConfig(fs.readFileSync(bundleConfigPath, 'utf-8'))
         : [];
 
-      const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+      const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-      for (const mdFile of mdFiles) {
-        const content = fs.readFileSync(mdFile, 'utf-8');
-        const block = getEffectivePagespecBlock(mdFile, content).block;
+      for (const sourceFile of pagespecSourceFiles) {
+        const content = fs.readFileSync(sourceFile, 'utf-8');
+        const block = getEffectivePagespecBlock(sourceFile, content).block;
         if (!block) continue;
 
-        const pageId = getPageIdFromPath(mdFile, sourceGraphDir, content, isExcalidrawMarkdown);
+        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir, content, isExcalidrawMarkdown);
         const bundleSpec = getPagespecForBundle(block, bundleName);
         if (!bundleSpec) continue;
 
@@ -742,14 +751,14 @@ describe('Runtime Pagespec Curation Validation', () => {
         pageRemainingDepthMap.set(pageId, node.remaining_depth);
       }
 
-      const mdFiles = findAllMarkdownFiles(sourceGraphDir);
+      const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
-      for (const mdFile of mdFiles) {
-        const content = fs.readFileSync(mdFile, 'utf-8');
-        const block = getEffectivePagespecBlock(mdFile, content).block;
+      for (const sourceFile of pagespecSourceFiles) {
+        const content = fs.readFileSync(sourceFile, 'utf-8');
+        const block = getEffectivePagespecBlock(sourceFile, content).block;
         if (!block) continue;
 
-        const pageId = getPageIdFromPath(mdFile, sourceGraphDir, content, isExcalidrawMarkdown);
+        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir, content, isExcalidrawMarkdown);
         const bundleSpec = getPagespecForBundle(block, bundleName);
         if (!bundleSpec || bundleSpec.curation.isInWorkingGraph !== false) continue;
         if (!isPagespecNotInWorkingGraph(bundleSpec)) continue;

@@ -46,7 +46,7 @@ const typesFilter: IFilter = {
   isHidden: false,
   isNodeTypeFilter: true,
   nodeTypeStates: {
-    image: { showTitles: true, isSolo: false, isHidden: true },
+    excalidraw: { showTitles: true, isSolo: false, isHidden: true },
   },
 };
 
@@ -62,45 +62,77 @@ const renderDisplayFilters = (graph: Graph, filter = typesFilter) => renderHook(
 }));
 
 describe('useDisplayFilters node types', () => {
-  it('expands an active image row into a display filter using centralized image types', () => {
+  it('expands an active Excalidraw row into a type-specific display filter', () => {
     const graph = new Graph();
     graph.addNode(fileNode('note', 'md'));
     graph.addNode(fileNode('drawing', 'excalidraw'));
 
     const { result } = renderDisplayFilters(graph);
-    const imageFilter = result.current.combinedFilters.find(filter => filter.id === 'node-types-filter-image');
+    const excalidrawFilter = result.current.combinedFilters.find(
+      filter => filter.id === 'node-types-filter-excalidraw'
+    );
 
-    expect(imageFilter).toMatchObject({
-      name: 'Type: Image Nodes',
+    expect(excalidrawFilter).toMatchObject({
+      name: 'Type: Excalidraw',
       enabled: true,
       isSolo: false,
       isHidden: true,
       actions: [{ type: 'show_titles' }],
     });
-    expect(imageFilter?.bundleNodeSelectors[0].select(graph)).toEqual(new Set(['drawing']));
+    expect(excalidrawFilter?.bundleNodeSelectors[0].select(graph)).toEqual(new Set(['drawing']));
   });
 
-  it('keeps the File Nodes solo bucket disjoint from centralized image types', () => {
+  it('solos Markdown independently from Excalidraw', () => {
     const graph = new Graph();
     graph.addNode(fileNode('note', 'md'));
     graph.addNode(fileNode('drawing', 'excalidraw'));
-    const fileSoloFilter: IFilter = {
+    const markdownSoloFilter: IFilter = {
       ...typesFilter,
       nodeTypeStates: {
-        file: { showTitles: false, isSolo: true, isHidden: false },
+        md: { showTitles: false, isSolo: true, isHidden: false },
       },
     };
 
-    const { result } = renderDisplayFilters(graph, fileSoloFilter);
-    const fileFilter = result.current.combinedFilters.find(filter => filter.id === 'node-types-filter-file');
+    const { result } = renderDisplayFilters(graph, markdownSoloFilter);
+    const markdownFilter = result.current.combinedFilters.find(
+      filter => filter.id === 'node-types-filter-md'
+    );
 
-    expect(fileFilter).toMatchObject({
-      name: 'Type: File Nodes',
+    expect(markdownFilter).toMatchObject({
+      name: 'Type: Markdown',
       enabled: true,
       isSolo: true,
       isHidden: false,
     });
-    expect(fileFilter?.bundleNodeSelectors[0].select(graph)).toEqual(new Set(['note']));
+    expect(markdownFilter?.bundleNodeSelectors[0].select(graph)).toEqual(new Set(['note']));
+  });
+
+  it('groups jpg and jpeg files into one JPEG row', () => {
+    const graph = new Graph();
+    graph.addNode(fileNode('note', 'md'));
+    graph.addNode(fileNode('short-extension', 'jpg'));
+    graph.addNode(fileNode('long-extension', 'jpeg'));
+    const jpegSoloFilter: IFilter = {
+      ...typesFilter,
+      nodeTypeStates: {
+        jpeg: { showTitles: false, isSolo: true, isHidden: false },
+      },
+    };
+
+    const { result } = renderDisplayFilters(graph, jpegSoloFilter);
+    const jpegFilter = result.current.combinedFilters.find(
+      filter => filter.id === 'node-types-filter-jpeg'
+    );
+
+    expect(jpegFilter).toMatchObject({
+      name: 'Type: JPEG',
+      enabled: true,
+      isSolo: true,
+      isHidden: false,
+    });
+    expect(jpegFilter?.bundleNodeSelectors[0].select(graph)).toEqual(
+      new Set(['short-extension', 'long-extension'])
+    );
   });
 
   it('does not apply the grouped filter when only one type is present', () => {
@@ -109,6 +141,6 @@ describe('useDisplayFilters node types', () => {
 
     const { result } = renderDisplayFilters(graph);
 
-    expect(result.current.combinedFilters.some(filter => filter.id === 'node-types-filter-image')).toBe(false);
+    expect(result.current.combinedFilters.some(filter => filter.id === 'node-types-filter-excalidraw')).toBe(false);
   });
 });

@@ -22,6 +22,8 @@ limitations under the License.
 import type { PagespecLinkSpec, PagespecLinks } from './types.js';
 import { IMAGE_EXTENSIONS } from '../../shared_code/utils/fileTypeUtils.js';
 
+const PRESERVED_LINK_EXTENSIONS = ['.html', '.css', '.js', ...IMAGE_EXTENSIONS] as const;
+
 /**
  * Result of a link check operation.
  */
@@ -48,17 +50,16 @@ export interface LinkCheckError {
  * @param path - The path to check
  * @returns The extension if it's an image, undefined otherwise
  */
-function getImageExtension(path: string): string | undefined {
+function getPreservedExtension(path: string): string | undefined {
   const lowerPath = path.toLowerCase();
-  return IMAGE_EXTENSIONS.find((ext) => lowerPath.endsWith(ext));
+  return PRESERVED_LINK_EXTENSIONS.find((ext) => lowerPath.endsWith(ext));
 }
 
 /**
  * Converts a pagespec link path to a page ID.
  * Link paths in pagespecs are like "/main page.md" or "/folder/page.md" for pages,
- * or "/folder/image.png" for images.
- * Page IDs in the working graph are typically just the path without extension for pages,
- * or the full path with extension for images.
+ * or "/folder/image.png" for native files. Markdown page IDs omit `.md`;
+ * native HTML, CSS, JavaScript, and image IDs retain their extensions.
  *
  * @param linkPath - The link path from the pagespec (e.g., "/main page.md" or "/folder/image.png")
  * @returns The page ID (e.g., "main page" for pages, "folder/image.png" for images)
@@ -67,9 +68,8 @@ export function linkPathToPageId(linkPath: string): string {
   // Remove leading slash if present
   let path = linkPath.startsWith('/') ? linkPath.slice(1) : linkPath;
 
-  // Check if it's an image - if so, keep the full path with extension
-  const imageExt = getImageExtension(path);
-  if (imageExt) {
+  // Native files retain their extension in working-graph page IDs.
+  if (getPreservedExtension(path)) {
     return path;
   }
 
@@ -82,16 +82,14 @@ export function linkPathToPageId(linkPath: string): string {
 
 /**
  * Converts a page ID to a link path.
- * For pages, the pageId is without extension and .md is added.
- * For images, the pageId includes the extension and is returned as-is (with leading /).
+ * Markdown page IDs omit their extension, so `.md` is added. Native file IDs
+ * retain their extension and are returned as-is (with a leading slash).
  *
  * @param pageId - The page ID (e.g., "main page" for pages, "folder/image.png" for images)
  * @returns The link path (e.g., "/main page.md" or "/folder/image.png")
  */
 export function pageIdToLinkPath(pageId: string): string {
-  // Check if it's an image (pageId already has extension)
-  const imageExt = getImageExtension(pageId);
-  if (imageExt) {
+  if (getPreservedExtension(pageId)) {
     return `/${pageId}`;
   }
   // For pages, add .md extension

@@ -19,11 +19,10 @@ import { FilterPanelComponent, BundleEditorPage } from "../src/run/pages/index.j
 import { Workflows } from "../src/run/workflows.js";
 import { filters } from "../src/scenario-docs/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
-import { isImageFileType } from "../../../shared_code/utils/fileTypeUtils.js";
 
 test.use({ bundleMode: "single-file" });
 
-test("type filter soloing File Nodes excludes Image Nodes", async ({
+test("type filter lists concrete file types and solos Markdown", async ({
   page,
   snapshot,
   assertMeadowHomeState,
@@ -36,21 +35,22 @@ test("type filter soloing File Nodes excludes Image Nodes", async ({
   await workflows.navigateToBigBundle();
   await editor.expectGraphEdgeKindControlsHidden();
   await filterPanel.expandFilterGroup("Types");
-  const fileNodeCount = await filterPanel.getNodeTypeCount("File Nodes");
-  const imageNodeCount = await filterPanel.getNodeTypeCount("Image Nodes");
-  expect(fileNodeCount).toBeGreaterThan(0);
-  expect(imageNodeCount).toBeGreaterThan(0);
+  const markdownNodeCount = await filterPanel.getNodeTypeCount("Markdown");
+  expect(markdownNodeCount).toBeGreaterThan(0);
+  for (const typeName of ["HTML", "JavaScript", "CSS", "PNG", "GIF", "SVG", "Excalidraw"]) {
+    expect(await filterPanel.getNodeTypeCount(typeName)).toBeGreaterThan(0);
+  }
   await snapshot("type filters expanded");
 
-  await filterPanel.soloNodeType("File Nodes");
+  await filterPanel.soloNodeType("Markdown");
   await editor.switchToListView();
-  await expect.poll(() => editor.getListViewPageCount()).toBe(fileNodeCount);
+  await expect.poll(() => editor.getListViewPageCount()).toBe(markdownNodeCount);
 
   const visibleTypes = await editor.getListViewNodeTypes();
-  expect(visibleTypes).toHaveLength(fileNodeCount);
-  expect(visibleTypes.some(type => isImageFileType(type.trim().replace(/^\./, "")))).toBe(false);
+  expect(visibleTypes).toHaveLength(markdownNodeCount);
+  expect(visibleTypes.every(type => type.trim() === ".md")).toBe(true);
   await addKeyFrame(filters);
-  await snapshot("file nodes soloed with image nodes excluded");
+  await snapshot("Markdown nodes soloed");
   void bigBundle;
 
   await assertMeadowHomeState();

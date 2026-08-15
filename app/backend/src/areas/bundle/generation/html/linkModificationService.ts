@@ -38,19 +38,18 @@ interface ResolvedTarget {
  * returns the relative `href` value the page should link to. Returns null
  * when the target isn't resolvable or isn't whitelisted on this bundle.
  *
- * Centralizes the rules — title normalization, md/excalidraw → .html,
+ * Centralizes the rules — title normalization, md/html/excalidraw → .html,
  * keep-extension for images, calculate-relative + URL-encode — that the
  * bundle's page links and image embeds all share.
  *
- * `targetUrlMode` controls what URL gets built for md/excalidraw targets:
+ * `targetUrlMode` controls what URL gets built for rendered page targets:
  *   - 'rendered-page' (default): point at the rendered HTML page
  *     (`<title>.html` with normalized title). Use when building hyperlinks.
  *   - 'source-file': point at the source file (`<title>.<file_type>`).
  *     Use when the consumer needs to fetch the source — e.g. the image
  *     branch building `<img src>` URLs or `data-meadow-excalidraw-src`.
  *
- * For non-md/non-excalidraw types the two modes are equivalent (image
- * files have no separate "rendered page").
+ * For asset types the two modes are equivalent.
  */
 export function resolveTrackedLinkHref(args: {
   resolved: LinkResolvedInfo;
@@ -87,7 +86,7 @@ export function resolveTrackedLinkHref(args: {
   }
 
   let urlFilename: string;
-  if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'excalidraw')) {
+  if (targetUrlMode === 'rendered-page' && (targetExt === 'md' || targetExt === 'html' || targetExt === 'excalidraw')) {
     const normalizedTitle = bundleConfig && bundleSlug
       ? normalizePageTitle(targetTitle, bundleConfig, bundleSlug)
       : targetTitle;
@@ -396,14 +395,19 @@ export function isLinkTracked(
 
   if (linkInfo.type === 'page') {
     const originalLinkFilename = linkInfo.filename;
-    const { directory: targetPageDirectory, filename: resolvedTitle } = resolveTarget(
-      linkText, originalLinkFilename, linkResolutionMap, 'md'
+    const { directory: targetPageDirectory, filename: resolvedFilename } = resolveTarget(
+      linkText, originalLinkFilename, linkResolutionMap
     );
+    const resolvedExtension = resolvedFilename.includes('.')
+      ? resolvedFilename.slice(resolvedFilename.lastIndexOf('.') + 1).toLowerCase()
+      : 'md';
+    const targetFileType = resolvedExtension === 'html' ? 'html' : 'md';
+    const resolvedTitle = resolvedFilename.replace(new RegExp(`\\.${targetFileType}$`, 'i'), '');
 
     let linkConfig = bundleNodeConfigs.find(bundleNodeConfig =>
       bundleNodeConfig.bundleNodeKind === 'file' && bundleNodeConfig.bundleNodeName === resolvedTitle &&
       (bundleNodeConfig.sourceGraphSubdirectory || '') === targetPageDirectory &&
-      (bundleNodeConfig.fileType === 'md' || !bundleNodeConfig.fileType)
+      (bundleNodeConfig.fileType || 'md') === targetFileType
     );
 
     const linkHasExplicitPath = originalLinkFilename.includes('/');
@@ -417,7 +421,7 @@ export function isLinkTracked(
       linkConfig = bundleNodeConfigs.find(bundleNodeConfig =>
         bundleNodeConfig.bundleNodeKind === 'file' && bundleNodeConfig.bundleNodeName === resolvedTitle &&
         (bundleNodeConfig.sourceGraphSubdirectory || '') === explicitDir &&
-        (bundleNodeConfig.fileType === 'md' || !bundleNodeConfig.fileType)
+        (bundleNodeConfig.fileType || 'md') === targetFileType
       );
     }
 
@@ -426,7 +430,7 @@ export function isLinkTracked(
     if (!linkConfig && !linkHasExplicitPath) {
       linkConfig = bundleNodeConfigs.find(bundleNodeConfig =>
         bundleNodeConfig.bundleNodeKind === 'file' && bundleNodeConfig.bundleNodeName === resolvedTitle &&
-        (bundleNodeConfig.fileType === 'md' || !bundleNodeConfig.fileType)
+        (bundleNodeConfig.fileType || 'md') === targetFileType
       );
     }
 
@@ -674,9 +678,14 @@ export function linkOrImageHtml(
   if (linkInfo.type === 'page') {
     const originalLinkFilename = linkInfo.filename;
 
-    const { directory: targetPageDirectory, filename: resolvedTitle } = resolveTarget(
-      linkText, originalLinkFilename, linkResolutionMap, 'md'
+    const { directory: targetPageDirectory, filename: resolvedFilename } = resolveTarget(
+      linkText, originalLinkFilename, linkResolutionMap
     );
+    const resolvedExtension = resolvedFilename.includes('.')
+      ? resolvedFilename.slice(resolvedFilename.lastIndexOf('.') + 1).toLowerCase()
+      : 'md';
+    const targetFileType = resolvedExtension === 'html' ? 'html' : 'md';
+    const resolvedTitle = resolvedFilename.replace(new RegExp(`\\.${targetFileType}$`, 'i'), '');
 
     // Check if the link target is a publishable (whitelisted) page
     if (!isLinkTracked(linkText, bundleNodeConfigs, linkResolutionMap)) {
@@ -687,14 +696,14 @@ export function linkOrImageHtml(
     let linkConfig = bundleNodeConfigs.find(bundleNodeConfig =>
       bundleNodeConfig.bundleNodeKind === 'file' && bundleNodeConfig.bundleNodeName === resolvedTitle &&
       (bundleNodeConfig.sourceGraphSubdirectory || '') === targetPageDirectory &&
-      (bundleNodeConfig.fileType === 'md' || !bundleNodeConfig.fileType)
+      (bundleNodeConfig.fileType || 'md') === targetFileType
     );
 
     const linkHasExplicitPath = originalLinkFilename.includes('/');
     if (!linkConfig && !linkHasExplicitPath) {
       linkConfig = bundleNodeConfigs.find(bundleNodeConfig =>
         bundleNodeConfig.bundleNodeKind === 'file' && bundleNodeConfig.bundleNodeName === resolvedTitle &&
-        (bundleNodeConfig.fileType === 'md' || !bundleNodeConfig.fileType)
+        (bundleNodeConfig.fileType || 'md') === targetFileType
       );
     }
 

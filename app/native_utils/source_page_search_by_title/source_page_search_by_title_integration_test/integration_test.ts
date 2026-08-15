@@ -40,7 +40,7 @@ test('source_page_search_by_title integration', (t) => {
   const all = runSourcePageSearch({ root: graphRoot });
 
   t.ok(Array.isArray(all), 'returns an array');
-  t.ok(all.length > 0, 'expected some markdown pages');
+  t.ok(all.length > 0, 'expected some source pages');
 
   t.test('entries have expected shape', (st) => {
     const e = all[0];
@@ -78,6 +78,18 @@ test('source_page_search_by_title integration', (t) => {
     st.end();
   });
 
+  t.test('classifies native web source pages by extension', (st) => {
+    const expected = [
+      ['t026 ---- first HTML page', 'html'],
+      ['t026 ---- shared style', 'css'],
+      ['t026 ---- shared behavior', 'js'],
+    ];
+    for (const [title, fileType] of expected) {
+      const page = all.find(x => x.title === title && x.directory === 't026');
+      st.equal(page?.file_type, fileType, `${title} is file_type ${fileType}`);
+    }
+    st.end();
+  });
+
   t.end();
 });
-

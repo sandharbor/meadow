@@ -388,19 +388,20 @@ export function renderPageToHtml(
         }
       }
 
-      // Page link
-      const resolvedTitle = fileName.replace(/\.md$/, '');
+      // Rendered page link (Markdown or native HTML)
+      const resolvedTitle = fileName.replace(/\.(?:md|html)$/i, '');
+      const renderedPageFileType = fileType === 'html' ? 'html' : 'md';
 
       let linkConfig = bundleNodeConfigs.find(c =>
         c.bundleNodeKind === 'file' && c.bundleNodeName === resolvedTitle &&
         (c.sourceGraphSubdirectory || '') === targetDir &&
-        (c.fileType === 'md' || !c.fileType) &&
+        (c.fileType || 'md') === renderedPageFileType &&
         c.listType === 'whitelist'
       );
       if (!linkConfig) {
         linkConfig = bundleNodeConfigs.find(c =>
           c.bundleNodeKind === 'file' && c.bundleNodeName === resolvedTitle &&
-          (c.fileType === 'md' || !c.fileType) &&
+          (c.fileType || 'md') === renderedPageFileType &&
           c.listType === 'whitelist'
         );
       }

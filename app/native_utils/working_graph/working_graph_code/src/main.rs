@@ -182,10 +182,17 @@ struct LinkResolvedInfo {
 }
 
 const IMAGE_EXTENSIONS_MAIN: &[&str] = &["jpg", "jpeg", "png", "gif", "svg", "webp", "excalidraw"];
+const TEXT_SOURCE_EXTENSIONS: &[&str] = &["md", "html", "css", "js"];
 
-/// Sidecar pagespec files like `foo.svg.pagespec.yaml` or `foo.excalidraw.pagespec.yaml`
-/// carry test metadata for files that cannot embed pagespecs inline. The graph scanner
-/// must not treat them as pages.
+fn is_supported_source_extension(extension: &str) -> bool {
+    TEXT_SOURCE_EXTENSIONS.contains(&extension)
+        || extension == "pdf"
+        || IMAGE_EXTENSIONS_MAIN.contains(&extension)
+}
+
+/// Sidecar pagespec files like `foo.html.pagespec.yaml` or
+/// `foo.excalidraw.pagespec.yaml` carry test metadata for files that should not embed
+/// pagespecs inline. The graph scanner must not treat them as pages.
 fn is_pagespec_sidecar(path: &std::path::Path) -> bool {
     path.file_name()
         .and_then(|s| s.to_str())
@@ -226,7 +233,7 @@ fn extract_page_identifier(path: &std::path::Path, base_dir: &std::path::Path) -
         let stem_candidate = &file_name_full[..dot_pos];
         let mut ext = file_name_full[dot_pos + 1..].to_lowercase();
 
-        const KNOWN_PARSEABLE_EXTENSIONS: &[&str] = &["md", "txt"];
+        const KNOWN_PARSEABLE_EXTENSIONS: &[&str] = &["md", "html", "css", "js", "txt"];
         const KNOWN_OTHER_DOCUMENT_EXTENSIONS: &[&str] = &["pdf"];
 
         if !(KNOWN_PARSEABLE_EXTENSIONS.contains(&ext.as_str())
@@ -364,6 +371,98 @@ fn extract_links(content: &str) -> Vec<ExtractedLink> {
         i += 1;
     }
     out
+}
+
+fn is_html_attribute_boundary(byte: u8) -> bool {
+    !byte.is_ascii_alphanumeric() && !matches!(byte, b'-' | b'_' | b':')
+}
+
+fn is_internal_html_target(target: &str) -> bool {
+    let lower = target.trim().to_ascii_lowercase();
+    !lower.is_empty()
+        && !lower.starts_with('#')
+        && !lower.starts_with("//")
+        && !lower.starts_with("http://")
+        && !lower.starts_with("https://")
+        && !lower.starts_with("mailto:")
+        && !lower.starts_with("tel:")
+        && !lower.starts_with("data:")
+        && !lower.starts_with("javascript:")
+}
+
+/// Extracts local URLs from the `href` and `src` attributes used by native
+/// HTML pages. This intentionally stays small: the graph only needs URL
+/// attributes, not a full browser-grade HTML tree, and preserving the literal
+/// attribute value gives the generation layer an exact resolution-map key.
+fn extract_html_links(content: &str) -> Vec<ExtractedLink> {
+    let bytes = content.as_bytes();
+    let mut links = Vec::new();
+    let mut cursor = 0;
+
+    while cursor < bytes.len() {
+        let remaining = &content[cursor..];
+        let href_offset = remaining.to_ascii_lowercase().find("href");
+        let src_offset = remaining.to_ascii_lowercase().find("src");
+        let (offset, attr_len) = match (href_offset, src_offset) {
+            (Some(href), Some(src)) if href <= src => (href, 4),
+            (Some(_), Some(src)) => (src, 3),
+            (Some(href), None) => (href, 4),
+            (None, Some(src)) => (src, 3),
+            (None, None) => break,
+        };
+        let attr_start = cursor + offset;
+        let attr_end = attr_start + attr_len;
+        let has_left_boundary = attr_start == 0 || is_html_attribute_boundary(bytes[attr_start - 1]);
+        let has_right_boundary = attr_end == bytes.len() || is_html_attribute_boundary(bytes[attr_end]);
+        if !has_left_boundary || !has_right_boundary {
+            cursor = attr_end;
+            continue;
+        }
+
+        let mut value_start = attr_end;
+        while value_start < bytes.len() && bytes[value_start].is_ascii_whitespace() {
+            value_start += 1;
+        }
+        if value_start >= bytes.len() || bytes[value_start] != b'=' {
+            cursor = attr_end;
+            continue;
+        }
+        value_start += 1;
+        while value_start < bytes.len() && bytes[value_start].is_ascii_whitespace() {
+            value_start += 1;
+        }
+        if value_start >= bytes.len() {
+            break;
+        }
+
+        let quote = bytes[value_start];
+        let (target_start, target_end) = if quote == b'\'' || quote == b'"' {
+            let target_start = value_start + 1;
+            let Some(relative_end) = bytes[target_start..].iter().position(|byte| *byte == quote) else {
+                break;
+            };
+            (target_start, target_start + relative_end)
+        } else {
+            let target_start = value_start;
+            let target_end = bytes[target_start..]
+                .iter()
+                .position(|byte| byte.is_ascii_whitespace() || *byte == b'>')
+                .map(|relative_end| target_start + relative_end)
+                .unwrap_or(bytes.len());
+            (target_start, target_end)
+        };
+
+        let target = content[target_start..target_end].trim();
+        if is_internal_html_target(target) {
+            links.push(ExtractedLink::Markdown {
+                text: target.to_string(),
+                href: target.to_string(),
+            });
+        }
+        cursor = target_end.saturating_add(1);
+    }
+
+    links
 }
 
 struct ExtractedMarkdownLink {
@@ -596,10 +695,12 @@ fn wiki_link_has_explicit_file_type(link: &LinkOut) -> bool {
 fn file_type_sort_rank(file_type: &str) -> usize {
     match file_type {
         "md" => 0,
-        "excalidraw" => 1,
-        "png" | "jpg" | "jpeg" | "gif" | "svg" | "webp" => 2,
-        "pdf" | "txt" => 3,
-        _ => 4,
+        "html" => 1,
+        "excalidraw" => 2,
+        "css" | "js" => 3,
+        "png" | "jpg" | "jpeg" | "gif" | "svg" | "webp" => 4,
+        "pdf" | "txt" => 5,
+        _ => 6,
     }
 }
 
@@ -662,7 +763,7 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
             .and_then(|s| s.to_str())
             .unwrap_or("")
             .to_lowercase();
-        let include = ext == "md" || IMAGE_EXTENSIONS_MAIN.contains(&ext.as_str());
+        let include = is_supported_source_extension(&ext);
         if !include {
             continue;
         }
@@ -716,6 +817,18 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
                 }
                 if file_content.contains("meadow-sensitive: true") {
                     found_sensitive = true;
+                }
+            }
+        } else if source_page_identifier.file_type == "html" {
+            if let Ok(file_content) = fs::read_to_string(path) {
+                for extracted in extract_html_links(&file_content) {
+                    if let ExtractedLink::Markdown { text, href } = extracted {
+                        outgoing_links.push(parse_out_markdown_link(
+                            &text,
+                            &href,
+                            &source_page_identifier,
+                        ));
+                    }
                 }
             }
         }
@@ -786,9 +899,7 @@ fn build_folder_scope_report(
                                 .and_then(|value| value.to_str())
                                 .unwrap_or("")
                                 .to_ascii_lowercase();
-                            if extension == "md"
-                                || IMAGE_EXTENSIONS_MAIN.contains(&extension.as_str())
-                            {
+                            if is_supported_source_extension(&extension) {
                                 return None;
                             }
                             "unsupportedFile"
@@ -1432,6 +1543,51 @@ mod tests {
     fn test_extract_links_empty_string() {
         let links = extract_links("");
         assert!(links.is_empty());
+    }
+
+    #[test]
+    fn test_extract_html_links_finds_pages_and_assets() {
+        let content = r#"<!doctype html>
+            <link rel="stylesheet" href="./shared.css">
+            <a href='../note.md'>Note</a>
+            <img src="./image.svg" alt="">
+            <script src="./behavior.js"></script>"#;
+        assert_eq!(
+            extract_html_links(content),
+            vec![
+                ExtractedLink::Markdown {
+                    text: "./shared.css".to_string(),
+                    href: "./shared.css".to_string(),
+                },
+                ExtractedLink::Markdown {
+                    text: "../note.md".to_string(),
+                    href: "../note.md".to_string(),
+                },
+                ExtractedLink::Markdown {
+                    text: "./image.svg".to_string(),
+                    href: "./image.svg".to_string(),
+                },
+                ExtractedLink::Markdown {
+                    text: "./behavior.js".to_string(),
+                    href: "./behavior.js".to_string(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_extract_html_links_skips_external_and_non_url_attributes() {
+        let content = r##"<a data-href="./not-a-link.md" href="#local">Local</a>
+            <a href="https://example.com">External</a>
+            <img src="data:image/svg+xml;base64,abc">
+            <a HREF="./page.html">Page</a>"##;
+        assert_eq!(
+            extract_html_links(content),
+            vec![ExtractedLink::Markdown {
+                text: "./page.html".to_string(),
+                href: "./page.html".to_string(),
+            }]
+        );
     }
 
     // --- Markdown link extraction tests ---

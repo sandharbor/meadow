@@ -22,7 +22,7 @@ import {
 } from '../../helpers/serverManager.js';
 import type { SystemTestBundleSetup } from '../../helpers/testSetup.js';
 import type { BundleNodeConfig } from '../../../shared_code/types/bundleNodeConfig.js';
-import { IMAGE_FILE_TYPES } from '../../../shared_code/utils/fileTypeUtils.js';
+import { FILE_TYPES } from '../../../shared_code/types/FileType.js';
 
 export const pagespecSourceGraphDirs = [
   path.join(getSourceGraphsPath(), 'meadow-test-bundles-data'),
@@ -31,17 +31,18 @@ export const pagespecSourceGraphDirs = [
 ];
 
 /**
- * Recursively finds all markdown files in a directory.
+ * Recursively finds source files whose PageSpecs are validated. Ordinary
+ * Markdown embeds PageSpecs; HTML and Excalidraw use sidecars.
  */
-export function findAllMarkdownFiles(dir: string): string[] {
+export function findAllPagespecSourceFiles(dir: string): string[] {
   const results: string[] = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory() && !entry.name.startsWith('.')) {
-      results.push(...findAllMarkdownFiles(fullPath));
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      results.push(...findAllPagespecSourceFiles(fullPath));
+    } else if (entry.isFile() && /\.(?:md|html)$/i.test(entry.name)) {
       results.push(fullPath);
     }
   }
@@ -72,7 +73,7 @@ export function findAllSidecarPagespecFiles(dir: string): string[] {
  * Gets page title from file path.
  */
 export function getPageTitle(filePath: string): string {
-  return path.basename(filePath, '.md');
+  return path.basename(filePath, path.extname(filePath));
 }
 
 /**
@@ -115,14 +116,15 @@ export function isPageTracked(
   let title = lastSlashIndex >= 0 ? pageId.slice(lastSlashIndex + 1) : pageId;
   const subdirectory = lastSlashIndex >= 0 ? pageId.slice(0, lastSlashIndex) : '';
 
-  // If the title carries an embedded image-like extension (e.g. `.excalidraw`,
+  // If the title carries a native file extension (e.g. `.html`, `.excalidraw`,
   // `.svg`), prefer that over the caller's default `fileType` and strip it
-  // from the title; that's how `bundle_node_config.yaml` stores image entries.
+  // from the title; that's how `bundle_node_config.yaml` stores typed entries.
   let effectiveFileType = fileType;
-  for (const imageType of IMAGE_FILE_TYPES) {
-    const suffix = `.${imageType}`;
+  for (const candidateFileType of FILE_TYPES) {
+    if (candidateFileType === 'md') continue;
+    const suffix = `.${candidateFileType}`;
     if (title.endsWith(suffix)) {
-      effectiveFileType = imageType;
+      effectiveFileType = candidateFileType;
       title = title.slice(0, -suffix.length);
       break;
     }

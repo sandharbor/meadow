@@ -215,6 +215,9 @@ pub fn parse_bundle_node_config_yaml(yaml_content: &str) -> anyhow::Result<Vec<B
     let parsed: BundleNodeConfigYaml = serde_yaml::from_str(yaml_content)?;
     let valid_file_types = [
         "md",
+        "html",
+        "css",
+        "js",
         "jpg",
         "jpeg",
         "png",

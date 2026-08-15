@@ -149,6 +149,23 @@ test('working_graph integration', (t) => {
     st.end();
   });
 
+  t.test('native HTML nodes traverse page and asset URL attributes', (st) => {
+    const firstHtmlKey = 't026/t026 ---- first HTML page.html';
+    const firstHtml = resultMain.nodes.find(node => node.bundleNodeKey === firstHtmlKey);
+    st.equal(firstHtml?.fileType, 'html', 'HTML node keeps its distinct file type');
+
+    const firstTargets = resultMain.allOutlinkTargets[firstHtmlKey] || [];
+    st.ok(firstTargets.includes('/t026 - HTML node.md'), 'HTML href resolves back to Markdown');
+    st.ok(firstTargets.includes('t026/t026 ---- second HTML page.html'), 'HTML href resolves to another HTML node');
+    st.ok(firstTargets.includes('t026/t026 ---- shared style.css'), 'stylesheet href is traversed');
+    st.ok(firstTargets.includes('t026/t026 ---- shared behavior.js'), 'script src is traversed');
+    st.ok(firstTargets.includes('t026/t026 ---- shared image.svg'), 'image src is traversed');
+
+    const secondTargets = resultMain.allOutlinkTargets['t026/t026 ---- second HTML page.html'] || [];
+    st.ok(secondTargets.includes('t026/nested/t026 ---- nested markdown.md'), 'HTML traverses into a nested Markdown note');
+    st.end();
+  });
+
   t.test('single-folder scope recursively seeds supported files and retains typed structure', (st) => {
     st.ok(singleFolder.nodes.some(node => node.bundleNodeKey === 'folder:Projects'), 'selected folder is present');
     st.ok(singleFolder.nodes.some(node => node.bundleNodeKey === 'folder:Projects/Sub'), 'required nested folder is present');

@@ -677,6 +677,48 @@ nodes:
     fileType: md
     bundleNodeId: 4db86c964375
     listType: whitelist
+  - bundleNodeName: t026 - HTML node
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 46e8fe5609ea
+    listType: whitelist
+  - bundleNodeName: t026 ---- first HTML page
+    sourceGraphSubdirectory: t026
+    bundleNodeKind: file
+    fileType: html
+    bundleNodeId: dd1c7e519e36
+    listType: whitelist
+  - bundleNodeName: t026 ---- second HTML page
+    sourceGraphSubdirectory: t026
+    bundleNodeKind: file
+    fileType: html
+    bundleNodeId: 2c1e963eb890
+    listType: whitelist
+  - bundleNodeName: t026 ---- shared style
+    sourceGraphSubdirectory: t026
+    bundleNodeKind: file
+    fileType: css
+    bundleNodeId: b92f03be9332
+    listType: whitelist
+  - bundleNodeName: t026 ---- shared behavior
+    sourceGraphSubdirectory: t026
+    bundleNodeKind: file
+    fileType: js
+    bundleNodeId: dc4222c5ef1f
+    listType: whitelist
+  - bundleNodeName: t026 ---- shared image
+    sourceGraphSubdirectory: t026
+    bundleNodeKind: file
+    fileType: svg
+    bundleNodeId: 2a65602b0650
+    listType: whitelist
+  - bundleNodeName: t026 ---- nested markdown
+    sourceGraphSubdirectory: t026/nested
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 67c350ef14e7
+    listType: whitelist
   - bundleNodeName: test.io which looks like a filename suffix
     sourceGraphSubdirectory: t011
     bundleNodeKind: file

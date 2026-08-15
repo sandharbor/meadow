@@ -86,6 +86,7 @@ export const scenarioDocToAppAreaIds: Readonly<Record<string, ScenarioDocAppArea
   git: ["bundle/sharing"],
   hooks: ["bundle/generation"],
   "html-generation": ["bundle/generation", "bundle/review"],
+  "html-node": ["bundle/curation", "bundle/generation"],
   images: ["bundle/generation"],
   "initial-page": ["bundle/curation"],
   labels: ["bundle/curation"],

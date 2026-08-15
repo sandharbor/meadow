@@ -1,0 +1,1 @@
+window.__meadowSearchReceiveShard([{"t":"Second HTML page","p":"t026/t026%20----%20second%20HTML%20page.html","b":"Meadow native HTML This page reuses the same stylesheet, script, and image nodes. Return to the first HTML page Open the nested Markdown note Waiting for shared JavaScript…"}]);

@@ -29,7 +29,7 @@ export {
   createFrontierNodeSelector,
   createFolderNodeSelector,
   createBundleNodeKindSelector,
-  createImageNodeSelector,
+  createFileTypeNodeSelector,
   createSelectedScopeRootSelector,
   createSearchByTitleSelector,
   createNodeWithOverrideSelector,
@@ -80,7 +80,23 @@ export interface IFolderFilterState {
   isHidden: boolean;
 }
 
-export type NodeTypeFilterId = 'file' | 'image' | 'folder' | 'collection' | 'selected-scope-root';
+export type NodeTypeFilterId =
+  | 'md'
+  | 'html'
+  | 'js'
+  | 'css'
+  | 'txt'
+  | 'pdf'
+  | 'other'
+  | 'png'
+  | 'jpeg'
+  | 'gif'
+  | 'svg'
+  | 'webp'
+  | 'excalidraw'
+  | 'folder'
+  | 'collection'
+  | 'selected-scope-root';
 export type INodeTypeFilterState = IFolderFilterState;
 
 export interface IFilter {

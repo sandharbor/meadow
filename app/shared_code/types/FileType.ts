@@ -14,5 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export const FILE_TYPES = ['md', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'pdf', 'txt', 'excalidraw', 'other'] as const;
+export const FILE_TYPES = [
+  'md',
+  'html',
+  'css',
+  'js',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'svg',
+  'webp',
+  'pdf',
+  'txt',
+  'excalidraw',
+  'other',
+] as const;
 export type FileType = (typeof FILE_TYPES)[number];

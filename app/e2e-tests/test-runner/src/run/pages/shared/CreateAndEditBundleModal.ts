@@ -126,6 +126,16 @@ export class CreateAndEditBundleModal {
     await this.slugInput.fill(value);
   }
 
+  async fillDefaultTraversalDepths(outlinks: number, inlinks: number) {
+    await this.showDetails();
+    const outlinksInput = this.page.getByRole("spinbutton", { name: "Default outlink depth" });
+    const inlinksInput = this.page.getByRole("spinbutton", { name: "Default inlink depth" });
+    await this.expect(outlinksInput).toBeVisible();
+    await this.expect(inlinksInput).toBeVisible();
+    await outlinksInput.fill(String(outlinks));
+    await inlinksInput.fill(String(inlinks));
+  }
+
   async expectSlugConflictError(text: string) {
     await this.expect(this.page.locator(".text-red-600", { hasText: text })).toBeVisible();
   }
