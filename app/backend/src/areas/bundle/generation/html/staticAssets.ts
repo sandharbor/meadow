@@ -137,7 +137,9 @@ function isFontFile(filePath: string): boolean {
  *
  * - Renames shared CSS/JS assets (including nested SRS and search runtime assets),
  *   `mermaid.min.js`, and all font files under `fonts/` by inserting
- *   `.<sha256_8>` before the extension.
+ *   `.<sha256_8>` before the extension. The frequently changing folder-navigation
+ *   data keeps a stable filename so routine page additions do not rewrite every
+ *   generated HTML page.
  * - Rewrites `style.css` font URLs to point at the renamed font files using a **relative**
  *   `fonts/<font>.<hash>.<ext>` path.
  *
@@ -247,10 +249,11 @@ export function hashAndRenameStaticAssets(outputDir: string, options: HashStatic
 
   const folderNavigationDir = path.join(outputDir, CUSTOMIZATION_ASSETS_DIRECTORY, 'folder_nav');
   const folderNavigationCssBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav.css'));
-  const folderNavigationDataJsBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav-data.js'));
   const folderNavigationJsBase = renameWithHashIfExists(path.join(folderNavigationDir, 'folder-nav.js'));
   const folderNavigationCss = folderNavigationCssBase ? `cust/folder_nav/${folderNavigationCssBase}` : undefined;
-  const folderNavigationDataJs = folderNavigationDataJsBase ? `cust/folder_nav/${folderNavigationDataJsBase}` : undefined;
+  const folderNavigationDataJs = fs.existsSync(path.join(folderNavigationDir, 'folder-nav-data.js'))
+    ? 'cust/folder_nav/folder-nav-data.js'
+    : undefined;
   const folderNavigationJs = folderNavigationJsBase ? `cust/folder_nav/${folderNavigationJsBase}` : undefined;
 
   // Hash extra files first so we can rewrite references in custom CSS

@@ -29,7 +29,7 @@ const NORMALIZATION_HOOK_SOURCE = `function pageTitleNormalization(bundleSlug: s
 }
 `;
 
-const FOLDER_NAV_DATA_SCRIPT = /folder-nav-data\.[a-f0-9]{8}\.js$/;
+const FOLDER_NAV_DATA_SCRIPT = /folder-nav-data\.js$/;
 
 async function navigateWithFolderNavigationHydrationPaused(
   page: Page,

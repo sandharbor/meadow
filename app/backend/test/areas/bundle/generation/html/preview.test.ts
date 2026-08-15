@@ -204,7 +204,7 @@ describe('html preview', () => {
     expect(mainPageHtml).not.toMatch(/hover_preview\/hover-preview(?:\.[a-f0-9]{8})?\.(?:css|js)/);
   });
 
-  it('generates the folder navigation shell and hashed assets when enabled', async () => {
+  it('generates the folder navigation shell with stable data and hashed runtime assets', async () => {
     fs.appendFileSync(
       path.join(bundlePath, 'config', 'bundle_config.yaml'),
       '\ngenerationFolderNavigationEnabled: true\n',
@@ -217,22 +217,20 @@ describe('html preview', () => {
     const folderNavigationDirectory = path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'folder_nav');
     const assetFiles = fs.readdirSync(folderNavigationDirectory);
     const folderNavigationCss = assetFiles.find(filename => /^folder-nav\.[a-f0-9]{8}\.css$/.test(filename));
-    const folderNavigationDataJs = assetFiles.find(filename => /^folder-nav-data\.[a-f0-9]{8}\.js$/.test(filename));
+    const folderNavigationDataJs = 'folder-nav-data.js';
     const folderNavigationJs = assetFiles.find(filename => /^folder-nav\.[a-f0-9]{8}\.js$/.test(filename));
     expect(assetFiles).toHaveLength(3);
     expect(folderNavigationCss).toBeDefined();
-    expect(folderNavigationDataJs).toBeDefined();
+    expect(assetFiles).toContain(folderNavigationDataJs);
+    expect(assetFiles).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^folder-nav-data\.[a-f0-9]{8}\.js$/)])
+    );
     expect(folderNavigationJs).toBeDefined();
 
     const folderNavigationData = fs.readFileSync(
-      path.join(folderNavigationDirectory, folderNavigationDataJs!),
+      path.join(folderNavigationDirectory, folderNavigationDataJs),
       'utf8'
     );
-    const folderNavigationDataDigest = createHash('sha256')
-      .update(folderNavigationData)
-      .digest('hex')
-      .slice(0, 8);
-    expect(folderNavigationDataJs).toBe(`folder-nav-data.${folderNavigationDataDigest}.js`);
     expect(folderNavigationData).toContain('window.MeadowFolderNavData=');
     expect(folderNavigationData).toContain('"main page.html"');
     expect(fs.readdirSync(path.join(generatedHtmlFolderPath, '_mw_assets'))).not.toEqual(

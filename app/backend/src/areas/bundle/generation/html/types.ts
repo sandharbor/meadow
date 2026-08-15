@@ -56,8 +56,9 @@ export interface RenderOptions {
   currentOutputDirectory?: string;
   entryNodeName?: string;
   /**
-   * The hashed relative paths for shared/static assets (css/js/mermaid) that should be referenced by
-   * rendered HTML pages. When omitted, defaults to the legacy filenames (style.css, javascript.js, mermaid.min.js).
+   * The generated relative paths for shared/static assets (css/js/mermaid) that should be referenced by
+   * rendered HTML pages. Most are content-addressed; intentionally mutable data assets may use stable paths.
+   * When omitted, defaults to the legacy filenames (style.css, javascript.js, mermaid.min.js).
    */
   staticAssetNames?: StaticAssetNames;
   sourcesExportEnabled?: boolean;
