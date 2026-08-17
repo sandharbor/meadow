@@ -78,6 +78,7 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await expect(page.getByText("Frozen", { exact: true })).toBeVisible();
   await expect(page.getByText("Unsaved", { exact: true })).toBeVisible();
   await expect(page.getByText("Breadcrumb-free reader version", { exact: true })).toBeVisible();
+  await modal.expectCreateNewVersionDisabledForUnsavedVersion();
   await modal.expectVersionCardsNewestFirst(successor.versionId, predecessor.versionId);
   await expect(page.getByRole("heading", { name: "Compare generated files" })).toBeVisible();
   await expect(page.getByText("modified", { exact: true }).first()).toBeVisible();

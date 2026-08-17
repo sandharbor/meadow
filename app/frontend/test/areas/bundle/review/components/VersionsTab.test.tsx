@@ -107,6 +107,20 @@ describe('VersionsTab', () => {
     expect(onCreateNewVersion).toHaveBeenCalledOnce();
   });
 
+  it('disables creating another version while the current version has never been saved', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: unknown) => String(input).includes('version-comparison')
+      ? { ok: true, json: async () => ({ changes: [] }) }
+      : { ok: true, json: async () => ({ versions }) }));
+    const onCreateNewVersion = vi.fn();
+
+    render(<VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={onCreateNewVersion} />);
+
+    expect(await screen.findByRole('button', { name: 'Create New Version' })).toBeDisabled();
+    expect(screen.getByText('Save or cancel the unsaved version before creating another.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Create New Version' }));
+    expect(onCreateNewVersion).not.toHaveBeenCalled();
+  });
+
   it('V08 asks for confirmation and cancels only the never-saved current card', async () => {
     const fetchMock = vi.fn(async (input: unknown, init?: { method?: string }) => {
       const url = String(input);

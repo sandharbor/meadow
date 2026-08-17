@@ -328,6 +328,15 @@ export class PreviewPublishModal {
     await this.expect(this.createNewVersionBtn).toBeVisible();
   }
 
+  async expectCreateNewVersionDisabledForUnsavedVersion() {
+    await this.expect(this.createNewVersionBtn).toBeVisible();
+    await this.expect(this.createNewVersionBtn).toBeDisabled();
+    await this.createNewVersionBtn.hover();
+    await this.expect(
+      this.page.getByText("Save or cancel the unsaved version before creating another.", { exact: true }),
+    ).toBeVisible();
+  }
+
   async expectCreateNewVersionHidden() {
     await this.expect(this.createNewVersionBtn).toBeHidden();
   }

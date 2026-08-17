@@ -17,6 +17,7 @@ limitations under the License.
 /* global alert, confirm */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 import { casualVersionName, versionCreatedDate } from '../utils/versionLabels';
 
 interface VersionChange {
@@ -114,6 +115,9 @@ export function VersionsTab({
       .reverse(),
     [versions],
   );
+  const hasNeverSavedCurrentVersion = versions.at(-1)?.displayState === 'unsaved'
+    && !versions.at(-1)?.savedGenerationId;
+  const createVersionIsDisabled = createNewVersionDisabled || hasNeverSavedCurrentVersion;
 
   useEffect(() => {
     if (!leftComparison) {
@@ -172,11 +176,17 @@ export function VersionsTab({
   return (
     <div className="h-full overflow-y-auto pr-2">
       {!loading && versions.length > 1 && <div className="mb-4 flex justify-end">
-        <button
-          onClick={onCreateNewVersion}
-          disabled={createNewVersionDisabled}
-          className="rounded bg-btn-confirm-normal px-3 py-1 text-sm font-medium text-btn-confirm-text hover:bg-btn-confirm-hover disabled:cursor-not-allowed disabled:opacity-50"
-        >Create New Version</button>
+        <DisabledTooltip
+          disabled={createVersionIsDisabled}
+          tooltip={hasNeverSavedCurrentVersion ? 'Save or cancel the unsaved version before creating another.' : undefined}
+          align="right"
+        >
+          <button
+            onClick={onCreateNewVersion}
+            disabled={createVersionIsDisabled}
+            className="rounded bg-btn-confirm-normal px-3 py-1 text-sm font-medium text-btn-confirm-text hover:bg-btn-confirm-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >Create New Version</button>
+        </DisabledTooltip>
       </div>}
       {error && <div className="mb-4 rounded border border-danger-300 bg-danger-50 p-3 text-sm text-danger-700">{error}</div>}
       {loading ? (
