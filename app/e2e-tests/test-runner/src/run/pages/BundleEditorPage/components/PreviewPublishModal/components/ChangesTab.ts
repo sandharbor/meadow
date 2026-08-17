@@ -170,6 +170,11 @@ export class ChangesTab {
     await this.expect(this.badge).toBeVisible({ timeout: 15_000 });
   }
 
+  /** Assert the Changes tab badge shows an exact changed-file count. */
+  async expectBadgeCount(count: number) {
+    await this.expect(this.badge).toHaveText(String(count), { timeout: 15_000 });
+  }
+
   /** Assert the Changes tab badge is not visible (no changes). */
   async expectNoBadge() {
     await this.expect(this.badge).not.toBeVisible({ timeout: 15_000 });
