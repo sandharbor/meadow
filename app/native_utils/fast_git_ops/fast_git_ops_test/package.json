@@ -7,10 +7,10 @@
     "test": "tsx integration_test.ts"
   },
   "devDependencies": {
-    "tape": "^5.7.2",
-    "@types/tape": "^5.6.4",
-    "tsx": "^4.19.3",
-    "isomorphic-git": "^1.27.1",
+    "tape": "^5.7.5",
+    "@types/tape": "^5.6.5",
+    "tsx": "^4.19.4",
+    "isomorphic-git": "^1.27.3",
     "@types/node": "^20.0.0"
   }
 }

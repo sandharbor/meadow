@@ -181,18 +181,18 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "concurrently": "^8.2.0",
+    "concurrently": "^8.2.2",
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.0",
-    "rimraf": "^5.0.0",
-    "typescript": "^5.0.0",
+    "electron-builder": "^24.9.4",
+    "rimraf": "^5.0.10",
+    "typescript": "^5.0.4",
     "wait-on": "^7.2.0"
   },
   "dependencies": {
-    "electron-updater": "^6.1.0",
+    "electron-updater": "^6.1.9",
     "yaml": "^2.7.1"
   }
 } 

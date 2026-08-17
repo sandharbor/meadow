@@ -13,6 +13,24 @@ BACKEND_DIR="$REPO_ROOT/app/backend"
 FRONTEND_DIR="$REPO_ROOT/app/frontend"
 DEV_TOOLS_DIR="$REPO_ROOT/app/dev_tools_app"
 
+ensure_dev_executable() {
+  local dir="$1"
+  local executable="$2"
+
+  if [ -x "$dir/node_modules/.bin/$executable" ]; then
+    return
+  fi
+
+  echo "Missing $executable in ${dir#$REPO_ROOT/}; installing dependencies..."
+  (cd "$dir" && npm install)
+}
+
+# Packaging temporarily removes devDependencies. Repair an interrupted prune
+# before starting processes that require these local executables.
+ensure_dev_executable "$BACKEND_DIR" "tsx"
+ensure_dev_executable "$FRONTEND_DIR" "vite"
+ensure_dev_executable "$DEV_TOOLS_DIR" "vite"
+
 # --- 1. Derive instance name from environment or directory basename ---
 BASENAME="$(basename "$REPO_ROOT")"
 IS_MAIN_REPO=false

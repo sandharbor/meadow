@@ -21,6 +21,8 @@ NC='\033[0m' # No Color
 TEST_LOG_FILE="$(pwd)/meadow-test.log"
 TIMEOUT_SECONDS=60
 HEALTH_CHECK_INTERVAL=5
+PRUNE_DIRS="../frontend ../backend ../shared_code"
+DEV_DEPENDENCIES_PRUNED=false
 
 # Helper functions
 log_info() {
@@ -37,6 +39,25 @@ log_warning() {
 
 log_error() {
     echo -e "${RED}❌ $1${NC}"
+}
+
+restore_dev_dependencies() {
+    local restore_failed=0
+
+    if [ "$DEV_DEPENDENCIES_PRUNED" != true ]; then
+        return
+    fi
+
+    log_info "Restoring devDependencies in frontend, backend, shared_code..."
+    for dir in $PRUNE_DIRS; do
+        if ! (cd "$dir" && npm install --ignore-scripts 2>&1 | tail -1); then
+            restore_failed=1
+        fi
+    done
+    if [ "$restore_failed" -eq 0 ]; then
+        DEV_DEPENDENCIES_PRUNED=false
+    fi
+    return "$restore_failed"
 }
 
 # Cleanup function
@@ -61,8 +82,24 @@ cleanup() {
     fi
 }
 
-# Set up cleanup on exit
-trap cleanup EXIT
+on_exit() {
+    local exit_code=$?
+    local restore_code=0
+
+    trap - EXIT
+    set +e
+    restore_dev_dependencies
+    restore_code=$?
+    cleanup
+
+    if [ "$exit_code" -eq 0 ] && [ "$restore_code" -ne 0 ]; then
+        exit_code=$restore_code
+    fi
+    exit "$exit_code"
+}
+
+# Restore the development dependency tree even when a build fails after pruning.
+trap on_exit EXIT
 
 # Start with a clean environment
 cleanup
@@ -103,7 +140,7 @@ npm run build:all
 # This dramatically reduces app size by excluding typescript, eslint, vitest, etc.
 # We restore them after electron-builder finishes so the dev environment isn't affected.
 log_info "Pruning devDependencies from frontend, backend, shared_code..."
-PRUNE_DIRS="../frontend ../backend ../shared_code"
+DEV_DEPENDENCIES_PRUNED=true
 for dir in $PRUNE_DIRS; do
     (cd "$dir" && npm prune --production --ignore-scripts 2>&1 | tail -1)
 done
@@ -208,10 +245,7 @@ done
 log_success "Build and fixes completed successfully!"
 
 # Restore devDependencies so the dev environment isn't affected
-log_info "Restoring devDependencies in frontend, backend, shared_code..."
-for dir in $PRUNE_DIRS; do
-    (cd "$dir" && npm install --ignore-scripts 2>&1 | tail -1)
-done
+restore_dev_dependencies
 
 # Verify code signing
 log_info "🔐 Verifying code signature..."
