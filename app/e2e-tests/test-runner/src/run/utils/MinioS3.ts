@@ -19,6 +19,7 @@ import {
   ListObjectsV2Command,
   GetObjectCommand,
   DeleteObjectsCommand,
+  PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import type { Expect } from "@playwright/test";
 
@@ -76,6 +77,18 @@ export class MinioS3 {
     ).toBe(0);
   }
 
+  /** Assert per-version cleanup retained only empty no-cache reader manifests. */
+  async expectOnlyEmptySuccessorManifests(prefix = "bundles/") {
+    const keys = await this.listKeys(prefix);
+    this.expect(keys.length, "Expected one retained reader successor manifest").toBe(1);
+    this.expect(keys[0]).toMatch(/-versions\.json$/);
+    const manifest = JSON.parse(await this.getObjectContent(keys[0])) as {
+      schemaVersion?: number;
+      successors?: Record<string, unknown>;
+    };
+    this.expect(manifest).toEqual({ schemaVersion: 1, successors: {} });
+  }
+
   /** Assert that objects exist under the given prefix (or entire bucket). */
   async expectHasFiles(prefix?: string) {
     const keys = await this.listKeys(prefix);
@@ -106,6 +119,16 @@ export class MinioS3 {
       chunks.push(Buffer.from(chunk));
     }
     return Buffer.concat(chunks).toString("utf8");
+  }
+
+  /** Upload deterministic test content to one exact key. */
+  async putObjectContent(key: string, content: string, contentType = "application/json") {
+    await this.client.send(new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Body: content,
+      ContentType: contentType,
+    }));
   }
 
   /** Delete all objects in the bucket. */

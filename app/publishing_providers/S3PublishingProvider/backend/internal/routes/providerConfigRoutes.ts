@@ -28,6 +28,7 @@ import {
   S3_PROVIDER_ID,
   type S3ProviderConfig,
 } from '../s3Config.js';
+import { hasRemoteS3Versions } from '../versioning/publicationStore.js';
 
 /**
  * Per-bundle S3 provider config routes. Unlike Meadow, there's no prefix — a
@@ -60,6 +61,13 @@ export function registerS3ProviderConfigRoutes(router: Router): void {
       if (typeof publishSlug !== 'string' || !PUBLISH_SLUG_PATTERN.test(publishSlug)) {
         return res.status(400).json({
           error: 'publishSlug must contain only lowercase letters, numbers, and dashes',
+        });
+      }
+
+      const current = loadS3ConfigForBundle(bundleSlug).publishSlug;
+      if (current && current !== publishSlug && hasRemoteS3Versions(bundleSlug)) {
+        return res.status(409).json({
+          error: 'publishSlug cannot change while this destination still has remote versions',
         });
       }
 

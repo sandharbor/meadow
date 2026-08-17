@@ -19,6 +19,7 @@ import fs from 'fs';
 import path, { join } from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
+import { randomUUID } from 'crypto';
 import {
   generateBundleNodeId,
   parseBundleNodeConfig,
@@ -33,7 +34,8 @@ import { generateBundleGuid } from '../../../../../shared_code/utils/bundleGuidU
 import { extractContentWithoutPagespecs } from '../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
 import { getConfigDirectory, getBundlesDirectory, getBundleDirectory, getBundleConfigPath } from '../../../shared/bundle-config/bundleConfigPaths.js';
-import { loadBundleConfig, updateBundleConfig, getGeneratedBundleVersionsWithFallback } from '../../../shared/utils/bundleConfigUtils.js';
+import { loadBundleConfig, updateBundleConfig } from '../../../shared/utils/bundleConfigUtils.js';
+import { loadGeneratedBundleVersionManifest } from '../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { clearBundleGuidCache, logBundleError, logBundleInfo } from '../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../shared/utils/logging/backendLoggingUtils.js';
 import { findUniqueName } from '../../../shared/utils/uniqueNameUtils.js';
@@ -52,6 +54,7 @@ import selectedFolderRepairRoutes from './selectedFolderRepairRoutes.js';
 import bundleSettingsRoutes from './bundleSettingsRoutes.js';
 import { resolveDefaultDepth } from '../services/bundleTraversalDefaults.js';
 import { sourceDirectorySuggestions } from '../services/sourceDirectorySuggestions.js';
+import { deleteLocalBundleOnlyAfterProviderCleanup } from '../services/bundleDeletion.js';
 
 const router = express.Router();
 router.use(selectedFolderRepairRoutes);
@@ -160,6 +163,13 @@ router.get('/bundles/detailed', (req, res, next) => {
         const config = loadBundleConfig(bundleDirectory);
         const { entryNode } = loadValidatedBundleNodeConfiguration(bundleDirectory);
         const repairStatus = getFolderBundleRepairStatus(bundleDirectory);
+        const generatedVersionCount = loadGeneratedBundleVersionManifest(bundleDirectory).versions.length;
+        const publicationSummaries = getAllBackendProviders().flatMap(provider =>
+          provider.getBundlePublicationSummaries?.(slug) ?? []
+        );
+        const publicationTimes = publicationSummaries
+          .map(summary => summary.mostRecentSuccessfulEventAt)
+          .filter((timestamp): timestamp is string => Boolean(timestamp));
         return {
           slug,
           ...config,
@@ -167,24 +177,26 @@ router.get('/bundles/detailed', (req, res, next) => {
           entrySourceGraphSubdirectory: entryNode.sourceGraphSubdirectory || '',
           entryFileType: entryNode.fileType,
           ...repairStatus,
-          generatedBundleVersions: getGeneratedBundleVersionsWithFallback(bundleDirectory, config)
+          generatedVersionCount,
+          mostRecentPublicationAt: publicationTimes.sort().at(-1) ?? null,
+          hasRemotePublications: publicationSummaries.some(summary => summary.remotelyPresentVersionIds.length > 0),
         };
       } catch {
         return { slug, error: 'Failed to parse bundle_config.yaml' };
       }
     });
 
-    // Sort by lastPublishedAt descending, then by updatedAt descending
+    // Sort by provider-derived publication history, then by local update time.
     bundlesWithConfig.sort((a, b) => {
       // Handle errors by putting them at the end
       if (a.error && !b.error) return 1;
       if (!a.error && b.error) return -1;
       if (a.error && b.error) return 0;
 
-      const aConfig = a as BundleConfig & { slug: string };
-      const bConfig = b as BundleConfig & { slug: string };
-      const aPublished = aConfig.bundleLastPublishedAt as string | null;
-      const bPublished = bConfig.bundleLastPublishedAt as string | null;
+      const aConfig = a as BundleConfig & { slug: string; mostRecentPublicationAt?: string | null };
+      const bConfig = b as BundleConfig & { slug: string; mostRecentPublicationAt?: string | null };
+      const aPublished = aConfig.mostRecentPublicationAt ?? null;
+      const bPublished = bConfig.mostRecentPublicationAt ?? null;
       const aUpdated = aConfig.bundleUpdatedAt as string | null;
       const bUpdated = bConfig.bundleUpdatedAt as string | null;
 
@@ -484,6 +496,8 @@ router.post('/bundles/:slug/unarchive', (req, res, next) => {
  */
 router.get('/bundles/:slug/delete-bundle-stream', (req, res, _next) => {
   const { slug } = req.params;
+  const operationId = randomUUID();
+  const operation = `[operation ${operationId}] [bundle-delete]`;
 
   // Set up SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -495,7 +509,7 @@ router.get('/bundles/:slug/delete-bundle-stream', (req, res, _next) => {
   const sendProgress = (progress: {
     stage: string;
     message: string;
-    result?: { success: boolean; error?: string; warning?: string };
+    result?: { success: boolean; error?: string };
   }) => {
     if (!res.writableEnded) {
       res.write(`data: ${JSON.stringify(progress)}\n\n`);
@@ -519,51 +533,39 @@ router.get('/bundles/:slug/delete-bundle-stream', (req, res, _next) => {
         // Config unreadable — proceed with local-only deletion
       }
 
-      logBundleInfo(slug, 'Bundle deletion started');
+      logBundleInfo(slug, `${operation} Started authoritative cleanup with all publishing providers before local deletion`);
 
-      // Ask each registered publishing provider to clean up anything it
-      // published for this bundle. Warnings surface in the final response;
-      // we still delete locally even if a provider fails.
-      const warnings: string[] = [];
-      for (const provider of getAllBackendProviders()) {
-        if (!provider.isBundlePublished?.(slug)) continue;
-        if (!provider.cleanupPublishedBundle) continue;
-        try {
-          const result = await provider.cleanupPublishedBundle({
-            bundleSlug: slug,
-            onProgress: (progress) => {
-              sendProgress({ stage: progress.stage, message: progress.message });
-            },
-          });
-          if (result.warning) warnings.push(result.warning);
-        } catch (cleanupError) {
-          const err = cleanupError as Error;
-          warnings.push(`${provider.manifest.displayName}: ${err.message}`);
-        }
-      }
-      const s3Warning = warnings.length > 0 ? warnings.join(' ') : undefined;
-
-      // Stage 4: Delete local files
-      sendProgress({ stage: 'deleting-local', message: 'Deleting local files...' });
-
-      logBundleInfo(slug, 'Bundle deleted');
-      fs.rmSync(bundleDir, { recursive: true, force: true });
-      clearBundleGuidCache(slug);
+      await deleteLocalBundleOnlyAfterProviderCleanup({
+        bundleSlug: slug,
+        operationId,
+        providers: getAllBackendProviders(),
+        onProviderProgress: (progress) => {
+          sendProgress({ stage: progress.stage, message: progress.message });
+        },
+        deleteLocalBundle: () => {
+          sendProgress({ stage: 'deleting-local', message: 'Deleting local files...' });
+          logBundleInfo(slug, `${operation} Every provider confirmed cleanup; complete local bundle deletion succeeded`);
+          fs.rmSync(bundleDir, { recursive: true, force: true });
+          clearBundleGuidCache(slug);
+        },
+      });
 
       sendProgress({
         stage: 'complete',
         message: 'Bundle deleted successfully',
-        result: { success: true, warning: s3Warning }
+        result: { success: true }
       });
 
       res.end();
 
     } catch (error) {
       const err = error as Error;
+      logBundleError(slug, `${operation} Provider cleanup failed; the complete local bundle was preserved and retry is safe: ${err.message}`);
       sendProgress({ stage: 'error', message: 'Delete failed', result: { success: false, error: err.message } });
       res.end();
     }
   })().catch((error) => {
+    logBundleError(slug, `${operation} Unexpected failure; local deletion was not confirmed and retry is safe: ${String(error)}`);
     sendProgress({ stage: 'error', message: 'Unexpected error', result: { success: false, error: String(error) } });
     res.end();
   });
@@ -737,11 +739,9 @@ router.post('/bundles/folders', (req, res, next) => {
         defaultOutlinksDepth: verified.plan.defaultOutlinksDepth,
         defaultInlinksDepth: verified.plan.defaultInlinksDepth,
         generationFolderNavigationEnabled: true,
-        generatedBundleVersions: [],
         archivedAt: null,
         bundleCreatedAt: now,
         bundleUpdatedAt: now,
-        bundleLastPublishedAt: null,
         bundleNotes: bundleNotes ?? '',
       };
       const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
@@ -823,11 +823,9 @@ router.post('/bundles', (req, res, _next) => {
     defaultTraversalBundleNodeId: entryBundleNodeId,
     defaultOutlinksDepth,
     defaultInlinksDepth,
-    generatedBundleVersions: [],
     archivedAt: null,
     bundleCreatedAt: new Date().toISOString(),
     bundleUpdatedAt: new Date().toISOString(),
-    bundleLastPublishedAt: null,
     bundleNotes: bundleNotes || ""
   };
 

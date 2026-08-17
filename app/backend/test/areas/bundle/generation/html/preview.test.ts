@@ -21,6 +21,7 @@ import path from 'path';
 import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generation/html/htmlService.js';
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
+import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';
 
 describe('html preview', () => {
   const testSetup = new TestBundleSetup('areas/bundle/generation/fixtures/minimal-bundle', 'minimal-test-bundle');
@@ -36,13 +37,12 @@ describe('html preview', () => {
     testSetup.tearDown();
   });
 
-  it('should not create a publish folder', async () => {
-    // Check that preview folder does not exist before generating HTML
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+  it('writes only the requested version output directory', async () => {
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     expect(fs.existsSync(generatedHtmlFolderPath)).toBe(false);
 
     // Generate HTML with preview option
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtmlFolderPath });
 
     // Check that html folder exists
     const htmlFolderPath = BundleConfigPaths.getHtmlDir(bundlePath);
@@ -51,9 +51,8 @@ describe('html preview', () => {
     // Check that preview folder exists
     expect(fs.existsSync(generatedHtmlFolderPath)).toBe(true);
 
-    // Check that publish folder does NOT exist
     const publishFolderPath = BundleConfigPaths.getGeneratedBundleVersionsDir(bundlePath);
-    expect(fs.existsSync(publishFolderPath)).toBe(false);
+    expect(fs.readdirSync(publishFolderPath)).toEqual([path.basename(generatedHtmlFolderPath)]);
 
     // Additional assertion: check that preview folder contains HTML files
     const previewFiles = fs.readdirSync(generatedHtmlFolderPath);
@@ -63,9 +62,9 @@ describe('html preview', () => {
 
   it('should generate HTML files and assets in preview folder', async () => {
     // Generate HTML with preview option
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     const previewFiles = fs.readdirSync(generatedHtmlFolderPath);
 
     // Should contain HTML files
@@ -95,9 +94,9 @@ describe('html preview', () => {
   });
 
   it('generates bundle search assets and a sharded index by default', async () => {
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     const searchDirectory = path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'search');
     const indexDirectory = path.join(searchDirectory, 'index');
     const searchFiles = fs.readdirSync(searchDirectory);
@@ -144,9 +143,9 @@ describe('html preview', () => {
       'utf8'
     );
 
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     expect(fs.existsSync(path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'search'))).toBe(false);
     const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).not.toContain('data-meadow-search-open');
@@ -154,9 +153,9 @@ describe('html preview', () => {
   });
 
   it('omits folder navigation by default', async () => {
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).not.toContain('data-meadow-folder-nav');
     expect(fs.existsSync(path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'folder_nav'))).toBe(false);
@@ -169,9 +168,9 @@ describe('html preview', () => {
       'utf8'
     );
 
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     const hoverPreviewDirectory = path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'hover_preview');
     const assetFiles = fs.readdirSync(hoverPreviewDirectory);
     const hoverPreviewCss = assetFiles.find(filename => /^hover-preview\.[a-f0-9]{8}\.css$/.test(filename));
@@ -196,9 +195,9 @@ describe('html preview', () => {
   });
 
   it('omits hover preview assets when hover preview is disabled', async () => {
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     expect(fs.existsSync(path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'hover_preview'))).toBe(false);
     const mainPageHtml = fs.readFileSync(path.join(generatedHtmlFolderPath, 'main page.html'), 'utf8');
     expect(mainPageHtml).not.toMatch(/hover_preview\/hover-preview(?:\.[a-f0-9]{8})?\.(?:css|js)/);
@@ -211,9 +210,9 @@ describe('html preview', () => {
       'utf8'
     );
 
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     const folderNavigationDirectory = path.join(generatedHtmlFolderPath, '_mw_assets', 'cust', 'folder_nav');
     const assetFiles = fs.readdirSync(folderNavigationDirectory);
     const folderNavigationCss = assetFiles.find(filename => /^folder-nav\.[a-f0-9]{8}\.css$/.test(filename));
@@ -280,6 +279,7 @@ describe('html preview', () => {
 
       await generateHtmlForBundle(excalidrawInitialSetup.getBundlePath(), {
         preview: true,
+        outputDirectory: getGeneratedBundleTestOutputDirectory(excalidrawInitialSetup.getBundlePath()),
         onStartPageRendered: info => startPages.push(info),
       });
 
@@ -291,7 +291,7 @@ describe('html preview', () => {
         },
       ]);
 
-      const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(excalidrawInitialSetup.getBundlePath());
+      const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(excalidrawInitialSetup.getBundlePath());
       expect(fs.existsSync(path.join(generatedHtmlFolderPath, 'meadow flower.html'))).toBe(true);
       expect(fs.existsSync(path.join(generatedHtmlFolderPath, 'embedded media.html'))).toBe(true);
     } finally {

@@ -19,7 +19,6 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Graph, IEdge } from '../../../../../shared_code/types/graph';
 import { IBundleNode } from '../../../../../shared_code/types/IBundleNode.js';
 import BundleNodeTabs from '../../../areas/bundle/curation/components/BundleNodeTabs';
-import VersionsModal from '../../bundle-management/VersionsModal';
 import BundleLogsModal from './BundleLogsModal';
 import SinglePagePreviewCallout, { useSinglePagePreviewCallout } from '../../../areas/bundle/review/components/calloutModals/SinglePagePreviewCallout';
 import CreateOrEditBundleModal from '../../../areas/bundles/components/CreateOrEditBundleModal';
@@ -60,11 +59,9 @@ const BundleEditor: React.FC = () => {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isModalBusy, setIsModalBusy] = useState(false);
   const [previewStartPage, setPreviewStartPage] = useState<{ title: string; sourceGraphSubdirectory?: string } | undefined>();
-  const [previewModalTab, setPreviewModalTab] = useState<'bundlePreview' | 'changes' | 'customization' | 'localExport' | 'publish' | 'advanced'>('bundlePreview'); // customization kept for URL param backward compat
+  const [previewModalTab, setPreviewModalTab] = useState<'bundlePreview' | 'changes' | 'versions' | 'customization' | 'localExport' | 'publish' | 'advanced'>('bundlePreview'); // customization kept for URL param backward compat
   const [hooksHaveErrors, setHooksHaveErrors] = useState(false); // Track if hooks have load errors
 
-  // Version management state
-  const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
   const [hasPublishedVersions, setHasPublishedVersions] = useState(false);
 
 
@@ -124,8 +121,8 @@ const BundleEditor: React.FC = () => {
     if (ncPreviewModal === '1') {
       initialUrlParamsProcessed.current = true;
 
-      if (ncPreviewModalTab && ['bundlePreview', 'changes', 'customization', 'localExport', 'publish', 'advanced'].includes(ncPreviewModalTab)) {
-        setPreviewModalTab(ncPreviewModalTab as 'bundlePreview' | 'changes' | 'customization' | 'localExport' | 'publish' | 'advanced');
+      if (ncPreviewModalTab && ['bundlePreview', 'changes', 'versions', 'customization', 'localExport', 'publish', 'advanced'].includes(ncPreviewModalTab)) {
+        setPreviewModalTab(ncPreviewModalTab as 'bundlePreview' | 'changes' | 'versions' | 'customization' | 'localExport' | 'publish' | 'advanced');
       }
 
       if (slug) {
@@ -242,18 +239,6 @@ const BundleEditor: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleOpenVersions = () => {
-    setIsVersionsModalOpen(true);
-  };
-
-  const handleCloseVersions = () => {
-    setIsVersionsModalOpen(false);
-  };
-
-  const handleVersionUpdate = () => {
-    checkPublishedVersions();
-  };
 
   const handleOpenWebsite = async () => {
     if (!slug) return;
@@ -1187,11 +1172,6 @@ const BundleEditor: React.FC = () => {
         onBundleSrsTagsChange={handleBundleSrsTagsChange}
         onBundleOkfLogSettingsChange={handleBundleOkfLogSettingsChange}
         onBundleOkfEnable={handleBundleOkfEnable}
-        hasPublishedVersions={hasPublishedVersions}
-        onOpenVersionsModal={() => {
-          setIsPublishModalOpen(false);
-          handleOpenVersions();
-        }}
         onBusyChange={setIsModalBusy}
         onAuthError={() => {/* Access code handling is now built into the modal */}}
         onPublishSuccess={checkPublishedVersions}
@@ -1201,15 +1181,6 @@ const BundleEditor: React.FC = () => {
         initialTab={previewModalTab}
         hooksHaveErrors={hooksHaveErrors}
       />}
-
-      {/* Versions Modal */}
-      <VersionsModal
-        isOpen={isVersionsModalOpen}
-        onClose={handleCloseVersions}
-        bundleSlug={slug || ''}
-        onVersionUpdate={handleVersionUpdate}
-        openedFromPreview={isPublishModalOpen}
-      />
 
       {/* Single Page Preview Warning Callout */}
       <SinglePagePreviewCallout

@@ -29,6 +29,7 @@ import { parseHTML } from 'linkedom';
 import { loadBundleNodeConfigMap } from '../html/htmlService.js';
 import { getMdContent } from '../html/shared.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { currentGeneratedBundleVersionDirectory } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 
 const router = express.Router();
 
@@ -435,8 +436,8 @@ router.post('/bundles/:bundleSlug/generation/hooks/validate', validateBundleSlug
         throw new Error('Failed to parse hook');
       }
 
-      const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
-      if (existsSync(generatedHtmlDir)) {
+      const generatedHtmlDir = currentGeneratedBundleVersionDirectory(bundleDirectory);
+      if (generatedHtmlDir && existsSync(generatedHtmlDir)) {
         // Collect .html files from preview dir and subdirectories
         const htmlFiles: { filePath: string; relPath: string }[] = [];
         const collectHtmlFiles = (dir: string, base: string) => {

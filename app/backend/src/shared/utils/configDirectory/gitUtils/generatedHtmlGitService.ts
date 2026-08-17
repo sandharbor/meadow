@@ -16,6 +16,7 @@ limitations under the License.
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawnSync } from 'child_process';
 import { commitChangesNative } from './gitStatusUtils.js';
 import { getConfigDirectory } from '../../../bundle-config/bundleConfigPaths.js';
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
@@ -50,7 +51,7 @@ interface CommitOptions {
 /**
  * Commit bundle changes to git.
  * Uses the native fast_git_ops binary for fast commits of multiple directories.
- * Commits html/generated_bundle_versions, html/generated, raw/tracked_page_content,
+ * Commits html/generated_bundle_versions, raw/tracked_page_content,
  * generated build intermediates, and cleanup paths. Optionally includes the config
  * directory for publish operations. Callers (typically publishing providers)
  * can pass `additionalDirs` to include provider-scoped caches in the same commit.
@@ -63,14 +64,12 @@ export async function commitBundleChanges(
   const { includeConfigDir = false, additionalDirs = [] } = options;
 
   const publishedDir = BundleConfigPaths.getGeneratedBundleVersionsDir(bundleDirectory);
-  const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
   const trackedPageContentDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
   const buildDir = BundleConfigPaths.getBuildDir(bundleDirectory);
   const configDir = BundleConfigPaths.getConfigDir(bundleDirectory);
 
   // Check if at least one directory exists
   const publishedExists = fs.existsSync(publishedDir);
-  const generatedHtmlExists = fs.existsSync(generatedHtmlDir);
   const trackedPageContentExists = fs.existsSync(trackedPageContentDir);
   const buildExists = fs.existsSync(buildDir);
   const configExists = includeConfigDir && fs.existsSync(configDir);
@@ -78,7 +77,6 @@ export async function commitBundleChanges(
 
   if (
     !publishedExists &&
-    !generatedHtmlExists &&
     !trackedPageContentExists &&
     !buildExists &&
     !configExists &&
@@ -86,7 +84,6 @@ export async function commitBundleChanges(
   ) {
     logger.warn(`[commitBundleChanges] No directories found to commit`);
     logger.warn(`  Published: ${publishedDir}`);
-    logger.warn(`  Generated HTML: ${generatedHtmlDir}`);
     logger.warn(`  Tracked Page Content: ${trackedPageContentDir}`);
     logger.warn(`  Build: ${buildDir}`);
     if (includeConfigDir) {
@@ -103,10 +100,6 @@ export async function commitBundleChanges(
   if (publishedExists) {
     directoriesToCommit.push(publishedDir);
     logger.info(`[commitBundleChanges] Will commit published dir: ${publishedDir}`);
-  }
-  if (generatedHtmlExists) {
-    directoriesToCommit.push(generatedHtmlDir);
-    logger.info(`[commitBundleChanges] Will commit generated HTML dir: ${generatedHtmlDir}`);
   }
   if (trackedPageContentExists) {
     directoriesToCommit.push(trackedPageContentDir);
@@ -375,9 +368,7 @@ function generateHunk(changes: Change[], _totalOldLines: number, _totalNewLines:
  * Compares the generated HTML directory against the latest immutable version on disk.
  * (Git is used for committing after publish, not for the diff comparison itself)
  */
-export function getGeneratedHtmlChanges(bundleDirectory: string): GeneratedHtmlChanges {
-  const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
-  const publishedDir = BundleConfigPaths.getGeneratedBundleVersionsDir(bundleDirectory);
+export function getGeneratedHtmlChanges(generatedHtmlDir: string): GeneratedHtmlChanges {
 
   const changedFiles: DiffResult[] = [];
   const fileDiffs: Record<string, FileDiff> = {};
@@ -400,35 +391,10 @@ export function getGeneratedHtmlChanges(bundleDirectory: string): GeneratedHtmlC
     }
   }
 
-  // Get published files content from the latest version directory
-  const publishedFiles = new Map<string, string>();
-
-  if (fs.existsSync(publishedDir)) {
-    // Find version directories
-    const versionDirs = fs.readdirSync(publishedDir).filter(f => {
-      const fullPath = path.join(publishedDir, f);
-      return fs.statSync(fullPath).isDirectory();
-    });
-
-    if (versionDirs.length > 0) {
-      // Use the most recent version directory
-      const latestVersion = versionDirs.sort().pop();
-      if (latestVersion) {
-        const latestVersionDir = path.join(publishedDir, latestVersion);
-        const publishedFileList = getAllFiles(latestVersionDir);
-
-        for (const file of publishedFileList) {
-          const relativePath = path.relative(latestVersionDir, file);
-          try {
-            const content = fs.readFileSync(file, 'utf8');
-            publishedFiles.set(relativePath, content);
-          } catch {
-            // Binary file or unreadable
-          }
-        }
-      }
-    }
-  }
+  // The saved baseline is the exact HEAD subtree for this version directory.
+  // Directory names are public opaque IDs, so filesystem sorting is never a
+  // source of currentness or history.
+  const publishedFiles = readHeadHtmlFiles(generatedHtmlDir);
 
   // If no published files exist, all generated HTML files are new.
   if (publishedFiles.size === 0) {
@@ -497,4 +463,34 @@ export function getGeneratedHtmlChanges(bundleDirectory: string): GeneratedHtmlC
   changedFiles.sort((a, b) => a.filepath.localeCompare(b.filepath));
 
   return { changedFiles, fileDiffs };
+}
+
+function readHeadHtmlFiles(generatedHtmlDir: string): Map<string, string> {
+  const files = new Map<string, string>();
+  let gitRoot = generatedHtmlDir;
+  while (gitRoot !== path.dirname(gitRoot) && !fs.existsSync(path.join(gitRoot, '.git'))) {
+    gitRoot = path.dirname(gitRoot);
+  }
+  if (!fs.existsSync(path.join(gitRoot, '.git'))) return files;
+  const repositoryDirectory = path.relative(gitRoot, generatedHtmlDir).split(path.sep).join('/');
+  const listed = spawnSync(
+    'git',
+    ['ls-tree', '-r', '-z', '--name-only', 'HEAD', '--', repositoryDirectory],
+    { cwd: gitRoot, encoding: 'buffer', maxBuffer: 50 * 1024 * 1024 },
+  );
+  if (listed.status !== 0 || !listed.stdout) return files;
+  const prefix = `${repositoryDirectory}/`;
+  for (const repositoryPath of listed.stdout.toString('utf8').split('\0').filter(Boolean)) {
+    if (!repositoryPath.endsWith('.html')) continue;
+    const relativePath = repositoryPath.startsWith(prefix)
+      ? repositoryPath.slice(prefix.length)
+      : repositoryPath;
+    const shown = spawnSync('git', ['show', `HEAD:${repositoryPath}`], {
+      cwd: gitRoot,
+      encoding: 'buffer',
+      maxBuffer: 50 * 1024 * 1024,
+    });
+    if (shown.status === 0 && shown.stdout) files.set(relativePath, shown.stdout.toString('utf8'));
+  }
+  return files;
 }

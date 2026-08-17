@@ -205,6 +205,28 @@ export class SystemTestBundleSetup {
     return path.join(this.destinationBundlePath, relativePath);
   }
 
+  /** Resolve the mutable output directory from the final manifest entry. */
+  getCurrentGeneratedHtmlPath(relativePath: string = ''): string {
+    const manifestPath = this.getPathInBundle('config/generated_bundle_versions.yaml');
+    if (!fs.existsSync(manifestPath)) {
+      throw new Error(`Generated bundle version manifest does not exist: ${manifestPath}`);
+    }
+    const manifest = YAML.parse(fs.readFileSync(manifestPath, 'utf8')) as {
+      versions?: Array<{ versionId?: unknown; localFilesState?: unknown }>;
+    };
+    const current = manifest.versions?.at(-1);
+    if (!current || typeof current.versionId !== 'string' || current.localFilesState !== 'present') {
+      throw new Error(`Generated bundle version manifest has no present current version: ${manifestPath}`);
+    }
+    return path.join(
+      this.destinationBundlePath,
+      'html',
+      'generated_bundle_versions',
+      current.versionId,
+      relativePath,
+    );
+  }
+
   /**
    * Gets the isolated source graph path for this test bundle.
    */

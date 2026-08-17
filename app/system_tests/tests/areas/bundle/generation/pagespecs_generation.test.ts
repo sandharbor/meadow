@@ -235,7 +235,7 @@ describe('Runtime Pagespec Generation Validation', () => {
     let pagesValidated = 0;
 
     for (const { name: bundleName, setup: bundleSetup, sourceGraphDir } of bundlesToCheck) {
-      const generatedHtmlFolderPath = bundleSetup.getPathInBundle('html/generated');
+      const generatedHtmlFolderPath = bundleSetup.getCurrentGeneratedHtmlPath();
       const pagespecSourceFiles = findAllPagespecSourceFiles(sourceGraphDir);
 
       for (const sourceFile of pagespecSourceFiles) {

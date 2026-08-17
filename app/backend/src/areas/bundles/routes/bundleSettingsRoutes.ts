@@ -90,7 +90,6 @@ router.put('/bundles/:slug', (req, res, next) => {
         archivedAt: existingConfig.archivedAt ?? null,
         bundleCreatedAt: existingConfig.bundleCreatedAt || new Date().toISOString(),
         bundleUpdatedAt: new Date().toISOString(),
-        bundleLastPublishedAt: existingConfig.bundleLastPublishedAt ?? null,
         bundleNotes: bundleNotes !== undefined ? bundleNotes : (existingConfig.bundleNotes || ''),
       };
       validateCanonicalBundleConfiguration({
@@ -142,7 +141,6 @@ router.put('/bundles/:slug', (req, res, next) => {
       archivedAt: existingConfig.archivedAt ?? null,
       bundleCreatedAt: existingConfig.bundleCreatedAt || new Date().toISOString(),
       bundleUpdatedAt: new Date().toISOString(),
-      bundleLastPublishedAt: existingConfig.bundleLastPublishedAt ?? null,
       bundleNotes: bundleNotes !== undefined ? bundleNotes : (existingConfig.bundleNotes || ''),
     };
 

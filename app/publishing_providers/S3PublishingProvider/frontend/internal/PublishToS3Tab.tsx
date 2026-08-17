@@ -28,6 +28,25 @@ interface FileCounts {
   otherCount: number;
 }
 
+interface PublicationStateView {
+  status: { kind: 'not-published' | 'published-current' | 'update-available' | 'imported-unknown' | 'removed' };
+  events: Array<{ eventType: string; versionId: string; timestamp: string; publicUrl?: string }>;
+  remotelyPresentVersionIds: string[];
+}
+
+export function s3PublishAction(statusKind: PublicationStateView['status']['kind']): {
+  label: string;
+  requiresConfirmation: boolean;
+} {
+  const requiresConfirmation = statusKind === 'update-available' || statusKind === 'imported-unknown';
+  return {
+    requiresConfirmation,
+    label: statusKind === 'published-current'
+      ? 'Republish'
+      : requiresConfirmation ? 'Update Published Version…' : 'Publish',
+  };
+}
+
 async function readError(res: Response, fallback: string): Promise<string> {
   try {
     const body = await res.json();
@@ -38,7 +57,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
   return fallback;
 }
 
-export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyChange, onPublishSuccess }) => {
+export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selectedVersionId, onBusyChange, onPublishSuccess, onViewChanges }) => {
   const [publishSlug, setPublishSlug] = useState('');
   const [draftSlug, setDraftSlug] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -52,13 +71,18 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
   const [fileCounts, setFileCounts] = useState<FileCounts | null>(null);
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
+  const [publicationState, setPublicationState] = useState<PublicationStateView | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const configRevisionRef = useRef(0);
 
   const loadConfig = useCallback(async () => {
+    const requestRevision = configRevisionRef.current;
     try {
       const res = await fetch(s3Api(`bundles/${bundleSlug}/provider-config`));
       if (!res.ok) return;
       const body = await res.json() as { publishSlug?: string | null };
+      if (requestRevision !== configRevisionRef.current) return;
       const value = body.publishSlug ?? '';
       setPublishSlug(value);
       setDraftSlug(value || bundleSlug);
@@ -79,10 +103,25 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
     }
   }, [bundleSlug]);
 
+  const loadPublicationState = useCallback(async () => {
+    if (!selectedVersionId) return;
+    try {
+      const query = new URLSearchParams({ versionId: selectedVersionId });
+      const res = await fetch(s3Api(`bundles/${bundleSlug}/publication-state?${query}`));
+      if (!res.ok) return;
+      const body = await res.json() as PublicationStateView;
+      setPublicationState(body);
+      setHasPublishedFiles(body.remotelyPresentVersionIds.includes(selectedVersionId));
+    } catch (err) {
+      logger.error('[S3PublishingProvider] failed to load publication state:', err);
+    }
+  }, [bundleSlug, selectedVersionId]);
+
   useEffect(() => {
     loadConfig();
     loadFileCounts();
-  }, [loadConfig, loadFileCounts]);
+    loadPublicationState();
+  }, [loadConfig, loadFileCounts, loadPublicationState]);
 
   useEffect(() => {
     onBusyChange(isSaving || isPublishing || isDeleting || isConfigSaving);
@@ -105,6 +144,9 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
       setError('publishSlug must contain only lowercase letters, numbers, and dashes');
       return;
     }
+    // Invalidate any config GET that began before this user edit/save. A slow
+    // initial response must not overwrite a successfully persisted slug.
+    const saveRevision = ++configRevisionRef.current;
     setIsSaving(true);
     try {
       const res = await fetch(s3Api(`bundles/${bundleSlug}/provider-config`), {
@@ -117,7 +159,9 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
         return;
       }
       const body = await res.json() as { publishSlug: string };
+      if (saveRevision !== configRevisionRef.current) return;
       setPublishSlug(body.publishSlug);
+      setDraftSlug(body.publishSlug);
     } finally {
       setIsSaving(false);
     }
@@ -129,7 +173,11 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
     setFilesUploaded(null);
     setIsPublishing(true);
     try {
-      const res = await fetch(s3Api(`bundles/${bundleSlug}/publish`), { method: 'POST' });
+      const res = await fetch(s3Api(`bundles/${bundleSlug}/publish`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ versionId: selectedVersionId }),
+      });
       if (!res.ok) {
         setError(await readError(res, `Publish failed (${res.status})`));
         return;
@@ -143,6 +191,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
       setFilesUploaded(body.filesUploaded ?? null);
       if (body.success) onPublishSuccess?.();
       await loadFileCounts();
+      await loadPublicationState();
     } catch (err) {
       logger.error('[S3PublishingProvider] publish failed:', err);
       setError(err instanceof Error ? err.message : String(err));
@@ -156,7 +205,11 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
     setError(null);
     setIsDeleting(true);
     try {
-      const res = await fetch(s3Api(`bundles/${bundleSlug}/published`), { method: 'DELETE' });
+      const res = await fetch(s3Api(`bundles/${bundleSlug}/published`), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ versionId: selectedVersionId }),
+      });
       if (!res.ok) {
         setError(await readError(res, `Delete failed (${res.status})`));
         return;
@@ -165,6 +218,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
       setFilesUploaded(null);
       setHasPublishedFiles(false);
       setFileCounts({ htmlCount: 0, otherCount: 0 });
+      await loadPublicationState();
     } catch (err) {
       logger.error('[S3PublishingProvider] delete-published failed:', err);
       setError(err instanceof Error ? err.message : String(err));
@@ -174,8 +228,10 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
   };
 
   const slugChanged = draftSlug !== publishSlug;
-  const canPublish = !!publishSlug && !slugChanged && !isSaving && !isPublishing && !isDeleting;
+  const canPublish = !!selectedVersionId && !!publishSlug && !slugChanged && !isSaving && !isPublishing && !isDeleting;
   const canOpenSettings = !!publishSlug;
+  const statusKind = publicationState?.status.kind ?? 'not-published';
+  const { label: publishButtonLabel, requiresConfirmation: requiresUpdateConfirmation } = s3PublishAction(statusKind);
 
   return (
     <div data-testid="s3-publish-tab" className="h-full overflow-y-auto p-4 space-y-4 relative">
@@ -214,8 +270,8 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
       <div>
         <h3 className="text-lg font-semibold">Publish to S3</h3>
         <p className="text-sm text-neutral-600">
-          Uploads the current preview to an S3-compatible bucket. Set a publish slug — files
-          land under <code>{'<bucket>/<publishSlug>/...'}</code>.
+          Publishes the selected saved version to an S3-compatible bucket. Files land under
+          <code>{'<bucket>/<publishSlug>-<versionId>/...'}</code>.
         </p>
       </div>
 
@@ -231,7 +287,10 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
             data-testid="s3-publish-slug-input"
             className="border border-neutral-300 rounded px-2 py-1 text-sm"
             value={draftSlug}
-            onChange={(e) => setDraftSlug(e.target.value)}
+            onChange={(e) => {
+              configRevisionRef.current += 1;
+              setDraftSlug(e.target.value);
+            }}
             disabled={isSaving || isPublishing || isDeleting}
           />
           <button
@@ -247,12 +306,32 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
 
       <button
         data-testid="s3-publish-button"
-        onClick={handlePublish}
+        onClick={() => requiresUpdateConfirmation ? setShowUpdateConfirm(true) : void handlePublish()}
         disabled={!canPublish}
         className="px-4 py-2 bg-main-600 text-white rounded disabled:bg-neutral-300"
       >
-        {isPublishing ? 'Publishing…' : 'Publish'}
+        {isPublishing ? 'Publishing…' : publishButtonLabel}
       </button>
+
+      {selectedVersionId && publicationState && (
+        <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-sm">
+          <div className="font-medium text-neutral-800">
+            {publicationState.status.kind === 'published-current' ? 'Published'
+              : publicationState.status.kind === 'update-available' ? 'Update available'
+                : publicationState.status.kind === 'imported-unknown' ? 'Published — freshness unknown'
+                  : publicationState.status.kind === 'removed' ? 'Removed from this destination'
+                    : 'Not published to this destination'}
+          </div>
+          <details className="mt-2 text-xs text-neutral-600">
+            <summary className="cursor-pointer">Successful publication history ({publicationState.events.filter(event => event.eventType !== 'remote-deletion-success').length})</summary>
+            <ul className="mt-2 space-y-1">
+              {publicationState.events.map((event, index) => (
+                <li key={`${event.timestamp}-${index}`}>{new Date(event.timestamp).toLocaleString()} — {event.eventType} — {event.versionId}</li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
 
       {error && (
         <p data-testid="s3-publish-error" className="text-sm text-red-600">
@@ -291,11 +370,10 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-2 text-neutral-800">
-              Delete bundle&apos;s published files?
+              Delete selected remote version?
             </h3>
             <p className="text-sm text-neutral-600 mb-4">
-              This will permanently remove every object under <code>{publishSlug}/</code> from
-              the configured S3 bucket.
+              This removes remote files for <code>{selectedVersionId}</code> from this S3 destination.
               {fileCounts && (fileCounts.htmlCount > 0 || fileCounts.otherCount > 0) && (
                 <> This includes <strong>{fileCounts.htmlCount} page{fileCounts.htmlCount !== 1 ? 's' : ''}</strong>
                 {' '}and <strong>{fileCounts.otherCount} other file{fileCounts.otherCount !== 1 ? 's' : ''}</strong>.</>
@@ -315,7 +393,32 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, onBusyCh
                 onClick={handleDelete}
                 className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded font-medium"
               >
-                Delete All
+                Delete Remote Files
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showUpdateConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-neutral-800">Update existing version URLs?</h3>
+            <p className="mb-4 text-sm text-neutral-600">
+              This saved generation differs from the last known publication. Updating changes the content served at the existing version URLs. Create a new version in Review if those URLs should keep their current content.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowUpdateConfirm(false)} className="rounded bg-neutral-200 px-4 py-2 text-sm">Cancel</button>
+              <button
+                onClick={() => { setShowUpdateConfirm(false); onViewChanges(); }}
+                className="rounded bg-btn-standard-normal px-4 py-2 text-sm text-btn-standard-text"
+              >
+                Create New Version
+              </button>
+              <button
+                onClick={() => { setShowUpdateConfirm(false); void handlePublish(); }}
+                className="rounded bg-main-600 px-4 py-2 text-sm text-white"
+              >
+                Update Published Version
               </button>
             </div>
           </div>

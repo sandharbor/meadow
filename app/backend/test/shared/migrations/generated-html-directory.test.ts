@@ -40,7 +40,7 @@ describe('generated HTML directory migration', () => {
     const home = makeHome();
     const siteDir = path.join(home, 'sites', 'garden');
     const legacyDir = path.join(BundleConfigPaths.getHtmlDir(siteDir), 'preview');
-    const generatedDir = BundleConfigPaths.getGeneratedHtmlDir(siteDir);
+    const generatedDir = path.join(siteDir, 'html', 'generated');
     fs.mkdirSync(legacyDir, { recursive: true });
     fs.writeFileSync(path.join(legacyDir, 'index.html'), '<h1>Garden</h1>', 'utf8');
 
@@ -55,7 +55,7 @@ describe('generated HTML directory migration', () => {
     const home = makeHome();
     const siteDir = path.join(home, 'sites', 'garden');
     const legacyDir = path.join(BundleConfigPaths.getHtmlDir(siteDir), 'preview');
-    const generatedDir = BundleConfigPaths.getGeneratedHtmlDir(siteDir);
+    const generatedDir = path.join(siteDir, 'html', 'generated');
     fs.mkdirSync(legacyDir, { recursive: true });
     fs.writeFileSync(path.join(legacyDir, 'index.html'), 'legacy', 'utf8');
     fs.mkdirSync(generatedDir, { recursive: true });

@@ -36,7 +36,7 @@ export function migratePreviewOutputDirectory(configDir: string): string[] {
   for (const entry of bundleEntries) {
     const bundleDir = path.join(bundlesDir, entry.name);
     const legacyDir = path.join(BundleConfigPaths.getHtmlDir(bundleDir), LEGACY_PREVIEW_DIRECTORY);
-    const generatedDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDir);
+    const generatedDir = path.join(bundleDir, 'html', 'generated');
     if (!fs.existsSync(legacyDir)) continue;
 
     if (fs.existsSync(generatedDir)) {

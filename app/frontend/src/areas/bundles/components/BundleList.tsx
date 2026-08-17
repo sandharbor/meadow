@@ -22,7 +22,6 @@ import { getActiveFrontendProvider } from '../../../shared/publishing-provider-h
 import { fetchBundles, fetchDirectories, BundleConfigWithSlug } from '../../../shared/utils/bundleApi';
 import { FindInBundlesOptions } from '../../../../../shared_code/types/findInBundlesOptions';
 import Modal from '../../../shared/components/Modal';
-import VersionsModal from '../../../shared/bundle-management/VersionsModal';
 import CreateOrEditBundleModal from './CreateOrEditBundleModal';
 import DeleteBundleModal from '../../../shared/bundle-management/DeleteBundleModal';
 import { logger } from '../../../shared/utils/logger';
@@ -36,7 +35,7 @@ type BundleListSortKey =
   | 'slug'
   | 'bundleCreatedAt'
   | 'bundleUpdatedAt'
-  | 'bundleLastPublishedAt'
+  | 'mostRecentPublicationAt'
   | 'archivedAt';
 
 type SortDirection = 'asc' | 'desc';
@@ -98,14 +97,14 @@ const compareNullableNumbers = (a: number | null, b: number | null, direction: S
   return 0;
 };
 
-// Mirror backend default ordering: lastPublishedAt desc, then updatedAt desc, with errors last.
+// Mirror backend default ordering: provider publication activity, then local updates.
 const defaultBackendComparator = (a: BundleConfig, b: BundleConfig) => {
   if (a.error && !b.error) return 1;
   if (!a.error && b.error) return -1;
   if (a.error && b.error) return 0;
 
-  const aPublished = parseTime(a.bundleLastPublishedAt);
-  const bPublished = parseTime(b.bundleLastPublishedAt);
+  const aPublished = parseTime(a.mostRecentPublicationAt);
+  const bPublished = parseTime(b.mostRecentPublicationAt);
   const publishedCmp = compareNullableNumbers(aPublished, bPublished, 'desc');
   if (publishedCmp !== 0) return publishedCmp;
 
@@ -129,8 +128,8 @@ const compareByKey = (a: BundleConfig, b: BundleConfig, key: BundleListSortKey, 
     case 'bundleUpdatedAt': {
       return compareNullableNumbers(parseTime(a.bundleUpdatedAt), parseTime(b.bundleUpdatedAt), direction);
     }
-    case 'bundleLastPublishedAt': {
-      return compareNullableNumbers(parseTime(a.bundleLastPublishedAt), parseTime(b.bundleLastPublishedAt), direction);
+    case 'mostRecentPublicationAt': {
+      return compareNullableNumbers(parseTime(a.mostRecentPublicationAt), parseTime(b.mostRecentPublicationAt), direction);
     }
     case 'archivedAt': {
       return compareNullableNumbers(parseTime(a.archivedAt), parseTime(b.archivedAt), direction);
@@ -171,7 +170,6 @@ const BundleList: React.FC = () => {
   } | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isVersionsModalOpen, setIsVersionsModalOpen] = useState(false);
   const [bundleToRepair, setBundleToRepair] = useState<BundleConfig | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<BundleConfig | null>(null);
   const [bundleToEdit, setBundleToEdit] = useState<{
@@ -185,7 +183,6 @@ const BundleList: React.FC = () => {
     defaultOutlinksDepth?: number;
     defaultInlinksDepth?: number;
   } | null>(null);
-  const [bundleForVersions, setBundleForVersions] = useState<string | null>(null);
   
   // Find in bundles filter state (from CLI args or "Find in Bundles" button)
   const [findInBundlesOptions, setFindInBundlesOptions] = useState<FindInBundlesOptions | null>(null);
@@ -250,7 +247,7 @@ const BundleList: React.FC = () => {
         'slug',
         'bundleCreatedAt',
         'bundleUpdatedAt',
-        'bundleLastPublishedAt',
+        'mostRecentPublicationAt',
         'archivedAt'
       ];
       if (!key || !validKeys.includes(key as BundleListSortKey)) return;
@@ -499,17 +496,7 @@ const BundleList: React.FC = () => {
   };
 
   const handleOpenVersions = (slug: string) => {
-    setBundleForVersions(slug);
-    setIsVersionsModalOpen(true);
-  };
-
-  const handleCloseVersions = () => {
-    setIsVersionsModalOpen(false);
-    setBundleForVersions(null);
-  };
-
-  const handleVersionUpdate = () => {
-    loadBundles(); // Reload bundles to get updated version info
+    window.location.href = `/bundle/${encodeURIComponent(slug)}?ncPreviewModal=1&ncPreviewModalTab=versions`;
   };
 
   const startEditingNotes = (slug: string, currentNotes: string) => {
@@ -829,7 +816,7 @@ const BundleList: React.FC = () => {
             >
               <option value="default:desc">Recent activity</option>
               <option value="slug:asc">Bundle name</option>
-              <option value="bundleLastPublishedAt:desc">Recently published</option>
+              <option value="mostRecentPublicationAt:desc">Recently published</option>
               <option value="bundleUpdatedAt:desc">Recently updated</option>
               <option value="bundleCreatedAt:desc">Recently created</option>
               {activeTab === 'archived' && (
@@ -878,7 +865,7 @@ const BundleList: React.FC = () => {
               <tbody className="divide-y divide-neutral-200">
                 {displayBundles.map((bundle) => {
                   const isExactMatch = isFindInBundlesFilterActive && findInBundlesOptions && bundle.entryBundleNodeName === findInBundlesOptions.pageName;
-                  const publishedDate = formatBundleDate(bundle.bundleLastPublishedAt);
+                  const publishedDate = formatBundleDate(bundle.mostRecentPublicationAt);
                   const updatedDate = formatBundleDate(bundle.bundleUpdatedAt);
                   const createdDate = formatBundleDate(bundle.bundleCreatedAt);
                   const archivedDate = formatBundleDate(bundle.archivedAt);
@@ -886,7 +873,7 @@ const BundleList: React.FC = () => {
                     ? { label: 'Needs attention', classes: 'bg-danger-50 text-danger-700 ring-danger-200' }
                     : bundle.archivedAt
                       ? { label: 'Archived', classes: 'bg-neutral-100 text-neutral-600 ring-neutral-200' }
-                      : bundle.bundleLastPublishedAt
+                      : bundle.hasRemotePublications
                         ? { label: 'Published', classes: 'bg-main-50 text-main-700 ring-main-200' }
                         : { label: 'Draft', classes: 'bg-neutral-100 text-neutral-600 ring-neutral-200' };
                   const activityText = bundle.repairRequired
@@ -972,7 +959,7 @@ const BundleList: React.FC = () => {
                       </td>
                       <td className="w-[24%] px-5 py-4 align-middle">
                         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                          {bundle.bundleLastPublishedAt && (
+                          {bundle.hasRemotePublications && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1066,7 +1053,7 @@ const BundleList: React.FC = () => {
           style={{ top: bundleActionMenu.top, right: bundleActionMenu.right }}
           onClick={(e) => e.stopPropagation()}
         >
-          {actionMenuBundle.generatedBundleVersions && actionMenuBundle.generatedBundleVersions.length > 1 && (
+          {(actionMenuBundle.generatedVersionCount ?? 0) > 0 && (
             <button
               onClick={() => {
                 setBundleActionMenu(null);
@@ -1175,15 +1162,7 @@ const BundleList: React.FC = () => {
         onClose={closeDeleteModal}
         onDeleted={() => { loadBundles(); closeDeleteModal(); }}
         bundleSlug={bundleToDelete?.slug || ''}
-        isPublished={!!bundleToDelete?.bundleLastPublishedAt}
-      />
-
-      {/* Versions Modal */}
-      <VersionsModal
-        isOpen={isVersionsModalOpen}
-        onClose={handleCloseVersions}
-        bundleSlug={bundleForVersions || ''}
-        onVersionUpdate={handleVersionUpdate}
+        isPublished={bundleToDelete?.hasRemotePublications ?? false}
       />
 
       <SelectedFolderRepairModal

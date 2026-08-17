@@ -75,12 +75,23 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   // The same script-shard loader works when the self-contained HTML is opened
   // directly from disk, without an HTTP server.
   const localPage = await page.context().newPage();
+  const versionResponse = await page.request.get(
+    `/api/bundles/${encodeURIComponent(Bundle.Big)}/review/versions`,
+  );
+  const versionState = await versionResponse.json() as {
+    versions: Array<{ versionId: string; derivedState: string }>;
+  };
+  const currentVersionId = versionState.versions.find(
+    version => version.derivedState === "current",
+  )?.versionId;
+  expect(currentVersionId).toBeTruthy();
   const localMainPage = path.join(
     testServer.configDir,
     "bundles",
     Bundle.Big,
     "html",
-    "generated",
+    "generated_bundle_versions",
+    currentVersionId!,
     "main page.html",
   );
   await localPage.goto(pathToFileURL(localMainPage).href);

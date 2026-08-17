@@ -24,6 +24,7 @@ import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { makeBundleNodeConfig } from '../../../../shared/support/bundleNodeConfigTestUtils.js';
+import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';
 
 describe('sources export filtering', () => {
   const testSetup = new TestBundleSetup('shared/fixtures/sources-export-bundle', 'sources-export-test');
@@ -39,11 +40,14 @@ describe('sources export filtering', () => {
   });
 
   async function createPreview() {
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, {
+      preview: true,
+      outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath),
+    });
   }
 
   function getSourcesExportZipPath(): string {
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlDir = getGeneratedBundleTestOutputDirectory(bundlePath);
     const manifest = JSON.parse(
       fs.readFileSync(path.join(generatedHtmlDir, '_mw_assets', 'cust', 'sources-export', 'sources-export-manifest.json'), 'utf8')
     ) as { zipFilename: string; downloadFilename: string };
@@ -166,7 +170,7 @@ describe('sources export filtering', () => {
   it('should render scrubbed links with the link-not-tracked HTML class', async () => {
     await createPreview();
 
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlDir = getGeneratedBundleTestOutputDirectory(bundlePath);
     const mainPageHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
 
     expect(mainPageHtml).toContain('<span class="link-not-tracked">link not tracked</span>');
@@ -240,7 +244,7 @@ describe('sources export filtering', () => {
     const sourcesExportPath = path.join(BundleConfigPaths.getSourcesExportDir(bundlePath), 'drawing.excalidraw.md');
     expect(fs.readFileSync(sourcesExportPath, 'utf8')).toBe(scrubbedContent);
 
-    const generatedHtmlSourcePath = path.join(BundleConfigPaths.getGeneratedHtmlDir(bundlePath), 'drawing.excalidraw.md');
+    const generatedHtmlSourcePath = path.join(getGeneratedBundleTestOutputDirectory(bundlePath), 'drawing.excalidraw.md');
     expect(fs.readFileSync(generatedHtmlSourcePath, 'utf8')).toBe(scrubbedContent);
 
     const zipPath = getSourcesExportZipPath();

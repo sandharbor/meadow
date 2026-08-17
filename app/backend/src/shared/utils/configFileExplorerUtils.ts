@@ -17,7 +17,6 @@ limitations under the License.
 import * as fs from 'fs';
 import * as path from 'path';
 import { runGitStatusNative, runGitCatFileNative } from './configDirectory/gitUtils/gitStatusUtils.js';
-import { BundleConfigPaths } from '../../../../shared_code/paths/bundleConfigPaths.js';
 import { logger } from './logging/backendLoggingUtils.js';
 
 // Image file extensions we can display thumbnails for
@@ -418,8 +417,7 @@ export async function getConfigFileTree(bundleDirectory: string, changedOnly = f
  * Get the file tree for a bundle's current generated HTML directory.
  * @param changedOnly - If true, only return files with git changes (much faster for large directories)
  */
-export async function getGeneratedHtmlFileTree(bundleDirectory: string, changedOnly = false): Promise<FileTreeResponse> {
-  const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
+export async function getGeneratedHtmlFileTree(generatedHtmlDir: string, changedOnly = false): Promise<FileTreeResponse> {
   const gitStatusMap = await getGitStatusMap(generatedHtmlDir);
 
   // Use optimized path when only showing changed files

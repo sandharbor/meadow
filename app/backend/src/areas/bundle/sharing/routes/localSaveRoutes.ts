@@ -25,6 +25,11 @@ import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPat
 import { createZipFromDirectory } from '../../../../shared/utils/zipUtils.js';
 import { findUniqueName } from '../../../../shared/utils/uniqueNameUtils.js';
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../../shared_code/utils/compressionManifestUtils.js';
+import {
+  selectedVersionExportSource,
+  stageAllVersionsExport,
+} from '../versioning/localVersionExport.js';
+import { loadGeneratedBundleVersionManifest } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 
 export interface LocalSaveRoutesDependencies {
   buildRawSourcesExportForBundle: (bundleDir: string) => Promise<string>;
@@ -46,7 +51,7 @@ async function resolveSourcePath(
   if (sourceType === 'okf') {
     return await dependencies.buildOpenKnowledgeFormatForBundle(bundleDir);
   }
-  return BundleConfigPaths.getGeneratedHtmlDir(bundleDir);
+  throw new Error('Rendered bundle export requires an explicit version');
 }
 
 /**
@@ -60,23 +65,38 @@ async function resolveSourcePath(
  * sources exports, bundles without the excalidraw vendor).
  */
 function stageForLocalExport(sourcePath: string): { stagedPath: string; cleanup: () => void } {
-  const assetsDir = path.join(sourcePath, '_mw_assets');
-  const gzipped = fs.existsSync(assetsDir) ? loadGzipPathSet(assetsDir) : null;
-  if (!gzipped || gzipped.size === 0) {
+  const assetDirectories: string[] = [];
+  const visit = (directory: string): void => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const child = path.join(directory, entry.name);
+      if (entry.name === '_mw_assets' && fs.existsSync(path.join(child, COMPRESSION_MANIFEST_FILENAME))) {
+        assetDirectories.push(child);
+      } else {
+        visit(child);
+      }
+    }
+  };
+  visit(sourcePath);
+  if (assetDirectories.length === 0) {
     return { stagedPath: sourcePath, cleanup: () => { /* nothing to clean */ } };
   }
 
   const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-export-'));
   try {
     fs.cpSync(sourcePath, stagingDir, { recursive: true });
-    const stagedAssetsDir = path.join(stagingDir, '_mw_assets');
-    for (const relPath of gzipped) {
-      const fullPath = path.join(stagedAssetsDir, relPath);
-      if (!fs.existsSync(fullPath)) continue;
-      fs.writeFileSync(fullPath, zlib.gunzipSync(fs.readFileSync(fullPath)));
+    for (const assetsDir of assetDirectories) {
+      const gzipped = loadGzipPathSet(assetsDir);
+      if (!gzipped) continue;
+      const stagedAssetsDir = path.join(stagingDir, path.relative(sourcePath, assetsDir));
+      for (const relPath of gzipped) {
+        const fullPath = path.join(stagedAssetsDir, relPath);
+        if (!fs.existsSync(fullPath)) continue;
+        fs.writeFileSync(fullPath, zlib.gunzipSync(fs.readFileSync(fullPath)));
+      }
+      const manifestPath = path.join(stagedAssetsDir, COMPRESSION_MANIFEST_FILENAME);
+      if (fs.existsSync(manifestPath)) fs.unlinkSync(manifestPath);
     }
-    const manifestPath = path.join(stagedAssetsDir, COMPRESSION_MANIFEST_FILENAME);
-    if (fs.existsSync(manifestPath)) fs.unlinkSync(manifestPath);
     return {
       stagedPath: stagingDir,
       cleanup: () => { fs.rmSync(stagingDir, { recursive: true, force: true }); }
@@ -90,11 +110,44 @@ function stageForLocalExport(sourcePath: string): { stagedPath: string; cleanup:
 interface CopyToDirectoryBody {
   sourceType: 'raw' | 'html' | 'okf';
   destinationPath: string;
+  versionId?: string;
+  allVersions?: boolean;
 }
 
 interface CreateZipBody {
   sourceType: 'raw' | 'html' | 'okf';
   destinationPath: string;
+  versionId?: string;
+  allVersions?: boolean;
+}
+
+async function prepareExportSource(
+  bundleDir: string,
+  bundleSlug: string,
+  body: CopyToDirectoryBody | CreateZipBody,
+  dependencies: LocalSaveRoutesDependencies,
+): Promise<{ sourcePath: string; suggestedName: string; cleanup: () => void }> {
+  if (body.sourceType !== 'html') {
+    return {
+      sourcePath: await resolveSourcePath(bundleDir, body.sourceType, dependencies),
+      suggestedName: bundleSlug,
+      cleanup: () => { /* no temporary source */ },
+    };
+  }
+  if (body.allVersions) {
+    const staged = stageAllVersionsExport(bundleDir, bundleSlug);
+    return {
+      sourcePath: staged.sourceDirectory,
+      suggestedName: `${bundleSlug}-all-versions`,
+      cleanup: staged.cleanup,
+    };
+  }
+  const selected = selectedVersionExportSource(bundleDir, body.versionId);
+  return {
+    sourcePath: selected.sourceDirectory,
+    suggestedName: `${bundleSlug}-${selected.versionId}`,
+    cleanup: () => { /* generated version is read-only input */ },
+  };
 }
 
 export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies): express.Router {
@@ -107,10 +160,13 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
 
     const configDir = getConfigDirectory();
 
+    const currentVersion = loadGeneratedBundleVersionManifest(bundleDir).versions.at(-1);
     res.json({
       appConfigFile: AppConfigPaths.getAppConfigFile(configDir),
       rawMarkdown: BundleConfigPaths.getTrackedPageContentDir(bundleDir),
-      generatedHtml: BundleConfigPaths.getGeneratedHtmlDir(bundleDir),
+      generatedHtml: currentVersion?.localFilesState === 'present'
+        ? path.join(bundleDir, 'html', 'generated_bundle_versions', currentVersion.versionId)
+        : null,
       openKnowledgeFormat: BundleConfigPaths.getOpenKnowledgeFormatDir(bundleDir),
       bundleConfigFile: BundleConfigPaths.getBundleConfigFile(bundleDir),
       bundleNodeConfigFile: BundleConfigPaths.getBundleNodeConfigFile(bundleDir),
@@ -124,10 +180,16 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
   router.post('/bundles/:bundleSlug/sharing/copy-to-directory', async (req, res) => {
     const { bundleSlug } = req.params;
     const body = req.body as CopyToDirectoryBody;
-    const { sourceType, destinationPath } = body;
+    const { destinationPath } = body;
 
     const bundleDir = getBundleDirectory(bundleSlug);
-    const sourcePath = await resolveSourcePath(bundleDir, sourceType, dependencies);
+    let prepared;
+    try {
+      prepared = await prepareExportSource(bundleDir, bundleSlug, body, dependencies);
+    } catch (error) {
+      return res.status(409).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+    const sourcePath = prepared.sourcePath;
 
     // Check if source exists
     if (!fs.existsSync(sourcePath)) {
@@ -146,7 +208,7 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
 
     if (!destinationEmpty) {
       // Folder has contents — create a subfolder with the bundle slug name (auto-incrementing if needed)
-      const uniqueName = findUniqueName(bundleSlug, (name) =>
+      const uniqueName = findUniqueName(prepared.suggestedName, (name) =>
         fs.existsSync(path.join(destinationPath, name))
       );
       actualDestination = path.join(destinationPath, uniqueName);
@@ -161,6 +223,7 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
       res.status(500).json({ error: `Copy failed: ${errorMessage}` });
     } finally {
       staged.cleanup();
+      prepared.cleanup();
     }
   });
 
@@ -172,7 +235,13 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
     const { sourceType, destinationPath } = body;
 
     const bundleDir = getBundleDirectory(bundleSlug);
-    const sourcePath = await resolveSourcePath(bundleDir, sourceType, dependencies);
+    let prepared;
+    try {
+      prepared = await prepareExportSource(bundleDir, bundleSlug, body, dependencies);
+    } catch (error) {
+      return res.status(409).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+    const sourcePath = prepared.sourcePath;
 
     if (!fs.existsSync(sourcePath)) {
       res.status(404).json({ error: 'Source directory not found' });
@@ -201,6 +270,7 @@ export function createLocalSaveRoutes(dependencies: LocalSaveRoutesDependencies)
       res.status(500).json({ error: `Zip creation failed: ${errorMessage}` });
     } finally {
       staged.cleanup();
+      prepared.cleanup();
     }
   });
 

@@ -44,6 +44,19 @@ function getContentType(filePath: string): string {
   return mime.lookup(filePath) || 'application/octet-stream';
 }
 
+function uploadPriority(relativePath: string): number {
+  if (relativePath.startsWith('_mw_assets/versioning/')) return 0;
+  if (relativePath.startsWith('_mw_assets/')) return 1;
+  if (relativePath.toLowerCase().endsWith('.html')) return 3;
+  return 2;
+}
+
+function cacheControlFor(relativePath: string): string | undefined {
+  return relativePath.startsWith('_mw_assets/versioning/')
+    ? 'public, max-age=31536000, immutable'
+    : undefined;
+}
+
 export interface UploadResult {
   filesUploaded: number;
   totalBytes: number;
@@ -63,7 +76,12 @@ export async function uploadDirectory(
   const normalizedPrefix = s3Prefix.replace(/^\/+|\/+$/g, '');
   const prefixWithSlash = normalizedPrefix.length > 0 ? `${normalizedPrefix}/` : '';
 
-  const localFiles = walk(localDir);
+  const localFiles = walk(localDir).sort((left, right) => {
+    const leftRelative = relative(localDir, left).replace(/\\/g, '/');
+    const rightRelative = relative(localDir, right).replace(/\\/g, '/');
+    return uploadPriority(leftRelative) - uploadPriority(rightRelative)
+      || leftRelative.localeCompare(rightRelative);
+  });
   const newKeys = new Set<string>();
 
   let totalBytes = 0;
@@ -79,6 +97,7 @@ export async function uploadDirectory(
         Key: key,
         Body: body,
         ContentType: getContentType(filePath),
+        CacheControl: cacheControlFor(relativePath),
       }),
     );
   }
@@ -92,6 +111,22 @@ export async function uploadDirectory(
   }
 
   return { filesUploaded: localFiles.length, totalBytes };
+}
+
+export async function putJsonObject(
+  client: S3Client,
+  bucket: string,
+  key: string,
+  value: unknown,
+  cacheControl = 'no-store',
+): Promise<void> {
+  await client.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: key.replace(/^\/+/, ''),
+    Body: `${JSON.stringify(value)}\n`,
+    ContentType: 'application/json; charset=utf-8',
+    CacheControl: cacheControl,
+  }));
 }
 
 export async function deletePrefix(
@@ -137,6 +172,10 @@ async function deleteKeys(client: S3Client, bucket: string, keys: string[]): Pro
       }),
     );
   }
+}
+
+export async function deleteObjectKeys(client: S3Client, bucket: string, keys: string[]): Promise<void> {
+  if (keys.length > 0) await deleteKeys(client, bucket, keys);
 }
 
 export async function countPrefix(

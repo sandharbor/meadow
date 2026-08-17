@@ -20,18 +20,21 @@ import { logger } from '../../../../shared/utils/logger';
 
 interface SaveLocallyTabProps {
   bundleSlug: string;
+  selectedVersionId: string | null;
 }
 
 interface LocalPaths {
   rawMarkdown: string;
-  generatedHtml: string;
+  generatedHtml: string | null;
   openKnowledgeFormat: string;
 }
 
-export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug }) => {
+export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, selectedVersionId }) => {
   const [paths, setPaths] = useState<LocalPaths | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [versionCount, setVersionCount] = useState(0);
+  const [allVersions, setAllVersions] = useState(false);
 
   useEffect(() => {
     const fetchPaths = async () => {
@@ -45,6 +48,10 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug }) =>
       }
     };
     fetchPaths();
+    fetch(`${API_BASE_URL}/bundles/${bundleSlug}/review/versions`)
+      .then(response => response.ok ? response.json() : null)
+      .then(data => setVersionCount(Array.isArray(data?.versions) ? data.versions.length : 0))
+      .catch(error => logger.error('Failed to fetch versions for export:', error));
   }, [bundleSlug]);
 
   type ExportType = 'raw' | 'html' | 'okf';
@@ -76,7 +83,12 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug }) =>
       const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/sharing/copy-to-directory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceType: type, destinationPath })
+        body: JSON.stringify({
+          sourceType: type,
+          destinationPath,
+          versionId: selectedVersionId,
+          allVersions: type === 'html' && allVersions,
+        })
       });
 
       if (response.ok) {
@@ -102,7 +114,9 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug }) =>
         ? `${bundleSlug}-sources.zip`
         : type === 'okf'
           ? `${bundleSlug}-okf.zip`
-          : `${bundleSlug}-html.zip`;
+          : allVersions
+            ? `${bundleSlug}-all-versions.zip`
+            : `${bundleSlug}-${selectedVersionId ?? 'version'}.zip`;
 
       const result = await window.electronAPI?.showSaveDialog({
         title: `Save ${exportLabel(type)} as ZIP`,
@@ -118,7 +132,12 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug }) =>
       const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/sharing/create-zip`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceType: type, destinationPath: result.filePath })
+        body: JSON.stringify({
+          sourceType: type,
+          destinationPath: result.filePath,
+          versionId: selectedVersionId,
+          allVersions: type === 'html' && allVersions,
+        })
       });
 
       if (response.ok) {
@@ -147,6 +166,22 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug }) =>
         Export bundle content to your local file system
       </div>
 
+      {versionCount > 1 && (
+        <label className="mb-4 flex items-start gap-2 rounded border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">
+          <input
+            type="checkbox"
+            checked={allVersions}
+            onChange={event => setAllVersions(event.target.checked)}
+          />
+          <span>
+            <span className="block font-medium">All Versions (Rendered Bundle only)</span>
+            <span className="block text-xs text-neutral-500">
+              Creates one version-qualified folder per locally present saved version plus a reader-successor manifest. Locally deleted versions remain in the private-free inventory without files.
+            </span>
+          </span>
+        </label>
+      )}
+
       {message && (
         <div className={`mb-4 p-3 rounded ${message.type === 'success' ? 'bg-success-50 text-success-800' : 'bg-danger-50 text-danger-800'}`}>
           {message.text}
@@ -168,7 +203,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug }) =>
               <td className="py-3 px-3 text-center">
                 <button
                   onClick={() => handleSaveToDisk(row.type)}
-                  disabled={loading || !paths}
+                  disabled={loading || !paths || !selectedVersionId}
                   className="text-xl hover:opacity-70 disabled:opacity-30"
                   title={`Export ${row.label} files to a folder`}
                 >
@@ -178,7 +213,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug }) =>
               <td className="py-3 px-3 text-center">
                 <button
                   onClick={() => handleSaveAsZip(row.type)}
-                  disabled={loading || !paths}
+                  disabled={loading || !paths || !selectedVersionId}
                   className="text-xl hover:opacity-70 disabled:opacity-30"
                   title={`Save ${row.label} as ZIP file`}
                 >

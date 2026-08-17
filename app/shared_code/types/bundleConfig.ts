@@ -16,14 +16,6 @@ limitations under the License.
 
 import type { BundleNodeId } from './bundleNodeConfig.js';
 
-export interface GeneratedBundleVersion {
-  versionId: string;
-  firstPublishedAt: string;
-  lastUpdatedAt: string;
-  notes: string;
-  isActive: boolean;
-}
-
 export interface BundleConfig {
   /**
    * Internal-only stable identifier for this bundle.
@@ -37,11 +29,9 @@ export interface BundleConfig {
   defaultTraversalBundleNodeId?: BundleNodeId;
   defaultOutlinksDepth?: number;
   defaultInlinksDepth?: number;
-  generatedBundleVersions?: string[];
   archivedAt?: string | null;
   bundleCreatedAt?: string;
   bundleUpdatedAt?: string;
-  bundleLastPublishedAt?: string | null;
   bundleNotes?: string;
   /** True when Meadow created this bundle through the built-in example flow. */
   createdFromExample?: boolean;

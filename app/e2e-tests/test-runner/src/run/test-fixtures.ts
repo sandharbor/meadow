@@ -73,7 +73,7 @@ const BIG_BUNDLE_EXCALIDRAW_PAGE_CONFIGS = [
 export function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = net.createServer();
-    srv.listen(0, () => {
+    srv.listen({ port: 0, host: "127.0.0.1" }, () => {
       const addr = srv.address();
       if (addr && typeof addr === "object") {
         const port = addr.port;
@@ -676,8 +676,8 @@ export const test = base.extend<{
       // 7. Spawn backend. Fixture layers can supply additional env vars
       //    via the `_backendExtraEnv` option (e.g. provider-specific stubs).
       const backendProc = spawn(
-        "npx",
-        ["tsx", "src/shared/app-shell/index.ts"],
+        process.execPath,
+        ["--import", "tsx", "src/shared/app-shell/index.ts"],
         {
           cwd: BACKEND_DIR,
           env: {
@@ -687,7 +687,6 @@ export const test = base.extend<{
             ..._backendExtraEnv,
           },
           stdio: ["ignore", "ignore", backendStderrFd],
-          shell: true,
         }
       );
 
@@ -700,8 +699,9 @@ export const test = base.extend<{
         "utf8",
       ).trim();
       const frontendProc = spawn(
-        "npx",
+        process.execPath,
         [
+          "--import",
           "tsx",
           path.join(E2E_DIR, "src/run/scripts/start_static_frontend.ts"),
           String(frontendPort),
@@ -712,14 +712,13 @@ export const test = base.extend<{
           cwd: E2E_DIR,
           env: { ...process.env },
           stdio: ["ignore", "ignore", frontendStderrFd],
-          shell: true,
         }
       );
 
       // 9. Spawn web server
       const webServerProc = spawn(
-        "npx",
-        ["tsx", "src/run/scripts/start_web_server.ts", String(webServerPort)],
+        process.execPath,
+        ["--import", "tsx", "src/run/scripts/start_web_server.ts", String(webServerPort)],
         {
           cwd: E2E_DIR,
           env: {
@@ -728,7 +727,6 @@ export const test = base.extend<{
             MINIO_BUCKET: minioBucket,
           },
           stdio: "ignore",
-          shell: true,
         }
       );
 
@@ -745,7 +743,7 @@ export const test = base.extend<{
       // accept is not sufficient — under heavy parallel load it has been
       // observed as bound-but-unresponsive, surfacing as 502s through the
       // static-frontend proxy (frontend page load).
-      await waitForHttpReady(backendPort, "/api/app-config", 15_000, backendProc, true);
+      await waitForHttpReady(backendPort, "/api/app-config", 60_000, backendProc, true);
       const sourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
 
       const server: TestServer = {
@@ -850,40 +848,47 @@ export const test = base.extend<{
 
       await use(server);
 
-      // 12. Teardown: SIGTERM all processes, SIGKILL after 3s grace
-      for (const proc of procs) {
-        if (proc.exitCode === null) {
-          proc.kill("SIGTERM");
+      // 12. Teardown: retire the frontend proxy before the backend. Stopping
+      // all three simultaneously allows an in-flight proxy request to observe
+      // the backend disappearing and emit a spurious 502 during teardown.
+      const stopProcesses = async (processes: typeof procs) => {
+        for (const proc of processes) {
+          if (proc.exitCode === null) {
+            proc.kill("SIGTERM");
+          }
         }
-      }
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          for (const proc of procs) {
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(() => {
+            for (const proc of processes) {
+              if (proc.exitCode === null) {
+                proc.kill("SIGKILL");
+              }
+            }
+            resolve();
+          }, 3000);
+
+          let remaining = processes.filter((proc) => proc.exitCode === null).length;
+          if (remaining === 0) {
+            clearTimeout(timeout);
+            resolve();
+            return;
+          }
+          for (const proc of processes) {
             if (proc.exitCode === null) {
-              proc.kill("SIGKILL");
+              proc.on("exit", () => {
+                remaining--;
+                if (remaining === 0) {
+                  clearTimeout(timeout);
+                  resolve();
+                }
+              });
             }
           }
-          resolve();
-        }, 3000);
+        });
+      };
 
-        let remaining = procs.filter((p) => p.exitCode === null).length;
-        if (remaining === 0) {
-          clearTimeout(timeout);
-          resolve();
-          return;
-        }
-        for (const proc of procs) {
-          if (proc.exitCode === null) {
-            proc.on("exit", () => {
-              remaining--;
-              if (remaining === 0) {
-                clearTimeout(timeout);
-                resolve();
-              }
-            });
-          }
-        }
-      });
+      await stopProcesses([frontendProc]);
+      await stopProcesses([backendProc, webServerProc]);
     },
     { auto: true },
   ],

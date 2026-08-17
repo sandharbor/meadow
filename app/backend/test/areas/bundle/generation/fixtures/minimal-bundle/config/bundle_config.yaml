@@ -3,10 +3,8 @@ sourceDirectory: ./source_graphs/minimal-bundle-data
 publishPrefix: test123
 publishSlug: minimal-test-bundle
 bundleCreatedAt: 2025-01-01T00:00:00.000Z
-bundleLastPublishedAt: null
 bundleNotes: Minimal test bundle for backend unit tests
 bundleUpdatedAt: 2025-01-01T00:00:00.000Z
-generatedBundleVersions: []
 archivedAt: null
 defaultOutlinksDepth: 2
 defaultInlinksDepth: 0

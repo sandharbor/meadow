@@ -105,6 +105,7 @@ export const scenarioDocToAppAreaIds: Readonly<Record<string, ScenarioDocAppArea
   sensitive: ["bundle/curation"],
   "bundle-config": ["bundle/curation"],
   tracking: ["bundle/curation", "bundle/review"],
+  versioning: ["bundle/generation", "bundle/review"],
 };
 
 export function deriveAppAreaDocIds(

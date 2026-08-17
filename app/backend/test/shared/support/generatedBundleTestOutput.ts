@@ -14,14 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export interface Version {
-  versionId: string;
-  firstPublishedAt: string;
-  lastUpdatedAt: string;
-  notes: string;
-  isActive: boolean;
-}
+import path from 'path';
 
-export interface PublishedVersions {
-  versions: Version[];
-} 
+export const TEST_GENERATED_BUNDLE_VERSION_ID = 'vT3st01';
+
+export function getGeneratedBundleTestOutputDirectory(bundleDirectory: string): string {
+  return path.join(
+    bundleDirectory,
+    'html',
+    'generated_bundle_versions',
+    TEST_GENERATED_BUNDLE_VERSION_ID,
+  );
+}

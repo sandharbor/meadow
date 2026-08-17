@@ -15,20 +15,40 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
-import { Workflows } from "../src/run/workflows.js";
-import { htmlGeneration, customize, changesTab as changesTabDoc } from "../src/scenario-docs/index.js";
+import { PreviewPublishModal, ChangesTab } from "../src/run/pages/index.js";
+import { GeneratedBundleVersions } from "../src/run/utils/index.js";
+import { Workflows, Bundle } from "../src/run/workflows.js";
+import { htmlGeneration, changesTab as changesTabDoc, versioning } from "../src/scenario-docs/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test("Changes tab lifecycle: new files, save, modify via config, verify diff headers", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("V03 first generated version is reviewable before and after save", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
+  const versions = new GeneratedBundleVersions(page, expect, Bundle.Big);
   await snapshot("step 1 - preview loaded");
+  await modal.expectSaveChangesVisible();
+  await modal.expectCreateNewVersionHidden();
+
+  const initialVersion = await versions.waitForOnlyVersion();
+  const versionId = initialVersion.versionId;
+  expect(versionId).toMatch(/^v[A-Za-z0-9]{6}$/);
+  expect(initialVersion).toMatchObject({ displayState: "unsaved", savedGenerationId: null });
+
+  await modal.clickVersionsTab();
+  await modal.expectSaveChangesHidden();
+  await modal.expectCreateNewVersionVisible();
+  await expect(page.getByText(versionId, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Unsaved", { exact: true })).toBeVisible();
+  await addKeyFrame(versioning);
+  await snapshot("first generated version shown as unsaved");
+  await modal.clickChangesTab();
+  await modal.expectSaveChangesVisible();
+  await modal.expectCreateNewVersionHidden();
 
   // Changes tab badge should show a positive number (initial preview has new files)
   await changesTab.expectBadgeVisible();
@@ -52,12 +72,10 @@ test("Changes tab lifecycle: new files, save, modify via config, verify diff hea
   await addKeyFrame(changesTabDoc);
   await snapshot("new file diff header shown");
 
-  // Go back to step 1 (Bundle Preview tab) to click Save Changes
-  await modal.clickBundlePreviewTab();
-
   // Click "Save Changes" — saves and auto-navigates to step 2 (Share)
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
+  await modal.expectShareVersionSelected(versionId);
   await snapshot("save completed - on step 2");
 
   // Go back to step 1 (Review)
@@ -67,40 +85,14 @@ test("Changes tab lifecycle: new files, save, modify via config, verify diff hea
   // Changes tab badge should have no number (changes were saved)
   await changesTab.expectNoBadge();
 
-  // Go to Changes tab — assert "No changed files"
+  await modal.clickVersionsTab();
+  await expect(page.getByText("Current", { exact: true })).toBeVisible();
+  await expect(page.getByText("Unsaved", { exact: true })).toHaveCount(0);
   await modal.clickChangesTab();
+
+  // Go to Changes tab — assert "No changed files"
   await changesTab.expectNoChangedFiles();
   await snapshot("no changed files after save");
-
-  // Go to Customize tab and disable backlinks at bundle level
-  await modal.openCustomizeSidebar();
-  const customizeTab = new CustomizeTab(page, expect);
-  await customizeTab.generationOptions.disableBreadcrumbs();
-  await snapshot("breadcrumbs disabled at bundle level");
-
-  // Wait for preview regeneration to complete
-  await changesTab.waitForRegenerationComplete();
-
-  // Changes tab badge should show a positive number again
-  await changesTab.expectBadgeVisible();
-  await snapshot("changes tab has badge after config change");
-
-  // Go to Changes tab — assert only modified files (M, no A or D)
-  await modal.clickChangesTab();
-  await changesTab.expectOnlyModifiedFiles();
-  await snapshot("only modified files after config change");
-
-  // Click the first HTML file
-  await changesTab.clickFirstHtmlFile();
-
-  // In file details viewer: ensure on diff tab, select code sub-tab
-  await changesTab.fileDetails.ensureOnDiffTab();
-  await changesTab.fileDetails.clickCodeSubTab();
-
-  // Assert "Changes:" text (NOT "New file:") — this verifies the bug fix
-  await changesTab.fileDetails.expectChangesHeader();
-  await addKeyFrame(customize);
-  await snapshot("changes diff header shown for modified file");
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

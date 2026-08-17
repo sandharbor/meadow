@@ -15,46 +15,77 @@ limitations under the License.
 */
 
 import type { CleanupPublishedBundleOptions, CleanupPublishedBundleResult } from '../../../../backend/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
-import { logger } from '../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
-import { createS3Client, describeS3Error, requireBucket } from './s3Client.js';
-import { deletePrefix } from './s3Operations.js';
-import { loadS3ConfigForBundle, loadS3Resources, loadS3Secrets } from './s3Config.js';
+import { logBundleError, logBundleInfo } from '../../../../backend/src/shared/utils/logging/bundleLogger.js';
+import { createS3Client } from './s3Client.js';
+import { deleteObjectKeys, deletePrefix, putJsonObject } from './s3Operations.js';
+import { loadS3Resources, loadS3Secrets } from './s3Config.js';
+import {
+  appendS3PublicationEvent,
+  loadS3PublicationState,
+  remotelyPresentS3VersionIds,
+  s3SuccessorManifestKey,
+  s3VersionNamespace,
+  saveS3PublicationState,
+} from './versioning/publicationStore.js';
 
 export async function cleanupS3PublishedFiles(
   options: CleanupPublishedBundleOptions,
 ): Promise<CleanupPublishedBundleResult> {
-  const { bundleSlug, onProgress } = options;
-
-  const bundleConfig = loadS3ConfigForBundle(bundleSlug);
-  if (!bundleConfig.publishSlug) {
-    return { warning: undefined };
-  }
+  const { bundleSlug, operationId, onProgress } = options;
+  const operation = `[operation ${operationId}] [s3-cleanup-bundle]`;
+  let state = loadS3PublicationState(bundleSlug);
+  if (!state || remotelyPresentS3VersionIds(state).size === 0) return { confirmed: true };
 
   const resources = loadS3Resources();
-  let bucket: string;
-  try {
-    bucket = requireBucket(resources);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.warn('[S3PublishingProvider] cleanup skipped:', message);
-    return { warning: message };
-  }
-
   const secrets = loadS3Secrets();
+  if (!secrets.s3AccessKeyId || !secrets.s3SecretAccessKey) {
+    throw new Error('S3 credentials are required to confirm remote cleanup');
+  }
   const client = createS3Client(resources, secrets);
-  onProgress({ stage: 'deleting-s3', message: 'Deleting published files from S3...' });
+  const versions = [...remotelyPresentS3VersionIds(state)];
+  logBundleInfo(bundleSlug, `${operation} Started cleanup of ${versions.length} remote version${versions.length === 1 ? '' : 's'} for provider instance ${state.providerInstanceId}, destination ${state.destination.publishSlug}`);
+  onProgress({ stage: 'deleting-s3', message: `Preparing to remove ${versions.length} remote version${versions.length === 1 ? '' : 's'}...` });
 
   try {
-    const { filesDeleted } = await deletePrefix(client, bucket, bundleConfig.publishSlug);
-    onProgress({
-      stage: 'deleting-s3',
-      message: `Deleted ${filesDeleted} files from S3`,
-      filesDeleted,
-      totalFiles: filesDeleted,
-    });
-    return {};
-  } catch (err) {
-    logger.warn('[S3PublishingProvider] S3 delete failed:', err);
-    return { warning: `Could not delete published files from S3: ${describeS3Error(err)}` };
+    await putJsonObject(
+      client,
+      state.destination.bucketName,
+      s3SuccessorManifestKey(state.destination.publishSlug),
+      { schemaVersion: 1, successors: {} },
+    );
+    let totalDeleted = 0;
+    for (const versionId of versions) {
+      const result = await deletePrefix(
+        client,
+        state.destination.bucketName,
+        s3VersionNamespace(state.destination.publishSlug, versionId),
+      );
+      totalDeleted += result.filesDeleted;
+      const prior = [...state.events].reverse().find(event => event.versionId === versionId);
+      state = appendS3PublicationEvent(state, {
+        eventType: 'remote-deletion-success',
+        versionId,
+        savedGenerationId: prior?.savedGenerationId ?? 'unknown',
+        timestamp: new Date().toISOString(),
+        remoteNamespace: s3VersionNamespace(state.destination.publishSlug, versionId),
+      });
+      saveS3PublicationState(bundleSlug, state);
+      onProgress({
+        stage: 'deleting-s3',
+        message: `Removed remote version ${versionId}`,
+        filesDeleted: totalDeleted,
+        version: versionId,
+      });
+    }
+    await deleteObjectKeys(
+      client,
+      state.destination.bucketName,
+      [s3SuccessorManifestKey(state.destination.publishSlug)],
+    );
+    logBundleInfo(bundleSlug, `${operation} Confirmed all remote versions and the successor manifest removed; local bundle may now be deleted`);
+    return { confirmed: true };
+  } catch (error) {
+    logBundleError(bundleSlug, `${operation} Cleanup failed; partial remote state may remain, local bundle must be preserved, and retry is safe: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
   }
 }

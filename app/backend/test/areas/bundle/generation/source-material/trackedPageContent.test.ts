@@ -22,6 +22,7 @@ import { parseBundleNodeConfig } from '../../../../../../shared_code/utils/bundl
 import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generation/html/htmlService.js';
 import { ensureTrackedPageContent } from '../../../../../src/areas/bundle/generation/source-material/trackedPageContent.js';
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
+import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';
 
 describe('tracked page content for folder-derived bundles', () => {
   const setup = new TestBundleSetup(
@@ -77,8 +78,8 @@ describe('tracked page content for folder-derived bundles', () => {
     await ensureTrackedPageContent(bundlePath, sourceGraphDirectory);
     expect(fs.readFileSync(trackedConfigPath, 'utf8')).toBe(trackedConfigBefore);
 
-    await generateHtmlForBundle(bundlePath, { preview: true });
-    const generatedHtml = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtml = getGeneratedBundleTestOutputDirectory(bundlePath);
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtml });
     const nestedFolderRoute = `_mw_gen/folderpages/nested-${derivedByName.get('Nested')!.bundleNodeId}.html`;
     for (const relativePath of [
       'index.html',

@@ -21,6 +21,7 @@ import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generatio
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 import { HooksLoader } from '../../../../../src/areas/bundle/generation/utils/hooksLoader.js';
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
+import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';
 
 describe('html preview', () => {
   const testSetup = new TestBundleSetup('areas/bundle/generation/fixtures/with-hooks-bundle', 'preview-test-bundle', 'areas/bundle/generation/fixtures/with-hooks-hooks');
@@ -39,11 +40,11 @@ describe('html preview', () => {
 
   it('should normalize page names', async () => {
     // Check that preview folder does not exist before generating HTML
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     expect(fs.existsSync(generatedHtmlFolderPath)).toBe(false);
 
     // Generate HTML with preview option
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtmlFolderPath });
 
     // Check that html folder exists
     const htmlFolderPath = BundleConfigPaths.getHtmlDir(bundlePath);
@@ -76,9 +77,9 @@ describe('html preview', () => {
     HooksLoader.clearCache();
     
     // Generate HTML with preview option
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     const specialLinesHtmlPath = path.join(generatedHtmlFolderPath, 'superduper - special lines.html');
     
     // Debug: List all files in the preview folder
@@ -100,9 +101,9 @@ describe('html preview', () => {
   it('should apply htmlPostProcessing hook to generated HTML', async () => {
     HooksLoader.clearCache();
 
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     const mainPageHtmlPath = path.join(generatedHtmlFolderPath, 'main page.html');
 
     expect(fs.existsSync(mainPageHtmlPath)).toBe(true);
@@ -119,9 +120,9 @@ describe('html preview', () => {
     HooksLoader.clearCache();
     
     // Generate HTML with preview option
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath) });
 
-    const generatedHtmlFolderPath = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlFolderPath = getGeneratedBundleTestOutputDirectory(bundlePath);
     const videoTimestampsHtmlPath = path.join(generatedHtmlFolderPath, 'superduper - video timestamps.html');
     
     // Debug: List all files in the preview folder

@@ -18,11 +18,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { generateHtmlForBundle, publishToVersionedDirectory, publishToNewVersion } from '../../../../../src/areas/bundle/generation/html/htmlService.js';
+import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generation/html/htmlService.js';
 import { ensureTrackedPageContent } from '../../../../../src/areas/bundle/generation/source-material/trackedPageContent.js';
-import { loadBundleConfig } from '../../../../../src/shared/utils/bundleConfigUtils.js';
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
-import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
+import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';
 
 describe('html publish', () => {
   const testSetup = new TestBundleSetup('areas/bundle/generation/fixtures/minimal-bundle', 'minimal-test-bundle');
@@ -38,24 +37,11 @@ describe('html publish', () => {
   });
 
   async function createPreviewFolder() {
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, {
+      preview: true,
+      outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath),
+    });
   }
-
-  it('should create a publish folder if it does not exist yet', async () => {
-    // The preview folder needs to already exist
-    await createPreviewFolder();
-
-    await generateHtmlForBundle(bundlePath, { publish: true });
-
-    // Check that publish folder exists
-    const publishFolderPath = BundleConfigPaths.getGeneratedBundleVersionsDir(bundlePath);
-    expect(fs.existsSync(publishFolderPath)).toBe(true);
-
-    const configPath = BundleConfigPaths.getConfigDir(bundlePath);
-    // the generated_bundle_versions.yaml file should have been created
-    const publishedVersionsPath = path.join(configPath, 'generated_bundle_versions.yaml');
-    expect(fs.existsSync(publishedVersionsPath)).toBe(true);
-  });
 
   it('should keep page HTML stable when sources export is enabled', async () => {
     const bundleConfigPath = path.join(bundlePath, 'config/bundle_config.yaml');
@@ -63,7 +49,7 @@ describe('html publish', () => {
 
     await createPreviewFolder();
 
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlDir = getGeneratedBundleTestOutputDirectory(bundlePath);
     const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(f => f.endsWith('.html')).sort();
     expect(htmlFiles.length).toBeGreaterThan(0);
 
@@ -91,7 +77,7 @@ describe('html publish', () => {
 
     await createPreviewFolder();
 
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlDir = getGeneratedBundleTestOutputDirectory(bundlePath);
     const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(f => f.endsWith('.html')).sort();
     expect(htmlFiles.length).toBeGreaterThan(0);
 
@@ -109,7 +95,7 @@ describe('html publish', () => {
 
     await createPreviewFolder();
 
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlDir = getGeneratedBundleTestOutputDirectory(bundlePath);
     const okfDirectory = path.join(generatedHtmlDir, '_mw_assets', 'cust', 'okf');
     expect(fs.existsSync(path.join(okfDirectory, 'okf-download-manifest.json'))).toBe(true);
     expect(fs.existsSync(path.join(okfDirectory, 'bundle', 'index.md'))).toBe(true);
@@ -149,7 +135,7 @@ describe('html publish', () => {
     expect(guidMatch).not.toBeNull();
     expect(rawTrackedMainPage).toContain('<!--SR:!2026-03-12,3,250-->');
 
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlDir = getGeneratedBundleTestOutputDirectory(bundlePath);
     const previewHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
     expect(previewHtml).toContain(`data-meadow-srs-bundle-guid="x3d9p0k"`);
     expect(previewHtml).toContain(`<meadow-srs-card guid="${guidMatch![1]}" kind="basic">`);
@@ -235,7 +221,7 @@ describe('html publish', () => {
 
     await createPreviewFolder();
 
-    const previewHtml = fs.readFileSync(path.join(BundleConfigPaths.getGeneratedHtmlDir(bundlePath), 'main page.html'), 'utf8');
+    const previewHtml = fs.readFileSync(path.join(getGeneratedBundleTestOutputDirectory(bundlePath), 'main page.html'), 'utf8');
     expect(previewHtml).toContain(`<meadow-srs-card guid="${sourceGuidMatch![1]}" kind="basic">`);
     expect(previewHtml).toContain('<meadow-srs-prompt>What color is the sky?</meadow-srs-prompt>');
     expect(previewHtml).toContain('<meadow-srs-answer>Blue</meadow-srs-answer>');
@@ -277,7 +263,7 @@ describe('html publish', () => {
       'All agents across all [[child page|Child Page]].\n\n\n<!--SR:!2026-03-10,3,250-->\n\n<!--MEADOW_SR_GUID:'
     );
 
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlDir = getGeneratedBundleTestOutputDirectory(bundlePath);
     const previewHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
     expect(previewHtml).toContain(`<meadow-srs-card guid="${guidMatch![1]}" kind="multiline-basic">`);
     expect(previewHtml).toContain('<meadow-srs-prompt>What does <a href="another%20page.html">Another Page</a> orchestrate?</meadow-srs-prompt>');
@@ -313,7 +299,7 @@ describe('html publish', () => {
     const guidMatch = rawTrackedMainPage.match(/<!--MEADOW_SR_GUID:([a-f0-9]{13})-->/);
     expect(guidMatch).not.toBeNull();
 
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtmlDir = getGeneratedBundleTestOutputDirectory(bundlePath);
     const previewHtml = fs.readFileSync(path.join(generatedHtmlDir, 'main page.html'), 'utf8');
     expect(previewHtml).toContain(`<meadow-srs-card guid="${guidMatch![1]}:cloze:1" kind="cloze" cloze-type="simplified" sibling-group="${guidMatch![1]}">`);
     expect(previewHtml).toContain(`<meadow-srs-card guid="${guidMatch![1]}:cloze:2" kind="cloze" cloze-type="simplified" sibling-group="${guidMatch![1]}">`);
@@ -322,135 +308,4 @@ describe('html publish', () => {
     expect(previewHtml).not.toContain('<!--SR:!2026-03-12,3,250-->');
   });
 
-  it('should copy preview to versioned directory without regenerating HTML', async () => {
-    // Generate preview first
-    await createPreviewFolder();
-
-    // Add a marker file to preview to track if it's copied (not regenerated)
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
-    const markerFile = path.join(generatedHtmlDir, 'test-marker.txt');
-    const markerContent = 'This file proves preview was copied, not regenerated';
-    fs.writeFileSync(markerFile, markerContent, 'utf8');
-
-    // Publish to versioned directory
-    const bundleConfig = loadBundleConfig(bundlePath);
-    const { version, directory } = publishToVersionedDirectory(bundlePath, bundleConfig);
-
-    // Verify the marker file exists in the versioned directory
-    const versionedMarkerFile = path.join(directory, 'test-marker.txt');
-    expect(fs.existsSync(versionedMarkerFile)).toBe(true);
-    expect(fs.readFileSync(versionedMarkerFile, 'utf8')).toBe(markerContent);
-
-    // Verify version directory structure
-    expect(fs.existsSync(directory)).toBe(true);
-    expect(directory).toContain(version);
-  });
-
-  it('should preserve exact preview content when creating a new version', async () => {
-    // Generate preview
-    await createPreviewFolder();
-
-    // Find any HTML file in the preview directory
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
-    const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(f => f.endsWith('.html'));
-    expect(htmlFiles.length).toBeGreaterThan(0);
-    
-    const testHtmlFile = path.join(generatedHtmlDir, htmlFiles[0]);
-    
-    // Read original content
-    const originalContent = fs.readFileSync(testHtmlFile, 'utf8');
-    
-    // Add a unique comment to the preview HTML
-    const uniqueSignature = `<!-- PREVIEW_SIGNATURE_${Date.now()} -->`;
-    const modifiedContent = originalContent.replace('</body>', `${uniqueSignature}\n</body>`);
-    fs.writeFileSync(testHtmlFile, modifiedContent, 'utf8');
-
-    // Create a new version (should copy preview, not regenerate)
-    const bundleConfig = loadBundleConfig(bundlePath);
-    const { version, directory } = publishToNewVersion(bundlePath, bundleConfig);
-
-    // Verify the signature exists in the published version
-    const publishedHtmlFile = path.join(directory, htmlFiles[0]);
-    expect(fs.existsSync(publishedHtmlFile)).toBe(true);
-    
-    const publishedContent = fs.readFileSync(publishedHtmlFile, 'utf8');
-    expect(publishedContent).toContain(uniqueSignature);
-    
-    // Verify content is identical (byte-for-byte)
-    expect(publishedContent).toBe(modifiedContent);
-  });
-
-  it('should not overwrite versioned directory when called multiple times', async () => {
-    // Generate preview
-    await createPreviewFolder();
-
-    // Publish first version
-    const bundleConfig = loadBundleConfig(bundlePath);
-    const { version: version1, directory: dir1 } = publishToVersionedDirectory(bundlePath, bundleConfig);
-
-    // Add a marker to the published version
-    const markerFile1 = path.join(dir1, 'first-publish-marker.txt');
-    const timestamp1 = Date.now();
-    fs.writeFileSync(markerFile1, `First publish at ${timestamp1}`, 'utf8');
-
-    // Wait a bit to ensure different timestamp
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    // Modify preview
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
-    const previewMarker = path.join(generatedHtmlDir, 'preview-modified.txt');
-    fs.writeFileSync(previewMarker, 'Preview was modified after first publish', 'utf8');
-
-    // Publish again to same version (should overwrite)
-    const { version: version2, directory: dir2 } = publishToVersionedDirectory(bundlePath, bundleConfig);
-
-    // Verify it's the same version
-    expect(version2).toBe(version1);
-    expect(dir2).toBe(dir1);
-
-    // The first marker should be gone (directory was replaced)
-    expect(fs.existsSync(markerFile1)).toBe(false);
-
-    // The new preview marker should be present
-    const newMarkerFile = path.join(dir2, 'preview-modified.txt');
-    expect(fs.existsSync(newMarkerFile)).toBe(true);
-  });
-
-  it('should create distinct versions when using publishToNewVersion', async () => {
-    // Generate preview
-    await createPreviewFolder();
-
-    // Publish first version
-    const bundleConfig1 = loadBundleConfig(bundlePath);
-    const { version: version1, directory: dir1 } = publishToNewVersion(bundlePath, bundleConfig1);
-
-    // Add marker to first version
-    const marker1 = path.join(dir1, 'version1-marker.txt');
-    fs.writeFileSync(marker1, 'Version 1', 'utf8');
-
-    // Modify preview
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
-    const previewFile = path.join(generatedHtmlDir, 'version2-content.txt');
-    fs.writeFileSync(previewFile, 'New content for version 2', 'utf8');
-
-    // Publish second version
-    const bundleConfig2 = loadBundleConfig(bundlePath);
-    const { version: version2, directory: dir2 } = publishToNewVersion(bundlePath, bundleConfig2);
-
-    // Verify versions are different
-    expect(version2).not.toBe(version1);
-    expect(dir2).not.toBe(dir1);
-
-    // Verify both versions exist
-    expect(fs.existsSync(dir1)).toBe(true);
-    expect(fs.existsSync(dir2)).toBe(true);
-
-    // Verify first version still has its marker (not overwritten)
-    expect(fs.existsSync(marker1)).toBe(true);
-    expect(fs.readFileSync(marker1, 'utf8')).toBe('Version 1');
-
-    // Verify second version has the new content
-    const version2File = path.join(dir2, 'version2-content.txt');
-    expect(fs.existsSync(version2File)).toBe(true);
-  });
 });

@@ -24,6 +24,9 @@ import type { BundleConfig } from '../../../../shared_code/types/bundleConfig';
  */
 export interface BundleConfigWithSlug extends BundleConfig {
   slug: string;
+  generatedVersionCount?: number;
+  mostRecentPublicationAt?: string | null;
+  hasRemotePublications?: boolean;
   entryBundleNodeName?: string;
   entrySourceGraphSubdirectory?: string;
   entryFileType?: string;

@@ -37,6 +37,10 @@ export class PublishedBundlePage {
     return this.page.locator("main").getByRole("link").first();
   }
 
+  private get versionAwareness() {
+    return this.page.locator(".meadow-version-awareness");
+  }
+
   // ---------------------------------------------------------------------------
   // Actions
   // ---------------------------------------------------------------------------
@@ -55,5 +59,20 @@ export class PublishedBundlePage {
   async clickFirstLink() {
     await this.expect(this.firstMainLink).toBeVisible();
     await this.firstMainLink.click();
+  }
+
+  async expectNoNewerVersionNotice() {
+    await this.expect(this.versionAwareness).toHaveCount(0);
+  }
+
+  async expectNewerPageLink(expectedUrl: string) {
+    await this.expect(this.versionAwareness).toContainText("A newer version of this page is available");
+    await this.expect(this.versionAwareness.getByRole("link", { name: "Open the newer version." })).toHaveAttribute("href", expectedUrl);
+  }
+
+  async expectMissingPageNotice(expectedEntryUrl: string) {
+    await this.expect(this.versionAwareness).toHaveClass(/meadow-version-awareness--missing/);
+    await this.expect(this.versionAwareness).toContainText("this page is not included in it");
+    await this.expect(this.versionAwareness.getByRole("link", { name: "Open the newer version." })).toHaveAttribute("href", expectedEntryUrl);
   }
 }

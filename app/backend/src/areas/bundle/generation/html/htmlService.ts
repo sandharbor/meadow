@@ -35,8 +35,7 @@ import { parseBundleNodeConfig, resolveBundleNodeRoles } from '../../../../../..
 import { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.js';
 import { FileType } from '../../../../../../shared_code/types/FileType.js';
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
-import { loadBundleConfig, getLatestGeneratedBundleVersionWithFallback } from '../../../../shared/utils/bundleConfigUtils.js';
-import { generateVersionId, recordGeneratedBundleVersion } from '../services/generatedBundleVersions.js';
+import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { loadAppConfig } from '../../../../../../shared_code/utils/appConfigUtils.js';
 import { resolveEffectiveGenerationOptions } from '../../../../../../shared_code/utils/generationOptionsUtils.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
@@ -94,6 +93,7 @@ import {
 import { planBundleRoutes, routeForBundleNode } from './bundleRoutePlanner.js';
 import { canonicalPageFilename, isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils.js';
 import { rewriteNativeHtmlUrls } from './nativeHtml.js';
+import { emitVersionAwarenessAssets } from '../versioning/versionAwarenessAssets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -110,9 +110,7 @@ interface GzipMetadata {
   gzipSha256?: unknown;
 }
 
-function generationMode(options: { publish?: boolean; publishNewVersion?: boolean; preview?: boolean }): string {
-  if (options.publishNewVersion) return 'publish_new_version';
-  if (options.publish) return 'publish';
+function generationMode(options: { preview?: boolean }): string {
   if (options.preview) return 'preview';
   return 'generate';
 }
@@ -183,9 +181,6 @@ function getArtifactArchiveSlug(bundleDirectory: string, bundleConfig: BundleCon
   return extractBundleSlugFromDirectory(bundleDirectory) ?? path.basename(bundleDirectory);
 }
 
-// Re-export for backward compatibility
-export { generateVersionId, createOrUpdateGeneratedBundleVersions } from '../services/generatedBundleVersions.js';
-
 /**
  * Wait for a file to exist on disk with polling.
  * This helps avoid race conditions where we signal "file ready" before the OS has flushed writes.
@@ -201,58 +196,6 @@ async function waitForFileExists(filePath: string, maxWaitMs: number = 2000, pol
   return false;
 }
 
-export function publishToVersionedDirectory(
-  bundleDirectory: string,
-  bundleConfig: BundleConfig
-): { version: string; directory: string } {
-  const generatedHtmlDirectory = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
-
-  // Get the latest version or create a new one if none exists
-  let latestVersion = getLatestGeneratedBundleVersionWithFallback(bundleDirectory, bundleConfig);
-
-  if (!latestVersion) {
-    latestVersion = generateVersionId();
-  }
-
-  // Create the versioned directory
-  const versionedDirectory = path.join(BundleConfigPaths.getGeneratedBundleVersionsDir(bundleDirectory), latestVersion);
-
-  // Remove existing version directory if it exists
-  if (fs.existsSync(versionedDirectory)) {
-    fs.rmSync(versionedDirectory, { recursive: true, force: true });
-  }
-
-  // Copy from preview to versioned directory
-  fs.cpSync(generatedHtmlDirectory, versionedDirectory, { recursive: true });
-
-  // Record the version (ensures generatedBundleVersions in bundle_config.yaml + generated_bundle_versions.yaml)
-  recordGeneratedBundleVersion(bundleDirectory, latestVersion, { bundleConfig });
-
-  return { version: latestVersion, directory: versionedDirectory };
-}
-
-export function publishToNewVersion(
-  bundleDirectory: string,
-  bundleConfig: BundleConfig,
-  notes: string = ''
-): { version: string; directory: string } {
-  const generatedHtmlDirectory = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
-
-  // Always create a new version
-  const newVersion = generateVersionId();
-
-  // Create the versioned directory
-  const versionedDirectory = path.join(BundleConfigPaths.getGeneratedBundleVersionsDir(bundleDirectory), newVersion);
-
-  // Copy from preview to versioned directory
-  fs.cpSync(generatedHtmlDirectory, versionedDirectory, { recursive: true });
-
-  // Record the version (ensures generatedBundleVersions in bundle_config.yaml + generated_bundle_versions.yaml)
-  recordGeneratedBundleVersion(bundleDirectory, newVersion, { isNewVersion: true, notes, bundleConfig });
-
-  return { version: newVersion, directory: versionedDirectory };
-}
-
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -260,90 +203,6 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-}
-
-function walkFilesRecursively(dir: string): string[] {
-  if (!fs.existsSync(dir)) return [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...walkFilesRecursively(fullPath));
-    } else if (entry.isFile()) {
-      files.push(fullPath);
-    }
-  }
-  return files;
-}
-
-function toPosixRelativePath(relPath: string): string {
-  return relPath.split(path.sep).join('/');
-}
-
-/**
- * Updates older published versions by injecting a "new version" pointer banner into each page.
- *
- * - If the corresponding page exists in the new version, link to that page in the new version.
- * - If it does not exist, show a warning message and link to the new version's initial page instead.
- */
-export function updateOlderVersionsWithPointer(
-  bundleDirectory: string,
-  newVersionId: string,
-  newVersionBaseUrl: string,
-  olderVersionIds: string[],
-  entryNodeName: string,
-  entryPagePath: string
-): { filesUpdated: number; pagesNotInNewVersion: number } {
-  const publishedRoot = BundleConfigPaths.getGeneratedBundleVersionsDir(bundleDirectory);
-  const newVersionDir = path.join(publishedRoot, newVersionId);
-
-  const newVersionHtmlFiles = walkFilesRecursively(newVersionDir)
-    .filter((f) => f.toLowerCase().endsWith('.html'))
-    .map((f) => toPosixRelativePath(path.relative(newVersionDir, f)));
-  const newVersionHtmlSet = new Set(newVersionHtmlFiles);
-
-  const trimmedBaseUrl = newVersionBaseUrl.replace(/\/+$/, '');
-  const initialHref = `${trimmedBaseUrl}/${encodePathForUrl(entryPagePath)}`;
-  const initialTitleEscaped = escapeHtml(entryNodeName || 'Home');
-
-  let filesUpdated = 0;
-  let pagesNotInNewVersion = 0;
-
-  for (const olderVersionId of olderVersionIds) {
-    if (!olderVersionId || olderVersionId === newVersionId) continue;
-    const olderVersionDir = path.join(publishedRoot, olderVersionId);
-    if (!fs.existsSync(olderVersionDir)) continue;
-
-    const olderHtmlFiles = walkFilesRecursively(olderVersionDir).filter((f) => f.toLowerCase().endsWith('.html'));
-
-    for (const filePath of olderHtmlFiles) {
-      const rel = toPosixRelativePath(path.relative(olderVersionDir, filePath));
-
-      const existsInNewVersion = newVersionHtmlSet.has(rel);
-      const newPageHref = `${trimmedBaseUrl}/${encodePathForUrl(rel)}`;
-
-      const bannerHtml = existsInNewVersion
-        ? `<div id="new-version-pointer" class="new-version-pointer"><strong>New version available:</strong> <a href="${newPageHref}">Open this page in the newer version</a>.</div>`
-        : `<div id="new-version-pointer" class="new-version-pointer page-removed"><strong>New version available:</strong> This page does not exist in the newer version. Go to <a href="${initialHref}">${initialTitleEscaped}</a> instead.</div>`;
-
-      const original = fs.readFileSync(filePath, 'utf8');
-
-      // Replace existing placeholder or previously injected banner.
-      const replaced = original.replace(
-        /<div\s+id="new-version-pointer"[^>]*>[\s\S]*?<\/div>/,
-        bannerHtml
-      );
-
-      if (replaced !== original) {
-        fs.writeFileSync(filePath, replaced, 'utf8');
-        filesUpdated += 1;
-        if (!existsInNewVersion) pagesNotInNewVersion += 1;
-      }
-    }
-  }
-
-  return { filesUpdated, pagesNotInNewVersion };
 }
 
 export function loadBundleNodeConfigMap(bundleNodeConfigFile: string): BundleNodeConfigMap {
@@ -481,8 +340,8 @@ async function loadWorkingGraphData(options: {
 export async function generateHtmlForBundle(
   bundleDirectory: string,
   options: {
-    publish?: boolean;
-    publishNewVersion?: boolean;
+    /** Operation-specific destination used by the version lifecycle staging service. */
+    outputDirectory: string;
     preview?: boolean;
     startPage?: { title: string; directory?: string };
     startPagePath?: string; // relative HTML path to prioritize (e.g., "subdir/Page Name.html")
@@ -495,7 +354,7 @@ export async function generateHtmlForBundle(
       total?: number;
       percent?: number;
     }) => void;
-  } = {}
+  }
 ): Promise<void> {
   logger.info(`Processing bundle: ${bundleDirectory}`);
 
@@ -536,8 +395,7 @@ export async function generateHtmlForBundle(
   const legacyRenderSourceContentDirectory = BundleConfigPaths.getLegacyRenderSourceContentDir(bundleDirectory);
   const scrubbedSourceContentDirectory = BundleConfigPaths.getScrubbedSourceContentDir(bundleDirectory);
   
-  // Use html/generated for the current artifact and html/generated_bundle_versions/<version> for immutable versions.
-  const generatedHtmlDirectory = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
+  const generatedHtmlDirectory = options.outputDirectory;
   
   const generationOptions = timeSync('bundle.generation.stage', { ...timingLabels, stage: 'resolve_generation_options' }, () => {
     const appConfig = loadAppConfig(getConfigDirectory());
@@ -1916,21 +1774,17 @@ export async function generateHtmlForBundle(
     );
   }
 
+  const versionAwareness = timeSync(
+    'bundle.generation.stage',
+    { ...timingLabels, stage: 'write_version_awareness_assets' },
+    () => emitVersionAwarenessAssets({
+      outputDirectory: generatedHtmlDirectory,
+      routeTable: routePlan.routes,
+      entryBundleNodeId: entryNode.bundleNodeId,
+    })
+  );
+  logger.info(`Generated reader awareness route index at ${versionAwareness.routeIndexPath}`);
+
   emitProgress({ stage: 'complete', message: 'HTML render complete', current: renderedOrSkipped, total: totalToRender, percent: 100 });
   
-  // If publish flag is set, also create versioned directory
-  if (options.publish) {
-    const { version, directory } = timeSync('bundle.generation.stage', { ...timingLabels, stage: 'publish_to_versioned_directory' }, () =>
-      publishToVersionedDirectory(bundleDirectory, bundleConfig)
-    );
-    logger.info(`Published to versioned directory: ${version} at ${directory}`);
-  }
-
-  // If publish-new-version flag is set, create a new version
-  if (options.publishNewVersion) {
-    const { version, directory } = timeSync('bundle.generation.stage', { ...timingLabels, stage: 'publish_to_new_version' }, () =>
-      publishToNewVersion(bundleDirectory, bundleConfig)
-    );
-    logger.info(`Published to new version: ${version} at ${directory}`);
-  }
 } 

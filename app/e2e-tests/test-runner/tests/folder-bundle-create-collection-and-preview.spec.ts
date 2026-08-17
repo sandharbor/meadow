@@ -95,6 +95,9 @@ test("previews a configured multiple-folder collection bundle", async ({
   void customBundle;
 
   await assertMeadowHomeState({
+    allowedModified: [
+      "bundles/ordered-folders/config/generated_bundle_versions.yaml",
+    ],
     allowedUntracked: [
       "bundles/ordered-folders/build/",
       "bundles/ordered-folders/html/",

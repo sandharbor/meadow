@@ -47,49 +47,6 @@ main, footer {
   z-index: 1;
 }
 
-.new-version-pointer {
-  width: 100%;
-  max-width: 800px;
-  box-sizing: border-box;
-  margin: 0.75em 0 0.75em 0;
-  padding: 0.75em 1em;
-  border-radius: 6px;
-  border: 1px solid #b6d4fe;
-  background-color: #e7f1ff;
-  color: #084298;
-  font-size: 0.95em;
-}
-
-.new-version-pointer a,
-.new-version-pointer a:link,
-.new-version-pointer a:visited,
-.new-version-pointer a:active {
-  color: #084298;
-  text-decoration: underline;
-}
-
-.new-version-pointer a:hover {
-  color: #052c65;
-}
-
-.new-version-pointer.page-removed {
-  border: 1px solid #ffecb5;
-  background-color: #fff3cd;
-  color: #664d03;
-}
-
-.new-version-pointer.page-removed a,
-.new-version-pointer.page-removed a:link,
-.new-version-pointer.page-removed a:visited,
-.new-version-pointer.page-removed a:active {
-  color: #664d03;
-  text-decoration: underline;
-}
-
-.new-version-pointer.page-removed a:hover {
-  color: #513c02;
-}
-
 a, a:link, a:visited, a:active {
   color:#3f80b0;
   text-decoration:none;

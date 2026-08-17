@@ -149,7 +149,7 @@ async function main() {
     }
 
     // Preview folder
-    const generatedHtmlDir = setup.getPathInBundle('html/generated');
+    const generatedHtmlDir = setup.getCurrentGeneratedHtmlPath();
 
     // 6. Process each source file
     const sourceFiles = findAllMarkdownFiles(SOURCE_GRAPH_DIR);

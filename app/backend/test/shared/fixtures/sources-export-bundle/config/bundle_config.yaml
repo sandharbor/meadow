@@ -3,10 +3,8 @@ sourceDirectory: ./source_graphs/sources-export-data
 publishPrefix: test456
 publishSlug: sources-export-test
 bundleCreatedAt: 2025-01-01T00:00:00.000Z
-bundleLastPublishedAt: null
 bundleNotes: Test bundle for sources export filtering
 bundleUpdatedAt: 2025-01-01T00:00:00.000Z
-generatedBundleVersions: []
 archivedAt: null
 generationMarkdownZipEnabled: true
 defaultOutlinksDepth: 2

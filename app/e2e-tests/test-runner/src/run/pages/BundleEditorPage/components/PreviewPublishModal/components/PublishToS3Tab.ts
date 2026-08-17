@@ -60,14 +60,27 @@ export class PublishToS3Tab {
     await this.expect(this.slugInput).toBeVisible();
     await this.slugInput.fill(value);
     await this.expect(this.saveSlugBtn).toBeEnabled();
+
+    const saveResponsePromise = this.page.waitForResponse(response =>
+      response.request().method() === "PUT"
+      && response.url().endsWith("/provider-config")
+    );
     await this.saveSlugBtn.click();
+    const saveResponse = await saveResponsePromise;
+    this.expect(saveResponse.ok()).toBe(true);
+
     // After save the button text flips back to "Saved" and becomes disabled.
     await this.expect(this.saveSlugBtn).toHaveText("Saved");
+    await this.expect(this.slugInput).toHaveValue(value);
   }
 
   async clickPublish() {
     await this.expect(this.publishBtn).toBeEnabled();
     await this.publishBtn.click();
+  }
+
+  async expectPublishButtonLabel(label: string) {
+    await this.expect(this.publishBtn).toHaveText(label, { timeout: 30_000 });
   }
 
   async expectPublishSuccess(): Promise<string> {

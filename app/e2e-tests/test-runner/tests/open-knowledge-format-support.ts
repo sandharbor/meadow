@@ -17,6 +17,7 @@ limitations under the License.
 import fs from "fs";
 import path from "path";
 import type { Expect, Page } from "@playwright/test";
+import YAML from "yaml";
 
 export async function installLocalExportZipMock(page: Page, backendPort: number, zipPath: string) {
   await page.addInitScript(({ backendPort: port, zipPath: targetZipPath }) => {
@@ -57,7 +58,22 @@ export class OpenKnowledgeFormatBundle {
     bundleDir: string,
     private expect: Expect,
   ) {
-    this.directory = path.join(bundleDir, "html", "generated", "_mw_assets", "cust", "okf", "bundle");
+    const manifest = YAML.parse(fs.readFileSync(
+      path.join(bundleDir, "config", "generated_bundle_versions.yaml"),
+      "utf8",
+    )) as { versions?: Array<{ versionId?: string }> };
+    const currentVersionId = manifest.versions?.at(-1)?.versionId;
+    if (!currentVersionId) throw new Error("Generated bundle has no current version");
+    this.directory = path.join(
+      bundleDir,
+      "html",
+      "generated_bundle_versions",
+      currentVersionId,
+      "_mw_assets",
+      "cust",
+      "okf",
+      "bundle",
+    );
   }
 
   filePath(relativePath: string): string {

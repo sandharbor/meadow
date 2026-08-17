@@ -51,6 +51,10 @@ export class PreviewPublishModal {
     return this.page.locator("button", { hasText: "Save Changes" });
   }
 
+  private get createNewVersionBtn() {
+    return this.page.getByRole("button", { name: "Create New Version", exact: true });
+  }
+
   private get closeBtn() {
     return this.page.locator(".absolute.top-3.right-4 button");
   }
@@ -67,12 +71,25 @@ export class PreviewPublishModal {
     return this.page.locator("nav button", { hasText: "Changes" }).first();
   }
 
+  private get versionsTab() {
+    return this.page.locator("nav button", { hasText: "Versions" }).first();
+  }
+
   private get step1ReviewBtn() {
     return this.page.locator("button", { hasText: /^\d+\s*Review$/ });
   }
 
   private get checkUntrackedPagesBtn() {
     return this.page.locator("button", { hasText: /Check (them|it)/ });
+  }
+
+  private get shareVersionSelector() {
+    return this.page.locator("#share-version-selector");
+  }
+
+  private get createVersionDialog() {
+    return this.page.getByRole("heading", { name: "Create New Version", exact: true })
+      .locator('xpath=ancestor::div[contains(@class,"fixed") and contains(@class,"inset-0")][1]');
   }
 
   private get okfRenameModalHeading() {
@@ -93,13 +110,22 @@ export class PreviewPublishModal {
 
   async waitForPreviewComplete() {
     await this.expect(this.page.getByText(/untracked page/)).toBeVisible({
-      timeout: 30_000,
+      timeout: 60_000,
     });
+    // The warning appears before the atomic staging directory has necessarily
+    // been promoted. Wait for the editor's generation action to leave its
+    // Loading state so teardown cannot race a staging-directory rename.
+    await this.expect(
+      this.page.getByRole("button", { name: "Preview", exact: true }).first(),
+    ).toBeEnabled({ timeout: 60_000 });
   }
 
   /** Wait for preview to finish when the bundle has no untracked pages. */
   async waitForPreviewCompleteAllTracked() {
     await this.expect(this.bundlePreviewTab).toBeVisible({ timeout: 60_000 });
+    await this.expect(
+      this.page.getByRole("button", { name: "Preview", exact: true }).first(),
+    ).toBeEnabled({ timeout: 60_000 });
   }
 
   // ---------------------------------------------------------------------------
@@ -109,6 +135,16 @@ export class PreviewPublishModal {
   async clickShareTab() {
     await this.expect(this.shareTab).toBeEnabled({ timeout: 60_000 });
     await this.shareTab.click();
+  }
+
+  async expectShareVersionSelected(versionId: string) {
+    await this.expect(this.shareVersionSelector).toHaveValue(versionId);
+    await this.expect(this.shareVersionSelector.locator("option:checked")).toContainText("current");
+  }
+
+  async selectShareVersion(versionId: string) {
+    await this.shareVersionSelector.selectOption(versionId);
+    await this.expect(this.shareVersionSelector).toHaveValue(versionId);
   }
 
   async clickBundlePreviewTab() {
@@ -210,18 +246,11 @@ export class PreviewPublishModal {
    * Share tab; we wait for it to become enabled before returning.
    */
   async saveChangesIfNeeded() {
-    // Race: wait for either Save to become enabled (changes exist) or
-    // Share to become enabled (no changes / already saved).
-    // Use 60s timeout: under heavy parallel load the changed-files fetch
-    // (which enables the Save button) can take well over 30s.
-    const saveNeeded = this.expect(this.saveChangesBtn).toBeEnabled({ timeout: 60_000 })
-      .then(() => 'save' as const).catch(() => 'no' as const);
-    const shareReady = this.expect(this.shareTab).toBeEnabled({ timeout: 60_000 })
-      .then(() => 'share' as const).catch(() => 'no' as const);
+    await this.expect.poll(async () =>
+      await this.saveChangesBtn.isEnabled() || await this.shareTab.isEnabled(),
+    { timeout: 60_000 }).toBe(true);
 
-    const winner = await Promise.race([saveNeeded, shareReady]);
-
-    if (winner !== 'save') return;
+    if (!await this.saveChangesBtn.isEnabled()) return;
 
     await this.saveChangesBtn.click();
     // Frontend auto-navigates to Share tab after save completes.
@@ -236,6 +265,87 @@ export class PreviewPublishModal {
   async clickChangesTab() {
     await this.expect(this.changesTab).toBeVisible();
     await this.changesTab.click();
+  }
+
+  async clickVersionsTab() {
+    await this.expect(this.versionsTab).toBeVisible();
+    await this.versionsTab.click();
+  }
+
+  async expectSaveChangesVisible() {
+    await this.expect(this.saveChangesBtn).toBeVisible();
+  }
+
+  async expectSaveChangesHidden() {
+    await this.expect(this.saveChangesBtn).toBeHidden();
+  }
+
+  async expectCreateNewVersionVisible() {
+    await this.expect(this.createNewVersionBtn).toBeVisible();
+  }
+
+  async expectCreateNewVersionHidden() {
+    await this.expect(this.createNewVersionBtn).toBeHidden();
+  }
+
+  async openCreateNewVersionDialog() {
+    await this.clickVersionsTab();
+    await this.expect(this.createNewVersionBtn).toBeVisible();
+    await this.expect(this.createNewVersionBtn).toBeEnabled();
+    await this.createNewVersionBtn.click();
+    await this.expect(this.createVersionDialog).toBeVisible();
+  }
+
+  async createConnectedVersion(note: string) {
+    await this.createVersionDialog.getByPlaceholder("What changes in this version?").fill(note);
+    await this.expect(this.createVersionDialog.getByRole("checkbox").first()).toBeChecked();
+    await this.createVersionDialog.getByRole("button", { name: "Create New Version", exact: true }).click();
+    await this.expect(this.createVersionDialog).not.toBeVisible({ timeout: 60_000 });
+  }
+
+  async expectNoChangeVersionConfirmationRequired() {
+    await this.expect(
+      this.createVersionDialog.getByText("There are no generated changes. Create a new version anyway."),
+    ).toBeVisible({ timeout: 60_000 });
+    await this.expect(
+      this.createVersionDialog.getByRole("button", { name: "Create New Version", exact: true }),
+    ).toBeDisabled({ timeout: 60_000 });
+  }
+
+  async expectReaderConnectionCopy() {
+    await this.expect(
+      this.createVersionDialog.getByText(
+        "Readers can be notified after you publish this version to the same place as the earlier versions.",
+      ),
+    ).toBeVisible();
+    await this.expect(this.createVersionDialog.getByText(/provider/i)).toHaveCount(0);
+  }
+
+  async confirmNoChangeVersionCreation() {
+    await this.createVersionDialog.getByRole("checkbox").last().check();
+    await this.expect(this.createVersionDialog.getByRole("button", { name: "Create New Version", exact: true })).toBeEnabled();
+  }
+
+  async submitConfirmedNoChangeVersion(note: string) {
+    await this.createVersionDialog.getByPlaceholder("What changes in this version?").fill(note);
+    await this.createVersionDialog.getByRole("button", { name: "Create New Version", exact: true }).click();
+    await this.expect(this.createVersionDialog).not.toBeVisible({ timeout: 60_000 });
+  }
+
+  async cancelCurrentVersion() {
+    this.page.once("dialog", dialog => dialog.accept());
+    const cancelResponsePromise = this.page.waitForResponse(response =>
+      response.request().method() === "POST"
+      && response.url().endsWith("/review/versions/current/cancel"),
+    { timeout: 60_000 });
+    await this.page.getByRole("button", { name: "Cancel New Version" }).click();
+    const cancelResponse = await cancelResponsePromise;
+    this.expect(cancelResponse.ok()).toBe(true);
+  }
+
+  async cancelCreateNewVersionDialog() {
+    await this.createVersionDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await this.expect(this.createVersionDialog).not.toBeVisible();
   }
 
   async closeOkfRenameDetails() {

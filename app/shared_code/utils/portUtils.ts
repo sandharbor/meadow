@@ -19,7 +19,10 @@ import * as net from "net";
 export function findRandomPort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
-    server.listen(0, () => {
+    // Consumers bind and probe on IPv4 loopback. Binding the allocation
+    // probe to an unspecified address can select a numeric port that is
+    // already occupied on 127.0.0.1 by an IPv4-only listener.
+    server.listen({ port: 0, host: "127.0.0.1" }, () => {
       const port = (server.address() as net.AddressInfo).port;
       server.close(() => resolve(port));
     });

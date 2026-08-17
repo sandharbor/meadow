@@ -22,6 +22,7 @@ import { ensureTrackedPageContent, prepareGenerationSourceMaterial } from '../..
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { parseBundleNodeConfig } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';
 
 describe('tags (obsidian-style) in html preview', () => {
   const testSetup = new TestBundleSetup('areas/bundle/generation/fixtures/tags-bundle', 'tags-test-bundle');
@@ -40,7 +41,10 @@ describe('tags (obsidian-style) in html preview', () => {
     );
 
     await ensureTrackedPageContent(bundlePath, sourceGraphDir);
-    await generateHtmlForBundle(bundlePath, { preview: true });
+    await generateHtmlForBundle(bundlePath, {
+      preview: true,
+      outputDirectory: getGeneratedBundleTestOutputDirectory(bundlePath),
+    });
   });
 
   afterEach(() => {
@@ -70,7 +74,12 @@ describe('tags (obsidian-style) in html preview', () => {
     const tagPageMdPath = path.join(BundleConfigPaths.getPreparedSourceContentDir(bundlePath), BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR, 'tag--t018-shared-1.md');
     expect(fs.existsSync(tagPageMdPath)).toBe(true);
 
-    const tagHtmlPath = path.join(BundleConfigPaths.getGeneratedTagpagesDir(bundlePath), 'tag--t018-shared-1.html');
+    const tagHtmlPath = path.join(
+      getGeneratedBundleTestOutputDirectory(bundlePath),
+      '_mw_gen',
+      'tagpages',
+      'tag--t018-shared-1.html',
+    );
     expect(fs.existsSync(tagHtmlPath)).toBe(true);
 
     const html = fs.readFileSync(tagHtmlPath, 'utf8');

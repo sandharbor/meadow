@@ -44,41 +44,6 @@ main, footer {
   z-index: 1;
 }
 
-.new-version-pointer {
-  width: 100%;
-  max-width: 65ch;
-  box-sizing: border-box;
-  margin: 1em 0;
-  padding: 1em;
-  border: 1px solid #ccc;
-  background-color: #f9f9f9;
-  color: #333;
-}
-
-.new-version-pointer a,
-.new-version-pointer a:link,
-.new-version-pointer a:visited,
-.new-version-pointer a:active {
-  color: #0000ee;
-}
-
-.new-version-pointer a:hover {
-  color: #551a8b;
-}
-
-.new-version-pointer.page-removed {
-  border-color: #cc9900;
-  background-color: #ffffee;
-  color: #333;
-}
-
-.new-version-pointer.page-removed a,
-.new-version-pointer.page-removed a:link,
-.new-version-pointer.page-removed a:visited,
-.new-version-pointer.page-removed a:active {
-  color: #0000ee;
-}
-
 a, a:link {
   color: #0000ee;
   text-decoration: underline;

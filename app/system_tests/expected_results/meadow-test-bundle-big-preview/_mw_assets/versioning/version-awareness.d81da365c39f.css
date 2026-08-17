@@ -1,0 +1,20 @@
+.meadow-version-awareness {
+  box-sizing: border-box;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #9ab6d3;
+  border-radius: 0.4rem;
+  background: #eef6ff;
+  color: #17324d;
+  font: 0.95rem/1.4 system-ui, sans-serif;
+}
+.meadow-version-awareness--missing {
+  border-color: #c88934;
+  background: #fff5df;
+  color: #55320d;
+}
+.meadow-version-awareness a {
+  color: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+}

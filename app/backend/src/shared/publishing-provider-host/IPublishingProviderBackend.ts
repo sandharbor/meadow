@@ -16,6 +16,7 @@ limitations under the License.
 
 import type { Express } from 'express';
 import type { PublishingProviderManifest } from '../../../../shared_code/interfaces/IPublishingProvider.js';
+import type { BundlePublicationSummary } from '../../../../shared_code/types/generatedBundleVersioning.js';
 
 /**
  * SSE-friendly progress shape for cleanup flows. The core delete-bundle-stream
@@ -30,11 +31,13 @@ export interface CleanupPublishedBundleProgress {
 }
 
 export interface CleanupPublishedBundleResult {
-  warning?: string;
+  confirmed: true;
 }
 
 export interface CleanupPublishedBundleOptions {
   bundleSlug: string;
+  /** Stable correlation ID supplied by core for every provider cleanup and the local-delete decision. */
+  operationId: string;
   onProgress: (progress: CleanupPublishedBundleProgress) => void;
 }
 
@@ -70,11 +73,13 @@ export interface IPublishingProviderBackend {
    */
   isBundlePublished?(bundleSlug: string): boolean;
 
+  /** Provider-owned, local-history summary used for aggregate bundle-list state. */
+  getBundlePublicationSummaries?(bundleSlug: string): BundlePublicationSummary[];
+
   /**
    * Delete everything this provider published for the given bundle. Reports
-   * progress via onProgress; resolves with an optional `warning` string for
-   * non-fatal issues (expired auth, missing credentials, etc.) so the core
-   * can still proceed with local deletion.
+   * progress via onProgress and resolves only after authoritative cleanup or
+   * absence is confirmed. Failures must reject so core preserves the bundle.
    */
   cleanupPublishedBundle?(options: CleanupPublishedBundleOptions): Promise<CleanupPublishedBundleResult>;
 }

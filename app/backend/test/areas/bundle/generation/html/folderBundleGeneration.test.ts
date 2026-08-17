@@ -22,6 +22,7 @@ import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generatio
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 import { buildFilteredSourcesExportForBundle } from '../../../../../src/areas/bundle/generation/sources-export/filteredSourcesExport.js';
 import { buildFilteredOpenKnowledgeFormatForBundle } from '../../../../../src/areas/bundle/generation/open-knowledge-format/filteredOpenKnowledgeFormat.js';
+import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';
 
 describe('folder-derived HTML generation', () => {
   const setup = new TestBundleSetup(
@@ -39,8 +40,8 @@ describe('folder-derived HTML generation', () => {
   afterEach(() => setup.tearDown());
 
   it('renders contraction, collision-safe routes, search, navigation, hooks-compatible HTML, and source-backed optional outputs', async () => {
-    await generateHtmlForBundle(bundlePath, { preview: true });
-    const generatedHtml = BundleConfigPaths.getGeneratedHtmlDir(bundlePath);
+    const generatedHtml = getGeneratedBundleTestOutputDirectory(bundlePath);
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtml });
     const read = (relative: string) => fs.readFileSync(path.join(generatedHtml, ...relative.split('/')), 'utf8');
 
     expect(fs.existsSync(path.join(generatedHtml, 'index.html'))).toBe(true);

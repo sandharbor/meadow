@@ -92,6 +92,9 @@ test("previews a configured bundle from one recursively scanned folder", async (
   void customBundle;
 
   await assertMeadowHomeState({
+    allowedModified: [
+      "bundles/single-folder-bundle/config/generated_bundle_versions.yaml",
+    ],
     allowedUntracked: [
       "bundles/single-folder-bundle/build/",
       "bundles/single-folder-bundle/html/",

@@ -26,6 +26,11 @@ import { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.j
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { getConfigDirectory, getBundleDirectory, getBundleConfigPath } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { generateHtmlForBundle } from '../html/htmlService.js';
+import {
+  createNewGeneratedBundleVersion,
+  generateCurrentBundleVersion,
+} from '../../../../shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
+import { currentGeneratedBundleVersionDirectory } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { normalizePageTitle } from '../html/shared.js';
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { getHtmlPathForPage } from '../../../../shared/utils/htmlPathLookup.js';
@@ -34,18 +39,74 @@ import { readOpenKnowledgeFormatGenerationManifest } from '../open-knowledge-for
 import { getOpenKnowledgeFormatLogPageOptions } from '../open-knowledge-format/openKnowledgeFormatLogPages.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { clearBundleGuidCache, logBundleError, logBundleInfo } from '../../../../shared/utils/logging/bundleLogger.js';
+import { createBundleOperationLogger } from '../../../../shared/utils/logging/bundleOperationLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
 import { parseBundleNodeConfig, resolveBundleNodeRoles } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 
 const router = express.Router();
 
+function previewDirectory(bundleDirectory: string): string | null {
+  // Operation-specific staging directories are never reader-visible. Until
+  // the lifecycle commit point installs a version, preview requests either
+  // keep serving the prior installed version or show the generating page.
+  return currentGeneratedBundleVersionDirectory(bundleDirectory);
+}
+
+function isPreviewGenerationActive(bundleSlug: string): boolean {
+  const g = globalThis as unknown as { __meadowActivePreviewGenerations?: Set<string> };
+  return g.__meadowActivePreviewGenerations?.has(bundleSlug) ?? false;
+}
+
+function sendGeneratingPreviewPage(res: express.Response): void {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta http-equiv="refresh" content="1"><title>Generating Preview...</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f5f5f5; }
+    .container { text-align: center; padding: 2rem; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    h2 { color: #374151; margin: 0 0 0.5rem; } p { color: #6b7280; margin: 0; }
+  </style>
+</head><body><div class="container"><div class="spinner"></div><h2>Generating Preview...</h2><p>This page is being rendered. It will load automatically when ready.</p></div></body></html>`);
+}
+
+async function generateCurrentVersionHtml(
+  bundleSlug: string,
+  bundleDirectory: string,
+  options: Omit<NonNullable<Parameters<typeof generateHtmlForBundle>[1]>, 'outputDirectory'>,
+) {
+  const operation = createBundleOperationLogger(bundleSlug, 'version-generate');
+  operation.info('Started staging the current generated version');
+  try {
+    const result = await generateCurrentBundleVersion(bundleDirectory, {
+      operationId: () => operation.operationId,
+      onPhase: phase => operation.debug(`Reached ${phase}`),
+      generate: async (stagingDirectory) => {
+        await generateHtmlForBundle(bundleDirectory, { ...options, outputDirectory: stagingDirectory });
+      },
+      validate: () => {
+        if (options.shouldCancel?.()) throw new Error('Preview generation was superseded by a newer request');
+      },
+    });
+    operation.info(`${result.created ? 'Created first' : 'Regenerated current'} version ${result.versionId}; manifest and generated files installed atomically`);
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('superseded by a newer request')) {
+      operation.warn('Superseded by a newer preview request; local staging was rolled back safely');
+    } else {
+      operation.error(`Failed and rolled back local staging; retry is safe: ${message}`);
+    }
+    throw error;
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function getRequestOrigin(req: express.Request): string {
-  return `${req.protocol}://${req.get('host')}`;
-}
+function getRequestOrigin(req: express.Request): string { return `${req.protocol}://${req.get('host')}`; }
 
 function loadDefaultTraversalPage(bundleDirectory: string): { title: string; directory: string } {
   const configPath = BundleConfigPaths.getBundleConfigFile(bundleDirectory);
@@ -116,9 +177,65 @@ router.get('/bundles/:bundleSlug/generation/open-knowledge-format/log-page-optio
   })().catch(next);
 });
 
+router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
+  void (async () => {
+    const operation = createBundleOperationLogger(req.params.bundleSlug ?? 'unknown', 'version-create');
+    try {
+      const { bundleSlug } = req.params;
+      if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
+      const bundleDirectory = getBundleDirectory(bundleSlug);
+      if (!fs.existsSync(bundleDirectory)) {
+        return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
+      }
+      const body = (req.body ?? {}) as {
+        notes?: unknown;
+        readerConnectionToPredecessor?: unknown;
+        confirmedNoGeneratedChanges?: unknown;
+      };
+      if (body.notes !== undefined && typeof body.notes !== 'string') {
+        return res.status(400).json({ error: 'notes must be a string' });
+      }
+      if (
+        body.readerConnectionToPredecessor !== undefined
+        && body.readerConnectionToPredecessor !== 'connected'
+        && body.readerConnectionToPredecessor !== 'disconnected'
+      ) {
+        return res.status(400).json({ error: 'readerConnectionToPredecessor must be connected or disconnected' });
+      }
 
+      const bundleConfig = loadBundleConfig(bundleDirectory);
+      if (bundleConfig.sourceDirectory) {
+        await ensureTrackedPageContent(bundleDirectory, bundleConfig.sourceDirectory);
+      }
+      operation.info('Started creating a new local generated version');
+      const result = await createNewGeneratedBundleVersion(bundleDirectory, {
+        operationId: () => operation.operationId,
+        onPhase: phase => operation.debug(`Reached ${phase}`),
+        notes: body.notes ?? '',
+        readerConnectionToPredecessor: body.readerConnectionToPredecessor ?? 'connected',
+        confirmedNoGeneratedChanges: body.confirmedNoGeneratedChanges === true,
+        generate: async stagingDirectory => {
+          await generateHtmlForBundle(bundleDirectory, { preview: true, outputDirectory: stagingDirectory });
+        },
+      });
+      operation.info(`Created version ${result.versionId}; predecessor ${result.manifest.versions.at(-2)?.versionId ?? 'none'} is frozen and the manifest is committed`);
+      res.json({ success: true, versionId: result.versionId, operationId: operation.operationId });
+    } catch (error) {
+      logger.error('Error creating generated bundle version:', error);
+      const bundleSlug = req.params.bundleSlug;
+      if (bundleSlug) {
+        operation.error(`Failed and rolled back local changes; retry is safe: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      const status = /requires confirmation|must have at least one saved generation|Regenerate and save|Frozen version|conflicting/.test(message)
+        ? 409
+        : 500;
+      res.status(status).json({ error: message });
+    }
+  })().catch(next);
+});
 
-// Preview bundle endpoint  
+// Preview bundle endpoint
 router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
   (async () => {
     try {
@@ -154,14 +271,13 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
         logger.info(`Generating HTML for bundle: ${bundleDirectory}`);
 
         // Generate preview HTML ONLY (not published version)
-        await timeAsync(
+        const generationResult = await timeAsync(
           'bundle.preview.request.stage',
           { stage: 'generate_html', bundle_slug: bundleSlug },
-          () => generateHtmlForBundle(bundleDirectory, { preview: true })
+          () => generateCurrentVersionHtml(bundleSlug, bundleDirectory, { preview: true })
         );
 
-        // Check if preview HTML directory exists
-        const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
+        const generatedHtmlDir = generationResult.directory;
         
         if (!fs.existsSync(generatedHtmlDir)) {
           return res.status(500).json({ error: 'Generated HTML directory not found after generation' });
@@ -343,10 +459,10 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
       let startUrlSent = false;
       let firstPageUrl: string | null = null;
 
-      await timeAsync(
+      const generationResult = await timeAsync(
         'bundle.preview.request.stage',
         { stage: 'generate_html', bundle_slug: bundleSlug },
-        () => generateHtmlForBundle(bundleDirectory, {
+        () => generateCurrentVersionHtml(bundleSlug, bundleDirectory, {
           preview: true,
           startPage: startPageTitle ? { title: startPageTitle, directory: startPageDirectory } : undefined,
           startPagePath,
@@ -359,7 +475,6 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
             sendProgress({
               stage: 'generating',
               message: 'Start page ready',
-              result: { success: true, traversalPageUrl },
               progress: { current: 0, total: 0, percent: 0 }
             });
           },
@@ -391,7 +506,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
       }
 
       // Check if preview HTML directory exists
-      const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
+      const generatedHtmlDir = generationResult.directory;
       if (!fs.existsSync(generatedHtmlDir)) {
         sendProgress({ stage: 'error', message: 'Generated HTML directory not found after generation', result: { success: false, error: 'Generated HTML directory not found after generation' } });
         res.end();
@@ -583,61 +698,21 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(getBundleDirectory(bundleSlug));
+    const bundleDirectory = getBundleDirectory(bundleSlug);
+    const generatedHtmlDir = previewDirectory(bundleDirectory);
+    if (!generatedHtmlDir) {
+      if (isPreviewGenerationActive(bundleSlug) && filename.endsWith('.html')) {
+        sendGeneratingPreviewPage(res);
+        return;
+      }
+      return res.status(404).json({ error: 'No generated bundle version found' });
+    }
     const filePath = join(generatedHtmlDir, filename);
 
     if (!fs.existsSync(filePath)) {
-      // Check if preview generation is in progress for this bundle
-      const g = globalThis as unknown as { __meadowActivePreviewGenerations?: Set<string> };
-      const isGenerating = g.__meadowActivePreviewGenerations?.has(bundleSlug) ?? false;
-
-      if (isGenerating && filename.endsWith('.html')) {
-        // Return a waiting page that auto-refreshes
-        res.setHeader('Content-Type', 'text/html');
-        return res.send(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="1">
-  <title>Generating Preview...</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      background: #f5f5f5;
-    }
-    .container {
-      text-align: center;
-      padding: 2rem;
-    }
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid #e0e0e0;
-      border-top-color: #3b82f6;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 1rem;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    h2 { color: #374151; margin: 0 0 0.5rem; }
-    p { color: #6b7280; margin: 0; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="spinner"></div>
-    <h2>Generating Preview...</h2>
-    <p>This page is being rendered. It will load automatically when ready.</p>
-  </div>
-</body>
-</html>`);
+      if (isPreviewGenerationActive(bundleSlug) && filename.endsWith('.html')) {
+        sendGeneratingPreviewPage(res);
+        return;
       }
 
       return res.status(404).json({ error: 'Preview file not found', requestedPath: filePath });
@@ -687,16 +762,22 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
       }
     }
 
-    // The generated HTML directory is replaced as one unit during regeneration. The
-    // file can therefore disappear after existsSync() but before sendFile()
-    // opens it. Report that race as the same ordinary 404 as the preflight
-    // check instead of forwarding ENOENT to the global 500 handler.
-    res.sendFile(filePath, error => {
+    // The current directory is replaced as one unit. If sendFile opens during
+    // the rename window, resolve the installed directory again and retry once.
+    const sendInstalledFile = (candidatePath: string, retried: boolean) => res.sendFile(candidatePath, error => {
       if (!error) return;
       const fileError = error as NodeJS.ErrnoException & { status?: number };
       if (fileError.code === 'ENOENT' || fileError.status === 404) {
+        if (!retried && !res.headersSent) {
+          const latestDirectory = previewDirectory(bundleDirectory);
+          const latestPath = latestDirectory ? join(latestDirectory, filename) : null;
+          if (latestPath && fs.existsSync(latestPath)) {
+            sendInstalledFile(latestPath, true);
+            return;
+          }
+        }
         if (!res.headersSent) {
-          res.status(404).json({ error: 'Preview file not found', requestedPath: filePath });
+          res.status(404).json({ error: 'Preview file not found', requestedPath: candidatePath });
         }
         return;
       }
@@ -705,6 +786,7 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
       }
       next(error);
     });
+    sendInstalledFile(filePath, false);
     
   } catch (error) {
     next(error);

@@ -21,11 +21,10 @@ import type {
   CleanupPublishedBundleResult,
   IPublishingProviderBackend,
 } from '../../../backend/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
-import { getBundleDirectory } from '../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
-import { loadBundleConfig } from '../../../backend/src/shared/utils/bundleConfigUtils.js';
 import { registerS3Routes } from './internal/routes/registerS3Routes.js';
 import { cleanupS3PublishedFiles } from './internal/cleanupPublishedBundle.js';
-import { loadS3ConfigForBundle, loadS3Resources, S3_PROVIDER_ID } from './internal/s3Config.js';
+import { S3_PROVIDER_ID } from './internal/s3Config.js';
+import { getS3PublicationSummary, hasRemoteS3Versions } from './internal/versioning/publicationStore.js';
 
 const manifest: PublishingProviderManifest = {
   id: S3_PROVIDER_ID,
@@ -35,15 +34,7 @@ const manifest: PublishingProviderManifest = {
 
 function isBundlePublished(bundleSlug: string): boolean {
   try {
-    const bundleDirectory = getBundleDirectory(bundleSlug);
-    const bundleConfig = loadBundleConfig(bundleDirectory);
-    const s3BundleConfig = loadS3ConfigForBundle(bundleSlug);
-    const resources = loadS3Resources();
-    return !!(
-      bundleConfig.bundleLastPublishedAt &&
-      s3BundleConfig.publishSlug &&
-      resources.s3BucketName
-    );
+    return hasRemoteS3Versions(bundleSlug);
   } catch {
     return false;
   }
@@ -61,6 +52,7 @@ const s3Provider: IPublishingProviderBackend = {
     registerS3Routes(app);
   },
   isBundlePublished,
+  getBundlePublicationSummaries: getS3PublicationSummary,
   cleanupPublishedBundle,
 };
 

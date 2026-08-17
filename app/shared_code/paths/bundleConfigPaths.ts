@@ -32,7 +32,6 @@ limitations under the License.
  *       bundle_node_config.yaml
  *       custom_filters.json
  *     html/
- *       generated/
  *       generated_bundle_versions/
  *     raw/
  *       tracked_page_content/
@@ -60,14 +59,12 @@ const HOOKS_DIR = 'hooks';
 const CUSTOM_ASSETS_DIR = 'custom_assets';
 const OPEN_KNOWLEDGE_FORMAT_DIR = 'okf';
 const SOURCES_EXPORT_DIR = 'sources_export';
-const GENERATED_HTML_DIR = 'generated';
 const GENERATED_BUNDLE_VERSIONS_DIR = 'generated_bundle_versions';
 const TRACKED_PAGE_CONTENT_DIR = 'tracked_page_content';
 const PREPARED_SOURCE_CONTENT_DIR = 'prepared_source_content';
 const RENDER_SOURCE_CONTENT_DIR = 'render_source_content';
 const LEGACY_RENDER_SOURCE_CONTENT_DIR = 'modified_page_content';
 const SCRUBBED_SOURCE_CONTENT_DIR = 'scrubbed_source_content';
-const FONTS_DIR = 'fonts';
 const TAGPAGE_SOURCE_STAGING_DIR = 'x-tagpages';
 const GENERATED_BUNDLE_INTERNAL_DIR = '_mw_gen';
 const GENERATED_TAGPAGES_DIR = 'tagpages';
@@ -100,29 +97,9 @@ export const BundleConfigPaths = {
       return HTML_DIR;
     },
 
-    /** html/generated/ */
-    generatedHtmlDir(): string {
-      return join(HTML_DIR, GENERATED_HTML_DIR);
-    },
-
     /** html/generated_bundle_versions/ */
     generatedBundleVersionsDir(): string {
       return join(HTML_DIR, GENERATED_BUNDLE_VERSIONS_DIR);
-    },
-
-    /** html/generated/fonts/ */
-    generatedHtmlFontsDir(): string {
-      return join(HTML_DIR, GENERATED_HTML_DIR, FONTS_DIR);
-    },
-
-    /** html/generated/_mw_gen/tagpages/ */
-    generatedTagpagesDir(): string {
-      return join(
-        HTML_DIR,
-        GENERATED_HTML_DIR,
-        GENERATED_BUNDLE_INTERNAL_DIR,
-        GENERATED_TAGPAGES_DIR,
-      );
     },
 
     /** raw/ */
@@ -243,31 +220,10 @@ export const BundleConfigPaths = {
   },
 
   /**
-   * Get the current generated HTML directory: BUNDLE_DIR/html/generated/
-   */
-  getGeneratedHtmlDir(bundleDir: string): string {
-    return join(bundleDir, this.relative.generatedHtmlDir());
-  },
-
-  /**
    * Get the published directory: BUNDLE_DIR/html/generated_bundle_versions/
    */
   getGeneratedBundleVersionsDir(bundleDir: string): string {
     return join(bundleDir, this.relative.generatedBundleVersionsDir());
-  },
-
-  /**
-   * Get the fonts directory within generated HTML: BUNDLE_DIR/html/generated/fonts/
-   */
-  getGeneratedHtmlFontsDir(bundleDir: string): string {
-    return join(bundleDir, this.relative.generatedHtmlFontsDir());
-  },
-
-  /**
-   * Get the generated tag-page directory: BUNDLE_DIR/html/generated/_mw_gen/tagpages/
-   */
-  getGeneratedTagpagesDir(bundleDir: string): string {
-    return join(bundleDir, this.relative.generatedTagpagesDir());
   },
 
   // ─────────────────────────────────────────────────────────────────
@@ -442,10 +398,7 @@ export const BundleConfigPaths = {
   /** The custom_assets subdirectory name: 'custom_assets' */
   CUSTOM_ASSETS_DIR,
 
-  /** The current generated HTML subdirectory name: 'generated' */
-  GENERATED_HTML_DIR,
-
-  /** The immutable generated-bundle versions subdirectory name. */
+  /** The generated-bundle version directories subdirectory name. */
   GENERATED_BUNDLE_VERSIONS_DIR,
 
   /** The tracked_page_content subdirectory name: 'tracked_page_content' */

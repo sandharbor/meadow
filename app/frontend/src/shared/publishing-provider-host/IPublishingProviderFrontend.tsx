@@ -25,6 +25,7 @@ import type { PublishingProviderManifest } from '../../../../shared_code/interfa
  */
 export interface PublishTabProps {
   bundleSlug: string;
+  selectedVersionId: string | null;
   changedFilesCount: number;
   onBusyChange: (busy: boolean) => void;
   onAuthError: () => void;
@@ -61,14 +62,4 @@ export interface IPublishingProviderFrontend {
    */
   readonly fetchPublishedFileCounts?: (bundleSlug: string) => Promise<{ htmlCount: number; otherCount: number }>;
 
-  /**
-   * Publish a new version snapshot of the bundle. Resolves on success, throws
-   * with a descriptive message on failure. Providers that don't support
-   * versioning simply don't implement this method.
-   */
-  readonly publishNewVersion?: (
-    bundleSlug: string,
-    notes: string,
-    addPointersToOlderVersions: boolean,
-  ) => Promise<void>;
 }

@@ -15,106 +15,154 @@ limitations under the License.
 */
 
 import type { Router } from 'express';
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils.js';
-import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import { getBundleDirectory } from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
-import { loadBundleConfig, updateBundleConfig } from '../../../../../backend/src/shared/utils/bundleConfigUtils.js';
-import { getHtmlPathForPage } from '../../../../../backend/src/shared/utils/htmlPathLookup.js';
-import { loadValidatedBundleNodeConfiguration } from '../../../../../backend/src/shared/bundle-node/bundleNodeConfigLoader.js';
+import { requireGeneratedBundleVersionId } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
+import {
+  generatedBundleVersionDirectory,
+  loadGeneratedBundleVersionManifest,
+} from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
+import { assertFrozenGeneratedVersionsIntegrity } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
+import { inspectGeneratedVersionGitState } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
+import { logBundleError, logBundleInfo } from '../../../../../backend/src/shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
 import { createS3Client, describeS3Error, requireBucket } from '../s3Client.js';
-import { uploadDirectory } from '../s3Operations.js';
+import { putJsonObject, uploadDirectory } from '../s3Operations.js';
 import { loadS3ConfigForBundle, loadS3Resources, loadS3Secrets, normalizeWebBaseUrl } from '../s3Config.js';
+import {
+  appendS3PublicationEvent,
+  buildS3SuccessorManifest,
+  loadS3PublicationState,
+  remotelyPresentS3VersionIds,
+  s3DestinationFieldsLocked,
+  s3SuccessorManifestKey,
+  s3VersionEntryRoute,
+  s3VersionNamespace,
+  saveS3PublicationState,
+} from '../versioning/publicationStore.js';
+import { publishVersionFilesThenManifest } from '../versioning/remoteTransactions.js';
 
-/**
- * POST /bundles/:bundleSlug/publish — upload the bundle's preview directory to S3
- * under the configured publishSlug. Returns the published URL on success.
- *
- * Intentionally synchronous (no SSE) for MVP. The preview is expected to
- * already be generated; callers run the regenerate-preview step first.
- */
 export function registerS3PublishRoute(router: Router): void {
   router.post('/bundles/:bundleSlug/publish', (req, res, next) => {
-    (async () => {
+    void (async () => {
+      const operationId = randomUUID();
+      const operation = `[operation ${operationId}] [s3-publish]`;
       const { bundleSlug } = req.params;
-      if (!bundleSlug) {
-        return res.status(400).json({ error: 'bundleSlug is required' });
-      }
-
+      if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
       const bundleDirectory = getBundleDirectory(bundleSlug);
-      if (!fs.existsSync(bundleDirectory)) {
-        return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
-      }
+      if (!fs.existsSync(bundleDirectory)) return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
 
-      const generatedHtmlDir = BundleConfigPaths.getGeneratedHtmlDir(bundleDirectory);
-      if (!fs.existsSync(generatedHtmlDir)) {
-        return res.status(400).json({
-          error: 'No preview found. Please generate a preview before publishing.',
-        });
+      let versionId;
+      try {
+        versionId = requireGeneratedBundleVersionId((req.body as { versionId?: unknown })?.versionId);
+      } catch (error) {
+        return res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
       }
+      const localManifest = loadGeneratedBundleVersionManifest(bundleDirectory);
+      const localEntry = localManifest.versions.find(entry => entry.versionId === versionId);
+      if (!localEntry || localEntry.localFilesState === 'deleted') {
+        return res.status(400).json({ error: 'The selected version is not locally present' });
+      }
+      try {
+        assertFrozenGeneratedVersionsIntegrity(bundleDirectory, localManifest);
+      } catch (error) {
+        return res.status(409).json({ error: error instanceof Error ? error.message : String(error) });
+      }
+      const gitState = inspectGeneratedVersionGitState(bundleDirectory, versionId);
+      if (!gitState.isSaved || !gitState.savedGenerationId) {
+        return res.status(409).json({ error: 'Save the selected generated version before publishing' });
+      }
+      const savedGenerationId = gitState.savedGenerationId;
 
       const bundleConfig = loadS3ConfigForBundle(bundleSlug);
       if (!bundleConfig.publishSlug) {
-        return res.status(400).json({
-          error: 'publishSlug is not set. Open the Publish tab and set it before publishing.',
-        });
+        return res.status(400).json({ error: 'publishSlug is not set. Open the Publish tab and set it before publishing.' });
       }
-
+      const publishSlug = bundleConfig.publishSlug;
       const resources = loadS3Resources();
       let bucket: string;
       try {
         bucket = requireBucket(resources);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return res.status(500).json({ error: message });
+      } catch (error) {
+        return res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+      }
+      const stateBefore = loadS3PublicationState(bundleSlug, { publishSlug, bucketName: bucket })!;
+      const remotelyPresentBefore = remotelyPresentS3VersionIds(stateBefore);
+      if (s3DestinationFieldsLocked(stateBefore, { publishSlug, bucketName: bucket })) {
+        return res.status(409).json({ error: 'S3 destination fields cannot change while remote versions remain' });
       }
 
       const secrets = loadS3Secrets();
       if (!secrets.s3AccessKeyId || !secrets.s3SecretAccessKey) {
-        return res.status(400).json({
-          error:
-            'No S3 credentials are configured. Set an access key id and secret access key under S3 configuration.',
-        });
+        return res.status(400).json({ error: 'No S3 credentials are configured. Set them under S3 configuration.' });
       }
-
       const client = createS3Client(resources, secrets);
+      const namespace = s3VersionNamespace(publishSlug, versionId);
+      const sourceDirectory = generatedBundleVersionDirectory(bundleDirectory, versionId);
+      logBundleInfo(
+        bundleSlug,
+        `${operation} Started publication of version ${versionId} generation ${savedGenerationId} to provider instance ${stateBefore.providerInstanceId}, destination ${namespace}`,
+      );
       try {
-        const result = await uploadDirectory(client, bucket, bundleConfig.publishSlug, generatedHtmlDir);
-
-        try {
-          updateBundleConfig(bundleDirectory, { bundleLastPublishedAt: new Date().toISOString() });
-        } catch (error) {
-          logger.warn('[S3PublishingProvider] Could not update bundleLastPublishedAt:', error);
-        }
+        const remotelyPresentAfter = new Set(remotelyPresentBefore);
+        remotelyPresentAfter.add(versionId);
+        const successorManifest = buildS3SuccessorManifest(
+          bundleDirectory,
+          publishSlug,
+          remotelyPresentAfter,
+          stateBefore,
+        );
+        const result = await publishVersionFilesThenManifest({
+          uploadVersionFiles: () => uploadDirectory(client, bucket, namespace, sourceDirectory),
+          putSuccessorManifest: () => putJsonObject(
+            client,
+            bucket,
+            s3SuccessorManifestKey(publishSlug),
+            successorManifest,
+          ),
+        });
 
         const normalizedBase = normalizeWebBaseUrl(resources.webBaseUrl);
-        let publishedUrl: string | undefined;
-        if (normalizedBase) {
-          let landingPath = 'index.html';
-          try {
-            const { defaultTraversalNode } = loadValidatedBundleNodeConfiguration(bundleDirectory);
-            const foundPath = getHtmlPathForPage(
-              bundleDirectory,
-              defaultTraversalNode.bundleNodeName,
-              defaultTraversalNode.sourceGraphSubdirectory,
-            );
-            if (foundPath) landingPath = foundPath;
-          } catch (error) {
-            logger.warn('[S3PublishingProvider] Could not resolve traversal page:', error);
-          }
-          publishedUrl = `${normalizedBase}/${bundleConfig.publishSlug}/${encodePathForUrl(landingPath)}`;
-        }
-
+        const entryPath = s3VersionEntryRoute(bundleDirectory, versionId);
+        const publishedUrl = normalizedBase
+          ? `${normalizedBase}/${namespace}/${encodePathForUrl(entryPath)}`
+          : undefined;
+        const stateAfter = appendS3PublicationEvent(stateBefore, {
+          eventType: remotelyPresentBefore.has(versionId) ? 'republish-success' : 'publication-success',
+          versionId,
+          savedGenerationId,
+          timestamp: new Date().toISOString(),
+          remoteNamespace: namespace,
+          readerRouteIndex: (() => {
+            const asset = fs.readdirSync(`${sourceDirectory}/_mw_assets/versioning`).find(name => /^routes\.[a-f0-9]+\.json$/.test(name));
+            if (!asset) throw new Error('Reader route index is missing');
+            return `_mw_assets/versioning/${asset}`;
+          })(),
+          entryPath,
+          ...(publishedUrl ? { publicUrl: publishedUrl } : {}),
+        });
+        saveS3PublicationState(bundleSlug, stateAfter);
+        logBundleInfo(bundleSlug, `${operation} Published version ${versionId} generation ${savedGenerationId} to destination ${namespace}; successor manifest updated last and local generated files were unchanged`);
         res.json({
           success: true,
+          versionId,
+          savedGenerationId,
           publishedUrl,
           filesUploaded: result.filesUploaded,
           totalBytes: result.totalBytes,
+          operationId,
         });
-      } catch (err) {
-        logger.error('[S3PublishingProvider] publish failed:', err);
-        res.status(502).json({ error: describeS3Error(err) });
+      } catch (error) {
+        logger.error('[S3PublishingProvider] publish failed:', error);
+        logBundleError(
+          bundleSlug,
+          `${operation} Publication of version ${versionId} to destination ${namespace} failed; partial remote files may exist, no success was recorded, local files were unchanged, and retry is safe: ${describeS3Error(error)}`,
+        );
+        res.status(502).json({
+          error: `${describeS3Error(error)} No publication success was recorded; retry is safe.`,
+        });
       }
     })().catch(next);
   });

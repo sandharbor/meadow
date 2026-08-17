@@ -37,11 +37,9 @@ function fixture() {
     defaultTraversalBundleNodeId: folderId,
     defaultOutlinksDepth: 1,
     defaultInlinksDepth: 0,
-    generatedBundleVersions: [],
     archivedAt: null,
     bundleCreatedAt: '2026-08-12T00:00:00.000Z',
     bundleUpdatedAt: '2026-08-12T00:00:00.000Z',
-    bundleLastPublishedAt: null,
     bundleNotes: '',
   };
   const nodes: BundleNodeConfig[] = [{

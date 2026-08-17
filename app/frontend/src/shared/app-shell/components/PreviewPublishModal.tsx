@@ -22,6 +22,7 @@ import { useActivePublishingProvider } from '../../publishing-provider-host/useA
 import CustomizeSidebar from '../../../areas/bundle/generation/components/CustomizeSidebar';
 import { UntrackedPagesButton } from '../../../areas/bundle/review/components/UntrackedPagesButton';
 import PreviewChangesTab from '../../../areas/bundle/review/components/PreviewChangesTab';
+import { VersionsTab } from '../../../areas/bundle/review/components/VersionsTab';
 import { ConfigFileExplorerApi } from '../../../../../shared_components/ConfigFileExplorer/index';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils';
 import { API_BASE_URL } from '../../utils/apiConfig';
@@ -33,7 +34,7 @@ import type { OpenKnowledgeFormatSettings } from '../../../areas/bundle/generati
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 type TopLevelTab = 'review' | 'share';
-type PreviewSubTab = 'bundlePreview' | 'changes';
+type PreviewSubTab = 'bundlePreview' | 'changes' | 'versions';
 type ShareSubTab = 'localExport' | 'publish' | 'advanced';
 type PreviewModalTab = PreviewSubTab | ShareSubTab | 'customization';  // customization kept for URL param backward compat
 
@@ -42,6 +43,13 @@ interface OpenKnowledgeFormatRename {
   originalOutputPath: string;
   finalOutputPath: string;
   reason: 'reserved-filename';
+}
+
+interface ShareVersionOption {
+  versionId: string;
+  localFilesState: 'present' | 'deleted';
+  displayState: string;
+  savedGenerationId: string | null;
 }
 
 interface PreviewPublishModalProps {
@@ -83,10 +91,6 @@ interface PreviewPublishModalProps {
   onBundleOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
   onBundleOkfEnable: (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => Promise<void>;
 
-  // Version management
-  hasPublishedVersions: boolean;
-  onOpenVersionsModal: () => void;
-
   // Callbacks for coordination
   onBusyChange: (busy: boolean) => void;
   onAuthError: () => void;
@@ -121,8 +125,6 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   onBundleSrsTagsChange,
   onBundleOkfLogSettingsChange,
   onBundleOkfEnable,
-  hasPublishedVersions: _hasPublishedVersions,
-  onOpenVersionsModal: _onOpenVersionsModal,
   onBusyChange,
   onAuthError,
   onPublishSuccess,
@@ -158,7 +160,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     return 'review';
   });
   const [previewSubTab, setPreviewSubTab] = useState<PreviewSubTab>(
-    initialTab === 'bundlePreview' || initialTab === 'changes'
+    initialTab === 'bundlePreview' || initialTab === 'changes' || initialTab === 'versions'
       ? initialTab
       : 'bundlePreview'
   );
@@ -188,6 +190,14 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   // Save changes state
   const [isSavingChanges, setIsSavingChanges] = useState(false);
   const [saveChangesMessage, setSaveChangesMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isCreateVersionOpen, setIsCreateVersionOpen] = useState(false);
+  const [isCreatingVersion, setIsCreatingVersion] = useState(false);
+  const [createVersionNote, setCreateVersionNote] = useState('');
+  const [connectReaders, setConnectReaders] = useState(true);
+  const [confirmNoGeneratedChanges, setConfirmNoGeneratedChanges] = useState(false);
+  const [versionsRefreshKey, setVersionsRefreshKey] = useState(0);
+  const [shareVersions, setShareVersions] = useState<ShareVersionOption[]>([]);
+  const [selectedShareVersionId, setSelectedShareVersionId] = useState<string | null>(null);
 
   // "Done" animation state
   const [showPreviewDone, setShowPreviewDone] = useState(false);
@@ -212,6 +222,24 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     const combinedTab: PreviewModalTab = topLevelTab === 'share' ? shareSubTab : previewSubTab;
     onTabChange?.(combinedTab);
   }, [topLevelTab, previewSubTab, shareSubTab, onTabChange]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE_URL}/bundles/${slug}/review/versions`)
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to load shareable versions');
+        if (cancelled) return;
+        const loaded = (data.versions ?? []) as ShareVersionOption[];
+        setShareVersions(loaded);
+        setSelectedShareVersionId(current => {
+          if (current && loaded.some(version => version.versionId === current)) return current;
+          return loaded.at(-1)?.versionId ?? null;
+        });
+      })
+      .catch(error => logger.error('Failed to load versions for Share:', error));
+    return () => { cancelled = true; };
+  }, [slug, versionsRefreshKey, changesTabRefreshKey]);
 
   // Auto-open customize sidebar on first-ever bundle preview modal open
   useEffect(() => {
@@ -635,6 +663,38 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     }
   }, [slug, isSavingChanges, previewFileExplorerApi]);
 
+  const handleCreateVersion = useCallback(async () => {
+    if (!slug || isCreatingVersion) return;
+    setIsCreatingVersion(true);
+    setSaveChangesMessage(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/bundles/${slug}/generation/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: createVersionNote,
+          readerConnectionToPredecessor: connectReaders ? 'connected' : 'disconnected',
+          confirmedNoGeneratedChanges: changedFiles.size > 0 || confirmNoGeneratedChanges,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to create version');
+      setIsCreateVersionOpen(false);
+      setCreateVersionNote('');
+      setConnectReaders(true);
+      setConfirmNoGeneratedChanges(false);
+      setSaveChangesMessage({ type: 'success', text: `Created ${data.versionId}` });
+      setChangesTabRefreshKey(previous => previous + 1);
+      setVersionsRefreshKey(previous => previous + 1);
+      await previewFileExplorerApi.fetchTree({ changedOnly: true });
+      setPreviewSubTab('changes');
+    } catch (caught) {
+      setSaveChangesMessage({ type: 'error', text: caught instanceof Error ? caught.message : 'Failed to create version' });
+    } finally {
+      setIsCreatingVersion(false);
+    }
+  }, [slug, isCreatingVersion, createVersionNote, connectReaders, changedFiles.size, confirmNoGeneratedChanges, previewFileExplorerApi]);
+
   // Handle closing the modal — unmount resets all state automatically
   const handleClose = useCallback(() => {
     onClose();
@@ -987,8 +1047,18 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                     )
                   )}
                 </button>
+                <button
+                  className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    previewSubTab === 'versions'
+                      ? 'border-main-500 text-main-600'
+                      : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                  }`}
+                  onClick={() => setPreviewSubTab('versions')}
+                >
+                  Versions
+                </button>
               </div>
-              <div className="flex items-center gap-2 pb-2">
+              {previewSubTab !== 'versions' && <div className="flex items-center gap-2 pb-2">
                 {saveChangesMessage && (
                   <span className={`text-sm ${saveChangesMessage.type === 'error' ? 'text-danger-600' : 'text-neutral-600'}`}>
                     {saveChangesMessage.text}
@@ -1003,7 +1073,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                     {isSavingChanges ? 'Saving...' : 'Save Changes'}
                   </button>
                 </DisabledTooltip>
-              </div>
+              </div>}
             </nav>
           </div>
         )}
@@ -1064,6 +1134,27 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             topLevelTab === 'share' ? (
               // Share tab content with subtabs
               <div className="h-full flex flex-col">
+                <div className="mb-3 flex items-center gap-3 rounded border border-neutral-200 bg-neutral-50 px-3 py-2">
+                  <label htmlFor="share-version-selector" className="text-sm font-medium text-neutral-700">Version</label>
+                  <select
+                    id="share-version-selector"
+                    value={selectedShareVersionId ?? ''}
+                    onChange={event => setSelectedShareVersionId(event.target.value || null)}
+                    className="rounded border border-neutral-300 bg-white px-2 py-1 font-mono text-sm"
+                  >
+                    {shareVersions.map(version => (
+                      <option key={version.versionId} value={version.versionId} disabled={version.localFilesState === 'deleted'}>
+                        {version.versionId}{version === shareVersions.at(-1) ? ' — current' : ''}{version.localFilesState === 'deleted' ? ' — locally deleted' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {(() => {
+                    const selected = shareVersions.find(version => version.versionId === selectedShareVersionId);
+                    if (!selected) return <span className="text-xs text-danger-700">Generate and save a version before sharing.</span>;
+                    if (!selected.savedGenerationId) return <span className="text-xs text-danger-700">Save this generated version before sharing it.</span>;
+                    return <span className="text-xs text-neutral-500">Saved generation {selected.savedGenerationId.slice(0, 10)}</span>;
+                  })()}
+                </div>
                 {/* Share subtab navigation */}
                 <div className="border-b mb-4">
                   <nav className="flex space-x-4 items-center">
@@ -1107,10 +1198,11 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                   {shareSubTab === 'advanced' ? (
                     <AdvancedTab bundleSlug={slug || ''} />
                   ) : shareSubTab === 'localExport' ? (
-                    <SaveLocallyTab bundleSlug={slug || ''} />
+                    <SaveLocallyTab bundleSlug={slug || ''} selectedVersionId={selectedShareVersionId} />
                   ) : shareSubTab === 'publish' && PublishTabComponent ? (
                     <PublishTabComponent
                       bundleSlug={slug || ''}
+                      selectedVersionId={selectedShareVersionId}
                       changedFilesCount={changedFiles.size}
                       onBusyChange={setProviderBusy}
                       onAuthError={onAuthError}
@@ -1144,11 +1236,23 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                       onPreviewFile={handlePreviewFromChanges}
                       refreshKey={changesTabRefreshKey}
                     />
+                  ) : previewSubTab === 'versions' ? (
+                    <VersionsTab
+                      bundleSlug={slug}
+                      refreshKey={versionsRefreshKey}
+                      onCreateNewVersion={() => setIsCreateVersionOpen(true)}
+                      createNewVersionDisabled={isCreatingVersion || isRegeneratingPreview || isSavingChanges}
+                      onVersionChanged={() => {
+                        setVersionsRefreshKey(previous => previous + 1);
+                        setChangesTabRefreshKey(previous => previous + 1);
+                        void previewFileExplorerApi.fetchTree({ changedOnly: true });
+                      }}
+                    />
                   ) : null}
                 </div>
 
                 {/* Customize sidebar */}
-                <CustomizeSidebar
+                {previewSubTab !== 'versions' && <CustomizeSidebar
                   isOpen={isCustomizeSidebarOpen}
                   onToggle={() => {
                     setIsCustomizeSidebarOpen(prev => {
@@ -1192,7 +1296,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                   onRefresh={handleCustomizeRefresh}
                   isRefreshing={isRegeneratingPreview}
                   onResizeStart={handleSidebarResizeStart}
-                />
+                />}
               </div>
             )
           ) : isRegeneratingPreview ? (
@@ -1208,6 +1312,66 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             </div>
           )}
         </div>
+        <Modal
+          isOpen={isCreateVersionOpen}
+          onClose={() => !isCreatingVersion && setIsCreateVersionOpen(false)}
+          title="Create New Version"
+          className="w-full max-w-lg"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-neutral-700">
+              This creates a new local version from the current source and configuration. It does not publish or perform network operations.
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-neutral-700">Optional local note</label>
+              <textarea
+                value={createVersionNote}
+                onChange={event => setCreateVersionNote(event.target.value)}
+                rows={3}
+                className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
+                placeholder="What changes in this version?"
+                disabled={isCreatingVersion}
+              />
+            </div>
+            <label className="flex items-start gap-3 text-sm text-neutral-700">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={connectReaders}
+                onChange={event => setConnectReaders(event.target.checked)}
+                disabled={isCreatingVersion}
+              />
+              <span>
+                Let readers of earlier versions know about this version
+                <span className="mt-1 block text-xs text-neutral-500">Readers can be notified after you publish this version to the same place as the earlier versions.</span>
+              </span>
+            </label>
+            {changedFiles.size === 0 && (
+              <label className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={confirmNoGeneratedChanges}
+                  onChange={event => setConfirmNoGeneratedChanges(event.target.checked)}
+                  disabled={isCreatingVersion}
+                />
+                <span>There are no generated changes. Create a new version anyway.</span>
+              </label>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsCreateVersionOpen(false)}
+                disabled={isCreatingVersion}
+                className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+              >Cancel</button>
+              <button
+                onClick={() => void handleCreateVersion()}
+                disabled={isCreatingVersion || (changedFiles.size === 0 && !confirmNoGeneratedChanges)}
+                className="rounded bg-btn-confirm-normal px-4 py-2 text-sm font-medium text-btn-confirm-text hover:bg-btn-confirm-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >{isCreatingVersion ? 'Creating…' : 'Create New Version'}</button>
+            </div>
+          </div>
+        </Modal>
         <Modal
           isOpen={isOkfRenameModalOpen}
           onClose={() => setIsOkfRenameModalOpen(false)}

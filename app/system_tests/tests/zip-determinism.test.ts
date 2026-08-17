@@ -93,14 +93,13 @@ describe('Generated archive determinism', () => {
 
     it('produces byte-identical ZIPs across two consecutive preview runs', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
-      const sourcesExportDir = testSetup!.getPathInBundle('html/generated/_mw_assets/cust/sources-export');
-
       async function runPreviewAndReadZip(): Promise<{ filename: string; bytes: Buffer }> {
         const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);
 
+        const sourcesExportDir = testSetup!.getCurrentGeneratedHtmlPath('_mw_assets/cust/sources-export');
         const manifestPath = path.join(sourcesExportDir, 'sources-export-manifest.json');
         expect(fs.existsSync(manifestPath)).toBe(true);
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { zipFilename: string; downloadFilename: string };
@@ -148,14 +147,13 @@ describe('Generated archive determinism', () => {
 
     it('produces byte-identical gzipped assets and stable URL hashes across two runs', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
-      const assetsDir = testSetup!.getPathInBundle('html/generated/_mw_assets');
-
       async function runPreviewAndReadGzipped(): Promise<Map<string, Buffer>> {
         const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);
 
+        const assetsDir = testSetup!.getCurrentGeneratedHtmlPath('_mw_assets');
         const manifest = readCompressionManifest(assetsDir);
         expect(manifest).not.toBeNull();
         // The big fixture has at least one excalidraw page, so the vendor

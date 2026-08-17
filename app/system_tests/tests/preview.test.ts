@@ -105,8 +105,8 @@ describe('Preview System Tests', () => {
       expect(result.success).toBe(true);
       expect(result.message).toContain('preview generated');
 
-      // Verify preview folder was created
-      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      // Verify the current generated version directory was created
+      const generatedHtmlFolderPath = testSetup!.getCurrentGeneratedHtmlPath();
       expect(fs.existsSync(generatedHtmlFolderPath)).toBe(true);
 
       // Verify HTML files were generated
@@ -126,7 +126,7 @@ describe('Preview System Tests', () => {
       expect(htmlFiles).toContain('main page.html');
     });
 
-    it('should not create a published folder when previewing', async () => {
+    it('should create only a version-qualified generated directory when previewing', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
@@ -136,9 +136,10 @@ describe('Preview System Tests', () => {
 
       expect(response.ok).toBe(true);
 
-      // Verify published folder was NOT created
-      const publishedFolderPath = testSetup!.getPathInBundle('html/generated_bundle_versions');
-      expect(fs.existsSync(publishedFolderPath)).toBe(false);
+      const versionRoot = testSetup!.getPathInBundle('html/generated_bundle_versions');
+      expect(fs.existsSync(versionRoot)).toBe(true);
+      expect(fs.readdirSync(versionRoot).filter(name => /^v[A-Za-z0-9]{6}$/.test(name))).toHaveLength(1);
+      expect(fs.existsSync(testSetup!.getPathInBundle('html/generated'))).toBe(false);
     });
   });
 
@@ -169,7 +170,7 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Get paths
-      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const generatedHtmlFolderPath = testSetup!.getCurrentGeneratedHtmlPath();
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-big-preview');
 
       // Ensure the expected results folder exists
@@ -289,7 +290,7 @@ describe('Preview System Tests', () => {
 
       expect(response.ok).toBe(true);
 
-      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const generatedHtmlFolderPath = testSetup!.getCurrentGeneratedHtmlPath();
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-big-srs-preview');
 
       expect(fs.existsSync(expectedResultsFolder)).toBe(true);
@@ -451,7 +452,7 @@ describe('Preview System Tests', () => {
 
       expect(response.ok).toBe(true);
 
-      const okfBundlePath = testSetup!.getPathInBundle('html/generated/_mw_assets/cust/okf/bundle');
+      const okfBundlePath = testSetup!.getCurrentGeneratedHtmlPath('_mw_assets/cust/okf/bundle');
       expect(fs.existsSync(okfBundlePath)).toBe(true);
 
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-big-okf-preview');
@@ -531,7 +532,7 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Get paths
-      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const generatedHtmlFolderPath = testSetup!.getCurrentGeneratedHtmlPath();
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-nested-preview');
 
       // Create expected results folder if it doesn't exist (first run)
@@ -616,7 +617,7 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Get paths
-      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const generatedHtmlFolderPath = testSetup!.getCurrentGeneratedHtmlPath();
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'example-bundle-preview');
 
       // Verify no raw markdown links leaked into the HTML output.
@@ -721,7 +722,7 @@ describe('Preview System Tests', () => {
       expect(response.ok).toBe(true);
 
       // Get paths
-      const generatedHtmlFolderPath = testSetup!.getPathInBundle('html/generated');
+      const generatedHtmlFolderPath = testSetup!.getCurrentGeneratedHtmlPath();
       const expectedResultsFolder = path.join(getExpectedResultsPath(), 'meadow-test-bundle-for-hooks-preview');
 
       // Create expected results folder if it doesn't exist (first run)

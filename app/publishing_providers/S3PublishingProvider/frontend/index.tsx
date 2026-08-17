@@ -35,8 +35,9 @@ async function readError(res: Response, fallback: string): Promise<string> {
   return fallback;
 }
 
-async function fetchPublishedUrl(bundleSlug: string): Promise<string> {
-  const res = await fetch(s3Api(`bundles/${bundleSlug}/published-url`));
+async function fetchPublishedUrl(bundleSlug: string, versionId?: string): Promise<string> {
+  const query = versionId ? `?${new URLSearchParams({ versionId })}` : '';
+  const res = await fetch(s3Api(`bundles/${bundleSlug}/published-url${query}`));
   if (!res.ok) {
     throw new Error(await readError(res, `Failed to fetch published URL (${res.status})`));
   }
