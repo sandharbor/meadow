@@ -495,10 +495,6 @@ const BundleList: React.FC = () => {
     }
   };
 
-  const handleOpenVersions = (slug: string) => {
-    window.location.href = `/bundle/${encodeURIComponent(slug)}?ncPreviewModal=1&ncPreviewModalTab=versions`;
-  };
-
   const startEditingNotes = (slug: string, currentNotes: string) => {
     setEditingNotes(slug);
     setTempNotes(currentNotes || '');
@@ -1053,18 +1049,6 @@ const BundleList: React.FC = () => {
           style={{ top: bundleActionMenu.top, right: bundleActionMenu.right }}
           onClick={(e) => e.stopPropagation()}
         >
-          {(actionMenuBundle.generatedVersionCount ?? 0) > 0 && (
-            <button
-              onClick={() => {
-                setBundleActionMenu(null);
-                handleOpenVersions(actionMenuBundle.slug);
-              }}
-              className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-              title="Manage versions"
-            >
-              Manage versions
-            </button>
-          )}
           {actionMenuBundle.repairRequired ? (
             <button
               onClick={() => { setBundleActionMenu(null); setBundleToRepair(actionMenuBundle); }}
