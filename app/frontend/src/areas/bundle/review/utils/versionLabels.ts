@@ -14,14 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { ScenarioDoc } from "./types.js";
+export function casualVersionName(manifestIndex: number): string {
+  return `v${manifestIndex + 1}`;
+}
 
-export const versioning: ScenarioDoc = {
-  id: "versioning",
-  name: "Versioning",
-  description:
-    "Tests the generated-bundle version lifecycle, including initial unsaved versions, " +
-    "saving and currentness, connected successors, frozen integrity, recovery, cancellation, " +
-    "no-change confirmation, comparison, casual version names, single-version education, " +
-    "latest-first presentation and selection, post-creation focus, and correlated lifecycle logging.",
-};
+export function versionCreatedDate(createdAt: string): string {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return createdAt;
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}

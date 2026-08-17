@@ -172,6 +172,23 @@ export function waitForHttpReady(
   });
 }
 
+async function acquireSerialGroupLock(group: string): Promise<() => void> {
+  const runId = process.env.E2E_RUN_ID || "default";
+  const lockRoot = path.join(os.tmpdir(), "meadow-e2e-serial-groups", runId);
+  const lockPath = path.join(lockRoot, group.replace(/[^a-zA-Z0-9_-]+/g, "-"));
+  mkdirSync(lockRoot, { recursive: true });
+
+  while (true) {
+    try {
+      mkdirSync(lockPath);
+      return () => rmSync(lockPath, { recursive: true, force: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+}
+
 /**
  * Seed the config dir from a pre-migration MeadowHome snapshot resolved
  * via preMigrationFixturePath() (under
@@ -510,6 +527,8 @@ export type PreSpawnSeed = (deps: {
 export const test = base.extend<{
   /** How the scenario's bundle was originally seeded. Required in every spec. */
   bundleMode: BundleMode;
+  /** Keep resource-intensive specs in the same named group from running concurrently. */
+  serialGroup: string | null;
   fixtureHome: string;
   trackBigBundleExcalidrawPages: boolean;
   /**
@@ -577,8 +596,11 @@ export const test = base.extend<{
    * to seed provider-specific config (e.g. pp_resources.local.yaml).
    */
   _preSpawnSeed: PreSpawnSeed;
+  /** Internal: holds a named serial-group lock for the duration of the test server fixture. */
+  _serialGroupLock: void;
 }>({
   bundleMode: ["single-file", { option: true }],
+  serialGroup: [null, { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   trackBigBundleExcalidrawPages: [false, { option: true }],
   migrationBeforePath: [null, { option: true }],
@@ -592,6 +614,14 @@ export const test = base.extend<{
   },
   _preSpawnSeed: async ({}, use) => {
     await use(async () => {});
+  },
+  _serialGroupLock: async ({ serialGroup }, use) => {
+    const release = serialGroup ? await acquireSerialGroupLock(serialGroup) : null;
+    try {
+      await use();
+    } finally {
+      release?.();
+    }
   },
 
   // Override built-in context so it depends on testServer.  This ensures
@@ -616,7 +646,7 @@ export const test = base.extend<{
   },
 
   testServer: [
-    async ({ fixtureHome, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, migrationBeforePath, _backendExtraEnv, _preSpawnSeed }, use, testInfo) => {
+    async ({ fixtureHome, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, migrationBeforePath, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
       const workerIndex = testInfo.parallelIndex;
       const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
 

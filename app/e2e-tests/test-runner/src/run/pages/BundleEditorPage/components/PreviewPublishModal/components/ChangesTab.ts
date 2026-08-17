@@ -211,6 +211,12 @@ export class ChangesTab {
     await this.expect(this.page.getByText("No changed files")).toBeVisible({ timeout: 15_000 });
   }
 
+  /** Assert the file chosen automatically for the details viewer. */
+  async expectSelectedFile(filename: string) {
+    const selectedFileName = this.page.locator('span.font-mono.text-sm.text-neutral-700').filter({ hasText: filename });
+    await this.expect(selectedFileName).toHaveText(filename, { timeout: 15_000 });
+  }
+
   /** Click the first `.html` file in the changed files tree. */
   async clickFirstHtmlFile() {
     const htmlFile = this.page.locator('span:text-matches("\\.html$")').first();

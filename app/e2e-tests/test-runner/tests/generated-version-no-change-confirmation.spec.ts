@@ -24,6 +24,7 @@ import { versioning } from "../src/scenario-docs/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
+test.use({ serialGroup: "generated-bundle-versioning" });
 
 test("V07 L01 generated version no-change creation requires confirmation and correlated logs", async ({
   page,
@@ -53,6 +54,8 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
   await snapshot("no-change version requires explicit confirmation");
   await modal.confirmNoChangeVersionCreation();
   await modal.submitConfirmedNoChangeVersion("No-change checkpoint");
+  await modal.expectVersionsTabActive();
+  await modal.expectVersionCreatedMessageHidden();
 
   const [predecessor, successor] = await versions.waitForCount(2);
   expect(predecessor).toMatchObject({
@@ -64,7 +67,6 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
     notes: "No-change checkpoint",
   });
 
-  await modal.clickVersionsTab();
   await expect(page.getByText("No-change checkpoint", { exact: true })).toBeVisible();
   await expect(page.getByText("Unsaved", { exact: true })).toBeVisible();
   await snapshot("confirmed no-change version created");

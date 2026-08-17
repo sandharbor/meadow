@@ -60,6 +60,11 @@ export const shouldAutoExpandPreviewFolder = (node: FileNode): boolean => {
   return pathSegments.slice(-4).join('/') !== '_mw_assets/cust/search/index';
 };
 
+export const shouldPreferPreviewChangeFile = (node: FileNode): boolean => {
+  const pathSegments = node.path.replace(/\\/g, '/').split('/').filter(Boolean);
+  return !pathSegments.includes('_mw_assets') && !pathSegments.includes('_mw_gen');
+};
+
 // Error boundary for catching rendering errors in changes tab
 class ChangesTabErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {
@@ -441,6 +446,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
           showLegend={true}
           initialShowChangedOnly={true}
           autoSelectFirstChangedFile={!initialFile}
+          shouldPreferAutoSelectedFile={shouldPreferPreviewChangeFile}
           autoExpandFolders={true}
           shouldAutoExpandFolder={shouldAutoExpandPreviewFolder}
           height="100%"

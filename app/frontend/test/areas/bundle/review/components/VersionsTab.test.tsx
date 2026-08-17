@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { VersionsTab } from '../../../../../src/areas/bundle/review/components/VersionsTab';
 
@@ -51,27 +51,60 @@ describe('VersionsTab', () => {
     vi.unstubAllGlobals();
   });
 
-  it('V02 V06 renders manifest order, saved state, notes, and aligned working comparison', async () => {
+  it('V02 V06 renders newest first with casual names, secondary identifiers, and current emphasis', async () => {
+    const savedVersions = versions.map((version, index) => index === versions.length - 1
+      ? { ...version, displayState: 'current', savedGenerationId: 'tree-two' }
+      : version);
     vi.stubGlobal('fetch', vi.fn(async (input: unknown) => {
       const url = String(input);
       if (url.includes('version-comparison')) {
         return { ok: true, json: async () => ({ changes: [{ status: 'added', relativePath: 'index.html' }] }) };
       }
-      return { ok: true, json: async () => ({ versions }) };
+      return { ok: true, json: async () => ({ versions: savedVersions }) };
     }));
 
     const onCreateNewVersion = vi.fn();
     render(<VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={onCreateNewVersion} />);
 
-    expect((await screen.findAllByText('vAb3XyZ')).length).toBeGreaterThan(0);
+    const cards = await screen.findAllByTestId('version-card');
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toHaveAttribute('data-version-id', 'vQ7mN2p');
+    expect(cards[0]).toHaveAttribute('data-version-name', 'v2');
+    expect(cards[0]).toHaveAttribute('data-version-age', 'latest');
+    expect(cards[1]).toHaveAttribute('data-version-id', 'vAb3XyZ');
+    expect(cards[1]).toHaveAttribute('data-version-name', 'v1');
+    expect(cards[1]).toHaveAttribute('data-version-age', 'older');
+    expect(within(cards[0]).getByText('v2')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('v1')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('vAb3XyZ')).toHaveClass('text-neutral-400');
+    expect(within(cards[0]).getByText('Current')).toHaveClass('bg-blue-100', 'text-blue-700');
+    expect(cards[1]).toHaveClass('bg-neutral-50');
     fireEvent.click(screen.getByRole('button', { name: 'Create New Version' }));
     expect(onCreateNewVersion).toHaveBeenCalledOnce();
-    expect(screen.getAllByText('vQ7mN2p').length).toBeGreaterThan(0);
     expect(screen.getByText('Frozen')).toBeInTheDocument();
-    expect(screen.getByText('Unsaved')).toBeInTheDocument();
     expect(screen.getByText('Private note')).toBeInTheDocument();
     expect(await screen.findByText('added')).toBeInTheDocument();
     expect(screen.getByText('index.html')).toBeInTheDocument();
+  });
+
+  it('uses the single-version state to explain versioning without exposing the automatic version', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ versions: [{ ...versions[0], displayState: 'current' }] }),
+    })));
+    const onCreateNewVersion = vi.fn();
+
+    render(<VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={onCreateNewVersion} />);
+
+    expect(await screen.findByRole('heading', { name: 'Why create a new version?' })).toBeInTheDocument();
+    expect(screen.getByText(/big changes/).tagName).toBe('EM');
+    expect(screen.getByText(/renamed several pages/)).toBeInTheDocument();
+    expect(screen.getByText(/make a new bundle with a slightly different name that includes the new version ID/)).toBeInTheDocument();
+    expect(screen.getByText(/add links from the earlier bundle's pages to the new bundle/)).toBeInTheDocument();
+    expect(screen.queryByText('vAb3XyZ')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('version-card')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Create New Version' }));
+    expect(onCreateNewVersion).toHaveBeenCalledOnce();
   });
 
   it('V08 asks for confirmation and cancels only the never-saved current card', async () => {

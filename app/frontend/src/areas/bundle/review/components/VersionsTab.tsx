@@ -17,6 +17,7 @@ limitations under the License.
 /* global alert, confirm */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { casualVersionName, versionCreatedDate } from '../utils/versionLabels';
 
 interface VersionChange {
   status: string;
@@ -48,6 +49,14 @@ const stateLabel: Record<VersionView['displayState'], string> = {
   unsaved: 'Unsaved',
   'locally-deleted': 'Locally Deleted',
   'integrity-problem': 'Integrity Problem',
+};
+
+const stateClassName: Record<VersionView['displayState'], string> = {
+  current: 'bg-blue-100 text-blue-700',
+  frozen: 'bg-neutral-200 text-neutral-600',
+  unsaved: 'bg-amber-100 text-amber-800',
+  'locally-deleted': 'bg-neutral-200 text-neutral-500',
+  'integrity-problem': 'bg-danger-100 text-danger-700',
 };
 
 export function VersionsTab({
@@ -94,7 +103,15 @@ export function VersionsTab({
   useEffect(() => { void loadVersions(); }, [loadVersions, refreshKey]);
 
   const comparisonOptions = useMemo(
-    () => versions.filter(version => version.localFilesState === 'present' && version.savedGenerationId),
+    () => versions
+      .map((version, manifestIndex) => ({ version, manifestIndex }))
+      .filter(({ version }) => version.localFilesState === 'present' && version.savedGenerationId),
+    [versions],
+  );
+  const displayVersions = useMemo(
+    () => versions
+      .map((version, manifestIndex) => ({ version, manifestIndex }))
+      .reverse(),
     [versions],
   );
 
@@ -154,28 +171,67 @@ export function VersionsTab({
 
   return (
     <div className="h-full overflow-y-auto pr-2">
-      <div className="mb-4 flex justify-end">
+      {!loading && versions.length > 1 && <div className="mb-4 flex justify-end">
         <button
           onClick={onCreateNewVersion}
           disabled={createNewVersionDisabled}
           className="rounded bg-btn-confirm-normal px-3 py-1 text-sm font-medium text-btn-confirm-text hover:bg-btn-confirm-hover disabled:cursor-not-allowed disabled:opacity-50"
         >Create New Version</button>
-      </div>
+      </div>}
       {error && <div className="mb-4 rounded border border-danger-300 bg-danger-50 p-3 text-sm text-danger-700">{error}</div>}
       {loading ? (
         <div className="p-6 text-sm text-neutral-500">Loading versions…</div>
       ) : versions.length === 0 ? (
         <div className="rounded border border-neutral-200 p-6 text-sm text-neutral-500">Generate the bundle to create its first version.</div>
+      ) : versions.length === 1 ? (
+        <section className="mx-auto max-w-2xl rounded-lg border border-blue-200 bg-blue-50/50 p-6">
+          <h3 className="text-base font-semibold text-neutral-900">Why create a new version?</h3>
+          <p className="mt-3 text-sm leading-6 text-neutral-700">
+            You want to make <em>big changes</em> but not break links you already published.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-neutral-700">
+            You already published a bundle to the web, and you just renamed several pages, or moved a bunch of pages into a directory.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-neutral-700">
+            A new version will freeze the existing bundle and make a new bundle with a slightly different name that includes the new version ID. If you choose, it can also add links from the earlier bundle&apos;s pages to the new bundle.
+          </p>
+          <div className="mt-5 flex items-center gap-3">
+            <button
+              onClick={onCreateNewVersion}
+              disabled={createNewVersionDisabled || !versions[0].savedGenerationId}
+              className="rounded bg-btn-confirm-normal px-3 py-1.5 text-sm font-medium text-btn-confirm-text hover:bg-btn-confirm-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >Create New Version</button>
+            {!versions[0].savedGenerationId && (
+              <span className="text-xs text-neutral-500">Save your current changes first.</span>
+            )}
+          </div>
+        </section>
       ) : (
         <div className="space-y-3">
-          {versions.map((version, index) => (
-            <article key={version.versionId} className={`rounded-lg border p-4 ${version.displayState === 'integrity-problem' ? 'border-danger-400 bg-danger-50' : 'border-neutral-200 bg-white'}`}>
+          {displayVersions.map(({ version, manifestIndex }) => {
+            const isLatest = manifestIndex === versions.length - 1;
+            return (
+            <article
+              key={version.versionId}
+              data-testid="version-card"
+              data-version-id={version.versionId}
+              data-version-name={casualVersionName(manifestIndex)}
+              data-version-age={isLatest ? 'latest' : 'older'}
+              className={`rounded-lg border p-4 ${
+                version.displayState === 'integrity-problem'
+                  ? 'border-danger-400 bg-danger-50'
+                  : isLatest
+                    ? 'border-blue-200 bg-white'
+                    : 'border-neutral-200 bg-neutral-50'
+              }`}
+            >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-base font-semibold text-neutral-800">{version.versionId}</span>
-                    <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">{stateLabel[version.displayState]}</span>
-                    {index > 0 && version.readerConnectionToPredecessor === 'disconnected' && (
+                    <span className={`text-base font-semibold ${isLatest ? 'text-neutral-900' : 'text-neutral-600'}`}>{casualVersionName(manifestIndex)}</span>
+                    <span className="font-mono text-xs text-neutral-400">{version.versionId}</span>
+                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${stateClassName[version.displayState]}`}>{stateLabel[version.displayState]}</span>
+                    {manifestIndex > 0 && version.readerConnectionToPredecessor === 'disconnected' && (
                       <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-800">Reader history disconnected</span>
                     )}
                   </div>
@@ -244,21 +300,29 @@ export function VersionsTab({
                 <div className="mt-1 font-mono">Saved generation: {version.savedGenerationId || 'none'}</div>
               </details>
             </article>
-          ))}
+          );})}
         </div>
       )}
 
-      {comparisonOptions.length > 0 && (
+      {versions.length > 1 && comparisonOptions.length > 0 && (
         <section className="mt-5 rounded-lg border border-neutral-200 bg-white p-4">
           <h3 className="text-sm font-semibold text-neutral-800">Compare generated files</h3>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <select value={leftComparison} onChange={event => setLeftComparison(event.target.value)} className="rounded border border-neutral-300 px-2 py-1">
-              {comparisonOptions.map(version => <option key={version.versionId} value={version.versionId}>{version.versionId}</option>)}
+              {comparisonOptions.map(({ version, manifestIndex }) => (
+                <option key={version.versionId} value={version.versionId}>
+                  {casualVersionName(manifestIndex)} — {versionCreatedDate(version.createdAt)}
+                </option>
+              ))}
             </select>
             <span className="text-neutral-400">to</span>
             <select value={rightComparison} onChange={event => setRightComparison(event.target.value)} className="rounded border border-neutral-300 px-2 py-1">
-              <option value="working">Current working generation{versions.at(-1)?.displayState === 'unsaved' ? ' (unsaved)' : ''}</option>
-              {comparisonOptions.map(version => <option key={version.versionId} value={version.versionId}>{version.versionId} saved</option>)}
+              <option value="working">{casualVersionName(versions.length - 1)} current working generation{versions.at(-1)?.displayState === 'unsaved' ? ' (unsaved)' : ''}</option>
+              {comparisonOptions.map(({ version, manifestIndex }) => (
+                <option key={version.versionId} value={version.versionId}>
+                  {casualVersionName(manifestIndex)} saved — {versionCreatedDate(version.createdAt)}
+                </option>
+              ))}
             </select>
           </div>
           {comparison.length === 0 ? (

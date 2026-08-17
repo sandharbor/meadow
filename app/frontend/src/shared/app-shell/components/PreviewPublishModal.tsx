@@ -23,6 +23,7 @@ import CustomizeSidebar from '../../../areas/bundle/generation/components/Custom
 import { UntrackedPagesButton } from '../../../areas/bundle/review/components/UntrackedPagesButton';
 import PreviewChangesTab from '../../../areas/bundle/review/components/PreviewChangesTab';
 import { VersionsTab } from '../../../areas/bundle/review/components/VersionsTab';
+import { casualVersionName, versionCreatedDate } from '../../../areas/bundle/review/utils/versionLabels';
 import { ConfigFileExplorerApi } from '../../../../../shared_components/ConfigFileExplorer/index';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils';
 import { API_BASE_URL } from '../../utils/apiConfig';
@@ -47,6 +48,7 @@ interface OpenKnowledgeFormatRename {
 
 interface ShareVersionOption {
   versionId: string;
+  createdAt: string;
   localFilesState: 'present' | 'deleted';
   displayState: string;
   savedGenerationId: string | null;
@@ -232,10 +234,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         if (cancelled) return;
         const loaded = (data.versions ?? []) as ShareVersionOption[];
         setShareVersions(loaded);
-        setSelectedShareVersionId(current => {
-          if (current && loaded.some(version => version.versionId === current)) return current;
-          return loaded.at(-1)?.versionId ?? null;
-        });
+        setSelectedShareVersionId(loaded.at(-1)?.versionId ?? null);
       })
       .catch(error => logger.error('Failed to load versions for Share:', error));
     return () => { cancelled = true; };
@@ -683,11 +682,10 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       setCreateVersionNote('');
       setConnectReaders(true);
       setConfirmNoGeneratedChanges(false);
-      setSaveChangesMessage({ type: 'success', text: `Created ${data.versionId}` });
       setChangesTabRefreshKey(previous => previous + 1);
       setVersionsRefreshKey(previous => previous + 1);
       await previewFileExplorerApi.fetchTree({ changedOnly: true });
-      setPreviewSubTab('changes');
+      setPreviewSubTab('versions');
     } catch (caught) {
       setSaveChangesMessage({ type: 'error', text: caught instanceof Error ? caught.message : 'Failed to create version' });
     } finally {
@@ -1134,27 +1132,31 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             topLevelTab === 'share' ? (
               // Share tab content with subtabs
               <div className="h-full flex flex-col">
-                <div className="mb-3 flex items-center gap-3 rounded border border-neutral-200 bg-neutral-50 px-3 py-2">
+                {shareVersions.length > 1 && <div className="mb-3 flex items-center gap-3 rounded border border-neutral-200 bg-neutral-50 px-3 py-2">
                   <label htmlFor="share-version-selector" className="text-sm font-medium text-neutral-700">Version</label>
                   <select
                     id="share-version-selector"
                     value={selectedShareVersionId ?? ''}
                     onChange={event => setSelectedShareVersionId(event.target.value || null)}
-                    className="rounded border border-neutral-300 bg-white px-2 py-1 font-mono text-sm"
+                    className="rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
                   >
-                    {shareVersions.map(version => (
-                      <option key={version.versionId} value={version.versionId} disabled={version.localFilesState === 'deleted'}>
-                        {version.versionId}{version === shareVersions.at(-1) ? ' — current' : ''}{version.localFilesState === 'deleted' ? ' — locally deleted' : ''}
-                      </option>
-                    ))}
+                    {shareVersions
+                      .map((version, manifestIndex) => ({ version, manifestIndex }))
+                      .reverse()
+                      .map(({ version, manifestIndex }) => (
+                        <option key={version.versionId} value={version.versionId} disabled={version.localFilesState === 'deleted'}>
+                          {casualVersionName(manifestIndex)} — {versionCreatedDate(version.createdAt)}{version === shareVersions.at(-1) ? ' — current' : ''}{version.localFilesState === 'deleted' ? ' — locally deleted' : ''}
+                        </option>
+                      ))}
                   </select>
                   {(() => {
                     const selected = shareVersions.find(version => version.versionId === selectedShareVersionId);
                     if (!selected) return <span className="text-xs text-danger-700">Generate and save a version before sharing.</span>;
+                    if (selected.localFilesState === 'deleted') return <span className="text-xs text-danger-700">This version is no longer available locally.</span>;
                     if (!selected.savedGenerationId) return <span className="text-xs text-danger-700">Save this generated version before sharing it.</span>;
-                    return <span className="text-xs text-neutral-500">Saved generation {selected.savedGenerationId.slice(0, 10)}</span>;
+                    return null;
                   })()}
-                </div>
+                </div>}
                 {/* Share subtab navigation */}
                 <div className="border-b mb-4">
                   <nav className="flex space-x-4 items-center">

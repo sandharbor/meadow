@@ -95,6 +95,13 @@ export class Workflows {
     await this.previewModal.waitForPreviewComplete();
   }
 
+  /** navigateToSmallBundle → click Preview → wait for preview to complete. */
+  async navigateToSmallBundlePreview() {
+    await this.navigateToSmallBundle();
+    await this.editor.clickPreview();
+    await this.previewModal.waitForPreviewComplete();
+  }
+
   /** navigateToBigBundlePreview → save changes if needed → click Share tab. */
   async navigateToBigBundleShareTab() {
     await this.navigateToBigBundlePreview();

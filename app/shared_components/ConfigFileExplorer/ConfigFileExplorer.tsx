@@ -123,6 +123,8 @@ export interface ConfigFileExplorerProps {
   showLegend?: boolean;
   initialShowChangedOnly?: boolean;
   autoSelectFirstChangedFile?: boolean;
+  /** Optional preference for initial automatic selection. Falls back to the first changed file when no preferred file exists. */
+  shouldPreferAutoSelectedFile?: (node: FileNode) => boolean;
   autoExpandFolders?: boolean;
   /** Optional filter applied only to the initial automatic folder expansion. */
   shouldAutoExpandFolder?: (node: FileNode) => boolean;
@@ -334,17 +336,33 @@ export const collectDirectoryPaths = (
 };
 
 // Find the first changed file in the tree
-const findFirstChangedFile = (nodes: FileNode[]): string | null => {
+const findFirstChangedFile = (
+  nodes: FileNode[],
+  predicate?: (node: FileNode) => boolean,
+): string | null => {
   for (const node of nodes) {
-    if (node.type === 'file' && node.gitStatus && node.gitStatus !== 'has-changes') {
+    if (
+      node.type === 'file'
+      && node.gitStatus
+      && node.gitStatus !== 'has-changes'
+      && (!predicate || predicate(node))
+    ) {
       return node.path;
     }
     if (node.type === 'directory' && node.children) {
-      const found = findFirstChangedFile(node.children);
+      const found = findFirstChangedFile(node.children, predicate);
       if (found) return found;
     }
   }
   return null;
+};
+
+export const findAutoSelectedChangedFile = (
+  nodes: FileNode[],
+  shouldPrefer?: (node: FileNode) => boolean,
+): string | null => {
+  return (shouldPrefer ? findFirstChangedFile(nodes, shouldPrefer) : null)
+    ?? findFirstChangedFile(nodes);
 };
 
 const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
@@ -357,6 +375,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   showLegend = true,
   initialShowChangedOnly = false,
   autoSelectFirstChangedFile = false,
+  shouldPreferAutoSelectedFile,
   autoExpandFolders = false,
   shouldAutoExpandFolder,
   height = 'calc(100vh-57px)',
@@ -702,7 +721,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
       
       // Auto-select first changed file if requested and not already selected
       if (autoSelectFirstChangedFile && !hasAutoSelected && loadedTree.length > 0) {
-        const firstChanged = findFirstChangedFile(loadedTree);
+        const firstChanged = findAutoSelectedChangedFile(loadedTree, shouldPreferAutoSelectedFile);
         if (firstChanged) {
           setHasAutoSelected(true);
           // Use selectFile directly with the just-loaded tree to avoid stale state
@@ -710,7 +729,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
         }
       }
     });
-  }, [fetchTree, autoExpandFolders, shouldAutoExpandFolder, autoSelectFirstChangedFile, hasAutoSelected, selectFile, initialSelectedFile, showChangedOnly, mode]);
+  }, [fetchTree, autoExpandFolders, shouldAutoExpandFolder, autoSelectFirstChangedFile, shouldPreferAutoSelectedFile, hasAutoSelected, selectFile, initialSelectedFile, showChangedOnly, mode]);
 
   const handleSave = async () => {
     if (!selectedPath || !api.saveContent) return;

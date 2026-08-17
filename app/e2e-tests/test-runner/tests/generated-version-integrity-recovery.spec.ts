@@ -21,9 +21,10 @@ import { ChangesTab, CustomizeTab, PreviewPublishModal } from "../src/run/pages/
 import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
 import { versioning } from "../src/scenario-docs/index.js";
-import { bigBundle } from "../src/bundle-docs/index.js";
+import { smallBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
+test.use({ serialGroup: "generated-bundle-versioning" });
 
 test("V08 G05 generated version frozen integrity is recoverable before canceling an unsaved successor", async ({
   page,
@@ -33,11 +34,11 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   testServer,
 }) => {
   const workflows = new Workflows(page, expect);
-  await workflows.navigateToBigBundlePreview();
+  await workflows.navigateToSmallBundlePreview();
 
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
-  const versions = new GeneratedBundleVersions(page, expect, Bundle.Big);
+  const versions = new GeneratedBundleVersions(page, expect, Bundle.Small);
   const initialVersion = await versions.waitForOnlyVersion();
 
   await modal.clickSaveChanges();
@@ -50,12 +51,14 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   await modal.clickChangesTab();
   await modal.openCreateNewVersionDialog();
   await modal.createConnectedVersion("Recoverable successor");
+  await modal.expectVersionsTabActive();
+  await modal.expectVersionCreatedMessageHidden();
 
   const [, successor] = await versions.waitForCount(2);
   const frozenDirectory = path.join(
     testServer.configDir,
     "bundles",
-    Bundle.Big,
+    Bundle.Small,
     "html",
     "generated_bundle_versions",
     initialVersion.versionId,
@@ -66,7 +69,11 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   const frozenHtmlFile = path.join(frozenDirectory, frozenHtmlPath!);
   fs.appendFileSync(frozenHtmlFile, "\n<!-- injected frozen edit -->\n");
 
+  // The test changes the filesystem behind the UI's back, so remount the
+  // Versions tab to trigger the same integrity refresh as returning to it.
+  await modal.clickChangesTab();
   await modal.clickVersionsTab();
+
   await expect(page.getByText("Integrity Problem", { exact: true })).toBeVisible();
   await expect(page.getByText("Frozen version modified locally", { exact: true })).toBeVisible();
   await addKeyFrame(versioning);
@@ -78,8 +85,8 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
 
   await modal.cancelCurrentVersion();
   await expect(page.getByText(successor.versionId, { exact: true })).toHaveCount(0, { timeout: 30_000 });
-  await expect(page.getByText(initialVersion.versionId, { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Current", { exact: true })).toBeVisible();
+  await modal.expectSingleVersionExplanation();
+  await expect(page.getByText(initialVersion.versionId, { exact: true })).toHaveCount(0);
   const restoredCurrent = await versions.waitForOnlyVersion();
   expect(restoredCurrent).toMatchObject({
     versionId: initialVersion.versionId,
@@ -87,6 +94,6 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   });
   await snapshot("unsaved successor canceled after integrity recovery");
 
-  void bigBundle;
+  void smallBundle;
   await skipMeadowHomeStateCheck();
 });

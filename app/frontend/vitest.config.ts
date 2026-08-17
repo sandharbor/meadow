@@ -20,13 +20,22 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    fs: {
+      allow: [path.resolve(__dirname, '../../..')],
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./test/shared/setupTests.ts'],
-    include: ['test/**/*.test.(ts|tsx)'],
+    include: [
+      'test/**/*.test.(ts|tsx)',
+      '../publishing_providers/*/frontend/internal/**/*.test.(ts|tsx)',
+    ],
     css: { modules: { classNameStrategy: 'non-scoped' } },
   },
   resolve: {
+    preserveSymlinks: true,
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },

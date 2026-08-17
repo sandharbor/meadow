@@ -137,9 +137,27 @@ export class PreviewPublishModal {
     await this.shareTab.click();
   }
 
-  async expectShareVersionSelected(versionId: string) {
+  async expectShareVersionSelected(versionId: string, casualName?: string) {
     await this.expect(this.shareVersionSelector).toHaveValue(versionId);
     await this.expect(this.shareVersionSelector.locator("option:checked")).toContainText("current");
+    if (casualName) {
+      await this.expect(this.shareVersionSelector.locator("option:checked")).toContainText(casualName);
+      await this.expect(this.shareVersionSelector.locator("option:checked")).toContainText(/\b20\d{2}\b/);
+    }
+  }
+
+  async expectShareVersionOptionsNewestFirst(newestVersionId: string, oldestVersionId: string) {
+    const options = this.shareVersionSelector.locator("option");
+    await this.expect(options).toHaveCount(2);
+    await this.expect(options.nth(0)).toHaveAttribute("value", newestVersionId);
+    await this.expect(options.nth(0)).toContainText("v2");
+    await this.expect(options.nth(0)).toContainText("current");
+    await this.expect(options.nth(1)).toHaveAttribute("value", oldestVersionId);
+    await this.expect(options.nth(1)).toContainText("v1");
+  }
+
+  async expectShareVersionSelectorHidden() {
+    await this.expect(this.shareVersionSelector).toHaveCount(0);
   }
 
   async selectShareVersion(versionId: string) {
@@ -150,6 +168,23 @@ export class PreviewPublishModal {
   async clickBundlePreviewTab() {
     await this.expect(this.bundlePreviewTab).toBeVisible();
     await this.bundlePreviewTab.click();
+  }
+
+  async expectSingleVersionExplanation() {
+    await this.expect(this.page.getByRole("heading", { name: "Why create a new version?" })).toBeVisible();
+    await this.expect(this.page.getByText(/big changes/)).toBeVisible();
+    await this.expect(this.page.getByText(/freeze the existing bundle and make a new bundle/)).toBeVisible();
+  }
+
+  async expectVersionCardsNewestFirst(newestVersionId: string, oldestVersionId: string) {
+    const cards = this.page.locator('[data-testid="version-card"]');
+    await this.expect(cards).toHaveCount(2);
+    await this.expect(cards.nth(0)).toHaveAttribute("data-version-id", newestVersionId);
+    await this.expect(cards.nth(0)).toHaveAttribute("data-version-name", "v2");
+    await this.expect(cards.nth(0)).toHaveAttribute("data-version-age", "latest");
+    await this.expect(cards.nth(1)).toHaveAttribute("data-version-id", oldestVersionId);
+    await this.expect(cards.nth(1)).toHaveAttribute("data-version-name", "v1");
+    await this.expect(cards.nth(1)).toHaveAttribute("data-version-age", "older");
   }
 
   async openCustomizeSidebar() {
@@ -230,11 +265,12 @@ export class PreviewPublishModal {
     await this.saveChangesBtn.click();
   }
 
-  /** Wait for save to complete.  After saving, the frontend auto-navigates to
-   *  the Share tab, so the Save button may no longer be visible.  We wait for
-   *  the Share tab to become enabled as the definitive "save done" signal. */
+  /** Wait for save to complete and the Share version state to refresh. */
   async waitForSaveComplete() {
-    await this.expect(this.shareTab).toBeEnabled({ timeout: 30_000 });
+    await this.expect(this.shareTab).toHaveClass(/bg-main-100/, { timeout: 30_000 });
+    await this.expect(
+      this.page.getByText("Save this generated version before sharing it.", { exact: true }),
+    ).toHaveCount(0, { timeout: 30_000 });
   }
 
   /**
@@ -270,6 +306,14 @@ export class PreviewPublishModal {
   async clickVersionsTab() {
     await this.expect(this.versionsTab).toBeVisible();
     await this.versionsTab.click();
+  }
+
+  async expectVersionsTabActive() {
+    await this.expect(this.versionsTab).toHaveClass(/border-main-500/);
+  }
+
+  async expectVersionCreatedMessageHidden() {
+    await this.expect(this.page.getByText(/^Created v/)).toHaveCount(0);
   }
 
   async expectSaveChangesVisible() {

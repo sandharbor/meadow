@@ -22,6 +22,7 @@ import { changesTab as changesTabDoc, customize, versioning } from "../src/scena
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
+test.use({ serialGroup: "generated-bundle-versioning" });
 
 test("V06 generated version connected successor freezes its predecessor and supports comparison", async ({
   page,
@@ -60,7 +61,8 @@ test("V06 generated version connected successor freezes its predecessor and supp
 
   await modal.openCreateNewVersionDialog();
   await modal.createConnectedVersion("Breadcrumb-free reader version");
-  await changesTab.expectOnlyNewFiles();
+  await modal.expectVersionsTabActive();
+  await modal.expectVersionCreatedMessageHidden();
 
   const [predecessor, successor] = await versions.waitForCount(2);
   expect(predecessor).toMatchObject({
@@ -76,10 +78,20 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await expect(page.getByText("Frozen", { exact: true })).toBeVisible();
   await expect(page.getByText("Unsaved", { exact: true })).toBeVisible();
   await expect(page.getByText("Breadcrumb-free reader version", { exact: true })).toBeVisible();
+  await modal.expectVersionCardsNewestFirst(successor.versionId, predecessor.versionId);
   await expect(page.getByRole("heading", { name: "Compare generated files" })).toBeVisible();
   await expect(page.getByText("modified", { exact: true }).first()).toBeVisible();
   await addKeyFrame(versioning);
   await snapshot("connected successor created and compared");
+
+  await modal.clickChangesTab();
+  await changesTab.expectOnlyNewFiles();
+  await modal.clickSaveChanges();
+  await modal.waitForSaveComplete();
+  await modal.expectShareVersionSelected(successor.versionId, "v2");
+  await modal.expectShareVersionOptionsNewestFirst(successor.versionId, predecessor.versionId);
+  await addKeyFrame(versioning);
+  await snapshot("share defaults to the latest casual version name and creation date");
 
   void bigBundle;
   await skipMeadowHomeStateCheck();

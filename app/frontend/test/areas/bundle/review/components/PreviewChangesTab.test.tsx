@@ -19,6 +19,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PreviewChangesTab, {
   shouldAutoExpandPreviewFolder,
+  shouldPreferPreviewChangeFile,
   shouldShowHtmlForSectionFilters,
 } from '../../../../../src/areas/bundle/review/components/PreviewChangesTab';
 
@@ -67,6 +68,24 @@ describe('PreviewChangesTab', () => {
       name: 'pages',
       path: '/repo/preview/pages',
       type: 'directory',
+    })).toBe(true);
+  });
+
+  it('prefers changed files outside the internal generated directories', () => {
+    expect(shouldPreferPreviewChangeFile({
+      name: 'search.js',
+      path: '/repo/preview/_mw_assets/cust/search/search.js',
+      type: 'file',
+    })).toBe(false);
+    expect(shouldPreferPreviewChangeFile({
+      name: 'metadata.json',
+      path: 'C:\\repo\\preview\\_mw_gen\\metadata.json',
+      type: 'file',
+    })).toBe(false);
+    expect(shouldPreferPreviewChangeFile({
+      name: 'welcome.html',
+      path: '/repo/preview/pages/welcome.html',
+      type: 'file',
     })).toBe(true);
   });
 

@@ -17,6 +17,7 @@ limitations under the License.
 import { describe, expect, it } from 'vitest';
 import {
   collectDirectoryPaths,
+  findAutoSelectedChangedFile,
   type FileNode,
 } from '../../../shared_components/ConfigFileExplorer/ConfigFileExplorer';
 
@@ -63,5 +64,28 @@ describe('ConfigFileExplorer selective automatic expansion', () => {
       indexPath,
       '/preview/pages',
     ]);
+  });
+
+  it('prefers a changed file accepted by the selection preference', () => {
+    const internalPath = '/preview/_mw_assets/search.js';
+    const pagePath = '/preview/pages/welcome.html';
+    const tree = [
+      folder('_mw_assets', '/preview/_mw_assets', [file('search.js', internalPath)]),
+      folder('pages', '/preview/pages', [file('welcome.html', pagePath)]),
+    ];
+
+    expect(findAutoSelectedChangedFile(
+      tree,
+      (node) => !node.path.includes('/_mw_assets/'),
+    )).toBe(pagePath);
+  });
+
+  it('falls back to the first changed file when none match the selection preference', () => {
+    const internalPath = '/preview/_mw_gen/metadata.json';
+    const tree = [
+      folder('_mw_gen', '/preview/_mw_gen', [file('metadata.json', internalPath)]),
+    ];
+
+    expect(findAutoSelectedChangedFile(tree, () => false)).toBe(internalPath);
   });
 });
