@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 #
-# Start all dev servers (backend, frontend, dev-tools) in a tmux session.
+# Start the dev-tools server and reserve backend/frontend tmux windows.
 # - Every run allocates fresh frontend/backend ports and a private capability.
 # - Worktrees also keep their config and dev-tools ports isolated.
+# - Dev Tools starts a fresh backend for each app/browser kickoff and lazily
+#   starts the Home-independent frontend on the first kickoff.
 # Re-running kills and recreates the session.
 #
 set -euo pipefail
@@ -97,20 +99,22 @@ if [ -z "$RUNTIME_SESSION_PATH" ] || [ -z "$BACKEND_PORT" ] || [ -z "$FRONTEND_P
 fi
 
 # --- 5. Create tmux session with 3 windows ---
-tmux new-session -d -s "$SESSION" -n backend -c "$BACKEND_DIR" \
-  "MEADOW_IS_DEV='true' MEADOW_APP_VERSION='$APP_VERSION' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_RUNTIME_SESSION_PATH='$RUNTIME_SESSION_PATH' npx tsx src/shared/app-shell/index.ts; read"
+# Backend and frontend intentionally begin as idle shells. The Dev Tools server
+# respawns these panes after it has selected the Home that should be launched.
+tmux new-session -d -s "$SESSION" -n backend -c "$BACKEND_DIR"
+tmux set-option -w -t "$SESSION:backend" remain-on-exit on
 
-tmux new-window -t "$SESSION" -n frontend -c "$FRONTEND_DIR" \
-  "MEADOW_RUNTIME_SESSION_PATH='$RUNTIME_SESSION_PATH' npx vite; read"
+tmux new-window -t "$SESSION" -n frontend -c "$FRONTEND_DIR"
+tmux set-option -w -t "$SESSION:frontend" remain-on-exit on
 
 tmux new-window -t "$SESSION" -n dev-tools -c "$DEV_TOOLS_DIR" \
-  "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_RUNTIME_SESSION_PATH='$RUNTIME_SESSION_PATH' npm start; read"
+  "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_RUNTIME_SESSION_PATH='$RUNTIME_SESSION_PATH' MEADOW_DEV_TMUX_SESSION='$SESSION' npm start; read"
 
-# --- 6. Wait for frontend to be ready, then open browser ---
-echo "Waiting for frontend (http://127.0.0.1:$FRONTEND_PORT)..."
+# --- 6. Wait for Dev Tools to be ready, then open browser ---
+echo "Waiting for Dev Tools (http://localhost:$DEV_TOOLS_PORT)..."
 for i in $(seq 1 60); do
-  if curl -s -o /dev/null -w '' "http://127.0.0.1:$FRONTEND_PORT" 2>/dev/null; then
-    echo "Frontend is ready."
+  if curl -s -o /dev/null -w '' "http://localhost:$DEV_TOOLS_PORT" 2>/dev/null; then
+    echo "Dev Tools is ready."
     if [ "${MEADOW_DEV_NO_OPEN:-}" = "1" ]; then
       echo "Skipping browser open because MEADOW_DEV_NO_OPEN=1."
     else
@@ -119,7 +123,7 @@ for i in $(seq 1 60); do
     break
   fi
   if [ "$i" -eq 60 ]; then
-    echo "Warning: Frontend did not respond within 30s. Opening anyway..."
+    echo "Warning: Dev Tools did not respond within 30s. Opening anyway..."
     if [ "${MEADOW_DEV_NO_OPEN:-}" = "1" ]; then
       echo "Skipping browser open because MEADOW_DEV_NO_OPEN=1."
     else
@@ -137,6 +141,7 @@ echo ""
 echo "  Backend:   http://127.0.0.1:$BACKEND_PORT"
 echo "  Frontend:  http://127.0.0.1:$FRONTEND_PORT"
 echo "  Dev Tools: http://localhost:$DEV_TOOLS_PORT"
+echo "  App services start from Dev Tools on the first kickoff."
 echo "  Config:    $CONFIG_DIR"
 echo "  Runtime:   $RUNTIME_SESSION_PATH"
 echo ""

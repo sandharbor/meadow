@@ -26,6 +26,7 @@ import {
   MEADOW_RUNTIME_SESSION_ENV,
   readLocalRuntimeSession,
 } from "../../../shared_code/utils/localRuntimeSession.js";
+import { preflightMeadowHome } from "../../../shared_code/utils/meadowHomeFormat.js";
 import {
   findProjectRoot,
   getHomeFixturesPath,
@@ -37,6 +38,10 @@ import {
   GIT_AUTHORS,
 } from "../../../shared_code/utils/appConfigGitUtils.js";
 import { ConfigModeHelper } from "../shared/helpers/ConfigModeHelper.js";
+import {
+  DevRuntimeManager,
+  MEADOW_DEV_TMUX_SESSION_ENV,
+} from "./devRuntimeManager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -65,6 +70,22 @@ const runtimeSession = runtimeSessionPath
   ? readLocalRuntimeSession(runtimeSessionPath)
   : null;
 const cachedFrontendPort = runtimeSession?.frontendPort;
+const projectRoot = getProjectRoot();
+const electronPackage = JSON.parse(
+  readFileSync(join(projectRoot, "app", "electron_app", "package.json"), "utf8"),
+) as { version?: unknown };
+const appVersion = electronPackage.version;
+if (typeof appVersion !== "string" || appVersion.length === 0) {
+  throw new Error("Electron app package does not declare a version");
+}
+const devRuntimeManager = new DevRuntimeManager({
+  tmuxSession: process.env[MEADOW_DEV_TMUX_SESSION_ENV] ?? null,
+  projectRoot,
+  configDirectory: configDir,
+  appVersion,
+  runtimeSessionPath: runtimeSessionPath ?? null,
+  runtimeSession,
+});
 
 // ============ Fixture Discovery ============
 
@@ -238,6 +259,11 @@ app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
         });
         console.log(`  ✓ Copied app/hooks`);
       }
+
+      // Fixtures represent a current Meadow Home. Establish and track the
+      // public format manifest before the fixture's initial Git commit so the
+      // real backend startup begins from a clean repository.
+      preflightMeadowHome(configDir, appVersion);
 
       const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.DEV_TOOLS_APP, configDir);
       await gitUtils.initAndCommitAll(`dev_tools_app: test mode with fixture ${fixture.displayName}`);
@@ -484,6 +510,10 @@ app.post("/api/app/launch-dev", async (_req, res) => {
     // Small delay to ensure processes are fully terminated
     await new Promise(r => globalThis.setTimeout(r, 300));
 
+    // Electron performs the readiness wait so it can render any startup
+    // diagnostic emitted by the externally managed backend.
+    await devRuntimeManager.prepareForLaunch({ waitForReady: false });
+
     console.log(`[dev] Starting electron dev in ${electronAppDir}`);
 
     const child = spawn("npm", ["run", "electron-dev"], {
@@ -508,7 +538,7 @@ app.post("/api/app/launch-dev", async (_req, res) => {
 // ============ Browser Launch Operations ============
 
 // Open or focus Chrome with a specific localhost URL
-app.post("/api/app/open-browser", (req, res) => {
+app.post("/api/app/open-browser", async (req, res) => {
   try {
     const { url } = (req.body || {}) as { url?: string };
     const frontendPort = cachedFrontendPort;
@@ -524,6 +554,8 @@ app.post("/api/app/open-browser", (req, res) => {
       return;
     }
     const localhostPattern = parsedTarget.host;
+
+    await devRuntimeManager.prepareForLaunch();
 
     console.log(`[browser] Opening/focusing Chrome for ${targetUrl}`);
 

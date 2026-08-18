@@ -121,6 +121,10 @@ export function getLocalRuntimeSessionPath(homeDirectory: string): string {
   return path.join(tmpdir(), "meadow-runtime", homeId, "session.json");
 }
 
+export function getLocalRuntimeStartupDiagnosticPath(sessionPath: string): string {
+  return path.join(path.dirname(sessionPath), "startup-failure.json");
+}
+
 export function writeLocalRuntimeSession(
   session: LocalRuntimeSession,
   sessionPath = getLocalRuntimeSessionPath(session.homeDirectory),

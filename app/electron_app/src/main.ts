@@ -37,6 +37,7 @@ import {
 } from '../../shared_code/utils/desktopLaunchSecurity';
 import {
   createLocalRuntimeSession,
+  getLocalRuntimeStartupDiagnosticPath,
   MEADOW_RUNTIME_SESSION_ENV,
   readLocalRuntimeSession,
   removeLocalRuntimeSession,
@@ -45,6 +46,7 @@ import { UpdateManager } from './updateManager';
 import { acknowledgeUpdateHealthFromEnvironment } from './verifiedUpdater';
 import { showRecoveryWindow } from './recoveryWindow';
 import { installCommandLineInterface } from './cliInstaller';
+import { hasChildProcessExited } from './childProcessState';
 
 // Set the app name immediately, before any other operations (important for macOS menu bar)
 app.name = 'Meadow';
@@ -98,7 +100,7 @@ class MeadowApp {
   private findInBundlesOptions: FindInBundlesOptions | null = null;
   private updateManager: UpdateManager;
   private readonly startupDiagnosticDirectory: string;
-  private readonly startupDiagnosticPath: string;
+  private startupDiagnosticPath: string;
   private selectedHomePath: string;
 
   constructor() {
@@ -403,6 +405,7 @@ class MeadowApp {
       this.frontendPort = session.frontendPort;
       this.apiCapability = session.capability;
       this.runtimeSessionPath = externalSessionPath;
+      this.startupDiagnosticPath = getLocalRuntimeStartupDiagnosticPath(externalSessionPath);
       this.usesExternalRuntime = true;
       log('SUCCESS', 'Attached to external local runtime', {
         backendPort: this.backendPort,
@@ -623,7 +626,10 @@ class MeadowApp {
     log('INFO', 'Waiting for backend server to be ready...');
 
     while (attempts < maxAttempts) {
-      if (fs.existsSync(this.startupDiagnosticPath) || this.backendProcess?.exitCode !== null) {
+      if (
+        fs.existsSync(this.startupDiagnosticPath)
+        || hasChildProcessExited(this.backendProcess)
+      ) {
         throw new Error('Backend reported a safe startup failure');
       }
       try {
