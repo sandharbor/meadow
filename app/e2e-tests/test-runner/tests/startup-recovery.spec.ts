@@ -89,7 +89,7 @@ test('Safe startup recovery surfaces remain actionable and secret-free', async (
     checkpointPath: '/Users/example/Meadow Home/.meadow-migration-recovery',
     checkpointAvailable: true,
   });
-  await expect(page.getByText('Pre-migration Git commit')).toBeVisible();
+  await expect(page.getByText('Pre-migration Git commit', { exact: true })).toBeVisible();
   await expect(page.getByText('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0);
   await snapshot('incomplete migration recovery screen');
