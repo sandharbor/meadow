@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test as base, expect } from "@playwright/test";
 import { execSync, spawn, ChildProcess } from "child_process";
-import { createHash, randomBytes } from "crypto";
+import { createHash } from "crypto";
 import {
   mkdirSync,
   writeFileSync,
@@ -37,9 +37,15 @@ import os from "os";
 import path from "path";
 import YAML from "yaml";
 import { resolveFastGitOpsBinary } from "./utils/MeadowHomeGit.js";
+import { MeadowCli } from "./utils/MeadowCli.js";
 import { MinioS3 } from "./utils/MinioS3.js";
 import type { BundleMode } from "./bundleMode.js";
 import { isPrivateMeadowHomePath } from "../../../../shared_code/utils/privateMeadowHomePaths.js";
+import {
+  createLocalRuntimeSession,
+  MEADOW_RUNTIME_SESSION_ENV,
+  removeLocalRuntimeSession,
+} from "../../../../shared_code/utils/localRuntimeSession.js";
 // assembleTestArtifacts is called in assembleRun() post-run, not during fixture teardown
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -193,20 +199,26 @@ async function acquireSerialGroupLock(group: string): Promise<() => void> {
   }
 }
 
-function populateConfigDir(configDir: string, fixtureName = "home_fixture_big_and_small") {
+function populateConfigDir(
+  configDir: string,
+  fixtureName = "home_fixture_big_and_small",
+  isolateSourceGraphs = false,
+): string {
   const appDir = path.join(configDir, "app");
+  const sharedSourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
+  const sourceGraphsDir = isolateSourceGraphs
+    ? path.join(configDir, "source_graphs")
+    : sharedSourceGraphsDir;
   mkdirSync(appDir, { recursive: true });
 
   if (fixtureName === "none") {
     writeFileSync(path.join(appDir, "app_config.yaml"), "version: 1.0.0\n", "utf8");
-    return;
+    return sourceGraphsDir;
   }
 
   const fixtureDir = path.join(
     REPO_ROOT, "app", "shared_data", "home_fixtures", fixtureName
   );
-  const sourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
-
   // Copy app/app_config.yaml
   const srcAppConfig = path.join(fixtureDir, "app", "app_config.yaml");
   if (existsSync(srcAppConfig)) {
@@ -246,12 +258,23 @@ function populateConfigDir(configDir: string, fixtureName = "home_fixture_big_an
 
       if (config.sourceDirectory && typeof config.sourceDirectory === "string") {
         const sourceFolder = path.basename(config.sourceDirectory);
+        if (isolateSourceGraphs) {
+          const isolatedSourceDirectory = path.join(sourceGraphsDir, sourceFolder);
+          if (!existsSync(isolatedSourceDirectory)) {
+            mkdirSync(sourceGraphsDir, { recursive: true });
+            cpSync(path.join(sharedSourceGraphsDir, sourceFolder), isolatedSourceDirectory, {
+              recursive: true,
+            });
+          }
+        }
         config.sourceDirectory = path.join(sourceGraphsDir, sourceFolder);
       }
 
       writeFileSync(bundleConfigPath, YAML.stringify(config), "utf8");
     }
   }
+
+  return sourceGraphsDir;
 }
 
 function trackBigBundleExcalidrawPages(configDir: string) {
@@ -371,6 +394,7 @@ export function gitCommitIfChanged(repoDir: string, message: string, timelinePat
 
 export interface TestServer {
   configDir: string;
+  runtimeSessionPath: string;
   sourceGraphsDir: string;
   backendPort: number;
   frontendPort: number;
@@ -458,7 +482,10 @@ export const test = base.extend<{
   /** Keep resource-intensive specs in the same named group from running concurrently. */
   serialGroup: string | null;
   fixtureHome: string;
+  /** Copy configured source graphs into the test's temporary home before launch. */
+  isolateSourceGraphs: boolean;
   trackBigBundleExcalidrawPages: boolean;
+  recordVideo: boolean;
   testServer: TestServer;
   artifactDir: string;
   snapshot: (message: string) => Promise<void>;
@@ -485,6 +512,7 @@ export const test = base.extend<{
    */
   skipMeadowHomeStateCheck: () => Promise<void>;
   addKeyFrame: (scenarioDoc: { id: string }) => Promise<void>;
+  meadowCli: MeadowCli;
   minioS3: MinioS3;
   /**
    * Register an expected error pattern scoped to a block of code.
@@ -522,7 +550,9 @@ export const test = base.extend<{
   bundleMode: ["single-file", { option: true }],
   serialGroup: [null, { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
+  isolateSourceGraphs: [false, { option: true }],
   trackBigBundleExcalidrawPages: [false, { option: true }],
+  recordVideo: [true, { option: true }],
   // _backendExtraEnv and _preSpawnSeed are declared as fixtures (rather than
   // options) because their values are objects/functions that Playwright's
   // option-form would shadow with TestFixture inference. Factory style
@@ -547,7 +577,7 @@ export const test = base.extend<{
   // the browser context (and its video recording) only starts AFTER the
   // backend / frontend / web-server are ready, keeping video duration
   // close to the actual test-body duration.
-  context: async ({ browser, testServer: _ts }, use, testInfo) => {
+  context: async ({ browser, testServer: _ts, recordVideo }, use, testInfo) => {
     const testSlug = testInfo.title
       .replace(/[^a-zA-Z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
@@ -555,9 +585,12 @@ export const test = base.extend<{
     const videoDir = path.join(
       import.meta.dirname, "..", "..", "test-results", `${testSlug}-context`
     );
+    // This directory is outside Playwright's normal per-run cleanup. Remove
+    // stale recordings so a non-video scenario cannot inherit an older file.
+    rmSync(videoDir, { recursive: true, force: true });
     mkdirSync(videoDir, { recursive: true });
     const context = await browser.newContext({
-      recordVideo: { dir: videoDir, size: { width: 1200, height: 675 } },
+      ...(recordVideo ? { recordVideo: { dir: videoDir, size: { width: 1200, height: 675 } } } : {}),
       viewport: { width: 1200, height: 675 },
     });
     await use(context);
@@ -565,7 +598,7 @@ export const test = base.extend<{
   },
 
   testServer: [
-    async ({ fixtureHome, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
+    async ({ fixtureHome, isolateSourceGraphs, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
       const workerIndex = testInfo.parallelIndex;
       const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
 
@@ -577,21 +610,19 @@ export const test = base.extend<{
       }).trim();
 
       // 2. Populate fixture data
-      populateConfigDir(configDir, fixtureHome);
+      const sourceGraphsDir = populateConfigDir(configDir, fixtureHome, isolateSourceGraphs);
       if (shouldTrackBigBundleExcalidrawPages) {
         trackBigBundleExcalidrawPages(configDir);
       }
 
-      // 3. Read allocated ports from resources.local.yaml
-      const resLocalPath = path.join(configDir, "app", "resources.local.yaml");
-      const resources = YAML.parse(readFileSync(resLocalPath, "utf8")) as {
-        backendPort: number;
-        frontendPort: number;
-      };
-      const backendPort = resources.backendPort;
-      const frontendPort = resources.frontendPort;
-      const apiCapability = randomBytes(32).toString("base64url");
-      const uiOrigin = `http://localhost:${frontendPort}`;
+      // 3. Allocate the same private launch contract used by desktop, web
+      // development, and the CLI.
+      const { session: runtimeSession, sessionPath: runtimeSessionPath } =
+        await createLocalRuntimeSession({
+          homeDirectory: configDir,
+          ownerPid: process.pid,
+        });
+      const { backendPort, frontendPort, capability: apiCapability } = runtimeSession;
 
       // 4. Read shared container endpoint from marker file
       const minioEndpoint = readFileSync(path.join(E2E_DIR, ".minio-endpoint"), "utf8").trim();
@@ -632,9 +663,7 @@ export const test = base.extend<{
             MEADOW_HOME_DIRECTORY_OVERRIDE: configDir,
             MEADOW_IS_DEV: "true",
             MEADOW_APP_VERSION: "0.5.41-e2e",
-            MEADOW_BACKEND_PORT: String(backendPort),
-            MEADOW_API_CAPABILITY: apiCapability,
-            MEADOW_UI_ORIGIN: uiOrigin,
+            [MEADOW_RUNTIME_SESSION_ENV]: runtimeSessionPath,
             ..._backendExtraEnv,
           },
           stdio: ["ignore", "ignore", backendStderrFd],
@@ -655,15 +684,13 @@ export const test = base.extend<{
           "--import",
           "tsx",
           path.join(E2E_DIR, "src/run/scripts/start_static_frontend.ts"),
-          String(frontendPort),
-          String(backendPort),
           frontendDistDir,
         ],
         {
           cwd: E2E_DIR,
           env: {
             ...process.env,
-            MEADOW_API_CAPABILITY: apiCapability,
+            [MEADOW_RUNTIME_SESSION_ENV]: runtimeSessionPath,
           },
           stdio: ["ignore", "ignore", frontendStderrFd],
         }
@@ -700,10 +727,9 @@ export const test = base.extend<{
       await waitForHttpReady(backendPort, "/api/app-config", 60_000, backendProc, true, {
         "x-meadow-capability": apiCapability,
       });
-      const sourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
-
       const server: TestServer = {
         configDir,
+        runtimeSessionPath,
         sourceGraphsDir,
         backendPort,
         frontendPort,
@@ -876,6 +902,7 @@ export const test = base.extend<{
 
       await stopProcesses([frontendProc]);
       await stopProcesses([backendProc, webServerProc]);
+      removeLocalRuntimeSession(runtimeSessionPath, process.pid);
     },
     { auto: true },
   ],
@@ -1378,13 +1405,17 @@ export const test = base.extend<{
   ],
 
   baseURL: async ({ testServer }, use) => {
-    await use(`http://localhost:${testServer.frontendPort}`);
+    await use(`http://127.0.0.1:${testServer.frontendPort}`);
   },
 
   minioS3: async ({ testServer }, use) => {
     const s3 = new MinioS3(testServer.minioEndpoint, testServer.minioBucket, expect);
     await use(s3);
     s3.destroy();
+  },
+
+  meadowCli: async ({ testServer, artifactDir }, use) => {
+    await use(new MeadowCli(testServer.runtimeSessionPath, artifactDir));
   },
 
   _expectedErrorWindows: async ({}, use) => {

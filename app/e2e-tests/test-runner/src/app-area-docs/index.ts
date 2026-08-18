@@ -72,6 +72,7 @@ export const allAppAreaDocs: AppAreaDoc[] = [
 
 export const scenarioDocToAppAreaIds: Readonly<Record<string, ScenarioDocAppAreaAssignment>> = {
   archived: ["bundles", "bundle/curation"],
+  cli: ["bundles"],
   blacklist: ["bundle/curation"],
   callout: ["bundle/curation"],
   "changes-tab": ["bundle/review"],

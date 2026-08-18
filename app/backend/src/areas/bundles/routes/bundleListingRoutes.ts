@@ -466,11 +466,17 @@ router.post('/bundles/:slug/archive', (req, res, next) => {
       return res.status(404).json({ error: 'Bundle not found' });
     }
 
-    updateBundleConfig(bundleDirectory, { archivedAt: new Date().toISOString() });
+    const archivedAt = new Date().toISOString();
+    updateBundleConfig(bundleDirectory, { archivedAt });
     clearBundleGuidCache(slug);
     logBundleInfo(slug, 'Bundle archived');
     
-    res.json({ success: true, message: 'Bundle archived successfully' });
+    res.json({
+      success: true,
+      slug,
+      archivedAt,
+      message: 'Bundle archived successfully',
+    });
   } catch (error) {
     next(error);
   }
@@ -490,7 +496,12 @@ router.post('/bundles/:slug/unarchive', (req, res, next) => {
     clearBundleGuidCache(slug);
     logBundleInfo(slug, 'Bundle unarchived');
     
-    res.json({ success: true, message: 'Bundle unarchived successfully' });
+    res.json({
+      success: true,
+      slug,
+      archivedAt: null,
+      message: 'Bundle unarchived successfully',
+    });
   } catch (error) {
     next(error);
   }

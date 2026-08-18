@@ -14,16 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export const DESKTOP_WEB_SECURITY_PREFERENCES = Object.freeze({
-  nodeIntegration: false,
-  contextIsolation: true,
-  webSecurity: true,
-});
+import { ScenarioDoc } from "./types.js";
 
-export function isTrustedDesktopRenderer(url: string, frontendPort: number): boolean {
-  try {
-    return new globalThis.URL(url).origin === `http://127.0.0.1:${frontendPort}`;
-  } catch {
-    return false;
-  }
-}
+export const cli: ScenarioDoc = {
+  id: "cli",
+  name: "Command Line Interface",
+  description:
+    "Tests Meadow's command-line interface as an authenticated client of the local runtime, " +
+    "including its JSON output, process logs, and any Meadow Home files changed by commands.",
+};

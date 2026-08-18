@@ -87,10 +87,17 @@ test("V03 first generated version is reviewable before and after save", async ({
   await modal.clickVersionsTab();
   await modal.expectSingleVersionExplanation();
   await expect(page.getByText(versionId, { exact: true })).toHaveCount(0);
+  const hooksReloaded = page.waitForResponse(response =>
+    response.request().method() === "GET"
+      && new URL(response.url()).pathname.endsWith(
+        "/api/bundles/meadow-test-bundle-big/generation/hooks",
+      ),
+  );
   await modal.clickChangesTab();
 
   // Go to Changes tab — assert "No changed files"
   await changesTab.expectNoChangedFiles();
+  expect((await hooksReloaded).ok()).toBe(true);
   await snapshot("no changed files after save");
   void bigBundle;
 

@@ -54,6 +54,7 @@ export { htmlNode } from "./html-node.js";
 export { versioning } from "./versioning.js";
 export { startupRecovery } from "./startup-recovery.js";
 export { softwareUpdate } from "./software-update.js";
+export { cli } from "./cli.js";
 
 import { publishing } from "./publishing.js";
 import { filters } from "./filters.js";
@@ -92,5 +93,6 @@ import { htmlNode } from "./html-node.js";
 import { versioning } from "./versioning.js";
 import { startupRecovery } from "./startup-recovery.js";
 import { softwareUpdate } from "./software-update.js";
+import { cli } from "./cli.js";
 
-export const allDocs: ScenarioDoc[] = [publishing, filters, folderFilter, folderBundles, frontier, callout, htmlGeneration, htmlNode, hooks, s3, deletion, linkGap, labels, sensitive, search, links, paths, customize, changesTab, versioning, multiBundle, bundleConfig, overrides, initialPage, images, sourcesExport, openKnowledgeFormat, git, findInBundles, archived, blacklist, orphan, tracking, migration, excalidraw, startupRecovery, softwareUpdate];
+export const allDocs: ScenarioDoc[] = [publishing, filters, folderFilter, folderBundles, frontier, callout, htmlGeneration, htmlNode, hooks, s3, deletion, linkGap, labels, sensitive, search, links, paths, customize, changesTab, versioning, multiBundle, bundleConfig, overrides, initialPage, images, sourcesExport, openKnowledgeFormat, git, findInBundles, archived, blacklist, orphan, tracking, migration, excalidraw, startupRecovery, softwareUpdate, cli];

@@ -39,18 +39,17 @@ async function main() {
   ensureResourcesConfigInitialized(baseDir);
   process.stderr.write("Initialized resources.yaml with defaults\n");
 
-  // Allocate free ports
-  const backendPort = await findRandomPort();
-  const frontendPort = await findRandomPort();
+  // Frontend/backend ports are launch-time runtime state. Only the developer
+  // tooling ports and log location belong in this per-worktree override.
   const devToolsPort = await findRandomPort();
   const devToolsServerPort = await findRandomPort();
   process.stderr.write(
-    `Allocated ports: backend=${backendPort}, frontend=${frontendPort}, devTools=${devToolsPort}, devToolsServer=${devToolsServerPort}\n`
+    `Allocated developer tooling ports: devTools=${devToolsPort}, devToolsServer=${devToolsServerPort}\n`
   );
 
   // Write local overrides with ports and log directory
   saveResourcesLocalConfig(
-    { backendPort, frontendPort, devToolsPort, devToolsServerPort, logDirectory: logsDir },
+    { devToolsPort, devToolsServerPort, logDirectory: logsDir },
     baseDir
   );
   process.stderr.write("Wrote resources.local.yaml with ports and log directory\n");

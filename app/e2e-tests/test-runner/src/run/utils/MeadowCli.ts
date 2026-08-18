@@ -1,0 +1,150 @@
+/*
+Copyright 2026 Sand Harbor Software, LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+import { execFile, type ExecFileException } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import path from "node:path";
+import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../shared_code/utils/localRuntimeSession.js";
+
+const CLI_EXECUTABLE = path.resolve(
+  import.meta.dirname,
+  "../../../../../cli/bin/meadow",
+);
+const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
+const MAX_OUTPUT_BYTES = 1024 * 1024;
+
+export interface MeadowCliArtifactOptions {
+  artifactName: string;
+}
+
+interface MeadowCliCommandArtifact {
+  command: "meadow";
+  args: string[];
+  exitCode: number | null;
+  signal: string | null;
+  startedAt: string;
+  completedAt: string;
+}
+
+interface MeadowCliExecution {
+  stdout: string;
+  stderr: string;
+  error: ExecFileException | null;
+}
+
+export class MeadowCli {
+  private readonly usedArtifactNames = new Set<string>();
+
+  constructor(
+    private readonly runtimeSessionPath: string,
+    private readonly artifactDir: string,
+  ) {}
+
+  async run(args: string[], options: MeadowCliArtifactOptions): Promise<string> {
+    return this.execute(args, options, "stdout.txt");
+  }
+
+  async runJson<T>(args: string[], options: MeadowCliArtifactOptions): Promise<T> {
+    const stdout = await this.execute(args, options, "json");
+    try {
+      return JSON.parse(stdout) as T;
+    } catch (error) {
+      throw new Error(
+        `The Meadow CLI did not return valid JSON for artifact ${options.artifactName}.`,
+        { cause: error },
+      );
+    }
+  }
+
+  private async execute(
+    args: string[],
+    options: MeadowCliArtifactOptions,
+    stdoutExtension: "json" | "stdout.txt",
+  ): Promise<string> {
+    this.reserveArtifactName(options.artifactName);
+    const startedAt = new Date().toISOString();
+    const result = await this.exec(args);
+    const completedAt = new Date().toISOString();
+    const exitCode = typeof result.error?.code === "number"
+      ? result.error.code
+      : result.error === null
+        ? 0
+        : null;
+
+    writeFileSync(
+      path.join(this.artifactDir, `${options.artifactName}.${stdoutExtension}`),
+      result.stdout,
+      "utf8",
+    );
+    writeFileSync(
+      path.join(this.artifactDir, `${options.artifactName}.stderr.txt`),
+      result.stderr,
+      "utf8",
+    );
+    const commandArtifact: MeadowCliCommandArtifact = {
+      command: "meadow",
+      args,
+      exitCode,
+      signal: result.error?.signal ?? null,
+      startedAt,
+      completedAt,
+    };
+    writeFileSync(
+      path.join(this.artifactDir, `${options.artifactName}.command.json`),
+      JSON.stringify(commandArtifact, null, 2),
+      "utf8",
+    );
+
+    if (result.error !== null) {
+      const detail = result.stderr.trim() || result.error.message;
+      throw new Error(`Meadow CLI command failed: meadow ${args.join(" ")}\n${detail}`);
+    }
+    return result.stdout;
+  }
+
+  private reserveArtifactName(artifactName: string): void {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(artifactName)) {
+      throw new Error(
+        `Invalid Meadow CLI artifact name: ${artifactName}. Use lowercase words separated by hyphens.`,
+      );
+    }
+    if (this.usedArtifactNames.has(artifactName)) {
+      throw new Error(`Duplicate Meadow CLI artifact name: ${artifactName}`);
+    }
+    this.usedArtifactNames.add(artifactName);
+  }
+
+  private exec(args: string[]): Promise<MeadowCliExecution> {
+    return new Promise((resolve) => {
+      execFile(
+        CLI_EXECUTABLE,
+        args,
+        {
+          cwd: REPO_ROOT,
+          encoding: "utf8",
+          env: {
+            ...process.env,
+            [MEADOW_RUNTIME_SESSION_ENV]: this.runtimeSessionPath,
+          },
+          maxBuffer: MAX_OUTPUT_BYTES,
+        },
+        (error, stdout, stderr) => {
+          resolve({ error, stdout, stderr });
+        },
+      );
+    });
+  }
+}

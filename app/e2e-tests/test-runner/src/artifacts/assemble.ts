@@ -20,6 +20,7 @@ import {
   readFileSync,
   writeFileSync,
   readdirSync,
+  rmSync,
   statSync,
   cpSync,
 } from "fs";
@@ -959,35 +960,11 @@ function collectAllVideos(): VideoInfo[] {
   return videos;
 }
 
-/** Match a test slug to a video from a pre-collected list (same logic as findVideo). */
+/** Match a test slug to the video captured in that test's dedicated context directory. */
 function findVideoFromList(videos: VideoInfo[], testSlug: string): string | null {
-  if (videos.length === 0) return null;
-  if (videos.length === 1) return videos[0].path;
-
   const exactDirName = `${testSlug}-context`;
   const exactMatches = videos.filter((video) => video.dirName === exactDirName);
-  if (exactMatches.length > 0) {
-    return exactMatches.sort((a, b) => b.size - a.size)[0].path;
-  }
-
-  const slugWords = new Set(testSlug.split("-").filter((w) => w.length > 2));
-  let bestVideo: VideoInfo | null = null;
-  let bestScore = 0;
-
-  for (const video of videos) {
-    const dirWords = new Set(video.dirName.split("-").filter((w) => w.length > 2));
-    let matches = 0;
-    for (const word of slugWords) {
-      if (dirWords.has(word)) matches++;
-    }
-    const score = matches / slugWords.size;
-    if (score > bestScore || (score === bestScore && bestVideo && video.size > bestVideo.size)) {
-      bestScore = score;
-      bestVideo = video;
-    }
-  }
-
-  return bestVideo?.path ?? null;
+  return exactMatches.sort((a, b) => b.size - a.size)[0]?.path ?? null;
 }
 
 /** Run async tasks with bounded concurrency. */
@@ -1439,9 +1416,11 @@ export async function assembleRun(runId: string): Promise<void> {
 
     const videoStart = performance.now();
     try {
+      const videoDest = path.join(testDir, "video.webm");
+      rmSync(videoDest, { force: true });
       const videoSrc = findVideoFromList(allVideos, dir);
       if (videoSrc) {
-        cpSync(videoSrc, path.join(testDir, "video.webm"));
+        cpSync(videoSrc, videoDest);
         videoBytes = fileSizeOrNull(videoSrc) ?? undefined;
       }
     } finally {

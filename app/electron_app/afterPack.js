@@ -16,6 +16,7 @@ exports.default = async function(context) {
   
   const nodeWrapperSh = path.join(resourcesPath, 'node-wrapper.sh');
   const nodeBinary = path.join(resourcesPath, 'node');
+  const meadowCli = path.join(resourcesPath, 'cli', 'meadow');
   const workingGraphBin = path.join(resourcesPath, 'working_graph', 'working_graph_bin');
   const sourcePageSearchBin = path.join(resourcesPath, 'source_page_search_by_title', 'source_page_search_by_title_bin');
   const fastGitOpsBin = path.join(resourcesPath, 'fast_git_ops', 'fast_git_ops_bin');
@@ -31,6 +32,7 @@ exports.default = async function(context) {
   try {
     setExecutable(nodeWrapperSh, 'node-wrapper.sh');
     setExecutable(nodeBinary, 'node');
+    setExecutable(meadowCli, 'meadow CLI launcher');
     setExecutable(workingGraphBin, 'working_graph_bin');
     setExecutable(sourcePageSearchBin, 'source_page_search_by_title_bin');
     setExecutable(fastGitOpsBin, 'fast_git_ops_bin');

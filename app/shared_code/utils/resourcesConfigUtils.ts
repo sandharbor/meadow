@@ -89,7 +89,7 @@ export function saveResourcesConfig(config: ResourcesConfig, configDir?: string)
 }
 
 /**
- * Ensures resources config exists on disk and includes defaults.
+ * Ensures the durable resources config exists on disk.
  *
  * Returns the effective config (as loaded and possibly updated).
  */
@@ -99,18 +99,7 @@ export function ensureResourcesConfigInitialized(
   const layers = readResourceLayers(configDir);
   const baseConfig = { ...layers.base };
 
-  let changed = false;
-
-  if (baseConfig.backendPort === undefined) {
-    baseConfig.backendPort = 3001;
-    changed = true;
-  }
-  if (baseConfig.frontendPort === undefined) {
-    baseConfig.frontendPort = 3000;
-    changed = true;
-  }
-
-  const wasPatched = layers.baseResult.status === 'missing' || changed;
+  const wasPatched = layers.baseResult.status === 'missing';
   if (wasPatched) {
     saveResourcesConfig(baseConfig, configDir);
   }
@@ -120,7 +109,7 @@ export function ensureResourcesConfigInitialized(
 
 /**
  * Saves partial config to resources.local.yaml, merging with existing local overrides.
- * This is used to write per-copy settings (like ports) without touching resources.yaml.
+ * This is used to write per-copy infrastructure settings without touching resources.yaml.
  */
 export function saveResourcesLocalConfig(config: Partial<ResourcesConfig>, configDir?: string): void {
   const localPath = getResourcesLocalConfigPath(configDir);

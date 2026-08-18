@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [[ -L "$SCRIPT_PATH" ]]; do
+  LINK_DIR="$(dirname "$SCRIPT_PATH")"
+  LINK_TARGET="$(readlink "$SCRIPT_PATH")"
+  [[ "$LINK_TARGET" != /* ]] && LINK_TARGET="$LINK_DIR/$LINK_TARGET"
+  SCRIPT_PATH="$LINK_TARGET"
+done
+CLI_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+
+if [[ -x "$CLI_DIR/../node" && -f "$CLI_DIR/meadow.cjs" ]]; then
+  exec "$CLI_DIR/../node" "$CLI_DIR/meadow.cjs" "$@"
+fi
+
+if [[ -f "$CLI_DIR/../dist/meadow.cjs" ]]; then
+  exec node "$CLI_DIR/../dist/meadow.cjs" "$@"
+fi
+
+echo "meadow: the command-line interface has not been built" >&2
+exit 1

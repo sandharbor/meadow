@@ -16,30 +16,11 @@ limitations under the License.
 
 import { describe, expect, it } from 'vitest';
 import {
-  allocateDesktopPorts,
-  createLaunchCapability,
   DESKTOP_WEB_SECURITY_PREFERENCES,
   isTrustedDesktopRenderer,
 } from '../../../../shared_code/utils/desktopLaunchSecurity.js';
 
 describe('desktop launch security', () => {
-  it('generates at least 256 bits of per-launch capability material', () => {
-    const first = createLaunchCapability();
-    const second = createLaunchCapability();
-    expect(Buffer.from(first, 'base64url')).toHaveLength(32);
-    expect(Buffer.from(second, 'base64url')).toHaveLength(32);
-    expect(second).not.toBe(first);
-  });
-
-  it('uses explicit development ports but dynamically allocates distinct production ports', async () => {
-    await expect(allocateDesktopPorts(true, { backendPort: 3101, frontendPort: 3100 }, async () => 0))
-      .resolves.toEqual({ backendPort: 3101, frontendPort: 3100 });
-
-    const candidates = [44000, 44000, 44001];
-    await expect(allocateDesktopPorts(false, {}, async () => candidates.shift()!))
-      .resolves.toEqual({ backendPort: 44000, frontendPort: 44001 });
-  });
-
   it('locks down BrowserWindow preferences and accepts only the exact UI origin', () => {
     expect(DESKTOP_WEB_SECURITY_PREFERENCES).toEqual({
       nodeIntegration: false,

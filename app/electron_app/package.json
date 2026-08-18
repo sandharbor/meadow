@@ -13,9 +13,10 @@
     "electron-dev-args": "./electron-dev.sh",
     "build": "npm run build:all && npm run build:electron",
     "build:dev": "npm run build:main -- --watch",
-    "build:all": "npm run build:rust && npm run build:backend && npm run build:frontend && npm run build:main",
+    "build:all": "npm run build:rust && npm run build:backend && npm run build:cli && npm run build:frontend && npm run build:main",
     "build:rust": "cd ../native_utils/source_page_search_by_title/source_page_search_by_title_code && cargo build --release && cd ../../fast_git_ops/fast_git_ops_code && cargo build --release && cd ../../working_graph/working_graph_code && cargo build --release",
     "build:backend": "cd ../backend && npm run build",
+    "build:cli": "cd ../cli && npm run build",
     "build:frontend": "cd ../frontend && npm run build && npm run build:server",
     "build:main": "tsc",
     "build:electron": "electron-builder",
@@ -139,6 +140,16 @@
         "from": "./node-wrapper.sh",
         "to": "node-wrapper.sh",
         "filter": ["node-wrapper.sh"]
+      },
+      {
+        "from": "../cli/dist",
+        "to": "cli",
+        "filter": ["meadow.cjs"]
+      },
+      {
+        "from": "../cli/bin/meadow",
+        "to": "cli/meadow",
+        "filter": ["meadow"]
       },
       {
         "from": "../shared_data/home_fixtures/home_fixture_example",

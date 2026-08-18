@@ -23,7 +23,6 @@ import {
   FindInBundlesOptions,
   parseFindInBundlesDeepLink,
 } from '../../shared_code/types/findInBundlesOptions';
-import { ensureResourcesConfigInitialized, loadResourcesConfig } from '../../shared_code/utils/resourcesConfigUtils';
 import { preflightMeadowHome } from '../../shared_code/utils/meadowHomeFormat';
 import { getDefaultConfigDirectory } from '../../shared_code/utils/appConfigUtils';
 import { getPlatformPaths } from '../../shared_code/paths/getPlatformPaths';
@@ -32,16 +31,20 @@ import {
   readStartupFailureDiagnostic,
 } from '../../shared_code/utils/startupRecovery';
 import { resolveNativeRustBinaryPathFromNativeUtilsParent } from '../../shared_code/utils/nativeRustBinaryPath';
-import { findRandomPort } from '../../shared_code/utils/portUtils';
 import {
-  allocateDesktopPorts,
-  createLaunchCapability,
   DESKTOP_WEB_SECURITY_PREFERENCES,
   isTrustedDesktopRenderer,
 } from '../../shared_code/utils/desktopLaunchSecurity';
+import {
+  createLocalRuntimeSession,
+  MEADOW_RUNTIME_SESSION_ENV,
+  readLocalRuntimeSession,
+  removeLocalRuntimeSession,
+} from '../../shared_code/utils/localRuntimeSession';
 import { UpdateManager } from './updateManager';
 import { acknowledgeUpdateHealthFromEnvironment } from './verifiedUpdater';
 import { showRecoveryWindow } from './recoveryWindow';
+import { installCommandLineInterface } from './cliInstaller';
 
 // Set the app name immediately, before any other operations (important for macOS menu bar)
 app.name = 'Meadow';
@@ -87,7 +90,10 @@ class MeadowApp {
   private nodePath: string = '';
   private backendPort: number = 0;
   private frontendPort: number = 0;
-  private readonly apiCapability: string = createLaunchCapability();
+  private apiCapability: string = '';
+  private runtimeSessionPath: string | null = null;
+  private ownsRuntimeSession = false;
+  private usesExternalRuntime = false;
   private isDev: boolean = !app.isPackaged;
   private findInBundlesOptions: FindInBundlesOptions | null = null;
   private updateManager: UpdateManager;
@@ -386,32 +392,38 @@ class MeadowApp {
   }
 
   private async allocatePorts(): Promise<void> {
-    if (!this.isDev) {
-      const ports = await allocateDesktopPorts(false, {}, findRandomPort);
-      this.backendPort = ports.backendPort;
-      this.frontendPort = ports.frontendPort;
-      log('SUCCESS', 'Allocated per-launch loopback ports', {
+    const configDir = getDefaultConfigDirectory();
+    const externalSessionPath = process.env[MEADOW_RUNTIME_SESSION_ENV];
+    if (externalSessionPath) {
+      const session = readLocalRuntimeSession(externalSessionPath);
+      if (path.resolve(session.homeDirectory) !== path.resolve(configDir)) {
+        throw new Error('External runtime session belongs to a different Meadow Home');
+      }
+      this.backendPort = session.backendPort;
+      this.frontendPort = session.frontendPort;
+      this.apiCapability = session.capability;
+      this.runtimeSessionPath = externalSessionPath;
+      this.usesExternalRuntime = true;
+      log('SUCCESS', 'Attached to external local runtime', {
         backendPort: this.backendPort,
         frontendPort: this.frontendPort,
       });
       return;
     }
 
-    const configDir = getDefaultConfigDirectory();
-    ensureResourcesConfigInitialized(configDir);
-    const resources = loadResourcesConfig(configDir);
-
-    if (!resources.backendPort || !resources.frontendPort) {
-      throw new Error(
-        `backendPort and frontendPort must be set in resources config at ${configDir}. ` +
-        `Delete resources.local.yaml to fall back to resources.yaml defaults, or set ports explicitly.`
-      );
-    }
-
-    const ports = await allocateDesktopPorts(true, resources, findRandomPort);
-    this.backendPort = ports.backendPort;
-    this.frontendPort = ports.frontendPort;
-    log('SUCCESS', 'Ports read from development resources config', { backendPort: this.backendPort, frontendPort: this.frontendPort });
+    const { session, sessionPath } = await createLocalRuntimeSession({
+      homeDirectory: configDir,
+      ownerPid: process.pid,
+    });
+    this.backendPort = session.backendPort;
+    this.frontendPort = session.frontendPort;
+    this.apiCapability = session.capability;
+    this.runtimeSessionPath = sessionPath;
+    this.ownsRuntimeSession = true;
+    log('SUCCESS', 'Allocated per-launch local runtime', {
+      backendPort: this.backendPort,
+      frontendPort: this.frontendPort,
+    });
   }
 
   private setupIpcHandlers(): void {
@@ -427,6 +439,16 @@ class MeadowApp {
         baseUrl: `http://127.0.0.1:${this.backendPort}/api`,
         capability: this.apiCapability,
       };
+    });
+
+    ipcMain.handle('install-command-line-interface', (event) => {
+      if (!isTrustedDesktopRenderer(event.senderFrame.url, this.frontendPort)) {
+        throw new Error('Command-line installation is unavailable to this renderer');
+      }
+      const sourcePath = this.isDev
+        ? path.join(__dirname, '../../../../cli/bin/meadow')
+        : path.join((process as NodeJS.Process & { resourcesPath: string }).resourcesPath, 'cli', 'meadow');
+      return installCommandLineInterface(sourcePath);
     });
 
     ipcMain.handle('get-target-page-info', () => {
@@ -689,6 +711,11 @@ class MeadowApp {
 
   private startBackendServer(): void {
     log('INFO', 'Starting backend server');
+
+    if (this.usesExternalRuntime) {
+      log('INFO', 'Backend is managed by the external local runtime');
+      return;
+    }
     
     try {
       let backendScript: string;
@@ -714,6 +741,7 @@ class MeadowApp {
             MEADOW_API_CAPABILITY: this.apiCapability,
             MEADOW_UI_ORIGIN: `http://127.0.0.1:${this.frontendPort}`,
             MEADOW_STARTUP_DIAGNOSTIC_PATH: this.startupDiagnosticPath,
+            ...(this.runtimeSessionPath ? { [MEADOW_RUNTIME_SESSION_ENV]: this.runtimeSessionPath } : {}),
           },
           stdio: 'pipe'
         });
@@ -787,6 +815,11 @@ class MeadowApp {
   private startFrontendServer(): void {
     log('INFO', 'Starting frontend server');
 
+    if (this.usesExternalRuntime) {
+      log('INFO', 'Frontend is managed by the external local runtime');
+      return;
+    }
+
     try {
       if (this.isDev) {
         // Development: start Vite dev server for the frontend
@@ -800,6 +833,7 @@ class MeadowApp {
             ...process.env,
             VITE_FRONTEND_PORT: this.frontendPort.toString(),
             VITE_BACKEND_PORT: this.backendPort.toString(),
+            ...(this.runtimeSessionPath ? { [MEADOW_RUNTIME_SESSION_ENV]: this.runtimeSessionPath } : {}),
           },
           stdio: 'pipe'
         });
@@ -880,6 +914,11 @@ class MeadowApp {
       log('INFO', 'Terminating frontend process', { pid: this.frontendProcess.pid });
       this.frontendProcess.kill();
       this.frontendProcess = null;
+    }
+    if (this.ownsRuntimeSession && this.runtimeSessionPath) {
+      removeLocalRuntimeSession(this.runtimeSessionPath, process.pid);
+      this.runtimeSessionPath = null;
+      this.ownsRuntimeSession = false;
     }
     
     log('SUCCESS', 'Cleanup completed');

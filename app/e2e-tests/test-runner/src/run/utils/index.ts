@@ -20,6 +20,10 @@ export { MeadowHomePublishingProviderConfig } from "./MeadowHomePublishingProvid
 export { MeadowHomeBundleConfig } from "./MeadowHomeBundleConfig.js";
 export { MinioS3 } from "./MinioS3.js";
 export {
+  MeadowCli,
+  type MeadowCliArtifactOptions,
+} from "./MeadowCli.js";
+export {
   GeneratedBundleVersions,
   type GeneratedBundleVersionSummary,
 } from "./GeneratedBundleVersions.js";

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+stamp="node_modules/.prepare_install_stamp"
+if [[ ! -f "$stamp" || ! -d node_modules || package-lock.json -nt "$stamp" ]]; then
+  npm install --force
+  touch "$stamp"
+fi
+
+npm run build

@@ -64,6 +64,7 @@ import {
   describeStartupFailure,
   writeStartupFailureDiagnostic,
 } from '../../../../shared_code/utils/startupRecovery.js';
+import { readLocalRuntimeSessionFromEnvironment } from '../../../../shared_code/utils/localRuntimeSession.js';
 
 // Configure dotenv to load environment variables
 dotenv.config();
@@ -82,11 +83,16 @@ let port: number = 0;
 const platformPaths = getPlatformPaths();
 let selectedHomePath = platformPaths.defaultConfigDirectory;
 
-const launchCapability = process.env.MEADOW_API_CAPABILITY;
-const allowedUiOrigin = process.env.MEADOW_UI_ORIGIN;
+const runtimeSession = readLocalRuntimeSessionFromEnvironment();
+const launchCapability = process.env.MEADOW_API_CAPABILITY ?? runtimeSession?.capability;
+const allowedUiOrigin = process.env.MEADOW_UI_ORIGIN ?? runtimeSession?.frontendOrigin;
 if (!launchCapability || !allowedUiOrigin) {
   throw new Error('MEADOW_API_CAPABILITY and MEADOW_UI_ORIGIN are required');
 }
+// Keep the resolved launch contract available to legacy internal consumers
+// and subprocesses while the runtime-session descriptor becomes canonical.
+process.env.MEADOW_API_CAPABILITY = launchCapability;
+process.env.MEADOW_UI_ORIGIN = allowedUiOrigin;
 
 // Health is the sole unauthenticated route and intentionally exposes no port,
 // path, version, timing, or process information.
@@ -216,15 +222,17 @@ async function startServer(): Promise<void> {
     setLogDirectoryOverride(resourcesConfig.logDirectory);
   }
 
-  // Packaged launches use a per-launch port passed by Electron. Development
-  // may continue to use an explicit resources configuration.
-  const launchPort = Number.parseInt(process.env.MEADOW_BACKEND_PORT ?? '', 10);
+  // The launch contract provides one random loopback port, whether it was
+  // created by Electron, the dev stack, or the E2E harness.
+  const launchPort = Number.parseInt(
+    process.env.MEADOW_BACKEND_PORT ?? String(runtimeSession?.backendPort ?? ''),
+    10,
+  );
   if (Number.isInteger(launchPort) && launchPort > 0 && launchPort <= 65535) {
     port = launchPort;
-  } else if (resourcesConfig.backendPort) {
-    port = resourcesConfig.backendPort;
+    process.env.MEADOW_BACKEND_PORT = String(port);
   } else {
-    throw new Error('backendPort not found in resources config');
+    throw new Error('A local runtime backend port is required');
   }
 
   // Apply log level override if configured

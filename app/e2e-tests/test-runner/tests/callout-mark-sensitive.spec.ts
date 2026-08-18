@@ -21,6 +21,7 @@ import { callout } from "../src/scenario-docs/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
+test.use({ isolateSourceGraphs: true });
 
 test("callout for marking source node sensitive the first time", async ({
   page,
@@ -39,7 +40,7 @@ test("callout for marking source node sensitive the first time", async ({
   await page.waitForTimeout(250);
 
   // Right-click on a non-sensitive page to get the context menu
-  await editor.rightClickRow("t001 - deeply nested");
+  await editor.rightClickRow("t002 - dup pages and images");
 
   // Choose "Mark Sensitive" from the context menu
   await editor.clickMarkSensitive();
@@ -55,7 +56,7 @@ test("callout for marking source node sensitive the first time", async ({
   await snapshot("first page marked sensitive");
 
   // Right-click on another non-sensitive page
-  await editor.rightClickRow("t003 - link to section");
+  await editor.rightClickRow("t005 - in and out links");
 
   // Choose "Mark Sensitive" again
   await editor.clickMarkSensitive();
@@ -70,7 +71,8 @@ test("callout for marking source node sensitive the first time", async ({
   await filterPanel.clickSoloOnFilter("Sensitive");
   await page.waitForTimeout(250);
 
-  // Select all and verify 3 pages (the 2 we just marked + the already-sensitive t004 page)
+  // Select all and verify 3 pages (the 2 we just marked + the page that is
+  // already sensitive in the source fixture).
   await editor.clickSelectAll();
   await page.waitForTimeout(250);
   const selectedTitles = await editor.getSelectedPageTitles();
@@ -84,17 +86,17 @@ test("callout for marking source node sensitive the first time", async ({
 
   // Now mark those two pages as not sensitive via right-click
   // First page
-  await editor.rightClickRow("t001 - deeply nested");
+  await editor.rightClickRow("t002 - dup pages and images");
   await editor.clickMarkNotSensitive();
   await page.waitForTimeout(500);
 
   // Second page
-  await editor.rightClickRow("t003 - link to section");
+  await editor.rightClickRow("t005 - in and out links");
   await editor.clickMarkNotSensitive();
   await page.waitForTimeout(500);
   await snapshot("two pages unmarked as sensitive");
 
-  // Solo sensitive pages again, select all - should be 1 now (only the original t004 page)
+  // Solo sensitive pages again, select all - the source-sensitive page remains.
   await filterPanel.clickSoloOnFilter("Sensitive");
   await page.waitForTimeout(250);
   await editor.clickSelectAll();

@@ -18,11 +18,14 @@ import express from "express";
 import cors from "cors";
 import { existsSync, renameSync, rmSync, readdirSync, readFileSync, writeFileSync, mkdirSync, cpSync } from "fs";
 import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, URL } from "url";
 import { spawn } from "child_process";
 import { homedir } from "os";
 import { getDefaultConfigDirectory } from "../../../shared_code/utils/appConfigUtils.js";
-import { loadResourcesConfig } from "../../../shared_code/utils/resourcesConfigUtils.js";
+import {
+  MEADOW_RUNTIME_SESSION_ENV,
+  readLocalRuntimeSession,
+} from "../../../shared_code/utils/localRuntimeSession.js";
 import {
   findProjectRoot,
   getHomeFixturesPath,
@@ -57,7 +60,11 @@ const normalConfBackup = join(dirname(configDir), "MeadowHome_normal");
 const activeFixtureFile = join(dirname(configDir), "meadow_active_fixture");
 
 // Cache the frontend port at startup so it survives config directory moves (e.g. Missing Conf mode)
-const cachedFrontendPort = loadResourcesConfig().frontendPort;
+const runtimeSessionPath = process.env[MEADOW_RUNTIME_SESSION_ENV];
+const runtimeSession = runtimeSessionPath
+  ? readLocalRuntimeSession(runtimeSessionPath)
+  : null;
+const cachedFrontendPort = runtimeSession?.frontendPort;
 
 // ============ Fixture Discovery ============
 
@@ -506,13 +513,17 @@ app.post("/api/app/open-browser", (req, res) => {
     const { url } = (req.body || {}) as { url?: string };
     const frontendPort = cachedFrontendPort;
     if (!frontendPort) {
-      res.status(500).json({ error: "frontendPort not found in resources config" });
+      res.status(500).json({ error: "frontendPort not found in local runtime session" });
       return;
     }
-    const targetUrl = url || `http://localhost:${frontendPort}`;
+    const targetUrl = url || runtimeSession?.frontendUrl || `http://127.0.0.1:${frontendPort}`;
 
-    const urlMatch = targetUrl.match(/localhost:\d+/);
-    const localhostPattern = urlMatch![0];
+    const parsedTarget = new URL(targetUrl);
+    if (parsedTarget.hostname !== "localhost" && parsedTarget.hostname !== "127.0.0.1") {
+      res.status(400).json({ error: "Only local Meadow URLs may be opened" });
+      return;
+    }
+    const localhostPattern = parsedTarget.host;
 
     console.log(`[browser] Opening/focusing Chrome for ${targetUrl}`);
 

@@ -17,21 +17,26 @@ limitations under the License.
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { loadResourcesConfig } from '../shared_code/utils/resourcesConfigUtils.js';
+import {
+  MEADOW_RUNTIME_SESSION_ENV,
+  readLocalRuntimeSession,
+} from '../shared_code/utils/localRuntimeSession.js';
 
 export default defineConfig(({ command }) => {
   // Env vars win (tools/dev sets these when pointing at a worktree config dir).
   // Otherwise read from resources config in the meadow home.
   let frontendPort = parseInt(process.env.VITE_FRONTEND_PORT || '0', 10);
   let backendPort = parseInt(process.env.VITE_BACKEND_PORT || '0', 10);
+  const runtimeSessionPath = process.env[MEADOW_RUNTIME_SESSION_ENV];
+  const runtimeSession = runtimeSessionPath
+    ? readLocalRuntimeSession(runtimeSessionPath)
+    : null;
+
+  frontendPort = frontendPort || runtimeSession?.frontendPort || 0;
+  backendPort = backendPort || runtimeSession?.backendPort || 0;
 
   if (command === 'serve' && (!frontendPort || !backendPort)) {
-    const resources = loadResourcesConfig();
-    frontendPort = frontendPort || resources.frontendPort || 0;
-    backendPort = backendPort || resources.backendPort || 0;
-    if (!frontendPort || !backendPort) {
-      throw new Error('frontendPort and backendPort must be set in resources config or passed as VITE_FRONTEND_PORT/VITE_BACKEND_PORT env vars.');
-    }
+    throw new Error('A local runtime session or explicit Vite ports are required.');
   }
 
   return {
@@ -53,6 +58,9 @@ export default defineConfig(({ command }) => {
           // connect attempts (internalConnectMultiple), which often stalls ~1–2s on Windows.
           target: `http://127.0.0.1:${backendPort}`,
           changeOrigin: true,
+          ...(runtimeSession
+            ? { headers: { 'x-meadow-capability': runtimeSession.capability } }
+            : {}),
         },
       },
     },

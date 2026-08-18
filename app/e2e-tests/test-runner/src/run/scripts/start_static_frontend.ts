@@ -30,20 +30,28 @@ limitations under the License.
  *   dev server's proxy config — see app/frontend/vite.config.ts).
  *
  * Usage:
- *   npx tsx start_static_frontend.ts <port> <backendPort> <distDir>
+ *   MEADOW_RUNTIME_SESSION_PATH=... npx tsx start_static_frontend.ts <distDir>
  */
 
 import http from "http";
 import fs from "fs";
 import path from "path";
+import {
+  MEADOW_RUNTIME_SESSION_ENV,
+  readLocalRuntimeSession,
+} from "../../../../../shared_code/utils/localRuntimeSession.js";
 
-const port = parseInt(process.argv[2], 10);
-const backendPort = parseInt(process.argv[3], 10);
-const distDir = process.argv[4];
-const apiCapability = process.env.MEADOW_API_CAPABILITY;
+const distDir = process.argv[2];
+const runtimeSessionPath = process.env[MEADOW_RUNTIME_SESSION_ENV];
+const runtimeSession = runtimeSessionPath
+  ? readLocalRuntimeSession(runtimeSessionPath)
+  : null;
+const port = runtimeSession?.frontendPort;
+const backendPort = runtimeSession?.backendPort;
+const apiCapability = runtimeSession?.capability;
 
 if (!port || isNaN(port) || !backendPort || isNaN(backendPort) || !distDir || !apiCapability) {
-  process.stderr.write("Usage: start_static_frontend.ts <port> <backendPort> <distDir>\n");
+  process.stderr.write("Usage: MEADOW_RUNTIME_SESSION_PATH=... start_static_frontend.ts <distDir>\n");
   process.exit(1);
 }
 
@@ -155,6 +163,6 @@ server.listen(port, "127.0.0.1", () => {
   // reserved for real errors (proxy failures, crashes). stdout is ignored
   // in the fixture, so this is effectively silent in practice.
   process.stdout.write(
-    `Static frontend listening on http://localhost:${port} (proxying /api -> 127.0.0.1:${backendPort})\n`,
+    `Static frontend listening on http://127.0.0.1:${port} (proxying /api -> 127.0.0.1:${backendPort})\n`,
   );
 });

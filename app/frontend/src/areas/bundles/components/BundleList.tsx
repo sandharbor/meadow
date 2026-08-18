@@ -45,6 +45,8 @@ type SortState = {
   direction: SortDirection;
 };
 
+type CliInstallResult = Awaited<ReturnType<Window['electronAPI']['installCommandLineInterface']>>;
+
 const BUNDLE_LIST_SORT_STORAGE_KEY = 'bundleList.sortState.v1';
 
 const compareStrings = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' });
@@ -160,6 +162,9 @@ const BundleList: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'current' | 'archived'>('current');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isExampleBundleModalOpen, setIsExampleBundleModalOpen] = useState(false);
+  const [isCliInstallModalOpen, setIsCliInstallModalOpen] = useState(false);
+  const [isInstallingCli, setIsInstallingCli] = useState(false);
+  const [cliInstallResult, setCliInstallResult] = useState<CliInstallResult | null>(null);
   const [isBundleListMenuOpen, setIsBundleListMenuOpen] = useState(false);
   const bundleListMenuRef = useRef<HTMLDivElement>(null);
   const bundleActionMenuRef = useRef<HTMLDivElement>(null);
@@ -557,6 +562,36 @@ const BundleList: React.FC = () => {
     setBundleToDelete(null);
   };
 
+  const openCliInstallModal = () => {
+    setCliInstallResult(null);
+    setIsCliInstallModalOpen(true);
+    setIsBundleListMenuOpen(false);
+  };
+
+  const handleInstallCli = async () => {
+    setIsInstallingCli(true);
+    setCliInstallResult(null);
+    try {
+      if (typeof window.electronAPI?.installCommandLineInterface !== 'function') {
+        setCliInstallResult({
+          status: 'unavailable',
+          commandPath: null,
+          message: 'Install the command-line interface from the Meadow desktop application.',
+        });
+        return;
+      }
+      setCliInstallResult(await window.electronAPI.installCommandLineInterface());
+    } catch (installError) {
+      setCliInstallResult({
+        status: 'unavailable',
+        commandPath: null,
+        message: installError instanceof Error ? installError.message : 'Installation failed.',
+      });
+    } finally {
+      setIsInstallingCli(false);
+    }
+  };
+
   const handleBundleCreated = (slug: string) => {
     loadBundles();
     setIsCreateModalOpen(false);
@@ -686,6 +721,12 @@ const BundleList: React.FC = () => {
                       className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
                     >
                       Add Example Bundle
+                    </button>
+                    <button
+                      onClick={openCliInstallModal}
+                      className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+                    >
+                      Install the command line interface
                     </button>
                   </div>
                 </div>
@@ -1196,6 +1237,53 @@ const BundleList: React.FC = () => {
             >
               Let&apos;s try it!
             </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isCliInstallModalOpen}
+        onClose={() => setIsCliInstallModalOpen(false)}
+        title="Install the command line interface"
+        className="w-full max-w-lg h-auto"
+      >
+        <div className="space-y-4">
+          <p className="text-neutral-700">
+            Meadow will install a command named <code className="rounded bg-neutral-100 px-1.5 py-0.5 text-sm">meadow</code> in a writable command directory already on your PATH.
+          </p>
+          <p className="text-neutral-700">The command currently lists bundles as JSON:</p>
+          <div className="space-y-2 rounded-lg bg-neutral-950 p-3 font-mono text-sm text-neutral-100">
+            <div>meadow bundles list</div>
+            <div>meadow bundles list --archived</div>
+          </div>
+          {cliInstallResult && (
+            <div
+              className={`rounded-lg border px-3 py-2 text-sm ${
+                cliInstallResult.status === 'installed' || cliInstallResult.status === 'already-installed'
+                  ? 'border-green-200 bg-green-50 text-green-800'
+                  : 'border-amber-200 bg-amber-50 text-amber-900'
+              }`}
+              role="status"
+            >
+              {cliInstallResult.message}
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => setIsCliInstallModalOpen(false)}
+              className="rounded border border-neutral-300 px-4 py-2 text-neutral-700 hover:bg-neutral-50"
+            >
+              {cliInstallResult?.status === 'installed' || cliInstallResult?.status === 'already-installed' ? 'Done' : 'Not now'}
+            </button>
+            {cliInstallResult?.status !== 'installed' && cliInstallResult?.status !== 'already-installed' && (
+              <button
+                onClick={() => { void handleInstallCli(); }}
+                disabled={isInstallingCli}
+                className="rounded bg-main-600 px-4 py-2 text-white hover:bg-main-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isInstallingCli ? 'Installing...' : 'Install meadow'}
+              </button>
+            )}
           </div>
         </div>
       </Modal>

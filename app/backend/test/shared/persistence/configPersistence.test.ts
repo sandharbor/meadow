@@ -101,13 +101,13 @@ describe('startup-critical configuration persistence', () => {
     expect(initialized.config).toMatchObject({
       appUpdateDNSName: 'updates.example.test',
       backendPort: 43123,
-      frontendPort: 3000,
       logDirectory: '/private/local/logs',
     });
     const baseSource = fs.readFileSync(basePath, 'utf8');
     expect(baseSource).not.toContain('43123');
     expect(baseSource).not.toContain('/private/local/logs');
-    expect(baseSource).toContain('backendPort: 3001');
+    expect(baseSource).not.toContain('backendPort');
+    expect(baseSource).not.toContain('frontendPort');
   });
 
   it('blocks initialization and local patches when either resource layer is invalid', () => {
