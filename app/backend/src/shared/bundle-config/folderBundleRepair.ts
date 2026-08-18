@@ -289,10 +289,10 @@ export async function verifySelectedFolderRelink(
   selectedFolder: string,
   fingerprint: string,
   runWorkingGraph: RunWorkingGraph = runWorkingGraphRaw,
-): Promise<{ preflight: SelectedFolderRelinkPreflight; serializedNodes: string }> {
+): Promise<{ preflight: SelectedFolderRelinkPreflight; serializedNodes: string; nodes: BundleNodeConfig[] }> {
   const preflight = await preflightSelectedFolderRelink(bundleDirectory, bundleNodeId, selectedFolder, runWorkingGraph);
   if (preflight.fingerprint !== fingerprint) throw new Error('Selected-folder relink preflight is stale; review it again');
   const loaded = loadFolderBundle(bundleDirectory);
   const { nodes } = candidateNodes(loaded, bundleNodeId, selectedFolder);
-  return { preflight, serializedNodes: stringifyBundleNodeConfig(nodes) };
+  return { preflight, serializedNodes: stringifyBundleNodeConfig(nodes), nodes };
 }

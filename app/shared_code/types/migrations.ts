@@ -31,9 +31,23 @@ export interface MigrationsYaml {
   completed_migrations: string[];
 }
 
+export interface CompletedMigrationRecord {
+  id: string;
+  completedAt: string;
+  applicationVersion: string;
+}
+
+export interface MigrationLedger {
+  schemaVersion: 1;
+  scope: string;
+  lastApplicationVersion: string;
+  completedMigrations: CompletedMigrationRecord[];
+}
+
 export interface Migration {
+  /** Stable logical identifier; independent of .ts/.js packaging. */
+  id: string;
   name: string;
   description: string;
   run: () => Promise<void>;
 }
-

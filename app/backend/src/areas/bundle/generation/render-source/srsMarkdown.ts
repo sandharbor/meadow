@@ -22,6 +22,10 @@ import {
   listMarkdownFilesRecursive,
   normalizeTagToKey
 } from '../source-material/tagPages.js';
+import {
+  textDocumentCodec,
+  writeDurableDocument,
+} from '../../../../../../shared_code/utils/durableDocument.js';
 
 const GUID_COMMENT_RE = /^<!--MEADOW_SR_GUID:([^>]+)-->$/;
 const SR_COMMENT_RE = /^<!--SR:[\s\S]*-->$/;
@@ -940,7 +944,12 @@ export function prepareSrsRenderSourceDirectory(
     const originalMarkdown = fs.readFileSync(markdownFile, 'utf8');
     const withoutSrComments = removeSrsCommentsFromMarkdown(originalMarkdown);
     if (withoutSrComments !== originalMarkdown) {
-      fs.writeFileSync(markdownFile, withoutSrComments, 'utf8');
+      writeDurableDocument({
+        path: markdownFile,
+        value: withoutSrComments,
+        codec: textDocumentCodec,
+        mode: fs.statSync(markdownFile).mode & 0o777,
+      });
     }
   }
 
@@ -970,7 +979,12 @@ export function backfillSrsGuidsInMarkdownDirectory(
 
     const withGuids = ensureSrsCardGuidsInMarkdown(originalMarkdown, relativePath);
     if (withGuids.changed) {
-      fs.writeFileSync(markdownFile, withGuids.markdown, 'utf8');
+      writeDurableDocument({
+        path: markdownFile,
+        value: withGuids.markdown,
+        codec: textDocumentCodec,
+        mode: fs.statSync(markdownFile).mode & 0o777,
+      });
       updatedFiles.push(relativePath);
     }
   }

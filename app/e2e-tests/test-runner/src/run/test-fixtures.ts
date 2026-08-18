@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test as base, expect } from "@playwright/test";
 import { execSync, spawn, ChildProcess } from "child_process";
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import {
   mkdirSync,
   writeFileSync,
@@ -39,6 +39,7 @@ import YAML from "yaml";
 import { resolveFastGitOpsBinary } from "./utils/MeadowHomeGit.js";
 import { MinioS3 } from "./utils/MinioS3.js";
 import type { BundleMode } from "./bundleMode.js";
+import { isPrivateMeadowHomePath } from "../../../../shared_code/utils/privateMeadowHomePaths.js";
 // assembleTestArtifacts is called in assembleRun() post-run, not during fixture teardown
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -47,6 +48,8 @@ const FRONTEND_DIR = path.join(REPO_ROOT, "app", "frontend");
 const E2E_DIR = path.join(import.meta.dirname, "../..");
 
 const MINIO_BUCKET_PREFIX = "meadow-e2e-test";
+export const E2E_S3_ACCESS_KEY_ID = "FAKE-E2E-MINIO-ACCESS-KEY";
+export const E2E_S3_SECRET_ACCESS_KEY = "FAKE-E2E-MINIO-SECRET-KEY";
 const MAX_TICK_UNCOMMITTED_CONTENT_BYTES = 256 * 1024;
 const MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES = 1024 * 1024;
 const BIG_BUNDLE_EXCALIDRAW_PAGE_CONFIGS = [
@@ -128,6 +131,7 @@ export function waitForHttpReady(
   timeoutMs: number,
   proc: ChildProcess,
   requireSuccess = false,
+  headers: Record<string, string> = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
@@ -145,7 +149,7 @@ export function waitForHttpReady(
         return;
       }
       const req = http.request(
-        { host: "127.0.0.1", port, path, method: "GET", timeout: 2_000 },
+        { host: "127.0.0.1", port, path, method: "GET", timeout: 2_000, headers },
         (res) => {
           res.resume();
           const maximumAcceptedStatus = requireSuccess ? 299 : 499;
@@ -461,6 +465,8 @@ export interface TestServer {
   webServerPort: number;
   minioEndpoint: string;
   minioBucket: string;
+  /** Return the authenticated renderer connection without exposing it to logs. */
+  getBackendConnectionForRendererTest: () => { baseUrl: string; capability: string };
   /**
    * Swap the active publishing provider to S3PublishingProvider and deactivate
    * every other publishing provider mounted in the source tree. Writes MinIO
@@ -479,6 +485,16 @@ export interface TestServer {
    */
   waitForProviderAccount: (
     page: import("@playwright/test").Page,
+    providerId: string,
+    key: string,
+    timeoutMs?: number,
+  ) => Promise<Record<string, unknown>>;
+  /**
+   * Poll a private provider document from the test process only. This bypasses
+   * the renderer/API boundary and must never copy the returned value into an
+   * artifact.
+   */
+  waitForProviderSecret: (
     providerId: string,
     key: string,
     timeoutMs?: number,
@@ -675,6 +691,8 @@ export const test = base.extend<{
       };
       const backendPort = resources.backendPort;
       const frontendPort = resources.frontendPort;
+      const apiCapability = randomBytes(32).toString("base64url");
+      const uiOrigin = `http://localhost:${frontendPort}`;
 
       // 4. Read shared container endpoint from marker file
       const minioEndpoint = readFileSync(path.join(E2E_DIR, ".minio-endpoint"), "utf8").trim();
@@ -714,6 +732,10 @@ export const test = base.extend<{
             ...process.env,
             MEADOW_HOME_DIRECTORY_OVERRIDE: configDir,
             MEADOW_IS_DEV: "true",
+            MEADOW_APP_VERSION: "0.5.41-e2e",
+            MEADOW_BACKEND_PORT: String(backendPort),
+            MEADOW_API_CAPABILITY: apiCapability,
+            MEADOW_UI_ORIGIN: uiOrigin,
             ..._backendExtraEnv,
           },
           stdio: ["ignore", "ignore", backendStderrFd],
@@ -740,7 +762,10 @@ export const test = base.extend<{
         ],
         {
           cwd: E2E_DIR,
-          env: { ...process.env },
+          env: {
+            ...process.env,
+            MEADOW_API_CAPABILITY: apiCapability,
+          },
           stdio: ["ignore", "ignore", frontendStderrFd],
         }
       );
@@ -773,7 +798,9 @@ export const test = base.extend<{
       // accept is not sufficient — under heavy parallel load it has been
       // observed as bound-but-unresponsive, surfacing as 502s through the
       // static-frontend proxy (frontend page load).
-      await waitForHttpReady(backendPort, "/api/app-config", 60_000, backendProc, true);
+      await waitForHttpReady(backendPort, "/api/app-config", 60_000, backendProc, true, {
+        "x-meadow-capability": apiCapability,
+      });
       const sourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
 
       const server: TestServer = {
@@ -784,6 +811,10 @@ export const test = base.extend<{
         webServerPort,
         minioEndpoint,
         minioBucket,
+        getBackendConnectionForRendererTest: () => ({
+          baseUrl: `http://127.0.0.1:${backendPort}/api`,
+          capability: apiCapability,
+        }),
         activateS3Provider: async () => {
           // Deactivate every publishing provider mounted in the source tree
           // and activate S3 specifically, then wire S3 resources to MinIO.
@@ -842,19 +873,26 @@ export const test = base.extend<{
             : {};
           const mergedSecrets = {
             ...existingSecrets,
-            s3AccessKeyId: "minioadmin",
-            s3SecretAccessKey: "minioadmin",
+            s3AccessKeyId: E2E_S3_ACCESS_KEY_ID,
+            s3SecretAccessKey: E2E_S3_SECRET_ACCESS_KEY,
           };
-          writeFileSync(s3SecretsPath, YAML.stringify(mergedSecrets), "utf8");
+          writeFileSync(s3SecretsPath, YAML.stringify(mergedSecrets), {
+            encoding: "utf8",
+            mode: 0o600,
+          });
         },
         getAppConfig: async (pg) => {
-          const res = await pg.request.get(`http://localhost:${backendPort}/api/app-config`);
+          const res = await pg.request.get(`http://localhost:${backendPort}/api/app-config`, {
+            headers: { "x-meadow-capability": apiCapability },
+          });
           return await res.json() as Record<string, unknown>;
         },
         waitForAppConfig: async (pg, key, timeoutMs = 10_000) => {
           const start = Date.now();
           while (Date.now() - start < timeoutMs) {
-            const res = await pg.request.get(`http://localhost:${backendPort}/api/app-config`);
+            const res = await pg.request.get(`http://localhost:${backendPort}/api/app-config`, {
+              headers: { "x-meadow-capability": apiCapability },
+            });
             const cfg = await res.json() as Record<string, unknown>;
             if (cfg[key]) return cfg;
             await new Promise(r => setTimeout(r, 250));
@@ -865,7 +903,9 @@ export const test = base.extend<{
           const start = Date.now();
           const url = `http://localhost:${backendPort}/api/sharing/publishing-providers/${providerId}/account`;
           while (Date.now() - start < timeoutMs) {
-            const res = await pg.request.get(url);
+            const res = await pg.request.get(url, {
+              headers: { "x-meadow-capability": apiCapability },
+            });
             if (res.ok()) {
               const cfg = await res.json() as Record<string, unknown>;
               if (cfg[key]) return cfg;
@@ -873,6 +913,24 @@ export const test = base.extend<{
             await new Promise(r => setTimeout(r, 250));
           }
           throw new Error(`Timed out waiting for ${providerId} account key "${key}" after ${timeoutMs}ms`);
+        },
+        waitForProviderSecret: async (providerId, key, timeoutMs = 10_000) => {
+          const start = Date.now();
+          const secretPath = path.join(
+            configDir,
+            "app",
+            "publishing_providers",
+            providerId,
+            "pp_secrets.yaml",
+          );
+          while (Date.now() - start < timeoutMs) {
+            if (existsSync(secretPath)) {
+              const secrets = YAML.parse(readFileSync(secretPath, "utf8")) as Record<string, unknown>;
+              if (secrets[key]) return secrets;
+            }
+            await new Promise(r => setTimeout(r, 250));
+          }
+          throw new Error(`Timed out waiting for private ${providerId} key "${key}" after ${timeoutMs}ms`);
         },
       };
 
@@ -1089,6 +1147,14 @@ export const test = base.extend<{
             capturedBytes: number
           ): number => {
             if (relPath.endsWith("/")) return capturedBytes;
+            if (isPrivateMeadowHomePath(relPath)) {
+              const signature = "omitted:private-meadow-document";
+              currentSignatures.set(relPath, signature);
+              if (forceContent || signature !== lastSignatures.get(relPath)) {
+                output[relPath] = "[content omitted: private Meadow document]";
+              }
+              return capturedBytes;
+            }
             const resolved = path.resolve(configDir, relPath);
             if (!resolved.startsWith(configDir + path.sep)) return capturedBytes;
             try {

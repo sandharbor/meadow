@@ -21,6 +21,13 @@ import type {
   OpenKnowledgeFormatRename,
   PrepareOpenKnowledgeFormatResult
 } from './openKnowledgeFormat.js';
+import {
+  isPlainObject,
+  jsonDocumentCodec,
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+} from '../../../../../../shared_code/utils/durableDocument.js';
 
 export const OPEN_KNOWLEDGE_FORMAT_GENERATION_MANIFEST_FILENAME = 'okf-generation-manifest.json';
 
@@ -29,6 +36,44 @@ export interface OpenKnowledgeFormatGenerationManifest {
   indexOutputPath: string | null;
   logOutputPath: string | null;
 }
+
+const manifestCodec = jsonDocumentCodec<OpenKnowledgeFormatGenerationManifest>(value => {
+  if (!isPlainObject(value)) return { valid: false, diagnostic: '$ must be an object' };
+  const keys = Object.keys(value).sort().join(',');
+  if (keys !== 'indexOutputPath,logOutputPath,renames') {
+    return { valid: false, diagnostic: '$ must contain only indexOutputPath, logOutputPath, and renames' };
+  }
+  if (!Array.isArray(value.renames)) return { valid: false, diagnostic: '$.renames must be an array' };
+  const renames: OpenKnowledgeFormatRename[] = [];
+  for (const [index, rename] of value.renames.entries()) {
+    if (!isPlainObject(rename)) return { valid: false, diagnostic: `$.renames[${index}] must be an object` };
+    if (Object.keys(rename).sort().join(',') !== 'finalOutputPath,originalOutputPath,reason,sourcePath') {
+      return { valid: false, diagnostic: `$.renames[${index}] contains unsupported fields` };
+    }
+    for (const field of ['sourcePath', 'originalOutputPath', 'finalOutputPath'] as const) {
+      if (typeof rename[field] !== 'string') {
+        return { valid: false, diagnostic: `$.renames[${index}].${field} must be a string` };
+      }
+    }
+    if (rename.reason !== 'reserved-filename') {
+      return { valid: false, diagnostic: `$.renames[${index}].reason must be reserved-filename` };
+    }
+    renames.push(rename as unknown as OpenKnowledgeFormatRename);
+  }
+  for (const field of ['indexOutputPath', 'logOutputPath'] as const) {
+    if (value[field] !== null && typeof value[field] !== 'string') {
+      return { valid: false, diagnostic: `$.${field} must be a string or null` };
+    }
+  }
+  return {
+    valid: true,
+    value: {
+      renames,
+      indexOutputPath: value.indexOutputPath as string | null,
+      logOutputPath: value.logOutputPath as string | null,
+    },
+  };
+});
 
 export function getOpenKnowledgeFormatGenerationManifestPath(bundleDirectory: string): string {
   return path.join(
@@ -42,37 +87,31 @@ export function writeOpenKnowledgeFormatGenerationManifest(
   result: PrepareOpenKnowledgeFormatResult
 ): void {
   const manifestPath = getOpenKnowledgeFormatGenerationManifestPath(bundleDirectory);
-  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
-  fs.writeFileSync(
-    manifestPath,
-    JSON.stringify({
+  writeDurableDocument({
+    path: manifestPath,
+    value: {
       renames: result.renames,
       indexOutputPath: result.indexOutputPath,
       logOutputPath: result.logOutputPath,
-    }, null, 2),
-    'utf8'
-  );
+    },
+    codec: manifestCodec,
+  });
 }
 
 export function readOpenKnowledgeFormatGenerationManifest(
   bundleDirectory: string
 ): OpenKnowledgeFormatGenerationManifest {
   const manifestPath = getOpenKnowledgeFormatGenerationManifestPath(bundleDirectory);
-  if (!fs.existsSync(manifestPath)) {
-    return { renames: [], indexOutputPath: null, logOutputPath: null };
-  }
-
-  const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as Partial<OpenKnowledgeFormatGenerationManifest>;
-  return {
-    renames: Array.isArray(parsed.renames) ? parsed.renames : [],
-    indexOutputPath: typeof parsed.indexOutputPath === 'string' ? parsed.indexOutputPath : null,
-    logOutputPath: typeof parsed.logOutputPath === 'string' ? parsed.logOutputPath : null,
-  };
+  return requireValidDocument(
+    readDurableDocument(manifestPath, manifestCodec),
+    () => ({ renames: [], indexOutputPath: null, logOutputPath: null }),
+  );
 }
 
 export function removeOpenKnowledgeFormatGenerationManifest(bundleDirectory: string): void {
   const manifestPath = getOpenKnowledgeFormatGenerationManifestPath(bundleDirectory);
-  if (fs.existsSync(manifestPath)) {
-    fs.unlinkSync(manifestPath);
-  }
+  const current = readDurableDocument(manifestPath, manifestCodec);
+  if (current.status === 'missing') return;
+  requireValidDocument(current, () => ({ renames: [], indexOutputPath: null, logOutputPath: null }));
+  fs.unlinkSync(manifestPath);
 }

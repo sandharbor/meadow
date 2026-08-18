@@ -1,0 +1,7 @@
+formatVersion: 2
+minimumReaderAppVersion: 0.6.0
+minimumWriterAppVersion: 0.6.0
+createdByAppVersion: 0.6.0
+lastWrittenByAppVersion: 0.6.0
+capabilities:
+  - future-home-capability

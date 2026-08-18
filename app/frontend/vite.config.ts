@@ -45,6 +45,7 @@ export default defineConfig(({ command }) => {
       dedupe: ['react', 'react-dom'],
     },
     server: {
+      host: '127.0.0.1',
       port: frontendPort,
       proxy: {
         '/api': {
@@ -56,4 +57,4 @@ export default defineConfig(({ command }) => {
       },
     },
   };
-}); 
+});

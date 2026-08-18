@@ -22,12 +22,16 @@ limitations under the License.
  * Supports a resources.local.yaml override file for per-copy customization.
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
-import YAML from "yaml";
 import { ResourcesConfig } from "../types/resourcesConfig.js";
 import { AppConfigPaths } from "../paths/appConfigPaths.js";
 import { getDefaultConfigDirectory } from "./appConfigUtils.js";
+import { resourcesConfigCodec } from "./configDocumentCodecs.js";
+import {
+  DurableDocumentResult,
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+} from "./durableDocument.js";
 
 /**
  * Gets the path to the resources config file
@@ -50,31 +54,26 @@ export function getResourcesLocalConfigPath(configDir?: string): string {
  * Returns empty config if file doesn't exist.
  */
 export function loadResourcesConfig(configDir?: string): ResourcesConfig {
-  const path = getResourcesConfigPath(configDir);
-  let config: ResourcesConfig = {};
+  const { base, local } = readResourceLayers(configDir);
+  return { ...base, ...local };
+}
 
-  if (existsSync(path)) {
-    try {
-      const content = readFileSync(path, "utf8");
-      config = (YAML.parse(content) as ResourcesConfig) || {};
-    } catch (error) {
-      console.warn("Error loading resources config:", error);
-    }
-  }
+function valueOrEmpty(result: DurableDocumentResult<ResourcesConfig>): ResourcesConfig {
+  return requireValidDocument(result, () => ({}));
+}
 
-  // Merge local overrides on top
-  const localPath = getResourcesLocalConfigPath(configDir);
-  if (existsSync(localPath)) {
-    try {
-      const localContent = readFileSync(localPath, "utf8");
-      const localConfig = (YAML.parse(localContent) as ResourcesConfig) || {};
-      config = { ...config, ...localConfig };
-    } catch (error) {
-      console.warn("Error loading resources local config:", error);
-    }
-  }
-
-  return config;
+function readResourceLayers(configDir?: string): {
+  base: ResourcesConfig;
+  local: ResourcesConfig;
+  baseResult: DurableDocumentResult<ResourcesConfig>;
+} {
+  const baseResult = readDurableDocument(getResourcesConfigPath(configDir), resourcesConfigCodec);
+  const localResult = readDurableDocument(getResourcesLocalConfigPath(configDir), resourcesConfigCodec);
+  return {
+    base: valueOrEmpty(baseResult),
+    local: valueOrEmpty(localResult),
+    baseResult,
+  };
 }
 
 /**
@@ -82,15 +81,11 @@ export function loadResourcesConfig(configDir?: string): ResourcesConfig {
  * Creates the config directory if it doesn't exist.
  */
 export function saveResourcesConfig(config: ResourcesConfig, configDir?: string): void {
-  const path = getResourcesConfigPath(configDir);
-  const dir = dirname(path);
-
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-
-  const yamlContent = YAML.stringify(config);
-  writeFileSync(path, yamlContent, "utf8");
+  writeDurableDocument({
+    path: getResourcesConfigPath(configDir),
+    value: config,
+    codec: resourcesConfigCodec,
+  });
 }
 
 /**
@@ -101,27 +96,26 @@ export function saveResourcesConfig(config: ResourcesConfig, configDir?: string)
 export function ensureResourcesConfigInitialized(
   configDir?: string
 ): { config: ResourcesConfig; wasPatched: boolean } {
-  const config = loadResourcesConfig(configDir);
-  const path = getResourcesConfigPath(configDir);
-  const fileExisted = existsSync(path);
+  const layers = readResourceLayers(configDir);
+  const baseConfig = { ...layers.base };
 
   let changed = false;
 
-  if (config.backendPort === undefined) {
-    config.backendPort = 3001;
+  if (baseConfig.backendPort === undefined) {
+    baseConfig.backendPort = 3001;
     changed = true;
   }
-  if (config.frontendPort === undefined) {
-    config.frontendPort = 3000;
+  if (baseConfig.frontendPort === undefined) {
+    baseConfig.frontendPort = 3000;
     changed = true;
   }
 
-  const wasPatched = !fileExisted || changed;
+  const wasPatched = layers.baseResult.status === 'missing' || changed;
   if (wasPatched) {
-    saveResourcesConfig(config, configDir);
+    saveResourcesConfig(baseConfig, configDir);
   }
 
-  return { config, wasPatched };
+  return { config: { ...baseConfig, ...layers.local }, wasPatched };
 }
 
 /**
@@ -130,23 +124,7 @@ export function ensureResourcesConfigInitialized(
  */
 export function saveResourcesLocalConfig(config: Partial<ResourcesConfig>, configDir?: string): void {
   const localPath = getResourcesLocalConfigPath(configDir);
-  const dir = dirname(localPath);
-
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-
-  let existing: Partial<ResourcesConfig> = {};
-  if (existsSync(localPath)) {
-    try {
-      const content = readFileSync(localPath, "utf8");
-      existing = (YAML.parse(content) as Partial<ResourcesConfig>) || {};
-    } catch (error) {
-      console.warn("Error loading existing resources local config:", error);
-    }
-  }
-
+  const existing = valueOrEmpty(readDurableDocument(localPath, resourcesConfigCodec));
   const merged = { ...existing, ...config };
-  const yamlContent = YAML.stringify(merged);
-  writeFileSync(localPath, yamlContent, "utf8");
+  writeDurableDocument({ path: localPath, value: merged, codec: resourcesConfigCodec });
 }

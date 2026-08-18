@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import { randomBytes } from 'crypto';
-import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
 import type {
@@ -27,6 +26,12 @@ import {
   emptyGeneratedBundleVersionManifest,
   parseGeneratedBundleVersionManifest,
 } from './generatedBundleVersionDomain.js';
+import {
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+  type DurableDocumentCodec,
+} from '../../../../shared_code/utils/durableDocument.js';
 
 const VERSION_ID_CHARACTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -66,10 +71,24 @@ export function parseGeneratedBundleVersionManifestYaml(content: string): Genera
   return parseGeneratedBundleVersionManifest(parsed);
 }
 
+const generatedBundleVersionManifestCodec: DurableDocumentCodec<GeneratedBundleVersionManifest> = {
+  parse: source => YAML.parse(source) as unknown,
+  validate: value => {
+    try {
+      return { valid: true, value: parseGeneratedBundleVersionManifest(value) };
+    } catch (error) {
+      return { valid: false, diagnostic: error instanceof Error ? error.message : String(error) };
+    }
+  },
+  serialize: serializeGeneratedBundleVersionManifest,
+};
+
 export function loadGeneratedBundleVersionManifest(bundleDirectory: string): GeneratedBundleVersionManifest {
   const manifestPath = generatedBundleVersionManifestPath(bundleDirectory);
-  if (!fs.existsSync(manifestPath)) return emptyGeneratedBundleVersionManifest();
-  return parseGeneratedBundleVersionManifestYaml(fs.readFileSync(manifestPath, 'utf8'));
+  return requireValidDocument(
+    readDurableDocument(manifestPath, generatedBundleVersionManifestCodec),
+    emptyGeneratedBundleVersionManifest,
+  );
 }
 
 export function saveGeneratedBundleVersionManifest(
@@ -77,14 +96,11 @@ export function saveGeneratedBundleVersionManifest(
   manifest: GeneratedBundleVersionManifest,
 ): void {
   const manifestPath = generatedBundleVersionManifestPath(bundleDirectory);
-  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
-  const temporaryPath = `${manifestPath}.tmp-${process.pid}-${randomBytes(6).toString('hex')}`;
-  try {
-    fs.writeFileSync(temporaryPath, serializeGeneratedBundleVersionManifest(manifest), 'utf8');
-    fs.renameSync(temporaryPath, manifestPath);
-  } finally {
-    if (fs.existsSync(temporaryPath)) fs.rmSync(temporaryPath, { force: true });
-  }
+  writeDurableDocument({
+    path: manifestPath,
+    value: manifest,
+    codec: generatedBundleVersionManifestCodec,
+  });
 }
 
 export function generateGeneratedBundleVersionId(

@@ -42,7 +42,10 @@ export class MinioS3 {
       endpoint,
       region: "us-west-2",
       forcePathStyle: true,
-      credentials: { accessKeyId: "minioadmin", secretAccessKey: "minioadmin" },
+      credentials: {
+        accessKeyId: "FAKE-E2E-MINIO-ACCESS-KEY",
+        secretAccessKey: "FAKE-E2E-MINIO-SECRET-KEY",
+      },
     });
   }
 

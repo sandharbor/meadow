@@ -252,6 +252,7 @@ export function migrateSitesToBundles(configDirectory: string): BundleDomainMigr
 }
 
 export const migration: Migration = {
+  id: '26_08_13_13_00_00_b7n2r5k8w4q1_rename_sites_to_bundles',
   name: 'Rename sites to bundles',
   description: 'Move Meadow entity data to canonical bundle paths and config keys while preserving content and slugs.',
   run: (): Promise<void> => {

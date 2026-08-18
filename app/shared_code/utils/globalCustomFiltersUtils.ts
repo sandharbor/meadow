@@ -19,9 +19,10 @@ limitations under the License.
  * Shared between backend routes and startup initialization.
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { GlobalCustomFiltersConfig } from '../types/customFilters.js';
+import { globalCustomFiltersCodec } from './configDocumentCodecs.js';
+import { readDurableDocument, requireValidDocument, writeDurableDocument } from './durableDocument.js';
 
 const GLOBAL_CUSTOM_FILTERS_FILENAME = 'global_custom_filters.json';
 
@@ -31,23 +32,17 @@ export function getGlobalCustomFiltersPath(configDir: string): string {
 
 export function loadGlobalCustomFilters(configDir: string): GlobalCustomFiltersConfig {
   const path = getGlobalCustomFiltersPath(configDir);
-  if (!existsSync(path)) {
-    return { filters: [], version: '1.0.0' };
-  }
-  try {
-    const content = readFileSync(path, 'utf8');
-    return JSON.parse(content) as GlobalCustomFiltersConfig;
-  } catch {
-    return { filters: [], version: '1.0.0' };
-  }
+  return requireValidDocument(readDurableDocument(path, globalCustomFiltersCodec), () => ({
+    filters: [],
+    version: '1.0.0',
+  }));
 }
 
 export function saveGlobalCustomFilters(configDir: string, config: GlobalCustomFiltersConfig): void {
   const path = getGlobalCustomFiltersPath(configDir);
-  const dir = dirname(path);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-  config.version = '1.0.0';
-  writeFileSync(path, JSON.stringify(config, null, 2), 'utf8');
+  writeDurableDocument({
+    path,
+    value: { ...config, version: '1.0.0' },
+    codec: globalCustomFiltersCodec,
+  });
 }

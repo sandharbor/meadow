@@ -483,11 +483,11 @@ if (appAreaSpecFiles) {
 if (selectedSpecFiles) {
   playwrightArgs.push(...selectedSpecFiles);
 }
-const result = spawnSync("npx", playwrightArgs, {
+const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
+const result = spawnSync(npxCommand, playwrightArgs, {
   cwd: E2E_DIR,
   env: { ...process.env, E2E_RUN_ID: runId },
   stdio: "inherit",
-  shell: true,
 });
 
 const playwrightExitCode = result.status ?? 1;

@@ -490,6 +490,7 @@ export function migrateBundleNodeFoundation(
 }
 
 export const migration: Migration = {
+  id: '26_08_11_12_00_00_n4k7p2w9c5x8_site_node_foundation',
   name: 'Bundle node foundation',
   description: 'Replace legacy page configuration with stable file-node identities and bundle-level role references.',
   run: (): Promise<void> => {

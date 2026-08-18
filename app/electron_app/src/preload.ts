@@ -19,8 +19,7 @@ import { contextBridge, ipcRenderer, OpenDialogOptions, SaveDialogOptions } from
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  getBackendPort: () => ipcRenderer.invoke('get-backend-port'),
-  getFrontendPort: () => ipcRenderer.invoke('get-frontend-port'),
+  getBackendConnection: () => ipcRenderer.invoke('get-backend-connection'),
   getTargetPageInfo: () => ipcRenderer.invoke('get-target-page-info'),
 
   onOpenFindInBundles: (callback: (options: {
@@ -42,9 +41,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   openExternal: (url: string) =>
     ipcRenderer.invoke('open-external', url),
-
-  openPath: (path: string) =>
-    ipcRenderer.invoke('open-path', path),
 
   // Update-related methods
   checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
@@ -72,8 +68,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 declare global {
   interface Window {
     electronAPI: {
-      getBackendPort: () => Promise<number>;
-      getFrontendPort: () => Promise<number>;
+      getBackendConnection: () => Promise<{
+        baseUrl: string;
+        capability: string;
+      }>;
       getTargetPageInfo: () => Promise<{
         vaultPath: string;
         folderPath: string;
@@ -88,7 +86,6 @@ declare global {
       showOpenDialog: (options: OpenDialogOptions) => Promise<Electron.OpenDialogReturnValue>;
       showSaveDialog: (options: SaveDialogOptions) => Promise<Electron.SaveDialogReturnValue>;
       openExternal: (url: string) => Promise<void>;
-      openPath: (path: string) => Promise<string>;
       checkForUpdate: () => Promise<void>;
       downloadUpdate: () => Promise<void>;
       installUpdate: () => Promise<void>;

@@ -16,15 +16,13 @@ limitations under the License.
 
 import express from 'express';
 
-export function createHealthRoutes(getPort: () => number): express.Router {
+export function createHealthRoutes(protocol: string): express.Router {
   const router = express.Router();
 
   router.get('/health', (_req, res) => {
     res.status(200).json({
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      port: getPort(),
-      uptime: process.uptime()
+      ready: true,
+      protocol,
     });
   });
 

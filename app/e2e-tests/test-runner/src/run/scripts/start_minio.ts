@@ -55,8 +55,8 @@ function startMinIO(port: number, containerName: string): ChildProcess {
     "run", "--rm",
     "--name", containerName,
     "-p", `${port}:9000`,
-    "-e", "MINIO_ROOT_USER=minioadmin",
-    "-e", "MINIO_ROOT_PASSWORD=minioadmin",
+    "-e", "MINIO_ROOT_USER=FAKE-E2E-MINIO-ACCESS-KEY",
+    "-e", "MINIO_ROOT_PASSWORD=FAKE-E2E-MINIO-SECRET-KEY",
     "minio/minio",
     "server", "/data",
   ], {
@@ -91,7 +91,10 @@ async function createBuckets(port: number, workerCount: number): Promise<void> {
     endpoint: `http://localhost:${port}`,
     region: "us-west-2",
     forcePathStyle: true,
-    credentials: { accessKeyId: "minioadmin", secretAccessKey: "minioadmin" },
+    credentials: {
+      accessKeyId: "FAKE-E2E-MINIO-ACCESS-KEY",
+      secretAccessKey: "FAKE-E2E-MINIO-SECRET-KEY",
+    },
   });
 
   for (let i = 0; i < workerCount; i++) {

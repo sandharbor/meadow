@@ -23,8 +23,7 @@ declare global {
       windowMinimize: () => Promise<void>;
       windowMaximize: () => Promise<void>;
       windowClose: () => Promise<void>;
-      getBackendPort: () => Promise<number>;
-      getFrontendPort: () => Promise<number>;
+      getBackendConnection: () => Promise<{ baseUrl: string; capability: string }>;
       getTargetPageInfo: () => Promise<{
         vaultPath: string;
         folderPath: string;
@@ -56,7 +55,6 @@ declare global {
     filePath?: string; 
   }>;
       openExternal: (url: string) => Promise<void>;
-      openPath: (path: string) => Promise<string>;
       checkForUpdate: () => Promise<void>;
       downloadUpdate: () => Promise<void>;
       installUpdate: () => Promise<void>;

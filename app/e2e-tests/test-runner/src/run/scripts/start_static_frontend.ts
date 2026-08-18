@@ -40,8 +40,9 @@ import path from "path";
 const port = parseInt(process.argv[2], 10);
 const backendPort = parseInt(process.argv[3], 10);
 const distDir = process.argv[4];
+const apiCapability = process.env.MEADOW_API_CAPABILITY;
 
-if (!port || isNaN(port) || !backendPort || isNaN(backendPort) || !distDir) {
+if (!port || isNaN(port) || !backendPort || isNaN(backendPort) || !distDir || !apiCapability) {
   process.stderr.write("Usage: start_static_frontend.ts <port> <backendPort> <distDir>\n");
   process.exit(1);
 }
@@ -96,7 +97,10 @@ const server = http.createServer((req, res) => {
         port: backendPort,
         method: req.method,
         path: rawUrl,
-        headers: { ...req.headers, host: `127.0.0.1:${backendPort}` },
+        headers: {
+          ...req.headers,
+          "x-meadow-capability": apiCapability,
+        },
       },
       (proxyRes) => {
         res.writeHead(proxyRes.statusCode || 500, proxyRes.headers);
@@ -146,7 +150,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(port, () => {
+server.listen(port, "127.0.0.1", () => {
   // Startup message goes to stdout so that stderr in e2e-captured logs is
   // reserved for real errors (proxy failures, crashes). stdout is ignored
   // in the fixture, so this is effectively silent in practice.

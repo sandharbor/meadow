@@ -33,8 +33,6 @@ limitations under the License.
  * S3 prefix equal to `publishSlug`.
  */
 
-import fs from 'fs';
-import YAML from 'yaml';
 import {
   loadProviderConfig,
   loadProviderResources,
@@ -46,6 +44,14 @@ import type {
   PublishingProviderConfigBase,
   PublishingProviderSecretsBase,
 } from '../../../../shared_code/interfaces/PublishingProviderConfig.js';
+import {
+  extensibleObjectValidation,
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+  yamlDocumentCodec,
+  type DurableDocumentCodec,
+} from '../../../../shared_code/utils/durableDocument.js';
 
 export const S3_PROVIDER_ID = 'S3PublishingProvider';
 
@@ -71,6 +77,40 @@ export interface S3ProviderSecrets extends PublishingProviderSecretsBase {
   s3AccessKeyId?: string;
   s3SecretAccessKey?: string;
 }
+
+function validateKnownFields(
+  value: Record<string, unknown>,
+  fields: Record<string, 'string' | 'boolean'>,
+): string | null {
+  for (const [field, expected] of Object.entries(fields)) {
+    if (value[field] !== undefined && typeof value[field] !== expected) {
+      return `$.${field} must be a ${expected}`;
+    }
+  }
+  return null;
+}
+
+export const s3ProviderConfigCodec = yamlDocumentCodec<S3ProviderConfig>(value =>
+  extensibleObjectValidation<S3ProviderConfig>(value, record =>
+    validateKnownFields(record, { isActive: 'boolean', publishSlug: 'string' }),
+  ),
+);
+export const s3ProviderResourcesCodec = yamlDocumentCodec<S3ProviderResources>(value =>
+  extensibleObjectValidation<S3ProviderResources>(value, record =>
+    validateKnownFields(record, {
+      s3BucketName: 'string',
+      s3Endpoint: 'string',
+      s3ForcePathStyle: 'boolean',
+      s3Region: 'string',
+      webBaseUrl: 'string',
+    }),
+  ),
+);
+export const s3ProviderSecretsCodec = yamlDocumentCodec<S3ProviderSecrets>(value =>
+  extensibleObjectValidation<S3ProviderSecrets>(value, record =>
+    validateKnownFields(record, { s3AccessKeyId: 'string', s3SecretAccessKey: 'string' }),
+  ),
+);
 
 export function loadS3Config(): S3ProviderConfig {
   return loadProviderConfig<S3ProviderConfig>(S3_PROVIDER_ID, {
@@ -99,27 +139,23 @@ export function loadS3Secrets(): S3ProviderSecrets {
 
 export function saveS3Resources(patch: Partial<S3ProviderResources>): S3ProviderResources {
   const target = PublishingProviderPaths.getGlobalResourcesFile(getConfigDirectory(), S3_PROVIDER_ID);
-  return writeYamlPatch<S3ProviderResources>(target, patch);
+  return writeYamlPatch(target, patch, s3ProviderResourcesCodec);
 }
 
 export function saveS3Secrets(patch: Partial<S3ProviderSecrets>): void {
   const target = PublishingProviderPaths.getGlobalSecretsFile(getConfigDirectory(), S3_PROVIDER_ID);
-  writeYamlPatch<S3ProviderSecrets>(target, patch);
+  writeYamlPatch(target, patch, s3ProviderSecretsCodec, 0o600);
 }
 
-function writeYamlPatch<T extends object>(target: string, patch: Partial<T>): T {
-  const dir = target.substring(0, target.lastIndexOf('/'));
-  fs.mkdirSync(dir, { recursive: true });
-  let existing: T = {} as T;
-  if (fs.existsSync(target)) {
-    try {
-      existing = (YAML.parse(fs.readFileSync(target, 'utf8')) as T) ?? ({} as T);
-    } catch {
-      existing = {} as T;
-    }
-  }
+function writeYamlPatch<T extends object>(
+  target: string,
+  patch: Partial<T>,
+  codec: DurableDocumentCodec<T>,
+  mode = 0o644,
+): T {
+  const existing = requireValidDocument(readDurableDocument(target, codec), () => ({} as T));
   const merged = { ...existing, ...patch } as T;
-  fs.writeFileSync(target, YAML.stringify(merged), 'utf8');
+  writeDurableDocument({ path: target, value: merged, codec, mode });
   return merged;
 }
 

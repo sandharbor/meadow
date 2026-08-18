@@ -40,6 +40,10 @@ import {
 } from '../render-source/srsMarkdown.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+import {
+  textDocumentCodec,
+  writeDurableDocument,
+} from '../../../../../../shared_code/utils/durableDocument.js';
 
 export interface PreparedGenerationSourceMaterial {
   sourceContentDirectory: string;
@@ -246,7 +250,12 @@ export async function ensureTrackedPageContent(
           continue;
         }
 
-        fs.writeFileSync(sourcePath, withGuids.markdown, 'utf8');
+        writeDurableDocument({
+          path: sourcePath,
+          value: withGuids.markdown,
+          codec: textDocumentCodec,
+          mode: fs.statSync(sourcePath).mode & 0o777,
+        });
         updatedSourceFileCount += 1;
       } catch (err) {
         logger.error(

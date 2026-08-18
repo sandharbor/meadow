@@ -24,13 +24,14 @@ export async function installLocalExportZipMock(page: Page, backendPort: number,
     const target = window as unknown as { electronAPI?: Record<string, unknown> };
     target.electronAPI = {
       ...(target.electronAPI || {}),
-      getBackendPort: async () => port,
-      getFrontendPort: async () => 0,
+      getBackendConnection: async () => ({
+        baseUrl: `http://127.0.0.1:${port}/api`,
+        capability: 'e2e-mock-capability',
+      }),
       getTargetPageInfo: async () => null,
       showOpenDialog: async () => ({ canceled: true, filePaths: [] }),
       showSaveDialog: async () => ({ canceled: false, filePath: targetZipPath }),
       openExternal: async () => undefined,
-      openPath: async () => "",
       windowMinimize: async () => undefined,
       windowMaximize: async () => undefined,
       windowClose: async () => undefined,

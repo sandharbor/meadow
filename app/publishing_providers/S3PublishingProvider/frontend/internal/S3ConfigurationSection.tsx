@@ -24,7 +24,7 @@ interface S3Configuration {
   s3Endpoint: string;
   s3ForcePathStyle: boolean;
   webBaseUrl: string;
-  s3AccessKeyId: string;
+  hasAccessKeyId: boolean;
   hasSecretAccessKey: boolean;
 }
 
@@ -34,11 +34,12 @@ const EMPTY_CONFIG: S3Configuration = {
   s3Endpoint: '',
   s3ForcePathStyle: false,
   webBaseUrl: '',
-  s3AccessKeyId: '',
+  hasAccessKeyId: false,
   hasSecretAccessKey: false,
 };
 
 const PLACEHOLDER_SECRET = '••••••••••••••••';
+const PLACEHOLDER_ACCESS_KEY = '••••••••';
 
 async function readError(res: Response, fallback: string): Promise<string> {
   try {
@@ -58,18 +59,19 @@ interface S3ConfigurationSectionProps {
 export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ onBusyChange }) => {
   const [saved, setSaved] = useState<S3Configuration>(EMPTY_CONFIG);
   const [draft, setDraft] = useState<S3Configuration>(EMPTY_CONFIG);
+  const [draftAccessKeyId, setDraftAccessKeyId] = useState<string>('');
+  const [accessKeyTouched, setAccessKeyTouched] = useState(false);
   const [draftSecret, setDraftSecret] = useState<string>('');
   const [secretTouched, setSecretTouched] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isRevealing, setIsRevealing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const isEmpty = useCallback((cfg: S3Configuration) => {
-    return !cfg.s3BucketName && !cfg.s3AccessKeyId && !cfg.hasSecretAccessKey;
+    return !cfg.s3BucketName && !cfg.hasAccessKeyId && !cfg.hasSecretAccessKey;
   }, []);
 
   const loadConfig = useCallback(async () => {
@@ -82,6 +84,8 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
       const body = (await res.json()) as S3Configuration;
       setSaved(body);
       setDraft(body);
+      setDraftAccessKeyId('');
+      setAccessKeyTouched(false);
       setDraftSecret('');
       setSecretTouched(false);
       setShowSecret(false);
@@ -102,37 +106,12 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
     onBusyChange?.(isSaving);
   }, [isSaving, onBusyChange]);
 
-  const handleRevealSecret = async () => {
+  const handleRevealSecret = () => {
     if (showSecret) {
       setShowSecret(false);
-      if (!secretTouched) setDraftSecret('');
       return;
     }
-    if (secretTouched) {
-      setShowSecret(true);
-      return;
-    }
-    if (!saved.hasSecretAccessKey) {
-      setShowSecret(true);
-      return;
-    }
-    setIsRevealing(true);
-    setError(null);
-    try {
-      const res = await fetch(s3Api('configuration/secret'));
-      if (!res.ok) {
-        setError(await readError(res, `Failed to reveal secret (${res.status})`));
-        return;
-      }
-      const body = (await res.json()) as { s3SecretAccessKey: string };
-      setDraftSecret(body.s3SecretAccessKey);
-      setShowSecret(true);
-    } catch (err) {
-      logger.error('[S3PublishingProvider] failed to reveal secret:', err);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsRevealing(false);
-    }
+    if (secretTouched) setShowSecret(true);
   };
 
   const handleSave = async () => {
@@ -146,8 +125,10 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
         s3Endpoint: draft.s3Endpoint,
         s3ForcePathStyle: draft.s3ForcePathStyle,
         webBaseUrl: draft.webBaseUrl,
-        s3AccessKeyId: draft.s3AccessKeyId,
       };
+      if (accessKeyTouched) {
+        payload.s3AccessKeyId = draftAccessKeyId;
+      }
       if (secretTouched) {
         payload.s3SecretAccessKey = draftSecret;
       }
@@ -163,6 +144,8 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
       const body = (await res.json()) as S3Configuration;
       setSaved(body);
       setDraft(body);
+      setDraftAccessKeyId('');
+      setAccessKeyTouched(false);
       setDraftSecret('');
       setSecretTouched(false);
       setShowSecret(false);
@@ -181,6 +164,8 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
 
   const handleCancel = () => {
     setDraft(saved);
+    setDraftAccessKeyId('');
+    setAccessKeyTouched(false);
     setDraftSecret('');
     setSecretTouched(false);
     setShowSecret(false);
@@ -190,13 +175,13 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
   };
 
   const dirty =
+    accessKeyTouched ||
     secretTouched ||
     draft.s3BucketName !== saved.s3BucketName ||
     draft.s3Region !== saved.s3Region ||
     draft.s3Endpoint !== saved.s3Endpoint ||
     draft.s3ForcePathStyle !== saved.s3ForcePathStyle ||
-    draft.webBaseUrl !== saved.webBaseUrl ||
-    draft.s3AccessKeyId !== saved.s3AccessKeyId;
+    draft.webBaseUrl !== saved.webBaseUrl;
 
   const summary = isEmpty(saved)
     ? 'Not configured'
@@ -221,6 +206,11 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
       : saved.hasSecretAccessKey
         ? PLACEHOLDER_SECRET
         : '';
+  const accessKeyFieldValue = accessKeyTouched
+    ? draftAccessKeyId
+    : saved.hasAccessKeyId
+      ? PLACEHOLDER_ACCESS_KEY
+      : '';
 
   return (
     <div data-testid="s3-config-section" className="border border-neutral-200 rounded">
@@ -316,8 +306,17 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
               type="text"
               autoComplete="off"
               spellCheck={false}
-              value={draft.s3AccessKeyId}
-              onChange={(e) => setDraft({ ...draft, s3AccessKeyId: e.target.value })}
+              value={accessKeyFieldValue}
+              onChange={(e) => {
+                setDraftAccessKeyId(e.target.value);
+                setAccessKeyTouched(true);
+              }}
+              onFocus={() => {
+                if (!accessKeyTouched && saved.hasAccessKeyId) {
+                  setDraftAccessKeyId('');
+                  setAccessKeyTouched(true);
+                }
+              }}
               disabled={isSaving}
               className={inputClass}
               placeholder="AKIA…"
@@ -355,16 +354,16 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
                 type="button"
                 data-testid="s3-secret-toggle"
                 onClick={handleRevealSecret}
-                disabled={isSaving || isRevealing || (!secretTouched && !saved.hasSecretAccessKey)}
+                disabled={isSaving || !secretTouched}
                 className="px-2 py-1 text-xs border border-neutral-300 rounded text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
                 title={showSecret ? 'Hide secret' : 'Show secret'}
               >
-                {isRevealing ? '…' : showSecret ? 'Hide' : 'Show'}
+                {showSecret ? 'Hide' : 'Show'}
               </button>
             </div>
             {!secretTouched && saved.hasSecretAccessKey && (
               <p className="text-xs text-neutral-500 mt-1">
-                Stored in <code>pp_secrets.yaml</code>. Click Show to view, or type to replace.
+                A secret is saved. Re-enter it to replace or clear it; saved values cannot be shown.
               </p>
             )}
           </div>

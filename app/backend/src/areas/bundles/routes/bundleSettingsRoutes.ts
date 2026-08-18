@@ -16,19 +16,24 @@ limitations under the License.
 
 import express from 'express';
 import fs from 'fs';
-import YAML from 'yaml';
 import {
   generateBundleNodeId,
-  parseBundleNodeConfig,
-  stringifyBundleNodeConfig,
   validateCanonicalBundleConfiguration,
 } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import {
+  loadBundleNodeConfigDocument,
+  saveBundleNodeConfigDocument,
+} from '../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
 import type { BundleConfig } from '../../../../../shared_code/types/bundleConfig.js';
 import type { FileType } from '../../../../../shared_code/types/FileType.js';
 import { generateBundleGuid, isValidBundleGuid } from '../../../../../shared_code/utils/bundleGuidUtils.js';
 import { getBundleConfigPath } from '../../../shared/bundle-config/bundleConfigPaths.js';
 import { clearBundleGuidCache, logBundleInfo } from '../../../shared/utils/logging/bundleLogger.js';
 import { resolveDefaultDepth } from '../services/bundleTraversalDefaults.js';
+import {
+  loadBundleConfigFromPath,
+  saveBundleConfigToPath,
+} from '../../../shared/utils/bundleConfigUtils.js';
 
 const router = express.Router();
 
@@ -56,9 +61,9 @@ router.put('/bundles/:slug', (req, res, next) => {
   try {
     if (!fs.existsSync(configPath)) return res.status(404).json({ error: 'Bundle not found' });
 
-    const existingConfig = YAML.parse(fs.readFileSync(configPath, 'utf8')) as BundleConfig;
+    const existingConfig = loadBundleConfigFromPath(configPath);
     const nodeConfigPath = getBundleConfigPath(slug, 'bundle_node_config.yaml');
-    const existingNodes = parseBundleNodeConfig(fs.readFileSync(nodeConfigPath, 'utf8'), nodeConfigPath);
+    const existingNodes = loadBundleNodeConfigDocument(nodeConfigPath);
     const currentEntryNode = existingNodes.find(node => node.bundleNodeId === existingConfig.entryBundleNodeId);
     if (!currentEntryNode) {
       return res.status(409).json({ error: 'The configured bundle entry node could not be found' });
@@ -98,7 +103,7 @@ router.put('/bundles/:slug', (req, res, next) => {
         bundleConfig: updatedConfig,
         bundleConfigPath: configPath,
       });
-      fs.writeFileSync(configPath, YAML.stringify(updatedConfig), 'utf8');
+      saveBundleConfigToPath(configPath, updatedConfig);
       clearBundleGuidCache(slug);
       logBundleInfo(slug, 'Folder-derived bundle defaults updated');
       return res.json({ success: true, message: 'Bundle updated successfully' });
@@ -150,8 +155,8 @@ router.put('/bundles/:slug', (req, res, next) => {
       bundleConfig: updatedConfig,
       bundleConfigPath: configPath,
     });
-    fs.writeFileSync(nodeConfigPath, stringifyBundleNodeConfig(existingNodes), 'utf8');
-    fs.writeFileSync(configPath, YAML.stringify(updatedConfig), 'utf8');
+    saveBundleNodeConfigDocument(nodeConfigPath, existingNodes);
+    saveBundleConfigToPath(configPath, updatedConfig);
     clearBundleGuidCache(slug);
     logBundleInfo(slug, 'Bundle updated');
     res.json({ success: true, message: 'Bundle updated successfully' });

@@ -15,15 +15,18 @@ limitations under the License.
 */
 
 import express from 'express';
-import { readFileSync, writeFileSync } from 'fs';
-import fs from 'fs';
 import { getConfigDirectory, getBundleConfigPath, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { CustomFilterConfig, BundleCustomFiltersConfig } from '../../../../../../shared_code/types/customFilters.js';
 import { loadBundleConfig, saveBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
-import { logBundleWarn } from '../../../../shared/utils/logging/bundleLogger.js';
 import { loadGlobalCustomFilters, saveGlobalCustomFilters } from '../../../../../../shared_code/utils/globalCustomFiltersUtils.js';
 import { DEFAULT_DAILY_NOTES_FILTER_ID } from '../../../../../../shared_code/utils/defaultGlobalFiltersUtils.js';
 import { loadAppConfig, saveAppConfig } from '../../../../../../shared_code/utils/appConfigUtils.js';
+import { bundleCustomFiltersCodec } from '../../../../../../shared_code/utils/configDocumentCodecs.js';
+import {
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+} from '../../../../../../shared_code/utils/durableDocument.js';
 
 const router = express.Router();
 
@@ -32,22 +35,19 @@ const getBundleCustomFiltersPath = (bundleSlug: string) => getBundleConfigPath(b
 
 const loadBundleCustomFilters = (bundleSlug: string): BundleCustomFiltersConfig => {
   const path = getBundleCustomFiltersPath(bundleSlug);
-  if (!fs.existsSync(path)) {
-    return { filters: [], version: '1.0.0' };
-  }
-  try {
-    const content = readFileSync(path, 'utf8');
-    return JSON.parse(content) as BundleCustomFiltersConfig;
-  } catch (error) {
-    logBundleWarn(bundleSlug, `Error loading bundle custom filters: ${error instanceof Error ? error.message : String(error)}`);
-    return { filters: [], version: '1.0.0' };
-  }
+  return requireValidDocument(
+    readDurableDocument(path, bundleCustomFiltersCodec),
+    (): BundleCustomFiltersConfig => ({ filters: [], version: '1.0.0' }),
+  );
 };
 
 const saveBundleCustomFilters = (bundleSlug: string, config: BundleCustomFiltersConfig): void => {
   const path = getBundleCustomFiltersPath(bundleSlug);
-  config.version = '1.0.0';
-  writeFileSync(path, JSON.stringify(config, null, 2), 'utf8');
+  writeDurableDocument({
+    path,
+    value: { ...config, version: '1.0.0' },
+    codec: bundleCustomFiltersCodec,
+  });
 };
 
 // Middleware to validate bundleSlug

@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { existsSync, readFileSync } from "fs";
-import YAML from "yaml";
 import { BootstrapConfig } from "../types/bootstrapConfig.js";
+import { bootstrapConfigCodec } from "../utils/configDocumentCodecs.js";
+import { readDurableDocument, requireValidDocument } from "../utils/durableDocument.js";
 
 /**
  * Abstract base class for platform-specific path defaults.
@@ -38,17 +38,10 @@ export abstract class PlatformPaths {
    * Returns empty object if file doesn't exist.
    */
   loadBootstrapConfig(): BootstrapConfig {
-    const path = this.bootstrapConfigPath;
-    if (!existsSync(path)) {
-      return {};
-    }
-    try {
-      const content = readFileSync(path, "utf8");
-      return (YAML.parse(content) as BootstrapConfig) || {};
-    } catch (error) {
-      console.warn("Error loading bootstrap config:", error);
-      return {};
-    }
+    return requireValidDocument(
+      readDurableDocument(this.bootstrapConfigPath, bootstrapConfigCodec),
+      () => ({}),
+    );
   }
 
   /**

@@ -16,7 +16,6 @@ limitations under the License.
 
 import dotenv from 'dotenv';
 import express from 'express';
-import cors from 'cors';
 import fs from 'fs';
 import { AppConfigPaths } from '../../../../shared_code/paths/appConfigPaths.js';
 import bundleConfigRoutes from '../../areas/bundle/curation/routes/bundleConfigRoutes.js';
@@ -42,7 +41,12 @@ import {
   ensureAllProviderResourcesInitialized,
   registerAllProviderRoutes,
 } from '../publishing-provider-host/providerRegistry.js';
-import { ensureAppConfigInitialized, loadAppConfig as loadAppConfigFromDisk, appConfigFileExists } from '../../../../shared_code/utils/appConfigUtils.js';
+import {
+  ensureAppConfigInitialized,
+  loadAppConfig as loadAppConfigFromDisk,
+  appConfigFileExists,
+  getDefaultConfigDirectory,
+} from '../../../../shared_code/utils/appConfigUtils.js';
 import { ensureDefaultGlobalFiltersInitialized } from '../../../../shared_code/utils/defaultGlobalFiltersUtils.js';
 import { getGlobalCustomFiltersPath } from '../../../../shared_code/utils/globalCustomFiltersUtils.js';
 import { loadResourcesConfig, ensureResourcesConfigInitialized } from '../../../../shared_code/utils/resourcesConfigUtils.js';
@@ -50,6 +54,16 @@ import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../shared_code/utils/ap
 // import { startIntermittentAutoCommit } from '../utils/configDirectory/gitUtils/intermittentAutoCommit.js';
 import { logger, setLogDirectoryOverride } from '../utils/logging/backendLoggingUtils.js';
 import { startLogMaintenance, stopLogMaintenance } from '../utils/logging/logfiles/logMaintenanceService.js';
+import {
+  createControlPlaneSecurity,
+  MEADOW_CONTROL_PROTOCOL,
+} from './controlPlaneSecurity.js';
+import { preflightMeadowHome } from '../../../../shared_code/utils/meadowHomeFormat.js';
+import { getPlatformPaths } from '../../../../shared_code/paths/getPlatformPaths.js';
+import {
+  describeStartupFailure,
+  writeStartupFailureDiagnostic,
+} from '../../../../shared_code/utils/startupRecovery.js';
 
 // Configure dotenv to load environment variables
 dotenv.config();
@@ -65,8 +79,22 @@ const app = express();
 
 // Port is set from resources config in startServer() after config is loaded.
 let port: number = 0;
+const platformPaths = getPlatformPaths();
+let selectedHomePath = platformPaths.defaultConfigDirectory;
 
-app.use(cors());
+const launchCapability = process.env.MEADOW_API_CAPABILITY;
+const allowedUiOrigin = process.env.MEADOW_UI_ORIGIN;
+if (!launchCapability || !allowedUiOrigin) {
+  throw new Error('MEADOW_API_CAPABILITY and MEADOW_UI_ORIGIN are required');
+}
+
+// Health is the sole unauthenticated route and intentionally exposes no port,
+// path, version, timing, or process information.
+app.use('/api', createHealthRoutes(MEADOW_CONTROL_PROTOCOL));
+app.use('/api', createControlPlaneSecurity({
+  capability: launchCapability,
+  allowedOrigin: allowedUiOrigin,
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -90,7 +118,6 @@ app.use('/api', bundleListingRoutes);
 app.use('/api', bundleGenerationRoutes);
 app.use('/api', reviewRoutes);
 app.use('/api', stylePresetsRoutes);
-app.use('/api', createHealthRoutes(() => port));
 
 // Mounts each registered provider's routes under
 // /api/sharing/publishing-providers/<providerId>/...
@@ -103,13 +130,19 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
     logger.error("Headers already sent, cannot send error response for:", req.path);
     return; 
   }
-  res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
 async function startServer(): Promise<void> {
-  // Log app lifecycle startup message
-  const appVersion = process.env.MEADOW_APP_VERSION || 'unknown';
+  const appVersion = process.env.MEADOW_APP_VERSION ?? '';
   const isDev = process.env.MEADOW_IS_DEV === 'true';
+  // Path resolution only reads the strict bootstrap file. The format preflight
+  // is deliberately the first operation allowed to mutate the selected Home.
+  const configDir = getDefaultConfigDirectory();
+  selectedHomePath = configDir;
+  preflightMeadowHome(configDir, appVersion);
+
+  // Log app lifecycle startup only after the Home writer boundary passes.
   const buildType = isDev ? 'development' : 'production';
   logger.info(`[lifecycle] Meadow v${appVersion} starting (${buildType} build)`);
 
@@ -121,8 +154,14 @@ async function startServer(): Promise<void> {
   // then flagged as modified forever after. Calling initRepo() here is
   // idempotent (no-op when a repo already exists) and writes the .gitignore
   // on first init so those files are excluded from the very first commit.
-  const configDir = getConfigDirectory();
-  await new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, configDir).initRepo();
+  const startupGit = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, configDir);
+  const gitInitialized = await startupGit.initRepo();
+  if (gitInitialized) {
+    // A format-current Home can have no migrations or default patches to
+    // trigger a later commit. Capture its initial state immediately so the
+    // repository is clean on the very first public-format launch as well.
+    await startupGit.commitDirs(['.'], 'initial Meadow Home snapshot');
+  }
 
   await runMigrationsOnStartup();
   // Ensure app/app_config.yaml exists and contains defaults for new settings.
@@ -177,11 +216,16 @@ async function startServer(): Promise<void> {
     setLogDirectoryOverride(resourcesConfig.logDirectory);
   }
 
-  // Read port from resources config (written by Electron or defaulted by ensureResourcesConfigInitialized)
-  if (!resourcesConfig.backendPort) {
+  // Packaged launches use a per-launch port passed by Electron. Development
+  // may continue to use an explicit resources configuration.
+  const launchPort = Number.parseInt(process.env.MEADOW_BACKEND_PORT ?? '', 10);
+  if (Number.isInteger(launchPort) && launchPort > 0 && launchPort <= 65535) {
+    port = launchPort;
+  } else if (resourcesConfig.backendPort) {
+    port = resourcesConfig.backendPort;
+  } else {
     throw new Error('backendPort not found in resources config');
   }
-  port = resourcesConfig.backendPort;
 
   // Apply log level override if configured
   const appConfig = loadAppConfigFromDisk(getConfigDirectory());
@@ -194,13 +238,26 @@ async function startServer(): Promise<void> {
   startLogMaintenance(getConfigDirectory());
   // Start the intermittent auto-commit background task
   // startIntermittentAutoCommit();
-  app.listen(port, () => {
-    logger.info(`Server running at http://localhost:${port}`);
+  app.listen(port, '127.0.0.1', () => {
+    logger.info(`Server running on IPv4 loopback port ${port}`);
   });
 }
 
 startServer().catch((error) => {
-  logger.error('Failed to start server:', error);
+  const diagnosticPath = process.env.MEADOW_STARTUP_DIAGNOSTIC_PATH;
+  const diagnostic = describeStartupFailure(error, {
+    selectedHomePath,
+    bootstrapPath: platformPaths.bootstrapConfigPath,
+    appVersion: process.env.MEADOW_APP_VERSION ?? 'unknown',
+  });
+  logger.error(`[startup] ${diagnostic.category}: ${diagnostic.title}`);
+  if (diagnosticPath) {
+    try {
+      writeStartupFailureDiagnostic(diagnosticPath, diagnostic);
+    } catch {
+      logger.error('Failed to write startup recovery diagnostic');
+    }
+  }
   process.exit(1);
 });
 

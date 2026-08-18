@@ -14,8 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import fs from 'fs';
-import path from 'path';
 import type { BundleNodeConfig } from '../../../../shared_code/types/bundleNodeConfig.js';
 import type {
   FolderScopeChangeExplanation,
@@ -23,6 +21,57 @@ import type {
   FolderScopeGraphSnapshot,
   FolderScopeSnapshotNode,
 } from '../../../../shared_code/types/folderScopeChanges.js';
+import {
+  isPlainObject,
+  jsonDocumentCodec,
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+} from '../../../../shared_code/utils/durableDocument.js';
+
+function validateFolderScopeSnapshot(value: unknown) {
+  if (!isPlainObject(value)) return { valid: false as const, diagnostic: '$ must be an object' };
+  if (!Array.isArray(value.nodes) || !Array.isArray(value.edges)) {
+    return { valid: false as const, diagnostic: '$.nodes and $.edges must be arrays' };
+  }
+  const nodes = value.nodes as unknown[];
+  const edges = value.edges as unknown[];
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index];
+    if (!isPlainObject(node)
+      || typeof node.bundleNodeKey !== 'string'
+      || typeof node.bundleNodeName !== 'string'
+      || !['file', 'folder', 'collection'].includes(String(node.bundleNodeKind))) {
+      return { valid: false as const, diagnostic: `$.nodes[${index}] is invalid` };
+    }
+  }
+  for (let index = 0; index < edges.length; index += 1) {
+    const edge = edges[index];
+    if (!isPlainObject(edge)
+      || typeof edge.source !== 'string'
+      || typeof edge.target !== 'string'
+      || !['semanticLink', 'directoryContainment', 'collectionMembership'].includes(String(edge.bundleEdgeKind))) {
+      return { valid: false as const, diagnostic: `$.edges[${index}] is invalid` };
+    }
+  }
+  if (value.folderScope !== undefined) {
+    const scope = value.folderScope;
+    if (!isPlainObject(scope)
+      || !isPlainObject(scope.skippedCounts)
+      || !Array.isArray(scope.skippedPaths)
+      || !Object.values(scope.skippedCounts).every(count => Number.isInteger(count) && Number(count) >= 0)
+      || !scope.skippedPaths.every(item => isPlainObject(item)
+        && typeof item.path === 'string'
+        && typeof item.reason === 'string')
+      || !['skippedPathCount', 'supportedSeedFileCount', 'predictedRawNodeCount', 'predictedTypedEdgeCount']
+        .every(field => Number.isInteger(scope[field]) && Number(scope[field]) >= 0)) {
+      return { valid: false as const, diagnostic: '$.folderScope is invalid' };
+    }
+  }
+  return { valid: true as const, value: value as unknown as FolderScopeGraphSnapshot };
+}
+
+const folderScopeSnapshotCodec = jsonDocumentCodec<FolderScopeGraphSnapshot>(validateFolderScopeSnapshot);
 
 function locator(node: FolderScopeSnapshotNode): string {
   if (node.bundleNodeKind === 'folder') return node.sourceGraphSubdirectory ?? '';
@@ -162,17 +211,13 @@ export function explainFolderScopeChanges(args: {
 }
 
 export function loadFolderScopeSnapshot(snapshotPath: string): FolderScopeGraphSnapshot | undefined {
-  if (!fs.existsSync(snapshotPath)) return undefined;
-  try {
-    return JSON.parse(fs.readFileSync(snapshotPath, 'utf8')) as FolderScopeGraphSnapshot;
-  } catch {
-    return undefined;
-  }
+  const result = readDurableDocument(snapshotPath, folderScopeSnapshotCodec);
+  if (result.status === 'missing') return undefined;
+  return requireValidDocument(result, () => {
+    throw new Error('Folder-scope snapshot disappeared');
+  });
 }
 
 export function writeFolderScopeSnapshot(snapshotPath: string, snapshot: FolderScopeGraphSnapshot): void {
-  fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-  const temporaryPath = `${snapshotPath}.tmp`;
-  fs.writeFileSync(temporaryPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
-  fs.renameSync(temporaryPath, snapshotPath);
+  writeDurableDocument({ path: snapshotPath, value: snapshot, codec: folderScopeSnapshotCodec });
 }

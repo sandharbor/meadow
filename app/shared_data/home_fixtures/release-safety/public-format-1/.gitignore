@@ -1,0 +1,9 @@
+# >>> Meadow managed private paths >>>
+.DS_Store
+logs/
+app/secret_app_config.yaml
+app/resources.local.yaml
+app/publishing_providers/*/pp_secrets.yaml
+app/publishing_providers/*/pp_resources.local.yaml
+bundles/*/config/publishing_providers/*/pp_secrets.yaml
+# <<< Meadow managed private paths <<<

@@ -18,14 +18,30 @@ import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import {
   FindInBundlesOptions,
   parseFindInBundlesDeepLink,
 } from '../../shared_code/types/findInBundlesOptions';
 import { ensureResourcesConfigInitialized, loadResourcesConfig } from '../../shared_code/utils/resourcesConfigUtils';
+import { preflightMeadowHome } from '../../shared_code/utils/meadowHomeFormat';
 import { getDefaultConfigDirectory } from '../../shared_code/utils/appConfigUtils';
+import { getPlatformPaths } from '../../shared_code/paths/getPlatformPaths';
+import {
+  describeStartupFailure,
+  readStartupFailureDiagnostic,
+} from '../../shared_code/utils/startupRecovery';
 import { resolveNativeRustBinaryPathFromNativeUtilsParent } from '../../shared_code/utils/nativeRustBinaryPath';
+import { findRandomPort } from '../../shared_code/utils/portUtils';
+import {
+  allocateDesktopPorts,
+  createLaunchCapability,
+  DESKTOP_WEB_SECURITY_PREFERENCES,
+  isTrustedDesktopRenderer,
+} from '../../shared_code/utils/desktopLaunchSecurity';
 import { UpdateManager } from './updateManager';
+import { acknowledgeUpdateHealthFromEnvironment } from './verifiedUpdater';
+import { showRecoveryWindow } from './recoveryWindow';
 
 // Set the app name immediately, before any other operations (important for macOS menu bar)
 app.name = 'Meadow';
@@ -62,6 +78,7 @@ function log(level: 'INFO' | 'ERROR' | 'WARN' | 'SUCCESS', message: string, data
 
 class MeadowApp {
   private mainWindow: BrowserWindow | null = null;
+  private recoveryWindow: BrowserWindow | null = null;
   private backendProcess: ChildProcess | null = null;
   private frontendProcess: ChildProcess | null = null;
   private sourcePageSearchByTitlePath: string = '';
@@ -70,11 +87,19 @@ class MeadowApp {
   private nodePath: string = '';
   private backendPort: number = 0;
   private frontendPort: number = 0;
+  private readonly apiCapability: string = createLaunchCapability();
   private isDev: boolean = !app.isPackaged;
   private findInBundlesOptions: FindInBundlesOptions | null = null;
   private updateManager: UpdateManager;
+  private readonly startupDiagnosticDirectory: string;
+  private readonly startupDiagnosticPath: string;
+  private selectedHomePath: string;
 
   constructor() {
+    this.startupDiagnosticDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-startup-'));
+    fs.chmodSync(this.startupDiagnosticDirectory, 0o700);
+    this.startupDiagnosticPath = path.join(this.startupDiagnosticDirectory, 'failure.json');
+    this.selectedHomePath = getPlatformPaths().defaultConfigDirectory;
     log('INFO', 'Initializing MeadowApp', { 
       isDev: this.isDev, 
       isTestMode, 
@@ -258,30 +283,36 @@ class MeadowApp {
         copyright: 'Meadow',
       });
 
-      this.setupMenu();
-      await this.allocatePorts();
-      this.createWindow();
-      this.startBackendServer();
-      this.startFrontendServer();
-      
-      // Wait for servers to be ready before loading frontend
       try {
+        this.selectedHomePath = getDefaultConfigDirectory();
+        preflightMeadowHome(this.selectedHomePath, app.getVersion());
+        this.setupMenu();
+        await this.allocatePorts();
+        this.createWindow();
+        this.startBackendServer();
+        this.startFrontendServer();
         await this.loadFrontend();
+
+        // The updater removes its rollback copy only after the new application
+        // has passed Home compatibility preflight and completed startup.
+        acknowledgeUpdateHealthFromEnvironment();
+
+        // Start auto-update check timer (skip in dev mode)
+        this.updateManager.startAutoCheckTimer();
       } catch (error) {
-        log('ERROR', 'Failed to load frontend', { error: (error as Error).message });
-        // Show error dialog to user
-        dialog.showErrorBox(
-          'Startup Error',
-          `Failed to load the frontend: ${(error as Error).message}`
-        );
+        log('ERROR', 'Safe startup stopped', {
+          error: error instanceof Error ? error.name : 'Unknown error',
+        });
+        this.showStartupRecovery(error);
         return;
       }
 
-      // Start auto-update check timer (skip in dev mode)
-      this.updateManager.startAutoCheckTimer();
-
       app.on('activate', () => {
         log('INFO', 'App activated');
+        if (this.recoveryWindow && !this.recoveryWindow.isDestroyed()) {
+          this.recoveryWindow.show();
+          return;
+        }
         if (BrowserWindow.getAllWindows().length === 0) {
           this.createWindow();
         }
@@ -326,7 +357,49 @@ class MeadowApp {
     });
   }
 
+  private showStartupRecovery(error: unknown): void {
+    this.cleanup();
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.destroy();
+      this.mainWindow = null;
+    }
+    let diagnostic = null;
+    try {
+      diagnostic = readStartupFailureDiagnostic(this.startupDiagnosticPath);
+    } catch {
+      // A corrupt external diagnostic cannot be allowed to hide the original
+      // startup failure; rebuild the minimal allowlisted diagnostic below.
+    }
+    if (!diagnostic) {
+      diagnostic = describeStartupFailure(error, {
+        selectedHomePath: this.selectedHomePath,
+        bootstrapPath: getPlatformPaths().bootstrapConfigPath,
+        appVersion: app.getVersion(),
+      });
+    }
+    this.recoveryWindow = showRecoveryWindow({
+      diagnostic,
+      isDev: this.isDev,
+      nodePath: this.nodePath,
+      resourcesPath: (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ?? '',
+    });
+    this.recoveryWindow.on('closed', () => {
+      this.recoveryWindow = null;
+    });
+  }
+
   private async allocatePorts(): Promise<void> {
+    if (!this.isDev) {
+      const ports = await allocateDesktopPorts(false, {}, findRandomPort);
+      this.backendPort = ports.backendPort;
+      this.frontendPort = ports.frontendPort;
+      log('SUCCESS', 'Allocated per-launch loopback ports', {
+        backendPort: this.backendPort,
+        frontendPort: this.frontendPort,
+      });
+      return;
+    }
+
     const configDir = getDefaultConfigDirectory();
     ensureResourcesConfigInitialized(configDir);
     const resources = loadResourcesConfig(configDir);
@@ -338,9 +411,10 @@ class MeadowApp {
       );
     }
 
-    this.backendPort = resources.backendPort;
-    this.frontendPort = resources.frontendPort;
-    log('SUCCESS', 'Ports read from resources config', { backendPort: this.backendPort, frontendPort: this.frontendPort });
+    const ports = await allocateDesktopPorts(true, resources, findRandomPort);
+    this.backendPort = ports.backendPort;
+    this.frontendPort = ports.frontendPort;
+    log('SUCCESS', 'Ports read from development resources config', { backendPort: this.backendPort, frontendPort: this.frontendPort });
   }
 
   private setupIpcHandlers(): void {
@@ -348,12 +422,14 @@ class MeadowApp {
       return this.fastGitOpsPath;
     });
 
-    ipcMain.handle('get-backend-port', () => {
-      return this.backendPort;
-    });
-
-    ipcMain.handle('get-frontend-port', () => {
-      return this.frontendPort;
+    ipcMain.handle('get-backend-connection', (event) => {
+      if (!isTrustedDesktopRenderer(event.senderFrame.url, this.frontendPort)) {
+        throw new Error('Backend connection is unavailable to this renderer');
+      }
+      return {
+        baseUrl: `http://127.0.0.1:${this.backendPort}/api`,
+        capability: this.apiCapability,
+      };
     });
 
     ipcMain.handle('get-target-page-info', () => {
@@ -390,12 +466,12 @@ class MeadowApp {
       return this.updateManager.getState();
     });
 
-    ipcMain.handle('open-external', async (event: any, url: string) => {
-      await shell.openExternal(url);
-    });
-
-    ipcMain.handle('open-path', async (event: any, itemPath: string) => {
-      return shell.openPath(itemPath);
+    ipcMain.handle('open-external', async (_event: unknown, url: string) => {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        throw new Error('Only HTTP(S) links may be opened externally');
+      }
+      await shell.openExternal(parsed.toString());
     });
   }
 
@@ -485,9 +561,7 @@ class MeadowApp {
       height: 800,
       title: 'Meadow',
       webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        webSecurity: false,
+        ...DESKTOP_WEB_SECURITY_PREFERENCES,
         preload: path.join(__dirname, 'preload.js')
       },
       frame: false,
@@ -500,10 +574,10 @@ class MeadowApp {
     // Don't load frontend immediately - wait for it to be ready
     if (this.isDev) {
       // In development, load from Vite dev server
-      log('INFO', `Will load frontend from Vite dev server (http://localhost:${this.frontendPort}) when ready`);
+      log('INFO', `Will load frontend from Vite dev server (http://127.0.0.1:${this.frontendPort}) when ready`);
     } else {
       // In production, load from the embedded frontend server when ready
-      const frontendUrl = `http://localhost:${this.frontendPort}`;
+      const frontendUrl = `http://127.0.0.1:${this.frontendPort}`;
       log('INFO', 'Will load frontend from embedded server when ready', { frontendUrl });
     }
 
@@ -530,8 +604,11 @@ class MeadowApp {
     log('INFO', 'Waiting for backend server to be ready...');
 
     while (attempts < maxAttempts) {
+      if (fs.existsSync(this.startupDiagnosticPath) || this.backendProcess?.exitCode !== null) {
+        throw new Error('Backend reported a safe startup failure');
+      }
       try {
-        const response = await fetch(`http://localhost:${this.backendPort}/api/health`);
+        const response = await fetch(`http://127.0.0.1:${this.backendPort}/api/health`);
         if (response.ok) {
           log('SUCCESS', 'Backend server is ready!');
           return;
@@ -559,8 +636,8 @@ class MeadowApp {
     const maxAttempts = maxWaitTime / checkInterval;
     // In dev mode, Vite serves at root; in production, check /api/health
     const checkUrl = this.isDev
-      ? `http://localhost:${this.frontendPort}/`
-      : `http://localhost:${this.frontendPort}/api/health`;
+      ? `http://127.0.0.1:${this.frontendPort}/`
+      : `http://127.0.0.1:${this.frontendPort}/api/health`;
 
     log('INFO', 'Waiting for frontend server to be ready...', { checkUrl });
 
@@ -602,12 +679,12 @@ class MeadowApp {
     // Load the frontend
     if (this.isDev) {
       // In development, load from Vite dev server
-      log('INFO', `Loading frontend from Vite dev server (http://localhost:${this.frontendPort})`);
-      this.mainWindow.loadURL(`http://localhost:${this.frontendPort}`);
+      log('INFO', `Loading frontend from Vite dev server (http://127.0.0.1:${this.frontendPort})`);
+      this.mainWindow.loadURL(`http://127.0.0.1:${this.frontendPort}`);
       // this.mainWindow.webContents.openDevTools();
     } else {
       // In production, load from the embedded frontend server
-      const frontendUrl = `http://localhost:${this.frontendPort}`;
+      const frontendUrl = `http://127.0.0.1:${this.frontendPort}`;
       log('INFO', 'Loading frontend from embedded server', { frontendUrl });
       this.mainWindow.loadURL(frontendUrl);
     }
@@ -635,7 +712,11 @@ class MeadowApp {
             ...process.env,
             NODE_ENV: 'production',
             MEADOW_APP_VERSION: app.getVersion(),
-            MEADOW_IS_DEV: 'true'
+            MEADOW_IS_DEV: 'true',
+            MEADOW_BACKEND_PORT: this.backendPort.toString(),
+            MEADOW_API_CAPABILITY: this.apiCapability,
+            MEADOW_UI_ORIGIN: `http://127.0.0.1:${this.frontendPort}`,
+            MEADOW_STARTUP_DIAGNOSTIC_PATH: this.startupDiagnosticPath,
           },
           stdio: 'pipe'
         });
@@ -655,7 +736,11 @@ class MeadowApp {
             WORKING_GRAPH_PATH: this.workingGraphPath,
             MEADOW_EXAMPLE_BUNDLE_PATH: path.join((process as any).resourcesPath, 'example_bundle'),
             MEADOW_APP_VERSION: app.getVersion(),
-            MEADOW_IS_DEV: 'false'
+            MEADOW_IS_DEV: 'false',
+            MEADOW_BACKEND_PORT: this.backendPort.toString(),
+            MEADOW_API_CAPABILITY: this.apiCapability,
+            MEADOW_UI_ORIGIN: `http://127.0.0.1:${this.frontendPort}`,
+            MEADOW_STARTUP_DIAGNOSTIC_PATH: this.startupDiagnosticPath,
           },
           stdio: 'pipe'
         });
@@ -729,7 +814,7 @@ class MeadowApp {
 
         this.frontendProcess = spawn(this.nodePath, [frontendScript], {
           cwd,
-          env: { ...process.env, NODE_ENV: 'production', PORT: this.frontendPort.toString(), BACKEND_PORT: this.backendPort.toString() },
+          env: { ...process.env, NODE_ENV: 'production', PORT: this.frontendPort.toString() },
           stdio: 'pipe'
         });
       }
@@ -843,7 +928,7 @@ class MeadowApp {
         resolve(false);
       }, 10000);
       
-      const testUrl = `http://localhost:${this.backendPort}/api/health`;
+      const testUrl = `http://127.0.0.1:${this.backendPort}/api/health`;
       log('INFO', 'Checking backend health', { url: testUrl });
       
       fetch(testUrl)
@@ -872,7 +957,7 @@ class MeadowApp {
         resolve(false);
       }, 10000);
       
-      const testUrl = `http://localhost:${this.frontendPort}/api/health`;
+      const testUrl = `http://127.0.0.1:${this.frontendPort}/api/health`;
       log('INFO', 'Checking frontend health', { url: testUrl });
       
       fetch(testUrl)

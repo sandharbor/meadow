@@ -17,6 +17,7 @@ limitations under the License.
 import type { Migration } from '../../../../../shared_code/types/migrations.js';
 
 export const migration: Migration = {
+  id: '26_01_21_12_00_00_some_example',
   name: 'Some example migration',
   description: 'Some example migration',
   run: (): Promise<void> => {

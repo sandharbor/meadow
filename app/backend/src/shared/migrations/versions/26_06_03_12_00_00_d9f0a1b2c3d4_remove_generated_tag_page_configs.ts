@@ -87,6 +87,7 @@ function migrateBundles(configDir: string): void {
 }
 
 export const migration: Migration = {
+  id: '26_06_03_12_00_00_d9f0a1b2c3d4_remove_generated_tag_page_configs',
   name: 'Remove generated tag page configs',
   description: 'Remove generated tag page entries from legacy page configs and clean stale generated source material.',
   run: (): Promise<void> => {

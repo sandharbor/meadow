@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import express from 'express';
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import fs from 'fs';
 import { getConfigDirectory, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { HookType, HookScope, HookMetadata, HookValidationResult, PageValidationDiff } from '../../../../../../shared_code/types/hooks.js';
@@ -30,6 +30,7 @@ import { loadBundleNodeConfigMap } from '../html/htmlService.js';
 import { getMdContent } from '../html/shared.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { currentGeneratedBundleVersionDirectory } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
+import { textDocumentCodec, writeDurableDocument } from '../../../../../../shared_code/utils/durableDocument.js';
 
 const router = express.Router();
 
@@ -148,7 +149,7 @@ router.put('/generation/hooks/global/:hookType', validateHookType, (req, res) =>
     }
 
     const hookPath = getHookFilePath('global', hookType as HookType);
-    writeFileSync(hookPath, content, 'utf-8');
+    writeDurableDocument({ path: hookPath, value: content, codec: textDocumentCodec });
 
     // Clear cache for this hook
     HooksLoader.clearCache('global', hookType as HookType);
@@ -293,7 +294,7 @@ router.put('/bundles/:bundleSlug/generation/hooks/:hookType', validateBundleSlug
     }
 
     const hookPath = getHookFilePath('bundle', hookType as HookType, bundleSlug);
-    writeFileSync(hookPath, content, 'utf-8');
+    writeDurableDocument({ path: hookPath, value: content, codec: textDocumentCodec });
 
     // Clear cache for this hook
     HooksLoader.clearCache('bundle', hookType as HookType, bundleSlug);

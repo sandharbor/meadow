@@ -49,6 +49,12 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   const releaseWorkerWarning = expectLogErrors(
     /Failed to use workers for subsetting, falling back to the main thread/,
   );
+  // Excalidraw fetches Excalifont from its CDN at render time. The renderer
+  // falls back cleanly when that optional font request is unavailable; the
+  // SVG visibility and link assertions below prove the drawing still works.
+  const releaseFontWarning = expectLogErrors(
+    /Failed to fetch font family/,
+  );
 
   const wf = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -207,6 +213,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   await generatedBundle.expectHeading("t006 --- linked-from-excalidraw");
 
   releaseWorkerWarning();
+  releaseFontWarning();
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

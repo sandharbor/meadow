@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import express from 'express';
-import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync } from 'fs';
 import path from 'path';
 import { getConfigDirectory, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
@@ -26,6 +26,7 @@ import { loadAppConfig, saveAppConfig } from '../../../../../../shared_code/util
 import { loadBundleConfig, saveBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { textDocumentCodec, writeDurableDocument } from '../../../../../../shared_code/utils/durableDocument.js';
 
 const router = express.Router();
 
@@ -108,7 +109,7 @@ router.put('/generation/custom-assets/global/:assetType', (req, res) => {
     const filename = ASSET_TYPE_TO_FILENAME[assetType];
     const dir = AppConfigPaths.getGlobalCustomAssetsDir(getConfigDirectory());
     mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, filename), content, 'utf8');
+    writeDurableDocument({ path: path.join(dir, filename), value: content, codec: textDocumentCodec });
     res.json({ success: true });
     commitInBackground([getConfigDirectory()], `Update global custom asset: ${filename}`);
   } catch (error) {
@@ -228,7 +229,7 @@ router.put('/bundles/:bundleSlug/generation/custom-assets/:assetType', validateB
     const filename = ASSET_TYPE_TO_FILENAME[assetType];
     const dir = BundleConfigPaths.getBundleCustomAssetsDir(getBundleDirectory(bundleSlug));
     mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, filename), content, 'utf8');
+    writeDurableDocument({ path: path.join(dir, filename), value: content, codec: textDocumentCodec });
     res.json({ success: true });
     commitInBackground([getConfigDirectory()], `Update bundle custom asset: ${filename} for ${bundleSlug}`);
   } catch (error) {

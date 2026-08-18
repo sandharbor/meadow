@@ -49,7 +49,10 @@ const s3 = new S3Client({
   endpoint: MINIO_ENDPOINT,
   region: "us-west-2",
   forcePathStyle: true,
-  credentials: { accessKeyId: "minioadmin", secretAccessKey: "minioadmin" },
+  credentials: {
+    accessKeyId: "FAKE-E2E-MINIO-ACCESS-KEY",
+    secretAccessKey: "FAKE-E2E-MINIO-SECRET-KEY",
+  },
 });
 
 const CONTENT_TYPES: Record<string, string> = {

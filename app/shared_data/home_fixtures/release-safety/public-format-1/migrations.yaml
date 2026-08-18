@@ -1,0 +1,34 @@
+schemaVersion: 1
+scope: core
+lastApplicationVersion: 0.5.41
+completedMigrations:
+  - id: 26_01_21_12_00_00_some_example
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_04_11_12_00_00_a1b2c3d4e5f6_rename_graph_depth_to_outlinks_depth
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_06_03_12_00_00_d9f0a1b2c3d4_remove_generated_tag_page_configs
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_08_11_12_00_00_n4k7p2w9c5x8_site_node_foundation
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_08_13_12_00_00_f3m8q1v6z2k9_rename_preview_output_to_generated
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_08_13_13_00_00_b7n2r5k8w4q1_rename_sites_to_bundles
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_08_14_13_00_00_c4g7m2p9v6x1_rename_bundle_conf_to_config
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_08_16_18_30_00_q7m2v9k4c6x1_generated_bundle_versioning
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_08_17_11_00_00_r4m8v2k7c5x1_harden_provider_secret_files
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41
+  - id: 26_08_17_13_00_00_m6q2v8k4p7x1_rename_custom_filter_scope
+    completedAt: 2026-08-17T00:00:00.000Z
+    applicationVersion: 0.5.41

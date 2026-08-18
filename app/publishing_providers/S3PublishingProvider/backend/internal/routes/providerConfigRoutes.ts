@@ -16,7 +16,6 @@ limitations under the License.
 
 import type { Router } from 'express';
 import fs from 'fs';
-import YAML from 'yaml';
 import { PublishingProviderPaths } from '../../../../../shared_code/paths/publishingProviderPaths.js';
 import {
   getConfigDirectory,
@@ -26,9 +25,15 @@ import {
   loadS3ConfigForBundle,
   PUBLISH_SLUG_PATTERN,
   S3_PROVIDER_ID,
+  s3ProviderConfigCodec,
   type S3ProviderConfig,
 } from '../s3Config.js';
 import { hasRemoteS3Versions } from '../versioning/publicationStore.js';
+import {
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+} from '../../../../../shared_code/utils/durableDocument.js';
 
 /**
  * Per-bundle S3 provider config routes. Unlike Meadow, there's no prefix — a
@@ -85,19 +90,7 @@ function saveBundleConfig(bundleSlug: string, patch: Partial<S3ProviderConfig>):
     bundleSlug,
     S3_PROVIDER_ID,
   );
-  let existing: S3ProviderConfig = {};
-  if (fs.existsSync(target)) {
-    try {
-      existing = (YAML.parse(fs.readFileSync(target, 'utf8')) as S3ProviderConfig) ?? {};
-    } catch {
-      existing = {};
-    }
-  } else {
-    fs.mkdirSync(
-      PublishingProviderPaths.getBundleProviderDir(getConfigDirectory(), bundleSlug, S3_PROVIDER_ID),
-      { recursive: true },
-    );
-  }
+  const existing = requireValidDocument(readDurableDocument(target, s3ProviderConfigCodec), () => ({}));
   const merged: S3ProviderConfig = { ...existing, ...patch };
-  fs.writeFileSync(target, YAML.stringify(merged), 'utf8');
+  writeDurableDocument({ path: target, value: merged, codec: s3ProviderConfigCodec });
 }

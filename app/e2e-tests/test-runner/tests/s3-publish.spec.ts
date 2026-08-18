@@ -14,7 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { test, expect } from "../src/run/test-fixtures.js";
+import {
+  E2E_S3_ACCESS_KEY_ID,
+  E2E_S3_SECRET_ACCESS_KEY,
+  test,
+  expect,
+} from "../src/run/test-fixtures.js";
 import fs from "fs";
 import path from "path";
 import { PreviewPublishModal, PublishToS3Tab, PublishedBundlePage } from "../src/run/pages/index.js";
@@ -42,6 +47,18 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
 
   const publishPage = new PublishToS3Tab(page, expect);
   await publishPage.expectVisible();
+
+  await expect(page.getByTestId('s3-config-summary')).toContainText('credentials saved');
+  await page.getByTestId('s3-config-toggle').click();
+  await expect(page.getByTestId('s3-access-key-id')).toHaveValue('••••••••');
+  await expect(page.getByTestId('s3-secret-access-key')).toHaveValue('••••••••••••••••');
+  await expect(page.getByText(/saved values cannot be shown/i)).toBeVisible();
+  expect(await page.content()).not.toContain(E2E_S3_ACCESS_KEY_ID);
+  expect(await page.content()).not.toContain(E2E_S3_SECRET_ACCESS_KEY);
+  await snapshot('saved S3 credentials represented only by presence');
+  await page.getByTestId('s3-secret-access-key').scrollIntoViewIfNeeded();
+  await addKeyFrame(s3);
+  await page.getByTestId('s3-config-toggle').click();
 
   const publishSlug = `${Bundle.Big}-s3`;
   await publishPage.setPublishSlug(publishSlug);

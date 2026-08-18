@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
-import { API_BASE_URL } from '../utils/apiConfig';
+import { API_BASE_URL, AuthenticatedEventSource } from '../utils/apiConfig';
 import { getActiveFrontendProvider } from '../publishing-provider-host/providerRegistry';
 import { logger } from '../utils/logger';
 
@@ -82,7 +82,7 @@ const DeleteBundleModal: React.FC<DeleteBundleModalProps> = ({
     setDeleteError(null);
 
     try {
-      const eventSource = new EventSource(`${API_BASE_URL}/bundles/${bundleSlug}/delete-bundle-stream`);
+      const eventSource = new AuthenticatedEventSource(`${API_BASE_URL}/bundles/${bundleSlug}/delete-bundle-stream`);
 
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);

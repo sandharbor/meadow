@@ -19,8 +19,6 @@ limitations under the License.
  * the bundle-local override on top of the global file.
  */
 
-import { existsSync, readFileSync } from 'fs';
-import YAML from 'yaml';
 import { PublishingProviderPaths } from '../paths/publishingProviderPaths.js';
 import { getDefaultConfigDirectory } from './appConfigUtils.js';
 import type {
@@ -28,16 +26,13 @@ import type {
   PublishingProviderSecretsBase,
 } from '../interfaces/PublishingProviderConfig.js';
 import type { PublishingProviderId } from '../interfaces/IPublishingProvider.js';
+import { extensibleYamlObjectCodec } from './configDocumentCodecs.js';
+import { readDurableDocument, requireValidDocument } from './durableDocument.js';
 
 function readYaml<T extends object>(path: string): T | null {
-  if (!existsSync(path)) return null;
-  try {
-    const content = readFileSync(path, 'utf8');
-    return (YAML.parse(content) as T) ?? null;
-  } catch (error) {
-    console.warn(`Error loading provider config at ${path}:`, error);
-    return null;
-  }
+  const result = readDurableDocument(path, extensibleYamlObjectCodec<T>());
+  if (result.status === 'missing') return null;
+  return requireValidDocument(result, () => ({} as T));
 }
 
 function mergeShallow<T extends object>(base: T, override: T | null): T {

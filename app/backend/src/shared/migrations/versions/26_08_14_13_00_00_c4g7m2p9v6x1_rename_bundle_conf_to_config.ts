@@ -120,6 +120,7 @@ export function migrateBundleConfToConfig(
 }
 
 export const migration: Migration = {
+  id: '26_08_14_13_00_00_c4g7m2p9v6x1_rename_bundle_conf_to_config',
   name: 'Rename bundle conf directory to config',
   description: 'Move each bundle configuration tree from conf/ to config/ without overwriting existing data.',
   run: (): Promise<void> => {

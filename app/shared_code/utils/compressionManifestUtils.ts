@@ -14,10 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import { Buffer } from 'node:buffer';
+import {
+  isPlainObject,
+  jsonDocumentCodec,
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+} from './durableDocument.js';
 
 /**
  * Per-bundle manifest declaring which generated assets are stored on disk in a
@@ -41,11 +47,23 @@ export interface CompressionManifest {
   gzip: string[];
 }
 
+const compressionManifestCodec = jsonDocumentCodec<CompressionManifest>(value => {
+  if (!isPlainObject(value)) return { valid: false, diagnostic: '$ must be an object' };
+  const unknown = Object.keys(value).filter(field => field !== 'gzip');
+  if (unknown.length > 0) return { valid: false, diagnostic: `$.${unknown[0]} is not supported` };
+  if (!Array.isArray(value.gzip) || !value.gzip.every(item => typeof item === 'string')) {
+    return { valid: false, diagnostic: '$.gzip must be an array of strings' };
+  }
+  return { valid: true, value: { gzip: [...value.gzip].sort() } };
+});
+
 export function readCompressionManifest(assetsDir: string): CompressionManifest | null {
   const manifestPath = path.join(assetsDir, COMPRESSION_MANIFEST_FILENAME);
-  if (!fs.existsSync(manifestPath)) return null;
-  const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as CompressionManifest;
-  return { gzip: Array.isArray(parsed.gzip) ? parsed.gzip : [] };
+  const result = readDurableDocument(manifestPath, compressionManifestCodec);
+  if (result.status === 'missing') return null;
+  return requireValidDocument(result, () => {
+    throw new Error('Compression manifest disappeared');
+  });
 }
 
 export function writeCompressionManifest(assetsDir: string, manifest: CompressionManifest): void {
@@ -53,7 +71,11 @@ export function writeCompressionManifest(assetsDir: string, manifest: Compressio
   // Sort for deterministic on-disk output — the manifest is small but the
   // determinism story is easier to reason about if every artifact is stable.
   const sorted: CompressionManifest = { gzip: [...manifest.gzip].sort() };
-  fs.writeFileSync(manifestPath, JSON.stringify(sorted, null, 2) + '\n', 'utf8');
+  writeDurableDocument({
+    path: manifestPath,
+    value: sorted,
+    codec: compressionManifestCodec,
+  });
 }
 
 /**

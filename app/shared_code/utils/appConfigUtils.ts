@@ -19,14 +19,19 @@ limitations under the License.
  * These are shared between the main app and dev tools.
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
+import { existsSync } from "fs";
 import { randomUUID } from "crypto";
-import YAML from "yaml";
 import { AppConfig, CalloutDismissals } from "../types/appConfig.js";
 import { BootstrapConfig } from "../types/bootstrapConfig.js";
 import { AppConfigPaths } from "../paths/appConfigPaths.js";
 import { getPlatformPaths } from "../paths/getPlatformPaths.js";
+import { appConfigCodec } from "./configDocumentCodecs.js";
+import {
+  DurableDocumentResult,
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+} from "./durableDocument.js";
 
 /**
  * Gets the bootstrap config path (~/.config/meadow/bootstrap_config.yaml).
@@ -85,15 +90,11 @@ export function configDirectoryExists(configDir?: string): boolean {
  */
 export function loadAppConfig(configDir?: string): AppConfig {
   const path = getAppConfigPath(configDir);
-  if (existsSync(path)) {
-    try {
-      const content = readFileSync(path, "utf8");
-      return YAML.parse(content) as AppConfig;
-    } catch (error) {
-      console.warn("Error loading app config:", error);
-    }
-  }
-  return { version: "1.0.0" };
+  return requireValidDocument(readDurableDocument(path, appConfigCodec), () => ({ version: "1.0.0" }));
+}
+
+export function readAppConfigDocument(configDir?: string): DurableDocumentResult<AppConfig> {
+  return readDurableDocument(getAppConfigPath(configDir), appConfigCodec);
 }
 
 /**
@@ -202,14 +203,8 @@ export function ensureAppConfigInitialized(
  */
 export function saveAppConfig(settings: AppConfig, configDir?: string): void {
   const path = getAppConfigPath(configDir);
-  const dir = dirname(path);
-
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-
   const toWrite: AppConfig = { ...settings, version: "1.0.0" };
-  writeFileSync(path, YAML.stringify(toWrite), "utf8");
+  writeDurableDocument({ path, value: toWrite, codec: appConfigCodec });
 }
 
 /**

@@ -21,11 +21,12 @@ import {
   parseBundleNodeConfig,
   validateCanonicalBundleConfiguration,
 } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { saveBundleNodeConfigDocument } from '../../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
 import { BundleNodeConfig } from '../../../../../../shared_code/types/bundleNodeConfig.js';
 import { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.js';
 import fs from 'fs';
 import { getBundleConfigPath } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import YAML from 'yaml';
+import { loadBundleConfigFromPath } from '../../../../shared/utils/bundleConfigUtils.js';
 
 const router = express.Router();
 
@@ -43,17 +44,7 @@ function readNodeConfig(filePath: string): BundleNodeConfig[] {
 }
 
 function readBundleConfig(filePath: string): BundleConfig {
-  return YAML.parse(readFileSync(filePath, 'utf8')) as BundleConfig;
-}
-
-function writeAtomically(filePath: string, content: string): void {
-  const temporaryPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
-  try {
-    fs.writeFileSync(temporaryPath, content, { encoding: 'utf8', mode: 0o600 });
-    fs.renameSync(temporaryPath, filePath);
-  } finally {
-    if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
-  }
+  return loadBundleConfigFromPath(filePath);
 }
 
 // Middleware to validate bundleSlug
@@ -145,15 +136,13 @@ router.post('/bundles/:bundleSlug/curation/bundle-config', validateBundleSlug, a
       bundleConfigPath,
     });
   }
-  const content = stringifyBundleNodeConfig(candidate);
-  
   if (isDraft) {
     // Save to draft file
-    writeAtomically(draftPath, content);
+    saveBundleNodeConfigDocument(draftPath, candidate);
   } else {
     // Save to main file and remove draft
     // Note: Commit happens in copy-tracked-pages endpoint to include both config and tracked content
-    writeAtomically(mainPath, content);
+    saveBundleNodeConfigDocument(mainPath, candidate);
     if (fs.existsSync(draftPath)) {
       fs.unlinkSync(draftPath);
     }

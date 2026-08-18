@@ -20,6 +20,10 @@ import path, { join } from 'path';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { getOriginalContent, readFileContent, getGitStatusMap, buildFileTree, buildChangedFilesTree } from '../utils/configFileExplorerUtils.js';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
+import {
+  filterReviewableAppConfigTree,
+  isReviewableAppConfigPath,
+} from './appConfigExplorerPolicy.js';
 
 const router = express.Router();
 
@@ -33,15 +37,16 @@ router.get('/app-config/tree', (req, res, next) => {
       const configDir = getConfigDirectory();
       const appConfigDir = join(configDir, 'app');
 
-      // Ensure directory exists
       if (!fs.existsSync(appConfigDir)) {
-        fs.mkdirSync(appConfigDir, { recursive: true });
+        res.json({ root: appConfigDir, tree: [] });
+        return;
       }
 
       const gitStatusMap = await getGitStatusMap(appConfigDir);
-      const tree = changedOnly
+      const unfilteredTree = changedOnly
         ? buildChangedFilesTree(appConfigDir, gitStatusMap)
         : buildFileTree(appConfigDir, gitStatusMap);
+      const tree = filterReviewableAppConfigTree(appConfigDir, unfilteredTree);
 
       res.json({ root: appConfigDir, tree });
     } catch (error) {
@@ -64,7 +69,11 @@ router.get('/app-config/content', (req, res, next) => {
     const appConfigDir = join(configDir, 'app');
 
     if (!fs.existsSync(appConfigDir)) {
-      fs.mkdirSync(appConfigDir, { recursive: true });
+      return res.status(404).json({ error: 'App config directory not found' });
+    }
+
+    if (!isReviewableAppConfigPath(appConfigDir, filePath)) {
+      return res.status(403).json({ error: 'Access denied - file is not reviewable' });
     }
 
     if (!fs.existsSync(filePath)) {
@@ -106,7 +115,11 @@ router.get('/app-config/original', (req, res, next) => {
       const appConfigDir = join(configDir, 'app');
 
       if (!fs.existsSync(appConfigDir)) {
-        fs.mkdirSync(appConfigDir, { recursive: true });
+        return res.status(404).json({ error: 'App config directory not found' });
+      }
+
+      if (!isReviewableAppConfigPath(appConfigDir, filePath)) {
+        return res.status(403).json({ error: 'Access denied - file is not reviewable' });
       }
 
       // Security: ensure path is within app config directory (handle non-existent files)

@@ -26,7 +26,7 @@ import { VersionsTab } from '../../../areas/bundle/review/components/VersionsTab
 import { casualVersionName, versionCreatedDate } from '../../../areas/bundle/review/utils/versionLabels';
 import { ConfigFileExplorerApi } from '../../../../../shared_components/ConfigFileExplorer/index';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils';
-import { API_BASE_URL } from '../../utils/apiConfig';
+import { API_BASE_URL, AuthenticatedEventSource } from '../../utils/apiConfig';
 import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
@@ -424,7 +424,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
           ? `${API_BASE_URL}/bundles/${slug}/generation/preview-stream?${params.toString()}`
           : `${API_BASE_URL}/bundles/${slug}/generation/preview-stream`;
 
-        const eventSource = new EventSource(url);
+        const eventSource = new AuthenticatedEventSource(url);
 
         eventSource.onmessage = (event) => {
           try {
@@ -534,7 +534,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
           streamUrl += `?startPagePath=${encodeURIComponent(relativePath)}`;
         }
       }
-      const eventSource = new EventSource(streamUrl);
+      const eventSource = new AuthenticatedEventSource(streamUrl);
 
       eventSource.onmessage = (event) => {
         try {

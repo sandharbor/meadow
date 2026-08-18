@@ -23,13 +23,13 @@ import {
   type S3ProviderResources,
 } from '../s3Config.js';
 
-interface ConfigurationGetResponse {
+export interface ConfigurationGetResponse {
   s3BucketName: string;
   s3Region: string;
   s3Endpoint: string;
   s3ForcePathStyle: boolean;
   webBaseUrl: string;
-  s3AccessKeyId: string;
+  hasAccessKeyId: boolean;
   hasSecretAccessKey: boolean;
 }
 
@@ -47,24 +47,30 @@ interface ConfigurationPutBody {
 /**
  * Global configuration for the S3 publishing provider — bucket settings
  * (pp_resources.yaml) plus credentials (pp_secrets.yaml). The secret access
- * key is never returned by the bulk GET; the dedicated `/secret` endpoint
- * returns it on explicit request from the "show" toggle.
+ * Credentials are write-only from the renderer's perspective. Responses
+ * expose presence flags only, so editing requires deliberate re-entry.
  */
+export function configurationGetResponse(
+  resources: S3ProviderResources,
+  secrets: { s3AccessKeyId?: string; s3SecretAccessKey?: string },
+): ConfigurationGetResponse {
+  return {
+    s3BucketName: resources.s3BucketName ?? '',
+    s3Region: resources.s3Region ?? '',
+    s3Endpoint: resources.s3Endpoint ?? '',
+    s3ForcePathStyle: !!resources.s3ForcePathStyle,
+    webBaseUrl: resources.webBaseUrl ?? '',
+    hasAccessKeyId: !!secrets.s3AccessKeyId,
+    hasSecretAccessKey: !!secrets.s3SecretAccessKey,
+  };
+}
+
 export function registerS3ConfigurationRoutes(router: Router): void {
   router.get('/configuration', (_req, res, next) => {
     try {
       const resources = loadS3Resources();
       const secrets = loadS3Secrets();
-      const body: ConfigurationGetResponse = {
-        s3BucketName: resources.s3BucketName ?? '',
-        s3Region: resources.s3Region ?? '',
-        s3Endpoint: resources.s3Endpoint ?? '',
-        s3ForcePathStyle: !!resources.s3ForcePathStyle,
-        webBaseUrl: resources.webBaseUrl ?? '',
-        s3AccessKeyId: secrets.s3AccessKeyId ?? '',
-        hasSecretAccessKey: !!secrets.s3SecretAccessKey,
-      };
-      res.json(body);
+      res.json(configurationGetResponse(resources, secrets));
     } catch (error) {
       next(error);
     }
@@ -94,25 +100,7 @@ export function registerS3ConfigurationRoutes(router: Router): void {
 
       const resources = loadS3Resources();
       const secrets = loadS3Secrets();
-      const response: ConfigurationGetResponse = {
-        s3BucketName: resources.s3BucketName ?? '',
-        s3Region: resources.s3Region ?? '',
-        s3Endpoint: resources.s3Endpoint ?? '',
-        s3ForcePathStyle: !!resources.s3ForcePathStyle,
-        webBaseUrl: resources.webBaseUrl ?? '',
-        s3AccessKeyId: secrets.s3AccessKeyId ?? '',
-        hasSecretAccessKey: !!secrets.s3SecretAccessKey,
-      };
-      res.json(response);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.get('/configuration/secret', (_req, res, next) => {
-    try {
-      const secrets = loadS3Secrets();
-      res.json({ s3SecretAccessKey: secrets.s3SecretAccessKey ?? '' });
+      res.json(configurationGetResponse(resources, secrets));
     } catch (error) {
       next(error);
     }

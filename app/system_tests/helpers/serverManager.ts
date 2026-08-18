@@ -18,6 +18,7 @@ import { spawn, ChildProcess, execSync } from 'child_process';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import { randomBytes } from 'crypto';
 import { fileURLToPath } from 'url';
 import { saveResourcesLocalConfig } from '../../shared_code/utils/resourcesConfigUtils.js';
 
@@ -27,6 +28,37 @@ const BACKEND_DIR = path.join(WORKSPACE_ROOT, 'backend');
 
 export const TEST_PORT = parseInt(process.env.MEADOW_SYSTEM_TEST_PORT ?? '3099', 10);
 export const TEST_BASE_URL = `http://localhost:${TEST_PORT}`;
+const TEST_API_CAPABILITY = process.env.MEADOW_SYSTEM_TEST_API_CAPABILITY
+  ?? randomBytes(32).toString('base64url');
+// Vitest isolates module graphs between files. Persist the per-run fake
+// capability in this process environment so setup and test imports agree.
+process.env.MEADOW_SYSTEM_TEST_API_CAPABILITY = TEST_API_CAPABILITY;
+const nativeFetch = globalThis.fetch.bind(globalThis);
+
+export function authenticatedSystemTestFetch(
+  input: Parameters<typeof globalThis.fetch>[0],
+  init: Parameters<typeof globalThis.fetch>[1] = {},
+) {
+  const rawUrl = input instanceof globalThis.Request ? input.url : input.toString();
+  const candidate = new globalThis.URL(rawUrl, TEST_BASE_URL);
+  const testOrigin = new globalThis.URL(TEST_BASE_URL).origin;
+  if (candidate.origin !== testOrigin || !candidate.pathname.startsWith('/api/')) {
+    return nativeFetch(input, init);
+  }
+  const headers = new globalThis.Headers(input instanceof globalThis.Request ? input.headers : undefined);
+  new globalThis.Headers(init.headers).forEach((value, key) => headers.set(key, value));
+  headers.set('x-meadow-capability', TEST_API_CAPABILITY);
+  if (input instanceof globalThis.Request) {
+    return nativeFetch(new globalThis.Request(input, { ...init, headers }));
+  }
+  return nativeFetch(input, { ...init, headers });
+}
+
+export function installAuthenticatedSystemTestFetch(): void {
+  globalThis.fetch = authenticatedSystemTestFetch;
+}
+
+installAuthenticatedSystemTestFetch();
 /**
  * IMPORTANT: This must live OUTSIDE the Meadow repo.
  *
@@ -127,7 +159,12 @@ export async function startServer(): Promise<void> {
       cwd: BACKEND_DIR,
       env: {
         ...process.env,
-        MEADOW_HOME_DIRECTORY_OVERRIDE: TEST_CONFIG_DIR
+        MEADOW_HOME_DIRECTORY_OVERRIDE: TEST_CONFIG_DIR,
+        MEADOW_IS_DEV: 'true',
+        MEADOW_APP_VERSION: '0.5.41-system-test',
+        MEADOW_BACKEND_PORT: String(TEST_PORT),
+        MEADOW_API_CAPABILITY: TEST_API_CAPABILITY,
+        MEADOW_UI_ORIGIN: `http://127.0.0.1:${TEST_PORT + 1}`,
       },
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -139,7 +176,7 @@ export async function startServer(): Promise<void> {
       if (process.env.DEBUG) {
         console.log(`[server stdout]: ${output}`);
       }
-      if (output.includes('Server running at') && !started) {
+      if (output.includes('Server running on IPv4 loopback port') && !started) {
         started = true;
         // Give it a moment to fully initialize
         setTimeout(() => {

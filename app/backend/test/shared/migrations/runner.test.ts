@@ -23,24 +23,34 @@ import {
   runMigrationsForScopes,
   type MigrationScope,
 } from '../../../src/shared/migrations/runner.js';
+import {
+  IncompleteMigrationError,
+  migrationRecoveryRoot,
+  readMigrationJournal,
+} from '../../../src/shared/migrations/migrationPersistence.js';
 
 function makeMigrationFile(dir: string, filename: string, body: string): void {
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, filename), body, 'utf8');
+  fs.writeFileSync(
+    path.join(dir, filename),
+    body.replaceAll('__MIGRATION_ID__', filename.replace(/\.(?:ts|js)$/, '')),
+    'utf8',
+  );
 }
 
 function readLedger(ledgerPath: string): string[] {
   if (!fs.existsSync(ledgerPath)) return [];
   const parsed = YAML.parse(fs.readFileSync(ledgerPath, 'utf8')) as {
-    completed_migrations?: string[];
+    completedMigrations?: Array<{ id: string }>;
   };
-  return parsed.completed_migrations ?? [];
+  return parsed.completedMigrations?.map(record => record.id) ?? [];
 }
 
 const trivialMigration = (sentinel: string): string => `
 import fs from 'fs';
 import path from 'path';
 export const migration = {
+  id: '__MIGRATION_ID__',
   name: 'test ${sentinel}',
   description: 'records a sentinel file so the test can detect it ran',
   run: async () => {
@@ -62,6 +72,7 @@ describe('runMigrationsForScopes', () => {
 
   afterEach(() => {
     delete process.env.MIGRATION_TEST_OUT;
+    fs.rmSync(migrationRecoveryRoot(tmp), { recursive: true, force: true });
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
@@ -71,12 +82,15 @@ describe('runMigrationsForScopes', () => {
       migrationsDir: path.join(tmp, 'core-migrations'),
       ledgerPath: path.join(tmp, 'core.yaml'),
     };
-    makeMigrationFile(scope.migrationsDir, '01_alpha.ts', trivialMigration('alpha'));
-    makeMigrationFile(scope.migrationsDir, '02_beta.ts', trivialMigration('beta'));
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_alpha.ts', trivialMigration('alpha'));
+    makeMigrationFile(scope.migrationsDir, '26_01_02_00_00_00_beta.ts', trivialMigration('beta'));
 
     await runMigrationsForScopes([scope], { skipGitCommits: true });
 
-    expect(readLedger(scope.ledgerPath)).toEqual(['01_alpha.ts', '02_beta.ts']);
+    expect(readLedger(scope.ledgerPath)).toEqual([
+      '26_01_01_00_00_00_alpha',
+      '26_01_02_00_00_00_beta',
+    ]);
     const log = fs.readFileSync(path.join(tmp, 'out', 'log.txt'), 'utf8');
     expect(log.split('\n').filter(Boolean)).toEqual(['alpha', 'beta']);
   });
@@ -93,18 +107,22 @@ describe('runMigrationsForScopes', () => {
       ledgerPath: path.join(tmp, 'provider.yaml'),
     };
 
-    makeMigrationFile(core.migrationsDir, '01_core.ts', trivialMigration('core'));
+    makeMigrationFile(core.migrationsDir, '26_01_01_00_00_00_core.ts', trivialMigration('core'));
 
     // Pretend core has already run its migration in a previous boot; the
     // provider's ledger is still empty when its migrations show up later.
-    fs.writeFileSync(core.ledgerPath, YAML.stringify({ completed_migrations: ['01_core.ts'] }), 'utf8');
+    fs.writeFileSync(
+      core.ledgerPath,
+      YAML.stringify({ completed_migrations: ['26_01_01_00_00_00_core.js'] }),
+      'utf8',
+    );
 
-    makeMigrationFile(provider.migrationsDir, '01_provider.ts', trivialMigration('provider'));
+    makeMigrationFile(provider.migrationsDir, '26_01_02_00_00_00_provider.ts', trivialMigration('provider'));
 
     await runMigrationsForScopes([core, provider], { skipGitCommits: true });
 
-    expect(readLedger(core.ledgerPath)).toEqual(['01_core.ts']);
-    expect(readLedger(provider.ledgerPath)).toEqual(['01_provider.ts']);
+    expect(readLedger(core.ledgerPath)).toEqual(['26_01_01_00_00_00_core']);
+    expect(readLedger(provider.ledgerPath)).toEqual(['26_01_02_00_00_00_provider']);
     const log = fs.readFileSync(path.join(tmp, 'out', 'log.txt'), 'utf8');
     // Core stayed put, provider's lone migration ran.
     expect(log.split('\n').filter(Boolean)).toEqual(['provider']);
@@ -116,7 +134,7 @@ describe('runMigrationsForScopes', () => {
       migrationsDir: path.join(tmp, 'core-migrations'),
       ledgerPath: path.join(tmp, 'core.yaml'),
     };
-    makeMigrationFile(scope.migrationsDir, '01_only.ts', trivialMigration('only'));
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
 
     await runMigrationsForScopes([scope], { skipGitCommits: true });
     await runMigrationsForScopes([scope], { skipGitCommits: true });
@@ -131,22 +149,223 @@ describe('runMigrationsForScopes', () => {
       migrationsDir: path.join(tmp, 'core-migrations'),
       ledgerPath: path.join(tmp, 'core.yaml'),
     };
-    makeMigrationFile(scope.migrationsDir, '01_ok.ts', trivialMigration('ok'));
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_ok.ts', trivialMigration('ok'));
     makeMigrationFile(
       scope.migrationsDir,
-      '02_boom.ts',
+      '26_01_02_00_00_00_boom.ts',
       `export const migration = {
+        id: '__MIGRATION_ID__',
         name: 'boom',
         description: 'fails on purpose',
         run: async () => { throw new Error('intentional failure'); }
       };`,
     );
-    makeMigrationFile(scope.migrationsDir, '03_never.ts', trivialMigration('never'));
+    makeMigrationFile(scope.migrationsDir, '26_01_03_00_00_00_never.ts', trivialMigration('never'));
 
     await expect(runMigrationsForScopes([scope], { skipGitCommits: true })).rejects.toThrow(
       /intentional failure/,
     );
 
-    expect(readLedger(scope.ledgerPath)).toEqual(['01_ok.ts']);
+    expect(readLedger(scope.ledgerPath)).toEqual(['26_01_01_00_00_00_ok']);
+  });
+
+  it.each([
+    ['invalid syntax', 'completed_migrations: [broken\n', /invalid document/],
+    [
+      'duplicates',
+      YAML.stringify({ completed_migrations: ['26_01_01_00_00_00_only.ts', '26_01_01_00_00_00_only.ts'] }),
+      /invalid document/,
+    ],
+    [
+      'unknown logical IDs',
+      YAML.stringify({ completed_migrations: ['26_01_01_00_00_00_removed.ts'] }),
+      /unknown logical ID/,
+    ],
+  ])('blocks %s in a migration ledger without running a migration', async (_name, ledger, message) => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'core-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
+    fs.writeFileSync(scope.ledgerPath, ledger);
+    const original = fs.readFileSync(scope.ledgerPath);
+
+    await expect(runMigrationsForScopes([scope], { skipGitCommits: true })).rejects.toThrow(message);
+    expect(fs.readFileSync(scope.ledgerPath)).toEqual(original);
+    expect(fs.existsSync(path.join(tmp, 'out', 'log.txt'))).toBe(false);
+  });
+
+  it('maps a legacy TypeScript filename to the same logical ID in packaged JavaScript', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'packaged-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.js', trivialMigration('must-not-run'));
+    fs.writeFileSync(
+      scope.ledgerPath,
+      YAML.stringify({ completed_migrations: ['26_01_01_00_00_00_only.ts'] }),
+    );
+
+    await runMigrationsForScopes([scope], { skipGitCommits: true });
+    expect(readLedger(scope.ledgerPath)).toEqual(['26_01_01_00_00_00_only']);
+    expect(fs.existsSync(path.join(tmp, 'out', 'log.txt'))).toBe(false);
+  });
+
+  it('deduplicates source and packaged filenames and preserves checked-in retired history', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'packaged-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_current.js', trivialMigration('must-not-run'));
+    const retiredId = '25_12_05_09_03_23_zpnysy7x8wsf_add_source_graph_subdirectory';
+    fs.writeFileSync(scope.ledgerPath, YAML.stringify({
+      completed_migrations: [
+        `${retiredId}.ts`,
+        `${retiredId}.js`,
+        '26_01_01_00_00_00_current.ts',
+        '26_01_01_00_00_00_current.js',
+      ],
+    }));
+
+    await runMigrationsForScopes([scope], { skipGitCommits: true });
+    expect(readLedger(scope.ledgerPath)).toEqual([retiredId, '26_01_01_00_00_00_current']);
+    expect(fs.existsSync(path.join(tmp, 'out', 'log.txt'))).toBe(false);
+  });
+
+  it('rejects a migration whose exported logical ID differs from its filename', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'core-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    makeMigrationFile(
+      scope.migrationsDir,
+      '26_01_01_00_00_00_only.ts',
+      `export const migration = { id: 'different-id', name: 'bad', description: 'bad', run() {} };`,
+    );
+    await expect(runMigrationsForScopes([scope], { skipGitCommits: true })).rejects.toThrow(
+      /exports logical ID 'different-id'/,
+    );
+  });
+
+  it.each([
+    'afterPreparedJournal',
+    'afterRunningJournal',
+    'afterDataJournal',
+    'afterLedger',
+    'afterLedgerJournal',
+  ] as const)(
+    'recovers deterministically from an injected %s interruption without duplicate mutation',
+    async boundary => {
+      const scope: MigrationScope = {
+        name: 'core',
+        migrationsDir: path.join(tmp, 'core-migrations'),
+        ledgerPath: path.join(tmp, 'core.yaml'),
+      };
+      makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
+      await expect(
+        runMigrationsForScopes([scope], {
+          skipGitCommits: true,
+          faults: { [boundary]: () => { throw new Error(`interrupted ${boundary}`); } },
+        }),
+      ).rejects.toThrow(`interrupted ${boundary}`);
+
+      expect(readMigrationJournal(tmp)).not.toBeNull();
+      await runMigrationsForScopes([scope], { skipGitCommits: true });
+      expect(readMigrationJournal(tmp)).toBeNull();
+      expect(readLedger(scope.ledgerPath)).toEqual(['26_01_01_00_00_00_only']);
+      const mutations = fs.existsSync(path.join(tmp, 'out', 'log.txt'))
+        ? fs.readFileSync(path.join(tmp, 'out', 'log.txt'), 'utf8').trim().split('\n')
+        : [];
+      expect(mutations).toEqual(['only']);
+    },
+  );
+
+  it('can restart after interruption immediately after the verified checkpoint', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'core-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
+    let checkpointId = '';
+    await expect(runMigrationsForScopes([scope], {
+      skipGitCommits: true,
+      faults: {
+        afterCheckpoint: checkpoint => {
+          checkpointId = checkpoint.checkpointId;
+          throw new Error('termination after checkpoint');
+        },
+      },
+    })).rejects.toThrow('termination after checkpoint');
+    expect(readMigrationJournal(tmp)).toBeNull();
+    expect(readLedger(scope.ledgerPath)).toEqual([]);
+    expect(fs.existsSync(path.join(
+      migrationRecoveryRoot(tmp),
+      'checkpoints',
+      checkpointId,
+      'checkpoint.json',
+    ))).toBe(true);
+
+    await runMigrationsForScopes([scope], { skipGitCommits: true });
+    expect(readLedger(scope.ledgerPath)).toEqual(['26_01_01_00_00_00_only']);
+    expect(fs.readFileSync(path.join(tmp, 'out', 'log.txt'), 'utf8')).toBe('only\n');
+  });
+
+  it('blocks an ambiguous interruption after data mutation and keeps its verified checkpoint', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'core-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
+    await expect(
+      runMigrationsForScopes([scope], {
+        skipGitCommits: true,
+        faults: { afterMigration: () => { throw new Error('termination after mutation'); } },
+      }),
+    ).rejects.toThrow('termination after mutation');
+    const journal = readMigrationJournal(tmp);
+    expect(journal?.phase).toBe('running');
+
+    await expect(runMigrationsForScopes([scope], { skipGitCommits: true })).rejects.toBeInstanceOf(
+      IncompleteMigrationError,
+    );
+    expect(fs.existsSync(path.join(
+      migrationRecoveryRoot(tmp),
+      'checkpoints',
+      journal!.checkpointId,
+      'checkpoint.json',
+    ))).toBe(true);
+    expect(fs.readFileSync(path.join(tmp, 'out', 'log.txt'), 'utf8')).toBe('only\n');
+    expect(readLedger(scope.ledgerPath)).toEqual([]);
+  });
+
+  it('creates a verified checkpoint even when automatic Git is skipped', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'core-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
+    let checkpointPath = '';
+    await runMigrationsForScopes([scope], {
+      skipGitCommits: true,
+      faults: {
+        afterCheckpoint: checkpoint => {
+          checkpointPath = path.join(
+            migrationRecoveryRoot(tmp),
+            'checkpoints',
+            checkpoint.checkpointId,
+            'checkpoint.json',
+          );
+        },
+      },
+    });
+    expect(fs.existsSync(checkpointPath)).toBe(true);
+    expect(fs.statSync(checkpointPath).mode & 0o777).toBe(0o600);
   });
 });

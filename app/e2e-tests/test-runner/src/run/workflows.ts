@@ -58,7 +58,7 @@ export enum Bundle {
  *
  *   navigateToBigBundle()          → bundle list → editor loaded
  *   navigateToBigBundlePreview()   → … → preview modal, Bundle Preview tab
- *   navigateToBigBundleShareTab()  → … → Share / Publish to Meadow tab
+ *   navigateToBigBundleShareTab()  → … → Share tab
  */
 export class Workflows {
   private bundleList: BundleListPage;

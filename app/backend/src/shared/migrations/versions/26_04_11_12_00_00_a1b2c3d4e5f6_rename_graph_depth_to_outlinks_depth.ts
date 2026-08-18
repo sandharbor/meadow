@@ -96,6 +96,7 @@ function migrateAppConfigCalloutKey(configDir: string): void {
 }
 
 export const migration: Migration = {
+  id: '26_04_11_12_00_00_a1b2c3d4e5f6_rename_graph_depth_to_outlinks_depth',
   name: 'Rename graphDepth to outlinksDepth',
   description: 'Rename the graphDepth property in site_page_config.yaml files to outlinksDepth, and the matching calloutInitialPageGraphDepth flag in app config.',
   run: (): Promise<void> => {

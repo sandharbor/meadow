@@ -23,9 +23,10 @@ import { randomUUID } from 'crypto';
 import {
   generateBundleNodeId,
   parseBundleNodeConfig,
-  stringifyBundleNodeConfig,
 } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { saveBundleNodeConfigDocument } from '../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
 import { BundleConfig } from '../../../../../shared_code/types/bundleConfig.js';
+import { BundleNodeConfig } from '../../../../../shared_code/types/bundleNodeConfig.js';
 import { FileType } from '../../../../../shared_code/types/FileType.js';
 import { AppConfigPaths } from '../../../../../shared_code/paths/appConfigPaths.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../shared_code/utils/appConfigGitUtils.js';
@@ -34,7 +35,12 @@ import { generateBundleGuid } from '../../../../../shared_code/utils/bundleGuidU
 import { extractContentWithoutPagespecs } from '../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
 import { getConfigDirectory, getBundlesDirectory, getBundleDirectory, getBundleConfigPath } from '../../../shared/bundle-config/bundleConfigPaths.js';
-import { loadBundleConfig, updateBundleConfig } from '../../../shared/utils/bundleConfigUtils.js';
+import {
+  loadBundleConfig,
+  loadBundleConfigFromPath,
+  saveBundleConfigToPath,
+  updateBundleConfig,
+} from '../../../shared/utils/bundleConfigUtils.js';
 import { loadGeneratedBundleVersionManifest } from '../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { clearBundleGuidCache, logBundleError, logBundleInfo } from '../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../shared/utils/logging/backendLoggingUtils.js';
@@ -630,8 +636,7 @@ router.post('/bundles/add-example', (req, res, next) => {
 
     // Update bundle_config.yaml with fresh values
     const bundleConfigPath = join(bundleDir, 'config', 'bundle_config.yaml');
-    const bundleConfigContent = fs.readFileSync(bundleConfigPath, 'utf8');
-    const bundleConfig = YAML.parse(bundleConfigContent) as BundleConfig;
+    const bundleConfig = loadBundleConfigFromPath(bundleConfigPath);
 
     bundleConfig.bundleGuid = generateBundleGuid();
     bundleConfig.sourceDirectory = sourceGraphDest;
@@ -639,7 +644,7 @@ router.post('/bundles/add-example', (req, res, next) => {
     bundleConfig.bundleCreatedAt = new Date().toISOString();
     bundleConfig.bundleUpdatedAt = new Date().toISOString();
 
-    fs.writeFileSync(bundleConfigPath, YAML.stringify(bundleConfig), 'utf8');
+    saveBundleConfigToPath(bundleConfigPath, bundleConfig);
 
     clearBundleGuidCache(slug);
     logBundleInfo(slug, 'Example bundle created');
@@ -829,22 +834,21 @@ router.post('/bundles', (req, res, _next) => {
     bundleNotes: bundleNotes || ""
   };
 
-  const yamlContent = YAML.stringify(bundleConfig);
-  fs.writeFileSync(join(bundleDir, 'config/bundle_config.yaml'), yamlContent, 'utf8');
+  saveBundleConfigToPath(join(bundleDir, 'config/bundle_config.yaml'), bundleConfig);
 
   clearBundleGuidCache(actualSlug);
   logBundleInfo(actualSlug, 'Bundle created');
 
   // Create initial bundle_node_config.yaml with reasonable defaults
-  const bundleNodeConf = stringifyBundleNodeConfig([{
+  const initialNodes: BundleNodeConfig[] = [{
     bundleNodeName: entryBundleNodeName,
     ...(entrySourceGraphSubdirectory && { sourceGraphSubdirectory: entrySourceGraphSubdirectory }),
     bundleNodeKind: 'file',
     fileType: (entryFileType || 'md') as FileType,
     bundleNodeId: entryBundleNodeId,
     listType: 'whitelist',
-  }]);
-  fs.writeFileSync(join(bundleDir, 'config/bundle_node_config.yaml'), bundleNodeConf, 'utf8');
+  }];
+  saveBundleNodeConfigDocument(join(bundleDir, 'config/bundle_node_config.yaml'), initialNodes);
 
   // Commit the initial bundle config files to git
   const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());

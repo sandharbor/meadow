@@ -479,6 +479,7 @@ export function migrateGeneratedBundleVersioning(configDirectory: string): Gener
 }
 
 export const migration: Migration = {
+  id: '26_08_16_18_30_00_q7m2v9k4c6x1_generated_bundle_versioning',
   name: 'Canonical generated bundle versioning',
   description: 'Move generated output into the ordered canonical version manifest and remove duplicate legacy authorities.',
   run: (): Promise<void> => {

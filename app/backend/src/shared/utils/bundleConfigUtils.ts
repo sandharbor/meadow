@@ -14,50 +14,84 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
 import { BundleConfig } from '../../../../shared_code/types/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../shared_code/paths/bundleConfigPaths.js';
+import {
+  extensibleObjectValidation,
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+  yamlDocumentCodec,
+} from '../../../../shared_code/utils/durableDocument.js';
+
+const bundleConfigCodec = yamlDocumentCodec<BundleConfig>(value =>
+  extensibleObjectValidation<BundleConfig>(value, record => {
+    const booleanFields = [
+      'createdFromExample',
+      'generationBreadcrumbsEnabled',
+      'generationBacklinksEnabled',
+      'generationTagsEnabled',
+      'generationSearchEnabled',
+      'generationHoverPreviewEnabled',
+      'generationFolderNavigationEnabled',
+      'allowImagesToExtendToFrontier',
+      'generationMarkdownZipEnabled',
+      'generationOpenKnowledgeFormatEnabled',
+      'generationSpacedRepetitionEnabled',
+      'disableBaseStyleCss',
+      'disableBaseJavascriptJs',
+    ];
+    for (const field of booleanFields) {
+      if (record[field] !== undefined && typeof record[field] !== 'boolean') return `$.${field} must be a boolean`;
+    }
+    for (const field of ['defaultOutlinksDepth', 'defaultInlinksDepth']) {
+      if (record[field] !== undefined && (!Number.isInteger(record[field]) || Number(record[field]) < 0)) {
+        return `$.${field} must be a non-negative integer`;
+      }
+    }
+    for (const field of ['disabledGlobalFilters', 'disabledGlobalHooks', 'generationSpacedRepetitionTags']) {
+      if (record[field] !== undefined && (!Array.isArray(record[field]) || !record[field].every(item => typeof item === 'string'))) {
+        return `$.${field} must be an array of strings`;
+      }
+    }
+    return null;
+  }),
+);
+
+const genericYamlCodec = yamlDocumentCodec<Record<string, unknown>>(value =>
+  extensibleObjectValidation<Record<string, unknown>>(value),
+);
 
 export function loadBundleConfig(bundleDirectory: string): BundleConfig {
   const configPath = BundleConfigPaths.getBundleConfigFile(bundleDirectory);
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf-8');
-    return yaml.load(configContent) as BundleConfig || {};
-  }
-  return {};
+  return loadBundleConfigFromPath(configPath);
 }
 
 export function saveBundleConfig(bundleDirectory: string, config: BundleConfig): void {
   const configPath = BundleConfigPaths.getBundleConfigFile(bundleDirectory);
-  const configContent = yaml.dump(config, { quotingType: '"' });
-  fs.writeFileSync(configPath, configContent);
+  writeDurableDocument({ path: configPath, value: config, codec: bundleConfigCodec });
 }
 
 export function loadBundleConfigFromPath(configPath: string): BundleConfig {
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf-8');
-    return yaml.load(configContent) as BundleConfig || {};
-  }
-  return {};
+  return requireValidDocument<BundleConfig>(
+    readDurableDocument(configPath, bundleConfigCodec),
+    (): BundleConfig => ({}),
+  );
 }
 
 export function saveBundleConfigToPath(configPath: string, config: BundleConfig): void {
-  const configContent = yaml.dump(config, { quotingType: '"' });
-  fs.writeFileSync(configPath, configContent);
+  writeDurableDocument({ path: configPath, value: config, codec: bundleConfigCodec });
 }
 
-export function loadYamlFromPath<T = Record<string, unknown>>(configPath: string): T {
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf-8');
-    return yaml.load(configContent) as T || {} as T;
-  }
-  return {} as T;
+export function loadYamlFromPath<T extends Record<string, unknown> = Record<string, unknown>>(configPath: string): T {
+  return requireValidDocument(
+    readDurableDocument(configPath, genericYamlCodec),
+    (): Record<string, unknown> => ({}),
+  ) as T;
 }
 
-export function saveYamlToPath<T = Record<string, unknown>>(configPath: string, data: T): void {
-  const configContent = yaml.dump(data, { quotingType: '"' });
-  fs.writeFileSync(configPath, configContent);
+export function saveYamlToPath<T extends Record<string, unknown> = Record<string, unknown>>(configPath: string, data: T): void {
+  writeDurableDocument({ path: configPath, value: data, codec: genericYamlCodec });
 }
 
 export function updateBundleConfig(bundleDirectory: string, updates: Partial<BundleConfig>): BundleConfig {

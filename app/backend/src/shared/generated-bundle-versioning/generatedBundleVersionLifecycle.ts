@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { randomBytes, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import type {
   GeneratedBundleVersionEntry,
   GeneratedBundleVersionId,
@@ -46,6 +46,14 @@ import {
   restoreGeneratedVersionFromGit,
   type GeneratedVersionGitChange,
 } from './generatedBundleVersionGitService.js';
+import {
+  isPlainObject,
+  jsonDocumentCodec,
+  readDurableDocument,
+  requireValidDocument,
+  textDocumentCodec,
+  writeDurableDocument,
+} from '../../../../shared_code/utils/durableDocument.js';
 
 type VersionOperationType = 'generate-current' | 'create-version';
 type VersionOperationPhase = 'staging' | 'predecessor-backed-up' | 'version-installed' | 'manifest-committed';
@@ -133,6 +141,37 @@ const LOCK_FILENAME = '.version-operation.lock';
 const STAGING_PREFIX = '.staging-';
 const BACKUP_PREFIX = '.backup-';
 const QUARANTINE_PREFIX = '.quarantine-';
+const journalCodec = jsonDocumentCodec<VersionOperationJournal>(value => {
+  if (!isPlainObject(value)) return { valid: false, diagnostic: '$ must be an object' };
+  const fields = new Set([
+    'schemaVersion',
+    'operationId',
+    'operationType',
+    'phase',
+    'versionId',
+    'predecessorVersionId',
+    'stagingDirectoryName',
+    'backupDirectoryName',
+  ]);
+  const unknown = Object.keys(value).find(field => !fields.has(field));
+  if (unknown) return { valid: false, diagnostic: `$.${unknown} is not supported` };
+  if (value.schemaVersion !== 1) return { valid: false, diagnostic: '$.schemaVersion must be 1' };
+  if (!['generate-current', 'create-version'].includes(String(value.operationType))) {
+    return { valid: false, diagnostic: '$.operationType is invalid' };
+  }
+  if (!['staging', 'predecessor-backed-up', 'version-installed', 'manifest-committed'].includes(String(value.phase))) {
+    return { valid: false, diagnostic: '$.phase is invalid' };
+  }
+  for (const field of ['operationId', 'versionId', 'stagingDirectoryName']) {
+    if (typeof value[field] !== 'string') return { valid: false, diagnostic: `$.${field} must be a string` };
+  }
+  for (const field of ['predecessorVersionId', 'backupDirectoryName']) {
+    if (value[field] !== null && typeof value[field] !== 'string') {
+      return { valid: false, diagnostic: `$.${field} must be a string or null` };
+    }
+  }
+  return { valid: true, value: value as unknown as VersionOperationJournal };
+});
 
 function journalPath(bundleDirectory: string): string {
   return path.join(generatedBundleVersionsRoot(bundleDirectory), JOURNAL_FILENAME);
@@ -143,18 +182,16 @@ function lockPath(bundleDirectory: string): string {
 }
 
 function writeJournal(bundleDirectory: string, journal: VersionOperationJournal): void {
-  const filePath = journalPath(bundleDirectory);
-  const temporaryPath = `${filePath}.tmp-${process.pid}-${randomBytes(4).toString('hex')}`;
-  fs.writeFileSync(temporaryPath, `${JSON.stringify(journal, null, 2)}\n`, 'utf8');
-  fs.renameSync(temporaryPath, filePath);
+  writeDurableDocument({ path: journalPath(bundleDirectory), value: journal, codec: journalCodec });
 }
 
 function readJournal(bundleDirectory: string): VersionOperationJournal | null {
   const filePath = journalPath(bundleDirectory);
-  if (!fs.existsSync(filePath)) return null;
-  const value = JSON.parse(fs.readFileSync(filePath, 'utf8')) as VersionOperationJournal;
-  if (value.schemaVersion !== 1) throw new Error('Unsupported generated bundle version operation journal');
-  return value;
+  const result = readDurableDocument(filePath, journalCodec);
+  if (result.status === 'missing') return null;
+  return requireValidDocument(result, () => {
+    throw new Error('Generated bundle version journal disappeared');
+  });
 }
 
 function updateJournalPhase(
@@ -278,8 +315,11 @@ function restoreManifestSnapshot(bundleDirectory: string, snapshot: ManifestSnap
     fs.rmSync(filePath, { force: true });
     return;
   }
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, snapshot.content!, 'utf8');
+  writeDurableDocument({
+    path: filePath,
+    value: snapshot.content!,
+    codec: textDocumentCodec,
+  });
 }
 
 function rollbackSynchronousFailure(

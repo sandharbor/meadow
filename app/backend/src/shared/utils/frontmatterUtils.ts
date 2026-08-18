@@ -17,6 +17,10 @@ limitations under the License.
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import { logger } from './logging/backendLoggingUtils.js';
+import {
+  textDocumentCodec,
+  writeDurableDocument,
+} from '../../../../shared_code/utils/durableDocument.js';
 
 interface FrontmatterParseResult {
   frontmatter: Record<string, unknown>;
@@ -60,7 +64,7 @@ export class FrontmatterUtils {
       };
     }
   }
-  
+
   /**
    * Parse frontmatter from a file
    */
@@ -71,6 +75,32 @@ export class FrontmatterUtils {
     
     const markdownText = fs.readFileSync(filePath, 'utf-8');
     return this.parseFromText(markdownText);
+  }
+
+  private static parseFromFileForUpdate(filePath: string): FrontmatterParseResult {
+    if (!fs.existsSync(filePath)) throw new Error(`File does not exist: ${filePath}`);
+    const markdownText = fs.readFileSync(filePath, 'utf8');
+    const match = markdownText.match(this.FRONTMATTER_PATTERN);
+    if (!match) {
+      if (markdownText.startsWith('---\n')) {
+        throw new Error(`Refusing to modify malformed frontmatter in ${filePath}`);
+      }
+      return { frontmatter: {}, content: markdownText, hasFrontmatter: false };
+    }
+    let parsed: unknown;
+    try {
+      parsed = yaml.load(match[1]);
+    } catch (error) {
+      throw new Error(`Refusing to modify malformed frontmatter in ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (parsed !== undefined && (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))) {
+      throw new Error(`Refusing to modify non-object frontmatter in ${filePath}`);
+    }
+    return {
+      frontmatter: (parsed ?? {}) as Record<string, unknown>,
+      content: markdownText.slice(match[0].length),
+      hasFrontmatter: true,
+    };
   }
   
   /**
@@ -95,7 +125,7 @@ export class FrontmatterUtils {
    * Update the meadow-sensitive property in a markdown file
    */
   static updateSensitiveProperty(filePath: string, isSensitive: boolean): void {
-    const parseResult = this.parseFromFile(filePath);
+    const parseResult = this.parseFromFileForUpdate(filePath);
     
     // Update the frontmatter
     const updatedFrontmatter = { ...parseResult.frontmatter };
@@ -111,7 +141,12 @@ export class FrontmatterUtils {
     const updatedMarkdown = this.combineToText(updatedFrontmatter, parseResult.content);
     
     // Write back to file
-    fs.writeFileSync(filePath, updatedMarkdown, 'utf-8');
+    writeDurableDocument({
+      path: filePath,
+      value: updatedMarkdown,
+      codec: textDocumentCodec,
+      mode: fs.statSync(filePath).mode & 0o777,
+    });
   }
   
   /**
@@ -131,7 +166,7 @@ export class FrontmatterUtils {
    * Update any frontmatter property in a markdown file
    */
   static updateProperty(filePath: string, key: string, value: unknown): void {
-    const parseResult = this.parseFromFile(filePath);
+    const parseResult = this.parseFromFileForUpdate(filePath);
     
     // Update the frontmatter
     const updatedFrontmatter = { ...parseResult.frontmatter };
@@ -146,6 +181,11 @@ export class FrontmatterUtils {
     const updatedMarkdown = this.combineToText(updatedFrontmatter, parseResult.content);
     
     // Write back to file
-    fs.writeFileSync(filePath, updatedMarkdown, 'utf-8');
+    writeDurableDocument({
+      path: filePath,
+      value: updatedMarkdown,
+      codec: textDocumentCodec,
+      mode: fs.statSync(filePath).mode & 0o777,
+    });
   }
-} 
+}

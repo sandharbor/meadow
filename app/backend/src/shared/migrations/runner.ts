@@ -17,99 +17,123 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import YAML from 'yaml';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
 import { commitChangesNative } from '../utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { PublishingProviderPaths } from '../../../../shared_code/paths/publishingProviderPaths.js';
 import { getAllBackendProviders } from '../publishing-provider-host/providerRegistry.js';
-import type { MigrationsYaml } from '../../../../shared_code/types/migrations.js';
-
-/**
- * Migration runner.
- *
- * Migrations are organized into independent scopes. Each scope has its own
- * directory of migration files and its own YAML ledger of completed entries:
- *
- *   - The "core" scope owns app/backend/src/shared/migrations/versions/ and writes
- *     its ledger to <configDir>/migrations.yaml.
- *   - Each publishing provider that ships a backend/migrations/ folder gets
- *     its own scope, with the ledger living next to the provider's other
- *     config at <configDir>/app/publishing_providers/<id>/migrations.yaml.
- *
- * Scopes are independent on purpose: an extension layered in after the user
- * has already run core migrations starts with an empty ledger and applies
- * its own migrations the next time the app boots, regardless of how far
- * core has advanced. Migrations are responsible for being idempotent over
- * data that may already be in the new shape.
- *
- * Within a scope, files are applied in lexical order (the YY_MM_DD_… prefix
- * gives chronological order). Across scopes, core runs first, then each
- * provider in lexical order of provider id.
- */
+import type { Migration, MigrationLedger } from '../../../../shared_code/types/migrations.js';
+import {
+  IncompleteMigrationError,
+  createMigrationCheckpoint,
+  loadMigrationLedger,
+  meadowHomeDataDigest,
+  migrationRecoveryRoot,
+  readMigrationJournal,
+  removeMigrationJournal,
+  saveMigrationLedger,
+  writeMigrationJournal,
+  type LoadedMigrationLedger,
+  type MigrationCheckpointManifest,
+  type MigrationJournal,
+} from './migrationPersistence.js';
+import { retiredMigrationIdsForScope } from './migrationHistory.js';
 
 export interface MigrationScope {
-  /** Display label for log lines, e.g. "core" or a provider id. */
   name: string;
-  /** Directory of migration .ts/.js files, scanned at boot. */
   migrationsDir: string;
-  /** Path to the YAML file that records completed migrations for this scope. */
   ledgerPath: string;
+}
+
+interface MigrationDescriptor {
+  scope: MigrationScope;
+  filename: string;
+  id: string;
+  migration: Migration;
+}
+
+interface PreparedScope {
+  scope: MigrationScope;
+  descriptors: MigrationDescriptor[];
+  loadedLedger: LoadedMigrationLedger;
+}
+
+export interface MigrationFaults {
+  afterCheckpoint?: (checkpoint: MigrationCheckpointManifest) => void;
+  afterPreparedJournal?: (migrationId: string) => void;
+  afterRunningJournal?: (migrationId: string) => void;
+  afterMigration?: (migrationId: string) => void;
+  afterDataJournal?: (migrationId: string) => void;
+  afterLedger?: (migrationId: string) => void;
+  afterLedgerJournal?: (migrationId: string) => void;
+}
+
+export interface RunMigrationsOptions {
+  skipGitCommits?: boolean;
+  configDir?: string;
+  applicationVersion?: string;
+  faults?: MigrationFaults;
 }
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const MIGRATION_FILENAME_PATTERN = /^\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_[A-Za-z0-9_]+\.(?:ts|js)$/;
 
-function loadLedger(ledgerPath: string): MigrationsYaml {
-  if (!fs.existsSync(ledgerPath)) {
-    return { completed_migrations: [] };
+function logicalIdFromFilename(filename: string): string {
+  if (!MIGRATION_FILENAME_PATTERN.test(filename)) {
+    throw new Error(`Migration filename does not have a validated sortable prefix: ${filename}`);
   }
-  try {
-    const content = fs.readFileSync(ledgerPath, 'utf8');
-    const parsed = (YAML.parse(content) || {}) as Partial<MigrationsYaml>;
-    return {
-      completed_migrations: Array.isArray(parsed.completed_migrations)
-        ? parsed.completed_migrations
-        : [],
-    };
-  } catch (error) {
-    logger.warn(`[migrations] Failed to read ${ledgerPath}, treating as empty:`, error);
-    return { completed_migrations: [] };
-  }
-}
-
-function saveLedger(ledgerPath: string, data: MigrationsYaml): void {
-  fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
-  const yaml = YAML.stringify({ completed_migrations: data.completed_migrations });
-  fs.writeFileSync(ledgerPath, yaml, 'utf8');
+  return filename.replace(/\.(?:ts|js)$/, '');
 }
 
 function listMigrationFiles(migrationsDir: string): string[] {
+  if (!fs.existsSync(migrationsDir)) return [];
   return fs
     .readdirSync(migrationsDir, { withFileTypes: true })
-    .filter((d) => d.isFile())
-    .map((d) => d.name)
-    .filter((name) => (name.endsWith('.ts') || name.endsWith('.js')) && !name.endsWith('.d.ts'))
+    .filter(entry => entry.isFile())
+    .map(entry => entry.name)
+    .filter(name => (name.endsWith('.ts') || name.endsWith('.js')) && !name.endsWith('.d.ts'))
     .sort();
 }
 
-function discoverScopes(configDir: string): MigrationScope[] {
-  const scopes: MigrationScope[] = [];
+async function loadDescriptor(scope: MigrationScope, filename: string): Promise<MigrationDescriptor> {
+  const id = logicalIdFromFilename(filename);
+  const fullPath = path.join(scope.migrationsDir, filename);
+  const mod = (await import(`${pathToFileURL(fullPath).href}?meadowMigration=${encodeURIComponent(id)}`)) as {
+    migration?: Migration;
+  };
+  if (!mod.migration || typeof mod.migration.run !== 'function') {
+    throw new Error(`Migration ${scope.name}/${filename} is missing export 'migration.run'`);
+  }
+  if (mod.migration.id !== id) {
+    throw new Error(
+      `Migration ${scope.name}/${filename} exports logical ID '${mod.migration.id}', expected '${id}'`,
+    );
+  }
+  return { scope, filename, id, migration: mod.migration };
+}
 
-  // Core: app/backend/{src,dist/backend/src}/shared/migrations/versions
-  scopes.push({
+async function prepareScope(scope: MigrationScope, applicationVersion: string): Promise<PreparedScope> {
+  const descriptors = await Promise.all(
+    listMigrationFiles(scope.migrationsDir).map(file => loadDescriptor(scope, file)),
+  );
+  const ids = descriptors.map(descriptor => descriptor.id);
+  if (new Set(ids).size !== ids.length) {
+    throw new Error(`Migration scope ${scope.name} contains duplicate logical IDs`);
+  }
+  const acceptedIds = new Set([...ids, ...retiredMigrationIdsForScope(scope.name)]);
+  const loadedLedger = loadMigrationLedger(scope.ledgerPath, scope.name, acceptedIds, applicationVersion);
+  return { scope, descriptors, loadedLedger };
+}
+
+function discoverScopes(configDir: string): MigrationScope[] {
+  const scopes: MigrationScope[] = [{
     name: 'core',
     migrationsDir: path.join(__dirname, 'versions'),
     ledgerPath: path.join(configDir, 'migrations.yaml'),
-  });
-
-  // Each publishing provider that ships a backend/migrations/ directory.
-  // providerRegistry already enumerates the discovered providers in lexical
-  // order, so this list is deterministic.
+  }];
   for (const provider of getAllBackendProviders()) {
     const providerId = provider.manifest.id;
-    // Walk from this file (…/shared/migrations/runner) up to the provider's
-    // backend/migrations directory in source or dist layouts.
     const providerMigrationsDir = path.resolve(
       __dirname,
       '../../../../publishing_providers',
@@ -126,98 +150,201 @@ function discoverScopes(configDir: string): MigrationScope[] {
       ),
     });
   }
-
   return scopes;
 }
 
-interface PendingMigration {
-  scope: MigrationScope;
-  filename: string;
+function ledgerHas(ledger: MigrationLedger, id: string): boolean {
+  return ledger.completedMigrations.some(record => record.id === id);
 }
 
-function pendingForScope(scope: MigrationScope): PendingMigration[] {
-  if (!fs.existsSync(scope.migrationsDir)) return [];
-  const completed = new Set(loadLedger(scope.ledgerPath).completed_migrations);
-  return listMigrationFiles(scope.migrationsDir)
-    .filter((f) => !completed.has(f))
-    .map((f) => ({ scope, filename: f }));
+function recordCompletion(
+  ledger: MigrationLedger,
+  id: string,
+  applicationVersion: string,
+  completedAt: string,
+): void {
+  if (ledgerHas(ledger, id)) return;
+  ledger.completedMigrations.push({ id, applicationVersion, completedAt });
+  ledger.lastApplicationVersion = applicationVersion;
 }
 
-async function runMigration(pending: PendingMigration): Promise<void> {
-  const fullPath = path.join(pending.scope.migrationsDir, pending.filename);
-  logger.info(`[migrations] -> ${pending.scope.name}/${pending.filename}`);
+function findPreparedScope(scopes: PreparedScope[], name: string): PreparedScope {
+  const prepared = scopes.find(item => item.scope.name === name);
+  if (!prepared) throw new Error(`Incomplete migration journal references unavailable scope ${name}`);
+  return prepared;
+}
 
-  const mod = (await import(pathToFileURL(fullPath).href)) as {
-    migration?: { run: () => Promise<void> | void };
-  };
-  if (!mod.migration || typeof mod.migration.run !== 'function') {
-    throw new Error(`Migration ${pending.scope.name}/${pending.filename} missing export 'migration.run'`);
+function recoverIncompleteMigration(
+  configDir: string,
+  scopes: PreparedScope[],
+  applicationVersion: string,
+): void {
+  const journal = readMigrationJournal(configDir);
+  if (!journal) return;
+  if (journal.applicationVersion !== applicationVersion) {
+    throw new IncompleteMigrationError(
+      journal,
+      `Migration ${journal.migrationId} was interrupted under Meadow ${journal.applicationVersion}; checkpoint ${journal.checkpointId} requires recovery before Meadow ${applicationVersion} can continue`,
+    );
   }
-  await mod.migration.run();
+  const checkpointDirectory = path.join(
+    migrationRecoveryRoot(configDir),
+    'checkpoints',
+    journal.checkpointId,
+  );
+  if (!fs.existsSync(path.join(checkpointDirectory, 'checkpoint.json'))) {
+    throw new IncompleteMigrationError(journal, `Verified checkpoint ${journal.checkpointId} is unavailable`);
+  }
 
-  const ledger = loadLedger(pending.scope.ledgerPath);
-  if (!ledger.completed_migrations.includes(pending.filename)) {
-    ledger.completed_migrations.push(pending.filename);
-    saveLedger(pending.scope.ledgerPath, ledger);
+  const prepared = findPreparedScope(scopes, journal.scope);
+  if (!prepared.descriptors.some(descriptor => descriptor.id === journal.migrationId)) {
+    throw new IncompleteMigrationError(journal, `Interrupted migration ${journal.migrationId} is unavailable`);
+  }
+  const ledgerPaths = new Set(scopes.map(item => path.resolve(item.scope.ledgerPath)));
+  const currentDigest = meadowHomeDataDigest(configDir, ledgerPaths);
+  const completed = ledgerHas(prepared.loadedLedger.ledger, journal.migrationId);
+
+  if (
+    (journal.phase === 'prepared' || journal.phase === 'running') &&
+    currentDigest === journal.sourceDataDigest &&
+    !completed
+  ) {
+    removeMigrationJournal(configDir);
+    return;
+  }
+
+  if (
+    (journal.phase === 'data-written' || journal.phase === 'ledger-written') &&
+    journal.postDataDigest !== null &&
+    currentDigest === journal.postDataDigest
+  ) {
+    if (!completed) {
+      recordCompletion(
+        prepared.loadedLedger.ledger,
+        journal.migrationId,
+        journal.applicationVersion,
+        journal.completedAt ?? new Date().toISOString(),
+      );
+      saveMigrationLedger(prepared.scope.ledgerPath, prepared.loadedLedger.ledger);
+    }
+    removeMigrationJournal(configDir);
+    return;
+  }
+
+  throw new IncompleteMigrationError(
+    journal,
+    `Migration ${journal.migrationId} is incomplete and current Home hashes do not prove a safe automatic action. Preserve Home and use checkpoint ${journal.checkpointId}.`,
+  );
+}
+
+async function optionalGitCheckpoint(
+  phase: 'pre' | 'post',
+  configDir: string,
+  skipGitCommits: boolean,
+): Promise<void> {
+  if (skipGitCommits) return;
+  try {
+    await commitChangesNative(
+      [configDir],
+      `migration: ${phase}-migration - ${phase === 'pre' ? 'commit everything' : 'all changes'}`,
+      { configDir, allowEmpty: true },
+    );
+  } catch (error) {
+    logger.warn(
+      `[migrations] Optional ${phase}-migration Git commit failed; verified external checkpoint remains authoritative:`,
+      error instanceof Error ? error.message : error,
+    );
   }
 }
 
-/**
- * Apply pending migrations across the given scopes. Pure with respect to
- * the surrounding app — `runMigrationsOnStartup` wires it to the live
- * config directory and registered providers; tests can pass synthetic
- * scopes against a temp directory.
- */
 export async function runMigrationsForScopes(
   scopes: MigrationScope[],
-  options: { skipGitCommits?: boolean; configDir?: string } = {},
+  options: RunMigrationsOptions = {},
 ): Promise<void> {
-  const pending: PendingMigration[] = [];
-  for (const scope of scopes) {
-    pending.push(...pendingForScope(scope));
-  }
-  if (pending.length === 0) return;
+  const applicationVersion =
+    options.applicationVersion ?? process.env.MEADOW_APP_VERSION ?? '0.5.41-migration-test';
+  const configDir = options.configDir ?? path.dirname(scopes[0]?.ledgerPath ?? process.cwd());
+  const preparedScopes = await Promise.all(scopes.map(scope => prepareScope(scope, applicationVersion)));
 
-  logger.info(`[migrations] Running ${pending.length} pending migration(s) across ${scopes.length} scope(s)`);
+  recoverIncompleteMigration(configDir, preparedScopes, applicationVersion);
 
-  const configDir = options.configDir;
-  if (!options.skipGitCommits && configDir) {
-    try {
-      logger.info('[migrations] Creating pre-migration commit...');
-      await commitChangesNative([configDir], 'migration: pre-migration - commit everything', {
-        configDir,
-        allowEmpty: true,
-      });
-    } catch (error) {
-      logger.warn('[migrations] Pre-migration commit skipped:', error instanceof Error ? error.message : error);
+  const currentScopes = await Promise.all(scopes.map(scope => prepareScope(scope, applicationVersion)));
+  const ledgerPaths = new Set(currentScopes.map(item => path.resolve(item.scope.ledgerPath)));
+  const pending = currentScopes.flatMap(prepared =>
+    prepared.descriptors.filter(descriptor => !ledgerHas(prepared.loadedLedger.ledger, descriptor.id)),
+  );
+  const ledgersNeedRewrite = currentScopes.some(prepared => prepared.loadedLedger.needsRewrite);
+  if (pending.length === 0 && !ledgersNeedRewrite) return;
+
+  const checkpoint = createMigrationCheckpoint(
+    configDir,
+    applicationVersion,
+    pending.map(item => `${item.scope.name}/${item.id}`),
+  );
+  options.faults?.afterCheckpoint?.(checkpoint);
+  logger.info(`[migrations] Verified checkpoint ${checkpoint.checkpointId}`);
+
+  for (const prepared of currentScopes) {
+    if (prepared.loadedLedger.needsRewrite) {
+      saveMigrationLedger(prepared.scope.ledgerPath, prepared.loadedLedger.ledger);
+      prepared.loadedLedger.needsRewrite = false;
     }
   }
 
-  for (const item of pending) {
-    try {
-      await runMigration(item);
-    } catch (error) {
-      logger.error(`[migrations] Migration failed: ${item.scope.name}/${item.filename}`, error);
-      throw error;
-    }
+  await optionalGitCheckpoint('pre', configDir, options.skipGitCommits === true);
+
+  for (const descriptor of pending) {
+    const prepared = findPreparedScope(currentScopes, descriptor.scope.name);
+    const sourceDataDigest = meadowHomeDataDigest(configDir, ledgerPaths);
+    let journal: MigrationJournal = {
+      schemaVersion: 1,
+      checkpointId: checkpoint.checkpointId,
+      applicationVersion,
+      scope: descriptor.scope.name,
+      migrationId: descriptor.id,
+      ledgerPath: descriptor.scope.ledgerPath,
+      phase: 'prepared',
+      sourceDataDigest,
+      postDataDigest: null,
+      completedAt: null,
+    };
+    writeMigrationJournal(configDir, journal);
+    options.faults?.afterPreparedJournal?.(descriptor.id);
+
+    journal = { ...journal, phase: 'running' };
+    writeMigrationJournal(configDir, journal);
+    options.faults?.afterRunningJournal?.(descriptor.id);
+    logger.info(`[migrations] -> ${descriptor.scope.name}/${descriptor.id}`);
+    await descriptor.migration.run();
+    options.faults?.afterMigration?.(descriptor.id);
+
+    const completedAt = new Date().toISOString();
+    journal = {
+      ...journal,
+      phase: 'data-written',
+      postDataDigest: meadowHomeDataDigest(configDir, ledgerPaths),
+      completedAt,
+    };
+    writeMigrationJournal(configDir, journal);
+    options.faults?.afterDataJournal?.(descriptor.id);
+
+    recordCompletion(prepared.loadedLedger.ledger, descriptor.id, applicationVersion, completedAt);
+    saveMigrationLedger(descriptor.scope.ledgerPath, prepared.loadedLedger.ledger);
+    options.faults?.afterLedger?.(descriptor.id);
+
+    journal = { ...journal, phase: 'ledger-written' };
+    writeMigrationJournal(configDir, journal);
+    options.faults?.afterLedgerJournal?.(descriptor.id);
+    removeMigrationJournal(configDir);
   }
 
-  if (!options.skipGitCommits && configDir) {
-    try {
-      logger.info('[migrations] Creating post-migration commit...');
-      await commitChangesNative([configDir], 'migration: post-migration - all changes', {
-        configDir,
-        allowEmpty: true,
-      });
-    } catch (error) {
-      logger.warn('[migrations] Post-migration commit skipped:', error instanceof Error ? error.message : error);
-    }
-  }
-
+  await optionalGitCheckpoint('post', configDir, options.skipGitCommits === true);
   logger.info('[migrations] ✓ Startup migrations complete');
 }
 
 export async function runMigrationsOnStartup(): Promise<void> {
   const configDir = getConfigDirectory();
-  await runMigrationsForScopes(discoverScopes(configDir), { configDir });
+  const applicationVersion = process.env.MEADOW_APP_VERSION;
+  if (!applicationVersion) throw new Error('MEADOW_APP_VERSION is required for migration safety');
+  await runMigrationsForScopes(discoverScopes(configDir), { configDir, applicationVersion });
 }

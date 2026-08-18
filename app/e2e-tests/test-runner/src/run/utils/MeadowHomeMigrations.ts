@@ -57,49 +57,57 @@ export class MeadowHomeMigrations {
     return path.join(this.configDir, "migrations.yaml");
   }
 
-  /** All migration filenames recorded as completed, in the order the file lists them. */
+  /** All stable logical migration IDs recorded as completed, in ledger order. */
   listCompleted(): string[] {
     const filePath = this.migrationsPath();
     if (!fs.existsSync(filePath)) return [];
-    try {
-      const parsed = YAML.parse(fs.readFileSync(filePath, "utf8")) as
-        | { completed_migrations?: unknown }
-        | null;
-      if (parsed && Array.isArray(parsed.completed_migrations)) {
-        return parsed.completed_migrations.filter(
-          (entry): entry is string => typeof entry === "string",
-        );
-      }
-    } catch {
-      // fall through — treat a corrupt/unreadable file as empty
+    const parsed = YAML.parse(fs.readFileSync(filePath, "utf8")) as
+      | { completedMigrations?: unknown; completed_migrations?: unknown }
+      | null;
+    if (parsed && Array.isArray(parsed.completedMigrations)) {
+      return parsed.completedMigrations.flatMap((entry) => (
+        typeof entry === "object"
+          && entry !== null
+          && "id" in entry
+          && typeof entry.id === "string"
+          ? [entry.id]
+          : []
+      ));
+    }
+    // Reading the legacy shape remains useful while a before-fixture is still
+    // waiting for the production runner to canonicalize it.
+    if (parsed && Array.isArray(parsed.completed_migrations)) {
+      return parsed.completed_migrations.filter(
+        (entry): entry is string => typeof entry === "string",
+      ).map(entry => entry.replace(/\.(?:ts|js)$/, ""));
     }
     return [];
   }
 
   /**
-   * Assert that the migration identified by `filename` (e.g.
-   * `26_04_22_10_00_00_u6sotb1nmvag_move_meadow_to_provider.ts`) is present
+   * Assert that the stable logical migration `id` (e.g.
+   * `26_04_22_10_00_00_u6sotb1nmvag_move_meadow_to_provider`) is present
    * in `migrations.yaml`. Polls for a short window so tests that run
    * shortly after backend startup don't race the migration runner.
    */
-  async expectCompleted(filename: string, timeoutMs = 10_000): Promise<void> {
+  async expectCompleted(id: string, timeoutMs = 10_000): Promise<void> {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const completed = this.listCompleted();
-      if (completed.includes(filename)) return;
+      if (completed.includes(id)) return;
       await new Promise((r) => setTimeout(r, 100));
     }
     this.expect(
       this.listCompleted(),
-      `Expected migration "${filename}" in migrations.yaml after ${timeoutMs}ms`,
-    ).toContain(filename);
+      `Expected migration "${id}" in migrations.yaml after ${timeoutMs}ms`,
+    ).toContain(id);
   }
 
-  /** Assert that `filename` is NOT listed as completed (pending / never ran). */
-  expectNotCompleted(filename: string): void {
+  /** Assert that `id` is NOT listed as completed (pending / never ran). */
+  expectNotCompleted(id: string): void {
     this.expect(
       this.listCompleted(),
-      `Expected migration "${filename}" to be absent from migrations.yaml`,
-    ).not.toContain(filename);
+      `Expected migration "${id}" to be absent from migrations.yaml`,
+    ).not.toContain(id);
   }
 }

@@ -58,6 +58,7 @@ export function migratePreviewOutputDirectory(configDir: string): string[] {
 }
 
 export const migration: Migration = {
+  id: '26_08_13_12_00_00_f3m8q1v6z2k9_rename_preview_output_to_generated',
   name: 'Rename preview output to generated HTML',
   description: 'Move each current generated bundle artifact from html/preview to html/generated.',
   run: (): Promise<void> => {

@@ -37,7 +37,7 @@ describe('FrontmatterUtils', () => {
     const testFile = path.join(tempDir, 'test.md');
     const originalContent = 'This is just content without frontmatter';
     
-    fs.writeFileSync(testFile, originalContent, 'utf-8');
+    fs.writeFileSync(testFile, originalContent, { encoding: 'utf-8', mode: 0o640 });
     
     // Update the sensitive property
     FrontmatterUtils.updateSensitiveProperty(testFile, true);
@@ -47,6 +47,7 @@ describe('FrontmatterUtils', () => {
     expect(updatedContent).toMatch(/^---\n/);
     expect(updatedContent).toContain('meadow-sensitive: true');
     expect(updatedContent).toContain('This is just content without frontmatter');
+    expect(fs.statSync(testFile).mode & 0o777).toBe(0o640);
   });
 
   test('preserves existing properties when adding new property', () => {
@@ -69,4 +70,14 @@ This is content with existing frontmatter`;
     expect(updatedContent).toContain('meadow-sensitive: true');
     expect(updatedContent).toContain('This is content with existing frontmatter');
   });
-}); 
+
+  test('refuses malformed frontmatter without changing its bytes', () => {
+    const testFile = path.join(tempDir, 'invalid.md');
+    const originalContent = Buffer.from('---\ntitle: [unterminated\n---\nUser content\n');
+    fs.writeFileSync(testFile, originalContent);
+
+    expect(() => FrontmatterUtils.updateProperty(testFile, 'title', 'replacement'))
+      .toThrow(/Refusing to modify malformed frontmatter/);
+    expect(fs.readFileSync(testFile)).toEqual(originalContent);
+  });
+});

@@ -19,7 +19,11 @@ import fs from 'fs';
 import type { BundleNodeId } from '../../../../../shared_code/types/bundleNodeConfig.js';
 import { AppConfigPaths } from '../../../../../shared_code/paths/appConfigPaths.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../shared_code/utils/appConfigGitUtils.js';
-import { generateBundleGuid } from '../../../../../shared_code/utils/bundleGuidUtils.js';
+import { saveBundleNodeConfigDocument } from '../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
+import {
+  textDocumentCodec,
+  writeDurableDocument,
+} from '../../../../../shared_code/utils/durableDocument.js';
 import { getConfigDirectory, getBundleConfigPath, getBundleDirectory } from '../../../shared/bundle-config/bundleConfigPaths.js';
 import {
   getFolderBundleRepairStatus,
@@ -75,18 +79,19 @@ router.post('/bundles/:slug/folders/relink', (req, res, next) => {
         preflight: verified.preflight,
       });
     }
-    const temporaryPath = `${nodeConfigPath}.relink-${generateBundleGuid()}`;
     try {
-      fs.writeFileSync(temporaryPath, verified.serializedNodes, 'utf8');
-      fs.renameSync(temporaryPath, nodeConfigPath);
+      saveBundleNodeConfigDocument(nodeConfigPath, verified.nodes);
       const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
       await gitUtils.commitFiles([
         AppConfigPaths.relative.bundleNodeConfigFile(req.params.slug),
       ], `relink selected folder for ${req.params.slug}`);
       res.json({ success: true, preflight: verified.preflight });
     } catch (error) {
-      if (fs.existsSync(temporaryPath)) fs.rmSync(temporaryPath, { force: true });
-      fs.writeFileSync(nodeConfigPath, original, 'utf8');
+      writeDurableDocument({
+        path: nodeConfigPath,
+        value: original,
+        codec: textDocumentCodec,
+      });
       throw error;
     }
   })().catch(next);

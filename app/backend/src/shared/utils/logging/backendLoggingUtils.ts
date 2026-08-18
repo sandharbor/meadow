@@ -20,7 +20,7 @@ import { LogLevel } from '../../../../../shared_code/types/logging.js';
 
 export { LogLevel };
 
-let logDirectoryOverride: string | undefined;
+let logDirectoryOverride = process.env.MEADOW_LOG_DIRECTORY_OVERRIDE;
 
 /**
  * Sets a custom log directory override, e.g. from resources.local.yaml.

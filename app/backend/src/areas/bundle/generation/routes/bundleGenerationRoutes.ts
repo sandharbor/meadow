@@ -32,7 +32,7 @@ import {
 } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
 import { currentGeneratedBundleVersionDirectory } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { normalizePageTitle } from '../html/shared.js';
-import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
+import { loadBundleConfig, saveBundleConfigToPath } from '../../../../shared/utils/bundleConfigUtils.js';
 import { getHtmlPathForPage } from '../../../../shared/utils/htmlPathLookup.js';
 import { ensureTrackedPageContent } from '../source-material/trackedPageContent.js';
 import { readOpenKnowledgeFormatGenerationManifest } from '../open-knowledge-format/openKnowledgeFormatGenerationManifest.js';
@@ -43,6 +43,10 @@ import { createBundleOperationLogger } from '../../../../shared/utils/logging/bu
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
 import { parseBundleNodeConfig, resolveBundleNodeRoles } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import {
+  createPreviewReadToken,
+  MEADOW_PREVIEW_TOKEN_QUERY,
+} from '../../../../shared/app-shell/controlPlaneSecurity.js';
 
 const router = express.Router();
 
@@ -107,6 +111,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function getRequestOrigin(req: express.Request): string { return `${req.protocol}://${req.get('host')}`; }
+
+function previewFileUrl(req: express.Request, bundleSlug: string, relativePath: string): string {
+  const capability = process.env.MEADOW_API_CAPABILITY;
+  if (!capability) throw new Error('Preview access requires the launch capability');
+  const url = new URL(
+    `${getRequestOrigin(req)}/api/bundles/${encodeURIComponent(bundleSlug)}/generation/published/${encodePathForUrl(relativePath)}`,
+  );
+  url.searchParams.set(MEADOW_PREVIEW_TOKEN_QUERY, createPreviewReadToken(capability, bundleSlug));
+  return url.toString();
+}
 
 function loadDefaultTraversalPage(bundleDirectory: string): { title: string; directory: string } {
   const configPath = BundleConfigPaths.getBundleConfigFile(bundleDirectory);
@@ -240,7 +254,6 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
   (async () => {
     try {
       const { bundleSlug } = req.params;
-      const requestOrigin = getRequestOrigin(req);
       
       if (!bundleSlug) {
         return res.status(400).json({ error: 'bundleSlug is required' });
@@ -304,7 +317,7 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
         if (traversalPageTitle) {
           const foundPath = getHtmlPathForPage(bundleDirectory, traversalPageTitle, traversalPageDirectory);
           if (foundPath) {
-            traversalPageUrl = `${requestOrigin}/api/bundles/${bundleSlug}/generation/published/${encodePathForUrl(foundPath)}`;
+            traversalPageUrl = previewFileUrl(req, bundleSlug, foundPath);
           }
         }
 
@@ -315,7 +328,7 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
           if (htmlFiles.length > 0) {
             // Use the first HTML file found, but log a warning since this is a fallback
             logger.warn(`No traversal page specified or found, falling back to first HTML file: ${htmlFiles[0]}`);
-            traversalPageUrl = `${requestOrigin}/api/bundles/${bundleSlug}/generation/published/${encodePathForUrl(htmlFiles[0])}`;
+            traversalPageUrl = previewFileUrl(req, bundleSlug, htmlFiles[0]);
           }
         }
 
@@ -366,7 +379,6 @@ export interface PreviewProgress {
 // Preview bundle endpoint with Server-Sent Events for progress
 router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) => {
   const { bundleSlug } = req.params;
-  const requestOrigin = getRequestOrigin(req);
   const startPageTitleRaw = typeof req.query.startPageTitle === 'string' ? req.query.startPageTitle : undefined;
   const startPageDirectoryRaw = typeof req.query.startPageDirectory === 'string' ? req.query.startPageDirectory : undefined;
   const startPagePathRaw = typeof req.query.startPagePath === 'string' ? req.query.startPagePath : undefined;
@@ -470,7 +482,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
           onStartPageRendered: ({ relativeHtmlPath }) => {
             if (startUrlSent) return;
             startUrlSent = true;
-            const traversalPageUrl = `${requestOrigin}/api/bundles/${bundleSlug}/generation/published/${encodePathForUrl(relativeHtmlPath)}`;
+            const traversalPageUrl = previewFileUrl(req, bundleSlug, relativeHtmlPath);
             firstPageUrl = traversalPageUrl;
             sendProgress({
               stage: 'generating',
@@ -534,7 +546,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
       if (traversalPageTitle) {
         const foundPath = getHtmlPathForPage(bundleDirectory, traversalPageTitle, traversalPageDirectory);
         if (foundPath) {
-          traversalPageUrl = `${requestOrigin}/api/bundles/${bundleSlug}/generation/published/${encodePathForUrl(foundPath)}`;
+          traversalPageUrl = previewFileUrl(req, bundleSlug, foundPath);
         }
       }
 
@@ -543,7 +555,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
         const htmlFiles = fs.readdirSync(generatedHtmlDir).filter(file => file.endsWith('.html'));
         if (htmlFiles.length > 0) {
           logger.warn(`No traversal page specified or found, falling back to first HTML file: ${htmlFiles[0]}`);
-          traversalPageUrl = `${requestOrigin}/api/bundles/${bundleSlug}/generation/published/${encodePathForUrl(htmlFiles[0])}`;
+          traversalPageUrl = previewFileUrl(req, bundleSlug, htmlFiles[0]);
         }
       }
 
@@ -940,7 +952,7 @@ router.patch('/bundles/:slug/generation/options', (req, res, next) => {
       updatedConfig.generationTagsEnabled = false;
     }
 
-    fs.writeFileSync(configPath, YAML.stringify(updatedConfig), 'utf8');
+    saveBundleConfigToPath(configPath, updatedConfig);
     clearBundleGuidCache(slug);
 
     // Commit only the conf directory (fire and forget).

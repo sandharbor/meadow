@@ -180,6 +180,7 @@ describe('html publish', () => {
       ].join('\n'),
       'utf8'
     );
+    fs.chmodSync(path.join(sourceDir, 'main page.md'), 0o640);
     fs.writeFileSync(
       path.join(sourceDir, 'another page.md'),
       [
@@ -205,6 +206,7 @@ describe('html publish', () => {
     const sourceGuidMatch = sourceMainMarkdown.match(/<!--MEADOW_SR_GUID:([a-f0-9]{13})-->/);
     expect(sourceGuidMatch).not.toBeNull();
     expect(sourceMainMarkdown).toContain(`<!--SR:!2026-03-12,3,250-->\n\n<!--MEADOW_SR_GUID:${sourceGuidMatch![1]}-->`);
+    expect(fs.statSync(sourceMainPagePath).mode & 0o777).toBe(0o640);
 
     const trackedMainPagePath = path.join(bundlePath, 'raw', 'tracked_page_content', 'main page.md');
     const trackedMainMarkdown = fs.readFileSync(trackedMainPagePath, 'utf8');

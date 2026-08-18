@@ -25,7 +25,7 @@
 
 #### Step 2 - Share
 
-[[app component - modal -- bundle preview -- publish tab|publish to meadow tab]]
+[[app component - modal -- bundle preview -- publish tab|publish tab]]
 
 [[app component - modal -- bundle preview -- tab local export|local export tab]]
 

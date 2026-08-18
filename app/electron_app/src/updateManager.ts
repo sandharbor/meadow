@@ -14,13 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { spawn } from 'child_process';
+import { randomBytes } from 'crypto';
 import { app, BrowserWindow } from 'electron';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
-import { spawn } from 'child_process';
 import { loadAppConfig, updateAutoUpdateLastChecked } from '../../shared_code/utils/appConfigUtils';
 import { loadResourcesConfig } from '../../shared_code/utils/resourcesConfigUtils';
+import { compareAppVersions } from '../../shared_code/utils/meadowHomeFormat';
+import {
+  downloadVerifiedUpdateArtifact,
+  fetchVerifiedUpdateMetadata,
+  type VerifiedDownload,
+  type VerifiedMetadata,
+} from './verifiedUpdater';
 
 export type UpdateStatus = 'idle' | 'checking' | 'available' | 'not-available'
   | 'downloading' | 'downloaded' | 'error';
@@ -34,25 +41,33 @@ export interface UpdateState {
   errorMessage?: string;
 }
 
-function isNewerVersion(latest: string, current: string): boolean {
-  const latestParts = latest.split('.').map(Number);
-  const currentParts = current.split('.').map(Number);
-  const len = Math.max(latestParts.length, currentParts.length);
-  for (let i = 0; i < len; i++) {
-    const l = latestParts[i] || 0;
-    const c = currentParts[i] || 0;
-    if (l > c) return true;
-    if (l < c) return false;
+export function isNewerVersion(latest: string, current: string): boolean {
+  return compareAppVersions(latest, current) > 0;
+}
+
+function writeHelperConfiguration(filePath: string, value: unknown): void {
+  const descriptor = fs.openSync(filePath, 'wx', 0o600);
+  try {
+    fs.writeFileSync(descriptor, `${JSON.stringify(value)}\n`, 'utf8');
+    fs.fsyncSync(descriptor);
+  } finally {
+    fs.closeSync(descriptor);
   }
-  return false;
+  fs.chmodSync(filePath, 0o600);
+}
+
+function removeTransaction(transactionDirectory: string | undefined): void {
+  if (!transactionDirectory) return;
+  fs.rmSync(transactionDirectory, { recursive: true, force: true });
 }
 
 export class UpdateManager {
   private state: UpdateState;
-  private isDev: boolean;
-  private getMainWindow: () => BrowserWindow | null;
+  private readonly isDev: boolean;
+  private readonly getMainWindow: () => BrowserWindow | null;
   private autoCheckInterval: ReturnType<typeof setInterval> | null = null;
-  private downloadedDmgPath: string | null = null;
+  private verifiedMetadata: VerifiedMetadata | null = null;
+  private verifiedDownload: VerifiedDownload | null = null;
 
   constructor(isDev: boolean, getMainWindow: () => BrowserWindow | null) {
     this.isDev = isDev;
@@ -74,12 +89,6 @@ export class UpdateManager {
     }
   }
 
-  /**
-   * Resolve the base URL for the auto-update server, or null when the user
-   * hasn't configured one. A null result means auto-update is disabled —
-   * the menu item is hidden, the auto-check timer doesn't start, and any
-   * direct call no-ops gracefully.
-   */
   private getBaseUrlOrNull(): string | null {
     const resources = loadResourcesConfig();
     const dnsName = resources.appUpdateDNSName;
@@ -93,65 +102,55 @@ export class UpdateManager {
 
   async checkForUpdate(): Promise<void> {
     if (this.state.status === 'checking') return;
-
     const baseUrl = this.getBaseUrlOrNull();
     if (!baseUrl) return;
 
-    this.state = {
-      ...this.state,
-      status: 'checking',
-      errorMessage: undefined,
-    };
+    removeTransaction(
+      this.verifiedDownload?.transactionDirectory
+        ?? this.verifiedMetadata?.transactionDirectory,
+    );
+    this.verifiedDownload = null;
+    this.verifiedMetadata = null;
+    this.state = { ...this.state, status: 'checking', errorMessage: undefined };
     this.sendStatusToRenderer();
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
-      const versionResponse = await fetch(
-        `${baseUrl}/metadata/auto-update-version.txt`,
-        { signal: controller.signal }
-      );
-      clearTimeout(timeout);
-
-      if (!versionResponse.ok) {
-        throw new Error(`Failed to check for updates (HTTP ${versionResponse.status})`);
-      }
-
-      const latestVersion = (await versionResponse.text()).trim();
-
-      // Update last checked timestamp
+      const verifiedMetadata = await fetchVerifiedUpdateMetadata(baseUrl);
+      this.verifiedMetadata = verifiedMetadata;
+      const { metadata } = verifiedMetadata;
       updateAutoUpdateLastChecked(new Date().toISOString());
 
-      if (isNewerVersion(latestVersion, this.state.currentVersion)) {
-        // Fetch release notes
+      if (isNewerVersion(metadata.version, this.state.currentVersion)) {
         let releaseNotes: string | undefined;
         try {
-          const notesController = new AbortController();
-          const notesTimeout = setTimeout(() => notesController.abort(), 10000);
-          const notesResponse = await fetch(
-            `${baseUrl}/release_notes/${latestVersion}.md`,
-            { signal: notesController.signal }
+          const notesUrl = new URL(
+            metadata.releaseNotesPath,
+            `${baseUrl.replace(/\/?$/, '/')}`,
           );
-          clearTimeout(notesTimeout);
-          if (notesResponse.ok) {
-            releaseNotes = await notesResponse.text();
+          const response = await fetch(notesUrl, { redirect: 'error' });
+          if (response.ok) {
+            const declaredLength = Number(response.headers.get('content-length') ?? 0);
+            if (declaredLength <= 512 * 1024) {
+              const candidate = await response.text();
+              if (Buffer.byteLength(candidate) <= 512 * 1024) releaseNotes = candidate;
+            }
           }
         } catch {
-          // Release notes are optional
+          // Release notes are optional and are not part of the update authority.
         }
-
         this.state = {
           ...this.state,
           status: 'available',
-          latestVersion,
+          latestVersion: metadata.version,
           releaseNotes,
         };
       } else {
+        removeTransaction(verifiedMetadata.transactionDirectory);
+        this.verifiedMetadata = null;
         this.state = {
           ...this.state,
           status: 'not-available',
-          latestVersion,
+          latestVersion: metadata.version,
         };
       }
     } catch (error) {
@@ -159,80 +158,33 @@ export class UpdateManager {
       this.state = {
         ...this.state,
         status: 'error',
-        errorMessage: message.includes('abort')
-          ? 'Update check timed out. Please check your internet connection.'
-          : `Failed to check for updates: ${message}`,
+        errorMessage: `Failed to check for updates: ${message}`,
       };
     }
-
     this.sendStatusToRenderer();
   }
 
   async downloadUpdate(): Promise<void> {
-    if (this.state.status !== 'available' || !this.state.latestVersion) return;
-
+    if (this.state.status !== 'available' || !this.verifiedMetadata) return;
     const baseUrl = this.getBaseUrlOrNull();
     if (!baseUrl) return;
 
-    this.state = {
-      ...this.state,
-      status: 'downloading',
-      downloadProgress: 0,
-    };
+    this.state = { ...this.state, status: 'downloading', downloadProgress: 0 };
     this.sendStatusToRenderer();
-
     try {
-      const version = this.state.latestVersion;
-      const dmgUrl = `${baseUrl}/dist/Meadow-${version}-prod-arm64.dmg`;
-
-      const response = await fetch(dmgUrl);
-      if (!response.ok) {
-        throw new Error(`Download failed (HTTP ${response.status})`);
-      }
-
-      const contentLength = response.headers.get('content-length');
-      const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
-
-      const dmgPath = path.join(os.tmpdir(), `Meadow-${version}.dmg`);
-      const fileStream = fs.createWriteStream(dmgPath);
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Failed to read download stream');
-
-      let receivedBytes = 0;
-      let lastProgressUpdate = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        fileStream.write(Buffer.from(value));
-        receivedBytes += value.length;
-
-        if (totalBytes > 0) {
-          const progress = Math.round((receivedBytes / totalBytes) * 100);
-          // Throttle progress updates to avoid flooding IPC
-          const now = Date.now();
-          if (progress !== lastProgressUpdate && now - lastProgressUpdate > 200) {
-            lastProgressUpdate = now;
-            this.state = { ...this.state, downloadProgress: progress };
-            this.sendStatusToRenderer();
-          }
-        }
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        fileStream.end(() => resolve());
-        fileStream.on('error', reject);
-      });
-
-      this.downloadedDmgPath = dmgPath;
+      this.verifiedDownload = await downloadVerifiedUpdateArtifact(
+        baseUrl,
+        this.verifiedMetadata,
+      );
+      this.verifiedMetadata = null;
       this.state = {
         ...this.state,
         status: 'downloaded',
         downloadProgress: 100,
       };
     } catch (error) {
+      this.verifiedMetadata = null;
+      this.verifiedDownload = null;
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.state = {
         ...this.state,
@@ -241,7 +193,6 @@ export class UpdateManager {
         downloadProgress: undefined,
       };
     }
-
     this.sendStatusToRenderer();
   }
 
@@ -255,78 +206,83 @@ export class UpdateManager {
       this.sendStatusToRenderer();
       return;
     }
+    if (this.state.status !== 'downloaded' || !this.verifiedDownload) return;
 
-    if (this.state.status !== 'downloaded' || !this.downloadedDmgPath) return;
-
-    // Detect read-only volume (app running from mounted DMG)
-    const appPath = this.getAppPath();
+    const installedAppPath = this.getAppPath();
     try {
-      fs.accessSync(path.dirname(appPath), fs.constants.W_OK);
+      fs.accessSync(path.dirname(installedAppPath), fs.constants.W_OK);
     } catch {
       this.state = {
         ...this.state,
         status: 'error',
-        errorMessage: 'Cannot update: the application appears to be running from a read-only volume (e.g., a DMG). Please copy Meadow to your Applications folder first.',
+        errorMessage: 'Cannot update from a read-only volume. Copy Meadow to Applications first.',
       };
       this.sendStatusToRenderer();
       return;
     }
 
-    // Write the updater script to a temp file
-    const scriptPath = path.join(os.tmpdir(), 'meadow-updater.sh');
-    const updaterScript = `#!/bin/bash
-APP_PID=$1; APP_PATH="$2"; DMG_PATH="$3"
-# Wait for process to exit (max 30s)
-for i in $(seq 1 60); do
-  kill -0 "$APP_PID" 2>/dev/null || break; sleep 0.5
-done
-# Mount, copy, unmount, launch
-MOUNT_POINT=$(mktemp -d)
-hdiutil attach "$DMG_PATH" -nobrowse -noverify -mountpoint "$MOUNT_POINT"
-NEW_APP=$(find "$MOUNT_POINT" -maxdepth 1 -name "*.app" | head -1)
-rm -rf "$APP_PATH"
-cp -R "$NEW_APP" "$APP_PATH"
-xattr -rd com.apple.quarantine "$APP_PATH"
-hdiutil detach "$MOUNT_POINT" -quiet
-rm -f "$DMG_PATH"
-open "$APP_PATH"
-`;
-
-    fs.writeFileSync(scriptPath, updaterScript, { mode: 0o755 });
-
-    const pid = process.pid.toString();
-    spawn('bash', [scriptPath, pid, appPath, this.downloadedDmgPath], {
-      detached: true,
-      stdio: 'ignore',
-    }).unref();
-
-    app.quit();
+    const healthToken = randomBytes(32).toString('hex');
+    const helperConfigurationPath = path.join(
+      this.verifiedDownload.transactionDirectory,
+      'helper-configuration.json',
+    );
+    const helperLogPath = path.join(
+      this.verifiedDownload.transactionDirectory,
+      'update-failure.log',
+    );
+    const helperPath = path.join(__dirname, 'updateHelper.js');
+    try {
+      const helperStat = fs.lstatSync(helperPath);
+      if (!helperStat.isFile() || helperStat.isSymbolicLink()) {
+        throw new Error('Packaged update helper is not a regular file');
+      }
+      writeHelperConfiguration(helperConfigurationPath, {
+        installedAppPath,
+        artifactPath: this.verifiedDownload.artifactPath,
+        transactionDirectory: this.verifiedDownload.transactionDirectory,
+        metadata: this.verifiedDownload.metadata,
+        healthToken,
+        originalPid: process.pid,
+      });
+      const logDescriptor = fs.openSync(helperLogPath, 'wx', 0o600);
+      const helper = spawn(process.execPath, [helperPath, helperConfigurationPath], {
+        detached: true,
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+        stdio: ['ignore', logDescriptor, logDescriptor],
+      });
+      try {
+        await new Promise<void>((resolve, reject) => {
+          helper.once('spawn', resolve);
+          helper.once('error', reject);
+        });
+      } finally {
+        fs.closeSync(logDescriptor);
+      }
+      helper.unref();
+      app.quit();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.state = {
+        ...this.state,
+        status: 'error',
+        errorMessage: `Failed to start verified update: ${message}`,
+      };
+      this.sendStatusToRenderer();
+    }
   }
 
   startAutoCheckTimer(): void {
-    if (this.isDev) return;
-    if (!this.isConfigured()) return;
-
+    if (this.isDev || !this.isConfigured()) return;
     const config = loadAppConfig();
     if (config.appAutoUpdateCheckEnabled === false) return;
-
     const intervalSecs = config.appAutoUpdateCheckIntervalSecs || 86400;
     const lastChecked = config.appAutoUpdateCheckLastChecked;
-
-    // Check if due now
-    if (lastChecked) {
-      const elapsed = (Date.now() - new Date(lastChecked).getTime()) / 1000;
-      if (elapsed >= intervalSecs) {
-        this.autoCheckAndNotify();
-      }
-    } else {
-      // Never checked before
-      this.autoCheckAndNotify();
+    if (!lastChecked
+      || (Date.now() - new Date(lastChecked).getTime()) / 1000 >= intervalSecs) {
+      void this.autoCheckAndNotify();
     }
-
-    // Set up periodic check
     this.autoCheckInterval = setInterval(() => {
-      this.autoCheckAndNotify();
+      void this.autoCheckAndNotify();
     }, intervalSecs * 1000);
   }
 
@@ -348,8 +304,6 @@ open "$APP_PATH"
   }
 
   private getAppPath(): string {
-    // process.execPath is like /Applications/Meadow.app/Contents/MacOS/Meadow
-    // We need to go up 3 levels to get /Applications/Meadow.app
     return path.resolve(process.execPath, '..', '..', '..');
   }
 }

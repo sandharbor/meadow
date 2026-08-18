@@ -286,9 +286,24 @@ export class GeneratedBundleExcalidraw {
   }
 
   async expectEmbedVisible(hrefFragment?: string) {
-    const embed = this.embedLink(hrefFragment);
-    await embed.scrollIntoViewIfNeeded();
-    await this.expect(embed.locator("svg").first()).toBeVisible({ timeout: 30_000 });
+    // The lazy renderer replaces the link's contents as soon as it intersects.
+    // A Playwright scroll action waits for stability and can therefore retain
+    // the just-replaced node. Regeneration can also navigate the iframe at the
+    // same instant, so retry only those two transient context failures.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        await this.embedLink(hrefFragment)
+          .evaluate(element => element.scrollIntoView({ block: "center" }));
+        break;
+      } catch (error) {
+        const retryable = error instanceof Error
+          && /Execution context was destroyed|not attached to the DOM/.test(error.message);
+        if (!retryable || attempt === 4) throw error;
+        await this.hostPage.waitForTimeout(100);
+      }
+    }
+    await this.expect(this.embedLink(hrefFragment).locator("svg").first())
+      .toBeVisible({ timeout: 30_000 });
   }
 
   async clickEmbed(hrefFragment?: string) {

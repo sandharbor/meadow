@@ -29,7 +29,7 @@ The `Workflows` class composes page objects at a high level:
 
 - `navigateToBigBundle()` → bundle list → editor loaded
 - `navigateToBigBundlePreview()` → … → preview modal open
-- `navigateToBigBundleShareTab()` → … → Share / Publish to Meadow tab
+- `navigateToBigBundleShareTab()` → … → Share tab
 
 It also exports typed enums for fixtures and bundles:
 
@@ -134,7 +134,7 @@ src/run/pages/
         └── PreviewPublishModal/
             ├── PreviewPublishModal.ts
             └── components/
-                └── PublishToMeadowTab.ts
+                └── PublishToProviderTab.ts
 ```
 
 ### Naming conventions
@@ -143,7 +143,7 @@ src/run/pages/
 - **Components** are suffixed with `Component` (e.g. `FilterPanelComponent`,
   `SelectedPageDetailComponent`).
 - **Modals** are suffixed with `Modal` (e.g. `PreviewPublishModal`, `LinksModal`).
-- **Tabs** within a modal are suffixed with `Tab` (e.g. `PublishToMeadowTab`).
+- **Tabs** within a modal are suffixed with `Tab` (e.g. `PublishToProviderTab`).
 
 ### Placement rules
 

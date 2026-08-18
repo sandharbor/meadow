@@ -16,7 +16,6 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import YAML from 'yaml';
 import type {
   BundlePublicationSummary,
   GeneratedBundleReaderRouteIndex,
@@ -30,6 +29,13 @@ import { getConfigDirectory } from '../../../../../backend/src/shared/bundle-con
 import { loadGeneratedBundleVersionManifest } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { computePublishedSuccessors } from '../../../../../backend/src/shared/generated-bundle-versioning/readerSuccessors.js';
 import { S3_PROVIDER_ID } from '../s3Config.js';
+import {
+  isPlainObject,
+  readDurableDocument,
+  requireValidDocument,
+  writeDurableDocument,
+} from '../../../../../shared_code/utils/durableDocument.js';
+import { providerPublicationStateCodec } from '../../../../../shared_code/utils/providerPublicationDocument.js';
 
 export const S3_DEFAULT_PROVIDER_INSTANCE_ID = 's3-default-destination';
 
@@ -39,6 +45,16 @@ export interface S3PublicationState extends ProviderDestinationRecord {
     bucketName: string;
   };
 }
+
+const s3PublicationStateCodec = providerPublicationStateCodec<S3PublicationState>(
+  S3_DEFAULT_PROVIDER_INSTANCE_ID,
+  value => {
+    if (!isPlainObject(value)) return '$.destination must be an object';
+    if (typeof value.publishSlug !== 'string') return '$.destination.publishSlug must be a string';
+    if (typeof value.bucketName !== 'string') return '$.destination.bucketName must be a string';
+    return null;
+  },
+);
 
 function statePath(bundleSlug: string): string {
   return path.join(
@@ -62,22 +78,16 @@ export function loadS3PublicationState(
   destination?: { publishSlug: string; bucketName: string },
 ): S3PublicationState | null {
   const filePath = statePath(bundleSlug);
-  if (!fs.existsSync(filePath)) {
+  const result = readDurableDocument(filePath, s3PublicationStateCodec);
+  if (result.status === 'missing') {
     return destination ? emptyS3PublicationState(destination.publishSlug, destination.bucketName) : null;
   }
-  const value = YAML.parse(fs.readFileSync(filePath, 'utf8')) as S3PublicationState;
-  if (value?.schemaVersion !== 1 || value.providerInstanceId !== S3_DEFAULT_PROVIDER_INSTANCE_ID || !Array.isArray(value.events)) {
-    throw new Error('Invalid S3 publication history');
-  }
-  return value;
+  return requireValidDocument(result, () => emptyS3PublicationState('', ''));
 }
 
 export function saveS3PublicationState(bundleSlug: string, state: S3PublicationState): void {
   const filePath = statePath(bundleSlug);
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  const temporaryPath = `${filePath}.tmp-${process.pid}`;
-  fs.writeFileSync(temporaryPath, YAML.stringify(state), 'utf8');
-  fs.renameSync(temporaryPath, filePath);
+  writeDurableDocument({ path: filePath, value: state, codec: s3PublicationStateCodec });
 }
 
 export function appendS3PublicationEvent(

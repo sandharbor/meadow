@@ -20,11 +20,17 @@ limitations under the License.
  * Uses the fast_git_ops Rust binary (gitoxide) for all git operations.
  */
 
-import { existsSync, writeFileSync } from "fs";
+import { existsSync } from "fs";
 import { join } from "path";
 import { getDefaultConfigDirectory, loadAppConfig } from "./appConfigUtils.js";
 import { createLogger, Logger } from "../../backend/src/shared/utils/logging/backendLoggingUtils.js";
 import { commitChangesNative, runGitInitNative } from "../../backend/src/shared/utils/configDirectory/gitUtils/gitStatusUtils.js";
+import {
+  readDurableDocument,
+  requireValidDocument,
+  textDocumentCodec,
+  writeDurableDocument,
+} from "./durableDocument.js";
 
 /**
  * Author information for git commits
@@ -51,14 +57,48 @@ export const GIT_AUTHORS = {
 /**
  * Content for the .gitignore file in the config directory
  */
-const GITIGNORE_CONTENT = `.DS_Store
+const MANAGED_GITIGNORE_START = '# >>> Meadow managed private paths >>>';
+const MANAGED_GITIGNORE_END = '# <<< Meadow managed private paths <<<';
+const MANAGED_GITIGNORE_PATTERNS = [
+  '.DS_Store',
+  'logs/',
+  'app/secret_app_config.yaml',
+  'app/resources.local.yaml',
+  'app/publishing_providers/*/pp_secrets.yaml',
+  'app/publishing_providers/*/pp_resources.local.yaml',
+  'bundles/*/config/publishing_providers/*/pp_secrets.yaml',
+] as const;
+const GITIGNORE_CONTENT = `${MANAGED_GITIGNORE_START}
+.DS_Store
 logs/
 app/secret_app_config.yaml
 app/resources.local.yaml
 app/publishing_providers/*/pp_secrets.yaml
 app/publishing_providers/*/pp_resources.local.yaml
 bundles/*/config/publishing_providers/*/pp_secrets.yaml
+${MANAGED_GITIGNORE_END}
 `;
+
+function withManagedGitignoreBlock(existing: string): string {
+  const lines = existing.split(/\r?\n/);
+  const kept: string[] = [];
+  let inManagedBlock = false;
+  for (const line of lines) {
+    if (line === MANAGED_GITIGNORE_START) {
+      inManagedBlock = true;
+      continue;
+    }
+    if (line === MANAGED_GITIGNORE_END) {
+      inManagedBlock = false;
+      continue;
+    }
+    if (!inManagedBlock && !MANAGED_GITIGNORE_PATTERNS.includes(line as typeof MANAGED_GITIGNORE_PATTERNS[number])) {
+      kept.push(line);
+    }
+  }
+  const userContent = kept.join('\n').trimEnd();
+  return userContent ? `${userContent}\n\n${GITIGNORE_CONTENT}` : GITIGNORE_CONTENT;
+}
 
 /**
  * Centralized utility class for git operations on the app config folder.
@@ -145,11 +185,13 @@ export class AppConfigGitUtils {
     const wasAlreadyRepo = await this.isGitRepo();
 
     if (wasAlreadyRepo) {
+      this.createGitignore();
       this.logger.info(`[AppConfigGitUtils] Git repository already exists in ${this.configDir}`);
       return false;
     }
 
     if (!this.isManageGitAutomaticallyEnabled()) {
+      this.createGitignore();
       this.logDisabled(`initialized git repository in ${this.configDir} (defaultBranch=${defaultBranch})`);
       return false;
     }
@@ -174,8 +216,15 @@ export class AppConfigGitUtils {
    */
   createGitignore(): void {
     const gitignorePath = join(this.configDir, ".gitignore");
-    writeFileSync(gitignorePath, GITIGNORE_CONTENT, "utf8");
-    this.logger.info(`[AppConfigGitUtils] Created .gitignore in ${this.configDir}`);
+    const existing = requireValidDocument(
+      readDurableDocument(gitignorePath, textDocumentCodec),
+      () => '',
+    );
+    const next = withManagedGitignoreBlock(existing);
+    if (next !== existing) {
+      writeDurableDocument({ path: gitignorePath, value: next, codec: textDocumentCodec });
+      this.logger.info(`[AppConfigGitUtils] Updated managed .gitignore block in ${this.configDir}`);
+    }
   }
 
   /**
