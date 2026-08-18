@@ -28,4 +28,3 @@ export {
   seedTrackedAndLinkedFile,
   seedTrackedFile,
 } from "./okfSeedUtils.js";
-export { preMigrationFixturePath } from "./preMigrationFixture.js";

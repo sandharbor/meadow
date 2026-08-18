@@ -35,9 +35,19 @@ const RETIRED_CORE_MIGRATION_IDS = [
   '26_01_17_17_31_45_fFoMSRQtQPZg_migrate_to_application_support',
   '26_01_21_10_42_00_x9p3m7k2w1q8_rename_node_to_page_config',
   '26_01_21_12_00_00_pagerename1_rename_node_to_page_config',
+  '26_01_21_12_00_00_some_example',
   '26_01_28_12_00_00_rename_page_name_to_page_title_hook',
+  '26_04_11_12_00_00_a1b2c3d4e5f6_rename_graph_depth_to_outlinks_depth',
   // This migration originally lived in the core ledger before provider scopes.
   '26_04_22_10_00_00_u6sotb1nmvag_move_meadow_to_provider',
+  '26_06_03_12_00_00_d9f0a1b2c3d4_remove_generated_tag_page_configs',
+  '26_08_11_12_00_00_n4k7p2w9c5x8_site_node_foundation',
+  '26_08_13_12_00_00_f3m8q1v6z2k9_rename_preview_output_to_generated',
+  '26_08_13_13_00_00_b7n2r5k8w4q1_rename_sites_to_bundles',
+  '26_08_14_13_00_00_c4g7m2p9v6x1_rename_bundle_conf_to_config',
+  '26_08_16_18_30_00_q7m2v9k4c6x1_generated_bundle_versioning',
+  '26_08_17_11_00_00_r4m8v2k7c5x1_harden_provider_secret_files',
+  '26_08_17_13_00_00_m6q2v8k4p7x1_rename_custom_filter_scope',
 ] as const;
 
 export function retiredMigrationIdsForScope(scope: string): ReadonlySet<string> {

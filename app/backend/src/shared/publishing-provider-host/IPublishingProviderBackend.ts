@@ -54,6 +54,13 @@ export interface IPublishingProviderBackend {
   readonly manifest: PublishingProviderManifest;
 
   /**
+   * Stable IDs for provider migrations whose executable source has been
+   * retired. Existing ledgers remain valid, while unknown IDs still block
+   * startup instead of being silently trusted.
+   */
+  readonly retiredMigrationIds?: readonly string[];
+
+  /**
    * Mount the provider's HTTP routes onto the app. Called once at startup.
    */
   registerRoutes(app: Express): void;

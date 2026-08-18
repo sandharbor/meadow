@@ -193,94 +193,6 @@ async function acquireSerialGroupLock(group: string): Promise<() => void> {
   }
 }
 
-/**
- * Seed the config dir from a pre-migration MeadowHome snapshot resolved
- * via preMigrationFixturePath() (under
- * e2e-tests/test-runner/fixtures/pre-migration/). Copies the whole tree,
- * then rewrites each current or legacy entity config's sourceDirectory to
- * point at the shared source_graphs/ so the tests don't depend on absolute
- * paths captured in the snapshot. The legacy names must remain in these
- * frozen inputs so startup migrations exercise the real upgrade shape.
- *
- * Unlike populateConfigDir, this deliberately preserves the snapshot's
- * migrations.yaml — the point of these tests is to run the app with the
- * pre-migration bookkeeping and let the startup migration runner do its
- * thing.
- */
-function populateConfigDirFromSnapshot(configDir: string, snapshotPath: string) {
-  if (!existsSync(snapshotPath)) {
-    throw new Error(`Migration snapshot path not found: ${snapshotPath}`);
-  }
-
-  // Preserve the freshly-allocated ports that setup_worktree_resources_config.ts
-  // wrote into resources.local.yaml — the snapshot has stale port numbers from
-  // the original run and would otherwise clobber them.
-  const resLocalPath = path.join(configDir, "app", "resources.local.yaml");
-  let preservedLocal: Record<string, unknown> = {};
-  if (existsSync(resLocalPath)) {
-    try {
-      preservedLocal = (YAML.parse(readFileSync(resLocalPath, "utf8")) as Record<string, unknown>) ?? {};
-    } catch {
-      // fall through — no preserved values
-    }
-  }
-
-  cpSync(snapshotPath, configDir, {
-    recursive: true,
-    filter: (src) => !src.includes(".DS_Store"),
-  });
-
-  // Re-merge the preserved local values on top of whatever the snapshot had,
-  // so freshly-allocated ports win.
-  if (Object.keys(preservedLocal).length > 0) {
-    let existing: Record<string, unknown> = {};
-    if (existsSync(resLocalPath)) {
-      try {
-        existing = (YAML.parse(readFileSync(resLocalPath, "utf8")) as Record<string, unknown>) ?? {};
-      } catch {
-        existing = {};
-      }
-    }
-    writeFileSync(resLocalPath, YAML.stringify({ ...existing, ...preservedLocal }), "utf8");
-  }
-
-  const sourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
-  for (const { directoryName, configFileName } of [
-    { directoryName: "bundles", configFileName: "bundle_config.yaml" },
-    { directoryName: "sites", configFileName: "site_config.yaml" },
-  ]) {
-    const entitiesDirectory = path.join(configDir, directoryName);
-    if (!existsSync(entitiesDirectory)) continue;
-
-    for (const entityName of readdirSync(entitiesDirectory)) {
-      const entityDirectory = path.join(entitiesDirectory, entityName);
-      if (!statSync(entityDirectory).isDirectory()) continue;
-
-      // Frozen snapshots may predate the conf → config migration. Prefer the
-      // canonical directory when both exist, but hydrate either layout before
-      // the backend starts and runs the migration chain.
-      const configPath = ["config", "conf"]
-        .map((directoryName) => path.join(entityDirectory, directoryName, configFileName))
-        .find((candidate) => existsSync(candidate));
-      if (!configPath) continue;
-
-      const config = YAML.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
-      if (typeof config.sourceDirectory === "string") {
-        const sourceFolder = path.basename(config.sourceDirectory);
-        const capturedSourcePath = path.join(sourceGraphsDir, sourceFolder);
-        const canonicalSourceFolder = sourceFolder
-          .replace(/sites/g, "bundles")
-          .replace(/site/g, "bundle");
-        const canonicalSourcePath = path.join(sourceGraphsDir, canonicalSourceFolder);
-        config.sourceDirectory = canonicalSourceFolder !== sourceFolder && existsSync(canonicalSourcePath)
-          ? canonicalSourcePath
-          : capturedSourcePath;
-        writeFileSync(configPath, YAML.stringify(config), "utf8");
-      }
-    }
-  }
-}
-
 function populateConfigDir(configDir: string, fixtureName = "home_fixture_big_and_small") {
   const appDir = path.join(configDir, "app");
   mkdirSync(appDir, { recursive: true });
@@ -547,14 +459,6 @@ export const test = base.extend<{
   serialGroup: string | null;
   fixtureHome: string;
   trackBigBundleExcalidrawPages: boolean;
-  /**
-   * Absolute path to a pre-migration MeadowHome snapshot (typically
-   * resolved via preMigrationFixturePath()). When set, the test's
-   * MeadowHome is seeded from that snapshot (bypassing `fixtureHome`).
-   * Used by migration e2e specs to boot the backend against a
-   * pre-migration tree and exercise the startup migration path.
-   */
-  migrationBeforePath: string | null;
   testServer: TestServer;
   artifactDir: string;
   snapshot: (message: string) => Promise<void>;
@@ -619,7 +523,6 @@ export const test = base.extend<{
   serialGroup: [null, { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   trackBigBundleExcalidrawPages: [false, { option: true }],
-  migrationBeforePath: [null, { option: true }],
   // _backendExtraEnv and _preSpawnSeed are declared as fixtures (rather than
   // options) because their values are objects/functions that Playwright's
   // option-form would shadow with TestFixture inference. Factory style
@@ -662,7 +565,7 @@ export const test = base.extend<{
   },
 
   testServer: [
-    async ({ fixtureHome, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, migrationBeforePath, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
+    async ({ fixtureHome, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
       const workerIndex = testInfo.parallelIndex;
       const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
 
@@ -674,11 +577,7 @@ export const test = base.extend<{
       }).trim();
 
       // 2. Populate fixture data
-      if (migrationBeforePath) {
-        populateConfigDirFromSnapshot(configDir, migrationBeforePath);
-      } else {
-        populateConfigDir(configDir, fixtureHome);
-      }
+      populateConfigDir(configDir, fixtureHome);
       if (shouldTrackBigBundleExcalidrawPages) {
         trackBigBundleExcalidrawPages(configDir);
       }

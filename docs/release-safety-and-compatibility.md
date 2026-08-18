@@ -102,9 +102,9 @@ required to improve that boundary.
 
 Saved values are write-only from renderer-accessible APIs. The UI may report
 presence and accept replacement or clearing, but it never receives the stored
-value. Migration from legacy locations is Git-checkpointed and idempotent,
-declares the ignored credential paths it may modify, keeps unrelated secret
-fields, and refuses conflicting sources. Config exploration,
+value. Any migration that touches credentials must be Git-checkpointed and
+idempotent, declare the ignored credential paths it may modify, keep unrelated
+secret fields, and refuse conflicting sources. Config exploration,
 logs, diagnostics, snapshots, screenshots, URLs, and Git must not contain
 credentials.
 

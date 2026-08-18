@@ -47,6 +47,8 @@ export interface MigrationScope {
   name: string;
   migrationsDir: string;
   ledgerPath: string;
+  /** IDs whose migration source has been retired but may remain in existing ledgers. */
+  retiredMigrationIds?: readonly string[];
 }
 
 interface MigrationDescriptor {
@@ -128,15 +130,30 @@ async function prepareScope(scope: MigrationScope, applicationVersion: string): 
   if (new Set(ids).size !== ids.length) {
     throw new Error(`Migration scope ${scope.name} contains duplicate logical IDs`);
   }
-  const acceptedIds = new Set([...ids, ...retiredMigrationIdsForScope(scope.name)]);
+  const acceptedIds = new Set([
+    ...ids,
+    ...retiredMigrationIdsForScope(scope.name),
+    ...(scope.retiredMigrationIds ?? []),
+  ]);
   const loadedLedger = loadMigrationLedger(scope.ledgerPath, scope.name, acceptedIds, applicationVersion);
   return { scope, descriptors, loadedLedger };
 }
 
 function discoverScopes(configDir: string): MigrationScope[] {
+  const e2eCoreMigrationsDir = process.env.MEADOW_E2E_CORE_MIGRATIONS_DIRECTORY;
+  if (
+    e2eCoreMigrationsDir
+    && (process.env.MEADOW_E2E_TEST !== 'true' || process.env.MEADOW_IS_DEV !== 'true')
+  ) {
+    throw new Error(
+      'MEADOW_E2E_CORE_MIGRATIONS_DIRECTORY is restricted to development E2E processes',
+    );
+  }
   const scopes: MigrationScope[] = [{
     name: 'core',
-    migrationsDir: path.join(__dirname, 'versions'),
+    migrationsDir: e2eCoreMigrationsDir
+      ? path.resolve(e2eCoreMigrationsDir)
+      : path.join(__dirname, 'versions'),
     ledgerPath: path.join(configDir, 'migrations.yaml'),
   }];
   for (const provider of getAllBackendProviders()) {
@@ -147,7 +164,8 @@ function discoverScopes(configDir: string): MigrationScope[] {
       providerId,
       'backend/migrations',
     );
-    if (!fs.existsSync(providerMigrationsDir)) continue;
+    const retiredMigrationIds = provider.retiredMigrationIds ?? [];
+    if (!fs.existsSync(providerMigrationsDir) && retiredMigrationIds.length === 0) continue;
     scopes.push({
       name: providerId,
       migrationsDir: providerMigrationsDir,
@@ -155,6 +173,7 @@ function discoverScopes(configDir: string): MigrationScope[] {
         PublishingProviderPaths.getGlobalProviderDir(configDir, providerId),
         'migrations.yaml',
       ),
+      retiredMigrationIds,
     });
   }
   return scopes;

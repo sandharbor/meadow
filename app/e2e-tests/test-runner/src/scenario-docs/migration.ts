@@ -20,9 +20,7 @@ export const migration: ScenarioDoc = {
   id: "migration",
   name: "Migration",
   description:
-    "Tests that boot the app against a pre-migration MeadowHome snapshot and " +
-    "verify the startup migration runner recognises the pending migration, " +
-    "runs it cleanly, records it in migrations.yaml, and leaves the bundle in a " +
-    "usable state — real-world coverage that the on-disk rewrites don't just " +
-    "succeed on fresh data but on snapshots captured from earlier app versions.",
+    "Tests that load a purpose-built migration only in the E2E process and " +
+    "verify the startup runner recognises it, rewrites its fixture document, " +
+    "records completion in migrations.yaml, and leaves the app usable.",
 };

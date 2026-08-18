@@ -85,9 +85,8 @@ export class MeadowHomeMigrations {
   }
 
   /**
-   * Assert that the stable logical migration `id` (e.g.
-   * `26_04_22_10_00_00_u6sotb1nmvag_move_meadow_to_provider`) is present
-   * in `migrations.yaml`. Polls for a short window so tests that run
+   * Assert that the stable logical migration `id` is present in
+   * `migrations.yaml`. Polls for a short window so tests that run
    * shortly after backend startup don't race the migration runner.
    */
   async expectCompleted(id: string, timeoutMs = 10_000): Promise<void> {

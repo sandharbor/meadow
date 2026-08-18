@@ -43,19 +43,6 @@ const FAST_GIT_OPS = path.join(
 const LAUNCH_CAPABILITY = 'fixture-capability-000000000000000000000000';
 const UI_ORIGIN = 'http://127.0.0.1:43123';
 
-const CORE_MIGRATIONS = [
-  '26_01_21_12_00_00_some_example',
-  '26_04_11_12_00_00_a1b2c3d4e5f6_rename_graph_depth_to_outlinks_depth',
-  '26_06_03_12_00_00_d9f0a1b2c3d4_remove_generated_tag_page_configs',
-  '26_08_11_12_00_00_n4k7p2w9c5x8_site_node_foundation',
-  '26_08_13_12_00_00_f3m8q1v6z2k9_rename_preview_output_to_generated',
-  '26_08_13_13_00_00_b7n2r5k8w4q1_rename_sites_to_bundles',
-  '26_08_14_13_00_00_c4g7m2p9v6x1_rename_bundle_conf_to_config',
-  '26_08_16_18_30_00_q7m2v9k4c6x1_generated_bundle_versioning',
-  '26_08_17_11_00_00_r4m8v2k7c5x1_harden_provider_secret_files',
-  '26_08_17_13_00_00_m6q2v8k4p7x1_rename_custom_filter_scope',
-] as const;
-
 const cleanupRoots: string[] = [];
 const runningChildren = new Set<ChildProcess>();
 
@@ -260,7 +247,6 @@ function homeDigest(
   home: string,
   options: {
     excludeGitignore?: boolean;
-    excludeMigrationLedgers?: boolean;
     excludeProviderState?: boolean;
   } = {},
 ): string {
@@ -278,7 +264,6 @@ function homeDigest(
         walk(fullPath);
       } else if (entry.isFile()) {
         if (options.excludeGitignore === true && entry.name === '.gitignore') continue;
-        if (options.excludeMigrationLedgers === true && entry.name === 'migrations.yaml') continue;
         digest.update(path.relative(home, fullPath).split(path.sep).join('/'));
         digest.update('\0');
         digest.update(String(fs.statSync(fullPath).mode & 0o777));
@@ -290,13 +275,6 @@ function homeDigest(
   };
   walk(home);
   return digest.digest('hex');
-}
-
-function ledgerIds(filePath: string): string[] {
-  const value = YAML.parse(fs.readFileSync(filePath, 'utf8')) as {
-    completedMigrations: Array<{ id: string }>;
-  };
-  return value.completedMigrations.map(record => record.id);
 }
 
 function assertCleanRepository(home: string): void {
@@ -324,24 +302,6 @@ function assertNoTransactionResidue(directory: string): void {
   expect(residue).toEqual([]);
 }
 
-function assertSafeCheckpoints(root: string, home: string): void {
-  const checkpointsRoot = path.join(root, '.Meadow Home.meadow-recovery', 'checkpoints');
-  const checkpoints = fs.readdirSync(checkpointsRoot, { withFileTypes: true })
-    .filter(entry => entry.isDirectory());
-  // Home-format upgrades preserve only the small manifest they replace.
-  // Migration rollback is provided by the required Git commits instead.
-  expect(checkpoints.length).toBeGreaterThanOrEqual(1);
-  for (const checkpoint of checkpoints) {
-    const directory = path.join(checkpointsRoot, checkpoint.name);
-    expect(fs.statSync(directory).mode & 0o777).toBe(0o700);
-    const manifestPath = path.join(directory, 'checkpoint.json');
-    expect(fs.statSync(manifestPath).mode & 0o777).toBe(0o600);
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { homePath: string };
-    expect(manifest.homePath).toBe(home);
-  }
-  expect(fs.existsSync(path.join(home, '.meadow-migration-recovery'))).toBe(false);
-}
-
 afterEach(() => {
   for (const child of runningChildren) child.kill('SIGKILL');
   runningChildren.clear();
@@ -349,30 +309,6 @@ afterEach(() => {
 });
 
 describe('public-release startup upgrade matrix', () => {
-  it('upgrades the last private format through real startup and is byte-idempotent offline', async () => {
-    const { root, home, logDirectory } = fixtureCopy('last-private-pre-release');
-    const first = await startAndStopBackend(home, root, logDirectory);
-    const afterFirst = homeDigest(home);
-    const second = await startAndStopBackend(home, root, logDirectory);
-    expect(homeDigest(home)).toBe(afterFirst);
-
-    expect(ledgerIds(path.join(home, 'migrations.yaml'))).toEqual(CORE_MIGRATIONS);
-    expect(fs.existsSync(path.join(home, 'app', 'secret_app_config.yaml'))).toBe(false);
-    expect(YAML.parse(fs.readFileSync(path.join(home, 'app', 'resources.yaml'), 'utf8')))
-      .toMatchObject({ frontendPort: 3000 });
-    expect(YAML.parse(fs.readFileSync(path.join(home, 'app', 'resources.local.yaml'), 'utf8')))
-      .toMatchObject({ frontendPort: 3999 });
-    const gitignore = fs.readFileSync(path.join(home, '.gitignore'), 'utf8');
-    expect(gitignore).toContain('personal-notes/');
-    expect(gitignore.match(/>>> Meadow managed private paths >>>/g)).toHaveLength(1);
-    assertCleanRepository(home);
-    assertSafeCheckpoints(root, home);
-    assertNoTransactionResidue(root);
-
-    expect(`${first.output}\n${first.logSource}\n${second.output}\n${second.logSource}`)
-      .not.toContain(LAUNCH_CAPABILITY);
-  }, 120_000);
-
   it('preserves the first public core format and is full-tree stable on second startup', async () => {
     const { root, home, logDirectory } = fixtureCopy('public-format-1');
     const beforeCore = homeDigest(home, { excludeGitignore: true, excludeProviderState: true });
@@ -389,7 +325,7 @@ describe('public-release startup upgrade matrix', () => {
   }, 120_000);
 
   it('protects the application route surface and binds only to loopback', async () => {
-    const { root, home, logDirectory } = fixtureCopy('last-private-pre-release');
+    const { root, home, logDirectory } = fixtureCopy('public-format-1');
     await startAndStopBackend(home, root, logDirectory, async port => {
       const base = `http://127.0.0.1:${port}`;
       const healthResponse = await fetch(`${base}/api/health`);
@@ -456,23 +392,6 @@ describe('public-release startup upgrade matrix', () => {
         .find(record => record.family === 'IPv4' && !record.internal)?.address;
       if (externalIpv4) await expectTcpConnectionFailure(externalIpv4, port);
     });
-  }, 120_000);
-
-  it('can invoke every real migration again without changing migrated payload bytes', async () => {
-    const { root, home, logDirectory } = fixtureCopy('last-private-pre-release');
-    await startAndStopBackend(home, root, logDirectory);
-    fs.writeFileSync(path.join(home, 'migrations.yaml'), YAML.stringify({
-      schemaVersion: 1,
-      scope: 'core',
-      lastApplicationVersion: '0.5.41',
-      completedMigrations: [],
-    }));
-    const beforeRerun = homeDigest(home, { excludeMigrationLedgers: true });
-    const rerun = await startAndStopBackend(home, root, logDirectory);
-    expect(homeDigest(home, { excludeMigrationLedgers: true })).toBe(beforeRerun);
-    expect(ledgerIds(path.join(home, 'migrations.yaml'))).toEqual(CORE_MIGRATIONS);
-    assertCleanRepository(home);
-    expect(`${rerun.output}\n${rerun.logSource}`).not.toContain(LAUNCH_CAPABILITY);
   }, 120_000);
 
   it.each([

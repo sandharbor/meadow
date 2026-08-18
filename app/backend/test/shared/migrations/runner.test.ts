@@ -213,14 +213,15 @@ describe('runMigrationsForScopes', () => {
     expect(fs.existsSync(path.join(tmp, 'out', 'log.txt'))).toBe(false);
   });
 
-  it('deduplicates source and packaged filenames and preserves checked-in retired history', async () => {
+  it('deduplicates source and packaged filenames and preserves scope-owned retired history', async () => {
+    const retiredId = '25_12_05_09_03_23_retired_provider_migration';
     const scope: MigrationScope = {
-      name: 'core',
+      name: 'TestProvider',
       migrationsDir: path.join(tmp, 'packaged-migrations'),
       ledgerPath: path.join(tmp, 'core.yaml'),
+      retiredMigrationIds: [retiredId],
     };
     makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_current.js', trivialMigration('must-not-run'));
-    const retiredId = '25_12_05_09_03_23_zpnysy7x8wsf_add_source_graph_subdirectory';
     fs.writeFileSync(scope.ledgerPath, YAML.stringify({
       completed_migrations: [
         `${retiredId}.ts`,
