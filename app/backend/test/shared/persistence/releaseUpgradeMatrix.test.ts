@@ -258,7 +258,11 @@ async function expectBackendRefusal(
 
 function homeDigest(
   home: string,
-  options: { excludeMigrationLedgers?: boolean; excludeProviderState?: boolean } = {},
+  options: {
+    excludeGitignore?: boolean;
+    excludeMigrationLedgers?: boolean;
+    excludeProviderState?: boolean;
+  } = {},
 ): string {
   const digest = createHash('sha256');
   const walk = (directory: string): void => {
@@ -273,6 +277,7 @@ function homeDigest(
       if (entry.isDirectory()) {
         walk(fullPath);
       } else if (entry.isFile()) {
+        if (options.excludeGitignore === true && entry.name === '.gitignore') continue;
         if (options.excludeMigrationLedgers === true && entry.name === 'migrations.yaml') continue;
         digest.update(path.relative(home, fullPath).split(path.sep).join('/'));
         digest.update('\0');
@@ -323,7 +328,9 @@ function assertSafeCheckpoints(root: string, home: string): void {
   const checkpointsRoot = path.join(root, '.Meadow Home.meadow-recovery', 'checkpoints');
   const checkpoints = fs.readdirSync(checkpointsRoot, { withFileTypes: true })
     .filter(entry => entry.isDirectory());
-  expect(checkpoints.length).toBeGreaterThanOrEqual(2);
+  // Home-format upgrades preserve only the small manifest they replace.
+  // Migration rollback is provided by the required Git commits instead.
+  expect(checkpoints.length).toBeGreaterThanOrEqual(1);
   for (const checkpoint of checkpoints) {
     const directory = path.join(checkpointsRoot, checkpoint.name);
     expect(fs.statSync(directory).mode & 0o777).toBe(0o700);
@@ -332,6 +339,7 @@ function assertSafeCheckpoints(root: string, home: string): void {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { homePath: string };
     expect(manifest.homePath).toBe(home);
   }
+  expect(fs.existsSync(path.join(home, '.meadow-migration-recovery'))).toBe(false);
 }
 
 afterEach(() => {
@@ -367,9 +375,12 @@ describe('public-release startup upgrade matrix', () => {
 
   it('preserves the first public core format and is full-tree stable on second startup', async () => {
     const { root, home, logDirectory } = fixtureCopy('public-format-1');
-    const beforeCore = homeDigest(home, { excludeProviderState: true });
+    const beforeCore = homeDigest(home, { excludeGitignore: true, excludeProviderState: true });
     await startAndStopBackend(home, root, logDirectory);
-    expect(homeDigest(home, { excludeProviderState: true })).toBe(beforeCore);
+    expect(homeDigest(home, { excludeGitignore: true, excludeProviderState: true })).toBe(beforeCore);
+    const gitignore = fs.readFileSync(path.join(home, '.gitignore'), 'utf8');
+    expect(gitignore.match(/\.meadow-migration-recovery\//g)).toHaveLength(1);
+    expect(gitignore.match(/>>> Meadow managed private paths >>>/g)).toHaveLength(1);
     const afterFirst = homeDigest(home);
     await startAndStopBackend(home, root, logDirectory);
     expect(homeDigest(home)).toBe(afterFirst);

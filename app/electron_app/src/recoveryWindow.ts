@@ -15,10 +15,8 @@ limitations under the License.
 */
 
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
-import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { promisify } from 'util';
 import type { StartupFailureDiagnostic } from '../../shared_code/types/startupRecovery';
 import {
   selectMeadowHomeForRecovery,
@@ -27,55 +25,8 @@ import {
 import { DESKTOP_WEB_SECURITY_PREFERENCES } from '../../shared_code/utils/desktopLaunchSecurity';
 import { renderStartupRecoveryHtml } from '../../shared_code/utils/startupRecoveryHtml';
 
-const execFileAsync = promisify(execFile);
-
 export interface RecoveryWindowOptions {
   diagnostic: StartupFailureDiagnostic;
-  isDev: boolean;
-  nodePath: string;
-  resourcesPath: string;
-}
-
-async function restoreCheckpoint(options: RecoveryWindowOptions): Promise<void> {
-  const { diagnostic } = options;
-  if (!diagnostic.checkpointAvailable || !diagnostic.checkpointId) {
-    throw new Error('No verified migration checkpoint is available');
-  }
-  const confirmation = await dialog.showMessageBox({
-    type: 'warning',
-    title: 'Restore Meadow Home checkpoint?',
-    message: 'Restore the verified pre-migration checkpoint?',
-    detail: 'Meadow will first preserve the current Home in the external recovery directory. Publishing destinations are not contacted.',
-    buttons: ['Cancel', 'Restore checkpoint'],
-    defaultId: 0,
-    cancelId: 0,
-  });
-  if (confirmation.response !== 1) return;
-
-  let executable: string;
-  let args: string[];
-  if (options.isDev) {
-    executable = path.resolve(__dirname, '../../../../backend/node_modules/.bin/tsx');
-    args = [
-      path.resolve(__dirname, '../../../../backend/src/shared/recovery/restoreCheckpoint.ts'),
-      diagnostic.selectedHomePath,
-      diagnostic.checkpointId,
-      diagnostic.appVersion,
-    ];
-  } else {
-    executable = options.nodePath;
-    args = [
-      path.join(options.resourcesPath, 'backend', 'src', 'shared', 'recovery', 'restoreCheckpoint.js'),
-      diagnostic.selectedHomePath,
-      diagnostic.checkpointId,
-      diagnostic.appVersion,
-    ];
-  }
-  await execFileAsync(executable, args, {
-    encoding: 'utf8',
-    maxBuffer: 1024 * 1024,
-    timeout: 120_000,
-  });
 }
 
 function relaunch(): void {
@@ -135,11 +86,6 @@ export function showRecoveryWindow(options: RecoveryWindowOptions): BrowserWindo
         : '';
       setImmediate(relaunch);
       return { ok: true, message: `Selected ${result.selectedHomePath}.${preservation}` };
-    }
-    if (action === 'restore') {
-      await restoreCheckpoint(options);
-      setImmediate(relaunch);
-      return { ok: true, message: 'Checkpoint restored. Restarting Meadow…' };
     }
     if (action === 'retry') {
       setImmediate(relaunch);

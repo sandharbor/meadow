@@ -23,6 +23,8 @@ describe('private Meadow Home paths', () => {
     'app/publishing_providers/S3PublishingProvider/pp_secrets.yaml',
     'bundles/example/config/publishing_providers/provider/pp_secrets.yaml',
     'bundles\\example\\config\\publishing_providers\\provider\\pp_secrets.yaml',
+    '.meadow-migration-recovery/checkpoint.json',
+    '.meadow-migration-recovery/ignored-files/app/resources.local.yaml',
   ])('excludes %s contents from support artifacts', relativePath => {
     expect(isPrivateMeadowHomePath(relativePath)).toBe(true);
   });

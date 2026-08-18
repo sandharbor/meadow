@@ -19,6 +19,9 @@ function secretFiles(directory: string): string[] {
   if (!fs.existsSync(directory)) return [];
   const found: string[] = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isDirectory() && (entry.name === '.git' || entry.name === '.meadow-migration-recovery')) {
+      continue;
+    }
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) found.push(...secretFiles(fullPath));
     else if (entry.isFile() && entry.name === 'pp_secrets.yaml') found.push(fullPath);
@@ -43,7 +46,8 @@ export const migration: Migration = {
   id: '26_08_17_11_00_00_r4m8v2k7c5x1_harden_provider_secret_files',
   name: 'Harden provider secret files',
   description:
-    'Validates and atomically rewrites every existing provider secret document with mode 0600. The migration runner checkpoint preserves the original plaintext bytes before replacement.',
+    'Validates and atomically rewrites every existing provider secret document with mode 0600. The migration runner preserves the original ignored secret bytes alongside its Git checkpoint.',
+  ignoredPathRecovery: configDirectory => secretFiles(configDirectory),
   run: () => {
     hardenProviderSecretFiles(getConfigDirectory());
     return Promise.resolve();

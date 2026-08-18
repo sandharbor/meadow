@@ -49,5 +49,13 @@ export interface Migration {
   id: string;
   name: string;
   description: string;
+  /**
+   * Absolute paths intentionally excluded from Git that this migration may
+   * modify. The runner snapshots only these declared paths beside its small
+   * in-Home journal; tracked Home state is protected by Git checkpoints.
+   *
+   * This resolver must only inspect the Home. It must not mutate any state.
+   */
+  ignoredPathRecovery?: (homePath: string) => string[];
   run: () => Promise<void>;
 }

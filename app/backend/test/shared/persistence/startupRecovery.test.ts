@@ -130,12 +130,13 @@ describe('startup recovery diagnostics', () => {
     expect(startupSupportDiagnosticText(diagnostic)).not.toContain(secret);
   });
 
-  it('reports an available checkpoint and the last successful migration', () => {
+  it('reports an available Git checkpoint and the last successful migration', () => {
     const root = temporaryDirectory();
     const home = path.join(root, 'Home');
-    const checkpointId = 'migration-checkpoint-id';
-    fs.mkdirSync(path.join(root, '.Home.meadow-recovery', 'checkpoints', checkpointId), { recursive: true });
-    fs.mkdirSync(home);
+    const checkpointId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const recoveryDirectory = path.join(home, '.meadow-migration-recovery');
+    fs.mkdirSync(path.join(home, '.git'), { recursive: true });
+    fs.mkdirSync(recoveryDirectory);
     fs.writeFileSync(path.join(home, 'migrations.yaml'), [
       'schemaVersion: 1',
       'scope: core',
@@ -164,13 +165,7 @@ describe('startup recovery diagnostics', () => {
       '    applicationVersion: 0.5.41',
       '',
     ].join('\n'));
-    fs.writeFileSync(path.join(
-      root,
-      '.Home.meadow-recovery',
-      'checkpoints',
-      checkpointId,
-      'checkpoint.json',
-    ), '{}');
+    fs.writeFileSync(path.join(recoveryDirectory, 'checkpoint.json'), '{}');
     const error = Object.assign(new Error('ambiguous'), {
       name: 'IncompleteMigrationError',
       journal: { checkpointId, migrationId: 'second-migration' },
@@ -182,7 +177,10 @@ describe('startup recovery diagnostics', () => {
     });
     expect(diagnostic.category).toBe('incomplete-migration');
     expect(diagnostic.lastSuccessfulMigration).toBe('provider-migration');
+    expect(diagnostic.checkpointId).toBe(checkpointId);
+    expect(diagnostic.checkpointPath).toBe(recoveryDirectory);
     expect(diagnostic.checkpointAvailable).toBe(true);
+    expect(renderStartupRecoveryHtml(diagnostic)).not.toContain('data-recovery-action="restore"');
   });
 });
 

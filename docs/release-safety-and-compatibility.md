@@ -46,22 +46,37 @@ packaged JavaScript filename. Core and provider scopes have separate validated
 ledgers. Checked-in retired IDs preserve compatibility with historical ledgers;
 unknown, inconsistent, or ambiguous entries block startup.
 
-Before any migration can mutate a Home, the runner creates and verifies a
-whole-Home checkpoint outside the Home. This is mandatory even when automatic
-Git management is disabled. A durable journal records the prepared, running,
-data-applied, and ledger-applied boundaries. An interruption may only resume
-when the journal makes the next action unambiguous; otherwise startup presents
-the verified checkpoint as a recovery action rather than blindly rerunning.
+Before any migration can mutate a Home, the runner requires a pre-migration Git
+commit of the Home, even when ordinary automatic Git management is disabled.
+After the batch it requires a second commit containing the migrated state. A
+small, Git-ignored recovery directory inside the Home records the durable
+prepared, running, data-applied, and ledger-applied boundaries. It may also
+contain byte copies of only the ignored private paths that pending migrations
+explicitly declare; the runner never copies or hashes the whole Home.
+
+After the pre-migration commit, the runner records the identity and digest of
+Git's control plane outside the object database, including HEAD, refs, index,
+configuration, hooks, and reflogs. It verifies that guard after every migration
+and immediately before the post-migration commit. Replacement, redirection, or
+mutation of protected `.git` metadata blocks recovery as ambiguous. This is a
+fail-closed tripwire against accidental Git damage; migrations still run in the
+application process, so it is not an operating-system security sandbox.
+
+An interruption may only resume when the journal makes the next action
+unambiguous. Otherwise startup stops rather than blindly rerunning and reports
+the pre-migration Git commit plus the in-Home recovery location.
 
 Migration authors must:
 
 1. validate preconditions and all resulting documents;
 2. use durable writes for individual authorities;
 3. avoid network operations and irreversible external effects;
-4. make the migration byte-idempotent;
-5. add the logical ID to release fixtures and historical compatibility data as
+4. never read or write `.git` internals;
+5. make the migration byte-idempotent;
+6. add the logical ID to release fixtures and historical compatibility data as
    appropriate; and
-6. test success, a second run, invalid input, and relevant interruption points.
+7. declare every ignored private path the migration may modify; and
+8. test success, a second run, invalid input, and relevant interruption points.
 
 ## Recovery and diagnostics
 
@@ -69,13 +84,13 @@ Bootstrap and startup failures are rendered by an Electron-owned recovery
 window that does not depend on the backend being healthy. It shows the selected
 Home path, application and format versions, failure category, last successful
 migration, checkpoint information, and safe actions. A user can retry, choose
-another Home, reveal the affected path, restore a verified checkpoint, or
-export a diagnostic when that action applies.
+another Home, reveal the affected or recovery path, or export a diagnostic.
 
 Diagnostics use an allowlist and mode `0600`. They omit document contents,
 credentials, local API capabilities, parser source, environment values, and
-arbitrary logs. Restoring a checkpoint verifies the checkpoint manifest and
-payload hashes before replacing the Home.
+arbitrary logs. Recovery state travels with the Home; restoring tracked state
+uses the reported Git commit, while declared ignored-file copies are retained
+for deliberate manual recovery.
 
 ## Credentials
 
@@ -87,8 +102,9 @@ required to improve that boundary.
 
 Saved values are write-only from renderer-accessible APIs. The UI may report
 presence and accept replacement or clearing, but it never receives the stored
-value. Migration from legacy locations is checkpointed and idempotent, keeps
-unrelated secret fields, and refuses conflicting sources. Config exploration,
+value. Migration from legacy locations is Git-checkpointed and idempotent,
+declares the ignored credential paths it may modify, keeps unrelated secret
+fields, and refuses conflicting sources. Config exploration,
 logs, diagnostics, snapshots, screenshots, URLs, and Git must not contain
 credentials.
 

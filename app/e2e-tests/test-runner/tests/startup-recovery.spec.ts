@@ -85,11 +85,13 @@ test('Safe startup recovery surfaces remain actionable and secret-free', async (
     summary: 'Migration provider/example stopped in an ambiguous state. Meadow will not rerun it blindly.',
     relevantPath: '/Users/example/Meadow Home/migrations.yaml',
     lastSuccessfulMigration: 'core/previous-migration',
-    checkpointId: 'migration-checkpoint-example',
-    checkpointPath: '/Users/example/.Meadow Home.meadow-recovery/checkpoints/migration-checkpoint-example',
+    checkpointId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    checkpointPath: '/Users/example/Meadow Home/.meadow-migration-recovery',
     checkpointAvailable: true,
   });
-  await expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toBeVisible();
+  await expect(page.getByText('Pre-migration Git commit')).toBeVisible();
+  await expect(page.getByText('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0);
   await snapshot('incomplete migration recovery screen');
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);

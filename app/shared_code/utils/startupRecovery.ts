@@ -108,13 +108,8 @@ function lastSuccessfulMigration(homePath: string): string | null {
   return records.at(-1)?.id ?? null;
 }
 
-function checkpointDirectory(homePath: string, checkpointId: string): string {
-  return path.join(
-    path.dirname(homePath),
-    `.${path.basename(homePath)}.meadow-recovery`,
-    'checkpoints',
-    checkpointId,
-  );
+function migrationRecoveryDirectory(homePath: string): string {
+  return path.join(homePath, '.meadow-migration-recovery');
 }
 
 export function describeStartupFailure(
@@ -160,14 +155,14 @@ export function describeStartupFailure(
     title = 'Migration history could not be validated';
     summary = 'Meadow preserved the migration ledger exactly and stopped before running a migration.';
     relevantPath = typeof error.ledgerPath === 'string' ? error.ledgerPath : null;
-  } else if (error instanceof Error && /checkpoint/i.test(error.message)) {
+  } else if (error instanceof Error && /checkpoint|Git protection/i.test(error.message)) {
     category = 'checkpoint-failure';
-    title = 'A verified recovery checkpoint could not be created or read';
-    summary = 'Meadow stopped rather than changing the Home without a verified recovery copy.';
+    title = 'Required Git migration protection failed';
+    summary = 'Meadow stopped rather than changing the Home without an intact pre-migration Git checkpoint.';
   }
 
   const checkpointPath = checkpointId
-    ? checkpointDirectory(context.selectedHomePath, checkpointId)
+    ? migrationRecoveryDirectory(context.selectedHomePath)
     : null;
   return {
     schemaVersion: 1,
@@ -184,6 +179,7 @@ export function describeStartupFailure(
     checkpointId,
     checkpointPath,
     checkpointAvailable: checkpointPath !== null
+      && fs.existsSync(path.join(context.selectedHomePath, '.git'))
       && fs.existsSync(path.join(checkpointPath, 'checkpoint.json')),
   };
 }
@@ -252,8 +248,8 @@ export function startupSupportDiagnosticText(diagnostic: StartupFailureDiagnosti
     `Bootstrap file: ${diagnostic.bootstrapPath}`,
     `Relevant path: ${diagnostic.relevantPath ?? 'none'}`,
     `Last successful migration: ${diagnostic.lastSuccessfulMigration ?? 'none recorded'}`,
-    `Checkpoint ID: ${diagnostic.checkpointId ?? 'none'}`,
-    `Checkpoint available: ${diagnostic.checkpointAvailable ? 'yes' : 'no'}`,
+    `Pre-migration Git commit: ${diagnostic.checkpointId ?? 'none'}`,
+    `Migration recovery available: ${diagnostic.checkpointAvailable ? 'yes' : 'no'}`,
     `Summary: ${diagnostic.summary}`,
   ].join('\n');
 }

@@ -379,9 +379,6 @@ class MeadowApp {
     }
     this.recoveryWindow = showRecoveryWindow({
       diagnostic,
-      isDev: this.isDev,
-      nodePath: this.nodePath,
-      resourcesPath: (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath ?? '',
     });
     this.recoveryWindow.on('closed', () => {
       this.recoveryWindow = null;

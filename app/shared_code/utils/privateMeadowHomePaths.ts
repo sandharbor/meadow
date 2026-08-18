@@ -22,6 +22,10 @@ const PRIVATE_DOCUMENT_NAMES = new Set([
 /** True when a Meadow Home path names a document whose contents must not enter support artifacts. */
 export function isPrivateMeadowHomePath(relativePath: string): boolean {
   const normalized = relativePath.replace(/\\/g, '/');
+  if (
+    normalized === '.meadow-migration-recovery'
+    || normalized.startsWith('.meadow-migration-recovery/')
+  ) return true;
   const name = normalized.split('/').filter(Boolean).at(-1);
   return name !== undefined && PRIVATE_DOCUMENT_NAMES.has(name);
 }

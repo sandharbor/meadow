@@ -253,7 +253,6 @@ describe('runMigrationsForScopes', () => {
 
   it.each([
     'afterPreparedJournal',
-    'afterRunningJournal',
     'afterDataJournal',
     'afterLedger',
     'afterLedgerJournal',
@@ -284,7 +283,34 @@ describe('runMigrationsForScopes', () => {
     },
   );
 
-  it('can restart after interruption immediately after the verified checkpoint', async () => {
+  it.each(['afterRunningJournal', 'afterMigration'] as const)(
+    'blocks an ambiguous %s interruption without rerunning the migration',
+    async boundary => {
+      const scope: MigrationScope = {
+        name: 'core',
+        migrationsDir: path.join(tmp, 'core-migrations'),
+        ledgerPath: path.join(tmp, 'core.yaml'),
+      };
+      makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
+      await expect(
+        runMigrationsForScopes([scope], {
+          skipGitCommits: true,
+          faults: { [boundary]: () => { throw new Error(`interrupted ${boundary}`); } },
+        }),
+      ).rejects.toThrow(`interrupted ${boundary}`);
+
+      await expect(runMigrationsForScopes([scope], { skipGitCommits: true })).rejects.toBeInstanceOf(
+        IncompleteMigrationError,
+      );
+      const mutations = fs.existsSync(path.join(tmp, 'out', 'log.txt'))
+        ? fs.readFileSync(path.join(tmp, 'out', 'log.txt'), 'utf8').trim().split('\n')
+        : [];
+      expect(mutations).toEqual(boundary === 'afterMigration' ? ['only'] : []);
+      expect(readLedger(scope.ledgerPath)).toEqual([]);
+    },
+  );
+
+  it('can restart after interruption immediately after the recovery manifest', async () => {
     const scope: MigrationScope = {
       name: 'core',
       migrationsDir: path.join(tmp, 'core-migrations'),
@@ -305,17 +331,52 @@ describe('runMigrationsForScopes', () => {
     expect(readLedger(scope.ledgerPath)).toEqual([]);
     expect(fs.existsSync(path.join(
       migrationRecoveryRoot(tmp),
-      'checkpoints',
-      checkpointId,
       'checkpoint.json',
     ))).toBe(true);
+    expect(checkpointId).toBe('0000000000000000000000000000000000000000');
 
     await runMigrationsForScopes([scope], { skipGitCommits: true });
     expect(readLedger(scope.ledgerPath)).toEqual(['26_01_01_00_00_00_only']);
     expect(fs.readFileSync(path.join(tmp, 'out', 'log.txt'), 'utf8')).toBe('only\n');
   });
 
-  it('blocks an ambiguous interruption after data mutation and keeps its verified checkpoint', async () => {
+  it('carries unambiguous recovery state when the Home directory moves', async () => {
+    const originalHome = path.join(tmp, 'Original Home');
+    const movedHome = path.join(tmp, 'Moved Home');
+    const originalScope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(originalHome, 'core-migrations'),
+      ledgerPath: path.join(originalHome, 'core.yaml'),
+    };
+    makeMigrationFile(
+      originalScope.migrationsDir,
+      '26_01_01_00_00_00_only.ts',
+      trivialMigration('only'),
+    );
+    await expect(runMigrationsForScopes([originalScope], {
+      configDir: originalHome,
+      skipGitCommits: true,
+      faults: {
+        afterPreparedJournal: () => { throw new Error('move the Home now'); },
+      },
+    })).rejects.toThrow('move the Home now');
+
+    fs.renameSync(originalHome, movedHome);
+    const movedScope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(movedHome, 'core-migrations'),
+      ledgerPath: path.join(movedHome, 'core.yaml'),
+    };
+    await runMigrationsForScopes([movedScope], {
+      configDir: movedHome,
+      skipGitCommits: true,
+    });
+
+    expect(readLedger(movedScope.ledgerPath)).toEqual(['26_01_01_00_00_00_only']);
+    expect(fs.existsSync(migrationRecoveryRoot(movedHome))).toBe(false);
+  });
+
+  it('blocks an ambiguous interruption after data mutation and keeps its recovery manifest', async () => {
     const scope: MigrationScope = {
       name: 'core',
       migrationsDir: path.join(tmp, 'core-migrations'),
@@ -336,36 +397,141 @@ describe('runMigrationsForScopes', () => {
     );
     expect(fs.existsSync(path.join(
       migrationRecoveryRoot(tmp),
-      'checkpoints',
-      journal!.checkpointId,
       'checkpoint.json',
     ))).toBe(true);
     expect(fs.readFileSync(path.join(tmp, 'out', 'log.txt'), 'utf8')).toBe('only\n');
     expect(readLedger(scope.ledgerPath)).toEqual([]);
   });
 
-  it('creates a verified checkpoint even when automatic Git is skipped', async () => {
+  it('copies only explicitly declared ignored paths and removes recovery state after success', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'core-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    const secretPath = path.join(tmp, 'app', 'secret.yaml');
+    const unlistedPath = path.join(tmp, 'large-unlisted.bin');
+    fs.mkdirSync(path.dirname(secretPath), { recursive: true });
+    fs.writeFileSync(secretPath, 'token: preserved\n', { mode: 0o600 });
+    fs.writeFileSync(unlistedPath, Buffer.alloc(1024 * 1024, 7));
+    makeMigrationFile(
+      scope.migrationsDir,
+      '26_01_01_00_00_00_only.ts',
+      `${trivialMigration('only').replace(
+        "  run: async () => {",
+        "  ignoredPathRecovery: homePath => [path.join(homePath, 'app', 'secret.yaml')],\n  run: async () => {",
+      )}`,
+    );
+    let inspectedRecovery = false;
+    await runMigrationsForScopes([scope], {
+      skipGitCommits: true,
+      faults: {
+        afterCheckpoint: checkpoint => {
+          const checkpointPath = path.join(migrationRecoveryRoot(tmp), 'checkpoint.json');
+          const copiedSecretPath = path.join(
+            migrationRecoveryRoot(tmp),
+            'ignored-files',
+            'app',
+            'secret.yaml',
+          );
+          expect(checkpoint.declaredIgnoredPaths).toEqual(['app/secret.yaml']);
+          expect(checkpoint.files.map(file => file.relativePath)).toEqual(['app/secret.yaml']);
+          expect(fs.existsSync(checkpointPath)).toBe(true);
+          expect(fs.statSync(checkpointPath).mode & 0o777).toBe(0o600);
+          expect(fs.readFileSync(copiedSecretPath, 'utf8')).toBe('token: preserved\n');
+          expect(fs.statSync(copiedSecretPath).mode & 0o777).toBe(0o600);
+          expect(fs.existsSync(path.join(
+            migrationRecoveryRoot(tmp),
+            'ignored-files',
+            'large-unlisted.bin',
+          ))).toBe(false);
+          inspectedRecovery = true;
+        },
+      },
+    });
+    expect(inspectedRecovery).toBe(true);
+    expect(fs.existsSync(migrationRecoveryRoot(tmp))).toBe(false);
+  });
+
+  it('requires pre- and post-migration Git checkpoints in order', async () => {
     const scope: MigrationScope = {
       name: 'core',
       migrationsDir: path.join(tmp, 'core-migrations'),
       ledgerPath: path.join(tmp, 'core.yaml'),
     };
     makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
-    let checkpointPath = '';
+    const phases: string[] = [];
+
     await runMigrationsForScopes([scope], {
-      skipGitCommits: true,
-      faults: {
-        afterCheckpoint: checkpoint => {
-          checkpointPath = path.join(
-            migrationRecoveryRoot(tmp),
-            'checkpoints',
-            checkpoint.checkpointId,
-            'checkpoint.json',
-          );
-        },
+      gitCheckpoint: async phase => {
+        phases.push(phase);
+        return phase === 'pre'
+          ? 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+          : 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
       },
     });
-    expect(fs.existsSync(checkpointPath)).toBe(true);
-    expect(fs.statSync(checkpointPath).mode & 0o777).toBe(0o600);
+
+    expect(phases).toEqual(['pre', 'post']);
+    expect(readLedger(scope.ledgerPath)).toEqual(['26_01_01_00_00_00_only']);
+  });
+
+  it('does not run a migration when the required pre-migration Git checkpoint fails', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'core-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    makeMigrationFile(scope.migrationsDir, '26_01_01_00_00_00_only.ts', trivialMigration('only'));
+
+    await expect(runMigrationsForScopes([scope], {
+      gitCheckpoint: async () => { throw new Error('Git checkpoint failed'); },
+    })).rejects.toThrow('Git checkpoint failed');
+
+    expect(readLedger(scope.ledgerPath)).toEqual([]);
+    expect(fs.existsSync(path.join(tmp, 'out', 'log.txt'))).toBe(false);
+    expect(fs.existsSync(migrationRecoveryRoot(tmp))).toBe(false);
+  });
+
+  it('blocks before the post-migration commit when a migration changes .git metadata', async () => {
+    const scope: MigrationScope = {
+      name: 'core',
+      migrationsDir: path.join(tmp, 'core-migrations'),
+      ledgerPath: path.join(tmp, 'core.yaml'),
+    };
+    const checkpointSha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const gitDirectory = path.join(tmp, '.git');
+    fs.mkdirSync(path.join(gitDirectory, 'refs', 'heads'), { recursive: true });
+    fs.mkdirSync(path.join(gitDirectory, 'objects'));
+    fs.writeFileSync(path.join(gitDirectory, 'HEAD'), 'ref: refs/heads/main\n');
+    fs.writeFileSync(path.join(gitDirectory, 'refs', 'heads', 'main'), `${checkpointSha}\n`);
+    fs.writeFileSync(path.join(gitDirectory, 'config'), '[core]\n\tbare = false\n');
+    makeMigrationFile(
+      scope.migrationsDir,
+      '26_01_01_00_00_00_git_mutation.ts',
+      `import fs from 'fs';
+       import path from 'path';
+       export const migration = {
+         id: '__MIGRATION_ID__',
+         name: 'must not touch Git',
+         description: 'simulates an accidental write to protected metadata',
+         run: async () => {
+           const out = process.env.MIGRATION_TEST_OUT;
+           if (!out) throw new Error('MIGRATION_TEST_OUT not set');
+           fs.appendFileSync(path.join(path.dirname(out), '.git', 'config'), 'changed = true\\n');
+         }
+       };`,
+    );
+    const phases: string[] = [];
+
+    await expect(runMigrationsForScopes([scope], {
+      gitCheckpoint: async phase => {
+        phases.push(phase);
+        return checkpointSha;
+      },
+    })).rejects.toThrow(/changed protected \.git metadata/);
+
+    expect(phases).toEqual(['pre']);
+    expect(readMigrationJournal(tmp)?.phase).toBe('running');
+    expect(readLedger(scope.ledgerPath)).toEqual([]);
   });
 });

@@ -62,6 +62,7 @@ const MANAGED_GITIGNORE_END = '# <<< Meadow managed private paths <<<';
 const MANAGED_GITIGNORE_PATTERNS = [
   '.DS_Store',
   'logs/',
+  '.meadow-migration-recovery/',
   'app/secret_app_config.yaml',
   'app/resources.local.yaml',
   'app/publishing_providers/*/pp_secrets.yaml',
@@ -71,6 +72,7 @@ const MANAGED_GITIGNORE_PATTERNS = [
 const GITIGNORE_CONTENT = `${MANAGED_GITIGNORE_START}
 .DS_Store
 logs/
+.meadow-migration-recovery/
 app/secret_app_config.yaml
 app/resources.local.yaml
 app/publishing_providers/*/pp_secrets.yaml

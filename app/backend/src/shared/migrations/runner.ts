@@ -25,19 +25,23 @@ import { getAllBackendProviders } from '../publishing-provider-host/providerRegi
 import type { Migration, MigrationLedger } from '../../../../shared_code/types/migrations.js';
 import {
   IncompleteMigrationError,
-  createMigrationCheckpoint,
+  clearMigrationRecovery,
+  createMigrationRecovery,
   loadMigrationLedger,
-  meadowHomeDataDigest,
-  migrationRecoveryRoot,
   readMigrationJournal,
-  removeMigrationJournal,
+  readMigrationRecovery,
   saveMigrationLedger,
   writeMigrationJournal,
   type LoadedMigrationLedger,
-  type MigrationCheckpointManifest,
+  type MigrationRecoveryManifest,
   type MigrationJournal,
 } from './migrationPersistence.js';
 import { retiredMigrationIdsForScope } from './migrationHistory.js';
+import {
+  assertMigrationGitGuard,
+  captureMigrationGitGuard,
+  type MigrationGitGuard,
+} from './migrationGitGuard.js';
 
 export interface MigrationScope {
   name: string;
@@ -59,7 +63,7 @@ interface PreparedScope {
 }
 
 export interface MigrationFaults {
-  afterCheckpoint?: (checkpoint: MigrationCheckpointManifest) => void;
+  afterCheckpoint?: (checkpoint: MigrationRecoveryManifest) => void;
   afterPreparedJournal?: (migrationId: string) => void;
   afterRunningJournal?: (migrationId: string) => void;
   afterMigration?: (migrationId: string) => void;
@@ -69,10 +73,13 @@ export interface MigrationFaults {
 }
 
 export interface RunMigrationsOptions {
+  /** Unit-test escape hatch. Production migration startup must never set this. */
   skipGitCommits?: boolean;
   configDir?: string;
   applicationVersion?: string;
   faults?: MigrationFaults;
+  /** Test hook for exercising required Git checkpoint sequencing without the native binary. */
+  gitCheckpoint?: (phase: 'pre' | 'post', configDir: string) => Promise<string>;
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -174,50 +181,106 @@ function findPreparedScope(scopes: PreparedScope[], name: string): PreparedScope
   return prepared;
 }
 
-function recoverIncompleteMigration(
+function portableHomePath(homePath: string, candidatePath: string): string {
+  const relativePath = path.relative(path.resolve(homePath), path.resolve(candidatePath));
+  if (
+    relativePath.length === 0
+    || relativePath === '..'
+    || relativePath.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relativePath)
+  ) {
+    throw new Error(`Migration path must be a child of the selected Home: ${candidatePath}`);
+  }
+  return relativePath.split(path.sep).join('/');
+}
+
+async function requiredGitCheckpoint(
+  phase: 'pre' | 'post',
+  configDir: string,
+  options: RunMigrationsOptions,
+): Promise<string> {
+  if (options.gitCheckpoint) {
+    const checkpointId = await options.gitCheckpoint(phase, configDir);
+    if (!/^[a-f0-9]{40,64}$/.test(checkpointId)) {
+      throw new Error(`Migration Git checkpoint returned an invalid commit SHA during ${phase}`);
+    }
+    return checkpointId;
+  }
+  if (options.skipGitCommits === true) {
+    return phase === 'pre'
+      ? '0000000000000000000000000000000000000000'
+      : '1111111111111111111111111111111111111111';
+  }
+  const checkpointId = await commitChangesNative(
+    [configDir],
+    `migration: ${phase}-migration - ${phase === 'pre' ? 'commit everything' : 'all changes'}`,
+    {
+      configDir,
+      manageGitAutomatically: true,
+      allowEmpty: true,
+    },
+  );
+  if (!checkpointId || !/^[a-f0-9]{40,64}$/.test(checkpointId)) {
+    throw new Error(`Required ${phase}-migration Git checkpoint did not produce a commit SHA`);
+  }
+  return checkpointId;
+}
+
+async function finishRecoveredBatch(
+  configDir: string,
+  options: RunMigrationsOptions,
+): Promise<void> {
+  await requiredGitCheckpoint('post', configDir, options);
+  clearMigrationRecovery(configDir);
+}
+
+async function recoverIncompleteMigration(
   configDir: string,
   scopes: PreparedScope[],
   applicationVersion: string,
-): void {
+  options: RunMigrationsOptions,
+): Promise<void> {
+  const recovery = readMigrationRecovery(configDir);
   const journal = readMigrationJournal(configDir);
-  if (!journal) return;
+  if (!journal) {
+    if (recovery) await finishRecoveredBatch(configDir, options);
+    return;
+  }
+  if (!recovery || recovery.checkpointId !== journal.checkpointId) {
+    throw new IncompleteMigrationError(
+      journal,
+      `Migration ${journal.migrationId} has no matching Git recovery manifest`,
+    );
+  }
+  if (
+    !options.gitCheckpoint
+    && options.skipGitCommits !== true
+    && !fs.existsSync(path.join(configDir, '.git'))
+  ) {
+    throw new IncompleteMigrationError(journal, `Git checkpoint ${journal.checkpointId} is unavailable`);
+  }
   if (journal.applicationVersion !== applicationVersion) {
     throw new IncompleteMigrationError(
       journal,
-      `Migration ${journal.migrationId} was interrupted under Meadow ${journal.applicationVersion}; checkpoint ${journal.checkpointId} requires recovery before Meadow ${applicationVersion} can continue`,
+      `Migration ${journal.migrationId} was interrupted under Meadow ${journal.applicationVersion}; Git checkpoint ${journal.checkpointId} requires recovery before Meadow ${applicationVersion} can continue`,
     );
-  }
-  const checkpointDirectory = path.join(
-    migrationRecoveryRoot(configDir),
-    'checkpoints',
-    journal.checkpointId,
-  );
-  if (!fs.existsSync(path.join(checkpointDirectory, 'checkpoint.json'))) {
-    throw new IncompleteMigrationError(journal, `Verified checkpoint ${journal.checkpointId} is unavailable`);
   }
 
   const prepared = findPreparedScope(scopes, journal.scope);
   if (!prepared.descriptors.some(descriptor => descriptor.id === journal.migrationId)) {
     throw new IncompleteMigrationError(journal, `Interrupted migration ${journal.migrationId} is unavailable`);
   }
-  const ledgerPaths = new Set(scopes.map(item => path.resolve(item.scope.ledgerPath)));
-  const currentDigest = meadowHomeDataDigest(configDir, ledgerPaths);
+  if (portableHomePath(configDir, prepared.scope.ledgerPath) !== journal.ledgerRelativePath) {
+    throw new IncompleteMigrationError(journal, 'Interrupted migration references a different ledger path');
+  }
   const completed = ledgerHas(prepared.loadedLedger.ledger, journal.migrationId);
 
-  if (
-    (journal.phase === 'prepared' || journal.phase === 'running') &&
-    currentDigest === journal.sourceDataDigest &&
-    !completed
-  ) {
-    removeMigrationJournal(configDir);
+  if (journal.phase === 'prepared') {
+    await finishRecoveredBatch(configDir, options);
     return;
   }
 
-  if (
-    (journal.phase === 'data-written' || journal.phase === 'ledger-written') &&
-    journal.postDataDigest !== null &&
-    currentDigest === journal.postDataDigest
-  ) {
+  if (journal.phase === 'data-written' || journal.phase === 'ledger-written') {
     if (!completed) {
       recordCompletion(
         prepared.loadedLedger.ledger,
@@ -227,34 +290,14 @@ function recoverIncompleteMigration(
       );
       saveMigrationLedger(prepared.scope.ledgerPath, prepared.loadedLedger.ledger);
     }
-    removeMigrationJournal(configDir);
+    await finishRecoveredBatch(configDir, options);
     return;
   }
 
   throw new IncompleteMigrationError(
     journal,
-    `Migration ${journal.migrationId} is incomplete and current Home hashes do not prove a safe automatic action. Preserve Home and use checkpoint ${journal.checkpointId}.`,
+    `Migration ${journal.migrationId} stopped while running. Preserve the Home and use Git checkpoint ${journal.checkpointId} before retrying.`,
   );
-}
-
-async function optionalGitCheckpoint(
-  phase: 'pre' | 'post',
-  configDir: string,
-  skipGitCommits: boolean,
-): Promise<void> {
-  if (skipGitCommits) return;
-  try {
-    await commitChangesNative(
-      [configDir],
-      `migration: ${phase}-migration - ${phase === 'pre' ? 'commit everything' : 'all changes'}`,
-      { configDir, allowEmpty: true },
-    );
-  } catch (error) {
-    logger.warn(
-      `[migrations] Optional ${phase}-migration Git commit failed; verified external checkpoint remains authoritative:`,
-      error instanceof Error ? error.message : error,
-    );
-  }
 }
 
 export async function runMigrationsForScopes(
@@ -266,23 +309,32 @@ export async function runMigrationsForScopes(
   const configDir = options.configDir ?? path.dirname(scopes[0]?.ledgerPath ?? process.cwd());
   const preparedScopes = await Promise.all(scopes.map(scope => prepareScope(scope, applicationVersion)));
 
-  recoverIncompleteMigration(configDir, preparedScopes, applicationVersion);
+  await recoverIncompleteMigration(configDir, preparedScopes, applicationVersion, options);
 
   const currentScopes = await Promise.all(scopes.map(scope => prepareScope(scope, applicationVersion)));
-  const ledgerPaths = new Set(currentScopes.map(item => path.resolve(item.scope.ledgerPath)));
   const pending = currentScopes.flatMap(prepared =>
     prepared.descriptors.filter(descriptor => !ledgerHas(prepared.loadedLedger.ledger, descriptor.id)),
   );
   const ledgersNeedRewrite = currentScopes.some(prepared => prepared.loadedLedger.needsRewrite);
   if (pending.length === 0 && !ledgersNeedRewrite) return;
 
-  const checkpoint = createMigrationCheckpoint(
+  const checkpointId = await requiredGitCheckpoint('pre', configDir, options);
+  const gitGuard: MigrationGitGuard | null = options.skipGitCommits !== true
+    && fs.existsSync(path.join(configDir, '.git'))
+    ? captureMigrationGitGuard(configDir, checkpointId)
+    : null;
+  const ignoredPaths = pending.flatMap(descriptor =>
+    descriptor.migration.ignoredPathRecovery?.(configDir) ?? [],
+  );
+  const checkpoint = createMigrationRecovery(
     configDir,
     applicationVersion,
     pending.map(item => `${item.scope.name}/${item.id}`),
+    checkpointId,
+    ignoredPaths,
   );
   options.faults?.afterCheckpoint?.(checkpoint);
-  logger.info(`[migrations] Verified checkpoint ${checkpoint.checkpointId}`);
+  logger.info(`[migrations] Verified Git checkpoint ${checkpoint.checkpointId}`);
 
   for (const prepared of currentScopes) {
     if (prepared.loadedLedger.needsRewrite) {
@@ -291,41 +343,65 @@ export async function runMigrationsForScopes(
     }
   }
 
-  await optionalGitCheckpoint('pre', configDir, options.skipGitCommits === true);
-
+  let lastJournal: MigrationJournal | null = null;
   for (const descriptor of pending) {
     const prepared = findPreparedScope(currentScopes, descriptor.scope.name);
-    const sourceDataDigest = meadowHomeDataDigest(configDir, ledgerPaths);
     let journal: MigrationJournal = {
       schemaVersion: 1,
       checkpointId: checkpoint.checkpointId,
       applicationVersion,
       scope: descriptor.scope.name,
       migrationId: descriptor.id,
-      ledgerPath: descriptor.scope.ledgerPath,
+      ledgerRelativePath: portableHomePath(configDir, descriptor.scope.ledgerPath),
       phase: 'prepared',
-      sourceDataDigest,
-      postDataDigest: null,
       completedAt: null,
     };
     writeMigrationJournal(configDir, journal);
+    lastJournal = journal;
     options.faults?.afterPreparedJournal?.(descriptor.id);
 
     journal = { ...journal, phase: 'running' };
     writeMigrationJournal(configDir, journal);
+    lastJournal = journal;
     options.faults?.afterRunningJournal?.(descriptor.id);
     logger.info(`[migrations] -> ${descriptor.scope.name}/${descriptor.id}`);
-    await descriptor.migration.run();
+    try {
+      await descriptor.migration.run();
+    } catch (error) {
+      let gitProtectionDetail = '';
+      if (gitGuard) {
+        try {
+          assertMigrationGitGuard(configDir, gitGuard);
+        } catch (gitError) {
+          gitProtectionDetail = `; ${gitError instanceof Error ? gitError.message : 'protected .git metadata changed'}`;
+        }
+      }
+      const detail = error instanceof Error ? `: ${error.message}` : '';
+      throw new IncompleteMigrationError(
+        journal,
+        `Migration ${descriptor.id} failed while running${detail}${gitProtectionDetail}; Git checkpoint ${journal.checkpointId} is available`,
+        { cause: error },
+      );
+    }
+    try {
+      if (gitGuard) assertMigrationGitGuard(configDir, gitGuard);
+    } catch (error) {
+      throw new IncompleteMigrationError(
+        journal,
+        `Migration ${descriptor.id} changed protected .git metadata; Git checkpoint ${journal.checkpointId} is available`,
+        { cause: error },
+      );
+    }
     options.faults?.afterMigration?.(descriptor.id);
 
     const completedAt = new Date().toISOString();
     journal = {
       ...journal,
       phase: 'data-written',
-      postDataDigest: meadowHomeDataDigest(configDir, ledgerPaths),
       completedAt,
     };
     writeMigrationJournal(configDir, journal);
+    lastJournal = journal;
     options.faults?.afterDataJournal?.(descriptor.id);
 
     recordCompletion(prepared.loadedLedger.ledger, descriptor.id, applicationVersion, completedAt);
@@ -334,11 +410,30 @@ export async function runMigrationsForScopes(
 
     journal = { ...journal, phase: 'ledger-written' };
     writeMigrationJournal(configDir, journal);
+    lastJournal = journal;
     options.faults?.afterLedgerJournal?.(descriptor.id);
-    removeMigrationJournal(configDir);
   }
 
-  await optionalGitCheckpoint('post', configDir, options.skipGitCommits === true);
+  try {
+    if (gitGuard) assertMigrationGitGuard(configDir, gitGuard);
+  } catch (error) {
+    if (lastJournal) {
+      const blockedJournal: MigrationJournal = {
+        ...lastJournal,
+        phase: 'running',
+        completedAt: null,
+      };
+      writeMigrationJournal(configDir, blockedJournal);
+      throw new IncompleteMigrationError(
+        blockedJournal,
+        `Protected .git metadata changed before the post-migration checkpoint ${checkpointId}`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+  await requiredGitCheckpoint('post', configDir, options);
+  clearMigrationRecovery(configDir);
   logger.info('[migrations] ✓ Startup migrations complete');
 }
 

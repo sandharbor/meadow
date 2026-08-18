@@ -29,9 +29,9 @@ export function renderStartupRecoveryHtml(diagnostic: StartupFailureDiagnostic):
   const detail = (label: string, value: string): string => (
     `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`
   );
-  const restoreButton = diagnostic.checkpointAvailable
-    ? '<button class="danger" data-recovery-action="restore">Restore verified checkpoint</button>'
-    : '';
+  const migrationRecoveryDetails = diagnostic.checkpointId
+    ? `${detail('Pre-migration Git commit', diagnostic.checkpointId)}${detail('Recovery files', diagnostic.checkpointPath ?? 'Not available')}`
+    : detail('Pre-migration Git commit', 'None available');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
@@ -51,7 +51,6 @@ dd { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; marg
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 button { appearance: none; border: 1px solid #64725d; border-radius: 9px; background: #fff; color: #273023; cursor: pointer; font: inherit; font-weight: 650; padding: 10px 14px; }
 button.primary { background: #3f5940; color: #fff; }
-button.danger { border-color: #9b563f; color: #7b3522; }
 button:disabled { cursor: wait; opacity: .55; }
 #status { min-height: 22px; margin-top: 16px; color: #596052; }
 .note { color: #66685f; font-size: 13px; line-height: 1.45; }
@@ -67,13 +66,12 @@ ${detail('Relevant file', diagnostic.relevantPath ?? 'Not identified')}
 ${detail('Running app', `Meadow ${diagnostic.appVersion}`)}
 ${detail('Supported Home formats', `${diagnostic.supportedHomeFormatMinimum}–${diagnostic.supportedHomeFormatMaximum}`)}
 ${detail('Last successful migration', diagnostic.lastSuccessfulMigration ?? 'None recorded')}
-${detail('Recovery checkpoint', diagnostic.checkpointId ?? 'None available')}
+${migrationRecoveryDetails}
 </dl></section>
-<p class="note">Meadow has not reset the invalid file. Choose a different Home, repair the identified file outside Meadow and retry, or restore the verified checkpoint when one is available.</p>
+<p class="note">Meadow has not reset the Home. Choose a different Home, repair the identified file outside Meadow and retry, or use the pre-migration Git commit and any declared ignored-file recovery copies to recover an interrupted migration.</p>
 <div class="actions">
 <button class="primary" data-recovery-action="retry">Retry startup</button>
 <button data-recovery-action="choose-home">Choose another Home…</button>
-${restoreButton}
 <button data-recovery-action="reveal">Reveal relevant file</button>
 <button data-recovery-action="copy">Copy redacted diagnostic</button>
 <button data-recovery-action="quit">Quit</button>
