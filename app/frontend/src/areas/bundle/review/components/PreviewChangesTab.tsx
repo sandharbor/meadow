@@ -18,7 +18,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { ConfigFileExplorer, ConfigFileExplorerApi } from '../../../../../../shared_components/ConfigFileExplorer';
 import type { FileNode, FileTreeResponse } from '../../../../../../shared_components/ConfigFileExplorer';
 import { ToolbarIconButton } from '../../../../../../shared_components/ToolbarIconButton';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
 
 type HtmlSectionKey = 'head' | 'aside' | 'header' | 'main' | 'footer';
@@ -158,7 +158,7 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
     if (!slug || !publishSuccess || isRegeneratingPreview || !isActive) return;
 
     setHtmlSectionChangesLoading(true);
-    fetch(`${API_BASE_URL}/bundles/${slug}/review/preview-files/html-section-changes`)
+    apiRequest(`bundles/${slug}/review/preview-files/html-section-changes`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to fetch HTML section changes (${res.status})`);
         return res.json() as Promise<{ files: Array<{ path: string; sections: HtmlSectionChanges }> }>;

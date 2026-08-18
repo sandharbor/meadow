@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiUrl } from '../../../../shared/utils/apiClient';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 
 // Shared constants for hover image dimensions
@@ -23,20 +23,21 @@ export const HOVER_IMAGE_WIDTH = 192; // w-48 in Tailwind (2x the original 96px)
 export const HOVER_IMAGE_HEIGHT = 128; // h-32 in Tailwind (2x the original 64px)
 
 interface ImageHoverPreviewProps {
-  imageUrl: string;
+  imagePath: string;
   title: string;
   style?: React.CSSProperties;
 }
 
 const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
-  imageUrl,
+  imagePath,
   title,
   style,
 }) => {
   // Excalidraw drawings live as `<title>.excalidraw.md` on disk and need to be
   // run through the vendored renderer; render via the Excalidraw thumbnail
   // component instead of an `<img>` when the URL points at one.
-  const isExcalidraw = imageUrl.toLowerCase().endsWith('.excalidraw.md');
+  const imageUrl = apiUrl(imagePath);
+  const isExcalidraw = imagePath.toLowerCase().endsWith('.excalidraw.md');
   return (
     <div
       style={{
@@ -59,8 +60,8 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
           }}
         >
           <ExcalidrawThumbnail
-            mdSourceUrl={imageUrl}
-            vendorUrl={`${API_BASE_URL}/generation/assets/excalidraw-vendor.js`}
+            mdSourcePath={imagePath}
+            vendorUrl={apiUrl('generation/assets/excalidraw-vendor.js')}
             alt={title}
             className="w-full h-full"
           />
@@ -85,7 +86,4 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
 };
 
 export default ImageHoverPreview;
-
-
-
 

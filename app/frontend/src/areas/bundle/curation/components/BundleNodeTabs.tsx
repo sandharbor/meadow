@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { Graph, IBundleNode } from '../../../../../../shared_code/types/graph';
 import { IFilter, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
 import { DisplayGraph } from '../types/displayGraph';
@@ -30,7 +31,6 @@ import EmptySoloCallout from './EmptySoloCallout';
 import BundlePagesToggle from './BundlePagesToggle';
 import ResizableSidebar from './ResizableSidebar';
 import { BundleNodeConfig } from '../../../../../../shared_code/types/bundleNodeConfig';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { buildNodeConfigs, generateBundleNodeId, getOrphanNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import Modal from '../../../../shared/components/Modal';
 import { AppConfig } from '../../../../../../shared_code/types/appConfig';
@@ -187,7 +187,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     let cancelled = false;
     const loadObsidianInfo = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/bundles/${encodeURIComponent(bundleSlug)}/obsidian-info`);
+        const res = await apiRequest(`bundles/${encodeURIComponent(bundleSlug)}/obsidian-info`);
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) {
@@ -219,7 +219,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   useEffect(() => {
     const checkConsent = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/app-config`);
+        const response = await apiRequest(`app-config`);
         if (response.ok) {
           const config: AppConfig = await response.json();
           setHasSensitiveConsent(
@@ -420,7 +420,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   // Persist the full config array as a draft
   const persistAllConfigs = async () => {
     const configs = buildNodeConfigs(graph.getAllNodes());
-    await fetch(`${API_BASE_URL}/bundles/${bundleSlug || ''}/curation/bundle-config`, {
+    await apiRequest(`bundles/${bundleSlug || ''}/curation/bundle-config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ configs, isDraft: true })
@@ -584,7 +584,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
 
     try {
       // Call the API to update the file
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug || ''}/curation/page/${encodeURIComponent(page.bundleNodeName)}/sensitive`, {
+      const response = await apiRequest(`bundles/${bundleSlug || ''}/curation/page/${encodeURIComponent(page.bundleNodeName)}/sensitive`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isSensitive, sourceGraphDirectory: page.sourceGraphSubdirectory })
@@ -626,7 +626,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   const handleSensitiveConsentAccept = async () => {
     try {
       // Save consent to app config
-      const response = await fetch(`${API_BASE_URL}/app-config/callout-dismissal/allowAddMeadowSensitivePropertyToSourcePages`, {
+      const response = await apiRequest(`app-config/callout-dismissal/allowAddMeadowSensitivePropertyToSourcePages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dismissed: true })

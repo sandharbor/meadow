@@ -26,7 +26,7 @@ import { VersionsTab } from '../../../areas/bundle/review/components/VersionsTab
 import { casualVersionName, versionCreatedDate } from '../../../areas/bundle/review/utils/versionLabels';
 import { ConfigFileExplorerApi } from '../../../../../shared_components/ConfigFileExplorer/index';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils';
-import { API_BASE_URL, AuthenticatedEventSource } from '../../utils/apiConfig';
+import { apiRequest, AuthenticatedEventSource } from '../../utils/apiClient';
 import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
@@ -227,7 +227,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API_BASE_URL}/bundles/${slug}/review/versions`)
+    apiRequest(`bundles/${slug}/review/versions`)
       .then(async response => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to load shareable versions');
@@ -244,7 +244,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/app-config`);
+        const res = await apiRequest(`app-config`);
         if (res.ok) {
           const cfg = await res.json();
           const dismissed = cfg.calloutDismissals?.customizeSidebarAutoShown === true;
@@ -279,8 +279,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     fetchTree: async (options) => {
       const params = new URLSearchParams();
       if (options?.changedOnly) params.set('changedOnly', 'true');
-      const url = `${API_BASE_URL}/bundles/${slug}/review/preview-files/tree${params.toString() ? `?${params}` : ''}`;
-      const res = await fetch(url);
+      const url = `bundles/${slug}/review/preview-files/tree${params.toString() ? `?${params}` : ''}`;
+      const res = await apiRequest(url);
       if (!res.ok) throw new Error('Failed to fetch preview file tree');
       const data = await res.json();
       // Capture root path and changed files for use in preview tab
@@ -289,27 +289,27 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       return data;
     },
     fetchContent: async (path: string) => {
-      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/file-content?path=${encodeURIComponent(path)}`);
+      const res = await apiRequest(`bundles/${slug}/review/file-content?path=${encodeURIComponent(path)}`);
       if (!res.ok) throw new Error('Failed to fetch file content');
       return res.json();
     },
     fetchOriginal: async (path: string) => {
-      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/file-original?path=${encodeURIComponent(path)}`);
+      const res = await apiRequest(`bundles/${slug}/review/file-original?path=${encodeURIComponent(path)}`);
       if (!res.ok) {
         return { content: null, path, isNew: true };
       }
       return res.json();
     },
     fetchDirLog: async (dirPath: string, limit = 50) => {
-      const res = await fetch(
-        `${API_BASE_URL}/bundles/${slug}/review/git/dir-log?dir=${encodeURIComponent(dirPath)}&limit=${encodeURIComponent(String(limit))}`
+      const res = await apiRequest(
+        `bundles/${slug}/review/git/dir-log?dir=${encodeURIComponent(dirPath)}&limit=${encodeURIComponent(String(limit))}`
       );
       if (!res.ok) throw new Error('Failed to fetch directory log');
       return res.json();
     },
     fetchCommitFiles: async (sha: string, contextDir: string) => {
-      const res = await fetch(
-        `${API_BASE_URL}/bundles/${slug}/review/git/commit-files?sha=${encodeURIComponent(sha)}&contextDir=${encodeURIComponent(contextDir)}`
+      const res = await apiRequest(
+        `bundles/${slug}/review/git/commit-files?sha=${encodeURIComponent(sha)}&contextDir=${encodeURIComponent(contextDir)}`
       );
       if (!res.ok) {
         const body = await res.text().catch(() => '');
@@ -320,7 +320,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     fetchCommitFileContent: async (sha: string, pathStr: string, contextDir?: string) => {
       const params = new URLSearchParams({ sha, path: pathStr });
       if (contextDir) params.set('contextDir', contextDir);
-      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/git/commit-file-content?${params.toString()}`);
+      const res = await apiRequest(`bundles/${slug}/review/git/commit-file-content?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch commit file content');
       return res.json();
     },
@@ -328,15 +328,15 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       const params = new URLSearchParams({ sha, path: pathStr });
       if (parentSha) params.set('parentSha', parentSha);
       if (contextDir) params.set('contextDir', contextDir);
-      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/git/commit-file-original?${params.toString()}`);
+      const res = await apiRequest(`bundles/${slug}/review/git/commit-file-original?${params.toString()}`);
       if (!res.ok) {
         return { content: null, path: pathStr, isNew: true };
       }
       return res.json();
     },
     fetchFileLog: async (pathStr: string, limit = 50) => {
-      const res = await fetch(
-        `${API_BASE_URL}/bundles/${slug}/review/git/file-log?path=${encodeURIComponent(pathStr)}&limit=${encodeURIComponent(String(limit))}`
+      const res = await apiRequest(
+        `bundles/${slug}/review/git/file-log?path=${encodeURIComponent(pathStr)}&limit=${encodeURIComponent(String(limit))}`
       );
       if (!res.ok) throw new Error('Failed to fetch file log');
       return res.json();
@@ -367,7 +367,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     }
 
     let cancelled = false;
-    fetch(`${API_BASE_URL}/bundles/${slug}/generation/open-knowledge-format/manifest`)
+    apiRequest(`bundles/${slug}/generation/open-knowledge-format/manifest`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Failed to fetch OKF manifest (${res.status})`);
         return res.json() as Promise<{ renames?: OpenKnowledgeFormatRename[] }>;
@@ -421,8 +421,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         }
 
         const url = startPage
-          ? `${API_BASE_URL}/bundles/${slug}/generation/preview-stream?${params.toString()}`
-          : `${API_BASE_URL}/bundles/${slug}/generation/preview-stream`;
+          ? `bundles/${slug}/generation/preview-stream?${params.toString()}`
+          : `bundles/${slug}/generation/preview-stream`;
 
         const eventSource = new AuthenticatedEventSource(url);
 
@@ -525,7 +525,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     const completion = await new Promise<{ stage: 'complete' | 'error'; traversalPageUrl?: string }>((resolve) => {
       // Pass the current page path so the backend renders it first
       const currentFilePath = getCurrentPreviewFilePath();
-      let streamUrl = `${API_BASE_URL}/bundles/${slug}/generation/preview-stream`;
+      let streamUrl = `bundles/${slug}/generation/preview-stream`;
       if (currentFilePath && previewRootPath) {
         const relativePath = currentFilePath.startsWith(previewRootPath)
           ? currentFilePath.slice(previewRootPath.length + 1)
@@ -633,7 +633,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     setSaveChangesMessage(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/bundles/${slug}/review/save-changes`);
+      const res = await apiRequest(`bundles/${slug}/review/save-changes`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -667,7 +667,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     setIsCreatingVersion(true);
     setSaveChangesMessage(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${slug}/generation/versions`, {
+      const response = await apiRequest(`bundles/${slug}/generation/versions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -816,7 +816,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   const handleCustomizeRefresh = useCallback(async () => {
     // Clear server-side hooks cache so regeneration picks up file changes from disk
     try {
-      await fetch(`${API_BASE_URL}/generation/hooks/clear-cache`, { method: 'POST' });
+      await apiRequest(`generation/hooks/clear-cache`, { method: 'POST' });
     } catch (err) {
       logger.error('Failed to clear hooks cache:', err);
     }
@@ -1262,7 +1262,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                       // When closing for the first time, save dismissal so it won't auto-open again
                       if (willClose && customizeSidebarAutoShownDismissed === false) {
                         setCustomizeSidebarAutoShownDismissed(true);
-                        fetch(`${API_BASE_URL}/app-config/callout-dismissal/customizeSidebarAutoShown`, {
+                        apiRequest(`app-config/callout-dismissal/customizeSidebarAutoShown`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ dismissed: true }),

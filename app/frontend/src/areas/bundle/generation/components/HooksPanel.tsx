@@ -16,7 +16,7 @@ limitations under the License.
 
 /* global alert, confirm */
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { HookType, HookMetadata } from '../../../../../../shared_code/types/hooks';
 import { logger } from '../../../../shared/utils/logger';
 import FloatingCodeEditor from './FloatingCodeEditor';
@@ -66,7 +66,7 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ bundleSlug, onHooksChanged }) =
 
   const loadHooks = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/generation/hooks`);
+      const response = await apiRequest(`bundles/${bundleSlug}/generation/hooks`);
       if (response.ok) {
         const data = await response.json();
         setHooks(data.hooks || []);
@@ -109,10 +109,10 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ bundleSlug, onHooksChanged }) =
 
     try {
       const endpoint = scope === 'global'
-        ? `${API_BASE_URL}/generation/hooks/global/${hookType}`
-        : `${API_BASE_URL}/bundles/${bundleSlug}/generation/hooks/${hookType}`;
+        ? `generation/hooks/global/${hookType}`
+        : `bundles/${bundleSlug}/generation/hooks/${hookType}`;
 
-      const response = await fetch(endpoint);
+      const response = await apiRequest(endpoint);
       let content = '';
       let originalContent = '';
 
@@ -123,7 +123,7 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ bundleSlug, onHooksChanged }) =
           originalContent = metadata.content;
         } else {
           // Load template for new hook
-          const templateResp = await fetch(`${API_BASE_URL}/generation/hooks/templates/${hookType}`);
+          const templateResp = await apiRequest(`generation/hooks/templates/${hookType}`);
           if (templateResp.ok) {
             const data = await templateResp.json();
             content = data.template || '';
@@ -169,10 +169,10 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ bundleSlug, onHooksChanged }) =
 
     try {
       const endpoint = editor.scope === 'global'
-        ? `${API_BASE_URL}/generation/hooks/global/${editor.hookType}`
-        : `${API_BASE_URL}/bundles/${bundleSlug}/generation/hooks/${editor.hookType}`;
+        ? `generation/hooks/global/${editor.hookType}`
+        : `bundles/${bundleSlug}/generation/hooks/${editor.hookType}`;
 
-      const response = await fetch(endpoint, {
+      const response = await apiRequest(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editor.content }),
@@ -201,10 +201,10 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ bundleSlug, onHooksChanged }) =
 
     try {
       const endpoint = editor.scope === 'global'
-        ? `${API_BASE_URL}/generation/hooks/global/${editor.hookType}`
-        : `${API_BASE_URL}/bundles/${bundleSlug}/generation/hooks/${editor.hookType}`;
+        ? `generation/hooks/global/${editor.hookType}`
+        : `bundles/${bundleSlug}/generation/hooks/${editor.hookType}`;
 
-      const response = await fetch(endpoint, { method: 'DELETE' });
+      const response = await apiRequest(endpoint, { method: 'DELETE' });
       if (response.ok) {
         closeEditor(key);
         void onHooksChanged?.();
@@ -219,8 +219,8 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ bundleSlug, onHooksChanged }) =
 
   const handleToggleMode = async (hookType: HookType, mode: 'append' | 'override') => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/bundles/${bundleSlug}/generation/hooks/mode/${hookType}`,
+      const response = await apiRequest(
+        `bundles/${bundleSlug}/generation/hooks/mode/${hookType}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

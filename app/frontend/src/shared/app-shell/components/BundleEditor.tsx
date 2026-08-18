@@ -16,6 +16,7 @@ limitations under the License.
 
 /* global alert */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { apiRequest } from '../../utils/apiClient';
 import { Graph, IEdge } from '../../../../../shared_code/types/graph';
 import { IBundleNode } from '../../../../../shared_code/types/IBundleNode.js';
 import BundleNodeTabs from '../../../areas/bundle/curation/components/BundleNodeTabs';
@@ -28,7 +29,6 @@ import { useFilterState, createUntrackedNodeSelector } from '../../../areas/bund
 import type { BundleNodeConfig } from '../../../../../shared_code/types/bundleNodeConfig';
 import { nodeConfigMatchesNode, bundleNodeLocatorKey, getOrphanNodeConfigs } from '../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { applySensitiveFromApiData, applyNodeConfigsToNodes, buildNodeConfigs } from '../../../../../shared_code/utils/bundleNodeConfigUtils';
-import { API_BASE_URL } from '../../utils/apiConfig';
 import { getActiveFrontendProvider } from '../../publishing-provider-host/providerRegistry';
 import { fetchBundleEditData, BundleEditData } from '../../utils/bundleApi';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -182,7 +182,7 @@ const BundleEditor: React.FC = () => {
   const checkDraftStatus = useCallback(async () => {
     if (!slug) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${slug}/curation/bundle-config-draft-status`);
+      const response = await apiRequest(`bundles/${slug}/curation/bundle-config-draft-status`);
       const data = await response.json();
       setHasDraftChanges(data.hasChanges);
     } catch (error) {
@@ -199,7 +199,7 @@ const BundleEditor: React.FC = () => {
   const checkPublishedVersions = useCallback(async () => {
     if (!slug) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${slug}/review/versions`);
+      const response = await apiRequest(`bundles/${slug}/review/versions`);
       if (response.ok) {
         const data = await response.json();
         setHasPublishedVersions(data.versions && data.versions.length > 0);
@@ -213,7 +213,7 @@ const BundleEditor: React.FC = () => {
   const checkHooksLoadStatus = useCallback(async () => {
     if (!slug) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${slug}/generation/hooks/load-status`);
+      const response = await apiRequest(`bundles/${slug}/generation/hooks/load-status`);
       if (response.ok) {
         const data = await response.json();
         setHooksHaveErrors(!data.allLoaded);
@@ -272,7 +272,7 @@ const BundleEditor: React.FC = () => {
 
   useEffect(() => {
     if (!slug) return;
-    fetch(`${API_BASE_URL}/bundles/${slug}/config`)
+    apiRequest(`bundles/${slug}/config`)
       .then(res => res.json())
       .then(config => {
         setBundleGuid(typeof config.bundleGuid === 'string' ? config.bundleGuid : null);
@@ -308,7 +308,7 @@ const BundleEditor: React.FC = () => {
 
   // Load global publish option defaults from app config
   useEffect(() => {
-    fetch(`${API_BASE_URL}/app-config`)
+    apiRequest(`app-config`)
       .then(res => res.json())
       .then((cfg: {
         generationBreadcrumbsEnabled?: boolean;
@@ -347,9 +347,9 @@ const BundleEditor: React.FC = () => {
     // Clear previous error when starting a new fetch
     setGraphError(null);
     const frontierParam = viewFrontierEnabled ? `?frontierDepth=${frontierDepth}` : '';
-    const url = `${API_BASE_URL}/bundles/${slug || ''}/curation/working-graph${frontierParam}`;
+    const url = `bundles/${slug || ''}/curation/working-graph${frontierParam}`;
     logger.debug('Fetching working graph from:', url);
-    fetch(url)
+    apiRequest(url)
       .then(res => {
         if (!res.ok) {
           // Parse error response and extract message
@@ -422,7 +422,7 @@ const BundleEditor: React.FC = () => {
   useEffect(() => {
     if (!graph) return;
     // Fetch bundle-config after graph is loaded
-    fetch(`${API_BASE_URL}/bundles/${slug || ''}/curation/bundle-config`)
+    apiRequest(`bundles/${slug || ''}/curation/bundle-config`)
       .then(res => res.json())
       .then(data => {
         const loadedBundleNodeConfigs: BundleNodeConfig[] = Array.isArray(data.configs) ? data.configs : [];
@@ -535,7 +535,7 @@ const BundleEditor: React.FC = () => {
     const nodeConfigs = buildMergedNodeConfigsFrom(updatedBundleNodeConfigs);
     try {
       if (!hasDraftChanges) {
-        const response = await fetch(`${API_BASE_URL}/bundles/${slug || ''}/curation/bundle-config`, {
+        const response = await apiRequest(`bundles/${slug || ''}/curation/bundle-config`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ configs: nodeConfigs, isDraft: false })
@@ -543,7 +543,7 @@ const BundleEditor: React.FC = () => {
         if (!response.ok) throw new Error('Failed to save configuration');
         checkDraftStatus();
       } else {
-        await fetch(`${API_BASE_URL}/bundles/${slug || ''}/curation/bundle-config`, {
+        await apiRequest(`bundles/${slug || ''}/curation/bundle-config`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ configs: nodeConfigs, isDraft: true })
@@ -586,7 +586,7 @@ const BundleEditor: React.FC = () => {
     if (!graph) return;
     const nodeConfigs = buildMergedNodeConfigs();
     try {
-      await fetch(`${API_BASE_URL}/bundles/${slug || ''}/curation/bundle-config`, {
+      await apiRequest(`bundles/${slug || ''}/curation/bundle-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ configs: nodeConfigs, isDraft: true })
@@ -604,7 +604,7 @@ const BundleEditor: React.FC = () => {
     if (!graph) return;
     const nodeConfigs = buildMergedNodeConfigs();
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${slug || ''}/curation/bundle-config`, {
+      const response = await apiRequest(`bundles/${slug || ''}/curation/bundle-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ configs: nodeConfigs, isDraft: false })
@@ -624,7 +624,7 @@ const BundleEditor: React.FC = () => {
         }));
 
       try {
-        const copyResponse = await fetch(`${API_BASE_URL}/bundles/${slug || ''}/curation/copy-tracked-pages`, {
+        const copyResponse = await apiRequest(`bundles/${slug || ''}/curation/copy-tracked-pages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ trackedNodes, commitMessage })
@@ -675,13 +675,13 @@ const BundleEditor: React.FC = () => {
   const handleUndoChanges = async () => {
     try {
       // Delete the draft
-      await fetch(`${API_BASE_URL}/bundles/${slug || ''}/curation/bundle-config-draft`, {
+      await apiRequest(`bundles/${slug || ''}/curation/bundle-config-draft`, {
         method: 'DELETE'
       });
 
       // Re-fetch the committed config (not draft) and apply directly
       // This avoids a full graph reload which would cause a flash of 0-tracked state
-      const response = await fetch(`${API_BASE_URL}/bundles/${slug || ''}/curation/bundle-config`);
+      const response = await apiRequest(`bundles/${slug || ''}/curation/bundle-config`);
       const data = await response.json();
       const committedConfigs: BundleNodeConfig[] = Array.isArray(data.configs) ? data.configs : [];
 
@@ -804,7 +804,7 @@ const BundleEditor: React.FC = () => {
     const updatePayload = payloadMap[option];
 
     try {
-      await fetch(`${API_BASE_URL}/bundles/${slug}/generation/options`, {
+      await apiRequest(`bundles/${slug}/generation/options`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatePayload)
@@ -841,7 +841,7 @@ const BundleEditor: React.FC = () => {
     const updatePayload = payloadMap[option];
 
     try {
-      const res = await fetch(`${API_BASE_URL}/generation/options`, {
+      const res = await apiRequest(`generation/options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatePayload)
@@ -884,7 +884,7 @@ const BundleEditor: React.FC = () => {
     setGlobalGenerationSpacedRepetitionTags(tags);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/generation/options`, {
+      const res = await apiRequest(`generation/options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ generationSpacedRepetitionTags: tags })
@@ -910,7 +910,7 @@ const BundleEditor: React.FC = () => {
     setBundleGenerationSpacedRepetitionTags(tags);
 
     try {
-      await fetch(`${API_BASE_URL}/bundles/${slug}/generation/options`, {
+      await apiRequest(`bundles/${slug}/generation/options`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ generationSpacedRepetitionTags: tags })
@@ -924,7 +924,7 @@ const BundleEditor: React.FC = () => {
     if (!slug) return;
 
     try {
-      await fetch(`${API_BASE_URL}/bundles/${slug}/generation/options`, {
+      await apiRequest(`bundles/${slug}/generation/options`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -944,7 +944,7 @@ const BundleEditor: React.FC = () => {
     setBundleGenerationOpenKnowledgeFormatSetting(setting);
 
     try {
-      await fetch(`${API_BASE_URL}/bundles/${slug}/generation/options`, {
+      await apiRequest(`bundles/${slug}/generation/options`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

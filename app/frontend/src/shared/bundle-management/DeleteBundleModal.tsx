@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
-import { API_BASE_URL, AuthenticatedEventSource } from '../utils/apiConfig';
+import { apiRequest, AuthenticatedEventSource } from '../utils/apiClient';
 import { getActiveFrontendProvider } from '../publishing-provider-host/providerRegistry';
 import { logger } from '../utils/logger';
 
@@ -69,7 +69,7 @@ const DeleteBundleModal: React.FC<DeleteBundleModalProps> = ({
   const handleDelete = async () => {
     if (!isPublished) {
       try {
-        await fetch(`${API_BASE_URL}/bundles/${bundleSlug}`, { method: 'DELETE' });
+        await apiRequest(`bundles/${bundleSlug}`, { method: 'DELETE' });
         onDeleted();
       } catch (err) {
         logger.error('Failed to delete bundle:', err);
@@ -82,7 +82,7 @@ const DeleteBundleModal: React.FC<DeleteBundleModalProps> = ({
     setDeleteError(null);
 
     try {
-      const eventSource = new AuthenticatedEventSource(`${API_BASE_URL}/bundles/${bundleSlug}/delete-bundle-stream`);
+      const eventSource = new AuthenticatedEventSource(`bundles/${bundleSlug}/delete-bundle-stream`);
 
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);

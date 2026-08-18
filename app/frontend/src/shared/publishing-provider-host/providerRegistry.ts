@@ -29,7 +29,7 @@ limitations under the License.
  * need to coordinate with themselves (e.g. a provider's own component
  * importing its manifest).
  */
-import { API_BASE_URL } from '../utils/apiConfig';
+import { apiRequest } from '../utils/apiClient';
 import { logger } from '../utils/logger';
 import type { IPublishingProviderFrontend } from './IPublishingProviderFrontend.js';
 import type {
@@ -92,7 +92,7 @@ export async function fetchActiveProviderId(): Promise<PublishingProviderId | nu
   if (!activePromise) {
     activePromise = (async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/sharing/publishing-providers`);
+        const res = await apiRequest(`sharing/publishing-providers`);
         if (!res.ok) return null;
         const body = await res.json() as { providers?: BackendProviderEntry[] };
         const firstActive = (body.providers ?? []).find((p) => p.isActive);

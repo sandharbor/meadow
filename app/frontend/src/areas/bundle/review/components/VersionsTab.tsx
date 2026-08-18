@@ -16,7 +16,7 @@ limitations under the License.
 
 /* global alert, confirm */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 import { casualVersionName, versionCreatedDate } from '../utils/versionLabels';
 
@@ -87,7 +87,7 @@ export function VersionsTab({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/review/versions`);
+      const response = await apiRequest(`bundles/${bundleSlug}/review/versions`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to load versions');
       const nextVersions = (data.versions ?? []) as VersionView[];
@@ -126,7 +126,7 @@ export function VersionsTab({
     }
     const controller = new AbortController();
     const params = new URLSearchParams({ left: leftComparison, right: rightComparison });
-    fetch(`${API_BASE_URL}/bundles/${bundleSlug}/review/version-comparison?${params}`, { signal: controller.signal })
+    apiRequest(`bundles/${bundleSlug}/review/version-comparison?${params}`, { signal: controller.signal })
       .then(async response => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to compare versions');
@@ -142,7 +142,7 @@ export function VersionsTab({
     setBusyVersionId(versionId);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}${path}`, { method });
+      const response = await apiRequest(path, { method });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Version action failed');
       await loadVersions();
@@ -157,7 +157,7 @@ export function VersionsTab({
   const saveNotes = async (versionId: string) => {
     setBusyVersionId(versionId);
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/review/versions/${versionId}`, {
+      const response = await apiRequest(`bundles/${bundleSlug}/review/versions/${versionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: editingNotes }),

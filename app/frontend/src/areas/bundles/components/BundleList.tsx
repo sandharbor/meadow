@@ -17,7 +17,7 @@ limitations under the License.
 /* global alert */
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { API_BASE_URL } from '../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../shared/utils/apiClient';
 import { getActiveFrontendProvider } from '../../../shared/publishing-provider-host/providerRegistry';
 import { fetchBundles, fetchDirectories, BundleConfigWithSlug } from '../../../shared/utils/bundleApi';
 import { FindInBundlesOptions } from '../../../../../shared_code/types/findInBundlesOptions';
@@ -372,9 +372,9 @@ const BundleList: React.FC = () => {
   // Check if a bundle tracks the target page
   const doesBundleTrackPage = async (bundleSlug: string, pageName: string, signal?: AbortSignal): Promise<boolean> => {
     try {
-      const url = `${API_BASE_URL}/bundles/${bundleSlug}/tracks-page?pageName=${encodeURIComponent(pageName)}`;
+      const url = `bundles/${bundleSlug}/tracks-page?pageName=${encodeURIComponent(pageName)}`;
       logger.debug(`Making request to: ${url}`);
-      const response = await fetch(url, { signal });
+      const response = await apiRequest(url, { signal });
       logger.debug(`Response status: ${response.status} ${response.statusText}`);
       if (response.ok) {
         const data = await response.json();
@@ -450,7 +450,7 @@ const BundleList: React.FC = () => {
 
   const handleArchive = async (slug: string) => {
     try {
-      await fetch(`${API_BASE_URL}/bundles/${slug}/archive`, { method: 'POST' });
+      await apiRequest(`bundles/${slug}/archive`, { method: 'POST' });
       loadBundles();
     } catch (err) {
       logger.error('Failed to archive bundle:', err);
@@ -459,7 +459,7 @@ const BundleList: React.FC = () => {
 
   const handleUnarchive = async (slug: string) => {
     try {
-      await fetch(`${API_BASE_URL}/bundles/${slug}/unarchive`, { method: 'POST' });
+      await apiRequest(`bundles/${slug}/unarchive`, { method: 'POST' });
       loadBundles();
     } catch (err) {
       logger.error('Failed to unarchive bundle:', err);
@@ -507,7 +507,7 @@ const BundleList: React.FC = () => {
 
   const saveNotes = async (slug: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${slug}/notes`, {
+      const response = await apiRequest(`bundles/${slug}/notes`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bundleNotes: tempNotes })
@@ -565,7 +565,7 @@ const BundleList: React.FC = () => {
 
   const handleAddExampleBundle = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/add-example`, { method: 'POST' });
+      const response = await apiRequest(`bundles/add-example`, { method: 'POST' });
       const data = await response.json();
       if (data.success) {
         window.location.href = `/bundle/${data.slug}`;

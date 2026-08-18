@@ -16,7 +16,7 @@ limitations under the License.
 
 /* global alert, confirm */
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { CustomAssetType } from '../../../../../../shared_code/types/customAssets';
 import { logger } from '../../../../shared/utils/logger';
 import FloatingCodeEditor from './FloatingCodeEditor';
@@ -58,7 +58,7 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ bundleSlug, onCus
 
   const loadAssets = useCallback(async () => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/generation/custom-assets`);
+      const resp = await apiRequest(`bundles/${bundleSlug}/generation/custom-assets`);
       if (!resp.ok) return;
       const data = await resp.json();
 
@@ -91,9 +91,9 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ bundleSlug, onCus
   const openEditor = async (assetType: CustomAssetType, editorScope: 'global' | 'bundle') => {
     try {
       const url = editorScope === 'global'
-        ? `${API_BASE_URL}/generation/custom-assets/global/${assetType}`
-        : `${API_BASE_URL}/bundles/${bundleSlug}/generation/custom-assets/${assetType}`;
-      const resp = await fetch(url);
+        ? `generation/custom-assets/global/${assetType}`
+        : `bundles/${bundleSlug}/generation/custom-assets/${assetType}`;
+      const resp = await apiRequest(url);
       if (!resp.ok) return;
       const data = await resp.json();
       const content = data.content || '';
@@ -111,9 +111,9 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ bundleSlug, onCus
     setIsSaving(true);
     try {
       const url = editingAsset.scope === 'global'
-        ? `${API_BASE_URL}/generation/custom-assets/global/${editingAsset.assetType}`
-        : `${API_BASE_URL}/bundles/${bundleSlug}/generation/custom-assets/${editingAsset.assetType}`;
-      const resp = await fetch(url, {
+        ? `generation/custom-assets/global/${editingAsset.assetType}`
+        : `bundles/${bundleSlug}/generation/custom-assets/${editingAsset.assetType}`;
+      const resp = await apiRequest(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: assetContent }),
@@ -139,9 +139,9 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ bundleSlug, onCus
     if (!confirm('Delete this custom asset?')) return;
     try {
       const url = editingAsset.scope === 'global'
-        ? `${API_BASE_URL}/generation/custom-assets/global/${editingAsset.assetType}`
-        : `${API_BASE_URL}/bundles/${bundleSlug}/generation/custom-assets/${editingAsset.assetType}`;
-      await fetch(url, { method: 'DELETE' });
+        ? `generation/custom-assets/global/${editingAsset.assetType}`
+        : `bundles/${bundleSlug}/generation/custom-assets/${editingAsset.assetType}`;
+      await apiRequest(url, { method: 'DELETE' });
       setEditingAsset(null);
       setAssetContent('');
       setOriginalContent('');
@@ -168,9 +168,9 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ bundleSlug, onCus
   ) => {
     try {
       const url = toggleScope === 'global'
-        ? `${API_BASE_URL}/generation/custom-assets/global/base-disabled`
-        : `${API_BASE_URL}/bundles/${bundleSlug}/generation/custom-assets/base-disabled`;
-      await fetch(url, {
+        ? `generation/custom-assets/global/base-disabled`
+        : `bundles/${bundleSlug}/generation/custom-assets/base-disabled`;
+      await apiRequest(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [assetKey]: value }),

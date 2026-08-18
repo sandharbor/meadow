@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
 
 // Renders an Excalidraw drawing as an SVG thumbnail by reusing the same
@@ -8,7 +9,7 @@ import { logger } from '../../../../shared/utils/logger';
 //
 // Usage:
 //   <ExcalidrawThumbnail
-//     mdSourceUrl="…/source-file/t006/foo.excalidraw.md"
+//     mdSourcePath="bundles/example/generation/source-file/t006/foo.excalidraw.md"
 //     className="w-8 h-8 …"
 //     onMouseEnter={…}
 //     onMouseLeave={…}
@@ -69,7 +70,7 @@ function extractScene(md: string): ExcalidrawScene | null {
 }
 
 export interface ExcalidrawThumbnailProps {
-  mdSourceUrl: string;
+  mdSourcePath: string;
   vendorUrl: string;
   alt?: string;
   className?: string;
@@ -81,7 +82,7 @@ export interface ExcalidrawThumbnailProps {
 }
 
 export function ExcalidrawThumbnail({
-  mdSourceUrl,
+  mdSourcePath,
   vendorUrl,
   alt,
   className,
@@ -129,8 +130,8 @@ export function ExcalidrawThumbnail({
       try {
         await loadVendorBundle(vendorUrl);
         if (cancelled) return;
-        const resp = await fetch(mdSourceUrl);
-        if (!resp.ok) throw new Error(`fetch ${mdSourceUrl}: ${resp.status}`);
+        const resp = await apiRequest(mdSourcePath);
+        if (!resp.ok) throw new Error(`fetch ${mdSourcePath}: ${resp.status}`);
         const md = await resp.text();
         if (cancelled) return;
         const scene = extractScene(md);
@@ -162,7 +163,7 @@ export function ExcalidrawThumbnail({
     return () => {
       cancelled = true;
     };
-  }, [shouldRender, mdSourceUrl, vendorUrl]);
+  }, [shouldRender, mdSourcePath, vendorUrl]);
 
   return (
     <div

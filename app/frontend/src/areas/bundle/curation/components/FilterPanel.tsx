@@ -21,7 +21,7 @@ import { createSearchByTitleSelector, createOutlinkDiscrepancySelector, createIn
 import { useDebounce } from '../../../../shared/hooks/useDebounce';
 import CustomFilterModal from './CustomFilterModal';
 import { CustomFilterConfig } from '../../../../../../shared_code/types/customFilters';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
 import { IBundleNode } from '../../../../../../shared_code/types/IBundleNode';
 import { hasNodesInMultipleFolders } from '../utils/folderFilterUtils';
@@ -229,7 +229,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
       const customFilterId = filterId.replace('custom-', '');
       
       // Load the custom filter config
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/curation/custom-filters`);
+      const response = await apiRequest(`bundles/${bundleSlug}/curation/custom-filters`);
       if (response.ok) {
         const data = await response.json();
         const customFilter = data.filters.find((f: CustomFilterConfig) => f.id === customFilterId);
@@ -250,7 +250,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
         const customFilterId = filter.id.replace('custom-', '');
         const disabled = !newEnabledState;
         
-        const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/curation/disabled-global-filters/${customFilterId}`, {
+        const response = await apiRequest(`bundles/${bundleSlug}/curation/disabled-global-filters/${customFilterId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ disabled })

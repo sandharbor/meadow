@@ -14,11 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { API_BASE_URL } from '../../../../frontend/src/shared/utils/apiConfig';
-
 export const S3_API_PREFIX = 's3-api';
 
 export function s3Api(path: string): string {
   const trimmed = path.startsWith('/') ? path.slice(1) : path;
-  return `${API_BASE_URL}/sharing/publishing-providers/S3PublishingProvider/${trimmed}`;
+  return `sharing/publishing-providers/S3PublishingProvider/${trimmed}`;
 }

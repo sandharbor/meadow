@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Modal from '../../../../../shared/components/Modal';
-import { API_BASE_URL } from '../../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../../shared/utils/apiClient';
 import { logger } from '../../../../../shared/utils/logger';
 
 export function useSinglePagePreviewCallout(): {
@@ -28,7 +28,7 @@ export function useSinglePagePreviewCallout(): {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/app-config`);
+        const res = await apiRequest(`app-config`);
         if (res.ok) {
           const cfg = await res.json();
           setDismissedState(cfg.calloutDismissals?.calloutPreviewSinglePage === true);
@@ -45,7 +45,7 @@ export function useSinglePagePreviewCallout(): {
   const setDismissed = useCallback((value: boolean) => {
     setDismissedState(value);
     if (value) {
-      fetch(`${API_BASE_URL}/app-config/callout-dismissal/calloutPreviewSinglePage`, {
+      apiRequest(`app-config/callout-dismissal/calloutPreviewSinglePage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dismissed: true }),

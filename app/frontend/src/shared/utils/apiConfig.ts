@@ -46,8 +46,15 @@ function isBackendApiRequest(input: RequestInfo | URL): boolean {
 
 /** Shared API transport. It never places the launch capability in a URL. */
 export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  // apiClient calls this function directly. Honor a currently installed fetch
+  // implementation (notably test doubles), but avoid recursing after the
+  // defense-in-depth global interceptor points fetch back at apiFetch.
+  const transport = globalThis.fetch === apiFetch
+    ? nativeFetch
+    : globalThis.fetch.bind(globalThis);
+
   if (!apiCapability || !isBackendApiRequest(input)) {
-    return nativeFetch(input, init);
+    return transport(input, init);
   }
 
   const headers = new Headers(input instanceof Request ? input.headers : undefined);
@@ -55,17 +62,17 @@ export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Prom
   headers.set(CAPABILITY_HEADER, apiCapability);
 
   if (input instanceof Request) {
-    return nativeFetch(new Request(input, { ...init, headers }));
+    return transport(new Request(input, { ...init, headers }));
   }
-  return nativeFetch(input, { ...init, headers });
+  return transport(input, { ...init, headers });
 }
 
 function installFetchInterceptor(): void {
   if (interceptorInstalled) return;
   interceptorInstalled = true;
-  // Existing UI modules call fetch directly. Installing the shared transport
-  // before React renders centralizes authentication without exposing a raw
-  // capability to each component.
+  // Install a defense-in-depth fallback before React renders. Application API
+  // calls use apiClient explicitly, while dynamically loaded frontend modules
+  // still cannot accidentally omit the launch capability.
   globalThis.fetch = apiFetch;
 }
 
@@ -101,8 +108,9 @@ export async function updateApiBaseUrl(): Promise<void> {
 }
 
 /**
- * Minimal authenticated SSE client. Native EventSource cannot attach the
- * capability header, and putting the capability in its URL would leak it.
+ * Minimal authenticated SSE transport retained here for compatibility with
+ * frontend modules that predate apiClient. New callers import its re-export
+ * from apiClient.
  */
 export class AuthenticatedEventSource {
   onmessage: ((event: MessageEvent<string>) => void) | null = null;

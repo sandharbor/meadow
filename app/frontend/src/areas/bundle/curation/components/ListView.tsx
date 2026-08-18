@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiUrl } from '../../../../shared/utils/apiClient';
 import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './ImageHoverPreview';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
@@ -51,7 +51,7 @@ const ListView: React.FC<ListViewProps> = ({
     return (sessionStorage.getItem('listViewMode') as ViewMode) || 'flat';
   });
   const [hoveredImage, setHoveredImage] = useState<{
-    imageUrl: string;
+    imagePath: string;
     title: string;
     x: number;
     y: number;
@@ -132,12 +132,12 @@ const ListView: React.FC<ListViewProps> = ({
 
   const handleImageMouseEnter = (
     e: React.MouseEvent<Element>,
-    imageUrl: string,
+    imagePath: string,
     title: string
   ) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setHoveredImage({
-      imageUrl,
+      imagePath,
       title,
       x: rect.left + rect.width / 2,
       y: rect.top,
@@ -153,27 +153,27 @@ const ListView: React.FC<ListViewProps> = ({
       const mdPath = page.sourceGraphSubdirectory
         ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.excalidraw.md`
         : `${page.bundleNodeName}.excalidraw.md`;
-      const mdSourceUrl = `${API_BASE_URL}/bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(mdPath)}`;
+      const mdSourcePath = `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(mdPath)}`;
       return (
         <ExcalidrawThumbnail
-          mdSourceUrl={mdSourceUrl}
-          vendorUrl={`${API_BASE_URL}/generation/assets/excalidraw-vendor.js`}
+          mdSourcePath={mdSourcePath}
+          vendorUrl={apiUrl('generation/assets/excalidraw-vendor.js')}
           alt={page.bundleNodeName}
           className="w-8 h-8 rounded border border-gray-200 cursor-pointer bg-white"
           lazy
-          onMouseEnter={(e) => handleImageMouseEnter(e, mdSourceUrl, page.bundleNodeName)}
+          onMouseEnter={(e) => handleImageMouseEnter(e, mdSourcePath, page.bundleNodeName)}
           onMouseLeave={() => setHoveredImage(null)}
         />
       );
     }
     if (isImageFileType(page.fileType)) {
-      const imageUrl = `${API_BASE_URL}/bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.${page.fileType}` : `${page.bundleNodeName}.${page.fileType}`)}`;
+      const imagePath = `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.${page.fileType}` : `${page.bundleNodeName}.${page.fileType}`)}`;
       return (
         <img
-          src={imageUrl}
+          src={apiUrl(imagePath)}
           alt={page.bundleNodeName}
           className="w-8 h-8 object-cover rounded border border-gray-200 cursor-pointer"
-          onMouseEnter={(e) => handleImageMouseEnter(e, imageUrl, page.bundleNodeName)}
+          onMouseEnter={(e) => handleImageMouseEnter(e, imagePath, page.bundleNodeName)}
           onMouseLeave={() => setHoveredImage(null)}
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = 'none';
@@ -208,7 +208,7 @@ const ListView: React.FC<ListViewProps> = ({
     <div className="h-full w-full p-4 relative flex flex-col min-h-0">
       {hoveredImage && (
         <ImageHoverPreview
-          imageUrl={hoveredImage.imageUrl}
+          imagePath={hoveredImage.imagePath}
           title={hoveredImage.title}
           style={{
             position: 'fixed',

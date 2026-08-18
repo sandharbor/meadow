@@ -20,7 +20,7 @@ import type { OpenKnowledgeFormatSettings } from './open-knowledge-format/OpenKn
 import StylePresetsPanel from './StylePresetsPanel';
 import CustomAssetsPanel from './CustomAssetsPanel';
 import HooksPanel from './HooksPanel';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
@@ -139,7 +139,7 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
     setAgentPromptCopied(false);
     setCheckpointResult(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/generation/agent-prompt`);
+      const res = await apiRequest(`bundles/${bundleSlug}/generation/agent-prompt`);
       const data = await res.json() as { prompt: string; configDir: string };
       setAgentPrompt(data.prompt);
       setAgentPromptConfigDir(data.configDir);
@@ -155,7 +155,7 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
     setCheckpointCommitting(true);
     setCheckpointResult(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/generation/agent-prompt/commit`, { method: 'POST' });
+      const res = await apiRequest(`bundles/${bundleSlug}/generation/agent-prompt/commit`, { method: 'POST' });
       if (res.ok) {
         setCheckpointResult('success');
       } else {

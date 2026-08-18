@@ -141,7 +141,7 @@ describe('VersionsTab', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/review/versions/current/cancel'),
-        { method: 'POST' },
+        expect.objectContaining({ method: 'POST' }),
       );
     });
     expect(screen.queryByRole('button', { name: 'Delete Local Files' })).toBeInTheDocument();

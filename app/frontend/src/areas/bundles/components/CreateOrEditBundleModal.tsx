@@ -17,7 +17,7 @@ limitations under the License.
 /* global alert */
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../shared/components/Modal';
-import { API_BASE_URL } from '../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../shared/utils/apiClient';
 import type { SourcePageFileInfo } from '../../../../../shared_code/types/sourcePageFileInfo';
 import { logger } from '../../../shared/utils/logger';
 import FolderBundleFields from './FolderBundleFields';
@@ -264,8 +264,8 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
           setIsLoadingSuggestions(true);
           setSuggestionsLoadError(null);
 
-          const response = await fetch(
-            `${API_BASE_URL}/bundles/source-pages/search?sourceDirectory=${encodeURIComponent(form.sourceDirectory)}&query=${encodeURIComponent(form.entryBundleNodeName)}&limit=${typeaheadLimit}`,
+          const response = await apiRequest(
+            `bundles/source-pages/search?sourceDirectory=${encodeURIComponent(form.sourceDirectory)}&query=${encodeURIComponent(form.entryBundleNodeName)}&limit=${typeaheadLimit}`,
             { signal: controller.signal }
           );
 
@@ -428,8 +428,8 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
 
   // Search for pages in source directory
   const searchPagesInSource = async (sourceDirectory: string, pageName: string): Promise<{ found: boolean; count: number; pages: MatchingPage[] }> => {
-    const response = await fetch(
-      `${API_BASE_URL}/bundles/source-pages/exact-search?sourceDirectory=${encodeURIComponent(sourceDirectory)}&pageName=${encodeURIComponent(pageName)}`
+    const response = await apiRequest(
+      `bundles/source-pages/exact-search?sourceDirectory=${encodeURIComponent(sourceDirectory)}&pageName=${encodeURIComponent(pageName)}`
     );
 
     if (!response.ok) {
@@ -537,7 +537,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
         entrySourceGraphSubdirectory: normalizeDirectory(formData.entrySourceGraphSubdirectory),
         ...traversalDefaults,
       };
-      const response = await fetch(`${API_BASE_URL}/bundles`, {
+      const response = await apiRequest(`bundles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(normalizedFormData)
@@ -558,7 +558,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
 
   const runFolderPreflight = async (): Promise<FolderBundlePreflight> => {
     const traversalDefaults = parsedTraversalDefaults();
-    const response = await fetch(`${API_BASE_URL}/bundles/folders/preflight`, {
+    const response = await apiRequest(`bundles/folders/preflight`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -574,7 +574,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
   };
 
   const createFolderBundle = async (preflight: FolderBundlePreflight) => {
-    const response = await fetch(`${API_BASE_URL}/bundles/folders`, {
+    const response = await apiRequest(`bundles/folders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -610,7 +610,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
         ...traversalDefaults,
       };
 
-      const response = await fetch(`${API_BASE_URL}/bundles/${editBundle.slug}`, {
+      const response = await apiRequest(`bundles/${editBundle.slug}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(normalizedBody)

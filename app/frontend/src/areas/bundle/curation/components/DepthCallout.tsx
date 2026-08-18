@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Graph } from '../../../../../../shared_code/types/graph';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { AppConfig } from '../../../../../../shared_code/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
 
@@ -30,7 +30,7 @@ export function useDepthCalloutDismissal(): {
   useEffect(() => {
     const loadCalloutState = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/app-config`);
+        const response = await apiRequest(`app-config`);
         if (response.ok) {
           const config: AppConfig = await response.json();
           setCalloutDismissed(config.calloutDismissals?.calloutInitialPageOutlinksDepth === true);
@@ -48,7 +48,7 @@ export function useDepthCalloutDismissal(): {
   const handleDismissCallout = useCallback(async () => {
     setCalloutDismissed(true);
     try {
-      await fetch(`${API_BASE_URL}/app-config/callout-dismissal/calloutInitialPageOutlinksDepth`, {
+      await apiRequest(`app-config/callout-dismissal/calloutInitialPageOutlinksDepth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dismissed: true }),

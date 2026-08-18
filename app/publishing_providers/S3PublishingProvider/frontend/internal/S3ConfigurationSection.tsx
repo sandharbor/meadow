@@ -16,6 +16,7 @@ limitations under the License.
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { logger } from '../../../../frontend/src/shared/utils/logger';
+import { apiRequest } from '../../../../frontend/src/shared/utils/apiClient';
 import { s3Api } from './s3Api';
 
 interface S3Configuration {
@@ -76,7 +77,7 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
 
   const loadConfig = useCallback(async () => {
     try {
-      const res = await fetch(s3Api('configuration'));
+      const res = await apiRequest(s3Api('configuration'));
       if (!res.ok) {
         setError(await readError(res, `Failed to load configuration (${res.status})`));
         return;
@@ -132,7 +133,7 @@ export const S3ConfigurationSection: React.FC<S3ConfigurationSectionProps> = ({ 
       if (secretTouched) {
         payload.s3SecretAccessKey = draftSecret;
       }
-      const res = await fetch(s3Api('configuration'), {
+      const res = await apiRequest(s3Api('configuration'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
 
 interface AdvancedTabProps {
@@ -60,7 +60,7 @@ export const AdvancedTab: React.FC<AdvancedTabProps> = ({ bundleSlug }) => {
   useEffect(() => {
     const fetchPaths = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/sharing/local-paths`);
+        const response = await apiRequest(`bundles/${bundleSlug}/sharing/local-paths`);
         if (response.ok) {
           setPaths(await response.json());
         }

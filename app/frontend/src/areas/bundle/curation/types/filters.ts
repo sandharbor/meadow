@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import React, { useEffect, useState } from 'react';
 import { CustomFilterConfig } from '../../../../../../shared_code/types/customFilters.js';
 import { logger } from '../../../../shared/utils/logger';
@@ -177,7 +177,7 @@ export function useFilterState(bundleSlug: string): [IFilter[], React.Dispatch<R
   const loadCustomFilters = React.useCallback(async () => {
     if (!bundleSlug) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/curation/custom-filters`);
+      const response = await apiRequest(`bundles/${bundleSlug}/curation/custom-filters`);
       if (response.ok) {
         const data = await response.json();
         setCustomFilters(data.filters || []);

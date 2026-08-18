@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Modal from '../../components/Modal';
-import { API_BASE_URL } from '../../utils/apiConfig';
+import { apiRequest } from '../../utils/apiClient';
 
 interface BundleLogsModalProps {
   isOpen: boolean;
@@ -58,7 +58,7 @@ const BundleLogsModal: React.FC<BundleLogsModalProps> = ({ isOpen, onClose, init
       params.set('limitLines', '1000');
       if (filter.trim()) params.set('bundleFilter', filter.trim());
 
-      const response = await fetch(`${API_BASE_URL}/logs?${params.toString()}`);
+      const response = await apiRequest(`logs?${params.toString()}`);
       if (!response.ok) {
         const text = await response.text();
         throw new Error(text || `Failed to load logs (${response.status})`);
@@ -185,5 +185,4 @@ const BundleLogsModal: React.FC<BundleLogsModalProps> = ({ isOpen, onClose, init
 };
 
 export default BundleLogsModal;
-
 

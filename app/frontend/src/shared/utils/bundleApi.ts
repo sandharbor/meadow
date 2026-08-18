@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { API_BASE_URL } from './apiConfig';
+import { apiJson } from './apiClient';
 import type { BundleConfig } from '../../../../shared_code/types/bundleConfig';
 
 /**
@@ -61,11 +61,7 @@ export interface BundleEditData {
  * Fetches all bundles with their full configuration
  */
 export async function fetchBundles(): Promise<BundleConfigWithSlug[]> {
-  const response = await fetch(`${API_BASE_URL}/bundles/detailed`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch bundles');
-  }
-  return response.json();
+  return apiJson<BundleConfigWithSlug[]>('bundles/detailed');
 }
 
 /**
@@ -84,11 +80,7 @@ export async function fetchBundleBySlug(slug: string): Promise<BundleConfigWithS
  * Fetches the list of available source directories
  */
 export async function fetchDirectories(): Promise<string[]> {
-  const response = await fetch(`${API_BASE_URL}/bundles/directories`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch directories');
-  }
-  return response.json();
+  return apiJson<string[]>('bundles/directories');
 }
 
 /**

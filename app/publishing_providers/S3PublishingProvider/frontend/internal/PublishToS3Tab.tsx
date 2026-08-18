@@ -17,6 +17,7 @@ limitations under the License.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { PublishTabProps } from '../../../../frontend/src/shared/publishing-provider-host/IPublishingProviderFrontend';
 import { logger } from '../../../../frontend/src/shared/utils/logger';
+import { apiRequest } from '../../../../frontend/src/shared/utils/apiClient';
 import { openExternal } from '../../../../frontend/src/shared/utils/openExternal';
 import { s3Api } from './s3Api';
 import { S3ConfigurationSection } from './S3ConfigurationSection';
@@ -79,7 +80,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
   const loadConfig = useCallback(async () => {
     const requestRevision = configRevisionRef.current;
     try {
-      const res = await fetch(s3Api(`bundles/${bundleSlug}/provider-config`));
+      const res = await apiRequest(s3Api(`bundles/${bundleSlug}/provider-config`));
       if (!res.ok) return;
       const body = await res.json() as { publishSlug?: string | null };
       if (requestRevision !== configRevisionRef.current) return;
@@ -93,7 +94,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
 
   const loadFileCounts = useCallback(async () => {
     try {
-      const res = await fetch(s3Api(`bundles/${bundleSlug}/published-file-counts`));
+      const res = await apiRequest(s3Api(`bundles/${bundleSlug}/published-file-counts`));
       if (!res.ok) return;
       const body = await res.json() as FileCounts;
       setFileCounts(body);
@@ -107,7 +108,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
     if (!selectedVersionId) return;
     try {
       const query = new URLSearchParams({ versionId: selectedVersionId });
-      const res = await fetch(s3Api(`bundles/${bundleSlug}/publication-state?${query}`));
+      const res = await apiRequest(s3Api(`bundles/${bundleSlug}/publication-state?${query}`));
       if (!res.ok) return;
       const body = await res.json() as PublicationStateView;
       setPublicationState(body);
@@ -149,7 +150,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
     const saveRevision = ++configRevisionRef.current;
     setIsSaving(true);
     try {
-      const res = await fetch(s3Api(`bundles/${bundleSlug}/provider-config`), {
+      const res = await apiRequest(s3Api(`bundles/${bundleSlug}/provider-config`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ publishSlug: draftSlug }),
@@ -173,7 +174,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
     setFilesUploaded(null);
     setIsPublishing(true);
     try {
-      const res = await fetch(s3Api(`bundles/${bundleSlug}/publish`), {
+      const res = await apiRequest(s3Api(`bundles/${bundleSlug}/publish`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ versionId: selectedVersionId }),
@@ -205,7 +206,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
     setError(null);
     setIsDeleting(true);
     try {
-      const res = await fetch(s3Api(`bundles/${bundleSlug}/published`), {
+      const res = await apiRequest(s3Api(`bundles/${bundleSlug}/published`), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ versionId: selectedVersionId }),

@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { StylePreset } from '../../../../../../shared_code/types/stylePresets';
 import { logger } from '../../../../shared/utils/logger';
 import { ConfigSection } from './configSection';
@@ -48,15 +48,15 @@ const StylePresetsPanel: React.FC<StylePresetsPanelProps> = ({ bundleSlug, onPre
   const loadPresets = useCallback(async () => {
     try {
       // Load all presets
-      const presetsResponse = await fetch(`${API_BASE_URL}/generation/style-presets`);
+      const presetsResponse = await apiRequest(`generation/style-presets`);
       const presetsData = await presetsResponse.json();
 
       // Load global preset
-      const globalResponse = await fetch(`${API_BASE_URL}/generation/style-presets/global`);
+      const globalResponse = await apiRequest(`generation/style-presets/global`);
       const globalData = await globalResponse.json();
 
       // Load bundle preset
-      const bundleResponse = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/generation/style-preset`);
+      const bundleResponse = await apiRequest(`bundles/${bundleSlug}/generation/style-preset`);
       const bundleData = await bundleResponse.json();
 
       setState({
@@ -82,7 +82,7 @@ const StylePresetsPanel: React.FC<StylePresetsPanelProps> = ({ bundleSlug, onPre
     try {
       if (scope === 'global') {
         // Update global preset
-        const response = await fetch(`${API_BASE_URL}/generation/style-presets/global`, {
+        const response = await apiRequest(`generation/style-presets/global`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ presetId }),
@@ -99,7 +99,7 @@ const StylePresetsPanel: React.FC<StylePresetsPanelProps> = ({ bundleSlug, onPre
         }
       } else {
         // Update bundle preset
-        const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/generation/style-preset`, {
+        const response = await apiRequest(`bundles/${bundleSlug}/generation/style-preset`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ presetId }),

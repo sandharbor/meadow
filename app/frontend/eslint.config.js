@@ -98,6 +98,10 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-explicit-any': 'warn',
       'react/react-in-jsx-scope': 'off',
+      'no-restricted-globals': ['error', {
+        name: 'fetch',
+        message: 'Use apiRequest, apiJson, or resourceRequest from shared/utils/apiClient.'
+      }],
       '@typescript-eslint/no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }]
     }
   },

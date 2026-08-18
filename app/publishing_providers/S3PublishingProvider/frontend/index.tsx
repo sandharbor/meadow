@@ -16,6 +16,7 @@ limitations under the License.
 
 import type { IPublishingProviderFrontend } from '../../../frontend/src/shared/publishing-provider-host/IPublishingProviderFrontend.js';
 import type { PublishingProviderManifest } from '../../../shared_code/interfaces/IPublishingProvider.js';
+import { apiRequest } from '../../../frontend/src/shared/utils/apiClient.js';
 import { PublishToS3Tab } from './internal/PublishToS3Tab';
 import { s3Api } from './internal/s3Api';
 
@@ -37,7 +38,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
 
 async function fetchPublishedUrl(bundleSlug: string, versionId?: string): Promise<string> {
   const query = versionId ? `?${new URLSearchParams({ versionId })}` : '';
-  const res = await fetch(s3Api(`bundles/${bundleSlug}/published-url${query}`));
+  const res = await apiRequest(s3Api(`bundles/${bundleSlug}/published-url${query}`));
   if (!res.ok) {
     throw new Error(await readError(res, `Failed to fetch published URL (${res.status})`));
   }
@@ -49,7 +50,7 @@ async function fetchPublishedUrl(bundleSlug: string, versionId?: string): Promis
 async function fetchPublishedFileCounts(
   bundleSlug: string,
 ): Promise<{ htmlCount: number; otherCount: number }> {
-  const res = await fetch(s3Api(`bundles/${bundleSlug}/published-file-counts`));
+  const res = await apiRequest(s3Api(`bundles/${bundleSlug}/published-file-counts`));
   if (!res.ok) {
     throw new Error(await readError(res, `Failed to fetch published file counts (${res.status})`));
   }

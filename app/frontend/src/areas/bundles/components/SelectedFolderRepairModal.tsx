@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useEffect, useState } from 'react';
 import Modal from '../../../shared/components/Modal';
-import { API_BASE_URL } from '../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../shared/utils/apiClient';
 
 export interface MissingSelectedFolder {
   bundleNodeId: string;
@@ -98,7 +98,7 @@ const SelectedFolderRepairModal: React.FC<SelectedFolderRepairModalProps> = ({
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${encodeURIComponent(bundleSlug)}/folders/relink-preflight`, {
+      const response = await apiRequest(`bundles/${encodeURIComponent(bundleSlug)}/folders/relink-preflight`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bundleNodeId: targetId, selectedFolder }),
@@ -118,7 +118,7 @@ const SelectedFolderRepairModal: React.FC<SelectedFolderRepairModalProps> = ({
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/bundles/${encodeURIComponent(bundleSlug)}/folders/relink`, {
+      const response = await apiRequest(`bundles/${encodeURIComponent(bundleSlug)}/folders/relink`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

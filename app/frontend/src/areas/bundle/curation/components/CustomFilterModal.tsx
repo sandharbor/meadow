@@ -18,7 +18,7 @@ limitations under the License.
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../../shared/components/Modal';
 import { CustomFilterConfig, CustomBundleNodeSelectorConfig, CustomFilterAction, SelectorField, SelectorMatchType } from '../../../../../../shared_code/types/customFilters';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
 
 interface CustomFilterModalProps {
@@ -137,7 +137,7 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
         updatedAt: now
       };
 
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/curation/custom-filters`, {
+      const response = await apiRequest(`bundles/${bundleSlug}/curation/custom-filters`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filter: filterConfig })
@@ -167,8 +167,8 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
     setIsDeleting(true);
 
     try {
-      const deleteResponse = await fetch(
-        `${API_BASE_URL}/bundles/${bundleSlug}/curation/custom-filters/${existingFilter.id}?scope=${existingFilter.scope}`,
+      const deleteResponse = await apiRequest(
+        `bundles/${bundleSlug}/curation/custom-filters/${existingFilter.id}?scope=${existingFilter.scope}`,
         { method: 'DELETE' }
       );
 
@@ -461,4 +461,4 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
   );
 };
 
-export default CustomFilterModal; 
+export default CustomFilterModal;

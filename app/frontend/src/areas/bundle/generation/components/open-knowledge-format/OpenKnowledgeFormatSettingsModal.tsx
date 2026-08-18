@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Modal from '../../../../../shared/components/Modal';
-import { API_BASE_URL } from '../../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../../shared/utils/apiClient';
 import { logger } from '../../../../../shared/utils/logger';
 import type { SourcePageFileInfo } from '../../../../../../../shared_code/types/sourcePageFileInfo';
 
@@ -221,8 +221,8 @@ const OpenKnowledgeFormatSettingsModal: React.FC<OpenKnowledgeFormatSettingsModa
   const [error, setError] = useState<string | null>(null);
 
   const loadOptions = useMemo(() => async (searchQuery: string, signal?: AbortSignal) => {
-    const response = await fetch(
-      `${API_BASE_URL}/bundles/${bundleSlug}/generation/open-knowledge-format/log-page-options?query=${encodeURIComponent(searchQuery)}&limit=25`,
+    const response = await apiRequest(
+      `bundles/${bundleSlug}/generation/open-knowledge-format/log-page-options?query=${encodeURIComponent(searchQuery)}&limit=25`,
       { signal }
     );
     if (!response.ok) {

@@ -18,7 +18,6 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Graph } from '../../../../../../shared_code/types/graph';
 import { IFilter } from '../types/filters';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
 import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH } from './ImageHoverPreview';
 import BundleNodeHoverCard from './BundleNodeHoverCard';
@@ -74,7 +73,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
     y: number;
     title: string;
     isImage: boolean;
-    imageUrl?: string;
+    imagePath?: string;
     highlights: Highlight[];
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -607,9 +606,9 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
       <div ref={containerRef} className="w-full h-full">
         {hoveredNode && (
-          hoveredNode.isImage && hoveredNode.imageUrl ? (
+          hoveredNode.isImage && hoveredNode.imagePath ? (
             <ImageHoverPreview
-              imageUrl={hoveredNode.imageUrl}
+              imagePath={hoveredNode.imagePath}
               title={hoveredNode.title}
               style={{
                 position: 'absolute',
@@ -920,7 +919,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
                       y: screenPt.y - containerRect.top,
                       title: page.bundleNodeName,
                       isImage,
-                      imageUrl: isImage ? `${API_BASE_URL}/bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(filePath)}` : undefined,
+                      imagePath: isImage ? `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(filePath)}` : undefined,
                       highlights: page.highlights,
                     });
                   }

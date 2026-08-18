@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../../../shared/utils/apiConfig';
+import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
 
 interface SaveLocallyTabProps {
@@ -39,7 +39,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
   useEffect(() => {
     const fetchPaths = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/sharing/local-paths`);
+        const response = await apiRequest(`bundles/${bundleSlug}/sharing/local-paths`);
         if (response.ok) {
           setPaths(await response.json());
         }
@@ -48,7 +48,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
       }
     };
     fetchPaths();
-    fetch(`${API_BASE_URL}/bundles/${bundleSlug}/review/versions`)
+    apiRequest(`bundles/${bundleSlug}/review/versions`)
       .then(response => response.ok ? response.json() : null)
       .then(data => setVersionCount(Array.isArray(data?.versions) ? data.versions.length : 0))
       .catch(error => logger.error('Failed to fetch versions for export:', error));
@@ -80,7 +80,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
       const destinationPath = result.filePaths[0];
 
       // Perform the export — backend handles non-empty folders by creating a slug subfolder
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/sharing/copy-to-directory`, {
+      const response = await apiRequest(`bundles/${bundleSlug}/sharing/copy-to-directory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,7 +129,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/bundles/${bundleSlug}/sharing/create-zip`, {
+      const response = await apiRequest(`bundles/${bundleSlug}/sharing/create-zip`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
