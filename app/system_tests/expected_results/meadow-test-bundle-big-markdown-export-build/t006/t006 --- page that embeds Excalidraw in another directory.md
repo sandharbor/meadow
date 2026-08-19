@@ -17,6 +17,8 @@ pagespecs:
         inlinks:
           - linkPath: /t006 - embedded media.md
             isInGraph: true
+          - linkPath: /t006/t006 --- meadow-flower.svg
+            isInGraph: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
@@ -25,6 +27,8 @@ pagespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: ../t006 - embedded media.html
                 embeddedLinks: []
+          - relativeLinkPath: t006 --- meadow-flower.svg
+            backlinkContexts: []
   - bundle: meadow-test-bundle-small
     curation:
       isTracked: false

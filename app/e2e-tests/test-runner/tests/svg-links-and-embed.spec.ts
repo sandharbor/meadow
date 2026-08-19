@@ -42,8 +42,13 @@ test("SVG links work in a directed embed", async ({
 
   await generatedBundle.svg.expectOrdinaryImageEmbeds(3);
   await generatedBundle.svg.expectDirectedEmbedVisible();
-  await generatedBundle.svg.expectDirectedLink("../main%20page.html");
-  await generatedBundle.svg.expectDirectedLink(
+  const textLink =
+    "t006%20---%20page%20that%20embeds%20Excalidraw%20in%20another%20directory.html";
+  await generatedBundle.svg.expectDirectedTextLink(
+    textLink,
+    "t006 --- page that embeds Excalidraw in another directory",
+  );
+  await generatedBundle.svg.expectDirectedShapeLink(
     "../t006%20-%20embedded%20media.html",
   );
   await generatedBundle.svg.expectDirectedStandaloneLinkAbsent();
@@ -54,8 +59,10 @@ test("SVG links work in a directed embed", async ({
   await snapshot("directed SVG embed fullscreen open");
   await generatedBundle.svg.closeDirectedFullscreen();
 
-  await generatedBundle.svg.clickDirectedLink("../main%20page.html");
-  await generatedBundle.expectHeading("main page");
+  await generatedBundle.svg.clickDirectedLink(textLink);
+  await generatedBundle.expectHeading(
+    "t006 --- page that embeds Excalidraw in another directory",
+  );
   await snapshot("directed SVG embed link opened target");
   await addKeyFrame(svg);
 

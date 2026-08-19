@@ -5,7 +5,7 @@ pagespecs:
       isInWorkingGraph: true
       links:
         outlinks:
-          - linkPath: /main page.md
+          - linkPath: /t006/t006 --- page that embeds Excalidraw in another directory.md
             isInGraph: true
           - linkPath: /t006 - embedded media.md
             isInGraph: true
@@ -15,7 +15,7 @@ pagespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
-          - relativeLinkPath: ../main page.html
+          - relativeLinkPath: t006 --- page that embeds Excalidraw in another directory.html
           - relativeLinkPath: ../t006 - embedded media.html
         footerSectionBacklinks: []
   - bundle: meadow-test-bundle-small

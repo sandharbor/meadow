@@ -429,6 +429,18 @@ export class GeneratedBundleSvg {
     await this.expect(this.directedLink(href)).toHaveCount(1);
   }
 
+  async expectDirectedTextLink(href: string, text: string) {
+    const linkedText = this.directedLink(href).locator("text");
+    await this.expect(linkedText).toHaveCount(1);
+    await this.expect(linkedText).toBeVisible();
+    await this.expect(linkedText).toHaveText(text);
+  }
+
+  async expectDirectedShapeLink(href: string) {
+    const linkedShape = this.directedLink(href).locator("circle").first();
+    await this.expect(linkedShape).toBeVisible();
+  }
+
   async expectDirectedStandaloneLinkAbsent() {
     await this.expect(
       this.directedEmbedFrame.locator(".meadow-svg-open-link"),
