@@ -283,6 +283,15 @@
     if (currentPage && typeof currentPage.scrollIntoView === 'function') {
       currentPage.scrollIntoView({ block: 'nearest' });
     }
+
+    // Safari can leave the two transitioning layout layers unpainted when
+    // their persisted state is applied during initial page construction.
+    // Give the initial layout a paint opportunity before enabling transitions.
+    window.requestAnimationFrame(function() {
+      window.requestAnimationFrame(function() {
+        document.documentElement.setAttribute('data-meadow-folder-nav-ready', 'true');
+      });
+    });
   }
 
   if (document.readyState === 'loading') {

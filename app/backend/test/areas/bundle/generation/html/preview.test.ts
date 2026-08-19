@@ -265,8 +265,18 @@ describe('html preview', () => {
       path.join(folderNavigationDirectory, folderNavigationJs!),
       'utf8'
     );
+    const folderNavigationStylesheet = fs.readFileSync(
+      path.join(folderNavigationDirectory, folderNavigationCss!),
+      'utf8'
+    );
     expect(folderNavigationController).toContain('function applyInitialLayout()');
     expect(folderNavigationController).toContain("root.setAttribute('data-meadow-folder-nav-open', isOpen ? 'true' : 'false')");
+    expect(folderNavigationController).toContain("document.documentElement.setAttribute('data-meadow-folder-nav-ready', 'true')");
+    expect(folderNavigationController).toMatch(/requestAnimationFrame\(function\(\) \{\s*window\.requestAnimationFrame/);
+    expect(folderNavigationStylesheet).not.toMatch(/^\.meadow-bundle-content \{[^}]*\btransition:/m);
+    expect(folderNavigationStylesheet).not.toMatch(/^\.meadow-folder-nav \{[^}]*\btransition:/m);
+    expect(folderNavigationStylesheet).toContain('html[data-meadow-folder-nav-ready="true"] .meadow-bundle-content');
+    expect(folderNavigationStylesheet).toContain('html[data-meadow-folder-nav-ready="true"] .meadow-folder-nav');
     expect(folderNavigationController).not.toContain('folder-navigation');
   });
 

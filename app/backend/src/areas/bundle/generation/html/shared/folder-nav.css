@@ -22,7 +22,6 @@ body.meadow-folder-nav-enabled {
   align-items: center;
   min-height: 100vh;
   padding: 8px;
-  transition: margin-left 160ms ease;
 }
 
 .meadow-folder-nav {
@@ -38,6 +37,13 @@ body.meadow-folder-nav-enabled {
   border-right: 1px solid var(--meadow-folder-nav-border);
   box-shadow: 3px 0 10px rgba(16, 24, 40, 0.06);
   transform: translateX(-100%);
+}
+
+html[data-meadow-folder-nav-ready="true"] .meadow-bundle-content {
+  transition: margin-left 160ms ease;
+}
+
+html[data-meadow-folder-nav-ready="true"] .meadow-folder-nav {
   transition: transform 160ms ease;
 }
 
@@ -292,8 +298,8 @@ html[data-meadow-folder-nav-open="false"] .meadow-folder-nav-open {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .meadow-folder-nav,
-  .meadow-bundle-content {
+  html[data-meadow-folder-nav-ready="true"] .meadow-folder-nav,
+  html[data-meadow-folder-nav-ready="true"] .meadow-bundle-content {
     transition: none;
   }
 }
