@@ -83,4 +83,62 @@ describe('PublishToS3Tab', () => {
       expect.objectContaining({ method: 'PUT' }),
     );
   });
+
+  it('does not reload bundle config when the selected version changes', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith('/provider-config') && (init?.method ?? 'GET') === 'GET') {
+        return jsonResponse({ publishSlug: 'meadow-test-bundle-big' });
+      }
+      if (url.endsWith('/provider-config') && init?.method === 'PUT') {
+        return jsonResponse({ publishSlug: 'meadow-test-bundle-big-delete-gate' });
+      }
+      if (url.includes('/published-file-counts')) {
+        return jsonResponse({ htmlCount: 0, otherCount: 0 });
+      }
+      if (url.includes('/publication-state')) {
+        return jsonResponse({
+          status: { kind: 'not-published' },
+          events: [],
+          remotelyPresentVersionIds: [],
+        });
+      }
+      return jsonResponse({});
+    });
+
+    const { rerender } = render(
+      <PublishToS3Tab
+        bundleSlug="meadow-test-bundle-big"
+        selectedVersionId={null}
+        changedFilesCount={0}
+        onBusyChange={() => {}}
+        onAuthError={() => {}}
+        onViewChanges={() => {}}
+      />,
+    );
+
+    const input = await screen.findByTestId('s3-publish-slug-input');
+    await waitFor(() => expect(input).toHaveValue('meadow-test-bundle-big'));
+    fireEvent.change(input, { target: { value: 'meadow-test-bundle-big-delete-gate' } });
+    fireEvent.click(screen.getByTestId('s3-save-slug'));
+    await waitFor(() => expect(screen.getByTestId('s3-save-slug')).toHaveTextContent('Saved'));
+
+    rerender(
+      <PublishToS3Tab
+        bundleSlug="meadow-test-bundle-big"
+        selectedVersionId="vAb1234"
+        changedFilesCount={0}
+        onBusyChange={() => {}}
+        onAuthError={() => {}}
+        onViewChanges={() => {}}
+      />,
+    );
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([input]) =>
+      String(input).includes('/publication-state'))).toBe(true));
+    expect(fetchMock.mock.calls.filter(([input, init]) =>
+      String(input).endsWith('/provider-config')
+      && (init?.method ?? 'GET') === 'GET')).toHaveLength(1);
+    expect(input).toHaveValue('meadow-test-bundle-big-delete-gate');
+  });
 });

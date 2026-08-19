@@ -97,6 +97,12 @@ export function findFreePort(): Promise<number> {
 
 export function waitForPort(port: number, timeoutMs: number, proc: ChildProcess): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (proc.exitCode !== null || proc.signalCode !== null) {
+      reject(new Error(
+        `Process already exited with code ${String(proc.exitCode)} signal ${String(proc.signalCode)} while waiting for port ${port}`,
+      ));
+      return;
+    }
     const deadline = Date.now() + timeoutMs;
     let exited = false;
 
@@ -140,6 +146,12 @@ export function waitForHttpReady(
   headers: Record<string, string> = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (proc.exitCode !== null || proc.signalCode !== null) {
+      reject(new Error(
+        `Process already exited with code ${String(proc.exitCode)} signal ${String(proc.signalCode)} while waiting for HTTP readiness on port ${port}`,
+      ));
+      return;
+    }
     const deadline = Date.now() + timeoutMs;
     let exited = false;
 
@@ -648,8 +660,10 @@ export const test = base.extend<{
       // (backend crash traces, proxy `ECONNREFUSED`/`ECONNRESET` errors)
       // is silently discarded and flakes are nearly impossible to
       // root-cause.
-      const backendStderrFd = openSync(path.join(configDir, "logs", "backend-stderr.log"), "a");
-      const frontendStderrFd = openSync(path.join(configDir, "logs", "frontend-stderr.log"), "a");
+      const backendStderrPath = path.join(configDir, "logs", "backend-stderr.log");
+      const frontendStderrPath = path.join(configDir, "logs", "frontend-stderr.log");
+      const backendStderrFd = openSync(backendStderrPath, "a");
+      const frontendStderrFd = openSync(frontendStderrPath, "a");
 
       // 7. Spawn backend. Fixture layers can supply additional env vars
       //    via the `_backendExtraEnv` option (e.g. provider-specific stubs).
@@ -669,6 +683,12 @@ export const test = base.extend<{
           stdio: ["ignore", "ignore", backendStderrFd],
         }
       );
+      backendProc.on("exit", (code, signal) => {
+        appendFileSync(
+          backendStderrPath,
+          `backend process exited: code=${String(code)} signal=${String(signal)}\n`,
+        );
+      });
 
       // 8. Spawn frontend — a lightweight static file server serving the
       // pre-built dist/ (built once in playwright.config.ts). This replaces
@@ -695,6 +715,12 @@ export const test = base.extend<{
           stdio: ["ignore", "ignore", frontendStderrFd],
         }
       );
+      frontendProc.on("exit", (code, signal) => {
+        appendFileSync(
+          frontendStderrPath,
+          `frontend process exited: code=${String(code)} signal=${String(signal)}\n`,
+        );
+      });
 
       // 9. Spawn web server
       const webServerProc = spawn(

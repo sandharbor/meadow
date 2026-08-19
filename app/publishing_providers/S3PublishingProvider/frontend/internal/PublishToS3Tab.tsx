@@ -121,8 +121,14 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
   useEffect(() => {
     loadConfig();
     loadFileCounts();
+  }, [loadConfig, loadFileCounts]);
+
+  // A selected-version change only affects publication state. Reloading the
+  // bundle config here can race a publish-slug edit and replace the draft (or
+  // even the value returned by a successful save) with an older GET result.
+  useEffect(() => {
     loadPublicationState();
-  }, [loadConfig, loadFileCounts, loadPublicationState]);
+  }, [loadPublicationState]);
 
   useEffect(() => {
     onBusyChange(isSaving || isPublishing || isDeleting || isConfigSaving);

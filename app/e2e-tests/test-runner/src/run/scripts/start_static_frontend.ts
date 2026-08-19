@@ -105,8 +105,15 @@ const server = http.createServer((req, res) => {
         port: backendPort,
         method: req.method,
         path: rawUrl,
+        // The E2E proxy is intentionally short-lived. Reusing the global
+        // agent's pooled sockets makes it possible to select a backend socket
+        // that was closed while this process was descheduled under parallel
+        // suite load, surfacing as a sporadic ECONNRESET/502. A fresh loopback
+        // connection per request is cheap and removes that stale-socket race.
+        agent: false,
         headers: {
           ...req.headers,
+          host: `127.0.0.1:${backendPort}`,
           "x-meadow-capability": apiCapability,
         },
       },
