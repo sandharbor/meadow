@@ -38,6 +38,16 @@
 | ----------------------------------------- |
 | ![[t006/t006 --- meadow-flower.svg\|100]] |
 
+with a **container directive** that makes the SVG's links interactive
+
+:::meadow
+![[t006/t006 --- meadow-flower.svg|300]]
+
+enableEmbeddedLinks: true
+enableFullscreenButton: true
+enableOpenDedicatedPage: false
+:::
+
 ## Excalidraw
 
 ![[t006 --- meadow-flower.excalidraw]]
@@ -81,6 +91,8 @@ pagespecs:
         inlinks:
           - linkPath: /main page.md
             isInGraph: true
+          - linkPath: /t006/t006 --- meadow-flower.svg
+            isInGraph: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
@@ -99,6 +111,8 @@ pagespecs:
             backlinkContexts:
               - seeInContextLinkRelativePath: main page.html
                 embeddedLinks: []
+          - relativeLinkPath: t006/t006 --- meadow-flower.svg
+            backlinkContexts: []
   - bundle: meadow-test-bundle-small
     curation:
       isTracked: false

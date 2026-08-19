@@ -50,6 +50,15 @@ describe('bundle route planning', () => {
     expect(plan.routes.get(duplicateB.bundleNodeId)).toBe('Same.html');
   });
 
+  it('uses source-file routes for interactive SVG documents', () => {
+    const entry = { bundleNodeKind: 'file', bundleNodeId: id('eeeeee000000'), bundleNodeName: 'Entry', sourceGraphSubdirectory: '', fileType: 'md', listType: 'whitelist' } as const;
+    const svg = { bundleNodeKind: 'file', bundleNodeId: id('ssssss000000'), bundleNodeName: 'Linked diagram', sourceGraphSubdirectory: 'images', fileType: 'svg', listType: 'whitelist' } as const;
+
+    const plan = planBundleRoutes([entry, svg], { entryBundleNodeId: entry.bundleNodeId });
+
+    expect(plan.routes.get(svg.bundleNodeId)).toBe('images/Linked diagram.svg');
+  });
+
   it('uses reserved routes for generated tag pages and relocates colliding source content', () => {
     const entry = { bundleNodeKind: 'file', bundleNodeId: id('eeeeee000000'), bundleNodeName: 'Entry', sourceGraphSubdirectory: '', fileType: 'md', listType: 'whitelist' } as const;
     const generatedTag = { bundleNodeKind: 'file', bundleNodeId: id('tttttt000000'), bundleNodeName: 'tag--ideas', sourceGraphSubdirectory: 'x-tagpages', fileType: 'md', listType: 'whitelist' } as const;

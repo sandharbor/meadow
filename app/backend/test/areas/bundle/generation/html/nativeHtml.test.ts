@@ -64,4 +64,20 @@ describe('rewriteNativeHtmlUrls', () => {
 
     expect(rewritten).toBe('<a href="https://example.com">External</a><a href="#" data-meadow-link-not-tracked="true">Private</a>');
   });
+
+  it('rewrites SVG shape links while preserving document-local references', () => {
+    const content = '<svg><a href="../Home.md"><circle r="10"/></a><use href="#petal"/></svg>';
+    const rewritten = rewriteNativeHtmlUrls({
+      content,
+      currentOutputDirectory: 'images',
+      linkResolutionMap: {
+        '../Home.md': { link_resolved_target_directory: '', link_resolved_target_path: 'Home.md' },
+      },
+      bundleNodeConfigs: configs,
+      bundleConfig,
+      routeTable: new Map([['aaaaaaaaaaaa', 'Home.html']]),
+    });
+
+    expect(rewritten).toBe('<svg><a href="../Home.html"><circle r="10"/></a><use href="#petal"/></svg>');
+  });
 });

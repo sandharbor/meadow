@@ -764,6 +764,35 @@ export async function generateHtmlForBundle(
     }
   }
 
+  // Interactive SVG embed assets. Ordinary SVG `<img>` embeds do not need
+  // them, so only copy the runtime when a tracked Markdown page actually
+  // contains a Meadow container directive for an SVG.
+  const bundleHasSvgDirective = Object.values(bundleNodeConfs).some(conf => {
+    if (conf.bundleNodeKind !== 'file' || conf.fileType !== 'md' || conf.listType !== 'whitelist') {
+      return false;
+    }
+    const sourceFilename = canonicalPageFilename(conf.bundleNodeName, conf.fileType);
+    const sourcePath = conf.sourceGraphSubdirectory
+      ? path.join(renderContentDirectory, ...conf.sourceGraphSubdirectory.split('/'), sourceFilename)
+      : path.join(renderContentDirectory, sourceFilename);
+    if (!fs.existsSync(sourcePath)) return false;
+    const content = fs.readFileSync(sourcePath, 'utf8');
+    const directives = content.match(/:::meadow\b[\s\S]*?:::/gi) ?? [];
+    return directives.some(directive => /!\[\[[^\]]+\.svg(?:\|[^\]]*)?\]\]/i.test(directive));
+  });
+  if (bundleHasSvgDirective) {
+    for (const asset of ['meadow-svg.css', 'meadow-svg.js']) {
+      const src = path.join(sharedDirectory, asset);
+      const dst = path.join(assetsDirectory, asset);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, dst);
+        logger.debug(`Copied ${asset} to ${dst}`);
+      } else {
+        logger.warn(`${asset} not found at ${src}`);
+      }
+    }
+  }
+
   if (generationOptions.spacedRepetitionEnabled) {
     const srsAssetsDirectory = getPublishedBundleSrsAssetsPath();
     const srsOutputDirectory = path.join(
@@ -960,7 +989,7 @@ export async function generateHtmlForBundle(
   }
 
   // Build the inverse_links mappings by scanning all traversable text-content
-  // pages (Markdown, native HTML, and Excalidraw drawings). This excludes
+  // pages (Markdown, native HTML, SVG, and Excalidraw drawings). This excludes
   // orphaned tracked pages (isTracked: true but isInWorkingGraph: false).
   const inverseLinks: InverseLinks = {};
   const pageNameToPage: PageNameToPage = {};
@@ -970,7 +999,8 @@ export async function generateHtmlForBundle(
   const traversableLinkScanPageKeys = Object.keys(bundleNodeConfs).filter(pageKey => {
     const conf = bundleNodeConfs[pageKey];
     const ft = conf.fileType;
-    const isScannable = conf.bundleNodeKind === 'file' && (ft === 'md' || ft === 'html' || ft === 'excalidraw');
+    const isScannable = conf.bundleNodeKind === 'file'
+      && (ft === 'md' || ft === 'html' || ft === 'svg' || ft === 'excalidraw');
     return isScannable && conf.listType === 'whitelist' && traversablePageKeys.has(pageKey);
   });
   for (const pageKey of traversableLinkScanPageKeys) {
@@ -988,9 +1018,10 @@ export async function generateHtmlForBundle(
     // Read the text content.
     const content = fs.readFileSync(pageContentPath, 'utf-8');
 
-    // Native HTML uses the Rust graph's resolved URL-attribute map. Markdown
-    // and Excalidraw retain the richer existing backlink-context extraction.
-    const links = conf.fileType === 'html'
+    // Native HTML and SVG use the Rust graph's resolved URL-attribute map.
+    // Markdown and Excalidraw retain the richer existing backlink-context
+    // extraction.
+    const links = conf.fileType === 'html' || conf.fileType === 'svg'
       ? [...new Set(Object.values(allLinkResolutionMaps.get(bundleNodeConfigToKey(conf)) ?? {})
           .map(resolved => resolved.link_resolved_target_path ?? '')
           .filter(targetPath => /\.(?:md|html|excalidraw)$/i.test(targetPath))
@@ -1002,7 +1033,7 @@ export async function generateHtmlForBundle(
     // want backlinks to render on the standalone Excalidraw page.
     const excalidrawEmbedRe = /!\[\[([^\]]+)\]\]/g;
     let exMatch;
-    while (conf.fileType !== 'html' && (exMatch = excalidrawEmbedRe.exec(content)) !== null) {
+    while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (exMatch = excalidrawEmbedRe.exec(content)) !== null) {
       const inner = exMatch[1].split('|')[0]; // strip size/alias
       if (!/\.excalidraw$/i.test(inner)) continue;
       const stripped = inner.replace(/\.excalidraw$/i, '');
@@ -1016,7 +1047,7 @@ export async function generateHtmlForBundle(
     // Also scan for standard markdown file links [text](path.md)
     const mdLinkPattern = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
     let mdLinkMatch;
-    while (conf.fileType !== 'html' && (mdLinkMatch = mdLinkPattern.exec(content)) !== null) {
+    while (conf.fileType !== 'html' && conf.fileType !== 'svg' && (mdLinkMatch = mdLinkPattern.exec(content)) !== null) {
       const href = mdLinkMatch[2].trim();
       // Skip external links and anchor-only links
       if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('#')) continue;
@@ -1351,7 +1382,21 @@ export async function generateHtmlForBundle(
     const outputPath = path.join(generatedHtmlDirectory, ...relativePath.split('/'));
     if (fs.existsSync(sourcePath)) {
       fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-      fs.copyFileSync(sourcePath, outputPath);
+      if (config.fileType === 'svg') {
+        const content = fs.readFileSync(sourcePath, 'utf8');
+        const rewritten = rewriteNativeHtmlUrls({
+          content,
+          currentOutputDirectory: config.sourceGraphSubdirectory || '',
+          linkResolutionMap: allLinkResolutionMaps.get(bundleNodeConfigToKey(config)),
+          bundleNodeConfigs: bundleNodeConfigsArrayForLinks,
+          bundleConfig,
+          bundleSlug: bundleSlug || undefined,
+          routeTable: routePlan.routes,
+        });
+        fs.writeFileSync(outputPath, rewritten, 'utf8');
+      } else {
+        fs.copyFileSync(sourcePath, outputPath);
+      }
     } else {
       logger.warn(`Native bundle asset not found: ${sourcePath}`);
     }

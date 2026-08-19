@@ -391,10 +391,11 @@ fn is_internal_html_target(target: &str) -> bool {
 }
 
 /// Extracts local URLs from the `href` and `src` attributes used by native
-/// HTML pages. This intentionally stays small: the graph only needs URL
-/// attributes, not a full browser-grade HTML tree, and preserving the literal
-/// attribute value gives the generation layer an exact resolution-map key.
-fn extract_html_links(content: &str) -> Vec<ExtractedLink> {
+/// HTML and SVG pages. This intentionally stays small: the graph only needs
+/// URL attributes, not a full browser-grade markup tree, and preserving the
+/// literal attribute value gives the generation layer an exact resolution-map
+/// key.
+fn extract_markup_links(content: &str) -> Vec<ExtractedLink> {
     let bytes = content.as_bytes();
     let mut links = Vec::new();
     let mut cursor = 0;
@@ -819,9 +820,11 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
                     found_sensitive = true;
                 }
             }
-        } else if source_page_identifier.file_type == "html" {
+        } else if source_page_identifier.file_type == "html"
+            || source_page_identifier.file_type == "svg"
+        {
             if let Ok(file_content) = fs::read_to_string(path) {
-                for extracted in extract_html_links(&file_content) {
+                for extracted in extract_markup_links(&file_content) {
                     if let ExtractedLink::Markdown { text, href } = extracted {
                         outgoing_links.push(parse_out_markdown_link(
                             &text,
@@ -1546,14 +1549,14 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_html_links_finds_pages_and_assets() {
+    fn test_extract_markup_links_finds_pages_and_assets() {
         let content = r#"<!doctype html>
             <link rel="stylesheet" href="./shared.css">
             <a href='../note.md'>Note</a>
             <img src="./image.svg" alt="">
             <script src="./behavior.js"></script>"#;
         assert_eq!(
-            extract_html_links(content),
+            extract_markup_links(content),
             vec![
                 ExtractedLink::Markdown {
                     text: "./shared.css".to_string(),
@@ -1576,17 +1579,39 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_html_links_skips_external_and_non_url_attributes() {
+    fn test_extract_markup_links_skips_external_and_non_url_attributes() {
         let content = r##"<a data-href="./not-a-link.md" href="#local">Local</a>
             <a href="https://example.com">External</a>
             <img src="data:image/svg+xml;base64,abc">
             <a HREF="./page.html">Page</a>"##;
         assert_eq!(
-            extract_html_links(content),
+            extract_markup_links(content),
             vec![ExtractedLink::Markdown {
                 text: "./page.html".to_string(),
                 href: "./page.html".to_string(),
             }]
+        );
+    }
+
+    #[test]
+    fn test_extract_markup_links_finds_svg_shape_links() {
+        let content = r##"<svg xmlns="http://www.w3.org/2000/svg">
+            <a href="../page.md"><circle r="20"/></a>
+            <a href="#local"><rect width="10" height="10"/></a>
+            <image href="./texture.png"/>
+        </svg>"##;
+        assert_eq!(
+            extract_markup_links(content),
+            vec![
+                ExtractedLink::Markdown {
+                    text: "../page.md".to_string(),
+                    href: "../page.md".to_string(),
+                },
+                ExtractedLink::Markdown {
+                    text: "./texture.png".to_string(),
+                    href: "./texture.png".to_string(),
+                },
+            ]
         );
     }
 

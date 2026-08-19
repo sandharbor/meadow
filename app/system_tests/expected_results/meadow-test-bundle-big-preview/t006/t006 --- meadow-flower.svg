@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
-  <circle cx="100" cy="100" r="30" fill="#f5c542"/>
-  <ellipse cx="100" cy="50" rx="18" ry="35" fill="#e87461"/>
+  <a href="../main%20page.html" aria-label="Open the main page">
+    <circle cx="100" cy="100" r="30" fill="#f5c542"/>
+  </a>
+  <a href="../t006%20-%20embedded%20media.html" aria-label="Open the embedded media page">
+    <ellipse cx="100" cy="50" rx="18" ry="35" fill="#e87461"/>
+  </a>
   <ellipse cx="143" cy="72" rx="18" ry="35" fill="#e87461" transform="rotate(72 143 72)"/>
   <ellipse cx="127" cy="118" rx="18" ry="35" fill="#e87461" transform="rotate(144 127 118)"/>
   <ellipse cx="73" cy="118" rx="18" ry="35" fill="#e87461" transform="rotate(216 73 118)"/>

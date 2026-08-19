@@ -45,6 +45,7 @@ const bundleConfig: BundleConfig = {};
 const bundleNodeConfigs: BundleNodeConfig[] = [
   makeBundleNodeConfig('host'),
   makeBundleNodeConfig('drawing', 'whitelist', { fileType: 'excalidraw' }),
+  makeBundleNodeConfig('diagram', 'whitelist', { fileType: 'svg' }),
   makeBundleNodeConfig('target'),
 ];
 
@@ -52,6 +53,11 @@ function renderHost(contentRoot: string, outputRoot: string, markdown: string): 
   writeMd(contentRoot, 'host', markdown);
   writeMd(contentRoot, 'drawing.excalidraw', 'drawing source');
   writeMd(contentRoot, 'target', 'target page');
+  fs.writeFileSync(
+    path.join(contentRoot, 'diagram.svg'),
+    '<svg xmlns="http://www.w3.org/2000/svg"><a href="target.md"><circle r="10"/></a></svg>',
+    'utf8',
+  );
 
   const result = renderPageToHtml(
     contentRoot,
@@ -124,6 +130,32 @@ describe('meadow container directive', () => {
       expect(html).toContain('style="max-width: 300px"');
       expect(html).not.toContain('data-meadow-excalidraw-links=');
       expect(html).not.toContain('data-meadow-excalidraw-fullscreen');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('renders an SVG as an interactive sandboxed embed when directed', () => {
+    const { contentRoot, outputRoot, cleanup } = mkTmp();
+    try {
+      const html = renderHost(contentRoot, outputRoot, [
+        ':::meadow',
+        '![[diagram.svg|300]]',
+        '',
+        'enableEmbeddedLinks: true',
+        'enableFullscreenButton: true',
+        'enableOpenDedicatedPage: false',
+        ':::',
+      ].join('\n'));
+
+      expect(html).not.toContain(':::meadow');
+      expect(html).toContain('class="meadow-svg-embed-frame meadow-svg-can-fullscreen"');
+      expect(html).toContain('style="max-width: 300px"');
+      expect(html).toContain('class="meadow-svg-embed"');
+      expect(html).toContain('src="diagram.svg"');
+      expect(html).toContain('sandbox="allow-same-origin"');
+      expect(html).toContain('class="meadow-svg-fullscreen-btn"');
+      expect(html).not.toContain('meadow-svg-open-link');
     } finally {
       cleanup();
     }

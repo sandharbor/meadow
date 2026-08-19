@@ -23,7 +23,8 @@ import { parse as parseHtml } from 'node-html-parser';
  */
 export function extractMainSectionLinkPaths(htmlContent: string): string[] {
   const root = parseHtml(htmlContent);
-  const mainElement = root.querySelector('main');
+  const mainElement = root.querySelector('main') ?? root.querySelector('svg');
+  const isSvgDocument = mainElement?.tagName.toLowerCase() === 'svg';
 
   if (!mainElement) {
     return [];
@@ -38,7 +39,7 @@ export function extractMainSectionLinkPaths(htmlContent: string): string[] {
       continue;
     }
     const href = anchor.getAttribute('href');
-    if (href) {
+    if (href && (!isSvgDocument || !href.startsWith('#'))) {
       links.push(decodeURIComponent(href));
     }
   }
@@ -49,6 +50,16 @@ export function extractMainSectionLinkPaths(htmlContent: string): string[] {
     const src = img.getAttribute('src');
     if (src) {
       links.push(decodeURIComponent(src));
+    }
+  }
+
+  // SVG uses `<image href="…">` rather than HTML's `<img src="…">`.
+  if (isSvgDocument) {
+    for (const image of mainElement.querySelectorAll('image')) {
+      const href = image.getAttribute('href');
+      if (href && !href.startsWith('#')) {
+        links.push(decodeURIComponent(href));
+      }
     }
   }
 

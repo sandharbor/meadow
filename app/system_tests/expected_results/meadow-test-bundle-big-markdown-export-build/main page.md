@@ -111,6 +111,8 @@ pagespecs:
           - linkPath: /t026 - HTML node.md
             isInGraph: true
         inlinks:
+          - linkPath: /t006/t006 --- meadow-flower.svg
+            isInGraph: true
           - linkPath: /t014/t014 ---- in-link in nested folder to main page.md
             isInGraph: true
     generation:
@@ -139,6 +141,8 @@ pagespecs:
           - relativeLinkPath: t025 - extended syntax.html
           - relativeLinkPath: t026 - HTML node.html
         footerSectionBacklinks:
+          - relativeLinkPath: t006/t006 --- meadow-flower.svg
+            backlinkContexts: []
           - relativeLinkPath: t014/t014 ---- in-link in nested folder to main page.html
             backlinkContexts:
               - seeInContextLinkRelativePath: t014/t014 ---- in-link in nested folder to main page.html

@@ -32,7 +32,7 @@ export const pagespecSourceGraphDirs = [
 
 /**
  * Recursively finds source files whose PageSpecs are validated. Ordinary
- * Markdown embeds PageSpecs; HTML and Excalidraw use sidecars.
+ * Markdown embeds PageSpecs; HTML, SVG, and Excalidraw use sidecars.
  */
 export function findAllPagespecSourceFiles(dir: string): string[] {
   const results: string[] = [];
@@ -42,7 +42,7 @@ export function findAllPagespecSourceFiles(dir: string): string[] {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory() && !entry.name.startsWith('.')) {
       results.push(...findAllPagespecSourceFiles(fullPath));
-    } else if (entry.isFile() && /\.(?:md|html)$/i.test(entry.name)) {
+    } else if (entry.isFile() && /\.(?:md|html|svg)$/i.test(entry.name)) {
       results.push(fullPath);
     }
   }

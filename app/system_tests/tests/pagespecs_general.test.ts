@@ -349,6 +349,32 @@ pagespecs:
       }
     });
 
+    it('every SVG file should have a sidecar pagespec.yaml', () => {
+      const errors: string[] = [];
+
+      for (const sourceGraphDir of pagespecSourceGraphDirs) {
+        const svgFiles = findAllPagespecSourceFiles(sourceGraphDir)
+          .filter(sourceFile => path.extname(sourceFile).toLowerCase() === '.svg');
+
+        for (const svgFile of svgFiles) {
+          const content = fs.readFileSync(svgFile, 'utf-8');
+          const sidecarPath = getSidecarPagespecPath(svgFile, content);
+          if (!sidecarPath) {
+            errors.push(`${svgFile}: SVG file but could not derive sidecar path`);
+            continue;
+          }
+          if (!fs.existsSync(sidecarPath)) {
+            const relative = path.relative(sourceGraphDir, svgFile);
+            errors.push(`${relative}: SVG file is missing sidecar pagespec ${path.basename(sidecarPath)}`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Missing SVG sidecars:\n${errors.join('\n')}`);
+      }
+    });
+
     it('Excalidraw markdown files should not contain inline pagespecs blocks', () => {
       const errors: string[] = [];
 

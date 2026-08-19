@@ -4,8 +4,12 @@
   <rect width="320" height="240" rx="48" fill="#ede9fe"/>
   <g transform="translate(160 120)">
     <g fill="#8b5cf6" stroke="#5b21b6" stroke-width="5">
-      <ellipse cy="-62" rx="35" ry="61"/>
-      <ellipse cy="62" rx="35" ry="61"/>
+      <a href="t026%20----%20first%20HTML%20page.html" aria-label="Open the first HTML page">
+        <ellipse cy="-62" rx="35" ry="61"/>
+      </a>
+      <a href="t026%20----%20second%20HTML%20page.html" aria-label="Open the second HTML page">
+        <ellipse cy="62" rx="35" ry="61"/>
+      </a>
       <ellipse cx="-55" cy="-32" rx="35" ry="61" transform="rotate(-60 -55 -32)"/>
       <ellipse cx="55" cy="-32" rx="35" ry="61" transform="rotate(60 55 -32)"/>
       <ellipse cx="-55" cy="32" rx="35" ry="61" transform="rotate(60 -55 32)"/>

@@ -1,0 +1,85 @@
+/* Interactive SVG embeds enabled by a Meadow container directive. */
+
+.meadow-svg-embed-link,
+.meadow-svg-embed-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0.5em 0;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #ffffff;
+  color: inherit;
+  text-decoration: none;
+}
+
+.meadow-svg-embed-link {
+  width: fit-content;
+}
+
+.meadow-svg-embed-link > img,
+.meadow-svg-embed {
+  display: block;
+  width: 100%;
+  min-height: 12rem;
+  border: 0;
+  background: #ffffff;
+}
+
+.meadow-svg-embed-link > img {
+  min-height: 0;
+  height: auto;
+}
+
+.meadow-svg-open-icon,
+.meadow-svg-fullscreen-btn {
+  position: absolute;
+  top: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #444;
+  font: inherit;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.meadow-svg-open-icon {
+  right: 6px;
+}
+
+.meadow-svg-fullscreen-btn {
+  right: 40px;
+}
+
+.meadow-svg-embed-frame.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  max-width: none !important;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.meadow-svg-embed-frame.is-fullscreen .meadow-svg-embed {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+}
+
+.meadow-svg-embed-frame.is-fullscreen .meadow-svg-fullscreen-btn {
+  right: 8px;
+}
+
+body.meadow-svg-fullscreen-open {
+  overflow: hidden;
+}

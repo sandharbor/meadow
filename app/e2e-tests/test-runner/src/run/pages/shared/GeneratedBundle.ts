@@ -393,6 +393,67 @@ export class GeneratedBundleExcalidraw {
   }
 }
 
+/** SVG-specific behavior inside a generated bundle. */
+export class GeneratedBundleSvg {
+  constructor(
+    private root: GeneratedBundleRoot,
+    private expect: Expect,
+  ) {}
+
+  private get directedEmbedFrame() {
+    return this.root.locator(".meadow-svg-embed-frame").first();
+  }
+
+  private get directedEmbedDocument() {
+    return this.root.frameLocator("iframe.meadow-svg-embed");
+  }
+
+  private directedLink(href: string) {
+    return this.directedEmbedDocument.locator(`svg a[href="${href}"]`);
+  }
+
+  async expectOrdinaryImageEmbeds(count: number) {
+    await this.expect(
+      this.root.locator('img[src*="meadow-flower.svg"]'),
+    ).toHaveCount(count);
+  }
+
+  async expectDirectedEmbedVisible() {
+    await this.directedEmbedFrame.scrollIntoViewIfNeeded();
+    await this.expect(
+      this.directedEmbedDocument.locator("svg"),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  async expectDirectedLink(href: string) {
+    await this.expect(this.directedLink(href)).toHaveCount(1);
+  }
+
+  async expectDirectedStandaloneLinkAbsent() {
+    await this.expect(
+      this.directedEmbedFrame.locator(".meadow-svg-open-link"),
+    ).toHaveCount(0);
+  }
+
+  async openDirectedFullscreen() {
+    const button = this.directedEmbedFrame.getByRole("button", {
+      name: "Open SVG fullscreen",
+    });
+    await this.expect(button).toBeVisible();
+    await button.click();
+    await this.expect(this.directedEmbedFrame).toHaveClass(/is-fullscreen/);
+  }
+
+  async closeDirectedFullscreen() {
+    await this.root.locator("body").press("Escape");
+    await this.expect(this.directedEmbedFrame).not.toHaveClass(/is-fullscreen/);
+  }
+
+  async clickDirectedLink(href: string) {
+    await this.directedLink(href).click();
+  }
+}
+
 /** Folder navigation rendered inside a generated Meadow bundle. */
 export class GeneratedBundleFolderNavigation {
   constructor(
@@ -622,6 +683,7 @@ export class GeneratedBundle {
   readonly search: GeneratedBundleSearch;
   readonly sources: GeneratedBundleSources;
   readonly excalidraw: GeneratedBundleExcalidraw;
+  readonly svg: GeneratedBundleSvg;
   readonly folderNavigation: GeneratedBundleFolderNavigation;
 
   private constructor(
@@ -633,6 +695,7 @@ export class GeneratedBundle {
     this.search = new GeneratedBundleSearch(root, expect);
     this.sources = new GeneratedBundleSources(hostPage, root, expect);
     this.excalidraw = new GeneratedBundleExcalidraw(hostPage, root, expect);
+    this.svg = new GeneratedBundleSvg(root, expect);
     this.folderNavigation = new GeneratedBundleFolderNavigation(root, expect);
   }
 

@@ -1,0 +1,29 @@
+pagespecs:
+  - bundle: meadow-test-bundle-big
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /main page.md
+            isInGraph: true
+          - linkPath: /t006 - embedded media.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /t006 - embedded media.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../main page.html
+          - relativeLinkPath: ../t006 - embedded media.html
+        footerSectionBacklinks: []
+  - bundle: meadow-test-bundle-small
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

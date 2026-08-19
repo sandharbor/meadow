@@ -42,6 +42,16 @@ _link not tracked_
 | ----------------------------------------- |
 | ![t006 --- meadow-flower.svg](/t006/t006%20---%20meadow-flower.svg) |
 
+with a **container directive** that makes the SVG's links interactive
+
+:::meadow
+![t006 --- meadow-flower.svg](/t006/t006%20---%20meadow-flower.svg)
+
+enableEmbeddedLinks: true
+enableFullscreenButton: true
+enableOpenDedicatedPage: false
+:::
+
 ## Excalidraw
 
 _link not tracked_

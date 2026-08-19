@@ -48,7 +48,7 @@ import {
   isImageLikeWikiLink,
   linkOrImageHtml as linkOrImageHtmlService,
   resolveTrackedLinkHref,
-  type ExcalidrawEmbedOptions,
+  type MediaEmbedOptions,
 } from './linkModificationService.js';
 import type { LinkResolvedInfo } from '../../../../../../shared_code/types/IBundleNode.js';
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
@@ -215,7 +215,7 @@ export function renderPageToHtml(
   interface WikiLinkOverrides {
     linkResolutionMapOverride?: Record<string, LinkResolvedInfo>;
     currentPageDirectoryOverride?: string;
-    excalidrawEmbedOptions?: ExcalidrawEmbedOptions;
+    mediaEmbedOptions?: MediaEmbedOptions;
   }
 
   function linkOrImageHtml(linkText: string, highlightDoNotLinkPageName?: string, overrides?: WikiLinkOverrides): string {
@@ -233,7 +233,7 @@ export function renderPageToHtml(
       currentPageDirectory: overrides?.currentPageDirectoryOverride ?? currentPageDirectory,
       linkResolutionMap: overrides?.linkResolutionMapOverride ?? linkResolutionMap,
       allLinkResolutionMaps,
-      excalidrawEmbedOptions: overrides?.excalidrawEmbedOptions,
+      mediaEmbedOptions: overrides?.mediaEmbedOptions,
       routeTable,
       currentOutputDirectory,
     });
@@ -246,14 +246,14 @@ export function renderPageToHtml(
     return undefined;
   }
 
-  function parseMeadowDirectiveOptions(body: string): ExcalidrawEmbedOptions {
-    const options: ExcalidrawEmbedOptions = {};
+  function parseMeadowDirectiveOptions(body: string): MediaEmbedOptions {
+    const options: MediaEmbedOptions = {};
     for (const line of body.split('\n')) {
       const match = line.match(/^\s*(enableEmbeddedLinks|enableFullscreenButton|enableOpenDedicatedPage)\s*:\s*(.+?)\s*$/);
       if (!match) continue;
       const value = parseDirectiveBoolean(match[2]);
       if (value === undefined) continue;
-      options[match[1] as keyof ExcalidrawEmbedOptions] = value;
+      options[match[1] as keyof MediaEmbedOptions] = value;
     }
     return options;
   }
@@ -267,15 +267,20 @@ export function renderPageToHtml(
     const effectiveLinkResolutionMap = overrides?.linkResolutionMapOverride ?? linkResolutionMap;
     const resolvedTargetPath = effectiveLinkResolutionMap?.[linkText]?.link_resolved_target_path ?? '';
     const linkInfo = linkTextToLinkInfo(linkText);
-    if (!isImageLikeWikiLink(linkText, effectiveLinkResolutionMap) ||
-        !(linkInfo.filename.toLowerCase().endsWith('.excalidraw') || resolvedTargetPath.toLowerCase().endsWith('.excalidraw'))) {
+    const lowerFilename = linkInfo.filename.toLowerCase();
+    const lowerResolvedTargetPath = resolvedTargetPath.toLowerCase();
+    const isConfigurableMedia = lowerFilename.endsWith('.excalidraw')
+      || lowerResolvedTargetPath.endsWith('.excalidraw')
+      || lowerFilename.endsWith('.svg')
+      || lowerResolvedTargetPath.endsWith('.svg');
+    if (!isImageLikeWikiLink(linkText, effectiveLinkResolutionMap) || !isConfigurableMedia) {
       return body.trim();
     }
     return linkOrImageHtml(linkText, highlightDoNotLinkPageName, {
       ...overrides,
-      excalidrawEmbedOptions: {
+      mediaEmbedOptions: {
         ...parseMeadowDirectiveOptions(body),
-        ...overrides?.excalidrawEmbedOptions,
+        ...overrides?.mediaEmbedOptions,
       },
     });
   }
@@ -738,6 +743,7 @@ export function renderPageToHtml(
   const includeMermaid = htmlContent.includes('class="mermaid"') || htmlContent.includes('language-mermaid');
   const includeCallouts = htmlContent.includes('class="callout ');
   const includeExcalidraw = htmlContent.includes('meadow-excalidraw-embed') || htmlContent.includes('meadow-excalidraw-page');
+  const includeSvgEmbed = htmlContent.includes('meadow-svg-embed');
   // Empty string means base was disabled; only pass to template if non-empty
   const styleCssRaw = staticAssetNames?.styleCss ?? 'style.css';
   const styleCss = styleCssRaw || undefined;
@@ -748,6 +754,8 @@ export function renderPageToHtml(
   const excalidrawCss = staticAssetNames?.excalidrawCss ?? 'meadow-excalidraw.css';
   const excalidrawVendorJs = staticAssetNames?.excalidrawVendorJs ?? 'excalidraw-vendor.js';
   const excalidrawJs = staticAssetNames?.excalidrawJs ?? 'meadow-excalidraw.js';
+  const svgCss = staticAssetNames?.svgCss ?? 'meadow-svg.css';
+  const svgJs = staticAssetNames?.svgJs ?? 'meadow-svg.js';
   const srsCss = staticAssetNames?.srsCss
     ?? `${CUSTOMIZATION_ASSETS_DIRECTORY}/${SPACED_REPETITION_ASSETS_DIRECTORY}/srs.css`;
   const srsJs = staticAssetNames?.srsJs
@@ -791,6 +799,7 @@ export function renderPageToHtml(
     include_mermaid: includeMermaid,
     include_callouts: includeCallouts,
     include_excalidraw: includeExcalidraw,
+    include_svg_embed: includeSvgEmbed,
     style_css: styleCss,
     javascript_js: javascriptJs,
     global_style_css: globalStyleCss,
@@ -802,6 +811,8 @@ export function renderPageToHtml(
     excalidraw_css: excalidrawCss,
     excalidraw_vendor_js: excalidrawVendorJs,
     excalidraw_js: excalidrawJs,
+    svg_css: svgCss,
+    svg_js: svgJs,
     srs_css: srsCss,
     srs_js: srsJs,
     search_css: searchCss,

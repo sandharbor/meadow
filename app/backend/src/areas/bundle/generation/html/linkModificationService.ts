@@ -122,7 +122,7 @@ export interface ExcalidrawEmbeddedFileData {
   untracked: string[];
 }
 
-export interface ExcalidrawEmbedOptions {
+export interface MediaEmbedOptions {
   enableEmbeddedLinks?: boolean;
   enableFullscreenButton?: boolean;
   enableOpenDedicatedPage?: boolean;
@@ -454,7 +454,7 @@ export interface LinkOrImageHtmlOptions {
   currentPageDirectory?: string;  // The directory of the current page being rendered
   linkResolutionMap?: Record<string, LinkResolvedInfo>;  // Pre-computed link resolution map
   allLinkResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>;
-  excalidrawEmbedOptions?: ExcalidrawEmbedOptions;
+  mediaEmbedOptions?: MediaEmbedOptions;
   routeTable?: BundleRouteTable;
   currentOutputDirectory?: string;
 }
@@ -478,7 +478,7 @@ export function linkOrImageHtml(
     currentPageDirectory = '',
     linkResolutionMap,
     allLinkResolutionMaps,
-    excalidrawEmbedOptions,
+    mediaEmbedOptions,
     routeTable,
     currentOutputDirectory = currentPageDirectory,
   } = options;
@@ -504,6 +504,7 @@ export function linkOrImageHtml(
     const outputDir = baseOutputFolder || outputFolder;
 
     const isExcalidraw = imageName.toLowerCase().endsWith('.excalidraw');
+    const isSvg = imageName.toLowerCase().endsWith('.svg');
 
     if (contentDir && outputDir) {
       // Find source image from the BASE content directory with subdirectory
@@ -543,7 +544,10 @@ export function linkOrImageHtml(
           const svgContent = fs.readFileSync(imageSrc, 'utf-8');
           if (hasPagespecsBlock(svgContent)) {
             fs.writeFileSync(imageDest, extractContentWithoutPagespecs(svgContent) + '\n', 'utf-8');
-          } else {
+          } else if (!fs.existsSync(imageDest)) {
+            // The bundle-generation asset pass writes link-rewritten SVGs
+            // before Markdown pages render. Do not replace that generated
+            // document with the raw source while producing an embed.
             fs.copyFileSync(imageSrc, imageDest);
           }
         } else {
@@ -596,7 +600,7 @@ export function linkOrImageHtml(
         enableEmbeddedLinks: false,
         enableFullscreenButton: false,
         enableOpenDedicatedPage: true,
-        ...excalidrawEmbedOptions,
+        ...mediaEmbedOptions,
       };
       const styleAttr = sizeConstraint ? ` style="max-width: ${sizeConstraint}px"` : '';
       const drawingTitle = imageName.replace(/\.excalidraw$/i, '');
@@ -666,6 +670,36 @@ export function linkOrImageHtml(
         ? `<a class="meadow-excalidraw-open-icon meadow-excalidraw-open-link" href="${pageHref}" title="${titleAttr}" aria-label="${titleAttr}">⤢</a>`
         : '';
       return `<span class="meadow-excalidraw-embed-frame"${styleAttr}>${embedHtml}${openHtml}</span>`;
+    }
+
+    if (isSvg && mediaEmbedOptions) {
+      const embedOptions = {
+        enableEmbeddedLinks: false,
+        enableFullscreenButton: false,
+        enableOpenDedicatedPage: true,
+        ...mediaEmbedOptions,
+      };
+      const styleAttr = sizeConstraint ? ` style="max-width: ${sizeConstraint}px"` : '';
+      const title = imageName.replace(/\.svg$/i, '');
+      const titleAttr = escapeHtmlAttribute(`Open ${title}`);
+
+      if (!embedOptions.enableEmbeddedLinks &&
+          !embedOptions.enableFullscreenButton &&
+          embedOptions.enableOpenDedicatedPage) {
+        return `<a class="meadow-svg-embed-link" href="${encodedImagePath}"${styleAttr} title="${titleAttr}"><img src="${encodedImagePath}" alt="${originalImageFilename}" /><span class="meadow-svg-open-icon" aria-hidden="true">⤢</span></a>`;
+      }
+
+      const contentHtml = embedOptions.enableEmbeddedLinks
+        ? `<iframe class="meadow-svg-embed" src="${encodedImagePath}" title="${escapeHtmlAttribute(title)}" sandbox="allow-same-origin"></iframe>`
+        : `<img class="meadow-svg-embed" src="${encodedImagePath}" alt="${originalImageFilename}" />`;
+      const fullscreenClass = embedOptions.enableFullscreenButton ? ' meadow-svg-can-fullscreen' : '';
+      const fullscreenButton = embedOptions.enableFullscreenButton
+        ? '<button type="button" class="meadow-svg-fullscreen-btn" aria-label="Open SVG fullscreen" title="Open fullscreen">⛶</button>'
+        : '';
+      const openHtml = embedOptions.enableOpenDedicatedPage
+        ? `<a class="meadow-svg-open-icon meadow-svg-open-link" href="${encodedImagePath}" title="${titleAttr}" aria-label="${titleAttr}">⤢</a>`
+        : '';
+      return `<span class="meadow-svg-embed-frame${fullscreenClass}"${styleAttr}>${contentHtml}${fullscreenButton}${openHtml}</span>`;
     }
 
     if (sizeConstraint) {

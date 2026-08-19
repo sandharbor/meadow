@@ -15,8 +15,9 @@ limitations under the License.
 */
 
 /**
- * Generates correct pagespecs for all markdown files in example-bundle-data
- * (SVG files are skipped — they don't get pagespecs blocks).
+ * Generates correct inline pagespecs for all Markdown files in
+ * example-bundle-data. Native HTML and SVG nodes keep their PageSpecs in
+ * sidecar files and are not modified by this script.
  *
  * Usage:  npx tsx system_tests/scripts/generate-example-pagespecs.ts
  *

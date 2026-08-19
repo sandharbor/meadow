@@ -45,9 +45,9 @@ function isExternalOrDocumentLocalUrl(url: string): boolean {
 }
 
 /**
- * Rewrites native HTML URL attributes with the working graph's resolved
- * targets. Page links use generated routes while CSS, JavaScript, images,
- * and other assets retain their source filenames.
+ * Rewrites native HTML or SVG URL attributes with the working graph's
+ * resolved targets. Page links use generated routes while CSS, JavaScript,
+ * images, and other assets retain their source filenames.
  */
 export function rewriteNativeHtmlUrls(args: {
   content: string;

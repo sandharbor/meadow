@@ -18,6 +18,7 @@ import path from 'path';
 import { BundleConfigPaths } from '../../../../../../shared_code/paths/bundleConfigPaths.js';
 import type { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.js';
 import type { FileBundleNodeConfig, BundleNodeConfig, BundleNodeId } from '../../../../../../shared_code/types/bundleNodeConfig.js';
+import { canonicalPageFilename } from '../../../../../../shared_code/utils/fileTypeUtils.js';
 import { normalizePageTitle } from './shared.js';
 
 export type BundleRouteTable = ReadonlyMap<BundleNodeId, string>;
@@ -37,9 +38,12 @@ export interface BundleRoutePlan {
 const canonicalRoute = (route: string): string => route.normalize('NFC').toLocaleLowerCase('en-US');
 const posixJoin = (...parts: string[]): string => path.posix.join(...parts.filter(Boolean));
 
-function preferredFileRoute(config: BundleNodeConfig, bundleConfig: BundleConfig, bundleSlug?: string): string {
-  const name = normalizePageTitle(config.bundleNodeName, bundleConfig, bundleSlug);
+function preferredFileRoute(config: FileBundleNodeConfig, bundleConfig: BundleConfig, bundleSlug?: string): string {
   const sourceDirectory = config.sourceGraphSubdirectory ?? '';
+  const rendersAsSvg = config.fileType === 'svg';
+  const name = rendersAsSvg
+    ? config.bundleNodeName
+    : normalizePageTitle(config.bundleNodeName, bundleConfig, bundleSlug);
   if (sourceDirectory === BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR) {
     return posixJoin(
       BundleConfigPaths.GENERATED_BUNDLE_INTERNAL_DIR,
@@ -55,7 +59,10 @@ function preferredFileRoute(config: BundleNodeConfig, bundleConfig: BundleConfig
         ...sourceSegments.slice(1),
       )
     : sourceDirectory;
-  return posixJoin(outputDirectory, `${name}.html`);
+  const filename = rendersAsSvg
+    ? canonicalPageFilename(name, config.fileType)
+    : `${name}.html`;
+  return posixJoin(outputDirectory, filename);
 }
 
 function generatedStructuralRoute(

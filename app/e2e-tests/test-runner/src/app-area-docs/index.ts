@@ -104,6 +104,7 @@ export const scenarioDocToAppAreaIds: Readonly<Record<string, ScenarioDocAppArea
   s3: ["bundle/sharing"],
   search: ["bundle/curation"],
   sensitive: ["bundle/curation"],
+  svg: ["bundle/generation"],
   "bundle-config": ["bundle/curation"],
   tracking: ["bundle/curation", "bundle/review"],
   versioning: ["bundle/generation", "bundle/review"],
