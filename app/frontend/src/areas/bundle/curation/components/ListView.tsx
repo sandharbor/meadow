@@ -18,6 +18,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { apiUrl } from '../../../../shared/utils/apiClient';
 import { isImageFileType } from '../../../../../../shared_code/utils/fileTypeUtils';
+import { AuthenticatedImage } from './AuthenticatedImage';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './ImageHoverPreview';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 import BundleNodeHoverCard from './BundleNodeHoverCard';
@@ -169,15 +170,12 @@ const ListView: React.FC<ListViewProps> = ({
     if (isImageFileType(page.fileType)) {
       const imagePath = `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.${page.fileType}` : `${page.bundleNodeName}.${page.fileType}`)}`;
       return (
-        <img
-          src={apiUrl(imagePath)}
+        <AuthenticatedImage
+          sourcePath={imagePath}
           alt={page.bundleNodeName}
           className="w-8 h-8 object-cover rounded border border-gray-200 cursor-pointer"
           onMouseEnter={(e) => handleImageMouseEnter(e, imagePath, page.bundleNodeName)}
           onMouseLeave={() => setHoveredImage(null)}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
         />
       );
     }

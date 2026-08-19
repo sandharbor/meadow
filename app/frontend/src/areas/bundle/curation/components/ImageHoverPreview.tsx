@@ -16,6 +16,7 @@ limitations under the License.
 
 import React from 'react';
 import { apiUrl } from '../../../../shared/utils/apiClient';
+import { AuthenticatedImage } from './AuthenticatedImage';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 
 // Shared constants for hover image dimensions
@@ -36,7 +37,6 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
   // Excalidraw drawings live as `<title>.excalidraw.md` on disk and need to be
   // run through the vendored renderer; render via the Excalidraw thumbnail
   // component instead of an `<img>` when the URL points at one.
-  const imageUrl = apiUrl(imagePath);
   const isExcalidraw = imagePath.toLowerCase().endsWith('.excalidraw.md');
   return (
     <div
@@ -67,17 +67,14 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
           />
         </div>
       ) : (
-        <img
-          src={imageUrl}
+        <AuthenticatedImage
+          sourcePath={imagePath}
           alt={title}
           style={{
             width: HOVER_IMAGE_WIDTH - 16, // Account for padding
             height: HOVER_IMAGE_HEIGHT,
           }}
           className="object-cover rounded mb-1 mx-auto"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
         />
       )}
       {title}
@@ -86,4 +83,3 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
 };
 
 export default ImageHoverPreview;
-
