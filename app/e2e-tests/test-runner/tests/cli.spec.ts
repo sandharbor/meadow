@@ -30,6 +30,7 @@ interface BundleMutationResult {
 }
 
 test.use({ bundleMode: "single-file" });
+test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
 test("CLI archives and lists current and archived bundles as JSON", async ({
@@ -87,6 +88,8 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
   expect(help).toContain("meadow bundles list --archived");
   expect(help).toContain("meadow bundles archive <bundle-slug>");
   expect(help).toContain("meadow bundles unarchive <bundle-slug>");
+  expect(help).toContain("meadow bundle nodes <bundle-slug> --scope <all|final>");
+  expect(help).toContain("meadow bundle filters <bundle-slug>");
   void cli;
   void bundles;
 

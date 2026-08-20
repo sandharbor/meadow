@@ -17,7 +17,17 @@ limitations under the License.
 import { apiRequest } from '../../../../shared/utils/apiClient';
 import React, { useEffect, useState } from 'react';
 import { CustomFilterConfig } from '../../../../../../shared_code/types/customFilters.js';
+import type {
+  BuiltInGraphFilterAction,
+  NodeTypeFilterId,
+} from '../../../../../../shared_code/types/graphInspection.js';
+import {
+  frontendBuiltInGraphFilterDefinitions,
+  type BuiltInGraphFilterDefinition,
+} from '../../../../../../shared_code/utils/builtInGraphFilters.js';
 import { logger } from '../../../../shared/utils/logger';
+
+export type { NodeTypeFilterId } from '../../../../../../shared_code/types/graphInspection.js';
 
 // Re-export filter selector types and functions from local utils
 export type { SelectorBase, INormalBundleNodeSelector, IBundleNodeSelector } from '../utils/filterSelectors';
@@ -42,37 +52,11 @@ export {
 import {
   INormalBundleNodeSelector,
   IBundleNodeSelector,
-  createUntrackedNodeSelector,
-  createBlacklistedNodeSelector,
-  createSensitiveNodeSelector,
-  createSearchByTitleSelector,
-  createNodeWithOverrideSelector,
-  createOutlinkDiscrepancySelector,
-  createInlinkDiscrepancySelector,
-  createFrontierNodeSelector,
   createCustomBundleNodeSelector as createCustomBundleNodeSelectorBase
 } from '../utils/filterSelectors';
 import type { CustomBundleNodeSelectorConfig } from '../../../../../../shared_code/types/customFilters.js';
 
-export interface IHighlightAction {
-  type: 'highlight';
-  color: string;
-  isDashed: boolean;
-}
-
-export interface IShowLabelsAction {
-  type: 'show_labels';
-}
-
-export interface IShowTitlesAction {
-  type: 'show_titles';
-}
-
-export interface IMarkSensitiveAction {
-  type: 'mark_sensitive';
-}
-
-export type FilterAction = IHighlightAction | IShowLabelsAction | IShowTitlesAction | IMarkSensitiveAction;
+export type FilterAction = BuiltInGraphFilterAction;
 
 export interface IFolderFilterState {
   showTitles: boolean;
@@ -80,23 +64,6 @@ export interface IFolderFilterState {
   isHidden: boolean;
 }
 
-export type NodeTypeFilterId =
-  | 'md'
-  | 'html'
-  | 'js'
-  | 'css'
-  | 'txt'
-  | 'pdf'
-  | 'other'
-  | 'png'
-  | 'jpeg'
-  | 'gif'
-  | 'svg'
-  | 'webp'
-  | 'excalidraw'
-  | 'folder'
-  | 'collection'
-  | 'selected-scope-root';
 export type INodeTypeFilterState = IFolderFilterState;
 
 export interface IFilter {
@@ -169,6 +136,31 @@ export const customFilterToIFilter = (customFilter: CustomFilterConfig): IFilter
   };
 };
 
+function builtInDefinitionToIFilter(definition: BuiltInGraphFilterDefinition): IFilter {
+  const { descriptor, presentation = {} } = definition;
+  const { includeInFrontend, control, ...presentationOptions } = presentation;
+  void includeInFrontend;
+  return {
+    id: descriptor.id,
+    name: descriptor.name,
+    description: descriptor.description,
+    bundleNodeSelectors: definition.createSelectors?.() ?? [],
+    selectorApplicationCriteria: descriptor.selectorApplicationCriteria ?? 'union',
+    actions: descriptor.actions.map(action => ({ ...action })),
+    enabled: descriptor.enabled,
+    isSolo: false,
+    isHidden: false,
+    ...presentationOptions,
+    ...(control === 'node-types' ? { isNodeTypeFilter: true, nodeTypeStates: {} } : {}),
+    ...(control === 'folders' ? { isFolderFilter: true, folderStates: {} } : {}),
+    ...(control === 'gap' ? { isGapFilter: true } : {}),
+  };
+}
+
+function createBuiltInFilters(): IFilter[] {
+  return frontendBuiltInGraphFilterDefinitions().map(builtInDefinitionToIFilter);
+}
+
 // --- Custom hook for filter state ---
 export function useFilterState(bundleSlug: string): [IFilter[], React.Dispatch<React.SetStateAction<IFilter[]>>, () => void] {
   const [customFilters, setCustomFilters] = useState<CustomFilterConfig[]>([]);
@@ -192,156 +184,7 @@ export function useFilterState(bundleSlug: string): [IFilter[], React.Dispatch<R
     loadCustomFilters();
   }, [loadCustomFilters]);
   
-  const [filters, setFilters] = useState<IFilter[]>(() => [
-    {
-      id: 'search-by-title-filter',
-      name: 'Search By Title',
-      bundleNodeSelectors: [createSearchByTitleSelector()],
-      selectorApplicationCriteria: 'union',
-      actions: [
-        { type: 'highlight', color: '#009688', isDashed: false },
-        { type: 'show_titles' }
-      ],
-      enabled: true, // Always enabled - search input is always visible
-      isSolo: false,
-      isHidden: false,
-      showSearchInput: true
-    },
-    {
-      id: 'untracked-filter',
-      name: 'Untracked',
-      description: 'Pages not yet tracked for publishing. New source pages appear here after they are added to the source directory',
-      bundleNodeSelectors: [createUntrackedNodeSelector()],
-      selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#2196F3', isDashed: true }],
-      enabled: false,
-      isSolo: false,
-      isHidden: false
-    },
-    {
-      id: 'sensitive-filter',
-      name: 'Sensitive',
-      description: 'Pages with meadow-sensitive: true property in the source page. Sensitive pages are automatically excluded from bulk tracking',
-      descriptionNode: React.createElement(React.Fragment, null,
-        'Pages with ',
-        React.createElement('code', { className: 'bg-gray-100 px-1 py-0.5 rounded text-xs' }, 'meadow-sensitive: true'),
-        ' property in the source page. Sensitive pages are automatically excluded from bulk tracking'
-      ),
-      bundleNodeSelectors: [createSensitiveNodeSelector()],
-      selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#9C27B0', isDashed: false }],
-      enabled: true,
-      isSolo: false,
-      isHidden: false
-    },
-    {
-      id: 'node-types-filter',
-      name: 'Types',
-      description: 'Filter nodes by the roles and file types present in this graph',
-      bundleNodeSelectors: [],
-      selectorApplicationCriteria: 'union',
-      actions: [],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      isNodeTypeFilter: true,
-      nodeTypeStates: {},
-    },
-    {
-      id: 'folder-filter',
-      name: 'Folders',
-      description: 'Filter pages by their folder in the source graph',
-      bundleNodeSelectors: [],
-      selectorApplicationCriteria: 'union',
-      actions: [],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      isFolderFilter: true,
-      folderStates: {}
-    },
-    {
-      id: 'blacklisted-filter',
-      name: 'Blacklisted',
-      description: 'Tracked pages that are not published to the bundle. Also, their directly-owned children are removed from the graph',
-      descriptionNode: React.createElement(React.Fragment, null,
-        'Tracked pages that are ',
-        React.createElement('strong', null, 'not'),
-        ' published to the bundle. Also, their directly-owned children are removed from the graph'
-      ),
-      bundleNodeSelectors: [createBlacklistedNodeSelector()],
-      selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#F44336', isDashed: false }],
-      enabled: false,
-      isSolo: false,
-      isHidden: false
-    },
-    {
-      id: 'overrides-filter',
-      name: 'Depth Override',
-      description: 'Inherited depth is overridden',
-      bundleNodeSelectors: [createNodeWithOverrideSelector()],
-      selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#33FFF9', isDashed: false }],
-      enabled: false,
-      isSolo: false,
-      isHidden: false
-    },
-    {
-      id: 'gap-filter',
-      name: 'Gap',
-      description: 'Find nodes whose source-graph links are missing from the working graph',
-      bundleNodeSelectors: [],
-      selectorApplicationCriteria: 'union',
-      actions: [],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      isGapFilter: true,
-    },
-    {
-      id: 'outlink-gap-filter',
-      name: 'Outlink Gap',
-      bundleNodeSelectors: [createOutlinkDiscrepancySelector(5)],
-      selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#CDDC39', isDashed: false }],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      showThresholdInput: true,
-      thresholdValue: 5,
-      hideFromFilterList: true,
-    },
-    {
-      id: 'inlink-gap-filter',
-      name: 'Inlink Gap',
-      bundleNodeSelectors: [createInlinkDiscrepancySelector(5)],
-      selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#E91E63', isDashed: false }],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      showThresholdInput: true,
-      thresholdValue: 5,
-      hideFromFilterList: true,
-    },
-    {
-      id: 'frontier-filter',
-      name: 'Frontier',
-      description: 'Show me what is beyond the graph!',
-      bundleNodeSelectors: [createFrontierNodeSelector()],
-      selectorApplicationCriteria: 'union',
-      actions: [{ type: 'highlight', color: '#FF69B4', isDashed: false }],
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      cannotHide: true,
-      showThresholdInput: true,
-      thresholdValue: 1,
-      thresholdLabel: 'Depth:',
-      thresholdMax: 10
-    }
-  ]);
+  const [filters, setFilters] = useState<IFilter[]>(createBuiltInFilters);
 
   // Add custom filters to the main filters list
   useEffect(() => {

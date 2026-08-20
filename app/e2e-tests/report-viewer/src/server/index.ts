@@ -22,7 +22,17 @@ import path from "path";
 import { allDocs } from "../../../test-runner/src/scenario-docs/index.ts";
 import { allBundleDocs } from "../../../test-runner/src/bundle-docs/index.ts";
 import { allAppAreaDocs } from "../../../test-runner/src/app-area-docs/index.ts";
+import {
+  extractReferencedCliFixtureNames,
+  extractReferencedCliFixtureReferences,
+  readReferencedCliFixture,
+  type TestSourceFixture,
+} from "../../../test-runner/src/artifacts/testSourceFixtures.ts";
 import { isBundleMode, type BundleMode } from "../bundleModes.ts";
+import {
+  isExecutionSurface,
+  type ExecutionSurface,
+} from "../../../test-runner/src/run/executionSurface.ts";
 import {
   generateFixtureScenario,
   FIXTURE_RUN_ID,
@@ -376,6 +386,7 @@ app.get("/api/runs/:runId", (req, res) => {
       let testName = slug;
       let duration: number | null = null;
       let bundleMode: BundleMode | null = null;
+      let executionSurface: ExecutionSurface = "browser";
       let scenarioDocIds: string[] = [];
       let bundleDocIds: string[] = [];
       let appAreaDocIds: string[] = [];
@@ -399,6 +410,9 @@ app.get("/api/runs/:runId", (req, res) => {
             bundleMode = isBundleMode(meta.scenarioInfo.bundleMode)
               ? meta.scenarioInfo.bundleMode
               : null;
+            executionSurface = isExecutionSurface(meta.scenarioInfo.executionSurface)
+              ? meta.scenarioInfo.executionSurface
+              : "browser";
             scenarioDocIds = meta.scenarioInfo.scenarioDocIds || [];
             bundleDocIds = meta.scenarioInfo.bundleDocIds || [];
             appAreaDocIds = meta.scenarioInfo.appAreaDocIds || [];
@@ -420,6 +434,9 @@ app.get("/api/runs/:runId", (req, res) => {
             const manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
             testName = manifest.testName || slug;
             bundleMode = isBundleMode(manifest.bundleMode) ? manifest.bundleMode : null;
+            executionSurface = isExecutionSurface(manifest.executionSurface)
+              ? manifest.executionSurface
+              : "browser";
             scenarioDocIds = manifest.scenarioDocIds || [];
             bundleDocIds = manifest.bundleDocIds || [];
             appAreaDocIds = manifest.appAreaDocIds || [];
@@ -458,7 +475,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, testBasename, status, duration, bundleMode, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { slug, testName, testBasename, status, duration, bundleMode, executionSurface, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read targeted-scenarios metadata (written when --scenarios flag was used)
@@ -746,7 +763,48 @@ app.get("/api/:runId/:testSlug/test-source", (req, res) => {
   res.json({
     file: manifest.testSourceFile || "",
     source: manifest.testSource || "",
+    fixtures: extractReferencedCliFixtureReferences(manifest.testSource || ""),
   });
+});
+
+// API: JSON fixture referenced by readCliFixture(...) in the captured test.
+// New artifacts embed their fixtures for portability. The checkout fallback
+// keeps older local reports useful without permitting arbitrary file reads.
+app.get("/api/:runId/:testSlug/test-source-fixture/:fixtureName", (req, res) => {
+  const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
+  if (!dir) return res.status(404).json({ error: "Scenario not found" });
+
+  const manifestPath = path.join(dir, "manifest.json");
+  if (!existsSync(manifestPath)) {
+    return res.status(404).json({ error: "No manifest" });
+  }
+
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+    testSourceFile?: string;
+    testSource?: string;
+    testSourceFixtures?: TestSourceFixture[];
+  };
+  const name = req.params.fixtureName;
+  const referencedNames = extractReferencedCliFixtureNames(manifest.testSource || "");
+  if (!referencedNames.includes(name)) {
+    return res.status(404).json({ error: "Fixture is not referenced by this test" });
+  }
+
+  const embeddedFixture = Array.isArray(manifest.testSourceFixtures)
+    ? manifest.testSourceFixtures.find((fixture) => (
+        fixture?.name === name && typeof fixture.content === "string"
+      ))
+    : undefined;
+  const fixture = embeddedFixture ?? readReferencedCliFixture(
+    manifest.testSourceFile || "",
+    manifest.testSource || "",
+    name,
+  );
+  if (!fixture) {
+    return res.status(404).json({ error: "Referenced fixture is unavailable" });
+  }
+
+  res.type("application/json").send(fixture.content);
 });
 
 interface BackendTelemetryEvent {

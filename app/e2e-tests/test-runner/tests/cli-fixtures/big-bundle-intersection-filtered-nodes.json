@@ -1,0 +1,41 @@
+{
+  "bundleSlug": "meadow-test-bundle-big",
+  "scope": "all",
+  "filtering": {
+    "combine": "intersection",
+    "applications": [
+      {
+        "filterId": "custom-filter-1750826014295-r7b2079ch",
+        "mode": "solo"
+      },
+      {
+        "filterId": "sensitive-filter",
+        "mode": "exclude"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "bundleNodeKey": "/t012 ---- title with six numbers 123456.md",
+      "bundleNodeKind": "file",
+      "label": "t012 ---- title with six numbers 123456",
+      "bundleNodeName": "t012 ---- title with six numbers 123456",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t012 - custom filters.md",
+        "/t012 ---- title with six numbers 123456.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    }
+  ],
+  "edges": []
+}

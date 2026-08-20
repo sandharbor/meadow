@@ -14,4 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export * from '../../../../../../shared_code/types/filterExpression.js';
+export const EXECUTION_SURFACE_OPTIONS = [
+  { id: "browser", label: "Browser" },
+  { id: "cli", label: "CLI" },
+] as const;
+
+export type ExecutionSurface = (typeof EXECUTION_SURFACE_OPTIONS)[number]["id"];
+
+export function isExecutionSurface(value: unknown): value is ExecutionSurface {
+  return EXECUTION_SURFACE_OPTIONS.some((option) => option.id === value);
+}

@@ -19,6 +19,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-typescript'
 import 'prismjs/components/prism-yaml'
+import 'prismjs/components/prism-json'
 import 'prismjs/themes/prism.css'
 import { marked } from 'marked'
 import {
@@ -96,6 +97,17 @@ interface AppAreaDoc {
   name: string
   description: string
   parentId?: string
+}
+
+interface TestSourceFixtureReference {
+  name: string
+  line: number
+}
+
+interface TestSourceFixtureModalState {
+  name: string
+  content: string | null
+  error: string | null
 }
 
 interface StateRepoMeta {
@@ -522,6 +534,8 @@ export default function ScenarioViewer() {
   const [prevS3Objects, setPrevS3Objects] = useState<Record<string, string>>({})
   const [s3DiffMode, setS3DiffMode] = useState(true)
   const [testSource, setTestSource] = useState('')
+  const [testSourceFixtureReferences, setTestSourceFixtureReferences] = useState<TestSourceFixtureReference[]>([])
+  const [testSourceFixtureModal, setTestSourceFixtureModal] = useState<TestSourceFixtureModalState | null>(null)
   const [telemetryEvents, setTelemetryEvents] = useState<TelemetryEvent[]>([])
   const [telemetryMalformedLineCount, setTelemetryMalformedLineCount] = useState(0)
   const [highlightedTelemetryIndex, setHighlightedTelemetryIndex] = useState(-1)
@@ -732,7 +746,10 @@ export default function ScenarioViewer() {
       const snapshotsData: Snapshot[] = await snapshotsRes.json()
       const stateRepos: StateRepoMeta[] = await stateReposRes.json()
       const s3Data: Snapshot[] = await s3Res.json()
-      const testSourceData = await testSourceRes.json()
+      const testSourceData = await testSourceRes.json() as {
+        source?: string
+        fixtures?: TestSourceFixtureReference[]
+      }
       const uncommittedData: UncommittedEntry[] = await uncommittedRes.json()
       const telemetryData: TelemetryResponse = telemetryRes.ok ? await telemetryRes.json() : {}
       const notesText = notesRes.ok ? await notesRes.text() : null
@@ -752,6 +769,13 @@ export default function ScenarioViewer() {
       setStateSnapshots(stateData)
       setS3Snapshots(s3Data)
       setTestSource(testSourceData.source || '')
+      setTestSourceFixtureReferences(
+        Array.isArray(testSourceData.fixtures)
+          ? testSourceData.fixtures.filter((fixture) => (
+              typeof fixture?.name === 'string' && Number.isInteger(fixture.line)
+            ))
+          : [],
+      )
       setUncommittedEntries(uncommittedData)
       setTelemetryEvents(Array.isArray(telemetryData.events) ? telemetryData.events : [])
       setTelemetryMalformedLineCount(telemetryData.malformedLineCount || 0)
@@ -1071,6 +1095,45 @@ export default function ScenarioViewer() {
       }
     }
   }, [currentMessageIndex, timelineSnapshotMessages, testSource])
+
+  const openTestSourceFixture = useCallback(async (name: string) => {
+    setTestSourceFixtureModal({ name, content: null, error: null })
+    try {
+      const response = await fetch(`${API}/test-source-fixture/${encodeURIComponent(name)}`)
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { error?: string } | null
+        throw new Error(body?.error || `Unable to load ${name}`)
+      }
+      const rawContent = await response.text()
+      let formattedContent = rawContent
+      try {
+        formattedContent = JSON.stringify(JSON.parse(rawContent), null, 2)
+      } catch {
+        // Preserve the captured text if a fixture is intentionally malformed.
+      }
+      setTestSourceFixtureModal((current) => (
+        current?.name === name
+          ? { name, content: formattedContent, error: null }
+          : current
+      ))
+    } catch (error) {
+      setTestSourceFixtureModal((current) => (
+        current?.name === name
+          ? { name, content: null, error: error instanceof Error ? error.message : String(error) }
+          : current
+      ))
+    }
+  }, [API])
+
+  const testSourceFixturesByLine = useMemo(() => {
+    const byLine = new Map<number, TestSourceFixtureReference[]>()
+    for (const fixture of testSourceFixtureReferences) {
+      const lineFixtures = byLine.get(fixture.line) ?? []
+      lineFixtures.push(fixture)
+      byLine.set(fixture.line, lineFixtures)
+    }
+    return byLine
+  }, [testSourceFixtureReferences])
 
   // --- Auto-scroll highlighted log ---
 
@@ -2494,9 +2557,25 @@ export default function ScenarioViewer() {
               {testSource ? (
                 highlight(testSource, languages.typescript, 'typescript')
                   .split('\n')
-                  .map((lineHtml, i) => (
-                    <div key={i} className="code-line px-3 font-mono" dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />
-                  ))
+                  .map((lineHtml, i) => {
+                    const fixtureReferences = testSourceFixturesByLine.get(i) ?? []
+                    return (
+                      <div key={i}>
+                        <div className="code-line px-3 font-mono" dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />
+                        {fixtureReferences.map((fixture) => (
+                          <button
+                            key={fixture.name}
+                            type="button"
+                            className="ml-7 mb-1 inline-flex items-center gap-1 rounded border border-sky-200 bg-sky-50 px-2 py-0.5 font-sans text-[11px] font-semibold text-sky-700 hover:border-sky-300 hover:bg-sky-100 cursor-pointer"
+                            onClick={() => void openTestSourceFixture(fixture.name)}
+                          >
+                            <span aria-hidden="true">↳</span>
+                            Open fixture {fixture.name}
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  })
               ) : (
                 <div className="p-10 text-center text-neutral-400">No test source code captured.</div>
               )}
@@ -3087,6 +3166,79 @@ export default function ScenarioViewer() {
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&larr;</kbd>
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&rarr;</kbd> prev/next
       </div>
+
+      {testSourceFixtureModal && (
+        <TestSourceFixtureModal
+          state={testSourceFixtureModal}
+          onClose={() => setTestSourceFixtureModal(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function TestSourceFixtureModal({
+  state,
+  onClose,
+}: {
+  state: TestSourceFixtureModalState
+  onClose: () => void
+}) {
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [onClose])
+
+  const formattedJson = state.content
+    ? highlight(state.content, languages.json, 'json')
+    : ''
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="test-source-fixture-title"
+        className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-neutral-300 bg-white shadow-2xl"
+      >
+        <header className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-neutral-200 bg-neutral-50 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Test fixture</p>
+            <h2 id="test-source-fixture-title" className="truncate font-mono text-sm font-semibold text-neutral-800">
+              {state.name}
+            </h2>
+          </div>
+          <button
+            type="button"
+            autoFocus
+            aria-label="Close fixture"
+            className="rounded-md border border-neutral-300 bg-white px-3 py-1 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 cursor-pointer"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </header>
+        {state.error ? (
+          <div className="m-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {state.error}
+          </div>
+        ) : state.content === null ? (
+          <div className="p-10 text-center text-sm text-neutral-500">Loading fixture…</div>
+        ) : (
+          <pre
+            className="m-0 min-h-0 flex-1 overflow-auto bg-white p-4 text-xs leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: formattedJson }}
+          />
+        )}
+      </section>
     </div>
   )
 }

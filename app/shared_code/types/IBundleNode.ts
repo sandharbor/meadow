@@ -52,6 +52,8 @@ interface BaseBundleNode {
   effectiveFolderPolicyBundleNodeId?: BundleNodeId;
   isFrontierNode?: boolean; // True if this node is beyond the normal working area boundary
   isFrontierImageExtension?: boolean; // True if this image was included because it was linked from a frontier-edge page
+  source_page_outlink_count?: number;
+  source_page_inlink_count?: number;
 
   // Map from link_original_text to resolved target info
   linkResolutionMap?: Record<string, LinkResolvedInfo>;
@@ -86,6 +88,11 @@ export interface CollectionBundleNode extends BaseBundleNode {
 }
 
 export type IBundleNode = FileBundleNode | FolderBundleNode | CollectionBundleNode;
+
+type WithoutRuntimeMethods<T> = T extends IBundleNode ? Omit<T, 'getIdent'> : never;
+
+/** The canonical bundle-node representation when crossing a JSON boundary. */
+export type SerializableBundleNode = WithoutRuntimeMethods<IBundleNode>;
 
 export function isFileBundleNode(node: IBundleNode): node is FileBundleNode {
   return node.bundleNodeKind === 'file';

@@ -18,7 +18,12 @@ import express from 'express';
 import { join } from 'path';
 import YAML from 'yaml';
 import fs from 'fs';
-import { parseBundleNodeConfig, validateCanonicalBundleConfiguration } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import {
+  applyNodeConfigsToNodes,
+  applySensitiveFromApiData,
+  parseBundleNodeConfig,
+  validateCanonicalBundleConfiguration,
+} from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../shared_code/utils/fileTypeUtils.js';
 import { BundleNodeConfig } from '../../../../../../shared_code/types/bundleNodeConfig.js';
 import { FileType } from '../../../../../../shared_code/types/FileType.js';
@@ -38,10 +43,62 @@ import {
   writeFolderScopeSnapshot,
 } from '../../../../shared/bundle-config/folderScopeChanges.js';
 import type { FolderScopeGraphSnapshot } from '../../../../../../shared_code/types/folderScopeChanges.js';
+import type {
+  GraphFilterApplication,
+  GraphFilterCombination,
+  GraphInspectionScope,
+} from '../../../../../../shared_code/types/graphInspection.js';
+import { describeWorkingGraph } from '../services/graphDescriptionService.js';
+import { loadCustomFiltersForBundle } from './customFiltersRoutes.js';
 
 const router = express.Router();
 
 const loadAppConfig = () => loadAppConfigFromDisk(getConfigDirectory());
+
+interface GraphDescriptionRequest {
+  scope: GraphInspectionScope;
+  applications: GraphFilterApplication[];
+  combine: GraphFilterCombination;
+}
+
+function parseGraphDescriptionRequest(req: express.Request): GraphDescriptionRequest {
+  const scope = req.query.scope;
+  if (scope !== 'all' && scope !== 'final') {
+    throw new Error("scope must be exactly one of 'all' or 'final'");
+  }
+
+  const combineQuery = req.query.combine ?? 'default';
+  if (
+    combineQuery !== 'default'
+    && combineQuery !== 'union'
+    && combineQuery !== 'intersection'
+    && combineQuery !== 'difference'
+  ) {
+    throw new Error("combine must be one of 'default', 'union', 'intersection', or 'difference'");
+  }
+
+  const filterQuery = req.query.filter;
+  const filterValues = filterQuery === undefined
+    ? []
+    : Array.isArray(filterQuery)
+      ? filterQuery
+      : [filterQuery];
+  const applications = filterValues.map(value => {
+    if (typeof value !== 'string') throw new Error('filter must be a string');
+    const separatorIndex = value.lastIndexOf('=');
+    const filterId = value.slice(0, separatorIndex);
+    const mode = value.slice(separatorIndex + 1);
+    if (separatorIndex <= 0 || (mode !== 'solo' && mode !== 'exclude')) {
+      throw new Error("filter must use '<filter-id>=solo' or '<filter-id>=exclude'");
+    }
+    return { filterId, mode: mode as GraphFilterApplication['mode'] };
+  });
+  if (applications.length === 0 && combineQuery !== 'default') {
+    throw new Error('combine requires at least one filter');
+  }
+
+  return { scope, applications, combine: combineQuery };
+}
 
 // Copy tracked pages to bundle's tracked_page_content directory
 router.post('/bundles/:bundleSlug/curation/copy-tracked-pages', (req, res, next) => {
@@ -143,9 +200,18 @@ router.post('/bundles/:bundleSlug/curation/copy-tracked-pages', (req, res, next)
   })().catch(next);
 });
 
-router.get('/bundles/:bundleSlug/curation/working-graph', (req, res, next) => {
+const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
   (async () => {
     const { bundleSlug } = req.params;
+    const descriptionRequested = req.path.endsWith('/graph-description');
+    let descriptionRequest: GraphDescriptionRequest | undefined;
+    if (descriptionRequested) {
+      try {
+        descriptionRequest = parseGraphDescriptionRequest(req);
+      } catch (error) {
+        return res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+      }
+    }
     const frontierDepthQuery = req.query.frontierDepth as string | undefined;
     const frontierDepth = frontierDepthQuery ? parseInt(frontierDepthQuery, 10) : 0;
 
@@ -406,6 +472,28 @@ router.get('/bundles/:bundleSlug/curation/working-graph', (req, res, next) => {
       }))
       .sort((a, b) => (a.source + '->' + a.target).localeCompare(b.source + '->' + b.target));
 
+    if (descriptionRequest) {
+      applySensitiveFromApiData(nodes);
+      applyNodeConfigsToNodes(nodes, draftNodes ?? committedNodes);
+      try {
+        return res.json(describeWorkingGraph({
+          bundleSlug,
+          scope: descriptionRequest.scope,
+          applications: descriptionRequest.applications,
+          combine: descriptionRequest.combine,
+          nodes,
+          edges: resultEdges,
+          linkData: {
+            allInlinkSources: rustOutput.allInlinkSources || {},
+            allOutlinkTargets: rustOutput.allOutlinkTargets || {},
+          },
+          customFilters: loadCustomFiltersForBundle(bundleSlug),
+        }));
+      } catch (error) {
+        return res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+
     res.json({
       nodes,
       edges: resultEdges,
@@ -415,7 +503,10 @@ router.get('/bundles/:bundleSlug/curation/working-graph', (req, res, next) => {
       changeExplanations,
     });
   })().catch(next);
-});
+};
+
+router.get('/bundles/:bundleSlug/curation/working-graph', handleWorkingGraphRequest);
+router.get('/bundles/:bundleSlug/curation/graph-description', handleWorkingGraphRequest);
 
 // Mark page as sensitive/non-sensitive
 router.patch('/bundles/:bundleSlug/curation/page/:pageTitle/sensitive', (req, res, next) => {

@@ -1,0 +1,3831 @@
+{
+  "bundleSlug": "meadow-test-bundle-big",
+  "scope": "final",
+  "filtering": {
+    "combine": "default",
+    "applications": []
+  },
+  "nodes": [
+    {
+      "bundleNodeKey": "/main page.md",
+      "bundleNodeId": "ef63f962db68",
+      "bundleNodeKind": "file",
+      "label": "main page",
+      "bundleNodeName": "main page",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "main page",
+        "bundleNodeId": "ef63f962db68",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 0,
+      "remaining_depth": 4,
+      "remaining_inlinks_depth": 100,
+      "path": [
+        "/main page.md"
+      ]
+    },
+    {
+      "bundleNodeKey": "/t001 - deeply nested.md",
+      "bundleNodeId": "e05f1727991f",
+      "bundleNodeKind": "file",
+      "label": "t001 - deeply nested",
+      "bundleNodeName": "t001 - deeply nested",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t001 - deeply nested",
+        "bundleNodeId": "e05f1727991f",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t001 - deeply nested.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t002 - dup pages and images.md",
+      "bundleNodeId": "92df9e3aaee4",
+      "bundleNodeKind": "file",
+      "label": "t002 - dup pages and images",
+      "bundleNodeName": "t002 - dup pages and images",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 - dup pages and images",
+        "bundleNodeId": "92df9e3aaee4",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t002 ---- dup.md",
+      "bundleNodeId": "c70b1c5bc103",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- dup",
+      "bundleNodeName": "t002 ---- dup",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- dup",
+        "bundleNodeId": "c70b1c5bc103",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to root dup.md",
+        "/t002 ---- dup.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t002 ---- dup.png",
+      "bundleNodeId": "30919df3c5be",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- dup",
+      "bundleNodeName": "t002 ---- dup",
+      "sourceGraphSubdirectory": "",
+      "fileType": "png",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- dup",
+        "bundleNodeId": "30919df3c5be",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "png"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to root png dup.md",
+        "/t002 ---- dup.png"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t002 ---- points to png dup 2 with no path from root.md",
+      "bundleNodeId": "50f988a3c3bc",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to png dup 2 with no path from root",
+      "bundleNodeName": "t002 ---- points to png dup 2 with no path from root",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to png dup 2 with no path from root",
+        "bundleNodeId": "50f988a3c3bc",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "/t002 ---- points to png dup 2 with no path from root.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t003 - link to section.md",
+      "bundleNodeId": "1f145a703ed8",
+      "bundleNodeKind": "file",
+      "label": "t003 - link to section",
+      "bundleNodeName": "t003 - link to section",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t003 - link to section",
+        "bundleNodeId": "1f145a703ed8",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t003 - link to section.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t003 ---- page with section to link to.md",
+      "bundleNodeId": "91ca7d8e3243",
+      "bundleNodeKind": "file",
+      "label": "t003 ---- page with section to link to",
+      "bundleNodeName": "t003 ---- page with section to link to",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t003 ---- page with section to link to",
+        "bundleNodeId": "91ca7d8e3243",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t003 - link to section.md",
+        "/t003 ---- page with section to link to.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t005 - in and out links.md",
+      "bundleNodeId": "e379c075ebd1",
+      "bundleNodeKind": "file",
+      "label": "t005 - in and out links",
+      "bundleNodeName": "t005 - in and out links",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t005 - in and out links",
+        "bundleNodeId": "e379c075ebd1",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t005 - in and out links.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t005 ---- has in link and points back to same page.md",
+      "bundleNodeId": "5decc3079ce7",
+      "bundleNodeKind": "file",
+      "label": "t005 ---- has in link and points back to same page",
+      "bundleNodeName": "t005 ---- has in link and points back to same page",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t005 ---- has in link and points back to same page",
+        "bundleNodeId": "5decc3079ce7",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t005 - in and out links.md",
+        "/t005 ---- has in link and points back to same page.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t006 - embedded media.md",
+      "bundleNodeId": "87f8a32781f5",
+      "bundleNodeKind": "file",
+      "label": "t006 - embedded media",
+      "bundleNodeName": "t006 - embedded media",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 - embedded media",
+        "bundleNodeId": "87f8a32781f5",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t006 - embedded media.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t007 - blacklisted.md",
+      "bundleNodeId": "ea3f6f947564",
+      "bundleNodeKind": "file",
+      "label": "t007 - blacklisted",
+      "bundleNodeName": "t007 - blacklisted",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t007 - blacklisted",
+        "bundleNodeId": "ea3f6f947564",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t007 - blacklisted.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t008 - page conf do not include inlinks.md",
+      "bundleNodeId": "e5dfd9c6cefb",
+      "bundleNodeKind": "file",
+      "label": "t008 - page conf do not include inlinks",
+      "bundleNodeName": "t008 - page conf do not include inlinks",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t008 - page conf do not include inlinks",
+        "bundleNodeId": "e5dfd9c6cefb",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md",
+        "inlinksDepth": 0
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 0,
+      "path": [
+        "/main page.md",
+        "/t008 - page conf do not include inlinks.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t009 - page conf graph depth.md",
+      "bundleNodeId": "8d86983d7f98",
+      "bundleNodeKind": "file",
+      "label": "t009 - page conf graph depth",
+      "bundleNodeName": "t009 - page conf graph depth",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t009 - page conf graph depth",
+        "bundleNodeId": "8d86983d7f98",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md",
+        "outlinksDepth": 0
+      },
+      "depth": 1,
+      "remaining_depth": 0,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t009 - page conf graph depth.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t010 - linking in same depth.md",
+      "bundleNodeId": "d8b7535e1403",
+      "bundleNodeKind": "file",
+      "label": "t010 - linking in same depth",
+      "bundleNodeName": "t010 - linking in same depth",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t010 - linking in same depth",
+        "bundleNodeId": "d8b7535e1403",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t010 - linking in same depth.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t011 - special links.md",
+      "bundleNodeId": "63ff6d0db735",
+      "bundleNodeKind": "file",
+      "label": "t011 - special links",
+      "bundleNodeName": "t011 - special links",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t011 - special links",
+        "bundleNodeId": "63ff6d0db735",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t013 - inlinks_depth.md",
+      "bundleNodeId": "f0f0c26c6543",
+      "bundleNodeKind": "file",
+      "label": "t013 - inlinks_depth",
+      "bundleNodeName": "t013 - inlinks_depth",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t013 - inlinks_depth",
+        "bundleNodeId": "f0f0c26c6543",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md",
+        "inlinksDepth": 1
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 1,
+      "path": [
+        "/main page.md",
+        "/t013 - inlinks_depth.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t013 ---- inlinks_depth - branch 1 - depth 1.md",
+      "bundleNodeId": "89f959ba8cd5",
+      "bundleNodeKind": "file",
+      "label": "t013 ---- inlinks_depth - branch 1 - depth 1",
+      "bundleNodeName": "t013 ---- inlinks_depth - branch 1 - depth 1",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t013 ---- inlinks_depth - branch 1 - depth 1",
+        "bundleNodeId": "89f959ba8cd5",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 0,
+      "path": [
+        "/main page.md",
+        "/t013 - inlinks_depth.md",
+        "/t013 ---- inlinks_depth - branch 1 - depth 1.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t013 ---- inlinks_depth - branch 2 - depth 1.md",
+      "bundleNodeId": "0acc3c8f8510",
+      "bundleNodeKind": "file",
+      "label": "t013 ---- inlinks_depth - branch 2 - depth 1",
+      "bundleNodeName": "t013 ---- inlinks_depth - branch 2 - depth 1",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t013 ---- inlinks_depth - branch 2 - depth 1",
+        "bundleNodeId": "0acc3c8f8510",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 0,
+      "path": [
+        "/main page.md",
+        "/t013 - inlinks_depth.md",
+        "/t013 ---- inlinks_depth - branch 2 - depth 1.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t013 ---- inlinks_depth - branch 2 - depth 2 from outlink.md",
+      "bundleNodeId": "c0bac643ec28",
+      "bundleNodeKind": "file",
+      "label": "t013 ---- inlinks_depth - branch 2 - depth 2 from outlink",
+      "bundleNodeName": "t013 ---- inlinks_depth - branch 2 - depth 2 from outlink",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t013 ---- inlinks_depth - branch 2 - depth 2 from outlink",
+        "bundleNodeId": "c0bac643ec28",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 0,
+      "path": [
+        "/main page.md",
+        "/t013 - inlinks_depth.md",
+        "/t013 ---- inlinks_depth - branch 2 - depth 1.md",
+        "/t013 ---- inlinks_depth - branch 2 - depth 2 from outlink.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t015 - block anchors.md",
+      "bundleNodeId": "5a7c27fbd009",
+      "bundleNodeKind": "file",
+      "label": "t015 - block anchors",
+      "bundleNodeName": "t015 - block anchors",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t015 - block anchors",
+        "bundleNodeId": "5a7c27fbd009",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t015 - block anchors.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t015 ---- page 1 with backlinks to block anchors.md",
+      "bundleNodeId": "aa5abb7759d8",
+      "bundleNodeKind": "file",
+      "label": "t015 ---- page 1 with backlinks to block anchors",
+      "bundleNodeName": "t015 ---- page 1 with backlinks to block anchors",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t015 ---- page 1 with backlinks to block anchors",
+        "bundleNodeId": "aa5abb7759d8",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t015 - block anchors.md",
+        "/t015 ---- page 1 with backlinks to block anchors.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t015 ---- page 2 with backlinks to block anchors.md",
+      "bundleNodeId": "a8cd5e818793",
+      "bundleNodeKind": "file",
+      "label": "t015 ---- page 2 with backlinks to block anchors",
+      "bundleNodeName": "t015 ---- page 2 with backlinks to block anchors",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t015 ---- page 2 with backlinks to block anchors",
+        "bundleNodeId": "a8cd5e818793",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t015 - block anchors.md",
+        "/t015 ---- page 2 with backlinks to block anchors.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t017 - transclusion.md",
+      "bundleNodeId": "eb8e5af9a57e",
+      "bundleNodeKind": "file",
+      "label": "t017 - transclusion",
+      "bundleNodeName": "t017 - transclusion",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 - transclusion",
+        "bundleNodeId": "eb8e5af9a57e",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t018 - tags.md",
+      "bundleNodeId": "f50303645095",
+      "bundleNodeKind": "file",
+      "label": "t018 - tags",
+      "bundleNodeName": "t018 - tags",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t018 - tags",
+        "bundleNodeId": "f50303645095",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t018 - tags.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t019 - embeds.md",
+      "bundleNodeId": "9f9001f0539a",
+      "bundleNodeKind": "file",
+      "label": "t019 - embeds",
+      "bundleNodeName": "t019 - embeds",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t019 - embeds",
+        "bundleNodeId": "9f9001f0539a",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t019 - embeds.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t020 - code blocks.md",
+      "bundleNodeId": "76380bb61a81",
+      "bundleNodeKind": "file",
+      "label": "t020 - code blocks",
+      "bundleNodeName": "t020 - code blocks",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t020 - code blocks",
+        "bundleNodeId": "76380bb61a81",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t020 - code blocks.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t021 - link gaps.md",
+      "bundleNodeId": "c21190e85b52",
+      "bundleNodeKind": "file",
+      "label": "t021 - link gaps",
+      "bundleNodeName": "t021 - link gaps",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t021 - link gaps",
+        "bundleNodeId": "c21190e85b52",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t021 - link gaps.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t022 - spaced repetition.md",
+      "bundleNodeId": "e9d5ec97a979",
+      "bundleNodeKind": "file",
+      "label": "t022 - spaced repetition",
+      "bundleNodeName": "t022 - spaced repetition",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t022 - spaced repetition",
+        "bundleNodeId": "e9d5ec97a979",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t022 - spaced repetition.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t023 - backlinks.md",
+      "bundleNodeId": "0d0c02f0a4b5",
+      "bundleNodeKind": "file",
+      "label": "t023 - backlinks",
+      "bundleNodeName": "t023 - backlinks",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t023 - backlinks",
+        "bundleNodeId": "0d0c02f0a4b5",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t023 - backlinks.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t024 - markdown links.md",
+      "bundleNodeId": "1990d453592f",
+      "bundleNodeKind": "file",
+      "label": "t024 - markdown links",
+      "bundleNodeName": "t024 - markdown links",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t024 - markdown links",
+        "bundleNodeId": "1990d453592f",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t024 - markdown links.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t025 - extended syntax.md",
+      "bundleNodeId": "4db86c964375",
+      "bundleNodeKind": "file",
+      "label": "t025 - extended syntax",
+      "bundleNodeName": "t025 - extended syntax",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t025 - extended syntax",
+        "bundleNodeId": "4db86c964375",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t025 - extended syntax.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t026 - HTML node.md",
+      "bundleNodeId": "46e8fe5609ea",
+      "bundleNodeKind": "file",
+      "label": "t026 - HTML node",
+      "bundleNodeName": "t026 - HTML node",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t026 - HTML node",
+        "bundleNodeId": "46e8fe5609ea",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t026 - HTML node.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t001/deeper/t001 ---- child 2.md",
+      "bundleNodeId": "c6336fa338e1",
+      "bundleNodeKind": "file",
+      "label": "t001 ---- child 2",
+      "bundleNodeName": "t001 ---- child 2",
+      "sourceGraphSubdirectory": "t001/deeper",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t001 ---- child 2",
+        "bundleNodeId": "c6336fa338e1",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t001/deeper",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t001 - deeply nested.md",
+        "t001/deeper/t001 ---- child 2.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t001/t001 ---- child 1.md",
+      "bundleNodeId": "75418b8d0960",
+      "bundleNodeKind": "file",
+      "label": "t001 ---- child 1",
+      "bundleNodeName": "t001 ---- child 1",
+      "sourceGraphSubdirectory": "t001",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t001 ---- child 1",
+        "bundleNodeId": "75418b8d0960",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t001",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t001 - deeply nested.md",
+        "t001/t001 ---- child 1.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t001/t001 ---- child 3 in same dir as child 1.md",
+      "bundleNodeId": "52cf2ab95f0b",
+      "bundleNodeKind": "file",
+      "label": "t001 ---- child 3 in same dir as child 1",
+      "bundleNodeName": "t001 ---- child 3 in same dir as child 1",
+      "sourceGraphSubdirectory": "t001",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t001 ---- child 3 in same dir as child 1",
+        "bundleNodeId": "52cf2ab95f0b",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t001",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t001 - deeply nested.md",
+        "t001/t001 ---- child 3 in same dir as child 1.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002 - second directory/t002 ---- points to png dup 2 with no path from second directory.md",
+      "bundleNodeId": "273d836bc199",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to png dup 2 with no path from second directory",
+      "bundleNodeName": "t002 ---- points to png dup 2 with no path from second directory",
+      "sourceGraphSubdirectory": "t002 - second directory",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to png dup 2 with no path from second directory",
+        "bundleNodeId": "273d836bc199",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002 - second directory",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002 - second directory/t002 ---- points to png dup 2 with no path from second directory.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/extra nested/t002 ---- dup 2.png",
+      "bundleNodeId": "35407b370cd8",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- dup 2",
+      "bundleNodeName": "t002 ---- dup 2",
+      "sourceGraphSubdirectory": "t002/extra nested",
+      "fileType": "png",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- dup 2",
+        "bundleNodeId": "35407b370cd8",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002/extra nested",
+        "bundleNodeKind": "file",
+        "fileType": "png"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.md",
+        "t002/extra nested/t002 ---- dup 2.png"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.md",
+      "bundleNodeId": "9cdf94b49259",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to png dup 2 with no path from extra nested",
+      "bundleNodeName": "t002 ---- points to png dup 2 with no path from extra nested",
+      "sourceGraphSubdirectory": "t002/extra nested",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to png dup 2 with no path from extra nested",
+        "bundleNodeId": "9cdf94b49259",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002/extra nested",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- dup 2.png",
+      "bundleNodeId": "6d3c81e8d1f6",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- dup 2",
+      "bundleNodeName": "t002 ---- dup 2",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "png",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- dup 2",
+        "bundleNodeId": "6d3c81e8d1f6",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "png"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "/t002 ---- points to png dup 2 with no path from root.md",
+        "t002/t002 ---- dup 2.png"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- dup.md",
+      "bundleNodeId": "3c3600f18828",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- dup",
+      "bundleNodeName": "t002 ---- dup",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- dup",
+        "bundleNodeId": "3c3600f18828",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to nested dup.md",
+        "t002/t002 ---- dup.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- dup.png",
+      "bundleNodeId": "e9bd14761bc9",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- dup",
+      "bundleNodeName": "t002 ---- dup",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "png",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- dup",
+        "bundleNodeId": "e9bd14761bc9",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "png"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to nested png dup.md",
+        "t002/t002 ---- dup.png"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- points to extra nested dup.md",
+      "bundleNodeId": "3a6703076d45",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to extra nested dup",
+      "bundleNodeName": "t002 ---- points to extra nested dup",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to extra nested dup",
+        "bundleNodeId": "3a6703076d45",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to extra nested dup.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- points to nested dup.md",
+      "bundleNodeId": "7ea2aad70b28",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to nested dup",
+      "bundleNodeName": "t002 ---- points to nested dup",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to nested dup",
+        "bundleNodeId": "7ea2aad70b28",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to nested dup.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- points to nested png dup.md",
+      "bundleNodeId": "54f383fd64e7",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to nested png dup",
+      "bundleNodeName": "t002 ---- points to nested png dup",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to nested png dup",
+        "bundleNodeId": "54f383fd64e7",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to nested png dup.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- points to png dup 2 with no path from t002.md",
+      "bundleNodeId": "51d13d1ee83f",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to png dup 2 with no path from t002",
+      "bundleNodeName": "t002 ---- points to png dup 2 with no path from t002",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to png dup 2 with no path from t002",
+        "bundleNodeId": "51d13d1ee83f",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to png dup 2 with no path from t002.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- points to root dup.md",
+      "bundleNodeId": "cab53beb16b2",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to root dup",
+      "bundleNodeName": "t002 ---- points to root dup",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to root dup",
+        "bundleNodeId": "cab53beb16b2",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to root dup.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t002/t002 ---- points to root png dup.md",
+      "bundleNodeId": "b88129baf1be",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- points to root png dup",
+      "bundleNodeName": "t002 ---- points to root png dup",
+      "sourceGraphSubdirectory": "t002",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t002 ---- points to root png dup",
+        "bundleNodeId": "b88129baf1be",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t002",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to root png dup.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t006/t006 --- meadow-flower-petals-ani.gif",
+      "bundleNodeId": "bb0a06325a33",
+      "bundleNodeKind": "file",
+      "label": "t006 --- meadow-flower-petals-ani",
+      "bundleNodeName": "t006 --- meadow-flower-petals-ani",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "gif",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 --- meadow-flower-petals-ani",
+        "bundleNodeId": "bb0a06325a33",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t006",
+        "bundleNodeKind": "file",
+        "fileType": "gif"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t006 - embedded media.md",
+        "t006/t006 --- meadow-flower-petals-ani.gif"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t006/t006 --- meadow-flower.svg",
+      "bundleNodeId": "9f4d7387b266",
+      "bundleNodeKind": "file",
+      "label": "t006 --- meadow-flower",
+      "bundleNodeName": "t006 --- meadow-flower",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "svg",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 --- meadow-flower",
+        "bundleNodeId": "9f4d7387b266",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t006",
+        "bundleNodeKind": "file",
+        "fileType": "svg"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t006 - embedded media.md",
+        "t006/t006 --- meadow-flower.svg"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t006/t006 --- meadow.png",
+      "bundleNodeId": "2d458e352f9c",
+      "bundleNodeKind": "file",
+      "label": "t006 --- meadow",
+      "bundleNodeName": "t006 --- meadow",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "png",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 --- meadow",
+        "bundleNodeId": "2d458e352f9c",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t006",
+        "bundleNodeKind": "file",
+        "fileType": "png"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t006 - embedded media.md",
+        "t006/t006 --- meadow.png"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t006/t006 --- page that embeds Excalidraw in another directory.md",
+      "bundleNodeId": "40ba94eb2b84",
+      "bundleNodeKind": "file",
+      "label": "t006 --- page that embeds Excalidraw in another directory",
+      "bundleNodeName": "t006 --- page that embeds Excalidraw in another directory",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t006 --- page that embeds Excalidraw in another directory",
+        "bundleNodeId": "40ba94eb2b84",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t006",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t006 - embedded media.md",
+        "t006/t006 --- page that embeds Excalidraw in another directory.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t010/t010 ---- same depth 1 - 2 out 0 in.md",
+      "bundleNodeId": "a0ac819282f6",
+      "bundleNodeKind": "file",
+      "label": "t010 ---- same depth 1 - 2 out 0 in",
+      "bundleNodeName": "t010 ---- same depth 1 - 2 out 0 in",
+      "sourceGraphSubdirectory": "t010",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t010 ---- same depth 1 - 2 out 0 in",
+        "bundleNodeId": "a0ac819282f6",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t010",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t010 - linking in same depth.md",
+        "t010/t010 ---- same depth 1 - 2 out 0 in.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t010/t010 ---- same depth 2 - 1 out 2 in.md",
+      "bundleNodeId": "2e5930ff8a07",
+      "bundleNodeKind": "file",
+      "label": "t010 ---- same depth 2 - 1 out 2 in",
+      "bundleNodeName": "t010 ---- same depth 2 - 1 out 2 in",
+      "sourceGraphSubdirectory": "t010",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t010 ---- same depth 2 - 1 out 2 in",
+        "bundleNodeId": "2e5930ff8a07",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t010",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t010 - linking in same depth.md",
+        "t010/t010 ---- same depth 2 - 1 out 2 in.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t010/t010 ---- same depth 3 - 1 out 3 in.md",
+      "bundleNodeId": "ee01b027279a",
+      "bundleNodeKind": "file",
+      "label": "t010 ---- same depth 3 - 1 out 3 in",
+      "bundleNodeName": "t010 ---- same depth 3 - 1 out 3 in",
+      "sourceGraphSubdirectory": "t010",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t010 ---- same depth 3 - 1 out 3 in",
+        "bundleNodeId": "ee01b027279a",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t010",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t010 - linking in same depth.md",
+        "t010/t010 ---- same depth 3 - 1 out 3 in.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t010/t010 ---- same depth 4 - no connection.md",
+      "bundleNodeId": "3e29bf68f47d",
+      "bundleNodeKind": "file",
+      "label": "t010 ---- same depth 4 - no connection",
+      "bundleNodeName": "t010 ---- same depth 4 - no connection",
+      "sourceGraphSubdirectory": "t010",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t010 ---- same depth 4 - no connection",
+        "bundleNodeId": "3e29bf68f47d",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t010",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t010 - linking in same depth.md",
+        "t010/t010 ---- same depth 4 - no connection.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t010/t010 ---- same depth 5 - 1 out 0 in.md",
+      "bundleNodeId": "c1138bc724d8",
+      "bundleNodeKind": "file",
+      "label": "t010 ---- same depth 5 - 1 out 0 in",
+      "bundleNodeName": "t010 ---- same depth 5 - 1 out 0 in",
+      "sourceGraphSubdirectory": "t010",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t010 ---- same depth 5 - 1 out 0 in",
+        "bundleNodeId": "c1138bc724d8",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t010",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t010 - linking in same depth.md",
+        "t010/t010 ---- same depth 5 - 1 out 0 in.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t011/t011 --- pointed to by an escaped alias outside a table.md",
+      "bundleNodeId": "9a32a6046026",
+      "bundleNodeKind": "file",
+      "label": "t011 --- pointed to by an escaped alias outside a table",
+      "bundleNodeName": "t011 --- pointed to by an escaped alias outside a table",
+      "sourceGraphSubdirectory": "t011",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t011 --- pointed to by an escaped alias outside a table",
+        "bundleNodeId": "9a32a6046026",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t011",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md",
+        "t011/t011 --- pointed to by an escaped alias outside a table.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t011/t011 --- table test row 1 column 1.md",
+      "bundleNodeId": "9e2877bc1621",
+      "bundleNodeKind": "file",
+      "label": "t011 --- table test row 1 column 1",
+      "bundleNodeName": "t011 --- table test row 1 column 1",
+      "sourceGraphSubdirectory": "t011",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t011 --- table test row 1 column 1",
+        "bundleNodeId": "9e2877bc1621",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t011",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md",
+        "t011/t011 --- table test row 1 column 1.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t011/t011 --- table test row 1 column 3.md",
+      "bundleNodeId": "bc5925f7246b",
+      "bundleNodeKind": "file",
+      "label": "t011 --- table test row 1 column 3",
+      "bundleNodeName": "t011 --- table test row 1 column 3",
+      "sourceGraphSubdirectory": "t011",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t011 --- table test row 1 column 3",
+        "bundleNodeId": "bc5925f7246b",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t011",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md",
+        "t011/t011 --- table test row 1 column 3.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t011/t011 --- table test row 2 column 1.md",
+      "bundleNodeId": "7d14e28faf65",
+      "bundleNodeKind": "file",
+      "label": "t011 --- table test row 2 column 1",
+      "bundleNodeName": "t011 --- table test row 2 column 1",
+      "sourceGraphSubdirectory": "t011",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t011 --- table test row 2 column 1",
+        "bundleNodeId": "7d14e28faf65",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t011",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md",
+        "t011/t011 --- table test row 2 column 1.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t011/t011 --- table test row 2 column 3.md",
+      "bundleNodeId": "120e46bb4992",
+      "bundleNodeKind": "file",
+      "label": "t011 --- table test row 2 column 3",
+      "bundleNodeName": "t011 --- table test row 2 column 3",
+      "sourceGraphSubdirectory": "t011",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t011 --- table test row 2 column 3",
+        "bundleNodeId": "120e46bb4992",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t011",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md",
+        "t011/t011 --- table test row 2 column 3.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t011/t011 ---- page name with special characters -- before dot . and after dot.md",
+      "bundleNodeId": "cec9d23569be",
+      "bundleNodeKind": "file",
+      "label": "t011 ---- page name with special characters -- before dot . and after dot",
+      "bundleNodeName": "t011 ---- page name with special characters -- before dot . and after dot",
+      "sourceGraphSubdirectory": "t011",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t011 ---- page name with special characters -- before dot . and after dot",
+        "bundleNodeId": "cec9d23569be",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t011",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md",
+        "t011/t011 ---- page name with special characters -- before dot . and after dot.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t011/t011 ---- page name with special characters -- single quote ' in name.md",
+      "bundleNodeId": "e03c9c45e94f",
+      "bundleNodeKind": "file",
+      "label": "t011 ---- page name with special characters -- single quote ' in name",
+      "bundleNodeName": "t011 ---- page name with special characters -- single quote ' in name",
+      "sourceGraphSubdirectory": "t011",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t011 ---- page name with special characters -- single quote ' in name",
+        "bundleNodeId": "e03c9c45e94f",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t011",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md",
+        "t011/t011 ---- page name with special characters -- single quote ' in name.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t011/test.io which looks like a filename suffix.md",
+      "bundleNodeId": "261057732566",
+      "bundleNodeKind": "file",
+      "label": "test.io which looks like a filename suffix",
+      "bundleNodeName": "test.io which looks like a filename suffix",
+      "sourceGraphSubdirectory": "t011",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "test.io which looks like a filename suffix",
+        "bundleNodeId": "261057732566",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t011",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t011 - special links.md",
+        "t011/test.io which looks like a filename suffix.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t014/t014 ---- in-link in nested folder to main page.md",
+      "bundleNodeId": "f9e57149ee19",
+      "bundleNodeKind": "file",
+      "label": "t014 ---- in-link in nested folder to main page",
+      "bundleNodeName": "t014 ---- in-link in nested folder to main page",
+      "sourceGraphSubdirectory": "t014",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t014 ---- in-link in nested folder to main page",
+        "bundleNodeId": "f9e57149ee19",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t014",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "t014/t014 ---- in-link in nested folder to main page.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017 - second directory/t017 ---- linked from deep transclusion level 3.md",
+      "bundleNodeId": "c42f65620a6a",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- linked from deep transclusion level 3",
+      "bundleNodeName": "t017 ---- linked from deep transclusion level 3",
+      "sourceGraphSubdirectory": "t017 - second directory",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- linked from deep transclusion level 3",
+        "bundleNodeId": "c42f65620a6a",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017 - second directory",
+        "bundleNodeKind": "file",
+        "fileType": "md",
+        "outlinksDepth": 1
+      },
+      "depth": 4,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 96,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- deep transclusion.md",
+        "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.md",
+        "t017 - second directory/t017 ---- linked from deep transclusion level 3.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017 - second directory/t017 ---- linked from within this second directory.md",
+      "bundleNodeId": "eac9028d9c0d",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- linked from within this second directory",
+      "bundleNodeName": "t017 ---- linked from within this second directory",
+      "sourceGraphSubdirectory": "t017 - second directory",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- linked from within this second directory",
+        "bundleNodeId": "eac9028d9c0d",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017 - second directory",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 5,
+      "remaining_depth": 0,
+      "remaining_inlinks_depth": 95,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- deep transclusion.md",
+        "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.md",
+        "t017 - second directory/t017 ---- linked from deep transclusion level 3.md",
+        "t017 - second directory/t017 ---- linked from within this second directory.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.md",
+      "bundleNodeId": "62e8f80fa88f",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- deep transclusion - level 3",
+      "bundleNodeName": "t017 ---- deep transclusion - level 3",
+      "sourceGraphSubdirectory": "t017/deep transclusion levels 3 and 4",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- deep transclusion - level 3",
+        "bundleNodeId": "62e8f80fa88f",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017/deep transclusion levels 3 and 4",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- deep transclusion.md",
+        "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 4.md",
+      "bundleNodeId": "e41e496344dd",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- deep transclusion - level 4",
+      "bundleNodeName": "t017 ---- deep transclusion - level 4",
+      "sourceGraphSubdirectory": "t017/deep transclusion levels 3 and 4",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- deep transclusion - level 4",
+        "bundleNodeId": "e41e496344dd",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017/deep transclusion levels 3 and 4",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 4,
+      "remaining_depth": 0,
+      "remaining_inlinks_depth": 96,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- deep transclusion.md",
+        "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.md",
+        "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 4.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/t017 ---- block source.md",
+      "bundleNodeId": "5792d2008047",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- block source",
+      "bundleNodeName": "t017 ---- block source",
+      "sourceGraphSubdirectory": "t017",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- block source",
+        "bundleNodeId": "5792d2008047",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- block transclusion.md",
+        "t017/t017 ---- block source.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/t017 ---- block transclusion.md",
+      "bundleNodeId": "aac5f9727580",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- block transclusion",
+      "bundleNodeName": "t017 ---- block transclusion",
+      "sourceGraphSubdirectory": "t017",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- block transclusion",
+        "bundleNodeId": "aac5f9727580",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- block transclusion.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/t017 ---- deep transclusion.md",
+      "bundleNodeId": "ca81b430c6df",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- deep transclusion",
+      "bundleNodeName": "t017 ---- deep transclusion",
+      "sourceGraphSubdirectory": "t017",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- deep transclusion",
+        "bundleNodeId": "ca81b430c6df",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- deep transclusion.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/t017 ---- full page source.md",
+      "bundleNodeId": "9ad54489a9f3",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- full page source",
+      "bundleNodeName": "t017 ---- full page source",
+      "sourceGraphSubdirectory": "t017",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- full page source",
+        "bundleNodeId": "9ad54489a9f3",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- full page transclusion.md",
+        "t017/t017 ---- full page source.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/t017 ---- full page transclusion.md",
+      "bundleNodeId": "5f5846b0faf1",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- full page transclusion",
+      "bundleNodeName": "t017 ---- full page transclusion",
+      "sourceGraphSubdirectory": "t017",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- full page transclusion",
+        "bundleNodeId": "5f5846b0faf1",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- full page transclusion.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/t017 ---- section source.md",
+      "bundleNodeId": "37b6c92ff960",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- section source",
+      "bundleNodeName": "t017 ---- section source",
+      "sourceGraphSubdirectory": "t017",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- section source",
+        "bundleNodeId": "37b6c92ff960",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- section transclusion.md",
+        "t017/t017 ---- section source.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t017/t017 ---- section transclusion.md",
+      "bundleNodeId": "70604d708ebd",
+      "bundleNodeKind": "file",
+      "label": "t017 ---- section transclusion",
+      "bundleNodeName": "t017 ---- section transclusion",
+      "sourceGraphSubdirectory": "t017",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t017 ---- section transclusion",
+        "bundleNodeId": "70604d708ebd",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t017",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t017 - transclusion.md",
+        "t017/t017 ---- section transclusion.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t018/t018 ---- code blocks and inline code should not create tag links.md",
+      "bundleNodeId": "9911380dd5da",
+      "bundleNodeKind": "file",
+      "label": "t018 ---- code blocks and inline code should not create tag links",
+      "bundleNodeName": "t018 ---- code blocks and inline code should not create tag links",
+      "sourceGraphSubdirectory": "t018",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t018 ---- code blocks and inline code should not create tag links",
+        "bundleNodeId": "9911380dd5da",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t018",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t018 - tags.md",
+        "t018/t018 ---- code blocks and inline code should not create tag links.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t018/t018 ---- shared tags page 1.md",
+      "bundleNodeId": "75e681819585",
+      "bundleNodeKind": "file",
+      "label": "t018 ---- shared tags page 1",
+      "bundleNodeName": "t018 ---- shared tags page 1",
+      "sourceGraphSubdirectory": "t018",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t018 ---- shared tags page 1",
+        "bundleNodeId": "75e681819585",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t018",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t018 - tags.md",
+        "t018/t018 ---- shared tags page 1.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t018/t018 ---- shared tags page 2.md",
+      "bundleNodeId": "d3a285313e8b",
+      "bundleNodeKind": "file",
+      "label": "t018 ---- shared tags page 2",
+      "bundleNodeName": "t018 ---- shared tags page 2",
+      "sourceGraphSubdirectory": "t018",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t018 ---- shared tags page 2",
+        "bundleNodeId": "d3a285313e8b",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t018",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t018 - tags.md",
+        "t018/t018 ---- shared tags page 2.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t018/t018 ---- unique tags.md",
+      "bundleNodeId": "2752773a95f2",
+      "bundleNodeKind": "file",
+      "label": "t018 ---- unique tags",
+      "bundleNodeName": "t018 ---- unique tags",
+      "sourceGraphSubdirectory": "t018",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t018 ---- unique tags",
+        "bundleNodeId": "2752773a95f2",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t018",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t018 - tags.md",
+        "t018/t018 ---- unique tags.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t019/t019 ---- mermaid.md",
+      "bundleNodeId": "bb4d1ac0a258",
+      "bundleNodeKind": "file",
+      "label": "t019 ---- mermaid",
+      "bundleNodeName": "t019 ---- mermaid",
+      "sourceGraphSubdirectory": "t019",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t019 ---- mermaid",
+        "bundleNodeId": "bb4d1ac0a258",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t019",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t019 - embeds.md",
+        "t019/t019 ---- mermaid.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t019/t019 ---- typescript.md",
+      "bundleNodeId": "7d94965cfe77",
+      "bundleNodeKind": "file",
+      "label": "t019 ---- typescript",
+      "bundleNodeName": "t019 ---- typescript",
+      "sourceGraphSubdirectory": "t019",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t019 ---- typescript",
+        "bundleNodeId": "7d94965cfe77",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t019",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t019 - embeds.md",
+        "t019/t019 ---- typescript.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t020/t020 ---- code blocks should end properly.md",
+      "bundleNodeId": "3c5fd5ce4b24",
+      "bundleNodeKind": "file",
+      "label": "t020 ---- code blocks should end properly",
+      "bundleNodeName": "t020 ---- code blocks should end properly",
+      "sourceGraphSubdirectory": "t020",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t020 ---- code blocks should end properly",
+        "bundleNodeId": "3c5fd5ce4b24",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t020",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t020 - code blocks.md",
+        "t020/t020 ---- code blocks should end properly.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t020/t020 ---- page links in code blocks should not become links.md",
+      "bundleNodeId": "9a089e676374",
+      "bundleNodeKind": "file",
+      "label": "t020 ---- page links in code blocks should not become links",
+      "bundleNodeName": "t020 ---- page links in code blocks should not become links",
+      "sourceGraphSubdirectory": "t020",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t020 ---- page links in code blocks should not become links",
+        "bundleNodeId": "9a089e676374",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t020",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t020 - code blocks.md",
+        "t020/t020 ---- page links in code blocks should not become links.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t020/t020 ---- tags in code blocks should not become tag links.md",
+      "bundleNodeId": "b4ab82510701",
+      "bundleNodeKind": "file",
+      "label": "t020 ---- tags in code blocks should not become tag links",
+      "bundleNodeName": "t020 ---- tags in code blocks should not become tag links",
+      "sourceGraphSubdirectory": "t020",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t020 ---- tags in code blocks should not become tag links",
+        "bundleNodeId": "b4ab82510701",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t020",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t020 - code blocks.md",
+        "t020/t020 ---- tags in code blocks should not become tag links.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t021/t021 ---- inlink gap.md",
+      "bundleNodeId": "422a8eef5d4a",
+      "bundleNodeKind": "file",
+      "label": "t021 ---- inlink gap",
+      "bundleNodeName": "t021 ---- inlink gap",
+      "sourceGraphSubdirectory": "t021",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t021 ---- inlink gap",
+        "bundleNodeId": "422a8eef5d4a",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t021",
+        "bundleNodeKind": "file",
+        "fileType": "md",
+        "inlinksDepth": 0
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 0,
+      "path": [
+        "/main page.md",
+        "/t021 - link gaps.md",
+        "t021/t021 ---- inlink gap.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t021/t021 ---- outlink gap.md",
+      "bundleNodeId": "e61a96d5dee8",
+      "bundleNodeKind": "file",
+      "label": "t021 ---- outlink gap",
+      "bundleNodeName": "t021 ---- outlink gap",
+      "sourceGraphSubdirectory": "t021",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t021 ---- outlink gap",
+        "bundleNodeId": "e61a96d5dee8",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t021",
+        "bundleNodeKind": "file",
+        "fileType": "md",
+        "outlinksDepth": 0
+      },
+      "depth": 2,
+      "remaining_depth": 0,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t021 - link gaps.md",
+        "t021/t021 ---- outlink gap.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t022/t022 ---- alpha cards.md",
+      "bundleNodeId": "a3e9607bd863",
+      "bundleNodeKind": "file",
+      "label": "t022 ---- alpha cards",
+      "bundleNodeName": "t022 ---- alpha cards",
+      "sourceGraphSubdirectory": "t022",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t022 ---- alpha cards",
+        "bundleNodeId": "a3e9607bd863",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t022",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t022 - spaced repetition.md",
+        "t022/t022 ---- alpha cards.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t022/t022 ---- beta cards.md",
+      "bundleNodeId": "63ed8044d5f8",
+      "bundleNodeKind": "file",
+      "label": "t022 ---- beta cards",
+      "bundleNodeName": "t022 ---- beta cards",
+      "sourceGraphSubdirectory": "t022",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t022 ---- beta cards",
+        "bundleNodeId": "63ed8044d5f8",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t022",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t022 - spaced repetition.md",
+        "t022/t022 ---- beta cards.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t023/multiple_links/t023 ---- page a.md",
+      "bundleNodeId": "bf7eead52e4f",
+      "bundleNodeKind": "file",
+      "label": "t023 ---- page a",
+      "bundleNodeName": "t023 ---- page a",
+      "sourceGraphSubdirectory": "t023/multiple_links",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t023 ---- page a",
+        "bundleNodeId": "bf7eead52e4f",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t023/multiple_links",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t023 - backlinks.md",
+        "t023/multiple_links/t023 ---- page a.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t023/multiple_links/t023 ---- page b.md",
+      "bundleNodeId": "4b5f7f9ec324",
+      "bundleNodeKind": "file",
+      "label": "t023 ---- page b",
+      "bundleNodeName": "t023 ---- page b",
+      "sourceGraphSubdirectory": "t023/multiple_links",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t023 ---- page b",
+        "bundleNodeId": "4b5f7f9ec324",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t023/multiple_links",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t023 - backlinks.md",
+        "t023/multiple_links/t023 ---- page b.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t023/table/t023 ---- table row 1.md",
+      "bundleNodeId": "a7b154747856",
+      "bundleNodeKind": "file",
+      "label": "t023 ---- table row 1",
+      "bundleNodeName": "t023 ---- table row 1",
+      "sourceGraphSubdirectory": "t023/table",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t023 ---- table row 1",
+        "bundleNodeId": "a7b154747856",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t023/table",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t023 - backlinks.md",
+        "t023/table/t023 ---- table row 1.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t023/table/t023 ---- table row 2.md",
+      "bundleNodeId": "bb352c3962e4",
+      "bundleNodeKind": "file",
+      "label": "t023 ---- table row 2",
+      "bundleNodeName": "t023 ---- table row 2",
+      "sourceGraphSubdirectory": "t023/table",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t023 ---- table row 2",
+        "bundleNodeId": "bb352c3962e4",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t023/table",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t023 - backlinks.md",
+        "t023/table/t023 ---- table row 2.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t024/deeper/t024 ---- deep page.md",
+      "bundleNodeId": "d11a871157dd",
+      "bundleNodeKind": "file",
+      "label": "t024 ---- deep page",
+      "bundleNodeName": "t024 ---- deep page",
+      "sourceGraphSubdirectory": "t024/deeper",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t024 ---- deep page",
+        "bundleNodeId": "d11a871157dd",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t024/deeper",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t024 - markdown links.md",
+        "t024/deeper/t024 ---- deep page.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t024/t024 ---- inlink only.md",
+      "bundleNodeId": "b395820a5039",
+      "bundleNodeKind": "file",
+      "label": "t024 ---- inlink only",
+      "bundleNodeName": "t024 ---- inlink only",
+      "sourceGraphSubdirectory": "t024",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t024 ---- inlink only",
+        "bundleNodeId": "b395820a5039",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t024",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t024 - markdown links.md",
+        "t024/t024 ---- inlink only.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t024/t024 ---- linked page.md",
+      "bundleNodeId": "4062eaad66f7",
+      "bundleNodeKind": "file",
+      "label": "t024 ---- linked page",
+      "bundleNodeName": "t024 ---- linked page",
+      "sourceGraphSubdirectory": "t024",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t024 ---- linked page",
+        "bundleNodeId": "4062eaad66f7",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t024",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t024 - markdown links.md",
+        "t024/t024 ---- linked page.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t024/t024 ---- test image.png",
+      "bundleNodeId": "4704cafdc856",
+      "bundleNodeKind": "file",
+      "label": "t024 ---- test image",
+      "bundleNodeName": "t024 ---- test image",
+      "sourceGraphSubdirectory": "t024",
+      "fileType": "png",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t024 ---- test image",
+        "bundleNodeId": "4704cafdc856",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t024",
+        "bundleNodeKind": "file",
+        "fileType": "png"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t024 - markdown links.md",
+        "t024/t024 ---- test image.png"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t026/nested/t026 ---- nested markdown.md",
+      "bundleNodeId": "67c350ef14e7",
+      "bundleNodeKind": "file",
+      "label": "t026 ---- nested markdown",
+      "bundleNodeName": "t026 ---- nested markdown",
+      "sourceGraphSubdirectory": "t026/nested",
+      "fileType": "md",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t026 ---- nested markdown",
+        "bundleNodeId": "67c350ef14e7",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t026/nested",
+        "bundleNodeKind": "file",
+        "fileType": "md"
+      },
+      "depth": 4,
+      "remaining_depth": 0,
+      "remaining_inlinks_depth": 96,
+      "path": [
+        "/main page.md",
+        "/t026 - HTML node.md",
+        "t026/t026 ---- first HTML page.html",
+        "t026/t026 ---- second HTML page.html",
+        "t026/nested/t026 ---- nested markdown.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t026/t026 ---- first HTML page.html",
+      "bundleNodeId": "dd1c7e519e36",
+      "bundleNodeKind": "file",
+      "label": "t026 ---- first HTML page",
+      "bundleNodeName": "t026 ---- first HTML page",
+      "sourceGraphSubdirectory": "t026",
+      "fileType": "html",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t026 ---- first HTML page",
+        "bundleNodeId": "dd1c7e519e36",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t026",
+        "bundleNodeKind": "file",
+        "fileType": "html"
+      },
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t026 - HTML node.md",
+        "t026/t026 ---- first HTML page.html"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t026/t026 ---- second HTML page.html",
+      "bundleNodeId": "2c1e963eb890",
+      "bundleNodeKind": "file",
+      "label": "t026 ---- second HTML page",
+      "bundleNodeName": "t026 ---- second HTML page",
+      "sourceGraphSubdirectory": "t026",
+      "fileType": "html",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t026 ---- second HTML page",
+        "bundleNodeId": "2c1e963eb890",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t026",
+        "bundleNodeKind": "file",
+        "fileType": "html"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t026 - HTML node.md",
+        "t026/t026 ---- first HTML page.html",
+        "t026/t026 ---- second HTML page.html"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t026/t026 ---- shared behavior.js",
+      "bundleNodeId": "dc4222c5ef1f",
+      "bundleNodeKind": "file",
+      "label": "t026 ---- shared behavior",
+      "bundleNodeName": "t026 ---- shared behavior",
+      "sourceGraphSubdirectory": "t026",
+      "fileType": "js",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t026 ---- shared behavior",
+        "bundleNodeId": "dc4222c5ef1f",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t026",
+        "bundleNodeKind": "file",
+        "fileType": "js"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t026 - HTML node.md",
+        "t026/t026 ---- first HTML page.html",
+        "t026/t026 ---- shared behavior.js"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t026/t026 ---- shared image.svg",
+      "bundleNodeId": "2a65602b0650",
+      "bundleNodeKind": "file",
+      "label": "t026 ---- shared image",
+      "bundleNodeName": "t026 ---- shared image",
+      "sourceGraphSubdirectory": "t026",
+      "fileType": "svg",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t026 ---- shared image",
+        "bundleNodeId": "2a65602b0650",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t026",
+        "bundleNodeKind": "file",
+        "fileType": "svg"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t026 - HTML node.md",
+        "t026/t026 ---- first HTML page.html",
+        "t026/t026 ---- shared image.svg"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t026/t026 ---- shared style.css",
+      "bundleNodeId": "b92f03be9332",
+      "bundleNodeKind": "file",
+      "label": "t026 ---- shared style",
+      "bundleNodeName": "t026 ---- shared style",
+      "sourceGraphSubdirectory": "t026",
+      "fileType": "css",
+      "tracked": true,
+      "blacklisted": false,
+      "sensitive": false,
+      "conf": {
+        "bundleNodeName": "t026 ---- shared style",
+        "bundleNodeId": "b92f03be9332",
+        "listType": "whitelist",
+        "sourceGraphSubdirectory": "t026",
+        "bundleNodeKind": "file",
+        "fileType": "css"
+      },
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t026 - HTML node.md",
+        "t026/t026 ---- first HTML page.html",
+        "t026/t026 ---- shared style.css"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "/main page.md",
+      "target": "/t001 - deeply nested.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t002 - dup pages and images.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t003 - link to section.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t005 - in and out links.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t006 - embedded media.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t007 - blacklisted.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t008 - page conf do not include inlinks.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t009 - page conf graph depth.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t010 - linking in same depth.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t011 - special links.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t013 - inlinks_depth.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t015 - block anchors.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t017 - transclusion.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t018 - tags.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t019 - embeds.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t020 - code blocks.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t021 - link gaps.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t022 - spaced repetition.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t023 - backlinks.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t024 - markdown links.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t025 - extended syntax.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/main page.md",
+      "target": "/t026 - HTML node.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t001 - deeply nested.md",
+      "target": "t001/deeper/t001 ---- child 2.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t001 - deeply nested.md",
+      "target": "t001/t001 ---- child 1.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t001 - deeply nested.md",
+      "target": "t001/t001 ---- child 3 in same dir as child 1.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "/t002 ---- points to png dup 2 with no path from root.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "t002 - second directory/t002 ---- points to png dup 2 with no path from second directory.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "t002/t002 ---- points to extra nested dup.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "t002/t002 ---- points to nested dup.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "t002/t002 ---- points to nested png dup.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "t002/t002 ---- points to png dup 2 with no path from t002.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "t002/t002 ---- points to root dup.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 - dup pages and images.md",
+      "target": "t002/t002 ---- points to root png dup.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t002 ---- points to png dup 2 with no path from root.md",
+      "target": "t002/t002 ---- dup 2.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t003 - link to section.md",
+      "target": "/t003 ---- page with section to link to.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t005 - in and out links.md",
+      "target": "/t005 ---- has in link and points back to same page.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "/t006 - embedded media.md",
+      "target": "t006/t006 --- meadow-flower-petals-ani.gif",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t006 - embedded media.md",
+      "target": "t006/t006 --- meadow-flower.svg",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "/t006 - embedded media.md",
+      "target": "t006/t006 --- meadow.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t006 - embedded media.md",
+      "target": "t006/t006 --- page that embeds Excalidraw in another directory.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t010 - linking in same depth.md",
+      "target": "t010/t010 ---- same depth 1 - 2 out 0 in.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t010 - linking in same depth.md",
+      "target": "t010/t010 ---- same depth 2 - 1 out 2 in.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t010 - linking in same depth.md",
+      "target": "t010/t010 ---- same depth 3 - 1 out 3 in.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t010 - linking in same depth.md",
+      "target": "t010/t010 ---- same depth 4 - no connection.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t010 - linking in same depth.md",
+      "target": "t010/t010 ---- same depth 5 - 1 out 0 in.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t011 - special links.md",
+      "target": "t011/t011 --- pointed to by an escaped alias outside a table.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t011 - special links.md",
+      "target": "t011/t011 --- table test row 1 column 1.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t011 - special links.md",
+      "target": "t011/t011 --- table test row 1 column 3.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t011 - special links.md",
+      "target": "t011/t011 --- table test row 2 column 1.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t011 - special links.md",
+      "target": "t011/t011 --- table test row 2 column 3.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t011 - special links.md",
+      "target": "t011/t011 ---- page name with special characters -- before dot . and after dot.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t011 - special links.md",
+      "target": "t011/t011 ---- page name with special characters -- single quote ' in name.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "/t011 - special links.md",
+      "target": "t011/test.io which looks like a filename suffix.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t013 ---- inlinks_depth - branch 1 - depth 1.md",
+      "target": "/t013 - inlinks_depth.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t013 ---- inlinks_depth - branch 2 - depth 1.md",
+      "target": "/t013 - inlinks_depth.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t013 ---- inlinks_depth - branch 2 - depth 1.md",
+      "target": "/t013 ---- inlinks_depth - branch 2 - depth 2 from outlink.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t015 - block anchors.md",
+      "target": "/t015 ---- page 1 with backlinks to block anchors.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t015 - block anchors.md",
+      "target": "/t015 ---- page 2 with backlinks to block anchors.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t017 - transclusion.md",
+      "target": "t017/t017 ---- block transclusion.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t017 - transclusion.md",
+      "target": "t017/t017 ---- deep transclusion.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t017 - transclusion.md",
+      "target": "t017/t017 ---- full page transclusion.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t017 - transclusion.md",
+      "target": "t017/t017 ---- section transclusion.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t018 - tags.md",
+      "target": "t018/t018 ---- code blocks and inline code should not create tag links.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t018 - tags.md",
+      "target": "t018/t018 ---- shared tags page 1.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t018 - tags.md",
+      "target": "t018/t018 ---- shared tags page 2.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t018 - tags.md",
+      "target": "t018/t018 ---- unique tags.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t019 - embeds.md",
+      "target": "t019/t019 ---- mermaid.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t019 - embeds.md",
+      "target": "t019/t019 ---- typescript.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t020 - code blocks.md",
+      "target": "t020/t020 ---- code blocks should end properly.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t020 - code blocks.md",
+      "target": "t020/t020 ---- page links in code blocks should not become links.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t020 - code blocks.md",
+      "target": "t020/t020 ---- tags in code blocks should not become tag links.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t021 - link gaps.md",
+      "target": "t021/t021 ---- inlink gap.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t021 - link gaps.md",
+      "target": "t021/t021 ---- outlink gap.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t022 - spaced repetition.md",
+      "target": "t022/t022 ---- alpha cards.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t022 - spaced repetition.md",
+      "target": "t022/t022 ---- beta cards.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t023 - backlinks.md",
+      "target": "t023/multiple_links/t023 ---- page a.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t023 - backlinks.md",
+      "target": "t023/multiple_links/t023 ---- page b.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t023 - backlinks.md",
+      "target": "t023/table/t023 ---- table row 1.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t023 - backlinks.md",
+      "target": "t023/table/t023 ---- table row 2.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t024 - markdown links.md",
+      "target": "t024/deeper/t024 ---- deep page.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "/t024 - markdown links.md",
+      "target": "t024/t024 ---- inlink only.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t024 - markdown links.md",
+      "target": "t024/t024 ---- linked page.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "/t024 - markdown links.md",
+      "target": "t024/t024 ---- test image.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t026 - HTML node.md",
+      "target": "t026/t026 ---- first HTML page.html",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "t001/t001 ---- child 3 in same dir as child 1.md",
+      "target": "t001/t001 ---- child 1.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t002 - second directory/t002 ---- points to png dup 2 with no path from second directory.md",
+      "target": "t002/t002 ---- dup 2.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t002/extra nested/t002 ---- points to png dup 2 with no path from extra nested.md",
+      "target": "t002/extra nested/t002 ---- dup 2.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t002/t002 ---- points to nested dup.md",
+      "target": "t002/t002 ---- dup.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t002/t002 ---- points to nested png dup.md",
+      "target": "t002/t002 ---- dup.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t002/t002 ---- points to png dup 2 with no path from t002.md",
+      "target": "t002/t002 ---- dup 2.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t002/t002 ---- points to root dup.md",
+      "target": "/t002 ---- dup.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t002/t002 ---- points to root png dup.md",
+      "target": "/t002 ---- dup.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t006/t006 --- meadow-flower.svg",
+      "target": "t006/t006 --- page that embeds Excalidraw in another directory.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t010/t010 ---- same depth 1 - 2 out 0 in.md",
+      "target": "t010/t010 ---- same depth 2 - 1 out 2 in.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t010/t010 ---- same depth 1 - 2 out 0 in.md",
+      "target": "t010/t010 ---- same depth 3 - 1 out 3 in.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t010/t010 ---- same depth 2 - 1 out 2 in.md",
+      "target": "t010/t010 ---- same depth 3 - 1 out 3 in.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "t010/t010 ---- same depth 5 - 1 out 0 in.md",
+      "target": "t010/t010 ---- same depth 3 - 1 out 3 in.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t014/t014 ---- in-link in nested folder to main page.md",
+      "target": "/main page.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t017 - second directory/t017 ---- linked from deep transclusion level 3.md",
+      "target": "t017 - second directory/t017 ---- linked from within this second directory.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.md",
+      "target": "t017 - second directory/t017 ---- linked from deep transclusion level 3.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.md",
+      "target": "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 4.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t017/t017 ---- block transclusion.md",
+      "target": "t017/t017 ---- block source.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t017/t017 ---- deep transclusion.md",
+      "target": "t017/deep transclusion levels 3 and 4/t017 ---- deep transclusion - level 3.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t017/t017 ---- full page transclusion.md",
+      "target": "t017/t017 ---- full page source.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t017/t017 ---- section transclusion.md",
+      "target": "t017/t017 ---- section source.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t022/t022 ---- alpha cards.md",
+      "target": "t022/t022 ---- beta cards.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "t024/t024 ---- linked page.md",
+      "target": "t024/deeper/t024 ---- deep page.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t026/nested/t026 ---- nested markdown.md",
+      "target": "t026/t026 ---- second HTML page.html",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "t026/t026 ---- first HTML page.html",
+      "target": "t026/t026 ---- second HTML page.html",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "t026/t026 ---- first HTML page.html",
+      "target": "t026/t026 ---- shared behavior.js",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t026/t026 ---- first HTML page.html",
+      "target": "t026/t026 ---- shared image.svg",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "t026/t026 ---- first HTML page.html",
+      "target": "t026/t026 ---- shared style.css",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t026/t026 ---- second HTML page.html",
+      "target": "t026/t026 ---- shared behavior.js",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "t026/t026 ---- second HTML page.html",
+      "target": "t026/t026 ---- shared image.svg",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": true
+    },
+    {
+      "source": "t026/t026 ---- second HTML page.html",
+      "target": "t026/t026 ---- shared style.css",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    }
+  ]
+}

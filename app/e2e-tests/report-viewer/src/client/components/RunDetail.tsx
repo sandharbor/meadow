@@ -27,6 +27,13 @@ import {
 import HealthGraph from './HealthGraph.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
 import { isBundleMode, BUNDLE_MODE_OPTIONS, type BundleMode } from '../../bundleModes.ts'
+import {
+  EXECUTION_SURFACE_OPTIONS,
+  isExecutionSurface,
+  type ExecutionSurface,
+} from '../../../../test-runner/src/run/executionSurface.ts'
+
+type ViewTab = 'thumbs' | 'list' | 'videos' | 'timing'
 
 interface ScenarioDoc {
   id: string
@@ -60,6 +67,7 @@ interface Scenario {
   status: string
   duration: number | null
   bundleMode: BundleMode | null
+  executionSurface: ExecutionSurface
   scenarioDocIds: string[]
   bundleDocIds: string[]
   appAreaDocIds: string[]
@@ -87,7 +95,7 @@ export default function RunDetail() {
   const [appAreaDocs, setAppAreaDocs] = useState<AppAreaDoc[]>([])
   const [notes, setNotes] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'thumbs' | 'list' | 'videos' | 'timing'>('thumbs')
+  const [activeTab, setActiveTab] = useState<ViewTab>('thumbs')
   const [mediaSize, setMediaSize] = useState<0 | 1 | 2 | 3>(0)
   const [playSpeed, setPlaySpeed] = useState(DEFAULT_PLAYBACK_SPEED_PERCENT)
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
@@ -99,6 +107,8 @@ export default function RunDetail() {
   const selectedBundleIds = searchParams.getAll('bundle')
   const selectedBundles = bundleDocs.filter((d) => selectedBundleIds.includes(d.id))
   const selectedBundleModes = searchParams.getAll('mode').filter(isBundleMode)
+  const surfaceParam = searchParams.get('surface')
+  const selectedExecutionSurface = isExecutionSurface(surfaceParam) ? surfaceParam : null
 
   // Track which scenario doc IDs appear in this run's data
   const presentDocIds = new Set(
@@ -118,12 +128,16 @@ export default function RunDetail() {
       .flatMap((s) => s.scenarioDocIds)
   )
 
-  const setFilters = (next: { areaIds?: string[]; docIds?: string[]; bundleIds?: string[]; bundleModes?: BundleMode[] }) => {
+  const setFilters = (next: { areaIds?: string[]; docIds?: string[]; bundleIds?: string[]; bundleModes?: BundleMode[]; executionSurface?: ExecutionSurface | null }) => {
     const areaIds = next.areaIds ?? selectedAreaIds
     const docIds = next.docIds ?? selectedDocIds
     const bundleIds = next.bundleIds ?? selectedBundleIds
     const bundleModes = next.bundleModes ?? selectedBundleModes
+    const executionSurface = next.executionSurface === undefined
+      ? selectedExecutionSurface
+      : next.executionSurface
     setSearchParams([
+      ...(executionSurface ? [['surface', executionSurface] as [string, string]] : []),
       ...bundleModes.map((mode): [string, string] => ['mode', mode]),
       ...areaIds.map((id): [string, string] => ['area', id]),
       ...docIds.map((id): [string, string] => ['doc', id]),
@@ -219,9 +233,13 @@ export default function RunDetail() {
   // Sort scenarios by slug descending (higher t-numbers = newer scenarios first)
   const sortedScenarios = [...data.scenarios].sort((a, b) => b.slug.localeCompare(a.slug))
 
-  const modeFiltered = selectedBundleModes.length > 0
-    ? sortedScenarios.filter((s) => s.bundleMode && selectedBundleModes.includes(s.bundleMode))
+  const surfaceFiltered = selectedExecutionSurface
+    ? sortedScenarios.filter((s) => s.executionSurface === selectedExecutionSurface)
     : sortedScenarios
+
+  const modeFiltered = selectedBundleModes.length > 0
+    ? surfaceFiltered.filter((s) => s.bundleMode && selectedBundleModes.includes(s.bundleMode))
+    : surfaceFiltered
 
   const areaFiltered = selectedAreas.length > 0
     ? modeFiltered.filter((s) =>
@@ -251,6 +269,12 @@ export default function RunDetail() {
   const mediaSizeClass = ['h-32', 'h-64', 'h-96', 'h-[512px]'][mediaSize]
   // Card max-width matches video width (height × 16/9) so names don't stretch cards
   const cardMaxWidthClass = ['max-w-[228px]', 'max-w-[456px]', 'max-w-[684px]', 'max-w-[912px]'][mediaSize]
+  const displayedTab: ViewTab = selectedExecutionSurface === 'cli' && (activeTab === 'thumbs' || activeTab === 'videos')
+    ? 'list'
+    : activeTab
+  const availableTabs: ViewTab[] = selectedExecutionSurface === 'cli'
+    ? ['list', 'timing']
+    : ['thumbs', 'list', 'videos', 'timing']
 
   function getKeyFrameUrl(scenario: Scenario): string | null {
     if (!scenario.keyFrames || scenario.keyFrames.length === 0) return null
@@ -285,6 +309,47 @@ export default function RunDetail() {
         <p className="text-sm text-neutral-500 mb-4">{notes}</p>
       )}
       {!notes && <div className="mb-3" />}
+
+      {/* Execution surface is the primary division within a run. */}
+      <div className="mb-5 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Interface">
+          <span className="mr-1 text-sm font-bold text-neutral-700">Interface</span>
+          <button
+            className={`rounded-md px-4 py-1.5 text-sm font-semibold cursor-pointer transition-colors ${
+              selectedExecutionSurface === null
+                ? 'bg-neutral-800 text-white'
+                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+            }`}
+            aria-pressed={selectedExecutionSurface === null}
+            onClick={() => setFilters({ executionSurface: null })}
+          >
+            All ({data.scenarios.length})
+          </button>
+          {EXECUTION_SURFACE_OPTIONS.map((surface) => {
+            const isSelected = selectedExecutionSurface === surface.id
+            const count = data.scenarios.filter(
+              (scenario) => scenario.executionSurface === surface.id
+            ).length
+            return (
+              <button
+                key={surface.id}
+                className={`rounded-md px-4 py-1.5 text-sm font-semibold cursor-pointer transition-colors ${
+                  isSelected
+                    ? 'bg-neutral-800 text-white'
+                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                }`}
+                aria-pressed={isSelected}
+                onClick={() => setFilters({ executionSurface: surface.id })}
+              >
+                {surface.label} ({count})
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-2 text-xs text-neutral-500">
+          Browser scenarios include visual artifacts. CLI scenarios capture commands and structured output.
+        </p>
+      </div>
 
       {/* Bundle-origin mode filter */}
       <div className="mb-3">
@@ -504,11 +569,11 @@ export default function RunDetail() {
       {/* Tab bar */}
       <div className="flex items-center bg-neutral-100 border-b border-neutral-200 mb-4">
         <div className="flex">
-          {(['thumbs', 'list', 'videos', 'timing'] as const).map((tab) => (
+          {availableTabs.map((tab) => (
             <button
               key={tab}
               className={`px-4 py-1.5 text-xs font-bold cursor-pointer border-b-2 ${
-                activeTab === tab
+                displayedTab === tab
                   ? 'text-brand-500 border-brand-500'
                   : 'text-neutral-500 border-transparent hover:text-neutral-700'
               }`}
@@ -518,7 +583,7 @@ export default function RunDetail() {
             </button>
           ))}
         </div>
-        {(activeTab === 'thumbs' || activeTab === 'videos') && (
+        {(displayedTab === 'thumbs' || displayedTab === 'videos') && (
           <div className="ml-auto flex items-center gap-0.5 pr-2">
             {([0, 1, 2, 3] as const).map((size) => (
               <button
@@ -548,7 +613,7 @@ export default function RunDetail() {
       </div>
 
       {/* Thumbs tab */}
-      {activeTab === 'thumbs' && (
+      {displayedTab === 'thumbs' && (
         <div className="space-y-6">
           {sections.map(({ key, label, color, items: scenarios }) => (
             <div key={key}>
@@ -603,7 +668,7 @@ export default function RunDetail() {
       )}
 
       {/* List tab */}
-      {activeTab === 'list' && (
+      {displayedTab === 'list' && (
         <div className="space-y-6">
           {sections.map(({ key, label, color, items: scenarios }) => (
             <div key={key}>
@@ -663,7 +728,7 @@ export default function RunDetail() {
       )}
 
       {/* Videos tab */}
-      {activeTab === 'videos' && (
+      {displayedTab === 'videos' && (
         <div>
           <div className="mb-4 flex items-center gap-3">
             <button
@@ -742,7 +807,7 @@ export default function RunDetail() {
       )}
 
       {/* Timing tab */}
-      {activeTab === 'timing' && (() => {
+      {displayedTab === 'timing' && (() => {
         const timed = filteredScenarios
           .filter((s) => s.duration != null)
           .sort((a, b) => (b.duration ?? 0) - (a.duration ?? 0))

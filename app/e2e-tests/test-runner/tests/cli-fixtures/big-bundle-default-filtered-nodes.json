@@ -1,0 +1,265 @@
+{
+  "bundleSlug": "meadow-test-bundle-big",
+  "scope": "all",
+  "filtering": {
+    "combine": "default",
+    "applications": [
+      {
+        "filterId": "untracked-filter",
+        "mode": "solo"
+      },
+      {
+        "filterId": "sensitive-filter",
+        "mode": "exclude"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "bundleNodeKey": "/t004 - sensitive.md",
+      "bundleNodeKind": "file",
+      "label": "t004 - sensitive",
+      "bundleNodeName": "t004 - sensitive",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t004 - sensitive.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t012 - custom filters.md",
+      "bundleNodeKind": "file",
+      "label": "t012 - custom filters",
+      "bundleNodeName": "t012 - custom filters",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t012 - custom filters.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t012 ---- title with six numbers 123456.md",
+      "bundleNodeKind": "file",
+      "label": "t012 ---- title with six numbers 123456",
+      "bundleNodeName": "t012 ---- title with six numbers 123456",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t012 - custom filters.md",
+        "/t012 ---- title with six numbers 123456.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t016 - frontier.md",
+      "bundleNodeKind": "file",
+      "label": "t016 - frontier",
+      "bundleNodeName": "t016 - frontier",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 1,
+      "remaining_depth": 3,
+      "remaining_inlinks_depth": 99,
+      "path": [
+        "/main page.md",
+        "/t016 - frontier.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t016 ---- level 2.md",
+      "bundleNodeKind": "file",
+      "label": "t016 ---- level 2",
+      "bundleNodeName": "t016 ---- level 2",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t016 - frontier.md",
+        "/t016 ---- level 2.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t016 ---- level 3.md",
+      "bundleNodeKind": "file",
+      "label": "t016 ---- level 3",
+      "bundleNodeName": "t016 ---- level 3",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t016 - frontier.md",
+        "/t016 ---- level 2.md",
+        "/t016 ---- level 3.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t016 ---- level 4.md",
+      "bundleNodeKind": "file",
+      "label": "t016 ---- level 4",
+      "bundleNodeName": "t016 ---- level 4",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 4,
+      "remaining_depth": 0,
+      "remaining_inlinks_depth": 96,
+      "path": [
+        "/main page.md",
+        "/t016 - frontier.md",
+        "/t016 ---- level 2.md",
+        "/t016 ---- level 3.md",
+        "/t016 ---- level 4.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "/t016 ---- level 5 - frontier image.png",
+      "bundleNodeKind": "file",
+      "label": "t016 ---- level 5 - frontier image",
+      "bundleNodeName": "t016 ---- level 5 - frontier image",
+      "sourceGraphSubdirectory": "",
+      "fileType": "png",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 5,
+      "remaining_depth": -1,
+      "remaining_inlinks_depth": 95,
+      "path": [
+        "/main page.md",
+        "/t016 - frontier.md",
+        "/t016 ---- level 2.md",
+        "/t016 ---- level 3.md",
+        "/t016 ---- level 4.md",
+        "/t016 ---- level 5 - frontier image.png"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": true
+    },
+    {
+      "bundleNodeKey": "t002/extra nested/t002 ---- dup.md",
+      "bundleNodeKind": "file",
+      "label": "t002 ---- dup",
+      "bundleNodeName": "t002 ---- dup",
+      "sourceGraphSubdirectory": "t002/extra nested",
+      "fileType": "md",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 3,
+      "remaining_depth": 1,
+      "remaining_inlinks_depth": 97,
+      "path": [
+        "/main page.md",
+        "/t002 - dup pages and images.md",
+        "t002/t002 ---- points to extra nested dup.md",
+        "t002/extra nested/t002 ---- dup.md"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    },
+    {
+      "bundleNodeKey": "t006/t006 --- too-big.png",
+      "bundleNodeKind": "file",
+      "label": "t006 --- too-big",
+      "bundleNodeName": "t006 --- too-big",
+      "sourceGraphSubdirectory": "t006",
+      "fileType": "png",
+      "tracked": false,
+      "blacklisted": false,
+      "sensitive": false,
+      "depth": 2,
+      "remaining_depth": 2,
+      "remaining_inlinks_depth": 98,
+      "path": [
+        "/main page.md",
+        "/t006 - embedded media.md",
+        "t006/t006 --- too-big.png"
+      ],
+      "isFrontierNode": false,
+      "isFrontierImageExtension": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "/t012 - custom filters.md",
+      "target": "/t012 ---- title with six numbers 123456.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t016 - frontier.md",
+      "target": "/t016 ---- level 2.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t016 ---- level 2.md",
+      "target": "/t016 ---- level 3.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t016 ---- level 3.md",
+      "target": "/t016 ---- level 4.md",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    },
+    {
+      "source": "/t016 ---- level 4.md",
+      "target": "/t016 ---- level 5 - frontier image.png",
+      "bundleEdgeKind": "semanticLink",
+      "isBidirectional": false
+    }
+  ]
+}

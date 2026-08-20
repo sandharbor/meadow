@@ -40,6 +40,7 @@ import { resolveFastGitOpsBinary } from "./utils/MeadowHomeGit.js";
 import { MeadowCli } from "./utils/MeadowCli.js";
 import { MinioS3 } from "./utils/MinioS3.js";
 import type { BundleMode } from "./bundleMode.js";
+import type { ExecutionSurface } from "./executionSurface.js";
 import { isPrivateMeadowHomePath } from "../../../../shared_code/utils/privateMeadowHomePaths.js";
 import {
   createLocalRuntimeSession,
@@ -491,6 +492,8 @@ export type PreSpawnSeed = (deps: {
 export const test = base.extend<{
   /** How the scenario's bundle was originally seeded. Required in every spec. */
   bundleMode: BundleMode;
+  /** Which user-facing interface drives the scenario. */
+  executionSurface: ExecutionSurface;
   /** Keep resource-intensive specs in the same named group from running concurrently. */
   serialGroup: string | null;
   fixtureHome: string;
@@ -560,6 +563,7 @@ export const test = base.extend<{
   _serialGroupLock: void;
 }>({
   bundleMode: ["single-file", { option: true }],
+  executionSurface: ["browser", { option: true }],
   serialGroup: [null, { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   isolateSourceGraphs: [false, { option: true }],
@@ -934,7 +938,7 @@ export const test = base.extend<{
   ],
 
   artifactDir: [
-    async ({ page, testServer, minioS3, bundleMode, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
+    async ({ page, testServer, minioS3, bundleMode, executionSurface, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
       const { configDir } = testServer;
 
       // Create artifact directory
@@ -967,6 +971,10 @@ export const test = base.extend<{
       // Keep the bundle-origin classification beside the other scalar inputs
       // so assembly and the report viewer never have to infer it from names.
       writeFileSync(path.join(artifactDir, "bundle-mode.txt"), bundleMode);
+
+      // Interface classification is explicit artifact metadata. In particular,
+      // do not infer CLI scenarios from test names or the absence of video.
+      writeFileSync(path.join(artifactDir, "execution-surface.txt"), executionSurface);
 
       // --- Tick recording ---
       const tickLogPath = path.join(artifactDir, "ticks.jsonl");

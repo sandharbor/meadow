@@ -15,55 +15,15 @@ limitations under the License.
 */
 
 import type { Graph } from '../../../../../../shared_code/types/graph.js';
-import type { FileType } from '../../../../../../shared_code/types/FileType.js';
-import type { INormalBundleNodeSelector } from './filterSelectors.js';
-import type { NodeTypeFilterId } from '../types/filters.js';
-import {
-  createBundleNodeKindSelector,
-  createFileTypeNodeSelector,
-  createSelectedScopeRootSelector,
-} from './filterSelectors.js';
-
-interface NodeTypeFilterDefinition {
-  id: NodeTypeFilterId;
-  label: string;
-  createSelector: () => INormalBundleNodeSelector;
-}
+import type { NodeTypeFilterId } from '../../../../../../shared_code/types/graphInspection.js';
+import type { IBundleNodeSelector } from './filterSelectors.js';
+import { NODE_TYPE_FILTER_DEFINITIONS } from '../../../../../../shared_code/utils/builtInGraphFilters.js';
 
 export interface PresentNodeTypeFilter {
   id: NodeTypeFilterId;
   label: string;
   nodeCount: number;
 }
-
-const fileTypeDefinition = (
-  id: NodeTypeFilterId,
-  label: string,
-  fileTypes: readonly FileType[],
-): NodeTypeFilterDefinition => ({
-  id,
-  label,
-  createSelector: () => createFileTypeNodeSelector(fileTypes, label),
-});
-
-const NODE_TYPE_FILTER_DEFINITIONS: NodeTypeFilterDefinition[] = [
-  fileTypeDefinition('md', 'Markdown', ['md']),
-  fileTypeDefinition('html', 'HTML', ['html']),
-  fileTypeDefinition('js', 'JavaScript', ['js']),
-  fileTypeDefinition('css', 'CSS', ['css']),
-  fileTypeDefinition('txt', 'Text', ['txt']),
-  fileTypeDefinition('pdf', 'PDF', ['pdf']),
-  fileTypeDefinition('other', 'Other Files', ['other']),
-  fileTypeDefinition('png', 'PNG', ['png']),
-  fileTypeDefinition('jpeg', 'JPEG', ['jpg', 'jpeg']),
-  fileTypeDefinition('gif', 'GIF', ['gif']),
-  fileTypeDefinition('svg', 'SVG', ['svg']),
-  fileTypeDefinition('webp', 'WebP', ['webp']),
-  fileTypeDefinition('excalidraw', 'Excalidraw', ['excalidraw']),
-  { id: 'folder', label: 'Folder Nodes', createSelector: () => createBundleNodeKindSelector('folder') },
-  { id: 'collection', label: 'Bundle Homes', createSelector: () => createBundleNodeKindSelector('collection') },
-  { id: 'selected-scope-root', label: 'Selected Scope Roots', createSelector: createSelectedScopeRootSelector },
-];
 
 export const getPresentNodeTypeFilters = (graph: Graph): PresentNodeTypeFilter[] => (
   NODE_TYPE_FILTER_DEFINITIONS
@@ -75,7 +35,7 @@ export const getPresentNodeTypeFilters = (graph: Graph): PresentNodeTypeFilter[]
     .filter(definition => definition.nodeCount > 0)
 );
 
-export const createNodeTypeFilterSelector = (id: NodeTypeFilterId): INormalBundleNodeSelector => {
+export const createNodeTypeFilterSelector = (id: NodeTypeFilterId): IBundleNodeSelector => {
   const definition = NODE_TYPE_FILTER_DEFINITIONS.find(candidate => candidate.id === id);
   if (!definition) throw new Error(`Unknown node type filter: ${id}`);
   return definition.createSelector();

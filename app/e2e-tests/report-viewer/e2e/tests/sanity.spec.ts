@@ -16,7 +16,9 @@ limitations under the License.
 
 import { test, expect } from "@playwright/test";
 import {
+  ensureMixedSurfaceArtifact,
   ensurePublishFlowArtifact,
+  type MixedSurfaceFixture,
   type PublishFlowFixture,
 } from "../fixtures/publish-flow-fixture.js";
 
@@ -27,9 +29,11 @@ import {
 // specific tabs and behaviors.
 
 let fixture: PublishFlowFixture;
+let mixedSurfaceFixture: MixedSurfaceFixture;
 
 test.beforeAll(() => {
   fixture = ensurePublishFlowArtifact();
+  mixedSurfaceFixture = ensureMixedSurfaceArtifact(fixture);
 });
 
 test("cached publish-flow artifact has multiple ticks and multiple snapshots", async ({
@@ -120,4 +124,58 @@ test("run detail filters scenarios by bundle-origin mode", async ({ page }) => {
 
   await singleFile.click();
   await expect(page.getByText("publish-flow-uploads-files-to-minio", { exact: true }).first()).toBeVisible();
+});
+
+test("run detail treats browser and CLI as a primary interface choice", async ({ page }) => {
+  const { runId } = mixedSurfaceFixture;
+  await page.goto(`/${runId}`);
+
+  const interfacePicker = page.getByRole("group", { name: "Interface" });
+  const all = interfacePicker.getByRole("button", { name: "All (2)" });
+  const browser = interfacePicker.getByRole("button", { name: "Browser (1)" });
+  const cli = interfacePicker.getByRole("button", { name: "CLI (1)" });
+  const browserScenario = page.getByText("Browser publish flow", { exact: true }).first();
+  const cliScenario = page.getByText("CLI bundle nodes", { exact: true }).first();
+
+  await expect(all).toHaveAttribute("aria-pressed", "true");
+  await expect(browserScenario).toBeVisible();
+  await expect(cliScenario).toBeVisible();
+
+  await cli.click();
+  await expect(page).toHaveURL(new RegExp(`[?&]surface=cli(?:&|$)`));
+  await expect(cli).toHaveAttribute("aria-pressed", "true");
+  await expect(cliScenario).toBeVisible();
+  await expect(browserScenario).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "List", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Videos", exact: true })).toHaveCount(0);
+
+  await browser.click();
+  await expect(page).toHaveURL(new RegExp(`[?&]surface=browser(?:&|$)`));
+  await expect(browserScenario).toBeVisible();
+  await expect(cliScenario).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Videos", exact: true })).toBeVisible();
+
+  await all.click();
+  await expect(page).not.toHaveURL(/[?&]surface=/);
+  await expect(browserScenario).toBeVisible();
+  await expect(cliScenario).toBeVisible();
+});
+
+test("test code opens referenced CLI JSON fixtures in a modal", async ({ page }) => {
+  const { runId, cliTestSlug } = mixedSurfaceFixture;
+  await page.goto(`/${runId}/${cliTestSlug}`);
+
+  const fixtureLink = page.getByRole("button", {
+    name: "Open fixture big-bundle-all-nodes.json",
+  });
+  await expect(fixtureLink).toBeVisible();
+  await fixtureLink.click();
+
+  const dialog = page.getByRole("dialog", { name: "big-bundle-all-nodes.json" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator("pre")).toContainText('"bundle": "meadow-test-bundle-big"');
+  await expect(dialog.locator("pre")).toContainText('"tracked": true');
+
+  await dialog.getByRole("button", { name: "Close fixture" }).click();
+  await expect(dialog).toHaveCount(0);
 });

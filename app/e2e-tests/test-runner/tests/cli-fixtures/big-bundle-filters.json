@@ -1,0 +1,601 @@
+{
+  "bundleSlug": "meadow-test-bundle-big",
+  "filters": [
+    {
+      "id": "search-by-title-filter",
+      "name": "Search By Title",
+      "description": "Find nodes whose titles contain a search string.",
+      "kind": "filter",
+      "enabled": true,
+      "applicable": false,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "type": "titleSearch"
+        }
+      ],
+      "actions": [
+        {
+          "type": "highlight",
+          "color": "#009688",
+          "isDashed": false
+        },
+        {
+          "type": "show_titles"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "query",
+          "type": "string",
+          "required": true,
+          "description": "Case-insensitive title substring containing at least two characters."
+        }
+      ],
+      "scope": "bundle"
+    },
+    {
+      "id": "untracked-filter",
+      "name": "Untracked",
+      "description": "Pages not yet tracked for publishing. New source pages appear here after they are added to the source directory",
+      "kind": "filter",
+      "enabled": false,
+      "applicable": true,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "type": "tracking",
+          "tracked": false
+        }
+      ],
+      "actions": [
+        {
+          "type": "highlight",
+          "color": "#2196F3",
+          "isDashed": true
+        }
+      ],
+      "scope": "bundle"
+    },
+    {
+      "id": "sensitive-filter",
+      "name": "Sensitive",
+      "description": "Pages with meadow-sensitive: true property in the source page. Sensitive pages are automatically excluded from bulk tracking",
+      "kind": "filter",
+      "enabled": true,
+      "applicable": true,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "type": "sensitive",
+          "sensitive": true
+        }
+      ],
+      "actions": [
+        {
+          "type": "highlight",
+          "color": "#9C27B0",
+          "isDashed": false
+        }
+      ],
+      "scope": "bundle"
+    },
+    {
+      "id": "node-types-filter",
+      "name": "Types",
+      "description": "Filter nodes by the roles and file types present in this graph",
+      "kind": "group",
+      "enabled": false,
+      "applicable": false,
+      "actions": [],
+      "scope": "bundle",
+      "children": [
+        {
+          "id": "node-types-filter-md",
+          "name": "Markdown",
+          "description": "Nodes with the Markdown type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "md"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-html",
+          "name": "HTML",
+          "description": "Nodes with the HTML type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "html"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-js",
+          "name": "JavaScript",
+          "description": "Nodes with the JavaScript type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "js"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-css",
+          "name": "CSS",
+          "description": "Nodes with the CSS type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "css"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-txt",
+          "name": "Text",
+          "description": "Nodes with the Text type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "txt"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-pdf",
+          "name": "PDF",
+          "description": "Nodes with the PDF type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "pdf"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-other",
+          "name": "Other Files",
+          "description": "Nodes with the Other Files type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "other"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-png",
+          "name": "PNG",
+          "description": "Nodes with the PNG type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "png"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-jpeg",
+          "name": "JPEG",
+          "description": "Nodes with the JPEG type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "jpg",
+                "jpeg"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-gif",
+          "name": "GIF",
+          "description": "Nodes with the GIF type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "gif"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-svg",
+          "name": "SVG",
+          "description": "Nodes with the SVG type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "svg"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-webp",
+          "name": "WebP",
+          "description": "Nodes with the WebP type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "webp"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-excalidraw",
+          "name": "Excalidraw",
+          "description": "Nodes with the Excalidraw type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "fileType",
+              "fileTypes": [
+                "excalidraw"
+              ]
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-folder",
+          "name": "Folder Nodes",
+          "description": "Nodes with the Folder Nodes type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "bundleNodeKind",
+              "bundleNodeKind": "folder"
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-collection",
+          "name": "Bundle Homes",
+          "description": "Nodes with the Bundle Homes type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "bundleNodeKind",
+              "bundleNodeKind": "collection"
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        },
+        {
+          "id": "node-types-filter-selected-scope-root",
+          "name": "Selected Scope Roots",
+          "description": "Nodes with the Selected Scope Roots type or role.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "selectedScopeRoot"
+            }
+          ],
+          "actions": [],
+          "scope": "bundle"
+        }
+      ]
+    },
+    {
+      "id": "folder-filter",
+      "name": "Folders",
+      "description": "Filter pages by their folder in the source graph",
+      "kind": "group",
+      "enabled": false,
+      "applicable": false,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "type": "folder"
+        }
+      ],
+      "actions": [],
+      "parameters": [
+        {
+          "name": "path",
+          "type": "string",
+          "required": true,
+          "description": "A source-graph folder path; an empty path means the root folder."
+        }
+      ],
+      "scope": "bundle"
+    },
+    {
+      "id": "blacklisted-filter",
+      "name": "Blacklisted",
+      "description": "Tracked pages that are not published to the bundle. Also, their directly-owned children are removed from the graph",
+      "kind": "filter",
+      "enabled": false,
+      "applicable": true,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "type": "tracking",
+          "listType": "blacklist"
+        }
+      ],
+      "actions": [
+        {
+          "type": "highlight",
+          "color": "#F44336",
+          "isDashed": false
+        }
+      ],
+      "scope": "bundle"
+    },
+    {
+      "id": "overrides-filter",
+      "name": "Depth Override",
+      "description": "Inherited depth is overridden",
+      "kind": "filter",
+      "enabled": false,
+      "applicable": true,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "type": "depthOverride"
+        }
+      ],
+      "actions": [
+        {
+          "type": "highlight",
+          "color": "#33FFF9",
+          "isDashed": false
+        }
+      ],
+      "scope": "bundle"
+    },
+    {
+      "id": "gap-filter",
+      "name": "Gap",
+      "description": "Find nodes whose source-graph links are missing from the working graph",
+      "kind": "group",
+      "enabled": false,
+      "applicable": false,
+      "actions": [],
+      "scope": "bundle",
+      "children": [
+        {
+          "id": "outlink-gap-filter",
+          "name": "Outlink Gap",
+          "description": "Nodes with at least five source-graph outlinks missing from the working graph.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "outlinkGap",
+              "threshold": 5
+            }
+          ],
+          "actions": [
+            {
+              "type": "highlight",
+              "color": "#CDDC39",
+              "isDashed": false
+            }
+          ],
+          "scope": "bundle"
+        },
+        {
+          "id": "inlink-gap-filter",
+          "name": "Inlink Gap",
+          "description": "Nodes with at least five source-graph inlinks missing from the working graph.",
+          "kind": "filter",
+          "enabled": false,
+          "applicable": true,
+          "selectorApplicationCriteria": "union",
+          "selectors": [
+            {
+              "type": "inlinkGap",
+              "threshold": 5
+            }
+          ],
+          "actions": [
+            {
+              "type": "highlight",
+              "color": "#E91E63",
+              "isDashed": false
+            }
+          ],
+          "scope": "bundle"
+        }
+      ]
+    },
+    {
+      "id": "frontier-filter",
+      "name": "Frontier",
+      "description": "Show me what is beyond the graph!",
+      "kind": "filter",
+      "enabled": false,
+      "applicable": true,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "type": "frontier"
+        }
+      ],
+      "actions": [
+        {
+          "type": "highlight",
+          "color": "#FF69B4",
+          "isDashed": false
+        }
+      ],
+      "scope": "bundle"
+    },
+    {
+      "id": "custom-default-daily-notes-sensitive",
+      "name": "Daily Notes (Sensitive)",
+      "description": "Daily notes often contain tasks or content that is sensitive",
+      "scope": "global",
+      "kind": "filter",
+      "enabled": true,
+      "applicable": true,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "caseSensitive": false,
+          "field": "path",
+          "matchType": "regex",
+          "value": "\\d{4}-\\d{2}-\\d{2}\\.md$"
+        }
+      ],
+      "actions": [
+        {
+          "color": "#ff69b4",
+          "isDashed": true,
+          "type": "highlight"
+        },
+        {
+          "type": "mark_sensitive"
+        }
+      ]
+    },
+    {
+      "id": "custom-filter-1750826014295-r7b2079ch",
+      "name": "titles with six numbers",
+      "description": "Custom graph filter.",
+      "scope": "bundle",
+      "kind": "filter",
+      "enabled": true,
+      "applicable": true,
+      "selectorApplicationCriteria": "union",
+      "selectors": [
+        {
+          "field": "title",
+          "matchType": "regex",
+          "value": "\\d{6}",
+          "caseSensitive": false
+        }
+      ],
+      "actions": [
+        {
+          "type": "highlight",
+          "color": "#00ffd5",
+          "isDashed": false
+        },
+        {
+          "type": "mark_sensitive",
+          "color": "#FFD700",
+          "isDashed": false
+        }
+      ]
+    }
+  ]
+}

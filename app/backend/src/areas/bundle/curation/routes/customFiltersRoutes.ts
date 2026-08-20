@@ -27,6 +27,7 @@ import {
   requireValidDocument,
   writeDurableDocument,
 } from '../../../../../../shared_code/utils/durableDocument.js';
+import { getGraphFilterCatalog } from '../services/graphFilterService.js';
 
 const router = express.Router();
 
@@ -48,6 +49,23 @@ const saveBundleCustomFilters = (bundleSlug: string, config: BundleCustomFilters
     value: { ...config, version: '1.0.0' },
     codec: bundleCustomFiltersCodec,
   });
+};
+
+export const loadCustomFiltersForBundle = (bundleSlug: string): CustomFilterConfig[] => {
+  const globalConfig = loadGlobalCustomFilters(getConfigDirectory());
+  const bundleConfig = loadBundleCustomFilters(bundleSlug);
+  const bundleDirectory = getBundleDirectory(bundleSlug);
+  const bundleCf = loadBundleConfig(bundleDirectory);
+  const disabledGlobalFilters = bundleCf.disabledGlobalFilters || [];
+
+  return [
+    ...globalConfig.filters.map(filter => ({
+      ...filter,
+      scope: 'global' as const,
+      enabled: !disabledGlobalFilters.includes(filter.id),
+    })),
+    ...bundleConfig.filters.map(filter => ({ ...filter, scope: 'bundle' as const })),
+  ];
 };
 
 // Middleware to validate bundleSlug
@@ -76,29 +94,14 @@ const asyncHandler = (fn: (req: express.Request, res: express.Response, next: ex
 // Get all custom filters for a bundle (includes global filters)
 router.get('/bundles/:bundleSlug/curation/custom-filters', validateBundleSlug, asyncHandler((req, res) => {
   const { bundleSlug } = req.params;
-  
-  const configDir = getConfigDirectory();
-  const globalConfig = loadGlobalCustomFilters(configDir);
-  const bundleConfig = loadBundleCustomFilters(bundleSlug);
 
-  // Load the bundle configuration to check for disabled global filters
-  const bundleDirectory = getBundleDirectory(bundleSlug);
-  const bundleCf = loadBundleConfig(bundleDirectory);
-  const disabledGlobalFilters = bundleCf.disabledGlobalFilters || [];
-  
-  // Include all global filters, but mark disabled ones as enabled: false
-  const globalFiltersWithDisabledState = globalConfig.filters.map(f => ({
-    ...f,
-    scope: 'global' as const,
-    enabled: !disabledGlobalFilters.includes(f.id)
-  }));
-  
-  const allFilters = [
-    ...globalFiltersWithDisabledState,
-    ...bundleConfig.filters.map(f => ({ ...f, scope: 'bundle' as const }))
-  ];
-  
-  res.json({ filters: allFilters });
+  res.json({ filters: loadCustomFiltersForBundle(bundleSlug) });
+}));
+
+// Discover every built-in selector plus the global and bundle custom filters.
+router.get('/bundles/:bundleSlug/curation/filters', validateBundleSlug, asyncHandler((req, res) => {
+  const { bundleSlug } = req.params;
+  res.json(getGraphFilterCatalog(bundleSlug, loadCustomFiltersForBundle(bundleSlug)));
 }));
 
 // Get global custom filters

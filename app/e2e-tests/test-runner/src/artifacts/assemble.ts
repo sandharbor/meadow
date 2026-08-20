@@ -32,6 +32,14 @@ import * as bundleDocExports from "../bundle-docs/index.ts";
 import * as appAreaDocExports from "../app-area-docs/index.ts";
 import { deriveAppAreaDocIds } from "../app-area-docs/index.ts";
 import { isBundleMode, type BundleMode } from "../run/bundleMode.ts";
+import {
+  isExecutionSurface,
+  type ExecutionSurface,
+} from "../run/executionSurface.ts";
+import {
+  collectReferencedCliFixtures,
+  type TestSourceFixture,
+} from "./testSourceFixtures.ts";
 
 // Build a map from export name (e.g. "htmlGeneration") to doc ID (e.g. "html-generation")
 const exportNameToDocId = new Map<string, string>();
@@ -246,7 +254,9 @@ interface Manifest {
   uncommittedEntries: UncommittedEntry[];
   testSourceFile: string;
   testSource: string;
+  testSourceFixtures: TestSourceFixture[];
   bundleMode: BundleMode | null;
+  executionSurface: ExecutionSurface;
   scenarioDocIds: string[];
   bundleDocIds: string[];
   appAreaDocIds: string[];
@@ -329,6 +339,7 @@ interface ScenarioReportMeta {
     testName: string;
     duration: number | null;
     bundleMode: BundleMode | null;
+    executionSurface: ExecutionSurface;
     scenarioDocIds: string[];
     bundleDocIds: string[];
     appAreaDocIds: string[];
@@ -1004,7 +1015,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, startTime, endTime, logs, uncommittedEntries, bundleMode, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
+  const { testName, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1017,7 +1028,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { testName, duration, bundleMode, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { testName, duration, bundleMode, executionSurface, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1229,6 +1240,9 @@ export function assembleTestArtifacts(testDir: string): void {
     }
     return { testSourceFile: sourceFile, testSource: source };
   });
+  const testSourceFixtures = measured(assemblySteps, "read test source fixtures", () =>
+    collectReferencedCliFixtures(testSourceFile, testSource)
+  );
 
   // Read uncommitted file log and do a final check on the copied repo
   const uncommittedEntries = measured(assemblySteps, "read uncommitted log", () =>
@@ -1269,6 +1283,18 @@ export function assembleTestArtifacts(testDir: string): void {
     return value;
   });
 
+  const executionSurface = measured(assemblySteps, "read execution surface", () => {
+    const executionSurfacePath = path.join(testDir, "execution-surface.txt");
+    if (!existsSync(executionSurfacePath)) return "browser";
+    const value = readFileSync(executionSurfacePath, "utf8").trim();
+    if (!isExecutionSurface(value)) {
+      throw new Error(
+        `Invalid execution surface in ${executionSurfacePath}: ${JSON.stringify(value)}`
+      );
+    }
+    return value;
+  });
+
   // Extract scenario doc IDs, app area doc IDs, and bundle doc IDs from test source imports.
   const { scenarioDocIds, bundleDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
     const scenarioIds = extractScenarioDocIds(testSource);
@@ -1297,7 +1323,7 @@ export function assembleTestArtifacts(testDir: string): void {
   );
 
   // Write manifest
-  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, bundleMode, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, bundleMode, executionSurface, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
   const manifestJson = measured(assemblySteps, "manifest stringify", () =>
     JSON.stringify(manifest, null, 2)
   );

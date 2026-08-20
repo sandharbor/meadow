@@ -37,6 +37,16 @@ interface BundleMutationResult {
   [key: string]: unknown;
 }
 
+type GraphScope = "all" | "final";
+type FilterCombination = "default" | "union" | "intersection" | "difference";
+
+interface BundleNodesOptions {
+  slug: string;
+  scope: GraphScope;
+  filters: string[];
+  combine: FilterCombination;
+}
+
 function showHelp(): void {
   console.log(`meadow - command-line access to a running Meadow application
 
@@ -45,6 +55,8 @@ Usage:
   meadow bundles list --archived
   meadow bundles archive <bundle-slug>
   meadow bundles unarchive <bundle-slug>
+  meadow bundle nodes <bundle-slug> --scope <all|final>
+  meadow bundle filters <bundle-slug>
   meadow help
 
 Commands:
@@ -52,9 +64,50 @@ Commands:
   bundles list --archived          List archived bundles as JSON.
   bundles archive <bundle-slug>    Archive a bundle and return JSON.
   bundles unarchive <bundle-slug>  Unarchive a bundle and return JSON.
+  bundle nodes                     Describe a bundle's working graph as JSON.
+  bundle filters                   List filters available to a bundle as JSON.
 
 Meadow connects to the local runtime started by the desktop application or
 development server. JSON is written to standard output.`);
+}
+
+function showBundleHelp(): void {
+  console.log(`Usage:
+  meadow bundle nodes <bundle-slug> --scope <all|final> [options]
+  meadow bundle filters <bundle-slug>
+
+Commands:
+  nodes     Return deterministic nodes and edges from the working graph.
+  filters   List stable filter IDs, descriptions, selectors, actions, and scope.
+
+Run 'meadow bundle nodes --help' for graph filtering options.`);
+}
+
+function showBundleNodesHelp(): void {
+  console.log(`Usage:
+  meadow bundle nodes <bundle-slug> --scope <all|final> [options]
+
+Required:
+  --scope all                     Include every node in the raw working graph.
+  --scope final                   Include tracked, non-blacklisted, non-frontier nodes.
+
+Filtering:
+  --filter <filter-id>=solo       Keep nodes matched by a filter. Repeatable.
+  --filter <filter-id>=exclude    Remove nodes matched by a filter. Repeatable.
+  --combine <operation>           default, union, intersection, or difference.
+
+The default combination matches Meadow's UI: solos are unioned, exclusions are
+intersected, and the two resulting sets are intersected. Difference is evaluated
+in command-line order. Run 'meadow bundle filters <bundle-slug>' to discover IDs.`);
+}
+
+function showBundleFiltersHelp(): void {
+  console.log(`Usage:
+  meadow bundle filters <bundle-slug>
+
+Returns built-in filters, selector groups, and custom filters as JSON. Each
+entry states whether it is bundle-scoped or global and whether it can be passed
+directly to 'meadow bundle nodes --filter'.`);
 }
 
 function resolveSession(): LocalRuntimeSession {
@@ -86,7 +139,14 @@ async function requestJson(
     headers: { "x-meadow-capability": session.capability },
   });
   if (!response.ok) {
-    throw new Error(`Meadow API request failed (${response.status}).`);
+    let detail = "";
+    try {
+      const body = await response.json() as { error?: unknown };
+      if (typeof body.error === "string") detail = ` ${body.error}`;
+    } catch {
+      // The status remains useful when an older runtime returns no JSON body.
+    }
+    throw new Error(`Meadow API request failed (${response.status}).${detail}`);
   }
   return response.json() as Promise<unknown>;
 }
@@ -119,6 +179,82 @@ async function setBundleArchived(slug: string, archived: boolean): Promise<void>
   console.log(JSON.stringify(response, null, 2));
 }
 
+function parseBundleNodesOptions(args: string[]): BundleNodesOptions {
+  const slug = args[0];
+  if (!slug || slug.startsWith("--")) {
+    throw new Error("Usage: meadow bundle nodes <bundle-slug> --scope <all|final>");
+  }
+
+  let scope: GraphScope | undefined;
+  let combine: FilterCombination = "default";
+  const filters: string[] = [];
+  for (let index = 1; index < args.length; index += 1) {
+    const option = args[index];
+    const value = args[index + 1];
+    if (option === "--scope") {
+      if (scope !== undefined) throw new Error("--scope may only be provided once");
+      if (value !== "all" && value !== "final") {
+        throw new Error("--scope must be exactly 'all' or 'final'");
+      }
+      scope = value;
+      index += 1;
+      continue;
+    }
+    if (option === "--filter") {
+      if (!value || value.startsWith("--")) {
+        throw new Error("--filter requires '<filter-id>=solo' or '<filter-id>=exclude'");
+      }
+      const separatorIndex = value.lastIndexOf("=");
+      const mode = value.slice(separatorIndex + 1);
+      if (separatorIndex <= 0 || (mode !== "solo" && mode !== "exclude")) {
+        throw new Error("--filter requires '<filter-id>=solo' or '<filter-id>=exclude'");
+      }
+      filters.push(value);
+      index += 1;
+      continue;
+    }
+    if (option === "--combine") {
+      if (
+        value !== "default"
+        && value !== "union"
+        && value !== "intersection"
+        && value !== "difference"
+      ) {
+        throw new Error("--combine must be default, union, intersection, or difference");
+      }
+      combine = value;
+      index += 1;
+      continue;
+    }
+    throw new Error(`Unknown option: ${option}`);
+  }
+
+  if (!scope) throw new Error("--scope is required and must be 'all' or 'final'");
+  if (filters.length === 0 && combine !== "default") {
+    throw new Error("--combine requires at least one --filter");
+  }
+  return { slug, scope, filters, combine };
+}
+
+async function describeBundleNodes(options: BundleNodesOptions): Promise<void> {
+  const query = new URLSearchParams({ scope: options.scope });
+  options.filters.forEach(filter => query.append("filter", filter));
+  if (options.combine !== "default") query.set("combine", options.combine);
+  const response = await requestJson(
+    resolveSession(),
+    `/bundles/${encodeURIComponent(options.slug)}/curation/graph-description?${query.toString()}`,
+  );
+  console.log(JSON.stringify(response, null, 2));
+}
+
+async function listBundleFilters(slug: string): Promise<void> {
+  const response = await requestJson(
+    resolveSession(),
+    `/bundles/${encodeURIComponent(slug)}/curation/filters`,
+  );
+  console.log(JSON.stringify(response, null, 2));
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.length === 0 || args[0] === "help" || args[0] === "--help" || args[0] === "-h") {
@@ -133,6 +269,32 @@ async function main(): Promise<void> {
       throw new Error(`Unknown option: ${unknown[0]}`);
     }
     await listBundles(options.includes("--archived"));
+    return;
+  }
+
+  if (args[0] === "bundle" && (args.length === 1 || args[1] === "--help" || args[1] === "-h")) {
+    showBundleHelp();
+    return;
+  }
+
+  if (args[0] === "bundle" && args[1] === "nodes") {
+    if (args[2] === "--help" || args[2] === "-h") {
+      showBundleNodesHelp();
+      return;
+    }
+    await describeBundleNodes(parseBundleNodesOptions(args.slice(2)));
+    return;
+  }
+
+  if (args[0] === "bundle" && args[1] === "filters") {
+    if (args[2] === "--help" || args[2] === "-h") {
+      showBundleFiltersHelp();
+      return;
+    }
+    if (args.length !== 3 || args[2].trim().length === 0) {
+      throw new Error("Usage: meadow bundle filters <bundle-slug>");
+    }
+    await listBundleFilters(args[2]);
     return;
   }
 

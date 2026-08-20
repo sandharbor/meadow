@@ -14,4 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export * from '../../../../../../shared_code/types/filterExpression.js';
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+const CLI_FIXTURES_DIRECTORY = path.join(import.meta.dirname, "cli-fixtures");
+
+export function readCliFixture(name: string): string {
+  return readFileSync(path.join(CLI_FIXTURES_DIRECTORY, name), "utf8");
+}

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { createHash } from "crypto";
 import { execFileSync } from "child_process";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import os from "os";
 import path from "path";
 
@@ -53,6 +53,12 @@ export interface PublishFlowFixture {
   runId: string;
   testSlug: string;
   artifactDir: string;
+}
+
+export interface MixedSurfaceFixture {
+  runId: string;
+  browserTestSlug: string;
+  cliTestSlug: string;
 }
 
 function computeCacheKey(): string {
@@ -139,4 +145,75 @@ export function ensurePublishFlowArtifact(): PublishFlowFixture {
     testSlug: PUBLISH_FLOW_TEST_SLUG,
     artifactDir: path.join(ARTIFACTS_ROOT, runId, PUBLISH_FLOW_TEST_SLUG),
   };
+}
+
+function classifyScenario(
+  scenarioDir: string,
+  executionSurface: "browser" | "cli",
+  testName: string,
+  sourceFixture?: { name: string; content: string },
+): void {
+  const manifestPath = path.join(scenarioDir, "manifest.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
+  manifest.executionSurface = executionSurface;
+  manifest.testName = testName;
+  if (sourceFixture) {
+    manifest.testSource = [
+      'import { readCliFixture } from "./cli-fixture-utils.js";',
+      '',
+      `const expected = readCliFixture("${sourceFixture.name}");`,
+      'expect(actual).toBe(expected);',
+      '',
+    ].join("\n");
+    manifest.testSourceFixtures = [sourceFixture];
+  }
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+  const reportMetaPath = path.join(scenarioDir, "report-meta.json");
+  const reportMeta = JSON.parse(readFileSync(reportMetaPath, "utf8")) as {
+    scenarioInfo: Record<string, unknown>;
+  };
+  reportMeta.scenarioInfo.executionSurface = executionSurface;
+  reportMeta.scenarioInfo.testName = testName;
+  writeFileSync(reportMetaPath, JSON.stringify(reportMeta, null, 2));
+  writeFileSync(path.join(scenarioDir, "execution-surface.txt"), executionSurface);
+}
+
+/**
+ * Materialize a cheap two-scenario run for exercising the report viewer's
+ * primary Browser / CLI distinction. Both copies originate from the same
+ * real assembled scenario, then differ only in explicit interface metadata.
+ */
+export function ensureMixedSurfaceArtifact(
+  source: PublishFlowFixture,
+): MixedSurfaceFixture {
+  const runId = `${source.runId}-surfaces-v2`;
+  const runDir = path.join(ARTIFACTS_ROOT, runId);
+  const browserTestSlug = "browser-publish-flow";
+  const cliTestSlug = "cli-bundle-nodes";
+  const browserDir = path.join(runDir, browserTestSlug);
+  const cliDir = path.join(runDir, cliTestSlug);
+
+  if (!existsSync(path.join(browserDir, "status.txt"))) {
+    mkdirSync(runDir, { recursive: true });
+    cpSync(source.artifactDir, browserDir, { recursive: true });
+    classifyScenario(browserDir, "browser", "Browser publish flow");
+  }
+
+  if (!existsSync(path.join(cliDir, "status.txt"))) {
+    mkdirSync(runDir, { recursive: true });
+    cpSync(source.artifactDir, cliDir, { recursive: true });
+    classifyScenario(cliDir, "cli", "CLI bundle nodes", {
+      name: "big-bundle-all-nodes.json",
+      content: JSON.stringify({
+        bundle: "meadow-test-bundle-big",
+        scope: "all",
+        nodes: [{ id: "node-1", tracked: true }],
+      }),
+    });
+    rmSync(path.join(cliDir, "video.webm"), { force: true });
+  }
+
+  writeFileSync(path.join(runDir, "run-notes.txt"), "Mixed browser and CLI report-viewer fixture\n");
+  return { runId, browserTestSlug, cliTestSlug };
 }
