@@ -1251,11 +1251,9 @@ const BundleList: React.FC = () => {
           <p className="text-neutral-700">
             Meadow will install a command named <code className="rounded bg-neutral-100 px-1.5 py-0.5 text-sm">meadow</code> in a standard command directory on your shell PATH. Meadow prefers a user-writable directory; macOS may ask for administrator approval if only a system directory is available.
           </p>
-          <p className="text-neutral-700">The command currently lists bundles as JSON:</p>
-          <div className="space-y-2 rounded-lg bg-neutral-950 p-3 font-mono text-sm text-neutral-100">
-            <div>meadow bundles list</div>
-            <div>meadow bundles list --archived</div>
-          </div>
+          <p className="text-neutral-700">
+            After installation, run <code className="rounded bg-neutral-100 px-1.5 py-0.5 text-sm">meadow --help</code> to see the available commands.
+          </p>
           {cliInstallResult && (
             <div
               className={`rounded-lg border px-3 py-2 text-sm ${
