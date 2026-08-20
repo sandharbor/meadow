@@ -58,6 +58,12 @@ let meadowExtensionDocs: ScenarioDocLike[] = [];
 const ARTIFACTS_ROOT = path.join(os.homedir(), "meadow-e2e-artifacts");
 const CURRENT_ARTIFACTS_ROOT = path.join(ARTIFACTS_ROOT, "current");
 const ARCHIVED_ARTIFACTS_ROOT = path.join(ARTIFACTS_ROOT, "archived");
+const AGENT_EVAL_ARTIFACTS_ROOT = process.env.AGENT_EVAL_ARTIFACTS_ROOT
+  || path.join(os.homedir(), "meadow-agent-eval-artifacts");
+const CURRENT_AGENT_EVAL_ARTIFACTS_ROOT = path.join(
+  AGENT_EVAL_ARTIFACTS_ROOT,
+  "current",
+);
 
 const app = express();
 
@@ -108,6 +114,123 @@ function safeScenarioDir(runId: string, testSlug: string): string | null {
 
 function safeArchivedRunDir(runId: string): string {
   return path.join(ARCHIVED_ARTIFACTS_ROOT, runId);
+}
+
+function isSafeArtifactSegment(value: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+function safeAgentRunDir(runId: string): string | null {
+  if (!isSafeArtifactSegment(runId)) return null;
+  const dir = path.join(CURRENT_AGENT_EVAL_ARTIFACTS_ROOT, runId);
+  if (!dir.startsWith(CURRENT_AGENT_EVAL_ARTIFACTS_ROOT + path.sep)) return null;
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return null;
+  return dir;
+}
+
+function safeAgentTrialDir(runId: string, trialId: string): string | null {
+  const runDir = safeAgentRunDir(runId);
+  if (!runDir || !isSafeArtifactSegment(trialId)) return null;
+  const dir = path.join(runDir, trialId);
+  if (!dir.startsWith(runDir + path.sep)) return null;
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return null;
+  return dir;
+}
+
+function readJsonArtifact<T>(filePath: string): T | null {
+  if (!existsSync(filePath)) return null;
+  try {
+    return JSON.parse(readFileSync(filePath, "utf8")) as T;
+  } catch {
+    return null;
+  }
+}
+
+function readTextArtifact(filePath: string): string | null {
+  if (!existsSync(filePath)) return null;
+  try {
+    return readFileSync(filePath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+interface AgentEvalRunSummary {
+  schemaVersion: number;
+  kind: "agent-eval-run";
+  runId: string;
+  scenario: { id: string; version: number; publishing?: boolean };
+  trials: number;
+  passed: number;
+  required: number;
+  accepted: boolean;
+  trialResults: {
+    runId: string;
+    passed: boolean;
+    assistanceClass: string;
+    terminationReason: string;
+    elapsedMs: number;
+  }[];
+}
+
+interface AgentEvalManifest {
+  startedAt?: string;
+  finishedAt?: string;
+  passed?: boolean;
+  assistanceClass?: string;
+  terminationReason?: string;
+  safetyViolation?: boolean;
+  profiles?: Record<string, unknown>;
+  adapterVersions?: Record<string, unknown>;
+  revisions?: Record<string, string>;
+  fixture?: Record<string, unknown>;
+}
+
+interface AgentEvalMetrics {
+  commandsAttempted?: number;
+  failedCommands?: number;
+  helpInvocations?: number;
+  retries?: number;
+  coachingTurns?: number;
+  rescueTurns?: number;
+  elapsedMs?: number;
+  [key: string]: unknown;
+}
+
+interface AgentOracleAssertion {
+  id?: string;
+  passed?: boolean;
+  safety?: boolean;
+  [key: string]: unknown;
+}
+
+interface AgentArtifactFile {
+  path: string;
+  category: string;
+  size: number;
+}
+
+function listAgentArtifactFiles(trialDir: string): AgentArtifactFile[] {
+  const files: AgentArtifactFile[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile()) {
+        const relativePath = path.relative(trialDir, fullPath);
+        files.push({
+          path: relativePath,
+          category: relativePath.includes(path.sep)
+            ? relativePath.split(path.sep)[0]
+            : "trial",
+          size: statSync(fullPath).size,
+        });
+      }
+    }
+  };
+  walk(trialDir);
+  return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 function archiveRun(runId: string): string {
@@ -218,6 +341,160 @@ app.get("/api/bundle-docs", (_req, res) => {
 // GET /api/app-area-docs — return all app area doc definitions
 app.get("/api/app-area-docs", (_req, res) => {
   res.json(allAppAreaDocs);
+});
+
+// --- Agent evaluation APIs ---
+
+// Agent evaluations have a sibling artifact schema. They share this review
+// surface, but remain distinct from browser/CLI E2E scenario artifacts.
+app.get("/api/agent-runs", (_req, res) => {
+  if (!existsSync(CURRENT_AGENT_EVAL_ARTIFACTS_ROOT)) {
+    return res.json([]);
+  }
+
+  const runs = readdirSync(CURRENT_AGENT_EVAL_ARTIFACTS_ROOT, {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("__"))
+    .map((entry) => {
+      const runDir = path.join(CURRENT_AGENT_EVAL_ARTIFACTS_ROOT, entry.name);
+      const summary = readJsonArtifact<AgentEvalRunSummary>(
+        path.join(runDir, "run-summary.json"),
+      );
+      if (!summary || summary.kind !== "agent-eval-run") return null;
+
+      const manifests = summary.trialResults.map((result) => {
+        const trialId = path.basename(result.runId);
+        return readJsonArtifact<AgentEvalManifest>(
+          path.join(runDir, trialId, "manifest.json"),
+        );
+      });
+      const startedAt = manifests
+        .map((manifest) => manifest?.startedAt)
+        .filter((value): value is string => Boolean(value))
+        .sort()[0] ?? null;
+
+      return {
+        ...summary,
+        startedAt,
+        safetyViolations: manifests.filter(
+          (manifest) => manifest?.safetyViolation,
+        ).length,
+        assistanceClasses: summary.trialResults.reduce<Record<string, number>>(
+          (counts, result) => {
+            counts[result.assistanceClass] = (counts[result.assistanceClass] ?? 0) + 1;
+            return counts;
+          },
+          {},
+        ),
+      };
+    })
+    .filter((run) => run !== null)
+    .sort((a, b) => b.runId.localeCompare(a.runId));
+
+  res.json(runs);
+});
+
+app.get("/api/agent-runs/:runId", (req, res) => {
+  const runDir = safeAgentRunDir(req.params.runId);
+  if (!runDir) return res.status(404).json({ error: "Agent run not found" });
+
+  const summary = readJsonArtifact<AgentEvalRunSummary>(
+    path.join(runDir, "run-summary.json"),
+  );
+  if (!summary || summary.kind !== "agent-eval-run") {
+    return res.status(404).json({ error: "Agent run summary not found" });
+  }
+
+  const trials = summary.trialResults.map((result) => {
+    const trialId = path.basename(result.runId);
+    const trialDir = safeAgentTrialDir(req.params.runId, trialId);
+    const manifest = trialDir
+      ? readJsonArtifact<AgentEvalManifest>(path.join(trialDir, "manifest.json"))
+      : null;
+    const metrics = trialDir
+      ? readJsonArtifact<AgentEvalMetrics>(path.join(trialDir, "metrics.json"))
+      : null;
+    const oracle = trialDir
+      ? readJsonArtifact<AgentOracleAssertion[]>(path.join(trialDir, "oracle.json"))
+      : null;
+    const assertions = oracle ?? [];
+
+    return {
+      trialId,
+      ...result,
+      manifest,
+      metrics,
+      oracle: {
+        total: assertions.length,
+        passed: assertions.filter((assertion) => assertion.passed).length,
+        failed: assertions.filter((assertion) => !assertion.passed).length,
+        safetyFailed: assertions.filter(
+          (assertion) => assertion.safety && !assertion.passed,
+        ).length,
+      },
+    };
+  });
+
+  res.json({ summary, trials });
+});
+
+app.get("/api/agent-runs/:runId/:trialId", (req, res) => {
+  const trialDir = safeAgentTrialDir(req.params.runId, req.params.trialId);
+  if (!trialDir) return res.status(404).json({ error: "Agent trial not found" });
+
+  const manifest = readJsonArtifact<Record<string, unknown>>(
+    path.join(trialDir, "manifest.json"),
+  );
+  const trial = readJsonArtifact<Record<string, unknown>>(
+    path.join(trialDir, "trial.json"),
+  );
+  if (!manifest || !trial) {
+    return res.status(404).json({ error: "Agent trial record is incomplete" });
+  }
+
+  res.json({
+    manifest,
+    trial,
+    oracle: readJsonArtifact<AgentOracleAssertion[]>(
+      path.join(trialDir, "oracle.json"),
+    ) ?? [],
+    metrics: readJsonArtifact<Record<string, unknown>>(
+      path.join(trialDir, "metrics.json"),
+    ),
+    assessment: readJsonArtifact<Record<string, unknown>>(
+      path.join(trialDir, "assessment.json"),
+    ),
+    retrospective: readTextArtifact(path.join(trialDir, "retrospective.md")),
+    terminalTranscript: readTextArtifact(
+      path.join(trialDir, "terminal-transcript.txt"),
+    ),
+    managerTerminalTranscript: readTextArtifact(
+      path.join(trialDir, "manager-terminal-transcript.txt"),
+    ),
+    artifactFiles: listAgentArtifactFiles(trialDir),
+  });
+});
+
+app.get("/api/agent-runs/:runId/:trialId/file/*", (req, res) => {
+  const trialDir = safeAgentTrialDir(req.params.runId, req.params.trialId);
+  if (!trialDir) return res.status(404).send("Agent trial not found");
+
+  const relativePath = (req.params as Record<string, string>)["0"];
+  if (!relativePath) return res.status(400).send("Artifact path is required");
+  const resolved = path.resolve(trialDir, relativePath);
+  if (!resolved.startsWith(trialDir + path.sep)) {
+    return res.status(400).send("Invalid artifact path");
+  }
+  if (!existsSync(resolved) || !statSync(resolved).isFile()) {
+    return res.status(404).send("Artifact file not found");
+  }
+
+  try {
+    res.type("text/plain").send(readFileSync(resolved, "utf8"));
+  } catch {
+    res.status(500).send("Failed to read artifact file");
+  }
 });
 
 // --- Navigation APIs ---

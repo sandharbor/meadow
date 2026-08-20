@@ -45,6 +45,13 @@ interface MeadowCliExecution {
   error: ExecFileException | null;
 }
 
+export interface MeadowCliFailure {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  signal: string | null;
+}
+
 export class MeadowCli {
   private readonly usedArtifactNames = new Set<string>();
 
@@ -69,36 +76,65 @@ export class MeadowCli {
     }
   }
 
+  async runFailure(
+    args: string[],
+    options: MeadowCliArtifactOptions,
+  ): Promise<MeadowCliFailure> {
+    const result = await this.executeAndRecord(args, options, "stdout.txt");
+    if (result.execution.error === null) {
+      throw new Error(`Meadow CLI command unexpectedly succeeded: meadow ${args.join(" ")}`);
+    }
+    return {
+      stdout: result.execution.stdout,
+      stderr: result.execution.stderr,
+      exitCode: result.exitCode,
+      signal: result.execution.error.signal ?? null,
+    };
+  }
+
   private async execute(
     args: string[],
     options: MeadowCliArtifactOptions,
     stdoutExtension: "json" | "stdout.txt",
   ): Promise<string> {
+    const result = await this.executeAndRecord(args, options, stdoutExtension);
+    if (result.execution.error !== null) {
+      const detail = result.execution.stderr.trim() || result.execution.error.message;
+      throw new Error(`Meadow CLI command failed: meadow ${args.join(" ")}\n${detail}`);
+    }
+    return result.execution.stdout;
+  }
+
+  private async executeAndRecord(
+    args: string[],
+    options: MeadowCliArtifactOptions,
+    stdoutExtension: "json" | "stdout.txt",
+  ): Promise<{ execution: MeadowCliExecution; exitCode: number | null }> {
     this.reserveArtifactName(options.artifactName);
     const startedAt = new Date().toISOString();
-    const result = await this.exec(args);
+    const execution = await this.exec(args);
     const completedAt = new Date().toISOString();
-    const exitCode = typeof result.error?.code === "number"
-      ? result.error.code
-      : result.error === null
+    const exitCode = typeof execution.error?.code === "number"
+      ? execution.error.code
+      : execution.error === null
         ? 0
         : null;
 
     writeFileSync(
       path.join(this.artifactDir, `${options.artifactName}.${stdoutExtension}`),
-      result.stdout,
+      execution.stdout,
       "utf8",
     );
     writeFileSync(
       path.join(this.artifactDir, `${options.artifactName}.stderr.txt`),
-      result.stderr,
+      execution.stderr,
       "utf8",
     );
     const commandArtifact: MeadowCliCommandArtifact = {
       command: "meadow",
       args,
       exitCode,
-      signal: result.error?.signal ?? null,
+      signal: execution.error?.signal ?? null,
       startedAt,
       completedAt,
     };
@@ -108,11 +144,7 @@ export class MeadowCli {
       "utf8",
     );
 
-    if (result.error !== null) {
-      const detail = result.stderr.trim() || result.error.message;
-      throw new Error(`Meadow CLI command failed: meadow ${args.join(" ")}\n${detail}`);
-    }
-    return result.stdout;
+    return { execution, exitCode };
   }
 
   private reserveArtifactName(artifactName: string): void {

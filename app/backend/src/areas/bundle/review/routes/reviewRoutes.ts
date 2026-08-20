@@ -48,10 +48,52 @@ import {
   compareGeneratedBundleVersionTrees,
   inspectGeneratedVersionGitState,
 } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
+import {
+  saveGeneratedBundleVersion,
+  SaveGeneratedBundleVersionError,
+} from '../../../../shared/generated-bundle-versioning/saveGeneratedBundleVersion.js';
+import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../shared_code/types/cliOperations.js';
 
 const router = express.Router();
 
 const loadAppConfig = () => loadAppConfigFromDisk(getConfigDirectory());
+
+router.post('/bundles/:bundleSlug/review/versions/:versionId/save-generation', (req, res, next) => {
+  void (async () => {
+    const { bundleSlug, versionId } = req.params;
+    const bundleDirectory = getBundleDirectory(bundleSlug);
+    if (!fs.existsSync(bundleDirectory)) {
+      return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
+    }
+    try {
+      const result = await saveGeneratedBundleVersion({
+        bundleDirectory,
+        configDirectory: getConfigDirectory(),
+        versionId,
+      });
+      res.json({
+        schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
+        operation: 'bundle.save-generation',
+        slug: bundleSlug,
+        changed: result.changed,
+        versionId: result.versionId,
+        savedGenerationId: result.savedGenerationId,
+        saved: true,
+        ...(result.commitSha && { commitSha: result.commitSha }),
+        nextActions: [{
+          operation: 'publish-generation',
+          args: ['bundle', 'publish', bundleSlug, '--version', result.versionId],
+          displayCommand: `meadow bundle publish ${bundleSlug} --version ${result.versionId}`,
+        }],
+      });
+    } catch (error) {
+      if (error instanceof SaveGeneratedBundleVersionError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+      next(error);
+    }
+  })().catch(next);
+});
 
 // Get preview changes (diff between preview and last published)
 router.get('/bundles/:bundleSlug/review/preview-changes', (req, res, next) => {

@@ -40,6 +40,7 @@ import {
 } from '../render-source/srsMarkdown.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+import { copySourceFileToTrackedSnapshot } from '../../../../shared/bundle-node/trackedSourceContentSync.js';
 import {
   textDocumentCodec,
   writeDurableDocument,
@@ -317,7 +318,7 @@ export async function ensureTrackedPageContent(
     // Only copy if source exists
     if (sourcePath) {
       try {
-        fs.copyFileSync(sourcePath, targetPath);
+        copySourceFileToTrackedSnapshot(sourcePath, targetPath);
         copiedCount++;
       } catch (err) {
         logger.error(`Failed to copy "${conf.bundleNodeName}": ${err instanceof Error ? err.message : String(err)}`);

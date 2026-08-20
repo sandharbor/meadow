@@ -20,14 +20,8 @@ import path, { join } from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { randomUUID } from 'crypto';
-import {
-  generateBundleNodeId,
-  parseBundleNodeConfig,
-} from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import { saveBundleNodeConfigDocument } from '../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
+import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { BundleConfig } from '../../../../../shared_code/types/bundleConfig.js';
-import { BundleNodeConfig } from '../../../../../shared_code/types/bundleNodeConfig.js';
-import { FileType } from '../../../../../shared_code/types/FileType.js';
 import { AppConfigPaths } from '../../../../../shared_code/paths/appConfigPaths.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../shared_code/utils/appConfigGitUtils.js';
 import { rankSourcePageCandidatesWithCount, recentSourcePageCandidatesWithCount } from '../../../../../shared_code/utils/sourcePageSearchUtils.js';
@@ -58,9 +52,12 @@ import {
 } from '../../../shared/bundle-config/folderBundleRepair.js';
 import selectedFolderRepairRoutes from './selectedFolderRepairRoutes.js';
 import bundleSettingsRoutes from './bundleSettingsRoutes.js';
-import { resolveDefaultDepth } from '../services/bundleTraversalDefaults.js';
 import { sourceDirectorySuggestions } from '../services/sourceDirectorySuggestions.js';
 import { deleteLocalBundleOnlyAfterProviderCleanup } from '../services/bundleDeletion.js';
+import {
+  createPageBundle,
+  PageBundleOperationError,
+} from '../services/pageBundleOperations.js';
 
 const router = express.Router();
 router.use(selectedFolderRepairRoutes);
@@ -782,10 +779,12 @@ router.post('/bundles/folders', (req, res, next) => {
 });
 
 // Create a new page-derived bundle
-router.post('/bundles', (req, res, _next) => {
+router.post('/bundles', (req, res, next) => {
+  void (async () => {
   const {
     slug,
     sourceDirectory,
+    entryPage: requestedEntryPage,
     entryBundleNodeName,
     entrySourceGraphSubdirectory,
     entryFileType,
@@ -793,9 +792,10 @@ router.post('/bundles', (req, res, _next) => {
     defaultOutlinksDepth: requestedDefaultOutlinksDepth,
     defaultInlinksDepth: requestedDefaultInlinksDepth,
   } = req.body as {
-    slug: string;
-    sourceDirectory: string;
-    entryBundleNodeName: string;
+    slug?: string;
+    sourceDirectory?: string;
+    entryPage?: string;
+    entryBundleNodeName?: string;
     entrySourceGraphSubdirectory?: string;
     entryFileType?: string;
     bundleNotes?: string;
@@ -803,78 +803,37 @@ router.post('/bundles', (req, res, _next) => {
     defaultInlinksDepth?: number;
   };
 
-  if (!slug || !sourceDirectory || !entryBundleNodeName) {
-    res.status(400).json({ error: 'All fields are required' });
-    return;
+  if (!sourceDirectory || (!requestedEntryPage && !entryBundleNodeName)) {
+    return res.status(400).json({ error: 'sourceDirectory and an entry page are required' });
   }
 
-  // Validate slug format (alphanumeric and dashes only)
-  if (!/^[a-z0-9-]+$/.test(slug)) {
-    res.status(400).json({ error: 'Bundle slug must contain only lowercase letters, numbers, and dashes' });
-    return;
-  }
-
-  const defaultOutlinksDepth = resolveDefaultDepth(requestedDefaultOutlinksDepth, 3);
-  const defaultInlinksDepth = resolveDefaultDepth(requestedDefaultInlinksDepth, 1);
-  if (defaultOutlinksDepth === null || defaultInlinksDepth === null) {
-    res.status(400).json({ error: 'Default traversal depths must be non-negative integers' });
-    return;
-  }
-
-  // Auto-increment slug if it already exists (e.g. my-bundle -> my-bundle-1)
-  const actualSlug = findUniqueName(slug, (name) => fs.existsSync(getBundleDirectory(name)));
-  const bundleDir = getBundleDirectory(actualSlug);
-
-  // Create bundle directory structure
-  fs.mkdirSync(bundleDir, { recursive: true });
-  fs.mkdirSync(join(bundleDir, 'config'), { recursive: true });
-
-  const entryBundleNodeId = generateBundleNodeId([]);
-
-  // Create bundle_config.yaml
-  const bundleConfig: BundleConfig = {
-    bundleGuid: generateBundleGuid(),
-    sourceDirectory,
-    entryBundleNodeId,
-    defaultTraversalBundleNodeId: entryBundleNodeId,
-    defaultOutlinksDepth,
-    defaultInlinksDepth,
-    archivedAt: null,
-    bundleCreatedAt: new Date().toISOString(),
-    bundleUpdatedAt: new Date().toISOString(),
-    bundleNotes: bundleNotes || ""
-  };
-
-  saveBundleConfigToPath(join(bundleDir, 'config/bundle_config.yaml'), bundleConfig);
-
-  clearBundleGuidCache(actualSlug);
-  logBundleInfo(actualSlug, 'Bundle created');
-
-  // Create initial bundle_node_config.yaml with reasonable defaults
-  const initialNodes: BundleNodeConfig[] = [{
-    bundleNodeName: entryBundleNodeName,
-    ...(entrySourceGraphSubdirectory && { sourceGraphSubdirectory: entrySourceGraphSubdirectory }),
-    bundleNodeKind: 'file',
-    fileType: (entryFileType || 'md') as FileType,
-    bundleNodeId: entryBundleNodeId,
-    listType: 'whitelist',
-  }];
-  saveBundleNodeConfigDocument(join(bundleDir, 'config/bundle_node_config.yaml'), initialNodes);
-
-  // Commit the initial bundle config files to git
-  const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
-  void (async () => {
-    try {
-      await gitUtils.commitFiles([
-        AppConfigPaths.relative.bundleConfigFile(actualSlug),
-        AppConfigPaths.relative.bundleNodeConfigFile(actualSlug),
-      ], `initial bundle config for ${actualSlug}`);
-    } catch (error) {
-      logger.error('[bundle creation] Error committing initial bundle config:', error);
+  const entryFilename = entryBundleNodeName
+    ? entryFileType === 'excalidraw'
+      ? `${entryBundleNodeName}.excalidraw.md`
+      : `${entryBundleNodeName}.${entryFileType || 'md'}`
+    : '';
+  const entryPage = requestedEntryPage ?? (
+    entrySourceGraphSubdirectory
+      ? path.posix.join(entrySourceGraphSubdirectory.replace(/\\/g, '/'), entryFilename)
+      : entryFilename
+  );
+  try {
+    const result = await createPageBundle({
+      ...(slug && { slug }),
+      sourceDirectory,
+      entryPage,
+      bundleNotes,
+      defaultOutlinksDepth: requestedDefaultOutlinksDepth,
+      defaultInlinksDepth: requestedDefaultInlinksDepth,
+    });
+    res.json({ success: true, message: 'Bundle created successfully', ...result });
+  } catch (error) {
+    if (error instanceof PageBundleOperationError) {
+      return res.status(error.statusCode).json({ error: error.message, ...error.details });
     }
-  })();
-
-  res.json({ success: true, message: 'Bundle created successfully', slug: actualSlug });
+    next(error);
+  }
+  })().catch(next);
 });
 
 // Update bundle notes only (for inline editing)

@@ -20,6 +20,9 @@ import { BrowserRouter, Routes, Route, Link, useNavigate, useParams } from 'reac
 import RunsList from './components/RunsList.tsx'
 import RunDetail from './components/RunDetail.tsx'
 import ScenarioViewer from './components/ScenarioViewer.tsx'
+import AgentRunsList from './components/AgentRunsList.tsx'
+import AgentRunDetail from './components/AgentRunDetail.tsx'
+import AgentTrialViewer from './components/AgentTrialViewer.tsx'
 import './index.css'
 
 const FIXTURE_RUN_ID = '__fixture'
@@ -45,6 +48,32 @@ const Breadcrumbs: React.FC = () => {
         <>
           <span className="text-neutral-400">/</span>
           <span className="text-neutral-600 font-medium">{testSlug}</span>
+        </>
+      )}
+    </nav>
+  )
+}
+
+const AgentBreadcrumbs: React.FC = () => {
+  const { runId, trialId } = useParams()
+
+  return (
+    <nav className="flex min-w-0 items-center gap-1 text-sm">
+      <Link to="/agents" className="font-medium text-brand-500 hover:text-brand-700">
+        Agent Evaluations
+      </Link>
+      {runId && (
+        <>
+          <span className="text-neutral-400">/</span>
+          <Link to={`/agents/${runId}`} className="truncate font-medium text-brand-500 hover:text-brand-700">
+            {runId}
+          </Link>
+        </>
+      )}
+      {trialId && (
+        <>
+          <span className="text-neutral-400">/</span>
+          <span className="truncate font-medium text-neutral-600">{trialId}</span>
         </>
       )}
     </nav>
@@ -131,8 +160,19 @@ const AppHeader: React.FC = () => {
   return (
     <header className="bg-white border-b border-neutral-200 px-4 py-2 flex items-center gap-4 flex-shrink-0">
       <h1 className="text-sm font-bold text-brand-500">E2E Report Viewer</h1>
+      <div className="flex items-center gap-1 rounded bg-neutral-100 p-0.5 text-xs">
+        <Link to="/" className="rounded px-2 py-1 font-semibold text-neutral-600 hover:bg-white hover:text-neutral-900">
+          E2E runs
+        </Link>
+        <Link to="/agents" className="rounded px-2 py-1 font-semibold text-neutral-600 hover:bg-white hover:text-neutral-900">
+          Agent evaluations
+        </Link>
+      </div>
       <Routes>
         <Route path="/" element={null} />
+        <Route path="/agents" element={null} />
+        <Route path="/agents/:runId" element={<AgentBreadcrumbs />} />
+        <Route path="/agents/:runId/:trialId" element={<AgentBreadcrumbs />} />
         <Route path="/:runId" element={<Breadcrumbs />} />
         <Route path="/:runId/:testSlug" element={<Breadcrumbs />} />
       </Routes>
@@ -149,6 +189,9 @@ const App: React.FC = () => {
         <div className="flex-1 min-h-0">
           <Routes>
             <Route path="/" element={<RunsList />} />
+            <Route path="/agents" element={<AgentRunsList />} />
+            <Route path="/agents/:runId" element={<AgentRunDetail />} />
+            <Route path="/agents/:runId/:trialId" element={<AgentTrialViewer />} />
             <Route path="/:runId" element={<RunDetail />} />
             <Route path="/:runId/:testSlug" element={<ScenarioViewer />} />
           </Routes>

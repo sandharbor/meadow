@@ -12,6 +12,9 @@ echo "Running test-runner type checking..."
 npx tsc --noEmit --project tsconfig.json
 echo "Type checking passed."
 
+echo "Running deterministic agent-eval harness tests..."
+npm run test:agent-evals
+
 echo "Linting one-test-per-spec rule..."
 npx tsx _module/scripts/lint-single-test-per-spec.ts
 

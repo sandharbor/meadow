@@ -47,6 +47,7 @@ import {
   createPreviewReadToken,
   MEADOW_PREVIEW_TOKEN_QUERY,
 } from '../../../../shared/app-shell/controlPlaneSecurity.js';
+import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../shared_code/types/cliOperations.js';
 
 const router = express.Router();
 
@@ -333,9 +334,21 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
         }
 
         res.json({
+          schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
+          operation: 'bundle.generate',
           success: true,
+          slug: bundleSlug,
+          changed: true,
+          versionId: generationResult.versionId,
+          saved: false,
+          previewUrl: traversalPageUrl,
           message: 'Bundle preview generated successfully',
-          traversalPageUrl
+          traversalPageUrl,
+          nextActions: [{
+            operation: 'save-generation',
+            args: ['bundle', 'save-generation', bundleSlug, '--version', generationResult.versionId],
+            displayCommand: `meadow bundle save-generation ${bundleSlug} --version ${generationResult.versionId}`,
+          }],
         });
         
       } catch (execError) {

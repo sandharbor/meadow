@@ -16,7 +16,10 @@ limitations under the License.
 
 import type { Express } from 'express';
 import type { PublishingProviderManifest } from '../../../../shared_code/interfaces/IPublishingProvider.js';
-import type { BundlePublicationSummary } from '../../../../shared_code/types/generatedBundleVersioning.js';
+import type {
+  BundlePublicationSummary,
+  GeneratedBundleVersionId,
+} from '../../../../shared_code/types/generatedBundleVersioning.js';
 
 /**
  * SSE-friendly progress shape for cleanup flows. The core delete-bundle-stream
@@ -39,6 +42,53 @@ export interface CleanupPublishedBundleOptions {
   /** Stable correlation ID supplied by core for every provider cleanup and the local-delete decision. */
   operationId: string;
   onProgress: (progress: CleanupPublishedBundleProgress) => void;
+}
+
+/** Provider-neutral input for publishing one immutable, saved generation. */
+export interface PublishGeneratedBundleOptions {
+  bundleSlug: string;
+  versionId: string;
+  operationId: string;
+}
+
+/** Provider-owned facts normalized by core into the public CLI result. */
+export interface PublishGeneratedBundleResult {
+  providerInstanceId: string;
+  versionId: GeneratedBundleVersionId;
+  savedGenerationId: string;
+  url: string;
+  changed: boolean;
+  identityCreated?: boolean;
+  remainingAllowance?: {
+    kind: string;
+    remaining: number;
+  } | null;
+}
+
+/**
+ * Expected provider failure that core may safely expose as a stable,
+ * actionable command error. Unexpected exceptions remain internal.
+ */
+export class PublishingProviderOperationError extends Error {
+  readonly statusCode: number;
+  readonly code: string;
+  readonly details?: string;
+  readonly nextActions?: string[];
+
+  constructor(options: {
+    statusCode: number;
+    code: string;
+    message: string;
+    details?: string;
+    nextActions?: string[];
+  }) {
+    super(options.message);
+    this.name = 'PublishingProviderOperationError';
+    this.statusCode = options.statusCode;
+    this.code = options.code;
+    this.details = options.details;
+    this.nextActions = options.nextActions;
+  }
 }
 
 /**
@@ -89,4 +139,7 @@ export interface IPublishingProviderBackend {
    * absence is confirmed. Failures must reject so core preserves the bundle.
    */
   cleanupPublishedBundle?(options: CleanupPublishedBundleOptions): Promise<CleanupPublishedBundleResult>;
+
+  /** Publish one explicitly selected, saved generation. */
+  publishGeneratedBundle?(options: PublishGeneratedBundleOptions): Promise<PublishGeneratedBundleResult>;
 }

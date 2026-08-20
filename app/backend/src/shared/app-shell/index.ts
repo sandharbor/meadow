@@ -21,6 +21,7 @@ import { AppConfigPaths } from '../../../../shared_code/paths/appConfigPaths.js'
 import bundleConfigRoutes from '../../areas/bundle/curation/routes/bundleConfigRoutes.js';
 import customFiltersRoutes from '../../areas/bundle/curation/routes/customFiltersRoutes.js';
 import bundleCurationRoutes from '../../areas/bundle/curation/routes/bundleCurationRoutes.js';
+import bundleOperationRoutes from '../../areas/bundle/curation/routes/bundleOperationRoutes.js';
 import hooksRoutes from '../../areas/bundle/generation/routes/hooksRoutes.js';
 import customAssetsRoutes from '../../areas/bundle/generation/routes/customAssetsRoutes.js';
 import appConfigRoutes from '../routes/appConfigRoutes.js';
@@ -33,6 +34,7 @@ import stylePresetsRoutes from '../../areas/bundle/generation/routes/stylePreset
 import logRoutes from '../routes/logRoutes.js';
 import appConfigFileRoutes from '../routes/appConfigFileRoutes.js';
 import providerDiscoveryRoutes from '../../areas/bundle/sharing/routes/providerDiscoveryRoutes.js';
+import publishingCliRoutes from '../../areas/bundle/sharing/routes/publishingCliRoutes.js';
 import { createHealthRoutes } from '../routes/healthRoutes.js';
 import reviewRoutes from '../../areas/bundle/review/routes/reviewRoutes.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
@@ -110,6 +112,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/api', bundleConfigRoutes);
 app.use('/api', customFiltersRoutes);
 app.use('/api', bundleCurationRoutes);
+app.use('/api', bundleOperationRoutes);
 app.use('/api', hooksRoutes);
 app.use('/api', customAssetsRoutes);
 app.use('/api', appConfigRoutes);
@@ -120,6 +123,7 @@ app.use('/api', createLocalSaveRoutes({
 app.use('/api', logRoutes);
 app.use('/api', appConfigFileRoutes);
 app.use('/api', providerDiscoveryRoutes);
+app.use('/api', publishingCliRoutes);
 app.use('/api', bundleListingRoutes);
 app.use('/api', bundleGenerationRoutes);
 app.use('/api', reviewRoutes);

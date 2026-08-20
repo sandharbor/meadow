@@ -21,6 +21,10 @@ import {
   type MixedSurfaceFixture,
   type PublishFlowFixture,
 } from "../fixtures/publish-flow-fixture.js";
+import {
+  ensureAgentEvalArtifact,
+  type AgentEvalFixture,
+} from "../fixtures/agent-eval-fixture.js";
 
 // First sanity test for the report viewer's own e2e suite. Proves the
 // fixture plumbing works end-to-end: the cached publish-flow artifact
@@ -30,10 +34,12 @@ import {
 
 let fixture: PublishFlowFixture;
 let mixedSurfaceFixture: MixedSurfaceFixture;
+let agentEvalFixture: AgentEvalFixture;
 
 test.beforeAll(() => {
   fixture = ensurePublishFlowArtifact();
   mixedSurfaceFixture = ensureMixedSurfaceArtifact(fixture);
+  agentEvalFixture = ensureAgentEvalArtifact();
 });
 
 test("cached publish-flow artifact has multiple ticks and multiple snapshots", async ({
@@ -178,4 +184,35 @@ test("test code opens referenced CLI JSON fixtures in a modal", async ({ page })
 
   await dialog.getByRole("button", { name: "Close fixture" }).click();
   await expect(dialog).toHaveCount(0);
+});
+
+test("agent evaluation view compares trials and exposes frozen failure evidence", async ({
+  page,
+  request,
+}) => {
+  const { runId, failedTrialId, passedTrialId } = agentEvalFixture;
+
+  const runResponse = await request.get(`/api/agent-runs/${runId}`);
+  expect(runResponse.ok()).toBe(true);
+  const run = await runResponse.json() as { trials: { trialId: string }[] };
+  expect(run.trials.map((trial) => trial.trialId)).toEqual([
+    failedTrialId,
+    passedTrialId,
+  ]);
+
+  await page.goto(`/agents/${runId}`);
+  await expect(page.getByRole("heading", { name: "Repeated trial comparison" })).toBeVisible();
+  await expect(page.getByRole("link", { name: failedTrialId })).toBeVisible();
+  await expect(page.getByRole("link", { name: passedTrialId })).toBeVisible();
+
+  await page.getByRole("link", { name: failedTrialId }).click();
+  await expect(page.getByRole("heading", { name: "Chronological conversation and terminal evidence" })).toBeVisible();
+  await expect(page.getByText(/Scored · autonomous/i).first()).toBeVisible();
+  await expect(page.getByText(/Post-freeze · retrospective/i)).toBeVisible();
+  await expect(page.getByText("Exit 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("generation failed", { exact: false })).toBeVisible();
+  await expect(page.getByText("1 failed", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: /frozen-state\/meadow_home.yaml/ }).click();
+  await expect(page.getByText("bundles: []", { exact: false })).toBeVisible();
 });

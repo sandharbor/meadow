@@ -157,3 +157,32 @@ export function selectGraphNodeKeys(
     : explicitExpression(applications, combine);
   return evaluateFilterExpression(expression, terms, filterMatches, allBundleNodeKeys);
 }
+
+/**
+ * Effective sensitivity is source sensitivity plus every enabled custom filter
+ * that applies a mark-sensitive action. This is the same product rule used by
+ * curation presentation and bulk tracking; callers do not infer sensitivity
+ * from filter names or fixture knowledge.
+ */
+export function selectEffectivelySensitiveNodeKeys(
+  graph: Graph,
+  customFilters: CustomFilterConfig[],
+): Set<string> {
+  const result = new Set(
+    graph.getAllNodes()
+      .filter(node => node.sensitive === true)
+      .map(node => node.bundleNodeKey),
+  );
+  for (const filter of customFilters) {
+    if (!filter.enabled || !filter.actions.some(action => action.type === 'mark_sensitive')) continue;
+    const selectors = filter.selectors.map(selector => createCustomBundleNodeSelector(selector));
+    const selected = selectors.map(selector => selector.select(graph));
+    for (const node of graph.getAllNodes()) {
+      const matches = filter.selectorApplicationCriteria === 'union'
+        ? selected.some(keys => keys.has(node.bundleNodeKey))
+        : selected.every(keys => keys.has(node.bundleNodeKey));
+      if (matches) result.add(node.bundleNodeKey);
+    }
+  }
+  return result;
+}
