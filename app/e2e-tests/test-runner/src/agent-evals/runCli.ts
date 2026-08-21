@@ -30,6 +30,7 @@ import { CodexOperatorAdapter } from "./adapters/CodexOperatorAdapter.js";
 import { CodexProcess } from "./adapters/codexProcess.js";
 import { ScriptedManagingAgent } from "./adapters/scriptedAdapter.js";
 import { ScriptedCliAdapter } from "./adapters/scriptedCliAdapter.js";
+import { ScriptedNodeCurationAdapter } from "./adapters/scriptedNodeCurationAdapter.js";
 import {
   hashFixture,
   writeAgentTrialArtifacts,
@@ -40,6 +41,11 @@ import {
   createSafeBundleAnswerSheet,
   resolveCreateSafeBundleRequest,
 } from "./scenarios/createSafeBundle.js";
+import {
+  CURATE_SPECIFIC_NODES_SCENARIO,
+  curateSpecificNodesAnswerSheet,
+  resolveCurateSpecificNodesRequest,
+} from "./scenarios/curateSpecificNodes.js";
 import { StandaloneTrialRuntime } from "./runtime/StandaloneTrialRuntime.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -50,16 +56,23 @@ const PUBLISHING_EXTENSION_ENTRYPOINT = path.resolve(
   "../run/meadow-extension/agent-evals/index.ts",
 );
 type AdapterName = "codex" | "scripted";
+type ScenarioName = "create-safe-bundle" | "curate-specific-nodes";
 
 function runId(): string {
   const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   return `${timestamp}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function parseArgs(args: string[]): { trials: number; adapter: AdapterName; publishing: boolean } {
+function parseArgs(args: string[]): {
+  trials: number;
+  adapter: AdapterName;
+  publishing: boolean;
+  scenario: ScenarioName;
+} {
   let trials = 1;
   let adapter: AdapterName = "codex";
   let publishing = false;
+  let scenario: ScenarioName = "create-safe-bundle";
   for (let index = 0; index < args.length; index++) {
     const arg = args[index];
     if (arg === "--trials") {
@@ -75,11 +88,18 @@ function parseArgs(args: string[]): { trials: number; adapter: AdapterName; publ
       adapter = value;
     } else if (arg === "--publishing") {
       publishing = true;
+    } else if (arg === "--scenario") {
+      const value = args[++index];
+      if (value !== "create-safe-bundle" && value !== "curate-specific-nodes") {
+        throw new Error("--scenario must be create-safe-bundle or curate-specific-nodes");
+      }
+      scenario = value;
     } else if (arg === "--help" || arg === "-h") {
       process.stdout.write([
-        "Usage: npm run agent-eval -- [--trials <count>] [--adapter codex|scripted] [--publishing]",
+        "Usage: npm run agent-eval -- [--scenario <name>] [--trials <count>] [--adapter codex|scripted] [--publishing]",
         "",
-        "Runs clean, isolated create-safe-bundle trials and writes portable review artifacts.",
+        "Scenarios: create-safe-bundle (default), curate-specific-nodes.",
+        "Runs clean, isolated trials and writes portable review artifacts.",
         "One trial is the sanity form; --trials 5 is the acceptance form.",
         "",
       ].join("\n"));
@@ -88,11 +108,17 @@ function parseArgs(args: string[]): { trials: number; adapter: AdapterName; publ
       throw new Error(`Unknown argument: ${arg}`);
     }
   }
-  return { trials, adapter, publishing };
+  if (publishing && scenario !== "create-safe-bundle") {
+    throw new Error("--publishing is only valid with --scenario create-safe-bundle");
+  }
+  return { trials, adapter, publishing, scenario };
 }
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
+  const scenario = options.scenario === "curate-specific-nodes"
+    ? CURATE_SPECIFIC_NODES_SCENARIO
+    : CREATE_SAFE_BUNDLE_SCENARIO;
   let publishingExtensionFactory: (() => TrialRuntimeExtension) | undefined;
   if (options.publishing) {
     if (!existsSync(PUBLISHING_EXTENSION_ENTRYPOINT)) {
@@ -114,47 +140,45 @@ async function main(): Promise<void> {
   const results = [];
 
   for (let trialNumber = 1; trialNumber <= options.trials; trialNumber++) {
-    const trialName = `${CREATE_SAFE_BUNDLE_SCENARIO.id}-trial-${String(trialNumber).padStart(2, "0")}`;
+    const trialName = `${scenario.id}-trial-${String(trialNumber).padStart(2, "0")}`;
     const trialDirectory = path.join(runDirectory, trialName);
     mkdirSync(trialDirectory, { recursive: true });
     const extension = publishingExtensionFactory?.();
     const runtime = new StandaloneTrialRuntime({
       artifactDirectory: trialDirectory,
+      scenario,
       ...(extension ? { extension } : {}),
     });
-    const exactRequest = resolveCreateSafeBundleRequest(
-      runtime.sourceFixture.directory,
-      options.publishing,
-    );
-    const answerSheet = createSafeBundleAnswerSheet(
-      runtime.sourceFixture.directory,
-      options.publishing,
-    );
+    const exactRequest = options.scenario === "curate-specific-nodes"
+      ? resolveCurateSpecificNodesRequest(runtime.sourceFixture.directory)
+      : resolveCreateSafeBundleRequest(runtime.sourceFixture.directory, options.publishing);
+    const answerSheet = options.scenario === "curate-specific-nodes"
+      ? curateSpecificNodesAnswerSheet(runtime.sourceFixture.directory)
+      : createSafeBundleAnswerSheet(runtime.sourceFixture.directory, options.publishing);
     const fixtureSha256 = hashFixture(runtime.sourceFixture.directory);
     let manager: ManagingAgent;
     let operator: AgentAdapter;
     if (options.adapter === "codex") {
-      manager = new CodexManagingAgent(CREATE_SAFE_BUNDLE_SCENARIO.profiles.manager, {
-        timeoutMs: CREATE_SAFE_BUNDLE_SCENARIO.limits.durationMs,
-        idleMs: CREATE_SAFE_BUNDLE_SCENARIO.limits.idleMs,
+      manager = new CodexManagingAgent(scenario.profiles.manager, {
+        timeoutMs: scenario.limits.durationMs,
+        idleMs: scenario.limits.idleMs,
       });
       operator = new CodexOperatorAdapter(
-        CREATE_SAFE_BUNDLE_SCENARIO.profiles.operator,
+        scenario.profiles.operator,
         () => runtime.operatorLaunchContext(),
         {
-          timeoutMs: CREATE_SAFE_BUNDLE_SCENARIO.limits.durationMs,
-          idleMs: CREATE_SAFE_BUNDLE_SCENARIO.limits.idleMs,
+          timeoutMs: scenario.limits.durationMs,
+          idleMs: scenario.limits.idleMs,
         },
       );
     } else {
       manager = new ScriptedManagingAgent();
-      operator = new ScriptedCliAdapter(
-        () => runtime.operatorLaunchContext(),
-        options.publishing,
-      );
+      operator = options.scenario === "curate-specific-nodes"
+        ? new ScriptedNodeCurationAdapter(() => runtime.operatorLaunchContext())
+        : new ScriptedCliAdapter(() => runtime.operatorLaunchContext(), options.publishing);
     }
     const result = await runAgentTrial({
-      scenario: CREATE_SAFE_BUNDLE_SCENARIO,
+      scenario,
       exactRequest,
       answerSheet,
       publishing: options.publishing,
@@ -181,7 +205,7 @@ async function main(): Promise<void> {
         operator: operator.version,
         ...(options.adapter === "codex" && { codexCli: CodexProcess.cliVersion }),
         managerPromptVersion: MANAGER_PROMPT_VERSION,
-        scenarioPromptVersion: CREATE_SAFE_BUNDLE_SCENARIO.version,
+        scenarioPromptVersion: scenario.version,
         ...(extension ? { runtimeExtension: `${extension.id}@${extension.version}` } : {}),
       },
     });
@@ -196,8 +220,8 @@ async function main(): Promise<void> {
     kind: "agent-eval-run",
     runId: currentRunId,
     scenario: {
-      id: CREATE_SAFE_BUNDLE_SCENARIO.id,
-      version: CREATE_SAFE_BUNDLE_SCENARIO.version,
+      id: scenario.id,
+      version: scenario.version,
       publishing: options.publishing,
     },
     trials: results.length,

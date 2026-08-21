@@ -69,35 +69,40 @@ export class OpenKnowledgeFormatModal {
   }
 
   async chooseGeneratedIndex() {
-    await this.root.locator("label", { hasText: "Generated index" }).click();
-    await this.expect(this.root.locator("input[name='okf-index-mode']").first()).toBeChecked();
+    await this.selectRadio("okf-index-mode", "Generated index");
   }
 
   async chooseIndexPage(pageTitle: string, query = pageTitle) {
-    await this.root.locator("label", { hasText: "Use a tracked page as index.md" }).click();
+    await this.selectRadio("okf-index-mode", "Use a tracked page as index.md");
     await this.searchAndSelectPage("okf-index-page-search", query, pageTitle);
     await this.expect(this.root.getByText(`Selected index.md source: ${pageTitle}`)).toBeVisible();
   }
 
   async chooseLogPage(pageTitle: string, query = pageTitle) {
-    await this.root.locator("label", { hasText: "Use a tracked page as log.md" }).click();
+    await this.selectRadio("okf-log-mode", "Use a tracked page as log.md");
     await this.searchAndSelectPage("okf-log-page-search", query, pageTitle);
     await this.expect(this.root.getByText(`Selected log.md source: ${pageTitle}`)).toBeVisible();
   }
 
   async chooseNoLog() {
-    await this.root.locator("label", { hasText: "Do not include log.md" }).click();
-    await this.expect(this.root.locator("input[name='okf-log-mode']").last()).toBeChecked();
+    await this.selectRadio("okf-log-mode", "Do not include log.md");
   }
 
   async expectLogPageNotSuggested(pageTitle: string, query = pageTitle) {
-    await this.root.locator("label", { hasText: "Use a tracked page as log.md" }).click();
+    await this.selectRadio("okf-log-mode", "Use a tracked page as log.md");
     const searchInput = this.root.locator("#okf-log-page-search");
     await this.expect(searchInput).toBeVisible();
     await searchInput.fill(query);
     const picker = this.pickerForSearchInput(searchInput);
     await this.expect(picker.getByText("Loading pages...")).toBeHidden({ timeout: 15_000 });
     await this.expect(picker.locator("button", { hasText: pageTitle })).toHaveCount(0);
+  }
+
+  private async selectRadio(name: string, labelText: string) {
+    const radio = this.root.locator("label", { hasText: labelText }).locator(`input[name='${name}']`);
+    await this.expect(radio).toBeEnabled({ timeout: 15_000 });
+    await radio.check();
+    await this.expect(radio).toBeChecked();
   }
 
   private async searchAndSelectPage(inputId: string, query: string, pageTitle: string) {

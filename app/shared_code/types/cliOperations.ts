@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeId, BundleNodeKey } from './bundleNodeConfig.js';
+import type { BundleNodeConfig, BundleNodeId, BundleNodeKey, BundleNodeKind } from './bundleNodeConfig.js';
+import type { FileType } from './FileType.js';
 import type { GeneratedBundleVersionId } from './generatedBundleVersioning.js';
 
 export const CLI_OPERATION_SCHEMA_VERSION = 1 as const;
@@ -22,6 +23,8 @@ export const CLI_OPERATION_SCHEMA_VERSION = 1 as const;
 export type CliSemanticOperation =
   | 'inspect-nodes'
   | 'track-safe-nodes'
+  | 'inspect-node'
+  | 'track-node'
   | 'generate-bundle'
   | 'save-generation'
   | 'publish-generation';
@@ -71,6 +74,74 @@ export interface TrackBundleNodesCliResult extends CliOperationResultBase {
   sensitiveSkipped: SkippedBundleNodeResult[];
   untrackableSkipped: SkippedBundleNodeResult[];
   rejected: SkippedBundleNodeResult[];
+}
+
+export type BundleNodeLocator =
+  | { kind: 'id'; value: BundleNodeId }
+  | { kind: 'path'; value: string };
+
+export interface BundleNodeReference {
+  bundleNodeKey: BundleNodeKey;
+  bundleNodeId?: BundleNodeId;
+  bundleNodeName: string;
+  bundleNodeKind: BundleNodeKind;
+  depth: number;
+}
+
+export interface BundleNodeDetails extends BundleNodeReference {
+  sourceGraphSubdirectory?: string;
+  fileType?: FileType;
+  tracked: boolean;
+  blacklisted: boolean;
+  sensitive: boolean;
+  isFrontierNode: boolean;
+  remainingOutlinksDepth: number;
+  remainingInlinksDepth: number;
+  config?: BundleNodeConfig;
+}
+
+export interface DescribeBundleNodeCliResult {
+  schemaVersion: typeof CLI_OPERATION_SCHEMA_VERSION;
+  operation: 'bundle.node.describe';
+  slug: string;
+  locator: BundleNodeLocator;
+  node: BundleNodeDetails;
+  related: {
+    pathToHere: BundleNodeReference[];
+    children: BundleNodeReference[];
+    allPathsFromHere: BundleNodeReference[];
+    deeperPathsFromHere: BundleNodeReference[];
+  };
+}
+
+export type BundleNodeMutationOperation =
+  | 'track'
+  | 'untrack'
+  | 'blacklist'
+  | 'unblacklist'
+  | 'mark-sensitive'
+  | 'mark-not-sensitive'
+  | 'set-depths';
+
+export interface MutateBundleNodeCliResult extends CliOperationResultBase {
+  operation: `bundle.node.${BundleNodeMutationOperation}`;
+  locator: BundleNodeLocator;
+  node: BundleNodeDetails;
+}
+
+export interface FindBundleNodeCliResult {
+  schemaVersion: typeof CLI_OPERATION_SCHEMA_VERSION;
+  operation: 'bundle.node.find-in-bundles';
+  slug: string;
+  locator: BundleNodeLocator;
+  node: BundleNodeReference;
+  bundles: Array<{
+    slug: string;
+    archived: boolean;
+    bundleNodeId: BundleNodeId;
+    tracked: true;
+    blacklisted: boolean;
+  }>;
 }
 
 export interface GenerateBundleCliResult extends CliOperationResultBase {

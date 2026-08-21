@@ -39,6 +39,7 @@ import {
 } from "../../../../../shared_code/utils/localRuntimeSession.js";
 import { MeadowCommandBroker } from "../broker/MeadowCommandBroker.js";
 import { evaluateCreateSafeBundle } from "../oracles/createSafeBundleOracle.js";
+import { evaluateCurateSpecificNodes } from "../oracles/curateSpecificNodesOracle.js";
 import {
   CREATE_SAFE_BUNDLE_SCENARIO,
   materializeCreateSafeBundleSource,
@@ -233,13 +234,15 @@ export class StandaloneTrialRuntime implements TrialRuntime {
   }
 
   async evaluate(outcome: FrozenOutcome): Promise<OracleResult[]> {
-    const baseResults = await evaluateCreateSafeBundle({
-      scenario: this.scenario,
-      configDir: this.configDir,
-      sourceDirectory: this.sourceFixture.directory,
-      outcome,
-      requirePreviewRelay: !this.options.extension,
-    });
+    const baseResults = this.scenario.id === "curate-specific-nodes"
+      ? await evaluateCurateSpecificNodes({ configDir: this.configDir, outcome })
+      : await evaluateCreateSafeBundle({
+          scenario: this.scenario,
+          configDir: this.configDir,
+          sourceDirectory: this.sourceFixture.directory,
+          outcome,
+          requirePreviewRelay: !this.options.extension,
+        });
     const extensionResults = await this.options.extension?.evaluate?.(
       outcome,
       this.extensionContext(),

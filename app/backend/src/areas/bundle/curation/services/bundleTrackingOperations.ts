@@ -111,10 +111,11 @@ function configForNode(node: IBundleNode, bundleNodeId: BundleNodeId): BundleNod
   };
 }
 
-async function persistTrackingAtomically(options: {
+export async function persistBundleNodeConfigsAtomically(options: {
   slug: string;
   sourceDirectory: string;
   configs: BundleNodeConfig[];
+  commitMessage?: string;
 }): Promise<void> {
   const bundleDirectory = getBundleDirectory(options.slug);
   const configPath = getBundleConfigPath(options.slug, 'bundle_node_config.yaml');
@@ -138,7 +139,7 @@ async function persistTrackingAtomically(options: {
     await git.commitDirs([
       `bundles/${options.slug}/config`,
       `bundles/${options.slug}/raw`,
-    ], `track bundle nodes for ${options.slug}`);
+    ], options.commitMessage ?? `track bundle nodes for ${options.slug}`);
   } catch (error) {
     if (hadConfig) fs.copyFileSync(rollbackConfigPath, configPath);
     else fs.rmSync(configPath, { force: true });
@@ -249,7 +250,7 @@ export async function trackBundleNodes(
   if (newConfigs.length > 0) {
     const sourceDirectory = loaded.bundleConfig.sourceDirectory;
     if (!sourceDirectory) throw new Error(`Bundle '${slug}' has no source directory`);
-    await persistTrackingAtomically({
+    await persistBundleNodeConfigsAtomically({
       slug,
       sourceDirectory,
       configs: [...loaded.committedNodes, ...newConfigs],

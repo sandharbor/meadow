@@ -19,9 +19,96 @@ import {
   BundleTrackingOperationError,
   trackBundleNodes,
 } from '../services/bundleTrackingOperations.js';
+import {
+  BundleNodeOperationError,
+  describeBundleNode,
+  findBundleNode,
+  mutateBundleNode,
+  type BundleNodeMutation,
+} from '../services/bundleNodeOperations.js';
+import type { BundleNodeId } from '../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeLocator } from '../../../../../../shared_code/types/cliOperations.js';
 import { WorkingGraphOperationError } from '../services/workingGraphService.js';
 
 const router = express.Router();
+
+function parseNodeLocator(body: Record<string, unknown>): BundleNodeLocator {
+  if ((body.nodeId === undefined) === (body.path === undefined)) {
+    throw new BundleNodeOperationError('Provide exactly one of nodeId or path', 400);
+  }
+  if (typeof body.nodeId === 'string' && body.nodeId.length > 0) {
+    return { kind: 'id', value: body.nodeId as BundleNodeId };
+  }
+  if (typeof body.path === 'string' && body.path.trim().length > 0) {
+    return { kind: 'path', value: body.path };
+  }
+  throw new BundleNodeOperationError('Node identifiers must be non-empty strings', 400);
+}
+
+function sendNodeError(error: unknown, res: express.Response, next: express.NextFunction): void {
+  if (
+    error instanceof BundleNodeOperationError
+    || error instanceof BundleTrackingOperationError
+    || error instanceof WorkingGraphOperationError
+  ) {
+    res.status(error.statusCode).json({ error: error.message, ...error.details });
+    return;
+  }
+  next(error);
+}
+
+router.post('/bundles/:bundleSlug/curation/node/describe', (req, res, next) => {
+  void (async () => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    res.json(await describeBundleNode(req.params.bundleSlug, parseNodeLocator(body)));
+  })().catch(error => sendNodeError(error, res, next));
+});
+
+router.post('/bundles/:bundleSlug/curation/node/find-in-bundles', (req, res, next) => {
+  void (async () => {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    res.json(await findBundleNode(req.params.bundleSlug, parseNodeLocator(body)));
+  })().catch(error => sendNodeError(error, res, next));
+});
+
+router.post('/bundles/:bundleSlug/curation/node/:operation', (req, res, next) => {
+  void (async () => {
+    const operation = req.params.operation;
+    const supported = new Set([
+      'track',
+      'untrack',
+      'blacklist',
+      'unblacklist',
+      'mark-sensitive',
+      'mark-not-sensitive',
+      'set-depths',
+    ]);
+    if (!supported.has(operation)) {
+      throw new BundleNodeOperationError(`Unsupported node operation '${operation}'`, 404);
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    let mutation: BundleNodeMutation;
+    if (operation === 'set-depths') {
+      const parseDepth = (field: 'outlinksDepth' | 'inlinksDepth'): number | null | undefined => {
+        const value = body[field];
+        if (value === undefined || value === null) return value;
+        if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+          throw new BundleNodeOperationError(`${field} must be a non-negative integer or null`, 400);
+        }
+        return value;
+      };
+      const outlinksDepth = parseDepth('outlinksDepth');
+      const inlinksDepth = parseDepth('inlinksDepth');
+      if (outlinksDepth === undefined && inlinksDepth === undefined) {
+        throw new BundleNodeOperationError('Provide outlinksDepth and/or inlinksDepth', 400);
+      }
+      mutation = { operation, outlinksDepth, inlinksDepth };
+    } else {
+      mutation = { operation: operation as Exclude<BundleNodeMutation['operation'], 'set-depths'> };
+    }
+    res.json(await mutateBundleNode(req.params.bundleSlug, parseNodeLocator(body), mutation));
+  })().catch(error => sendNodeError(error, res, next));
+});
 
 router.post('/bundles/:bundleSlug/curation/track-nodes', (req, res, next) => {
   void (async () => {
@@ -45,10 +132,7 @@ router.post('/bundles/:bundleSlug/curation/track-nodes', (req, res, next) => {
       );
       res.json(result);
     } catch (error) {
-      if (error instanceof BundleTrackingOperationError || error instanceof WorkingGraphOperationError) {
-        return res.status(error.statusCode).json({ error: error.message, ...error.details });
-      }
-      next(error);
+      sendNodeError(error, res, next);
     }
   })().catch(next);
 });

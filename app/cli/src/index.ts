@@ -23,6 +23,7 @@ import {
   readLocalRuntimeSession,
   type LocalRuntimeSession,
 } from "../../shared_code/utils/localRuntimeSession.js";
+import { runBundleNodeCommand, showBundleNodeHelp } from "./nodeCommands.js";
 
 interface BundleSummary {
   slug?: unknown;
@@ -85,6 +86,7 @@ Usage:
   meadow bundles archive <bundle-slug>
   meadow bundles unarchive <bundle-slug>
   meadow bundle track <bundle-slug> --all-safe
+  meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
   meadow bundle publish <bundle-slug> --version <version-id>
@@ -99,6 +101,7 @@ Commands:
   bundles archive <bundle-slug>    Archive a bundle and return JSON.
   bundles unarchive <bundle-slug>  Unarchive a bundle and return JSON.
   bundle track                     Persistently track selected or all safe nodes.
+  bundle node                      Inspect or mutate one node by stable ID or source path.
   bundle generate                  Generate a read-only local preview version.
   bundle save-generation           Save a generated version in Meadow Home.
   bundle publish                   Publish a saved version with the active provider.
@@ -159,6 +162,7 @@ function showBundleHelp(): void {
   console.log(`Usage:
   meadow bundle track <bundle-slug> --all-safe
   meadow bundle track <bundle-slug> --node-key <bundle-node-key> [--node-key <key> ...]
+  meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
   meadow bundle publish <bundle-slug> --version <version-id>
@@ -168,6 +172,7 @@ function showBundleHelp(): void {
 Commands:
   track     Persist curation by stable bundleNodeKey. --all-safe atomically
             tracks every currently trackable node Meadow does not consider sensitive.
+  node      Inspect, curate, find, or set traversal depths for one node.
   generate  Generate or regenerate the current version and return its versionId
             plus a bundle-scoped, read-only preview URL.
   save-generation
@@ -177,7 +182,8 @@ Commands:
   nodes     Return deterministic nodes and edges from the working graph.
   filters   List stable filter IDs, descriptions, selectors, actions, and scope.
 
-Run 'meadow bundle track --help' for safe curation or
+Run 'meadow bundle node --help' for single-node operations,
+'meadow bundle track --help' for safe bulk curation, or
 'meadow bundle nodes --help' for graph filtering options.`);
 }
 
@@ -642,6 +648,24 @@ async function main(): Promise<void> {
       return;
     }
     await describeBundleNodes(parseBundleNodesOptions(args.slice(2)));
+    return;
+  }
+
+  if (args[0] === "bundle" && args[1] === "node") {
+    if (
+      args.length === 2
+      || args[2] === "--help"
+      || args[2] === "-h"
+      || args[3] === "--help"
+      || args[3] === "-h"
+    ) {
+      showBundleNodeHelp();
+      return;
+    }
+    await runBundleNodeCommand(
+      args.slice(2),
+      (pathname, method, body) => requestJson(resolveSession(), pathname, method, body),
+    );
     return;
   }
 

@@ -44,6 +44,16 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   addKeyFrame,
   testServer,
 }) => {
+  let delayedInitialOptions = false;
+  await page.route("**/generation/open-knowledge-format/log-page-options?*", async route => {
+    const requestUrl = new URL(route.request().url());
+    if (!delayedInitialOptions && requestUrl.searchParams.get("query") === "") {
+      delayedInitialOptions = true;
+      await new Promise(resolve => setTimeout(resolve, 750));
+    }
+    await route.continue();
+  });
+
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
