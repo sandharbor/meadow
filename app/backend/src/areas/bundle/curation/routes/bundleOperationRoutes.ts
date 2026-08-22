@@ -29,6 +29,7 @@ import {
 import type { BundleNodeId } from '../../../../../../shared_code/types/bundleNodeConfig.js';
 import type { BundleNodeLocator } from '../../../../../../shared_code/types/cliOperations.js';
 import { WorkingGraphOperationError } from '../services/workingGraphService.js';
+import { runSerializedBundleNodeMutation } from '../services/bundleNodeMutationQueue.js';
 
 const router = express.Router();
 
@@ -106,7 +107,11 @@ router.post('/bundles/:bundleSlug/curation/node/:operation', (req, res, next) =>
     } else {
       mutation = { operation: operation as Exclude<BundleNodeMutation['operation'], 'set-depths'> };
     }
-    res.json(await mutateBundleNode(req.params.bundleSlug, parseNodeLocator(body), mutation));
+    const { bundleSlug } = req.params;
+    res.json(await runSerializedBundleNodeMutation(
+      bundleSlug,
+      () => mutateBundleNode(bundleSlug, parseNodeLocator(body), mutation),
+    ));
   })().catch(error => sendNodeError(error, res, next));
 });
 
@@ -124,11 +129,14 @@ router.post('/bundles/:bundleSlug/curation/track-nodes', (req, res, next) => {
       return res.status(400).json({ error: 'Every node key must be a non-empty string' });
     }
     try {
-      const result = await trackBundleNodes(
+      const result = await runSerializedBundleNodeMutation(
         bundleSlug,
-        body.allSafe === true
-          ? { mode: 'all-safe' }
-          : { mode: 'targeted', nodeKeys: body.nodeKeys as string[] },
+        () => trackBundleNodes(
+          bundleSlug,
+          body.allSafe === true
+            ? { mode: 'all-safe' }
+            : { mode: 'targeted', nodeKeys: body.nodeKeys as string[] },
+        ),
       );
       res.json(result);
     } catch (error) {

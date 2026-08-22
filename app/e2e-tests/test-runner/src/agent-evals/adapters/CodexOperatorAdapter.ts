@@ -39,7 +39,7 @@ const OPERATOR_OUTPUT_SCHEMA = {
 
 export class CodexOperatorAdapter implements AgentAdapter {
   readonly profile: AgentProfile;
-  readonly version = "codex-operator-adapter-v1";
+  readonly version = "codex-operator-adapter-v2";
   private process: CodexProcess<OperatorResponse> | null = null;
 
   constructor(
@@ -71,7 +71,7 @@ export class CodexOperatorAdapter implements AgentAdapter {
       "Use only the public `meadow` executable and its own help for Meadow inspection and mutations.",
       "Do not use a GUI, direct HTTP requests, or edit application state. Do not inspect product implementations or tests.",
       "The supplied source graph is read-only. Work autonomously until the requested outcome is complete or a genuine user preference is required.",
-      "In your final response, report the bundle identity and every requested public URL.",
+      "In your final response, report the bundle identity and every preview or public URL returned by Meadow for the requested work.",
       "Do not reveal credentials, environment values, or internal runtime data.",
       "",
     ].join("\n"), "utf8");

@@ -60,6 +60,11 @@ Depths:
   --outlinks <depth|inherit>   Set an outlink-depth override or remove it.
   --inlinks <depth|inherit>    Set an inlink-depth override or remove it.
 
+Examples:
+  meadow bundle node track my-site --path "Charlie Munger.md"
+  meadow bundle node blacklist my-site --id <bundle-node-id>
+  meadow bundle node set-depths my-site --id <bundle-node-id> --outlinks 1 --inlinks 0
+
 Operations are safe to retry. 'describe' returns the node plus path-to-here,
 direct children, all reachable paths, and deeper paths. Every related-node
 reference includes its path key and graph depth.`);

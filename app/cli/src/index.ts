@@ -86,6 +86,7 @@ Usage:
   meadow bundles archive <bundle-slug>
   meadow bundles unarchive <bundle-slug>
   meadow bundle track <bundle-slug> --all-safe
+  meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
@@ -100,8 +101,9 @@ Commands:
   bundles create                   Create a page-derived bundle using normal defaults.
   bundles archive <bundle-slug>    Archive a bundle and return JSON.
   bundles unarchive <bundle-slug>  Unarchive a bundle and return JSON.
-  bundle track                     Persistently track selected or all safe nodes.
-  bundle node                      Inspect or mutate one node by stable ID or source path.
+  bundle track                     Atomically track a selected set or all safe nodes.
+  bundle node                      Inspect or mutate one node by stable ID or source path;
+                                   use 'bundle node track' for one-at-a-time curation.
   bundle generate                  Generate a read-only local preview version.
   bundle save-generation           Save a generated version in Meadow Home.
   bundle publish                   Publish a saved version with the active provider.
@@ -149,6 +151,8 @@ Optional:
 
 Implicit creation is safe to retry: the same canonical source directory, entry
 page, and normal defaults return the existing bundle with created set to false.
+The entry page is tracked automatically; single-node curation should track only
+additional pages.
 
 Examples:
   meadow bundles create --source /path/to/notes --entry "Notable Mental Models.md"
@@ -162,6 +166,7 @@ function showBundleHelp(): void {
   console.log(`Usage:
   meadow bundle track <bundle-slug> --all-safe
   meadow bundle track <bundle-slug> --node-key <bundle-node-key> [--node-key <key> ...]
+  meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
@@ -170,8 +175,8 @@ function showBundleHelp(): void {
   meadow bundle filters <bundle-slug>
 
 Commands:
-  track     Persist curation by stable bundleNodeKey. --all-safe atomically
-            tracks every currently trackable node Meadow does not consider sensitive.
+  track     Atomically track a selected set by stable bundleNodeKey, or use
+            --all-safe for every trackable node Meadow does not consider sensitive.
   node      Inspect, curate, find, or set traversal depths for one node.
   generate  Generate or regenerate the current version and return its versionId
             plus a bundle-scoped, read-only preview URL.
@@ -241,6 +246,10 @@ Modes:
                          Meadow does not consider effectively sensitive.
   --node-key <key>       Track a specific node by the bundleNodeKey returned by
                          'meadow bundle nodes <slug> --scope all'. Repeatable.
+
+For explicit one-at-a-time curation, use
+'meadow bundle node track <slug> --path <node-path>'. The --node-key form above
+is intended for atomically tracking a selected set.
 
 Safe bulk tracking reports newly tracked, already tracked, sensitive-skipped,
 untrackable-skipped, and rejected nodes. It never tracks sensitive nodes.
@@ -369,6 +378,7 @@ async function createBundle(options: CreateBundleOptions): Promise<void> {
     || response === null
     || (response as { operation?: unknown }).operation !== "bundles.create"
     || typeof (response as { slug?: unknown }).slug !== "string"
+    || (response as { entryPageTracked?: unknown }).entryPageTracked !== true
   ) {
     throw new Error("Meadow returned an invalid bundle creation response.");
   }

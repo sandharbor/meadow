@@ -48,6 +48,7 @@ export interface CreateBundleCliResult extends CliOperationResultBase {
   created: boolean;
   sourceDirectory: string;
   entryPage: string;
+  entryPageTracked: true;
   defaults: {
     outlinksDepth: number;
     inlinksDepth: number;

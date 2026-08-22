@@ -75,6 +75,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       changed: true,
       sourceDirectory: source.directory,
       entryPage: "Notable Mental Models.md",
+      entryPageTracked: true,
       defaults: { outlinksDepth: 3, inlinksDepth: 1 },
     });
     expect(created.nextActions?.[0]).toEqual({
@@ -333,11 +334,13 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
 
     const topHelp = await meadowCli.run(["--help"], { artifactName: "top-level-create-help" });
     expect(topHelp).toContain("meadow bundles create --source <directory> --entry <relative-page>");
+    expect(topHelp).toContain("meadow bundle node track <bundle-slug> --path <node-path>");
     const createHelp = await meadowCli.run(
       ["bundles", "create", "--help"],
       { artifactName: "nested-create-help" },
     );
     expect(createHelp).toContain("Implicit creation is safe to retry");
+    expect(createHelp).toContain("The entry page is tracked automatically");
     expect(createHelp).toContain("--slug <slug>");
     const trackHelp = await meadowCli.run(
       ["bundle", "track", "--help"],
@@ -345,7 +348,14 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     );
     expect(trackHelp).toContain("--all-safe");
     expect(trackHelp).toContain("--node-key <bundle-node-key>");
+    expect(trackHelp).toContain("For explicit one-at-a-time curation");
     expect(trackHelp).toContain("It never tracks sensitive nodes");
+    const nodeHelp = await meadowCli.run(
+      ["bundle", "node", "--help"],
+      { artifactName: "nested-node-help" },
+    );
+    expect(nodeHelp).toContain('meadow bundle node track my-site --path "Charlie Munger.md"');
+    expect(nodeHelp).toContain("bundle node set-depths");
     const generateHelp = await meadowCli.run(
       ["bundle", "generate", "--help"],
       { artifactName: "nested-generate-help" },

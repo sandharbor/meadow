@@ -113,10 +113,47 @@ test("CLI supports every single-node inspection and curation operation by path o
     ], { artifactName: "track-charlie-in-copy" });
     expect(copyTracked.node.bundleNodeId).not.toBe(nodeId);
 
+    await create("node-operations-concurrent");
+    const [concurrentCharlie, concurrentWarren] = await Promise.all([
+      meadowCli.runJson<MutateBundleNodeCliResult>([
+        "bundle", "node", "track", "node-operations-concurrent",
+        "--path", "Charlie Munger.md",
+      ], { artifactName: "concurrent-track-charlie" }),
+      meadowCli.runJson<MutateBundleNodeCliResult>([
+        "bundle", "node", "track", "node-operations-concurrent",
+        "--path", "Warren Buffett.md",
+      ], { artifactName: "concurrent-track-warren" }),
+    ]);
+    const concurrentCharlieId = concurrentCharlie.node.bundleNodeId!;
+    const concurrentWarrenId = concurrentWarren.node.bundleNodeId!;
+    await Promise.all([
+      meadowCli.runJson<MutateBundleNodeCliResult>([
+        "bundle", "node", "blacklist", "node-operations-concurrent",
+        "--id", concurrentCharlieId,
+      ], { artifactName: "concurrent-blacklist-charlie" }),
+      meadowCli.runJson<MutateBundleNodeCliResult>([
+        "bundle", "node", "set-depths", "node-operations-concurrent",
+        "--id", concurrentWarrenId, "--outlinks", "1", "--inlinks", "0",
+      ], { artifactName: "concurrent-set-warren-depths" }),
+    ]);
+    const [concurrentCharlieState, concurrentWarrenState] = await Promise.all([
+      meadowCli.runJson<DescribeBundleNodeCliResult>([
+        "bundle", "node", "describe", "node-operations-concurrent",
+        "--id", concurrentCharlieId,
+      ], { artifactName: "describe-concurrent-charlie" }),
+      meadowCli.runJson<DescribeBundleNodeCliResult>([
+        "bundle", "node", "describe", "node-operations-concurrent",
+        "--id", concurrentWarrenId,
+      ], { artifactName: "describe-concurrent-warren" }),
+    ]);
+    expect(concurrentCharlieState.node).toMatchObject({ tracked: true, blacklisted: true });
+    expect(concurrentWarrenState.node.config).toMatchObject({ outlinksDepth: 1, inlinksDepth: 0 });
+
     const found = await meadowCli.runJson<FindBundleNodeCliResult>([
       "bundle", "node", "find-in-bundles", "notable-mental-models", "--id", nodeId,
     ], { artifactName: "find-charlie-in-bundles" });
     expect(found.bundles.map(bundle => ({ slug: bundle.slug, blacklisted: bundle.blacklisted }))).toEqual([
+      { slug: "node-operations-concurrent", blacklisted: true },
       { slug: "node-operations-copy", blacklisted: false },
       { slug: "notable-mental-models", blacklisted: false },
     ]);

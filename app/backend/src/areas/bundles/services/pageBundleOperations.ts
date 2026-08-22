@@ -224,6 +224,7 @@ function resultFor(options: {
     changed: options.created,
     sourceDirectory: options.sourceDirectory,
     entryPage: sourcePageFilename(options.entry),
+    entryPageTracked: true,
     defaults: {
       outlinksDepth: options.defaultOutlinksDepth,
       inlinksDepth: options.defaultInlinksDepth,
