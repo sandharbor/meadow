@@ -7,7 +7,7 @@ echo "🌿 Setting up Meadow Electron Desktop App..."
 
 # Check if we're in the right directory
 if [ ! -f "package.json" ]; then
-    echo "❌ Error: Please run this script from the electron_app directory"
+    echo "❌ Error: Please run this script from the hosts/desktop directory"
     exit 1
 fi
 
@@ -15,7 +15,7 @@ echo "📦 Installing Electron app dependencies..."
 npm install
 
 echo "🔧 Installing backend dependencies..."
-cd ../backend
+cd ../../backend
 npm install
 
 echo "🎨 Installing frontend dependencies..."
@@ -45,7 +45,7 @@ cd ../clients/web
 npm run build
 
 echo "🔨 Building Electron main process..."
-cd ../../electron_app
+cd ../../hosts/desktop
 npm run build:main
 
 echo "✅ Setup complete!"

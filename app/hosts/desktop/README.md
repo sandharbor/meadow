@@ -1,4 +1,4 @@
-# Meadow Electron App
+# Meadow Desktop Host
 
 This directory contains the Electron wrapper for the Meadow application, which
 packages the React frontend, Express backend, and Rust source_page_search_by_title component into
@@ -8,12 +8,12 @@ a native desktop application.
 
 First, you need to run backend and frontend development servers
 ```bash
-cd ../backend
+cd ../../backend
 npm start
 ```
 
 ```bash
-cd ../clients/web
+cd ../../clients/web
 npm start
 ```
 

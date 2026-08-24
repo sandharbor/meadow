@@ -1,9 +1,9 @@
 #!/bin/bash
 
-echo "🧪 Running electron_app type check..."
+echo "🧪 Running desktop host type check..."
 npx tsc --noEmit --project tsconfig.json
 if [ $? -ne 0 ]; then
-    echo "❌ TypeScript check failed for electron_app."
+    echo "❌ TypeScript check failed for the desktop host."
     exit 1
 fi
 
@@ -11,12 +11,12 @@ fi
 # by an extraResources entry in package.json. This prevents assets from being
 # silently excluded from the distribution build.
 echo "🧪 Checking extraResources covers all backend/src/areas/bundle/generation/html/ assets..."
-HTML_DIR="../backend/src/areas/bundle/generation/html"
+HTML_DIR="../../backend/src/areas/bundle/generation/html"
 EXTRA_RESOURCES=$(node -e "
   const pkg = require('./package.json');
   const entries = pkg.build.extraResources
     .map(r => typeof r === 'string' ? r : r.from)
-    .filter(f => f.startsWith('../backend/src/areas/bundle/generation/html/'));
+    .filter(f => f.startsWith('../../backend/src/areas/bundle/generation/html/'));
   entries.forEach(e => console.log(e));
 ")
 
@@ -27,7 +27,7 @@ while IFS= read -r dir; do
     # Check if this relative path (or any ancestor) is covered by an extraResources entry
     covered=false
     while [ -n "$rel" ]; do
-        check="../backend/src/areas/bundle/generation/html/$rel"
+        check="../../backend/src/areas/bundle/generation/html/$rel"
         if echo "$EXTRA_RESOURCES" | grep -qxF "$check"; then
             covered=true
             break
@@ -44,8 +44,8 @@ while IFS= read -r dir; do
 done < <(find "$HTML_DIR" -mindepth 1 -type d -exec sh -c 'ls -1qA "$1"/*.* >/dev/null 2>&1' _ {} \; -print | sort)
 
 if [ "$MISSING" = "1" ]; then
-    echo "❌ Add the missing directories to extraResources in electron_app/package.json"
+    echo "❌ Add the missing directories to extraResources in hosts/desktop/package.json"
     exit 1
 fi
 
-echo "✅ electron_app checks passed"
+echo "✅ Desktop host checks passed"

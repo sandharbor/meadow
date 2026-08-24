@@ -13,7 +13,7 @@ Build the Meadow desktop app from source and launch the built app in test mode s
 REPO_ROOT=$(git rev-parse --show-toplevel)
 ```
 
-Then use `$REPO_ROOT` in all subsequent commands. Never use bare relative paths like `cd app/electron_app`.
+Then use `$REPO_ROOT` in all subsequent commands. Never use bare relative paths like `cd app/hosts/desktop`.
 
 ## Step 1: Check for a running Meadow app
 
@@ -32,7 +32,7 @@ Do not attempt to kill it yourself — the user may have unsaved state.
 ## Step 2: Build and launch
 
 ```bash
-cd "$REPO_ROOT/app/electron_app" && ./build-and-test.sh
+cd "$REPO_ROOT/app/hosts/desktop" && ./build-and-test.sh
 ```
 
 This builds all components (rust binaries, backend, frontend, electron main), packages the app, mounts the result, and launches Meadow with `--test-mode`. The script waits for `=== STARTUP_COMPLETE ===` in the test log and then blocks so you can interact with the running app. Press Ctrl+C to stop — the script unmounts the volume and kills the launched process on exit.
@@ -42,4 +42,4 @@ This builds all components (rust binaries, backend, frontend, electron main), pa
 When the user stops the session, report:
 
 - Whether backend, frontend, and main-window startup markers all appeared in the test log
-- The built app location under `app/electron_app/build/`
+- The built app location under `app/hosts/desktop/build/`

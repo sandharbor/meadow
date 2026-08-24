@@ -21,7 +21,7 @@ just a nice UI for launching the app with different configurations.
 
 # Building the app
 
-There is an `app-build` skill that runs the build script under `app/electron_app`
+There is an `app-build` skill that runs the build script under `app/hosts/desktop`
 
 # Testing - Quick
 

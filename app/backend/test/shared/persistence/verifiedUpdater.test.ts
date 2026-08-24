@@ -28,7 +28,7 @@ import {
   type CommandResult,
   type UpdateCommandAdapter,
   type UpdateMetadata,
-} from '../../../../electron_app/src/verifiedUpdater';
+} from '../../../../hosts/desktop/src/verifiedUpdater';
 
 const HEALTH_TOKEN = 'a'.repeat(64);
 const temporaryDirectories: string[] = [];

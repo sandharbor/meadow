@@ -19,9 +19,9 @@ import { randomBytes } from 'crypto';
 import { app, BrowserWindow } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { loadAppConfig, updateAutoUpdateLastChecked } from '../../shared_code/utils/appConfigUtils';
-import { loadResourcesConfig } from '../../shared_code/utils/resourcesConfigUtils';
-import { compareAppVersions } from '../../shared_code/utils/meadowHomeFormat';
+import { loadAppConfig, updateAutoUpdateLastChecked } from '../../../shared_code/utils/appConfigUtils';
+import { loadResourcesConfig } from '../../../shared_code/utils/resourcesConfigUtils';
+import { compareAppVersions } from '../../../shared_code/utils/meadowHomeFormat';
 import {
   downloadVerifiedUpdateArtifact,
   fetchVerifiedUpdateMetadata,

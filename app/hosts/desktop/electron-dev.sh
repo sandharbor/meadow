@@ -6,7 +6,7 @@ BUILD_PID=$!
 
 # Wait for the main.js file to be created
 echo "Waiting for build to complete..."
-wait-on dist/electron_app/src/main.js
+wait-on dist/hosts/desktop/src/main.js
 
 # Start electron with all arguments passed to this script
 echo "Starting Electron with arguments: $@"

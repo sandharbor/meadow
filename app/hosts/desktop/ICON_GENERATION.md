@@ -13,13 +13,13 @@ The Electron app requires icons in multiple formats:
 
 ### Quick Start
 ```bash
-# From the electron_app directory
+# From the hosts/desktop directory
 npm run generate-icons
 ```
 
 ### Manual Execution
 ```bash
-# From the electron_app directory
+# From the hosts/desktop directory
 ./generate-icons.sh
 ```
 
@@ -97,4 +97,4 @@ The generated icons are automatically used by Electron Builder during the build 
 - Windows builds use `assets/icon.ico`  
 - Linux builds use `assets/icon.png`
 
-No additional configuration is needed once the icons are generated. 
+No additional configuration is needed once the icons are generated.

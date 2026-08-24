@@ -19,7 +19,7 @@ import {
   DevRuntimeManager,
   type DevRuntimePaneLaunch,
 } from "../../../tooling/dev_tools/src/server/devRuntimeManager.js";
-import { hasChildProcessExited } from "../../../electron_app/src/childProcessState.js";
+import { hasChildProcessExited } from "../../../hosts/desktop/src/childProcessState.js";
 import type { LocalRuntimeSession } from "../../../shared_code/utils/localRuntimeSession.js";
 
 const runtimeSession: LocalRuntimeSession = {

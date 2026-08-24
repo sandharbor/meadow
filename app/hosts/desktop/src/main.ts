@@ -22,26 +22,26 @@ import * as os from 'os';
 import {
   FindInBundlesOptions,
   parseFindInBundlesDeepLink,
-} from '../../shared_code/types/findInBundlesOptions';
-import { preflightMeadowHome } from '../../shared_code/utils/meadowHomeFormat';
-import { getDefaultConfigDirectory } from '../../shared_code/utils/appConfigUtils';
-import { getPlatformPaths } from '../../shared_code/paths/getPlatformPaths';
+} from '../../../shared_code/types/findInBundlesOptions';
+import { preflightMeadowHome } from '../../../shared_code/utils/meadowHomeFormat';
+import { getDefaultConfigDirectory } from '../../../shared_code/utils/appConfigUtils';
+import { getPlatformPaths } from '../../../shared_code/paths/getPlatformPaths';
 import {
   describeStartupFailure,
   readStartupFailureDiagnostic,
-} from '../../shared_code/utils/startupRecovery';
-import { resolveNativeRustBinaryPathFromRuntimeParent } from '../../shared_code/utils/nativeRustBinaryPath';
+} from '../../../shared_code/utils/startupRecovery';
+import { resolveNativeRustBinaryPathFromRuntimeParent } from '../../../shared_code/utils/nativeRustBinaryPath';
 import {
   DESKTOP_WEB_SECURITY_PREFERENCES,
   isTrustedDesktopRenderer,
-} from '../../shared_code/utils/desktopLaunchSecurity';
+} from '../../../shared_code/utils/desktopLaunchSecurity';
 import {
   createLocalRuntimeSession,
   getLocalRuntimeStartupDiagnosticPath,
   MEADOW_RUNTIME_SESSION_ENV,
   readLocalRuntimeSession,
   removeLocalRuntimeSession,
-} from '../../shared_code/utils/localRuntimeSession';
+} from '../../../shared_code/utils/localRuntimeSession';
 import { UpdateManager } from './updateManager';
 import { acknowledgeUpdateHealthFromEnvironment } from './verifiedUpdater';
 import { showRecoveryWindow } from './recoveryWindow';
@@ -449,7 +449,7 @@ class MeadowApp {
         throw new Error('Command-line installation is unavailable to this renderer');
       }
       const sourcePath = this.isDev
-        ? path.join(__dirname, '../../../../clients/cli/bin/meadow')
+        ? path.join(__dirname, '../../../../../../clients/cli/bin/meadow')
         : path.join((process as NodeJS.Process & { resourcesPath: string }).resourcesPath, 'cli', 'meadow');
       return installCommandLineInterface(sourcePath);
     });
@@ -729,10 +729,10 @@ class MeadowApp {
 
       if (this.isDev) {
         // Development: run the backend from source
-        // In dev mode, __dirname is electron_app/dist/electron_app/src
+        // In dev mode, __dirname is hosts/desktop/dist/hosts/desktop/src
         // We need to go up to the project root and then into backend
         backendScript = 'src/shared/app-shell/index.ts';
-        cwd = path.join(__dirname, '../../../../backend');
+        cwd = path.join(__dirname, '../../../../../../backend');
         const tsxPath = path.join(cwd, 'node_modules', '.bin', 'tsx');
         log('INFO', 'Starting backend in development mode', { backendScript, cwd, tsxPath });
         
@@ -829,7 +829,7 @@ class MeadowApp {
     try {
       if (this.isDev) {
         // Development: start Vite dev server for the frontend
-        const cwd = path.join(__dirname, '../../../../clients/web');
+        const cwd = path.join(__dirname, '../../../../../../clients/web');
         const vitePath = path.join(cwd, 'node_modules', '.bin', 'vite');
         log('INFO', 'Starting Vite dev server for frontend', { cwd, vitePath, frontendPort: this.frontendPort, backendPort: this.backendPort });
 

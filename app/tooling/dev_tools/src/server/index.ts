@@ -72,7 +72,7 @@ const runtimeSession = runtimeSessionPath
 const cachedFrontendPort = runtimeSession?.frontendPort;
 const projectRoot = getProjectRoot();
 const electronPackage = JSON.parse(
-  readFileSync(join(projectRoot, "app", "electron_app", "package.json"), "utf8"),
+  readFileSync(join(projectRoot, "app", "hosts", "desktop", "package.json"), "utf8"),
 ) as { version?: unknown };
 const appVersion = electronPackage.version;
 if (typeof appVersion !== "string" || appVersion.length === 0) {
@@ -487,13 +487,13 @@ app.post("/api/logs/clear", (_req, res) => {
 app.post("/api/app/launch-dev", async (_req, res) => {
   try {
     const projectRoot = getProjectRoot();
-    const electronAppDir = join(projectRoot, "app", "electron_app");
+    const electronAppDir = join(projectRoot, "app", "hosts", "desktop");
 
     console.log(`[dev] Killing any existing dev processes before launch...`);
 
     await new Promise<void>((resolve) => {
       const killScript = `
-        pkill -f "electron.*electron_app" || true
+        pkill -f "electron.*hosts/desktop" || true
         pkill -f "meadow-electron" || true
         pkill -f "node.*electron-dev" || true
       `;
