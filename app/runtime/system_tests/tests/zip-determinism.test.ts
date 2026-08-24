@@ -18,14 +18,14 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
-import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../shared_code/utils/bundleNodeConfigUtils.js';
+import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../../shared_code/utils/bundleNodeConfigUtils.js';
 import {
   startServer,
   stopServer,
   TEST_BASE_URL
 } from '../helpers/serverManager.js';
 import { SystemTestBundleSetup } from '../helpers/testSetup.js';
-import { readCompressionManifest } from '../../shared_code/utils/compressionManifestUtils.js';
+import { readCompressionManifest } from '../../../shared_code/utils/compressionManifestUtils.js';
 
 const BIG_BUNDLE_EXCALIDRAW_PAGE_CONFIGS = [
   {

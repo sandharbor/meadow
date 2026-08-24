@@ -20,10 +20,10 @@ import path from 'path';
 import fs from 'fs';
 import { randomBytes } from 'crypto';
 import { fileURLToPath } from 'url';
-import { saveResourcesLocalConfig } from '../../shared_code/utils/resourcesConfigUtils.js';
+import { saveResourcesLocalConfig } from '../../../shared_code/utils/resourcesConfigUtils.js';
 
 const SYSTEM_TESTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const WORKSPACE_ROOT = path.resolve(SYSTEM_TESTS_DIR, '..');
+const WORKSPACE_ROOT = path.resolve(SYSTEM_TESTS_DIR, '../..');
 const BACKEND_DIR = path.join(WORKSPACE_ROOT, 'backend');
 
 export const TEST_PORT = parseInt(process.env.MEADOW_SYSTEM_TEST_PORT ?? '3099', 10);

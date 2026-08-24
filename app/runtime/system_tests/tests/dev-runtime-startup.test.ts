@@ -18,9 +18,9 @@ import { describe, expect, it } from "vitest";
 import {
   DevRuntimeManager,
   type DevRuntimePaneLaunch,
-} from "../../tooling/dev_tools/src/server/devRuntimeManager.js";
-import { hasChildProcessExited } from "../../electron_app/src/childProcessState.js";
-import type { LocalRuntimeSession } from "../../shared_code/utils/localRuntimeSession.js";
+} from "../../../tooling/dev_tools/src/server/devRuntimeManager.js";
+import { hasChildProcessExited } from "../../../electron_app/src/childProcessState.js";
+import type { LocalRuntimeSession } from "../../../shared_code/utils/localRuntimeSession.js";
 
 const runtimeSession: LocalRuntimeSession = {
   schemaVersion: 1,

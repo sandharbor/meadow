@@ -20,7 +20,7 @@ limitations under the License.
  */
 
 import type { PagespecLinkSpec, PagespecLinks } from './types.js';
-import { IMAGE_EXTENSIONS } from '../../shared_code/utils/fileTypeUtils.js';
+import { IMAGE_EXTENSIONS } from '../../../shared_code/utils/fileTypeUtils.js';
 
 const PRESERVED_LINK_EXTENSIONS = ['.html', '.css', '.js', ...IMAGE_EXTENSIONS] as const;
 

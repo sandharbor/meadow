@@ -2,7 +2,7 @@
 
 Playwright-driven visual + DOM check for the `t025 - extended syntax` test page.
 
-Loads the rendered preview HTML (from `app/system_tests/expected_results/meadow-test-bundle-big-preview/`) in a real Chromium browser, saves a full-page screenshot, and probes the DOM for each extended-syntax feature listed on <https://www.markdownguide.org/extended-syntax/>, reporting which features render properly vs. fall through as raw markdown.
+Loads the rendered preview HTML (from `app/runtime/system_tests/expected_results/meadow-test-bundle-big-preview/`) in a real Chromium browser, saves a full-page screenshot, and probes the DOM for each extended-syntax feature listed on <https://www.markdownguide.org/extended-syntax/>, reporting which features render properly vs. fall through as raw markdown.
 
 ## Usage
 
@@ -20,7 +20,7 @@ The screenshot is written to `t025-rendered.png` in this directory.
 The script reads the already-rendered HTML from `expected_results/`. If the source markdown or renderer changes, regenerate it first with:
 
 ```bash
-cd app/system_tests && npm test -- preview
+cd app/runtime/system_tests && npm test -- preview
 ```
 
 Then re-run `npm run verify`.

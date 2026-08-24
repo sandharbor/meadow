@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 const BUNDLE_DIR = path.join(
   REPO_ROOT,
-  "app/system_tests/expected_results/meadow-test-bundle-big-preview"
+  "app/runtime/system_tests/expected_results/meadow-test-bundle-big-preview"
 );
 const PAGE_FILE = "t025 - extended syntax.html";
 const PORT = 4789;

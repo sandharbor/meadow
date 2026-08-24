@@ -22,8 +22,8 @@ import {
   getFixturesPath,
   getSourceGraphsPath
 } from './serverManager.js';
-import { AppConfigPaths } from '../../shared_code/paths/appConfigPaths.js';
-import { BundleConfigPaths } from '../../shared_code/paths/bundleConfigPaths.js';
+import { AppConfigPaths } from '../../../shared_code/paths/appConfigPaths.js';
+import { BundleConfigPaths } from '../../../shared_code/paths/bundleConfigPaths.js';
 
 interface ResolvedFixtureSourceGraph {
   sharedPath: string;

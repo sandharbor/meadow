@@ -24,13 +24,13 @@ import YAML from 'yaml';
 import {
   hasPagespecsBlock,
   PAGESPECS_BLOCK_PATTERN,
-} from '../../shared_code/utils/pagespecBlockUtils.js';
+} from '../../../shared_code/utils/pagespecBlockUtils.js';
 import type { PagespecsBlock, PagespecEntry } from './types.js';
 
 export {
   extractContentWithoutPagespecs,
   hasPagespecsBlock,
-} from '../../shared_code/utils/pagespecBlockUtils.js';
+} from '../../../shared_code/utils/pagespecBlockUtils.js';
 
 /**
  * Extracts the pagespecs block from markdown content if present.

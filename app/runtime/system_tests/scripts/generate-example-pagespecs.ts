@@ -19,7 +19,7 @@ limitations under the License.
  * example-bundle-data. Native HTML and SVG nodes keep their PageSpecs in
  * sidecar files and are not modified by this script.
  *
- * Usage:  npx tsx system_tests/scripts/generate-example-pagespecs.ts
+ * Usage:  npx tsx runtime/system_tests/scripts/generate-example-pagespecs.ts
  *
  * This script:
  *  1. Starts the test server
@@ -41,7 +41,7 @@ import {
   getSourceGraphsPath,
 } from '../helpers/serverManager.js';
 import { SystemTestBundleSetup } from '../helpers/testSetup.js';
-import { parseBundleNodeConfig } from '../../shared_code/utils/bundleNodeConfigUtils.js';
+import { parseBundleNodeConfig } from '../../../shared_code/utils/bundleNodeConfigUtils.js';
 import {
   extractMainSectionLinkPaths,
   extractBacklinkDetails,

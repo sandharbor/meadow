@@ -41,7 +41,7 @@ import {
   isPagespecNotInWorkingGraph,
 } from '../../../../pagespecs/index.js';
 import type { WorkingGraphData, PagespecInWorkingGraph } from '../../../../pagespecs/index.js';
-import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { parseBundleNodeConfig } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import {
   findAllPagespecSourceFiles,
   getAvailableBundles,

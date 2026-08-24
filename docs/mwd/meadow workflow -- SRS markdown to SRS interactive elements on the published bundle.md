@@ -130,4 +130,4 @@ The state of the [[reader]]'s SRS cards is stored in [[localStorage]] and connec
 
 `t022` is in `meadow-test-bundles-data` and has two separate pages with some spaced repetition cards in them (with two different tags in the pages), as a test. That way, in the `home_fixture_big_and_small`, after it loads, we can easily enable the spaced repetition option and see the resulting changes to the generated HTML.
 
-Also, we'll be able to add new fixture that has spaced repetition enabled by default and pointing to a tag that matches one one of the two pages, so we'll be able to test that we get the `system_tests/expected_results`
+Also, we'll be able to add new fixture that has spaced repetition enabled by default and pointing to a tag that matches one one of the two pages, so we'll be able to test that we get the `runtime/system_tests/expected_results`

@@ -7,12 +7,11 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "./dist",
-    "rootDir": "..",
+    "rootDir": "../..",
     "declaration": true,
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["**/*.ts", "../shared_code/paths/**/*.ts"],
+  "include": ["**/*.ts", "../../shared_code/paths/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
-

@@ -24,7 +24,7 @@ import {
   isPagespecNotInWorkingGraph,
   isPagespecInWorkingGraph,
 } from './types.js';
-import { IMAGE_EXTENSIONS } from '../../shared_code/utils/fileTypeUtils.js';
+import { IMAGE_EXTENSIONS } from '../../../shared_code/utils/fileTypeUtils.js';
 
 /**
  * Valid file extensions for link paths.

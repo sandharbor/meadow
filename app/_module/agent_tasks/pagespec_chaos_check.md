@@ -279,7 +279,7 @@ Within a single page's generation pagespec, look at the associated rendered HTML
 
 **Behavior:**
 
-Look at the system_tests/expected_results/ folder for the associated HTML
+Look at the runtime/system_tests/expected_results/ folder for the associated HTML
 
 Does the content of that HTML look like it aligns with the expectation set in
 `generation.htmlRenderedLinks`?
@@ -315,7 +315,7 @@ used during normal development workflows**.
 When debugging a failure, targeted pagespec tests may be run first:
 
 ```bash
-cd app/system_tests
+cd app/runtime/system_tests
 npx vitest run tests/pagespecs_general.test.ts tests/areas/bundle/curation/pagespecs_curation.test.ts tests/areas/bundle/generation/pagespecs_generation.test.ts
 ```
 

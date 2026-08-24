@@ -18,7 +18,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { installCommandLineInterface } from "../../electron_app/src/cliInstaller.js";
+import { installCommandLineInterface } from "../../../electron_app/src/cliInstaller.js";
 
 const temporaryDirectories: string[] = [];
 
