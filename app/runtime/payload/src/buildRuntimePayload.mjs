@@ -163,20 +163,6 @@ function copyGenerationAssets(serviceRoot, destinationServiceRoot) {
   }
 }
 
-function validateComposition(perspective) {
-  const extensionProvider = path.join(
-    meadowRoot,
-    "app/publishing_providers/MeadowPublishingProvider",
-  );
-  const extensionPresent = existsSync(extensionProvider);
-  if (perspective === "standalone" && extensionPresent) {
-    throw new Error("A standalone Runtime Payload must be built from a standalone Meadow tree");
-  }
-  if (perspective === "composed" && !extensionPresent) {
-    throw new Error("A composed Runtime Payload requires the Meadow extension provider");
-  }
-}
-
 function validateOutput(outputRoot) {
   const resolved = path.resolve(outputRoot);
   if (
@@ -233,7 +219,6 @@ export function buildRuntimePayload(options) {
     }
     return { outputRoot, manifest };
   }
-  validateComposition(options.perspective);
   const stagingRoot = `${outputRoot}.staging-${process.pid}`;
   rmSync(stagingRoot, { recursive: true, force: true });
   mkdirSync(stagingRoot, { recursive: true });
