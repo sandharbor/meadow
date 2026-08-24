@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Each provider's frontend and backend code lives outside `app/clients/web/`
-# and `app/backend/`, so they don't share their installed node_modules by
+# and `app/runtime/service/`, so they don't share their installed node_modules by
 # default. Symlink so that bundler-style module resolution (Vite at runtime
 # for frontend; tsc + tsx for backend) can find react, express, etc.
 
@@ -13,10 +13,29 @@ link_node_modules() {
     local subdir="$2"          # frontend or backend
     [ -d "$provider_dir/$subdir" ] || return 0
     local link="$provider_dir/$subdir/node_modules"
-    if [ ! -e "$link" ]; then
-        ln -s "../../../$subdir/node_modules" "$link"
-        echo "🔗 Linked $(basename "$provider_dir")/$subdir/node_modules"
+    local owner_package
+    if [ "$subdir" = "backend" ]; then
+        owner_package="runtime/service"
+    else
+        owner_package="clients/web"
     fi
+    local target="../../../$owner_package/node_modules"
+
+    if [ -L "$link" ]; then
+        local current
+        current="$(readlink "$link")"
+        if [ "$current" = "$target" ]; then
+            return 0
+        fi
+        rm "$link"
+        echo "↻ Replacing stale $(basename "$provider_dir")/$subdir/node_modules link"
+    elif [ -e "$link" ]; then
+        echo "❌ $link exists and is not a symlink — refusing to overwrite." >&2
+        exit 1
+    fi
+
+    ln -s "$target" "$link"
+    echo "🔗 Linked $(basename "$provider_dir")/$subdir/node_modules"
 }
 
 for provider_dir in "$PROVIDERS_DIR"/*/; do

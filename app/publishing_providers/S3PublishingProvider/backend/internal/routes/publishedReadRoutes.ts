@@ -16,11 +16,11 @@ limitations under the License.
 
 import type { Router } from 'express';
 import fs from 'fs';
-import { getBundleDirectory } from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
-import { requireGeneratedBundleVersionId } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
-import { loadGeneratedBundleVersionManifest } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
-import { inspectGeneratedVersionGitState } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
-import { deriveSelectedVersionPublicationStatus } from '../../../../../backend/src/areas/bundle/sharing/versioning/publicationStatus.js';
+import { getBundleDirectory } from '../../../../../runtime/service/src/shared/bundle-config/bundleConfigPaths.js';
+import { requireGeneratedBundleVersionId } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
+import { loadGeneratedBundleVersionManifest } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
+import { inspectGeneratedVersionGitState } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
+import { deriveSelectedVersionPublicationStatus } from '../../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationStatus.js';
 import {
   loadS3PublicationState,
   remotelyPresentS3VersionIds,

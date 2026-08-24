@@ -10,7 +10,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BACKEND_DIR="$REPO_ROOT/app/backend"
+BACKEND_DIR="$REPO_ROOT/app/runtime/service"
 FRONTEND_DIR="$REPO_ROOT/app/clients/web"
 DEV_TOOLS_DIR="$REPO_ROOT/app/tooling/dev_tools"
 APP_VERSION=$(node -p "require('$REPO_ROOT/app/hosts/desktop/package.json').version")

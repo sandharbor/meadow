@@ -178,7 +178,7 @@ export class DevRuntimeManager {
     const runtime = this.requireManagedRuntime();
     await this.respawnPane({
       target: `${runtime.tmuxSession}:backend`,
-      cwd: path.join(this.projectRoot, "app", "backend"),
+      cwd: path.join(this.projectRoot, "app", "runtime", "service"),
       command: runtimeCommand(
         {
           MEADOW_IS_DEV: "true",

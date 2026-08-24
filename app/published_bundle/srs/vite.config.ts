@@ -28,7 +28,7 @@ export default defineConfig(({ command }) => {
       },
       resolve: {
         alias: {
-          '/preset-fonts': path.resolve(__dirname, '../../backend/src/areas/bundle/generation/html/presets/modern/fonts'),
+          '/preset-fonts': path.resolve(__dirname, '../../runtime/service/src/areas/bundle/generation/html/presets/modern/fonts'),
         },
       },
     };

@@ -18,16 +18,16 @@ import type { Router } from 'express';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import { encodePathForUrl } from '../../../../../shared_code/utils/urlUtils.js';
-import { getBundleDirectory } from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
-import { requireGeneratedBundleVersionId } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
+import { getBundleDirectory } from '../../../../../runtime/service/src/shared/bundle-config/bundleConfigPaths.js';
+import { requireGeneratedBundleVersionId } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
 import {
   generatedBundleVersionDirectory,
   loadGeneratedBundleVersionManifest,
-} from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
-import { assertFrozenGeneratedVersionsIntegrity } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
-import { inspectGeneratedVersionGitState } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
-import { logBundleError, logBundleInfo } from '../../../../../backend/src/shared/utils/logging/bundleLogger.js';
-import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
+} from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
+import { assertFrozenGeneratedVersionsIntegrity } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
+import { inspectGeneratedVersionGitState } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
+import { logBundleError, logBundleInfo } from '../../../../../runtime/service/src/shared/utils/logging/bundleLogger.js';
+import { logger } from '../../../../../runtime/service/src/shared/utils/logging/backendLoggingUtils.js';
 import { createS3Client, describeS3Error, requireBucket } from '../s3Client.js';
 import { putJsonObject, uploadDirectory } from '../s3Operations.js';
 import { loadS3ConfigForBundle, loadS3Resources, loadS3Secrets, normalizeWebBaseUrl } from '../s3Config.js';

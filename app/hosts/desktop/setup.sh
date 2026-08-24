@@ -15,11 +15,11 @@ echo "📦 Installing Electron app dependencies..."
 npm install
 
 echo "🔧 Installing backend dependencies..."
-cd ../../backend
+cd ../../runtime/service
 npm install
 
 echo "🎨 Installing frontend dependencies..."
-cd ../clients/web
+cd ../../clients/web
 npm install
 
 echo "📚 Installing shared dependencies..."
@@ -37,11 +37,11 @@ cd ../../fast_git_ops/fast_git_ops_code
 cargo build --release
 
 echo "🏗️  Building backend..."
-cd ../../../../backend
+cd ../../../service
 npm run build
 
 echo "⚡ Building frontend..."
-cd ../clients/web
+cd ../../clients/web
 npm run build
 
 echo "🔨 Building Electron main process..."

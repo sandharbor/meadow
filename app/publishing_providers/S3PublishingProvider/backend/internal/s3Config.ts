@@ -39,7 +39,7 @@ import {
   loadProviderSecrets,
 } from '../../../../shared_code/utils/publishingProviderConfigUtils.js';
 import { PublishingProviderPaths } from '../../../../shared_code/paths/publishingProviderPaths.js';
-import { getConfigDirectory } from '../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
+import { getConfigDirectory } from '../../../../runtime/service/src/shared/bundle-config/bundleConfigPaths.js';
 import type {
   PublishingProviderConfigBase,
   PublishingProviderSecretsBase,

@@ -56,7 +56,7 @@ import type {
 import { waitForHttpReady } from "../../run/test-fixtures.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
-const BACKEND_DIR = path.join(REPO_ROOT, "app", "backend");
+const BACKEND_DIR = path.join(REPO_ROOT, "app", "runtime", "service");
 const CLI_EXECUTABLE = path.join(REPO_ROOT, "app", "clients", "cli", "bin", "meadow");
 
 export interface OperatorLaunchContext {

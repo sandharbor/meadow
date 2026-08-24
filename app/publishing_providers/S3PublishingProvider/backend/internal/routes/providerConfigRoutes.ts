@@ -20,7 +20,7 @@ import { PublishingProviderPaths } from '../../../../../shared_code/paths/publis
 import {
   getConfigDirectory,
   getBundleDirectory,
-} from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
+} from '../../../../../runtime/service/src/shared/bundle-config/bundleConfigPaths.js';
 import {
   loadS3ConfigForBundle,
   PUBLISH_SLUG_PATTERN,

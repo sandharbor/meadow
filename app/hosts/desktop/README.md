@@ -8,7 +8,7 @@ a native desktop application.
 
 First, you need to run backend and frontend development servers
 ```bash
-cd ../../backend
+cd ../../runtime/service
 npm start
 ```
 

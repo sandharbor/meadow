@@ -7,27 +7,27 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Verify that every directory under backend/src/areas/bundle/generation/html/ containing files is covered
+# Verify that every Runtime service HTML asset directory containing files is covered
 # by an extraResources entry in package.json. This prevents assets from being
 # silently excluded from the distribution build.
-echo "🧪 Checking extraResources covers all backend/src/areas/bundle/generation/html/ assets..."
-HTML_DIR="../../backend/src/areas/bundle/generation/html"
+echo "🧪 Checking extraResources covers all Runtime service HTML assets..."
+HTML_DIR="../../runtime/service/src/areas/bundle/generation/html"
 EXTRA_RESOURCES=$(node -e "
   const pkg = require('./package.json');
   const entries = pkg.build.extraResources
     .map(r => typeof r === 'string' ? r : r.from)
-    .filter(f => f.startsWith('../../backend/src/areas/bundle/generation/html/'));
+    .filter(f => f.startsWith('../../runtime/service/src/areas/bundle/generation/html/'));
   entries.forEach(e => console.log(e));
 ")
 
-# Find all directories under backend/src/areas/bundle/generation/html/ that directly contain files
+# Find all Runtime service HTML directories that directly contain files
 MISSING=0
 while IFS= read -r dir; do
     rel="${dir#$HTML_DIR/}"
     # Check if this relative path (or any ancestor) is covered by an extraResources entry
     covered=false
     while [ -n "$rel" ]; do
-        check="../../backend/src/areas/bundle/generation/html/$rel"
+        check="../../runtime/service/src/areas/bundle/generation/html/$rel"
         if echo "$EXTRA_RESOURCES" | grep -qxF "$check"; then
             covered=true
             break
@@ -38,7 +38,7 @@ while IFS= read -r dir; do
         rel="$parent"
     done
     if [ "$covered" = false ]; then
-        echo "❌ Directory '${dir#$HTML_DIR/}' under backend/src/areas/bundle/generation/html/ is not covered by any extraResources entry in package.json"
+        echo "❌ Runtime service HTML directory '${dir#$HTML_DIR/}' is not covered by any extraResources entry in package.json"
         MISSING=1
     fi
 done < <(find "$HTML_DIR" -mindepth 1 -type d -exec sh -c 'ls -1qA "$1"/*.* >/dev/null 2>&1' _ {} \; -print | sort)

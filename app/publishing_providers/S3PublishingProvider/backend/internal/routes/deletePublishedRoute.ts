@@ -16,10 +16,10 @@ limitations under the License.
 
 import type { Router } from 'express';
 import { randomUUID } from 'crypto';
-import { getBundleDirectory } from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
-import { requireGeneratedBundleVersionId } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
-import { logger } from '../../../../../backend/src/shared/utils/logging/backendLoggingUtils.js';
-import { logBundleError, logBundleInfo } from '../../../../../backend/src/shared/utils/logging/bundleLogger.js';
+import { getBundleDirectory } from '../../../../../runtime/service/src/shared/bundle-config/bundleConfigPaths.js';
+import { requireGeneratedBundleVersionId } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
+import { logger } from '../../../../../runtime/service/src/shared/utils/logging/backendLoggingUtils.js';
+import { logBundleError, logBundleInfo } from '../../../../../runtime/service/src/shared/utils/logging/bundleLogger.js';
 import { createS3Client, describeS3Error } from '../s3Client.js';
 import { deletePrefix, putJsonObject } from '../s3Operations.js';
 import { loadS3Resources, loadS3Secrets } from '../s3Config.js';

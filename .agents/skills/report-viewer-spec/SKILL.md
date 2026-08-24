@@ -218,7 +218,7 @@ the user asks to fix the underlying bug, use this tight loop:
      `app/runtime/native/fast_git_ops/fast_git_ops_code/src/main.rs`) or in
      how `test-fixtures.ts` consumes its output.
 2. **Fix at the source.** For "file written but not committed" bugs,
-   the typical fix location is `app/backend/src/index.ts startServer()`
+   the typical fix location is `app/runtime/service/src/index.ts startServer()`
    where init helpers like `ensureAppConfigInitialized` run. Have the
    init helper report whether it patched the file, and commit when it
    did — not only on first creation. See the existing

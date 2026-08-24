@@ -732,7 +732,7 @@ class MeadowApp {
         // In dev mode, __dirname is hosts/desktop/dist/hosts/desktop/src
         // We need to go up to the project root and then into backend
         backendScript = 'src/shared/app-shell/index.ts';
-        cwd = path.join(__dirname, '../../../../../../backend');
+        cwd = path.join(__dirname, '../../../../../../runtime/service');
         const tsxPath = path.join(cwd, 'node_modules', '.bin', 'tsx');
         log('INFO', 'Starting backend in development mode', { backendScript, cwd, tsxPath });
         

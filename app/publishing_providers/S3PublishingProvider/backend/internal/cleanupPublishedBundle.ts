@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { CleanupPublishedBundleOptions, CleanupPublishedBundleResult } from '../../../../backend/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
-import { logBundleError, logBundleInfo } from '../../../../backend/src/shared/utils/logging/bundleLogger.js';
+import type { CleanupPublishedBundleOptions, CleanupPublishedBundleResult } from '../../../../runtime/service/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
+import { logBundleError, logBundleInfo } from '../../../../runtime/service/src/shared/utils/logging/bundleLogger.js';
 import { createS3Client } from './s3Client.js';
 import { deleteObjectKeys, deletePrefix, putJsonObject } from './s3Operations.js';
 import { loadS3Resources, loadS3Secrets } from './s3Config.js';

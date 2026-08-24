@@ -43,7 +43,7 @@ exports.default = async function(context) {
   // Publishing providers ship as compiled ES modules (import/export). For Node
   // to treat them as ESM, it has to find a package.json with "type":"module"
   // when walking up from a provider file. In dev that walk lands on
-  // meadow/app/backend/package.json (which has "type":"module"); in the bundle
+  // the Runtime service package.json (which has "type":"module"); in the bundle
   // the equivalent walk runs out without finding one. A minimal package.json at
   // Resources/publishing_providers/ marks the whole tree as ESM. The same
   // directory also gets a node_modules symlink so providers can resolve npm

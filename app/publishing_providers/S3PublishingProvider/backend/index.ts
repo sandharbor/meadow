@@ -20,7 +20,7 @@ import type {
   CleanupPublishedBundleOptions,
   CleanupPublishedBundleResult,
   IPublishingProviderBackend,
-} from '../../../backend/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
+} from '../../../runtime/service/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
 import { registerS3Routes } from './internal/routes/registerS3Routes.js';
 import { cleanupS3PublishedFiles } from './internal/cleanupPublishedBundle.js';
 import { S3_PROVIDER_ID } from './internal/s3Config.js';

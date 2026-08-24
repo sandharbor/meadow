@@ -50,7 +50,7 @@ import {
 // assembleTestArtifacts is called in assembleRun() post-run, not during fixture teardown
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
-const BACKEND_DIR = path.join(REPO_ROOT, "app", "backend");
+const BACKEND_DIR = path.join(REPO_ROOT, "app", "runtime", "service");
 const FRONTEND_DIR = path.join(REPO_ROOT, "app", "clients", "web");
 const E2E_DIR = path.join(import.meta.dirname, "../..");
 

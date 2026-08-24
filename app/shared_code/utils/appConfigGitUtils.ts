@@ -23,8 +23,8 @@ limitations under the License.
 import { existsSync } from "fs";
 import { join } from "path";
 import { getDefaultConfigDirectory, loadAppConfig } from "./appConfigUtils.js";
-import { createLogger, Logger } from "../../backend/src/shared/utils/logging/backendLoggingUtils.js";
-import { commitChangesNative, runGitInitNative } from "../../backend/src/shared/utils/configDirectory/gitUtils/gitStatusUtils.js";
+import { createLogger, Logger } from "../../runtime/service/src/shared/utils/logging/backendLoggingUtils.js";
+import { commitChangesNative, runGitInitNative } from "../../runtime/service/src/shared/utils/configDirectory/gitUtils/gitStatusUtils.js";
 import {
   readDurableDocument,
   requireValidDocument,

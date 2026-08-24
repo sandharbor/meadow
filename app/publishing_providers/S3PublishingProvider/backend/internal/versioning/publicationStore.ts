@@ -25,9 +25,9 @@ import type {
   ProviderSuccessorManifest,
 } from '../../../../../shared_code/types/generatedBundleVersioning.js';
 import { PublishingProviderPaths } from '../../../../../shared_code/paths/publishingProviderPaths.js';
-import { getConfigDirectory } from '../../../../../backend/src/shared/bundle-config/bundleConfigPaths.js';
-import { loadGeneratedBundleVersionManifest } from '../../../../../backend/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
-import { computePublishedSuccessors } from '../../../../../backend/src/shared/generated-bundle-versioning/readerSuccessors.js';
+import { getConfigDirectory } from '../../../../../runtime/service/src/shared/bundle-config/bundleConfigPaths.js';
+import { loadGeneratedBundleVersionManifest } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
+import { computePublishedSuccessors } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/readerSuccessors.js';
 import { S3_PROVIDER_ID } from '../s3Config.js';
 import {
   isPlainObject,

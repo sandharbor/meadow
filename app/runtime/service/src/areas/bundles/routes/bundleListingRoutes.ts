@@ -1,0 +1,862 @@
+/*
+Copyright 2026 Sand Harbor Software, LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+import express from 'express';
+import fs from 'fs';
+import path, { join } from 'path';
+import { fileURLToPath } from 'url';
+import YAML from 'yaml';
+import { randomUUID } from 'crypto';
+import { parseBundleNodeConfig } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.js';
+import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
+import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../shared_code/utils/appConfigGitUtils.js';
+import { rankSourcePageCandidatesWithCount, recentSourcePageCandidatesWithCount } from '../../../../../../shared_code/utils/sourcePageSearchUtils.js';
+import { generateBundleGuid } from '../../../../../../shared_code/utils/bundleGuidUtils.js';
+import { extractContentWithoutPagespecs } from '../../../../../../shared_code/utils/pagespecBlockUtils.js';
+import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
+import { getConfigDirectory, getBundlesDirectory, getBundleDirectory, getBundleConfigPath } from '../../../shared/bundle-config/bundleConfigPaths.js';
+import {
+  loadBundleConfig,
+  loadBundleConfigFromPath,
+  saveBundleConfigToPath,
+  updateBundleConfig,
+} from '../../../shared/utils/bundleConfigUtils.js';
+import { loadGeneratedBundleVersionManifest } from '../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
+import { clearBundleGuidCache, logBundleError, logBundleInfo } from '../../../shared/utils/logging/bundleLogger.js';
+import { logger } from '../../../shared/utils/logging/backendLoggingUtils.js';
+import { findUniqueName } from '../../../shared/utils/uniqueNameUtils.js';
+import { listMarkdownSourcePages } from '../../../shared/utils/sourcePageFileUtils.js';
+import { loadValidatedBundleNodeConfiguration } from '../../../shared/bundle-node/bundleNodeConfigLoader.js';
+import {
+  preflightFolderBundle,
+  verifyFolderBundlePreflight,
+  type FolderBundleCreationPlan,
+} from '../services/folderBundleCreation.js';
+import { persistFolderBundleAtomically } from '../services/folderBundlePersistence.js';
+import {
+  getFolderBundleRepairStatus,
+} from '../../../shared/bundle-config/folderBundleRepair.js';
+import selectedFolderRepairRoutes from './selectedFolderRepairRoutes.js';
+import bundleSettingsRoutes from './bundleSettingsRoutes.js';
+import { sourceDirectorySuggestions } from '../services/sourceDirectorySuggestions.js';
+import { deleteLocalBundleOnlyAfterProviderCleanup } from '../services/bundleDeletion.js';
+import {
+  createPageBundle,
+  PageBundleOperationError,
+} from '../services/pageBundleOperations.js';
+
+const router = express.Router();
+router.use(selectedFolderRepairRoutes);
+router.use(bundleSettingsRoutes);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Recursively copy a directory, stripping pagespecs blocks from .md files.
+ */
+function copyDirectoryWithPagespecStripping(src: string, dest: string): void {
+  fs.mkdirSync(dest, { recursive: true });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirectoryWithPagespecStripping(srcPath, destPath);
+    } else if (entry.name.endsWith('.md')) {
+      const content = fs.readFileSync(srcPath, 'utf8');
+      fs.writeFileSync(destPath, extractContentWithoutPagespecs(content), 'utf8');
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+// List all bundle slugs (folder names in data/bundles)
+router.get('/bundles', (req, res, next) => {
+  const bundlesDir = getBundlesDirectory();
+  try {
+    const bundleSlugs = fs.readdirSync(bundlesDir, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name);
+    res.json(bundleSlugs);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get bundle config from bundle_config.yaml. Provider-specific fields live
+// under each provider's /api/sharing/publishing-providers/{id}/bundles/{slug}/... —
+// core deliberately doesn't merge them in.
+router.get('/bundles/:slug/config', (req, res, next) => {
+  const { slug } = req.params;
+  const configPath = getBundleConfigPath(slug);
+  try {
+    if (!fs.existsSync(configPath)) {
+      return res.status(404).json({ error: 'bundle_config.yaml not found' });
+    }
+    const yamlContent = fs.readFileSync(configPath, 'utf8');
+    const config = YAML.parse(yamlContent) as BundleConfig;
+    res.json(config);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Obsidian integration helpers
+// We treat a directory as an Obsidian vault if it contains a ".obsidian" folder.
+router.get('/bundles/:slug/obsidian-info', (req, res, next) => {
+  const { slug } = req.params;
+  const configPath = getBundleConfigPath(slug);
+  try {
+    if (!fs.existsSync(configPath)) {
+      return res.status(404).json({ error: 'bundle_config.yaml not found' });
+    }
+    const yamlContent = fs.readFileSync(configPath, 'utf8');
+    const config = YAML.parse(yamlContent) as BundleConfig;
+
+    const sourceDirectory = typeof config.sourceDirectory === 'string' ? config.sourceDirectory : null;
+    if (!sourceDirectory) {
+      return res.json({
+        hasObsidianVault: false,
+        sourceDirectory: null,
+        vaultNameGuess: null,
+      });
+    }
+
+    const obsidianDir = join(sourceDirectory, '.obsidian');
+    const hasObsidianVault = fs.existsSync(obsidianDir) && fs.statSync(obsidianDir).isDirectory();
+    const vaultNameGuess = path.basename(sourceDirectory);
+
+    res.json({
+      hasObsidianVault,
+      sourceDirectory,
+      vaultNameGuess,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all bundles with their configurations for the enhanced bundle list
+router.get('/bundles/detailed', (req, res, next) => {
+  const bundlesDir = getBundlesDirectory();
+  try {
+    const bundleSlugs = fs.readdirSync(bundlesDir, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name);
+    
+    const bundlesWithConfig = bundleSlugs.map(slug => {
+      try {
+        const bundleDirectory = join(bundlesDir, slug);
+        const config = loadBundleConfig(bundleDirectory);
+        const { entryNode } = loadValidatedBundleNodeConfiguration(bundleDirectory);
+        const repairStatus = getFolderBundleRepairStatus(bundleDirectory);
+        const generatedVersionCount = loadGeneratedBundleVersionManifest(bundleDirectory).versions.length;
+        const publicationSummaries = getAllBackendProviders().flatMap(provider =>
+          provider.getBundlePublicationSummaries?.(slug) ?? []
+        );
+        const publicationTimes = publicationSummaries
+          .map(summary => summary.mostRecentSuccessfulEventAt)
+          .filter((timestamp): timestamp is string => Boolean(timestamp));
+        return {
+          slug,
+          ...config,
+          entryBundleNodeName: entryNode.bundleNodeName,
+          entrySourceGraphSubdirectory: entryNode.sourceGraphSubdirectory || '',
+          entryFileType: entryNode.fileType,
+          ...repairStatus,
+          generatedVersionCount,
+          mostRecentPublicationAt: publicationTimes.sort().at(-1) ?? null,
+          hasRemotePublications: publicationSummaries.some(summary => summary.remotelyPresentVersionIds.length > 0),
+        };
+      } catch {
+        return { slug, error: 'Failed to parse bundle_config.yaml' };
+      }
+    });
+
+    // Sort by provider-derived publication history, then by local update time.
+    bundlesWithConfig.sort((a, b) => {
+      // Handle errors by putting them at the end
+      if (a.error && !b.error) return 1;
+      if (!a.error && b.error) return -1;
+      if (a.error && b.error) return 0;
+
+      const aConfig = a as BundleConfig & { slug: string; mostRecentPublicationAt?: string | null };
+      const bConfig = b as BundleConfig & { slug: string; mostRecentPublicationAt?: string | null };
+      const aPublished = aConfig.mostRecentPublicationAt ?? null;
+      const bPublished = bConfig.mostRecentPublicationAt ?? null;
+      const aUpdated = aConfig.bundleUpdatedAt as string | null;
+      const bUpdated = bConfig.bundleUpdatedAt as string | null;
+
+      // Sort by lastPublishedAt first (descending)
+      if (aPublished && bPublished) {
+        const publishedComparison = new Date(bPublished).getTime() - new Date(aPublished).getTime();
+        if (publishedComparison !== 0) return publishedComparison;
+      } else if (aPublished && !bPublished) {
+        return -1; // Bundles with published dates come first
+      } else if (!aPublished && bPublished) {
+        return 1;
+      }
+
+      // Then sort by updatedAt (descending)
+      if (aUpdated && bUpdated) {
+        return new Date(bUpdated).getTime() - new Date(aUpdated).getTime();
+      } else if (aUpdated && !bUpdated) {
+        return -1;
+      } else if (!aUpdated && bUpdated) {
+        return 1;
+      }
+
+      return 0;
+    });
+
+    res.json(bundlesWithConfig);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get user source directories for creation defaults and suggestions. The first
+// item is the source used by the most recently created non-example bundle.
+router.get('/bundles/directories', (req, res, next) => {
+  const bundlesDir = getBundlesDirectory();
+  try {
+    const bundleSlugs = fs.readdirSync(bundlesDir, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name);
+    
+    const candidates = bundleSlugs.flatMap(slug => {
+      try {
+        const bundleDirectory = join(bundlesDir, slug);
+        const config = loadBundleConfig(bundleDirectory);
+        return [{
+          slug,
+          ...config,
+          configModifiedAtMs: fs.statSync(getBundleConfigPath(slug)).mtimeMs,
+        }];
+      } catch {
+        return [];
+      }
+    });
+
+    res.json(sourceDirectorySuggestions(candidates, getConfigDirectory()));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Check if a bundle tracks a specific page
+router.get('/bundles/:bundleSlug/tracks-page', (req, res, next) => {
+  const { bundleSlug } = req.params;
+  const { pageName } = req.query;
+
+  if (!bundleSlug || !pageName || typeof pageName !== 'string') {
+    res.status(400).json({ error: 'bundleSlug and pageName are required' });
+    return;
+  }
+
+  try {
+    const bundlesDir = getBundlesDirectory();
+    const bundleDirectory = join(bundlesDir, String(bundleSlug));
+
+    // Check if bundle exists
+    if (!fs.existsSync(bundleDirectory)) {
+      res.status(404).json({ error: 'Bundle not found' });
+      return;
+    }
+
+    // Load bundle configuration
+    const config = loadBundleConfig(bundleDirectory);
+
+    // Check if the bundle tracks the specified page
+    const tracksPage = checkIfBundleTracksPage(bundleDirectory, pageName, config);
+
+    res.json({ tracks: tracksPage });
+  } catch (error) {
+    logger.error('Error checking if bundle tracks page:', error);
+    next(error);
+  }
+});
+
+// Helper function to check if a bundle tracks a specific page
+function checkIfBundleTracksPage(bundleDirectory: string, pageName: string, _config: BundleConfig): boolean {
+  const bundleSlug = bundleDirectory.split('/').pop() || 'unknown';
+  logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] Checking for page: "${pageName}"`);
+
+  try {
+    // Check bundle_node_config.yaml for the page
+    const bundleNodeConfPath = getBundleConfigPath(bundleSlug, 'bundle_node_config.yaml');
+    logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] Checking bundle_node_config.yaml`);
+
+    if (fs.existsSync(bundleNodeConfPath)) {
+      try {
+        const content = fs.readFileSync(bundleNodeConfPath, 'utf-8');
+        logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] bundle_node_config.yaml exists, size: ${content.length} bytes`);
+
+        // Parse the YAML and check for the page
+        const bundleNodeConfigs = parseBundleNodeConfig(content);
+        const titles = bundleNodeConfigs.map(bundleNodeConfig => bundleNodeConfig.bundleNodeName);
+        logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] Titles in bundle_node_config.yaml: ${titles.join(', ')}`);
+
+        const found = bundleNodeConfigs.some(bundleNodeConfig => bundleNodeConfig.bundleNodeName.toLowerCase() === pageName.toLowerCase());
+        if (found) {
+          logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] ✓ Found in bundle_node_config.yaml`);
+          return true;
+        } else {
+          logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] ✗ NOT found in bundle_node_config.yaml`);
+        }
+      } catch (error) {
+        logBundleError(bundleSlug, `[checkIfBundleTracksPage] Error reading bundle_node_config.yaml: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } else {
+      logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] bundle_node_config.yaml does not exist`);
+    }
+
+    logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] Final result: NOT FOUND`);
+    return false;
+  } catch (error) {
+    logBundleError(bundleSlug, `[checkIfBundleTracksPage] Error: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+function cleanSourcePageSearchText(value: string): string {
+  return value
+    .replace(/\.excalidraw\.md$/i, '')
+    .replace(/\.excalidraw$/i, '')
+    .replace(/\.md$/i, '');
+}
+
+// Search for pages in a source directory by name
+// Returns all matching pages with their full paths (for handling duplicates)
+router.get('/bundles/source-pages/exact-search', (req, res, next) => {
+  (async () => {
+    const { sourceDirectory, pageName } = req.query;
+
+    if (!sourceDirectory || typeof sourceDirectory !== 'string') {
+      return res.status(400).json({ error: 'sourceDirectory is required' });
+    }
+
+    if (!pageName || typeof pageName !== 'string') {
+      return res.status(400).json({ error: 'pageName is required' });
+    }
+
+    // Strip known source-file suffixes if present (users sometimes include them by mistake).
+    const cleanPageName = cleanSourcePageSearchText(pageName);
+
+    try {
+      // Check if directory exists
+      if (!fs.existsSync(sourceDirectory)) {
+        return res.status(404).json({ error: 'Source directory not found' });
+      }
+
+      const allMdPages = await listMarkdownSourcePages(sourceDirectory);
+
+      // Find all markdown pages that match the given name (case-insensitive)
+      const matchingPages = allMdPages
+        .filter(n => n.title.toLowerCase() === cleanPageName.toLowerCase())
+        .map(n => ({
+          title: n.title,
+          directory: n.directory,
+          fileType: n.file_type,
+          fullPath: n.fullPath,
+          modifiedTimeMs: n.modifiedTimeMs
+        }));
+
+      res.json({
+        found: matchingPages.length > 0,
+        count: matchingPages.length,
+        pages: matchingPages
+      });
+    } catch (error) {
+      logger.error('Error searching pages in source:', error);
+      next(error);
+    }
+  })().catch(next);
+});
+
+// List all markdown source pages in a source directory (for create/edit bundle typeahead preload)
+router.get('/bundles/source-pages', (req, res, next) => {
+  (async () => {
+    const { sourceDirectory } = req.query;
+
+    if (!sourceDirectory || typeof sourceDirectory !== 'string') {
+      return res.status(400).json({ error: 'sourceDirectory is required' });
+    }
+
+    try {
+      if (!fs.existsSync(sourceDirectory)) {
+        return res.status(404).json({ error: 'Source directory not found' });
+      }
+
+      const pages = await listMarkdownSourcePages(sourceDirectory);
+      res.json({ count: pages.length, pages });
+    } catch (error) {
+      logger.error('Error listing source pages:', error);
+      next(error);
+    }
+  })().catch(next);
+});
+
+// Search markdown source pages in a source directory by title (server-side typeahead).
+// Uses the same ranking rules as the create/edit bundle modal previously used client-side.
+router.get('/bundles/source-pages/search', (req, res, next) => {
+  (async () => {
+    const { sourceDirectory, query, limit } = req.query;
+
+    if (!sourceDirectory || typeof sourceDirectory !== 'string') {
+      return res.status(400).json({ error: 'sourceDirectory is required' });
+    }
+
+    const rawQuery = typeof query === 'string' ? query : '';
+    // Strip known source-file suffixes if present (users sometimes include them by mistake).
+    const cleanQuery = cleanSourcePageSearchText(rawQuery);
+
+    const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : NaN;
+    const finalLimit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 25;
+
+    try {
+      if (!fs.existsSync(sourceDirectory)) {
+        return res.status(404).json({ error: 'Source directory not found' });
+      }
+
+      const allMdPages = await listMarkdownSourcePages(sourceDirectory);
+
+      if (!cleanQuery.trim()) {
+        const recent = recentSourcePageCandidatesWithCount(allMdPages, finalLimit);
+        const pages = recent.results.map(({ bucket: _bucket, ...n }) => n);
+        return res.json({ count: recent.totalCount, pages });
+      }
+
+      const ranked = rankSourcePageCandidatesWithCount(cleanQuery, allMdPages, finalLimit);
+      const pages = ranked.results.map(({ bucket: _bucket, ...n }) => n);
+      return res.json({ count: ranked.totalCount, pages });
+    } catch (error) {
+      logger.error('Error searching source pages:', error);
+      next(error);
+    }
+  })().catch(next);
+});
+
+// Archive a bundle
+router.post('/bundles/:slug/archive', (req, res, next) => {
+  const { slug } = req.params;
+  const bundleDirectory = getBundleDirectory(slug);
+  
+  try {
+    if (!fs.existsSync(bundleDirectory)) {
+      return res.status(404).json({ error: 'Bundle not found' });
+    }
+
+    const archivedAt = new Date().toISOString();
+    updateBundleConfig(bundleDirectory, { archivedAt });
+    clearBundleGuidCache(slug);
+    logBundleInfo(slug, 'Bundle archived');
+    
+    res.json({
+      success: true,
+      slug,
+      archivedAt,
+      message: 'Bundle archived successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Unarchive a bundle
+router.post('/bundles/:slug/unarchive', (req, res, next) => {
+  const { slug } = req.params;
+  const bundleDirectory = getBundleDirectory(slug);
+  
+  try {
+    if (!fs.existsSync(bundleDirectory)) {
+      return res.status(404).json({ error: 'Bundle not found' });
+    }
+
+    updateBundleConfig(bundleDirectory, { archivedAt: null });
+    clearBundleGuidCache(slug);
+    logBundleInfo(slug, 'Bundle unarchived');
+    
+    res.json({
+      success: true,
+      slug,
+      archivedAt: null,
+      message: 'Bundle unarchived successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * SSE endpoint to delete a bundle, including S3 files and prefix soft-delete for published bundles.
+ * Stages: authenticating → deleting-s3 → soft-deleting-prefix → deleting-local → complete
+ */
+router.get('/bundles/:slug/delete-bundle-stream', (req, res, _next) => {
+  const { slug } = req.params;
+  const operationId = randomUUID();
+  const operation = `[operation ${operationId}] [bundle-delete]`;
+
+  // Set up SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders?.();
+
+  const sendProgress = (progress: {
+    stage: string;
+    message: string;
+    result?: { success: boolean; error?: string };
+  }) => {
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify(progress)}\n\n`);
+    }
+  };
+
+  (async () => {
+    try {
+      const bundleDir = getBundleDirectory(slug);
+
+      if (!fs.existsSync(bundleDir)) {
+        sendProgress({ stage: 'error', message: 'Bundle not found', result: { success: false, error: 'Bundle not found' } });
+        res.end();
+        return;
+      }
+
+      // Load config before any deletion
+      try {
+        loadBundleConfig(bundleDir);
+      } catch {
+        // Config unreadable — proceed with local-only deletion
+      }
+
+      logBundleInfo(slug, `${operation} Started authoritative cleanup with all publishing providers before local deletion`);
+
+      await deleteLocalBundleOnlyAfterProviderCleanup({
+        bundleSlug: slug,
+        operationId,
+        providers: getAllBackendProviders(),
+        onProviderProgress: (progress) => {
+          sendProgress({ stage: progress.stage, message: progress.message });
+        },
+        deleteLocalBundle: () => {
+          sendProgress({ stage: 'deleting-local', message: 'Deleting local files...' });
+          logBundleInfo(slug, `${operation} Every provider confirmed cleanup; complete local bundle deletion succeeded`);
+          fs.rmSync(bundleDir, { recursive: true, force: true });
+          clearBundleGuidCache(slug);
+        },
+      });
+
+      sendProgress({
+        stage: 'complete',
+        message: 'Bundle deleted successfully',
+        result: { success: true }
+      });
+
+      res.end();
+
+    } catch (error) {
+      const err = error as Error;
+      logBundleError(slug, `${operation} Provider cleanup failed; the complete local bundle was preserved and retry is safe: ${err.message}`);
+      sendProgress({ stage: 'error', message: 'Delete failed', result: { success: false, error: err.message } });
+      res.end();
+    }
+  })().catch((error) => {
+    logBundleError(slug, `${operation} Unexpected failure; local deletion was not confirmed and retry is safe: ${String(error)}`);
+    sendProgress({ stage: 'error', message: 'Unexpected error', result: { success: false, error: String(error) } });
+    res.end();
+  });
+});
+
+// Delete a bundle completely (local files only — used for unpublished bundles)
+router.delete('/bundles/:slug', (req, res, next) => {
+  const { slug } = req.params;
+  const bundleDir = getBundleDirectory(slug);
+  
+  try {
+    if (!fs.existsSync(bundleDir)) {
+      return res.status(404).json({ error: 'Bundle not found' });
+    }
+
+    // Log before deletion so we can still read bundle_config.yaml (and thus the GUID)
+    logBundleInfo(slug, 'Bundle deleted');
+
+    // Recursively delete the entire bundle directory
+    fs.rmSync(bundleDir, { recursive: true, force: true });
+    clearBundleGuidCache(slug);
+    
+    res.json({ success: true, message: 'Bundle deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Add the example bundle
+router.post('/bundles/add-example', (req, res, next) => {
+  try {
+    // Find a unique slug: example-bundle, example-bundle-1, example-bundle-2, ...
+    const slug = findUniqueName('example-bundle', (name) => fs.existsSync(getBundleDirectory(name)));
+
+    // Resolve paths to bundled example data
+    const isDev = process.env.MEADOW_IS_DEV === 'true';
+    let sourceGraphSrc: string;
+    let fixtureSrc: string;
+
+    if (isDev) {
+      // Dev: resolve the app root from this route module.
+      const projectRoot = join(__dirname, '..', '..', '..', '..', '..', '..');
+      sourceGraphSrc = join(projectRoot, 'shared_data', 'source_graphs', 'example-bundle-data');
+      fixtureSrc = join(projectRoot, 'shared_data', 'home_fixtures', 'home_fixture_example', 'bundles', 'example-bundle');
+    } else {
+      const exampleBundlePath = process.env.MEADOW_EXAMPLE_BUNDLE_PATH!;
+      sourceGraphSrc = join(exampleBundlePath, 'source_graph');
+      fixtureSrc = join(exampleBundlePath, 'home_fixture', 'bundles', 'example-bundle');
+    }
+
+    const configDir = getConfigDirectory();
+
+    // Copy source graph to a unique directory, stripping pagespecs from .md files
+    const sourceGraphDirName = slug.replace(/-/g, '_') + '_source_graph';
+    const sourceGraphDest = join(configDir, sourceGraphDirName);
+    copyDirectoryWithPagespecStripping(sourceGraphSrc, sourceGraphDest);
+
+    // Copy config/ from fixture
+    const bundleDir = getBundleDirectory(slug);
+    fs.mkdirSync(bundleDir, { recursive: true });
+    fs.cpSync(join(fixtureSrc, 'config'), join(bundleDir, 'config'), { recursive: true });
+
+    // Update bundle_config.yaml with fresh values
+    const bundleConfigPath = join(bundleDir, 'config', 'bundle_config.yaml');
+    const bundleConfig = loadBundleConfigFromPath(bundleConfigPath);
+
+    bundleConfig.bundleGuid = generateBundleGuid();
+    bundleConfig.sourceDirectory = sourceGraphDest;
+    bundleConfig.createdFromExample = true;
+    bundleConfig.bundleCreatedAt = new Date().toISOString();
+    bundleConfig.bundleUpdatedAt = new Date().toISOString();
+
+    saveBundleConfigToPath(bundleConfigPath, bundleConfig);
+
+    clearBundleGuidCache(slug);
+    logBundleInfo(slug, 'Example bundle created');
+
+    // Commit via AppConfigGitUtils. Include the freshly-copied source graph
+    // directory alongside the bundle config so MeadowHome has no untracked
+    // files after the example bundle is created.
+    const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, configDir);
+    void (async () => {
+      try {
+        await gitUtils.commitDirs([
+          `bundles/${slug}/config`,
+          sourceGraphDirName,
+        ], `initial bundle config for ${slug}`);
+      } catch (error) {
+        logger.error('[example bundle creation] Error committing bundle config:', error);
+      }
+    })();
+
+    res.json({ success: true, slug });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/bundles/folders/preflight', (req, res, next) => {
+  void (async () => {
+    const {
+      sourceDirectory,
+      selectedFolders,
+      bundleName,
+      defaultOutlinksDepth,
+      defaultInlinksDepth,
+    } = req.body as {
+      sourceDirectory?: string;
+      selectedFolders?: string[];
+      bundleName?: string;
+      defaultOutlinksDepth?: number;
+      defaultInlinksDepth?: number;
+    };
+    const result = await preflightFolderBundle({
+      sourceDirectory: sourceDirectory ?? '',
+      selectedFolders: selectedFolders ?? [],
+      bundleName: bundleName ?? 'Folder bundle',
+      defaultOutlinksDepth,
+      defaultInlinksDepth,
+    });
+    res.json(result);
+  })().catch(next);
+});
+
+router.post('/bundles/folders', (req, res, next) => {
+  void (async () => {
+    const {
+      slug,
+      sourceDirectory,
+      selectedFolders,
+      bundleName,
+      bundleNotes,
+      fingerprint,
+      plan,
+    } = req.body as {
+      slug?: string;
+      sourceDirectory?: string;
+      selectedFolders?: string[];
+      bundleName?: string;
+      bundleNotes?: string;
+      fingerprint?: string;
+      plan?: FolderBundleCreationPlan;
+    };
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+      return res.status(400).json({ error: 'Bundle slug must contain only lowercase letters, numbers, and dashes' });
+    }
+    if (!fingerprint || !plan) {
+      return res.status(400).json({ error: 'A confirmed folder-bundle preflight is required' });
+    }
+    const verified = await verifyFolderBundlePreflight({
+      sourceDirectory: sourceDirectory ?? '',
+      selectedFolders: selectedFolders ?? [],
+      bundleName: bundleName ?? slug,
+      defaultOutlinksDepth: plan.defaultOutlinksDepth,
+      defaultInlinksDepth: plan.defaultInlinksDepth,
+      plannedFolderBundleNodeIds: plan.folderBundleNodeIds,
+      plannedCollectionBundleNodeId: plan.collectionBundleNodeId,
+    }, fingerprint);
+
+    const actualSlug = findUniqueName(slug, name => fs.existsSync(getBundleDirectory(name)));
+    const bundleDir = getBundleDirectory(actualSlug);
+    const stagingDir = join(getBundlesDirectory(), `.${actualSlug}.creating-${generateBundleGuid()}`);
+    try {
+      const now = new Date().toISOString();
+      const bundleConfig: BundleConfig = {
+        bundleGuid: generateBundleGuid(),
+        sourceDirectory: verified.plan.sourceDirectory,
+        entryBundleNodeId: verified.plan.entryBundleNodeId,
+        defaultTraversalBundleNodeId: verified.plan.entryBundleNodeId,
+        defaultOutlinksDepth: verified.plan.defaultOutlinksDepth,
+        defaultInlinksDepth: verified.plan.defaultInlinksDepth,
+        generationFolderNavigationEnabled: true,
+        archivedAt: null,
+        bundleCreatedAt: now,
+        bundleUpdatedAt: now,
+        bundleNotes: bundleNotes ?? '',
+      };
+      const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
+      await persistFolderBundleAtomically({
+        bundleDirectory: bundleDir,
+        stagingDirectory: stagingDir,
+        bundleConfig,
+        nodes: verified.nodes,
+        commit: () => gitUtils.commitFiles([
+          AppConfigPaths.relative.bundleConfigFile(actualSlug),
+          AppConfigPaths.relative.bundleNodeConfigFile(actualSlug),
+        ], `initial folder bundle config for ${actualSlug}`),
+      });
+      clearBundleGuidCache(actualSlug);
+      logBundleInfo(actualSlug, 'Folder bundle created');
+      res.json({ success: true, message: 'Bundle created successfully', slug: actualSlug });
+    } catch (error) {
+      clearBundleGuidCache(actualSlug);
+      throw error;
+    }
+  })().catch(next);
+});
+
+// Create a new page-derived bundle
+router.post('/bundles', (req, res, next) => {
+  void (async () => {
+  const {
+    slug,
+    sourceDirectory,
+    entryPage: requestedEntryPage,
+    entryBundleNodeName,
+    entrySourceGraphSubdirectory,
+    entryFileType,
+    bundleNotes,
+    defaultOutlinksDepth: requestedDefaultOutlinksDepth,
+    defaultInlinksDepth: requestedDefaultInlinksDepth,
+  } = req.body as {
+    slug?: string;
+    sourceDirectory?: string;
+    entryPage?: string;
+    entryBundleNodeName?: string;
+    entrySourceGraphSubdirectory?: string;
+    entryFileType?: string;
+    bundleNotes?: string;
+    defaultOutlinksDepth?: number;
+    defaultInlinksDepth?: number;
+  };
+
+  if (!sourceDirectory || (!requestedEntryPage && !entryBundleNodeName)) {
+    return res.status(400).json({ error: 'sourceDirectory and an entry page are required' });
+  }
+
+  const entryFilename = entryBundleNodeName
+    ? entryFileType === 'excalidraw'
+      ? `${entryBundleNodeName}.excalidraw.md`
+      : `${entryBundleNodeName}.${entryFileType || 'md'}`
+    : '';
+  const entryPage = requestedEntryPage ?? (
+    entrySourceGraphSubdirectory
+      ? path.posix.join(entrySourceGraphSubdirectory.replace(/\\/g, '/'), entryFilename)
+      : entryFilename
+  );
+  try {
+    const result = await createPageBundle({
+      ...(slug && { slug }),
+      sourceDirectory,
+      entryPage,
+      bundleNotes,
+      defaultOutlinksDepth: requestedDefaultOutlinksDepth,
+      defaultInlinksDepth: requestedDefaultInlinksDepth,
+    });
+    res.json({ success: true, message: 'Bundle created successfully', ...result });
+  } catch (error) {
+    if (error instanceof PageBundleOperationError) {
+      return res.status(error.statusCode).json({ error: error.message, ...error.details });
+    }
+    next(error);
+  }
+  })().catch(next);
+});
+
+// Update bundle notes only (for inline editing)
+router.patch('/bundles/:slug/notes', (req, res, next) => {
+  const { slug } = req.params;
+  const { bundleNotes } = req.body as { bundleNotes: string };
+
+  const bundleDirectory = getBundleDirectory(slug);
+  
+  try {
+    if (!fs.existsSync(bundleDirectory)) {
+      return res.status(404).json({ error: 'Bundle not found' });
+    }
+
+    // Update only the notes and updatedAt
+    updateBundleConfig(bundleDirectory, { 
+      bundleNotes: bundleNotes || "",
+      bundleUpdatedAt: new Date().toISOString()
+    });
+
+    res.json({ success: true, message: 'Bundle notes updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+export default router;
