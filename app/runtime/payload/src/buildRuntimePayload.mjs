@@ -208,6 +208,7 @@ function parseArguments(args) {
       "goal-2",
       `runtime-payload-${perspective}`,
     ),
+    nodeExecutable: path.resolve(value("--node-executable") ?? process.execPath),
     skipBuild: args.includes("--skip-build"),
   };
 }
@@ -259,7 +260,7 @@ export function buildRuntimePayload(options) {
     copy(path.join(meadowRoot, "app/runtime/native", source), path.join(stagingRoot, "native", name));
     chmodSync(path.join(stagingRoot, "native", name), 0o755);
   }
-  copy(path.join(meadowRoot, "app/hosts/desktop/vendor/node"), path.join(stagingRoot, "bin/node"));
+  copy(options.nodeExecutable, path.join(stagingRoot, "bin/node"));
   chmodSync(path.join(stagingRoot, "bin/node"), 0o755);
   copy(
     path.join(meadowRoot, "app/shared_data/home_fixtures/home_fixture_example"),
@@ -282,7 +283,7 @@ export function buildRuntimePayload(options) {
 
 function printHelp() {
   process.stdout.write(
-    "Usage: node src/buildRuntimePayload.mjs --perspective <standalone|composed> [--app-version <version>] [--output <directory>] [--skip-build]\n",
+    "Usage: node src/buildRuntimePayload.mjs --perspective <standalone|composed> [--app-version <version>] [--output <directory>] [--node-executable <path>] [--skip-build]\n",
   );
 }
 
