@@ -42,6 +42,7 @@ export class MeadowCommandBroker {
     cliWorkingDirectory: string;
     runtimeSessionPath: string;
     phase: () => TrialPhase;
+    afterCommand?: (command: MeadowCommandRecord) => Promise<void> | void;
   }) {}
 
   async start(): Promise<void> {
@@ -146,7 +147,7 @@ export class MeadowCommandBroker {
       child.on("close", code => resolve(code ?? 70));
     });
     const finishedAt = new Date();
-    this.records.push({
+    const record: MeadowCommandRecord = {
       id: `command-${this.records.length + 1}`,
       startedAt: startedAt.toISOString(),
       finishedAt: finishedAt.toISOString(),
@@ -157,7 +158,18 @@ export class MeadowCommandBroker {
       exitCode,
       durationMs: finishedAt.getTime() - startedAt.getTime(),
       phase: this.options.phase(),
-    });
+    };
+    this.records.push(record);
+    try {
+      await this.options.afterCommand?.(record);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      record.stderr += `Agent-eval scenario event failed: ${message}\n`;
+      this.send(socket, { type: "stderr", data: `Agent-eval scenario event failed: ${message}\n` });
+      this.send(socket, { type: "exit", exitCode: 70 });
+      socket.end();
+      return;
+    }
     this.send(socket, { type: "exit", exitCode });
     socket.end();
   }

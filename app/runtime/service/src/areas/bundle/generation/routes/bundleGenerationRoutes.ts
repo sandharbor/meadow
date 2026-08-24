@@ -215,24 +215,17 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
           changed: false,
           paused: true,
           reviewRequest: request,
-          nextActions: [
-            {
-              operation: 'open-review',
-              args: ['review', 'open', request.reviewRequestId],
-              displayCommand: `meadow review open ${request.reviewRequestId}`,
-            },
-            ...request.findings
-              .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
-              .map(finding => ({
-                operation: 'track-node' as const,
-                args: [
-                  'bundle', 'node', 'track', bundleSlug,
-                  '--id', finding.bundleNodeId,
-                  '--include-sensitive',
-                ],
-                displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
-              })),
-          ],
+          nextActions: request.findings
+            .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
+            .map(finding => ({
+              operation: 'track-node' as const,
+              args: [
+                'bundle', 'node', 'track', bundleSlug,
+                '--id', finding.bundleNodeId,
+                '--include-sensitive',
+              ],
+              displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
+            })),
         });
       }
       const body = (req.body ?? {}) as {
@@ -310,24 +303,17 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
           changed: false,
           paused: true,
           reviewRequest: request,
-          nextActions: [
-            {
-              operation: 'open-review',
-              args: ['review', 'open', request.reviewRequestId],
-              displayCommand: `meadow review open ${request.reviewRequestId}`,
-            },
-            ...request.findings
-              .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
-              .map(finding => ({
-                operation: 'track-node' as const,
-                args: [
-                  'bundle', 'node', 'track', bundleSlug,
-                  '--id', finding.bundleNodeId,
-                  '--include-sensitive',
-                ],
-                displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
-              })),
-          ],
+          nextActions: request.findings
+            .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
+            .map(finding => ({
+              operation: 'track-node' as const,
+              args: [
+                'bundle', 'node', 'track', bundleSlug,
+                '--id', finding.bundleNodeId,
+                '--include-sensitive',
+              ],
+              displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
+            })),
         });
       }
 

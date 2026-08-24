@@ -16,6 +16,7 @@ limitations under the License.
 
 import { execFileSync } from "node:child_process";
 import {
+  appendFileSync,
   closeSync,
   cpSync,
   existsSync,
@@ -41,6 +42,7 @@ import {
   CREATE_SAFE_BUNDLE_SCENARIO,
   materializeCreateSafeBundleSource,
 } from "../scenarios/createSafeBundle.js";
+import { SENSITIVE_FILE } from "../scenarios/curateSensitiveFile.js";
 import type {
   AgentEvalScenario,
   FrozenOutcome,
@@ -82,6 +84,7 @@ export class StandaloneTrialRuntime implements TrialRuntime {
   private runtimeSupervisor: RuntimeSupervisor | null = null;
   private broker: MeadowCommandBroker | null = null;
   private stopped = false;
+  private sensitiveSourceEditApplied = false;
 
   constructor(private readonly options: {
     artifactDirectory: string;
@@ -161,6 +164,7 @@ export class StandaloneTrialRuntime implements TrialRuntime {
       cliWorkingDirectory: REPO_ROOT,
       runtimeSessionPath: this.runtimeSessionPath,
       phase: () => this.phase,
+      afterCommand: command => this.applyScenarioSourceEvent(command),
     });
     await this.broker.start();
     this.captureFocusedState("pre-task-state");
@@ -288,6 +292,35 @@ export class StandaloneTrialRuntime implements TrialRuntime {
   private privateBackendUrl(): string {
     const contents = JSON.parse(readFileSync(this.runtimeSessionPath, "utf8")) as { backendPort: number };
     return `http://127.0.0.1:${contents.backendPort}/api/app-config`;
+  }
+
+  private applyScenarioSourceEvent(command: FrozenOutcome["commands"][number]): void {
+    if (
+      this.scenario.id !== "curate-sensitive-file"
+      || this.sensitiveSourceEditApplied
+      || command.exitCode !== 0
+      || !command.args.includes("--include-sensitive")
+    ) return;
+    try {
+      const result = JSON.parse(command.stdout) as {
+        operation?: string;
+        changed?: boolean;
+        node?: { bundleNodeName?: string };
+      };
+      if (
+        result.operation !== "bundle.node.track"
+        || result.changed !== false
+        || result.node?.bundleNodeName !== path.parse(SENSITIVE_FILE).name
+      ) return;
+    } catch {
+      return;
+    }
+    appendFileSync(
+      path.join(this.sourceFixture.directory, SENSITIVE_FILE),
+      "\nExternal source edit after the first inclusion decision.\n",
+      "utf8",
+    );
+    this.sensitiveSourceEditApplied = true;
   }
 
   private git(args: string[]): string {

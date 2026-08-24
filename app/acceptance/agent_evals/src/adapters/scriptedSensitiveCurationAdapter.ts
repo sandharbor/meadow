@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import { execFile } from "node:child_process";
-import { appendFileSync, chmodSync } from "node:fs";
 import path from "node:path";
 import type {
   GenerateBundleCliResult,
@@ -70,7 +69,6 @@ export class ScriptedSensitiveCurationAdapter implements AgentAdapter {
       "--id", sensitiveFirst.node.bundleNodeId!, "--include-sensitive",
     ], context);
 
-    this.simulateExternalSourceEdit(context);
     await this.run([
       "bundle", "node", "track", "notable-mental-models",
       "--id", sensitiveFirst.node.bundleNodeId!, "--include-sensitive",
@@ -126,14 +124,6 @@ export class ScriptedSensitiveCurationAdapter implements AgentAdapter {
 
   private parse<T>(stdout: string): T {
     return JSON.parse(stdout) as T;
-  }
-
-  private simulateExternalSourceEdit(context: OperatorLaunchContext): void {
-    const sourcePath = path.join(context.sourceDirectory, SENSITIVE_FILE);
-    chmodSync(sourcePath, 0o644);
-    appendFileSync(sourcePath, "\nExternal source edit after the first inclusion decision.\n", "utf8");
-    chmodSync(sourcePath, 0o444);
-    this.transcriptLines.push(`[fixture] source editor changed ${SENSITIVE_FILE}`);
   }
 
   private run(

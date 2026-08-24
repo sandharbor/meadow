@@ -289,13 +289,16 @@ export async function evaluateCurateSensitiveFile(input: {
         && pause.reviewRequest.policy === "review-required"
         && pause.reviewRequest.findings.some(
           finding => finding.code === "sensitivity-reaffirmation-required",
-        ),
+        )
+        && pause.nextActions?.length === 1
+        && pause.nextActions.every(action => action.operation === "track-node"),
       "A tracked non-sensitive file that becomes sensitive pauses generation until explicit reaffirmation.",
       {
         transitionChanges: [true, true],
         exitCode: 2,
         policy: "review-required",
         finding: "sensitivity-reaffirmation-required",
+        nextActions: ["track-node"],
       },
       {
         transitionChanges: successfulTransitionTracks.map(operation => operation.changed),
