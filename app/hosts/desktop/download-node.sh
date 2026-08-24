@@ -8,6 +8,7 @@ set -e
 NODE_VERSION="v20.11.0"
 ARCH="arm64"
 PLATFORM="darwin"
+EXPECTED_NODE_SHA256="94392c916760a4f7bb7f75af86550ae2fb81649ff954dbdd33912ec219040314"
 
 DOWNLOAD_URL="https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${PLATFORM}-${ARCH}.tar.gz"
 DOWNLOAD_DIR="$(dirname "$0")/vendor"
@@ -42,4 +43,9 @@ fi
 
 # Verify it works
 echo "Verifying node binary..."
+ACTUAL_NODE_SHA256="$(shasum -a 256 "$NODE_BINARY" | awk '{print $1}')"
+if [ "$ACTUAL_NODE_SHA256" != "$EXPECTED_NODE_SHA256" ]; then
+    echo "Node.js binary checksum mismatch: expected $EXPECTED_NODE_SHA256, got $ACTUAL_NODE_SHA256" >&2
+    exit 1
+fi
 "$NODE_BINARY" --version

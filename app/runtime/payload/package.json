@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node src/buildRuntimePayload.mjs",
+    "build:qa-distributions": "node src/buildQaDistributions.mjs",
     "smoke": "node src/smokeRuntimePayload.mjs",
     "test": "node --test test/*.test.mjs"
   }

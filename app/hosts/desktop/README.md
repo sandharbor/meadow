@@ -1,8 +1,9 @@
 # Meadow Desktop Host
 
-This directory contains the Electron wrapper for the Meadow application, which
-packages the React frontend, Express backend, and Rust source_page_search_by_title component into
-a native desktop application.
+This directory contains the Electron Desktop Host. A production application
+embeds the complete Web Client, Command Client, and manifest-verified Runtime
+Payload; the host attaches to the Runtime rather than owning backend child
+processes itself.
 
 ## Development
 
@@ -38,6 +39,21 @@ npm run electron-dev-args -- --vault-path "/path/to/your/vault" --folder-path "f
 ```
 
 This creates a `.dmg` installer in the `build/` directory and runs it to make sure it works.
+
+For unsigned, status-neutral local QA builds of the Desktop and Command
+artifacts together, use the Runtime Payload assembler:
+
+```bash
+./download-node.sh
+cd ../../runtime/payload
+npm run build:qa-distributions -- \
+  --perspective standalone \
+  --node-executable ../../hosts/desktop/vendor/node
+```
+
+The assembler does not sign, notarize, upload, or configure updates. It emits a
+payload parity report proving that the `.app` and relocatable Command archive
+contain the same Runtime Payload identity.
 
 
 ## Debugging the distribution application

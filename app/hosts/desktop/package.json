@@ -14,7 +14,7 @@
     "build": "npm run build:all && npm run build:electron",
     "build:dev": "npm run build:main -- --watch",
     "build:all": "npm run build:payload && npm run build:cli && npm run build:main",
-    "build:payload": "node ../../runtime/payload/src/buildRuntimePayload.mjs --perspective ${MEADOW_BUILD_PERSPECTIVE:-standalone} --app-version $npm_package_version --output ../../runtime/payload/dist",
+    "build:payload": "node ../../runtime/payload/src/buildRuntimePayload.mjs --perspective ${MEADOW_BUILD_PERSPECTIVE:-standalone} --app-version $npm_package_version --output ../../runtime/payload/dist --node-executable ${MEADOW_NODE_EXECUTABLE:-vendor/node}",
     "build:cli": "cd ../../clients/cli && npm run build",
     "build:main": "tsc",
     "build:electron": "electron-builder",

@@ -9,6 +9,10 @@ exports.default = async function(context) {
   if (process.platform !== 'darwin') {
     return;
   }
+  if (process.env.MEADOW_LOCAL_QA_UNSIGNED === '1') {
+    console.log('Skipping binary re-signing for the unsigned local QA application.');
+    return;
+  }
 
   console.log('Re-signing binaries with proper entitlements after electron-builder signing...');
   
@@ -16,10 +20,11 @@ exports.default = async function(context) {
   const resourcesPath = path.join(appOutDir, 'Contents', 'Resources');
   const entitlementsPath = path.join(__dirname, 'entitlements.mac.plist');
   
-  const nodeBinary = path.join(resourcesPath, 'node');
-  const workingGraphBin = path.join(resourcesPath, 'working_graph', 'working_graph_bin');
-  const sourcePageSearchBin = path.join(resourcesPath, 'source_page_search_by_title', 'source_page_search_by_title_bin');
-  const fastGitOpsBin = path.join(resourcesPath, 'fast_git_ops', 'fast_git_ops_bin');
+  const payloadRoot = path.join(resourcesPath, 'runtime-payload');
+  const nodeBinary = path.join(payloadRoot, 'bin', 'node');
+  const workingGraphBin = path.join(payloadRoot, 'native', 'working_graph_bin');
+  const sourcePageSearchBin = path.join(payloadRoot, 'native', 'source_page_search_by_title_bin');
+  const fastGitOpsBin = path.join(payloadRoot, 'native', 'fast_git_ops_bin');
   
   // Re-sign binaries with entitlements that allow JIT and loading external libraries
   const signBinary = (binaryPath, name) => {
