@@ -37,11 +37,87 @@ export interface CliNextAction {
   displayCommand: string;
 }
 
+export interface CliMutationBehavior {
+  atomicity: 'atomic' | 'provider-defined';
+  idempotency: 'idempotent' | 'conditional' | 'not-idempotent' | 'provider-defined';
+  staleWrite: 'rejects-stale' | 'current-state-preflight' | 'latest-state-wins' | 'not-applicable' | 'provider-defined';
+  details: readonly string[];
+}
+
+export const CLI_MUTATION_BEHAVIORS = {
+  createBundle: {
+    atomicity: 'atomic',
+    idempotency: 'conditional',
+    staleWrite: 'not-applicable',
+    details: [
+      'Implicit-slug retries with the same canonical source, entry page, and defaults return the existing bundle; an explicit duplicate slug is rejected.',
+    ],
+  },
+  trackBundleNodes: {
+    atomicity: 'atomic',
+    idempotency: 'idempotent',
+    staleWrite: 'rejects-stale',
+    details: [
+      'All requested node changes commit together; invalid or stale node keys reject a targeted request without a partial write.',
+    ],
+  },
+  mutateBundleNode: {
+    atomicity: 'atomic',
+    idempotency: 'idempotent',
+    staleWrite: 'rejects-stale',
+    details: [
+      'The selected node update and tracked snapshot evidence commit together; invalid or stale locators are rejected.',
+    ],
+  },
+  generateBundle: {
+    atomicity: 'atomic',
+    idempotency: 'conditional',
+    staleWrite: 'current-state-preflight',
+    details: [
+      'A retry regenerates the current unsaved version from current source state; after that version is saved, generation creates a new current version.',
+      'Boundary review and sensitivity reaffirmation are evaluated before generation writes begin.',
+    ],
+  },
+  saveGeneration: {
+    atomicity: 'atomic',
+    idempotency: 'idempotent',
+    staleWrite: 'rejects-stale',
+    details: [
+      'The exact current version is saved atomically; retrying the saved version returns the same identities, while stale or non-current version IDs are rejected.',
+    ],
+  },
+  publishGeneration: {
+    atomicity: 'provider-defined',
+    idempotency: 'provider-defined',
+    staleWrite: 'provider-defined',
+    details: [
+      'Meadow passes the explicit saved version and a distinct operationId to the active provider; external commit, retry, and stale-write behavior are declared by that provider.',
+    ],
+  },
+  archiveBundle: {
+    atomicity: 'atomic',
+    idempotency: 'not-idempotent',
+    staleWrite: 'latest-state-wins',
+    details: [
+      'Each archive request records a fresh archivedAt timestamp against the latest bundle config.',
+    ],
+  },
+  unarchiveBundle: {
+    atomicity: 'atomic',
+    idempotency: 'idempotent',
+    staleWrite: 'latest-state-wins',
+    details: [
+      'Retries preserve the unarchived state; no caller-supplied version precondition is accepted.',
+    ],
+  },
+} as const satisfies Record<string, CliMutationBehavior>;
+
 interface CliOperationResultBase {
   schemaVersion: typeof CLI_OPERATION_SCHEMA_VERSION;
   operation: string;
   slug: string;
   changed: boolean;
+  mutationBehavior: CliMutationBehavior;
   nextActions?: CliNextAction[];
 }
 

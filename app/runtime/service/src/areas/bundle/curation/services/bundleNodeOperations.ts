@@ -22,6 +22,7 @@ import type {
   BundleNodeConfig,
 } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import {
+  CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
   type BundleNodeDetails,
   type BundleNodeLocator,
@@ -510,6 +511,7 @@ export async function mutateBundleNode(
     slug,
     locator,
     changed,
+    mutationBehavior: CLI_MUTATION_BEHAVIORS.mutateBundleNode,
     node: details(context.node),
     nextActions: [{
       operation: 'inspect-node',

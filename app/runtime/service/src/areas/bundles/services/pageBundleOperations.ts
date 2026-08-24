@@ -19,6 +19,7 @@ import path from 'path';
 import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
 import type { BundleNodeConfig, FileBundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
 import {
+  CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
   type CreateBundleCliResult,
 } from '../../../../../../contracts/types/cliOperations.js';
@@ -227,6 +228,7 @@ function resultFor(options: {
     slug: options.slug,
     created: options.created,
     changed: options.created,
+    mutationBehavior: CLI_MUTATION_BEHAVIORS.createBundle,
     sourceDirectory: options.sourceDirectory,
     entryPage: sourcePageFilename(options.entry),
     entryPageTracked: true,

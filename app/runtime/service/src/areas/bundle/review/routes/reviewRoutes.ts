@@ -52,7 +52,10 @@ import {
   saveGeneratedBundleVersion,
   SaveGeneratedBundleVersionError,
 } from '../../../../shared/generated-bundle-versioning/saveGeneratedBundleVersion.js';
-import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../../contracts/types/cliOperations.js';
+import {
+  CLI_MUTATION_BEHAVIORS,
+  CLI_OPERATION_SCHEMA_VERSION,
+} from '../../../../../../../contracts/types/cliOperations.js';
 import { findBundleBoundaryReviewRequest } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
 
 const router = express.Router();
@@ -83,6 +86,7 @@ router.post('/bundles/:bundleSlug/review/versions/:versionId/save-generation', (
         operation: 'bundle.save-generation',
         slug: bundleSlug,
         changed: result.changed,
+        mutationBehavior: CLI_MUTATION_BEHAVIORS.saveGeneration,
         versionId: result.versionId,
         savedGenerationId: result.savedGenerationId,
         saved: true,

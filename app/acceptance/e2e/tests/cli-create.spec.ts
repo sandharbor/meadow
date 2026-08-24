@@ -73,6 +73,11 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       slug: "notable-mental-models",
       created: true,
       changed: true,
+      mutationBehavior: {
+        atomicity: "atomic",
+        idempotency: "conditional",
+        staleWrite: "not-applicable",
+      },
       sourceDirectory: source.directory,
       entryPage: "Notable Mental Models.md",
       entryPageTracked: true,
@@ -125,6 +130,11 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       slug: "notable-mental-models",
       mode: "all-safe",
       changed: true,
+      mutationBehavior: {
+        atomicity: "atomic",
+        idempotency: "idempotent",
+        staleWrite: "rejects-stale",
+      },
     });
     expect(trackedSafe.newlyTracked).toHaveLength(31);
     expect(trackedSafe.alreadyTracked.map(node => node.bundleNodeName)).toEqual([
@@ -164,6 +174,11 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       operation: "bundle.generate",
       slug: "notable-mental-models",
       changed: true,
+      mutationBehavior: {
+        atomicity: "atomic",
+        idempotency: "conditional",
+        staleWrite: "current-state-preflight",
+      },
       saved: false,
       versionId: expect.stringMatching(/^v[A-Za-z0-9]{6}$/),
       previewUrl: expect.stringMatching(/^http:\/\/127\.0\.0\.1:/),
@@ -214,6 +229,11 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       operation: "bundle.save-generation",
       slug: "notable-mental-models",
       changed: true,
+      mutationBehavior: {
+        atomicity: "atomic",
+        idempotency: "idempotent",
+        staleWrite: "rejects-stale",
+      },
       versionId: generated.versionId,
       saved: true,
       savedGenerationId: expect.stringMatching(/^[0-9a-f]{40,64}$/),

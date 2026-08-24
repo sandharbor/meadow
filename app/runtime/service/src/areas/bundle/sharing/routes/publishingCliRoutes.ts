@@ -17,7 +17,9 @@ limitations under the License.
 import { randomUUID } from 'crypto';
 import express from 'express';
 import {
+  CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
+  type CliMutationBehavior,
   type PublishBundleCliResult,
 } from '../../../../../../../contracts/types/cliOperations.js';
 import {
@@ -34,6 +36,7 @@ interface CliPublishingErrorBody {
   success: false;
   code: string;
   error: string;
+  mutationBehavior: CliMutationBehavior;
   details?: string;
   nextActions: string[];
 }
@@ -41,12 +44,13 @@ interface CliPublishingErrorBody {
 function sendError(
   res: express.Response,
   status: number,
-  options: Omit<CliPublishingErrorBody, 'schemaVersion' | 'operation' | 'success'>,
+  options: Omit<CliPublishingErrorBody, 'schemaVersion' | 'operation' | 'success' | 'mutationBehavior'>,
 ): void {
   res.status(status).json({
     schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
     operation: 'bundle.publish',
     success: false,
+    mutationBehavior: CLI_MUTATION_BEHAVIORS.publishGeneration,
     ...options,
   } satisfies CliPublishingErrorBody);
 }
@@ -106,6 +110,7 @@ router.post('/bundles/:bundleSlug/sharing/publish', (req, res) => {
         versionId: result.versionId,
         savedGenerationId: result.savedGenerationId,
         changed: result.changed,
+        mutationBehavior: CLI_MUTATION_BEHAVIORS.publishGeneration,
         provider: {
           id: provider.manifest.id,
           instanceId: result.providerInstanceId,

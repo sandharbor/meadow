@@ -42,8 +42,16 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
     { artifactName: "archive-small-bundle" },
   );
   expect(archived).toMatchObject({
+    schemaVersion: 1,
+    operation: "bundles.archive",
     success: true,
     slug: "meadow-test-bundle-small",
+    changed: true,
+    mutationBehavior: {
+      atomicity: "atomic",
+      idempotency: "not-idempotent",
+      staleWrite: "latest-state-wins",
+    },
     archivedAt: expect.any(String),
   });
 
@@ -66,8 +74,16 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
     { artifactName: "unarchive-small-bundle" },
   );
   expect(unarchived).toMatchObject({
+    schemaVersion: 1,
+    operation: "bundles.unarchive",
     success: true,
     slug: "meadow-test-bundle-small",
+    changed: true,
+    mutationBehavior: {
+      atomicity: "atomic",
+      idempotency: "idempotent",
+      staleWrite: "latest-state-wins",
+    },
     archivedAt: null,
   });
 

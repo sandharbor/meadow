@@ -94,6 +94,11 @@ test("CLI supports every single-node inspection and curation operation by path o
     expect(tracked).toMatchObject({
       operation: "bundle.node.track",
       changed: true,
+      mutationBehavior: {
+        atomicity: "atomic",
+        idempotency: "idempotent",
+        staleWrite: "rejects-stale",
+      },
       node: {
         tracked: true,
         blacklisted: false,

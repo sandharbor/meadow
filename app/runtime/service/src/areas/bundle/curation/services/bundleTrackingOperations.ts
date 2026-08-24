@@ -19,6 +19,7 @@ import os from 'os';
 import path from 'path';
 import type { BundleNodeConfig, BundleNodeId, FileBundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import {
+  CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
   type SkippedBundleNodeResult,
   type TrackBundleNodesCliResult,
@@ -317,6 +318,7 @@ export async function trackBundleNodes(
     slug,
     mode: options.mode,
     changed: newConfigs.length > 0,
+    mutationBehavior: CLI_MUTATION_BEHAVIORS.trackBundleNodes,
     newlyTracked: newlyTrackedNodes.map(trackedResult),
     alreadyTracked: alreadyTrackedNodes.map(trackedResult),
     sensitiveSkipped,

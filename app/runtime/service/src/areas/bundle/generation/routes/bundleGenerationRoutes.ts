@@ -47,7 +47,10 @@ import {
   createPreviewReadToken,
   MEADOW_PREVIEW_TOKEN_QUERY,
 } from '../../../../shared/app-shell/controlPlaneSecurity.js';
-import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../../contracts/types/cliOperations.js';
+import {
+  CLI_MUTATION_BEHAVIORS,
+  CLI_OPERATION_SCHEMA_VERSION,
+} from '../../../../../../../contracts/types/cliOperations.js';
 import { assessBundleBoundary } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
 import type { BundleBoundaryReviewRequest } from '../../../../../../../contracts/types/bundleBoundaryReview.js';
 
@@ -213,6 +216,7 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
           operation: 'bundle.generate',
           slug: bundleSlug,
           changed: false,
+          mutationBehavior: CLI_MUTATION_BEHAVIORS.generateBundle,
           paused: true,
           reviewRequest: request,
           nextActions: request.findings
@@ -301,6 +305,7 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
           operation: 'bundle.generate',
           slug: bundleSlug,
           changed: false,
+          mutationBehavior: CLI_MUTATION_BEHAVIORS.generateBundle,
           paused: true,
           reviewRequest: request,
           nextActions: request.findings
@@ -389,6 +394,7 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
           success: true,
           slug: bundleSlug,
           changed: true,
+          mutationBehavior: CLI_MUTATION_BEHAVIORS.generateBundle,
           versionId: generationResult.versionId,
           saved: false,
           previewUrl: traversalPageUrl,

@@ -20,6 +20,10 @@ import path, { join } from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { randomUUID } from 'crypto';
+import {
+  CLI_MUTATION_BEHAVIORS,
+  CLI_OPERATION_SCHEMA_VERSION,
+} from '../../../../../../contracts/types/cliOperations.js';
 import { parseBundleNodeConfig } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
@@ -469,8 +473,12 @@ router.post('/bundles/:slug/archive', (req, res, next) => {
     logBundleInfo(slug, 'Bundle archived');
     
     res.json({
+      schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
+      operation: 'bundles.archive',
       success: true,
       slug,
+      changed: true,
+      mutationBehavior: CLI_MUTATION_BEHAVIORS.archiveBundle,
       archivedAt,
       message: 'Bundle archived successfully',
     });
@@ -494,8 +502,12 @@ router.post('/bundles/:slug/unarchive', (req, res, next) => {
     logBundleInfo(slug, 'Bundle unarchived');
     
     res.json({
+      schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
+      operation: 'bundles.unarchive',
       success: true,
       slug,
+      changed: true,
+      mutationBehavior: CLI_MUTATION_BEHAVIORS.unarchiveBundle,
       archivedAt: null,
       message: 'Bundle unarchived successfully',
     });
