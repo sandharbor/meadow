@@ -162,15 +162,21 @@ router.post('/bundles/:bundleSlug/curation/bundle-config', validateBundleSlug, a
       candidate,
       committed,
     );
-    await persistBundleNodeConfigsAtomically({
-      slug: bundleSlug,
-      sourceDirectory,
-      configs: candidate,
-      commitMessage: commitMessage || `update bundle page configuration for ${bundleSlug}`,
-      effectivelySensitiveByNodeId: evidenceDecisions,
-    });
-    if (fs.existsSync(draftPath)) {
-      fs.unlinkSync(draftPath);
+    const draftBeforeSave = fs.existsSync(draftPath)
+      ? fs.readFileSync(draftPath)
+      : null;
+    if (draftBeforeSave) fs.unlinkSync(draftPath);
+    try {
+      await persistBundleNodeConfigsAtomically({
+        slug: bundleSlug,
+        sourceDirectory,
+        configs: candidate,
+        commitMessage: commitMessage || `update bundle page configuration for ${bundleSlug}`,
+        effectivelySensitiveByNodeId: evidenceDecisions,
+      });
+    } catch (error) {
+      if (draftBeforeSave) fs.writeFileSync(draftPath, draftBeforeSave);
+      throw error;
     }
   }
   res.json({ success: true });

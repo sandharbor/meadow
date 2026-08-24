@@ -148,6 +148,10 @@ export async function persistBundleNodeConfigsAtomically(options: {
       trackedAt: options.trackedAt ?? new Date().toISOString(),
     });
     saveBundleNodeConfigDocument(configPath, options.configs);
+    const folderScopeSnapshotPath = path.join(rawDirectory, 'folder_scope_snapshot.json');
+    if (fs.existsSync(folderScopeSnapshotPath)) {
+      await loadWorkingGraph({ bundleSlug: options.slug });
+    }
     const git = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
     await git.commitDirs([
       `bundles/${options.slug}/config`,

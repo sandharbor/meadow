@@ -14,7 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { Locator, Expect, Page } from "@playwright/test";
+import type { Locator, Expect, Page, Response } from "@playwright/test";
+
+function isCommittedCurationResponse(response: Response): boolean {
+  const url = response.url();
+  return response.request().method() === "POST" && (
+    url.includes("/curation/track-nodes")
+    || url.includes("/curation/node/")
+    || url.includes("/curation/bundle-config")
+  );
+}
+
+function isWorkingGraphResponse(response: Response): boolean {
+  return response.request().method() === "GET"
+    && response.url().includes("/curation/working-graph");
+}
+
+function isBundleConfigResponse(response: Response): boolean {
+  return response.request().method() === "GET"
+    && new URL(response.url()).pathname.endsWith("/curation/bundle-config");
+}
 
 export enum Pill {
   Tracked = "Tracked",
@@ -82,8 +101,8 @@ export class SelectedPageDetailComponent {
    * Click an action button (e.g. Track, Blacklist).
    *
    * Track and Blacklist are "simple ops" that auto-save + commit in the
-   * backend. Pass the top-level page so we can await the copy-tracked-pages
-   * response and avoid relying on fixed sleeps.
+   * backend. Pass the top-level page so we can await the committed Runtime
+   * curation response and avoid relying on fixed sleeps.
    */
   async clickAction(button: ActionButton, page?: Page) {
     const loc = this.root
@@ -94,11 +113,11 @@ export class SelectedPageDetailComponent {
     if (page) {
       await Promise.all([
         page.waitForResponse(
-          (r) =>
-            r.url().includes("/copy-tracked-pages") &&
-            r.request().method() === "POST",
+          isCommittedCurationResponse,
           { timeout: 15000 },
         ),
+        page.waitForResponse(isWorkingGraphResponse, { timeout: 15000 }),
+        page.waitForResponse(isBundleConfigResponse, { timeout: 15000 }),
         loc.click(),
       ]);
     } else {

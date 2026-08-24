@@ -455,7 +455,6 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
             includeSensitive: newTracked && effectivelySensitive,
           });
           onRefresh();
-          onConfigChange?.();
         } catch (error) {
           logger.error('Error applying one-file tracking command:', error);
         }
@@ -559,7 +558,6 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     try {
       await trackSafeNodeKeys(bundleSlug, nodeKeys);
       onRefresh();
-      onConfigChange?.();
     } catch (error) {
       logger.error('Error applying safe batch tracking command:', error);
     }

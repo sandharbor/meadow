@@ -14,7 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { Page, Expect } from "@playwright/test";
+import type { Page, Expect, Response } from "@playwright/test";
+
+function isCommittedCurationResponse(response: Response): boolean {
+  const url = response.url();
+  return response.request().method() === "POST" && (
+    url.includes("/curation/track-nodes")
+    || url.includes("/curation/node/")
+    || url.includes("/curation/bundle-config")
+  );
+}
+
+function isWorkingGraphResponse(response: Response): boolean {
+  return response.request().method() === "GET"
+    && response.url().includes("/curation/working-graph");
+}
+
+function isBundleConfigResponse(response: Response): boolean {
+  return response.request().method() === "GET"
+    && new URL(response.url()).pathname.endsWith("/curation/bundle-config");
+}
 
 export class BundleEditorPage {
   constructor(
@@ -283,15 +302,15 @@ export class BundleEditorPage {
     const btn = this.page.locator("button", { hasText: "Track All" });
     await this.expect(btn).toBeVisible();
     // Tracking is a "simple op" that auto-saves + commits in the backend.
-    // Wait for the copy-tracked-pages response so the test can proceed
+    // Wait for the shared Runtime curation command so the test can proceed
     // deterministically without a fixed sleep.
     await Promise.all([
       this.page.waitForResponse(
-        (r) =>
-          r.url().includes("/copy-tracked-pages") &&
-          r.request().method() === "POST",
+        isCommittedCurationResponse,
         { timeout: 15000 },
       ),
+      this.page.waitForResponse(isWorkingGraphResponse, { timeout: 15000 }),
+      this.page.waitForResponse(isBundleConfigResponse, { timeout: 15000 }),
       btn.click(),
     ]);
   }
@@ -533,7 +552,7 @@ export class BundleEditorPage {
 
   /**
    * Click a context menu item (e.g. "Blacklist", "Untrack") and wait for the
-   * auto-save `copy-tracked-pages` POST to complete. Use this for simple ops
+   * committed Runtime curation POST to complete. Use this for simple ops
    * that auto-save in the backend so tests don't rely on fixed sleeps.
    */
   async clickContextMenuItemAndAwaitAutoSave(text: string) {
@@ -542,11 +561,11 @@ export class BundleEditorPage {
     await this.expect(item).toBeEnabled();
     await Promise.all([
       this.page.waitForResponse(
-        (r) =>
-          r.url().includes("/copy-tracked-pages") &&
-          r.request().method() === "POST",
+        isCommittedCurationResponse,
         { timeout: 15000 },
       ),
+      this.page.waitForResponse(isWorkingGraphResponse, { timeout: 15000 }),
+      this.page.waitForResponse(isBundleConfigResponse, { timeout: 15000 }),
       item.click(),
     ]);
   }
@@ -557,17 +576,11 @@ export class BundleEditorPage {
     await this.expect(item).toBeEnabled();
     await Promise.all([
       this.page.waitForResponse(
-        (r) =>
-          r.url().includes("/copy-tracked-pages") &&
-          r.request().method() === "POST",
+        isCommittedCurationResponse,
         { timeout: 15000 },
       ),
-      this.page.waitForResponse(
-        (r) =>
-          r.url().includes("/curation/working-graph") &&
-          r.request().method() === "GET",
-        { timeout: 15000 },
-      ),
+      this.page.waitForResponse(isWorkingGraphResponse, { timeout: 15000 }),
+      this.page.waitForResponse(isBundleConfigResponse, { timeout: 15000 }),
       item.click(),
     ]);
   }
