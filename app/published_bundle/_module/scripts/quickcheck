@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Enforce that only allowed directories exist in published_bundle_utils/
+# Enforce that only allowed directories exist in published_bundle/
 REQUIRED_DIRS=(
     "srs"
 )
@@ -58,7 +58,7 @@ for entry in * .[^.]*; do
         fi
     done
     if [ "$is_ok" = false ]; then
-        echo_and_exit "❌ Extraneous file or directory found in published_bundle_utils/: $entry. Only the srs/ subdirectory should be here."
+        echo_and_exit "❌ Extraneous file or directory found in published_bundle/: $entry. Only the srs/ subdirectory should be here."
     fi
 done
 
