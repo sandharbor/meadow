@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 TEST_LOG_FILE="$(pwd)/meadow-test.log"
 TIMEOUT_SECONDS=60
 HEALTH_CHECK_INTERVAL=5
-PRUNE_DIRS="../frontend ../backend ../shared_code"
+PRUNE_DIRS="../clients/web ../backend ../shared_code"
 DEV_DEPENDENCIES_PRUNED=false
 
 # Helper functions
@@ -48,7 +48,7 @@ restore_dev_dependencies() {
         return
     fi
 
-    log_info "Restoring devDependencies in frontend, backend, shared_code..."
+    log_info "Restoring devDependencies in clients/web, backend, shared_code..."
     for dir in $PRUNE_DIRS; do
         if ! (cd "$dir" && npm install --ignore-scripts 2>&1 | tail -1); then
             restore_failed=1

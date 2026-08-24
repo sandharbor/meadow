@@ -199,7 +199,7 @@ export class DevRuntimeManager {
     const runtime = this.requireManagedRuntime();
     await this.respawnPane({
       target: `${runtime.tmuxSession}:frontend`,
-      cwd: path.join(this.projectRoot, "app", "frontend"),
+      cwd: path.join(this.projectRoot, "app", "clients", "web"),
       command: runtimeCommand(
         {
           MEADOW_RUNTIME_SESSION_PATH: runtime.sessionPath,

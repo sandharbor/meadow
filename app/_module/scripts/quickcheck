@@ -6,7 +6,6 @@ REQUIRED_DIRS=(
     "clients"
     "e2e-tests"
     "electron_app"
-    "frontend"
     "publishing_providers"
     "published_bundle"
     "runtime"
@@ -98,7 +97,7 @@ function check_dir() {
 # Install dependencies in parallel, but only when lockfile is newer than stamp
 echo "📦 Installing dependencies..."
 install_pids=()
-for dir in "shared_code" "shared_components" "backend" "clients/cli" "frontend" "electron_app" "runtime/system_tests" "runtime/native/source_page_search_by_title/source_page_search_by_title_integration_test" "runtime/native/fast_git_ops/fast_git_ops_test" "tooling/dev_tools" "published_bundle/srs"; do
+for dir in "shared_code" "shared_components" "backend" "clients/cli" "clients/web" "electron_app" "runtime/system_tests" "runtime/native/source_page_search_by_title/source_page_search_by_title_integration_test" "runtime/native/fast_git_ops/fast_git_ops_test" "tooling/dev_tools" "published_bundle/srs"; do
     if [ -f "$dir/package.json" ]; then
         stamp="$dir/node_modules/.quickcheck_install_stamp"
         lock="$dir/package-lock.json"
@@ -119,7 +118,7 @@ fi
 # Run check_dir calls in parallel for speed
 echo "🧪 Running app directory checks in parallel..."
 
-APP_CHECK_DIRS=("shared_code" "shared_components" "backend" "clients" "frontend" "electron_app" "published_bundle" "runtime" "tooling" "e2e-tests")
+APP_CHECK_DIRS=("shared_code" "shared_components" "backend" "clients" "electron_app" "published_bundle" "runtime" "tooling" "e2e-tests")
 
 pids=()
 dir_for_pid=()

@@ -17,7 +17,7 @@
     "build:rust": "cd ../runtime/native/source_page_search_by_title/source_page_search_by_title_code && cargo build --release && cd ../../fast_git_ops/fast_git_ops_code && cargo build --release && cd ../../working_graph/working_graph_code && cargo build --release",
     "build:backend": "cd ../backend && npm run build",
     "build:cli": "cd ../clients/cli && npm run build",
-    "build:frontend": "cd ../frontend && npm run build && npm run build:server",
+    "build:frontend": "cd ../clients/web && npm run build && npm run build:server",
     "build:main": "tsc",
     "build:electron": "electron-builder",
     "pack": "npm run build && electron-builder --dir",
@@ -49,16 +49,16 @@
     ],
     "extraResources": [
       {
-        "from": "../frontend/dist",
+        "from": "../clients/web/dist",
         "to": "frontend",
         "filter": ["**/*"]
       },
       {
-        "from": "../frontend/package.json",
+        "from": "../clients/web/package.json",
         "to": "frontend/package.json"
       },
       {
-        "from": "../frontend/node_modules",
+        "from": "../clients/web/node_modules",
         "to": "frontend/node_modules",
         "filter": ["**/*"]
       },

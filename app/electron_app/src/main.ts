@@ -829,7 +829,7 @@ class MeadowApp {
     try {
       if (this.isDev) {
         // Development: start Vite dev server for the frontend
-        const cwd = path.join(__dirname, '../../../../frontend');
+        const cwd = path.join(__dirname, '../../../../clients/web');
         const vitePath = path.join(cwd, 'node_modules', '.bin', 'vite');
         log('INFO', 'Starting Vite dev server for frontend', { cwd, vitePath, frontendPort: this.frontendPort, backendPort: this.backendPort });
 

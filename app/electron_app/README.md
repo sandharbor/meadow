@@ -13,7 +13,7 @@ npm start
 ```
 
 ```bash
-cd ../frontend
+cd ../clients/web
 npm start
 ```
 

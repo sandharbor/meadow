@@ -27,7 +27,7 @@ limitations under the License.
  * Behavior:
  * - Serves static files from <distDir>.
  * - Proxies `/api/*` to `http://127.0.0.1:<backendPort>` (matches the vite
- *   dev server's proxy config — see app/frontend/vite.config.ts).
+ *   dev server's proxy config — see app/clients/web/vite.config.ts).
  *
  * Usage:
  *   MEADOW_RUNTIME_SESSION_PATH=... npx tsx start_static_frontend.ts <distDir>

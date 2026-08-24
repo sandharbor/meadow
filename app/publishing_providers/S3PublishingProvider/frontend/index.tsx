@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { IPublishingProviderFrontend } from '../../../frontend/src/shared/publishing-provider-host/IPublishingProviderFrontend.js';
+import type { IPublishingProviderFrontend } from '../../../clients/web/src/shared/publishing-provider-host/IPublishingProviderFrontend.js';
 import type { PublishingProviderManifest } from '../../../shared_code/interfaces/IPublishingProvider.js';
-import { apiRequest } from '../../../frontend/src/shared/utils/apiClient.js';
+import { apiRequest } from '../../../clients/web/src/shared/utils/apiClient.js';
 import { PublishToS3Tab } from './internal/PublishToS3Tab';
 import { s3Api } from './internal/s3Api';
 

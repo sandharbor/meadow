@@ -19,11 +19,11 @@ cd ../backend
 npm install
 
 echo "🎨 Installing frontend dependencies..."
-cd ../frontend
+cd ../clients/web
 npm install
 
 echo "📚 Installing shared dependencies..."
-cd ../shared
+cd ../../shared
 if [ -f "package.json" ]; then
     npm install
 fi
@@ -41,11 +41,11 @@ cd ../../../../backend
 npm run build
 
 echo "⚡ Building frontend..."
-cd ../frontend
+cd ../clients/web
 npm run build
 
 echo "🔨 Building Electron main process..."
-cd ../electron_app
+cd ../../electron_app
 npm run build:main
 
 echo "✅ Setup complete!"

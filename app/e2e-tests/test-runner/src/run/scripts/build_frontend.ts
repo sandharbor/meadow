@@ -16,7 +16,7 @@ limitations under the License.
 */
 
 /**
- * Builds app/frontend for use by the e2e static frontend server.
+ * Builds app/clients/web for use by the e2e static frontend server.
  *
  * Why: the e2e test harness replaces vite dev mode (which pays a ~1.8s
  * cold-start compile cost on first `page.goto("/")` per test) with a
@@ -33,7 +33,7 @@ limitations under the License.
  *
  * Provider e2e env: each publishing provider may declare its own
  * VITE_* build-time overrides for e2e by dropping a JSON object at
- * `frontend/.e2e-build-env.json`. The script merges every provider's
+ * `clients/web/.e2e-build-env.json`. The script merges every provider's
  * file into the build env (later providers override earlier ones, but
  * collisions in practice are unexpected). The merged env is part of
  * the staleness hash so changes invalidate the cached dist/.
@@ -44,7 +44,7 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
-const frontendDir = path.resolve(import.meta.dirname, "../../../../../../app/frontend");
+const frontendDir = path.resolve(import.meta.dirname, "../../../../../../app/clients/web");
 const providersDir = path.resolve(import.meta.dirname, "../../../../../../app/publishing_providers");
 const distDir = path.join(frontendDir, "dist");
 const stampPath = path.join(distDir, ".e2e-build-stamp");

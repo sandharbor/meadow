@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-REQUIRED_DIRS=("cli")
+REQUIRED_DIRS=("cli" "web")
 OK_DIRS=("_module")
 OK_FILES=(".DS_Store")
 

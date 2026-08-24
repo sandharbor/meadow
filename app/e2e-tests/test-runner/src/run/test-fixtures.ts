@@ -51,7 +51,7 @@ import {
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
 const BACKEND_DIR = path.join(REPO_ROOT, "app", "backend");
-const FRONTEND_DIR = path.join(REPO_ROOT, "app", "frontend");
+const FRONTEND_DIR = path.join(REPO_ROOT, "app", "clients", "web");
 const E2E_DIR = path.join(import.meta.dirname, "../..");
 
 const MINIO_BUCKET_PREFIX = "meadow-e2e-test";

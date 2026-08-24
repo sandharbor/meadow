@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Each provider's frontend and backend code lives outside `app/frontend/`
+# Each provider's frontend and backend code lives outside `app/clients/web/`
 # and `app/backend/`, so they don't share their installed node_modules by
 # default. Symlink so that bundler-style module resolution (Vite at runtime
 # for frontend; tsc + tsx for backend) can find react, express, etc.
