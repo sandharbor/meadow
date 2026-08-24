@@ -15,10 +15,14 @@ limitations under the License.
 */
 
 import { apiRequest } from '../../../../shared/utils/apiClient';
+import type {
+  MutateBundleNodeCliResult,
+  TrackBundleNodesCliResult,
+} from '../../../../../../../contracts/types/cliOperations';
 
-async function requireTrackingSuccess(response: Response, fallback: string): Promise<void> {
-  if (response.ok) return;
-  const body = await response.json().catch(() => ({})) as { error?: string };
+async function requireTrackingSuccess<T>(response: Response, fallback: string): Promise<T> {
+  const body = await response.json().catch(() => ({})) as T & { error?: string };
+  if (response.ok) return body;
   throw new Error(body.error || fallback);
 }
 
@@ -27,7 +31,7 @@ export async function mutateFileTracking(options: {
   bundleNodeKey: string;
   operation: 'track' | 'untrack';
   includeSensitive?: boolean;
-}): Promise<void> {
+}): Promise<MutateBundleNodeCliResult> {
   const response = await apiRequest(
     `bundles/${encodeURIComponent(options.bundleSlug)}/curation/node/${options.operation}`,
     {
@@ -41,10 +45,13 @@ export async function mutateFileTracking(options: {
       }),
     },
   );
-  await requireTrackingSuccess(response, `File ${options.operation} failed`);
+  return requireTrackingSuccess<MutateBundleNodeCliResult>(response, `File ${options.operation} failed`);
 }
 
-export async function trackSafeNodeKeys(bundleSlug: string, nodeKeys: string[]): Promise<void> {
+export async function trackSafeNodeKeys(
+  bundleSlug: string,
+  nodeKeys: string[],
+): Promise<TrackBundleNodesCliResult> {
   const response = await apiRequest(
     `bundles/${encodeURIComponent(bundleSlug)}/curation/track-nodes`,
     {
@@ -53,5 +60,5 @@ export async function trackSafeNodeKeys(bundleSlug: string, nodeKeys: string[]):
       body: JSON.stringify({ nodeKeys }),
     },
   );
-  await requireTrackingSuccess(response, 'Batch tracking failed');
+  return requireTrackingSuccess<TrackBundleNodesCliResult>(response, 'Batch tracking failed');
 }

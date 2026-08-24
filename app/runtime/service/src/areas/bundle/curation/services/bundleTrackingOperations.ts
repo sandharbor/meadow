@@ -32,17 +32,23 @@ import {
   applySensitiveFromApiData,
   generateBundleNodeId,
   nodeConfigMatchesNode,
+  parseBundleNodeConfig,
 } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { saveBundleNodeConfigDocument } from '../../../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../../shared_code/utils/appConfigGitUtils.js';
+import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
+import { canonicalPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import {
   getBundleConfigPath,
   getBundleDirectory,
   getBundleRawDirectory,
   getConfigDirectory,
 } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { syncTrackedSourceContent } from '../../../../shared/bundle-node/trackedSourceContentSync.js';
-import { applyTrackingEvidenceFromSnapshot } from '../../../../shared/bundle-node/trackingEvidence.js';
+import { copySourceFileToTrackedSnapshot } from '../../../../shared/bundle-node/trackedSourceContentSync.js';
+import {
+  applyTrackingEvidenceFromSnapshot,
+  sourceFilePathForConfig,
+} from '../../../../shared/bundle-node/trackingEvidence.js';
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { loadWorkingGraph } from '../../../../shared/bundle-graph/workingGraphService.js';
@@ -68,10 +74,12 @@ function compareNodes(left: IBundleNode, right: IBundleNode): number {
 
 function trackedResult(node: IBundleNode): TrackedBundleNodeResult {
   if (!node.bundleNodeId) throw new Error(`Tracked node ${node.bundleNodeKey} has no bundleNodeId`);
+  if (!node.conf) throw new Error(`Tracked node ${node.bundleNodeKey} has no configuration`);
   return {
     bundleNodeKey: node.bundleNodeKey,
     bundleNodeId: node.bundleNodeId,
     bundleNodeName: node.bundleNodeName,
+    config: node.conf,
   };
 }
 
@@ -121,24 +129,91 @@ export async function persistBundleNodeConfigsAtomically(options: {
   commitMessage?: string;
   effectivelySensitiveByNodeId?: ReadonlyMap<string, boolean>;
   trackedAt?: string;
+  topologyChanged?: boolean;
 }): Promise<void> {
   const bundleDirectory = getBundleDirectory(options.slug);
   const configPath = getBundleConfigPath(options.slug, 'bundle_node_config.yaml');
   const rawDirectory = getBundleRawDirectory(options.slug);
+  const snapshotDirectory = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
   const rollbackRoot = fs.mkdtempSync(path.join(os.tmpdir(), `meadow-track-${options.slug}-`));
   const rollbackConfigPath = path.join(rollbackRoot, 'bundle_node_config.yaml');
-  const rollbackRawPath = path.join(rollbackRoot, 'raw');
   const hadConfig = fs.existsSync(configPath);
-  const hadRaw = fs.existsSync(rawDirectory);
   if (hadConfig) fs.copyFileSync(configPath, rollbackConfigPath);
-  if (hadRaw) fs.cpSync(rawDirectory, rollbackRawPath, { recursive: true });
+  const previousConfigs = hadConfig
+    ? parseBundleNodeConfig(fs.readFileSync(configPath, 'utf8'), configPath)
+    : [];
+
+  const snapshotPathFor = (config: FileBundleNodeConfig): string => path.join(
+    snapshotDirectory,
+    config.sourceGraphSubdirectory ?? '',
+    canonicalPageFilename(config.bundleNodeName, config.fileType),
+  );
+  const previousFiles = new Map(previousConfigs
+    .filter((config): config is FileBundleNodeConfig => config.bundleNodeKind === 'file')
+    .map(config => [config.bundleNodeId, config]));
+  const nextFiles = new Map(options.configs
+    .filter((config): config is FileBundleNodeConfig => config.bundleNodeKind === 'file')
+    .map(config => [config.bundleNodeId, config]));
+  const snapshotActions = new Map<string, string | null>();
+  for (const [bundleNodeId, previous] of previousFiles) {
+    const next = nextFiles.get(bundleNodeId);
+    const previousPath = snapshotPathFor(previous);
+    if (!next || snapshotPathFor(next) !== previousPath) snapshotActions.set(previousPath, null);
+  }
+  for (const [bundleNodeId, next] of nextFiles) {
+    const previous = previousFiles.get(bundleNodeId);
+    const nextPath = snapshotPathFor(next);
+    if (
+      !previous
+      || snapshotPathFor(previous) !== nextPath
+      || options.effectivelySensitiveByNodeId?.has(bundleNodeId)
+    ) {
+      snapshotActions.set(nextPath, sourceFilePathForConfig(options.sourceDirectory, next));
+    }
+  }
+
+  const folderScopeSnapshotPath = path.join(rawDirectory, 'folder_scope_snapshot.json');
+  if (options.topologyChanged !== false && fs.existsSync(folderScopeSnapshotPath)) {
+    // The graph rebuild below rewrites this snapshot, so include it in rollback.
+    snapshotActions.set(folderScopeSnapshotPath, folderScopeSnapshotPath);
+  }
+  const rollbackFiles = new Map<string, string | null>();
+  let rollbackFileIndex = 0;
+  for (const targetPath of snapshotActions.keys()) {
+    if (!fs.existsSync(targetPath)) {
+      rollbackFiles.set(targetPath, null);
+      continue;
+    }
+    const rollbackPath = path.join(rollbackRoot, `snapshot-${rollbackFileIndex}`);
+    rollbackFileIndex += 1;
+    fs.copyFileSync(targetPath, rollbackPath);
+    rollbackFiles.set(targetPath, rollbackPath);
+  }
 
   try {
-    syncTrackedSourceContent({
-      bundleDirectory,
-      sourceDirectory: options.sourceDirectory,
-      configs: options.configs,
-    });
+    fs.mkdirSync(snapshotDirectory, { recursive: true });
+    for (const config of options.configs) {
+      if (config.bundleNodeKind !== 'folder') continue;
+      const sourceFolder = path.join(
+        options.sourceDirectory,
+        ...config.sourceGraphSubdirectory.split('/'),
+      );
+      if (!fs.existsSync(sourceFolder) || !fs.statSync(sourceFolder).isDirectory()) {
+        throw new Error(`Tracked source folder no longer exists: ${config.sourceGraphSubdirectory}`);
+      }
+      fs.mkdirSync(path.join(snapshotDirectory, ...config.sourceGraphSubdirectory.split('/')), {
+        recursive: true,
+      });
+    }
+    for (const [targetPath, sourcePath] of snapshotActions) {
+      if (targetPath === folderScopeSnapshotPath) continue;
+      if (sourcePath === null) {
+        fs.rmSync(targetPath, { force: true });
+        continue;
+      }
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      copySourceFileToTrackedSnapshot(sourcePath, targetPath);
+    }
     applyTrackingEvidenceFromSnapshot({
       bundleDirectory,
       configs: options.configs.filter(
@@ -148,20 +223,28 @@ export async function persistBundleNodeConfigsAtomically(options: {
       trackedAt: options.trackedAt ?? new Date().toISOString(),
     });
     saveBundleNodeConfigDocument(configPath, options.configs);
-    const folderScopeSnapshotPath = path.join(rawDirectory, 'folder_scope_snapshot.json');
-    if (fs.existsSync(folderScopeSnapshotPath)) {
+    if (options.topologyChanged !== false && fs.existsSync(folderScopeSnapshotPath)) {
       await loadWorkingGraph({ bundleSlug: options.slug });
     }
     const git = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
-    await git.commitDirs([
-      `bundles/${options.slug}/config`,
-      `bundles/${options.slug}/raw`,
-    ], options.commitMessage ?? `track bundle nodes for ${options.slug}`);
+    const filesToCommit = [
+      `bundles/${options.slug}/config/bundle_node_config.yaml`,
+      ...[...snapshotActions.keys()].map(targetPath => path.relative(
+        getConfigDirectory(),
+        targetPath,
+      )),
+    ];
+    await git.commitFiles(filesToCommit, options.commitMessage ?? `track bundle nodes for ${options.slug}`);
   } catch (error) {
     if (hadConfig) fs.copyFileSync(rollbackConfigPath, configPath);
     else fs.rmSync(configPath, { force: true });
-    fs.rmSync(rawDirectory, { recursive: true, force: true });
-    if (hadRaw) fs.cpSync(rollbackRawPath, rawDirectory, { recursive: true });
+    for (const [targetPath, rollbackPath] of rollbackFiles) {
+      fs.rmSync(targetPath, { force: true });
+      if (rollbackPath) {
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        fs.copyFileSync(rollbackPath, targetPath);
+      }
+    }
     throw error;
   } finally {
     fs.rmSync(rollbackRoot, { recursive: true, force: true });
@@ -313,6 +396,7 @@ export async function trackBundleNodes(
       sourceDirectory,
       configs: [...loaded.committedNodes, ...newConfigs],
       effectivelySensitiveByNodeId: evidenceDecisions,
+      topologyChanged: false,
     });
   }
 

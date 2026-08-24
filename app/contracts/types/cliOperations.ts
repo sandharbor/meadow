@@ -137,6 +137,7 @@ export interface TrackedBundleNodeResult {
   bundleNodeKey: BundleNodeKey;
   bundleNodeId: BundleNodeId;
   bundleNodeName: string;
+  config: BundleNodeConfig;
 }
 
 export interface SkippedBundleNodeResult {

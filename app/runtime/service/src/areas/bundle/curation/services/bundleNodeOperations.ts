@@ -498,13 +498,28 @@ export async function mutateBundleNode(
       configs,
       commitMessage: `${mutation.operation} bundle node for ${slug}`,
       effectivelySensitiveByNodeId: evidenceDecisions,
+      topologyChanged: mutation.operation !== 'track' && mutation.operation !== 'untrack',
     });
   }
   const fallbackLocator: BundleNodeLocator = {
     kind: 'path',
     value: sourcePathFor(context.node) ?? context.node.bundleNodeKey,
   };
-  context = await loadContext(slug, mutation.operation === 'untrack' ? fallbackLocator : resultLocator);
+  const resultNodeLocator = mutation.operation === 'untrack' ? fallbackLocator : resultLocator;
+  const topologyChanged = changed && (
+    mutation.operation === 'set-depths'
+    || mutation.operation === 'blacklist'
+    || mutation.operation === 'unblacklist'
+    || mutation.operation === 'mark-sensitive'
+    || mutation.operation === 'mark-not-sensitive'
+  );
+  if (topologyChanged) {
+    context = await loadContext(slug, resultNodeLocator);
+  } else {
+    context.loaded.committedNodes = configs;
+    applyNodeConfigsToNodes(context.loaded.nodes, configs);
+    context.node = resolveNode(context.loaded.nodes, resultNodeLocator);
+  }
   return {
     schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
     operation: `bundle.node.${mutation.operation}`,

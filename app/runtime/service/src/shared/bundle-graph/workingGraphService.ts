@@ -40,7 +40,7 @@ import {
   loadFolderScopeSnapshot,
   writeFolderScopeSnapshot,
 } from '../bundle-config/folderScopeChanges.js';
-import { runWorkingGraphRaw } from '../utils/workingGraphUtils.js';
+import { runWorkingGraphJson } from '../utils/workingGraphUtils.js';
 
 interface RustLinkResolvedInfo {
   link_resolved_target_directory: string;
@@ -77,7 +77,7 @@ interface RustEdge {
   isBidirectional: boolean;
 }
 
-interface RustOutput {
+export interface WorkingGraphRustOutput {
   nodes: RustNode[];
   edges: (RustEdge & { link_original_text: string })[];
   allLinkResolutionMaps: Record<string, Record<string, RustLinkResolvedInfo>>;
@@ -115,7 +115,7 @@ export class WorkingGraphOperationError extends Error {
   }
 }
 
-function snapshotFor(output: RustOutput): FolderScopeGraphSnapshot {
+function snapshotFor(output: WorkingGraphRustOutput): FolderScopeGraphSnapshot {
   return {
     nodes: output.nodes.map(node => ({
       bundleNodeKey: node.bundleNodeKey,
@@ -138,7 +138,7 @@ function snapshotFor(output: RustOutput): FolderScopeGraphSnapshot {
   };
 }
 
-function serializeNodes(output: RustOutput): IBundleNode[] {
+function serializeNodes(output: WorkingGraphRustOutput): IBundleNode[] {
   const linkResolutionMaps = output.allLinkResolutionMaps || {};
   return output.nodes.map(node => {
     const common = {
@@ -195,7 +195,7 @@ function serializeNodes(output: RustOutput): IBundleNode[] {
   });
 }
 
-function serializeEdges(output: RustOutput): LoadedWorkingGraph['edges'] {
+function serializeEdges(output: WorkingGraphRustOutput): LoadedWorkingGraph['edges'] {
   const nodeDepthMap = new Map(output.nodes.map(node => [node.bundleNodeKey, node.depth]));
   const edgeMap = new Map<string, RustEdge>();
   for (const edge of output.edges) {
@@ -225,6 +225,26 @@ function serializeEdges(output: RustOutput): LoadedWorkingGraph['edges'] {
     .sort((left, right) => (
       `${left.source}->${left.target}`.localeCompare(`${right.source}->${right.target}`)
     ));
+}
+
+type SerializedWorkingGraph = Pick<
+  LoadedWorkingGraph,
+  'nodes' | 'edges' | 'allInlinkSources' | 'allOutlinkTargets'
+>;
+
+const serializedWorkingGraphs = new WeakMap<WorkingGraphRustOutput, SerializedWorkingGraph>();
+
+export function serializeWorkingGraphOutput(output: WorkingGraphRustOutput): SerializedWorkingGraph {
+  const existing = serializedWorkingGraphs.get(output);
+  if (existing) return existing;
+  const serialized = {
+    nodes: serializeNodes(output),
+    edges: serializeEdges(output),
+    allInlinkSources: output.allInlinkSources || {},
+    allOutlinkTargets: output.allOutlinkTargets || {},
+  };
+  serializedWorkingGraphs.set(output, serialized);
+  return serialized;
 }
 
 export async function loadWorkingGraph(options: {
@@ -281,8 +301,8 @@ export async function loadWorkingGraph(options: {
   const allowImagesToExtendToFrontier = bundleConfig.allowImagesToExtendToFrontier
     ?? appConfig.allowImagesToExtendToFrontier
     ?? true;
-  const runGraph = async (configFile: string): Promise<RustOutput> => {
-    const raw = await runWorkingGraphRaw({
+  const runGraph = async (configFile: string): Promise<WorkingGraphRustOutput> => {
+    return await runWorkingGraphJson<WorkingGraphRustOutput>({
       graphRoot: notesDir,
       bundleNodeConfigPath: configFile,
       entryBundleNodeId: bundleConfig.entryBundleNodeId!,
@@ -293,10 +313,9 @@ export async function loadWorkingGraph(options: {
       allowImagesToExtendToFrontier,
       allowLowerDepths: false,
     });
-    return JSON.parse(raw) as RustOutput;
   };
 
-  let output: RustOutput;
+  let output: WorkingGraphRustOutput;
   try {
     output = await runGraph(draftNodes ? draftPath : mainPath);
   } catch (error) {
@@ -330,14 +349,12 @@ export async function loadWorkingGraph(options: {
     }
   }
 
+  const serialized = serializeWorkingGraphOutput(output);
   return {
     bundleConfig,
     committedNodes,
     ...(draftNodes && { draftNodes }),
-    nodes: serializeNodes(output),
-    edges: serializeEdges(output),
-    allInlinkSources: output.allInlinkSources || {},
-    allOutlinkTargets: output.allOutlinkTargets || {},
+    ...serialized,
     ...(output.folderScope && { folderScope: output.folderScope }),
     ...(changeExplanations && { changeExplanations }),
   };

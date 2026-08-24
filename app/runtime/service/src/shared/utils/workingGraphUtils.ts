@@ -15,9 +15,12 @@ limitations under the License.
 */
 
 import fs from 'fs';
+import path from 'path';
+import { createHash } from 'crypto';
 import { execFile } from 'child_process';
 import { logger } from './logging/backendLoggingUtils.js';
 import { resolveNativeRustBinaryPath } from '../../../../../shared_code/utils/nativeRustBinaryPath.js';
+import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 
 function execWorkingGraph(binaryPath: string, args: string[]): Promise<string> {
   return new Promise<string>((resolve, reject) => {
@@ -72,9 +75,129 @@ export type WorkingGraphRunArgs = {
   allowLowerDepths: boolean;
 };
 
-export async function runWorkingGraphRaw(runArgs: WorkingGraphRunArgs): Promise<string> {
-  const binaryPath = getWorkingGraphPath();
+type SourceWatch = {
+  revision: number;
+  watcher: fs.FSWatcher;
+};
 
+type CachedWorkingGraph = {
+  graphRoot: string;
+  result: Promise<string>;
+  parsedResult?: Promise<unknown>;
+};
+
+const MAX_WORKING_GRAPH_CACHE_ENTRIES = 8;
+const sourceWatches = new Map<string, SourceWatch>();
+const workingGraphCache = new Map<string, CachedWorkingGraph>();
+
+function clearCachedWorkingGraphsForRoot(graphRoot: string): void {
+  for (const [key, entry] of workingGraphCache) {
+    if (entry.graphRoot === graphRoot) workingGraphCache.delete(key);
+  }
+}
+
+function sourceRevision(graphRoot: string): number | null {
+  const normalizedRoot = path.resolve(graphRoot);
+  const existing = sourceWatches.get(normalizedRoot);
+  if (existing) return existing.revision;
+  try {
+    const watch: SourceWatch = {
+      revision: 0,
+      watcher: fs.watch(normalizedRoot, { recursive: true }, () => {
+        watch.revision += 1;
+        clearCachedWorkingGraphsForRoot(normalizedRoot);
+      }),
+    };
+    watch.watcher.on('error', () => {
+      clearCachedWorkingGraphsForRoot(normalizedRoot);
+      sourceWatches.delete(normalizedRoot);
+      watch.watcher.close();
+    });
+    watch.watcher.unref();
+    sourceWatches.set(normalizedRoot, watch);
+    return watch.revision;
+  } catch {
+    // If recursive watching is unavailable, favor correctness and skip caching.
+    return null;
+  }
+}
+
+/**
+ * Only traversal policy belongs in the expensive working-graph cache key.
+ * Plain tracking state and tracking evidence are applied to the graph after
+ * traversal, so changing either must not force a full source-graph rebuild.
+ */
+export function workingGraphTopologyFingerprint(
+  configContents: string,
+  entryBundleNodeId: string,
+  defaultTraversalBundleNodeId: string,
+): string {
+  const configs = parseBundleNodeConfig(configContents);
+  const topologyNodeIds = new Set([entryBundleNodeId, defaultTraversalBundleNodeId]);
+  for (const config of configs) {
+    if (config.bundleNodeKind === 'collection') {
+      topologyNodeIds.add(config.bundleNodeId);
+      config.memberBundleNodeIds.forEach(id => topologyNodeIds.add(id));
+    }
+  }
+  const topologyConfigs = configs
+    .filter(config => (
+      topologyNodeIds.has(config.bundleNodeId)
+      || config.bundleNodeKind === 'collection'
+      || config.listType === 'blacklist'
+      || config.outlinksDepth !== undefined
+      || config.inlinksDepth !== undefined
+    ))
+    .map(config => {
+      if (config.bundleNodeKind !== 'file') return config;
+      const topologyConfig = { ...config };
+      delete topologyConfig.trackingEvidence;
+      return topologyConfig;
+    })
+    .sort((left, right) => left.bundleNodeId.localeCompare(right.bundleNodeId));
+  return createHash('sha256')
+    .update(JSON.stringify(topologyConfigs))
+    .digest('hex');
+}
+
+function cacheKey(runArgs: WorkingGraphRunArgs, revision: number): string {
+  const configContents = fs.readFileSync(runArgs.bundleNodeConfigPath, 'utf8');
+  return JSON.stringify({
+    ...runArgs,
+    graphRoot: path.resolve(runArgs.graphRoot),
+    bundleNodeConfigPath: path.resolve(runArgs.bundleNodeConfigPath),
+    topologyFingerprint: workingGraphTopologyFingerprint(
+      configContents,
+      runArgs.entryBundleNodeId,
+      runArgs.defaultTraversalBundleNodeId,
+    ),
+    sourceRevision: revision,
+  });
+}
+
+function rememberWorkingGraph(
+  key: string,
+  graphRoot: string,
+  result: Promise<string>,
+): CachedWorkingGraph {
+  const entry = { graphRoot, result };
+  workingGraphCache.set(key, entry);
+  while (workingGraphCache.size > MAX_WORKING_GRAPH_CACHE_ENTRIES) {
+    const oldestKey = workingGraphCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    workingGraphCache.delete(oldestKey);
+  }
+  result.catch(() => {
+    if (workingGraphCache.get(key)?.result === result) workingGraphCache.delete(key);
+  });
+  return entry;
+}
+
+function workingGraphCommand(runArgs: WorkingGraphRunArgs): {
+  binaryPath: string;
+  args: string[];
+} {
+  const binaryPath = getWorkingGraphPath();
   const args: string[] = [
     '--graph-root',
     runArgs.graphRoot,
@@ -100,7 +223,41 @@ export async function runWorkingGraphRaw(runArgs: WorkingGraphRunArgs): Promise<
   if (runArgs.allowLowerDepths) {
     args.push('--allow-lower-depths');
   }
+  return { binaryPath, args };
+}
+
+function getWorkingGraphEntry(runArgs: WorkingGraphRunArgs): CachedWorkingGraph {
+  const { binaryPath, args } = workingGraphCommand(runArgs);
+  const normalizedRoot = path.resolve(runArgs.graphRoot);
+  const revision = sourceRevision(normalizedRoot);
+  if (revision !== null) {
+    const key = cacheKey(runArgs, revision);
+    const cached = workingGraphCache.get(key);
+    if (cached) {
+      // Refresh insertion order so the bounded map behaves as an LRU cache.
+      workingGraphCache.delete(key);
+      workingGraphCache.set(key, cached);
+      logger.debug(`Reusing working_graph result for ${runArgs.bundleNodeConfigPath}`);
+      return cached;
+    }
+    logger.debug(`Executing working_graph command: "${binaryPath}" ${args.map(a => JSON.stringify(a)).join(' ')}`);
+    return rememberWorkingGraph(
+      key,
+      normalizedRoot,
+      execWorkingGraph(binaryPath, args),
+    );
+  }
 
   logger.debug(`Executing working_graph command: "${binaryPath}" ${args.map(a => JSON.stringify(a)).join(' ')}`);
-  return await execWorkingGraph(binaryPath, args);
+  return { graphRoot: normalizedRoot, result: execWorkingGraph(binaryPath, args) };
+}
+
+export async function runWorkingGraphRaw(runArgs: WorkingGraphRunArgs): Promise<string> {
+  return await getWorkingGraphEntry(runArgs).result;
+}
+
+export async function runWorkingGraphJson<T>(runArgs: WorkingGraphRunArgs): Promise<T> {
+  const entry = getWorkingGraphEntry(runArgs);
+  entry.parsedResult ??= entry.result.then(raw => JSON.parse(raw) as unknown);
+  return await entry.parsedResult as T;
 }

@@ -26,13 +26,10 @@ import {
 } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import { FileType } from '../../../../../../../contracts/types/FileType.js';
-import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import { loadAppConfig as loadAppConfigFromDisk } from '../../../../../../../shared_code/utils/appConfigUtils.js';
-import type { BundleNodeTraversalDetails } from '../../../../../../../contracts/types/bundleNodeGraph.js';
 import { getConfigDirectory, getBundleDirectory, getBundleConfigPath, getBundleRawDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+import { runWorkingGraphJson } from '../../../../shared/utils/workingGraphUtils.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { FrontmatterUtils } from '../../../../shared/utils/frontmatterUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -50,6 +47,10 @@ import type {
 } from '../../../../../../../contracts/types/graphInspection.js';
 import { describeWorkingGraph } from '../services/graphDescriptionService.js';
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
+import {
+  serializeWorkingGraphOutput,
+  type WorkingGraphRustOutput,
+} from '../../../../shared/bundle-graph/workingGraphService.js';
 
 const router = express.Router();
 
@@ -286,47 +287,9 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
       }
     }
 
-    type RustLinkResolvedInfo = { link_resolved_target_directory: string; link_resolved_target_path: string | null };
-    type RustNode = {
-      bundleNodeKey: string;
-      bundleNodeId?: string;
-      bundleNodeKind: 'file' | 'folder' | 'collection';
-      bundleNodeName: string;
-      sourceGraphSubdirectory?: string;
-      fileType?: FileType;
-      memberBundleNodeIds?: string[];
-      effectiveBlacklistingBundleNodeId?: string;
-      effectiveFolderPolicyBundleNodeId?: string;
-      depth: number;
-      remaining_depth: number;
-      remaining_inlinks_depth: number;
-      path: string[];
-      traversal_details?: BundleNodeTraversalDetails;
-      traversal_states?: Array<{ remaining_outlinks_depth: number; remaining_inlinks_depth: number }>;
-      isFrontierNode?: boolean;
-      isFrontierImageExtension?: boolean;
-      is_sensitive: boolean;
-      source_page_outlink_count?: number;
-      source_page_inlink_count?: number;
-    };
-    type RustEdge = {
-      source: string;
-      target: string;
-      bundleEdgeKind: 'semanticLink' | 'directoryContainment' | 'collectionMembership';
-      isBidirectional: boolean;
-    };
-    type RustOutput = {
-      nodes: RustNode[];
-      edges: (RustEdge & { link_original_text: string })[];
-      allLinkResolutionMaps: Record<string, Record<string, RustLinkResolvedInfo>>;
-      allInlinkSources: Record<string, string[]>;
-      allOutlinkTargets: Record<string, string[]>;
-      folderScope?: FolderScopeGraphSnapshot['folderScope'];
-    };
-
-    let rustOutput: RustOutput;
-    const runGraph = async (configFile: string): Promise<RustOutput> => {
-      const raw = await runWorkingGraphRaw({
+    let rustOutput: WorkingGraphRustOutput;
+    const runGraph = async (configFile: string): Promise<WorkingGraphRustOutput> => {
+      return await runWorkingGraphJson<WorkingGraphRustOutput>({
         graphRoot: notesDir,
         bundleNodeConfigPath: configFile,
         entryBundleNodeId: bundleConfig.entryBundleNodeId!,
@@ -337,7 +300,6 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
         allowImagesToExtendToFrontier,
         allowLowerDepths: false,
       });
-      return JSON.parse(raw) as RustOutput;
     };
     try {
       rustOutput = await runGraph(bundleNodeConfigPath);
@@ -345,7 +307,7 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
       return next(new Error(`Failed to run working_graph for bundle ${bundleSlug}: ${err instanceof Error ? err.message : String(err)}`));
     }
 
-    const snapshotFor = (output: RustOutput): FolderScopeGraphSnapshot => ({
+    const snapshotFor = (output: WorkingGraphRustOutput): FolderScopeGraphSnapshot => ({
       nodes: output.nodes.map(node => ({
         bundleNodeKey: node.bundleNodeKey,
         ...(node.bundleNodeId && { bundleNodeId: node.bundleNodeId }),
@@ -389,88 +351,12 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
       }
     }
 
-    const nodeDepthMap = new Map<string, number>(rustOutput.nodes.map(node => [node.bundleNodeKey, node.depth]));
-    const linkResolutionMaps = rustOutput.allLinkResolutionMaps || {};
-
-    const nodes: IBundleNode[] = rustOutput.nodes.map(node => {
-      const common = {
-        bundleNodeKey: node.bundleNodeKey as IBundleNode['bundleNodeKey'],
-        ...(node.bundleNodeId && { bundleNodeId: node.bundleNodeId as IBundleNode['bundleNodeId'] }),
-        label: node.bundleNodeName,
-        bundleNodeName: node.bundleNodeName,
-        depth: node.depth,
-        remaining_depth: node.remaining_depth,
-        remaining_inlinks_depth: node.remaining_inlinks_depth,
-        path: node.path,
-        traversal_details: node.traversal_details,
-        traversal_states: node.traversal_states,
-        ...(node.effectiveBlacklistingBundleNodeId && {
-          effectiveBlacklistingBundleNodeId: node.effectiveBlacklistingBundleNodeId as IBundleNode['bundleNodeId'],
-        }),
-        ...(node.effectiveFolderPolicyBundleNodeId && {
-          effectiveFolderPolicyBundleNodeId: node.effectiveFolderPolicyBundleNodeId as IBundleNode['bundleNodeId'],
-        }),
-        linkResolutionMap: linkResolutionMaps[node.bundleNodeKey],
-        isFrontierNode: node.isFrontierNode,
-        isFrontierImageExtension: node.isFrontierImageExtension,
-        source_page_outlink_count: node.source_page_outlink_count,
-        source_page_inlink_count: node.source_page_inlink_count,
-        data: {
-          bundleNodeName: node.bundleNodeName,
-          sourceGraphSubdirectory: node.sourceGraphSubdirectory,
-          fileType: node.fileType,
-          is_sensitive: node.is_sensitive
-        },
-        getIdent: () => node.bundleNodeKey
-      };
-      if (node.bundleNodeKind === 'collection') {
-        return {
-          ...common,
-          bundleNodeKind: 'collection',
-          memberBundleNodeIds: (node.memberBundleNodeIds ?? []) as NonNullable<IBundleNode['bundleNodeId']>[],
-        };
-      }
-      if (node.bundleNodeKind === 'folder') {
-        return {
-          ...common,
-          bundleNodeKind: 'folder',
-          sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
-        };
-      }
-      if (!node.fileType) throw new Error(`File node ${node.bundleNodeKey} has no fileType`);
-      return {
-        ...common,
-        bundleNodeKind: 'file',
-        sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
-        fileType: node.fileType,
-      };
-    });
-
-    // Deduplicate edges to match existing API: one edge per page pair, mark bidirectional if reverse exists.
-    const edgeMap = new Map<string, RustEdge>();
-    for (const e of rustOutput.edges) {
-      const forwardKey = `${e.bundleEdgeKind}:${e.source}->${e.target}`;
-      const reverseKey = `${e.bundleEdgeKind}:${e.target}->${e.source}`;
-      if (e.bundleEdgeKind === 'semanticLink' && edgeMap.has(reverseKey)) {
-        const existing = edgeMap.get(reverseKey)!;
-        existing.isBidirectional = existing.isBidirectional || e.isBidirectional || true;
-      } else if (edgeMap.has(forwardKey)) {
-        const existing = edgeMap.get(forwardKey)!;
-        existing.isBidirectional = existing.isBidirectional || e.isBidirectional;
-      } else {
-        edgeMap.set(forwardKey, { ...e });
-      }
-    }
-
-    const resultEdges = Array.from(edgeMap.values())
-      .map(e => ({
-        source: e.source,
-        target: e.target,
-        bundleEdgeKind: e.bundleEdgeKind,
-        isBidirectional: e.isBidirectional ?? false,
-        data: { fromDepth: nodeDepthMap.get(e.source) ?? 0, toDepth: nodeDepthMap.get(e.target) ?? 0 }
-      }))
-      .sort((a, b) => (a.source + '->' + a.target).localeCompare(b.source + '->' + b.target));
+    const {
+      nodes,
+      edges: resultEdges,
+      allInlinkSources,
+      allOutlinkTargets,
+    } = serializeWorkingGraphOutput(rustOutput);
 
     if (descriptionRequest) {
       applySensitiveFromApiData(nodes);
@@ -484,8 +370,8 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
           nodes,
           edges: resultEdges,
           linkData: {
-            allInlinkSources: rustOutput.allInlinkSources || {},
-            allOutlinkTargets: rustOutput.allOutlinkTargets || {},
+            allInlinkSources,
+            allOutlinkTargets,
           },
           customFilters: loadCustomFiltersForBundle(bundleSlug),
         }));
@@ -497,8 +383,8 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
     res.json({
       nodes,
       edges: resultEdges,
-      allInlinkSources: rustOutput.allInlinkSources || {},
-      allOutlinkTargets: rustOutput.allOutlinkTargets || {},
+      allInlinkSources,
+      allOutlinkTargets,
       folderScope: rustOutput.folderScope,
       changeExplanations,
     });

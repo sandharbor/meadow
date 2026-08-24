@@ -31,7 +31,7 @@ import EmptySoloCallout from './EmptySoloCallout';
 import BundlePagesToggle from './BundlePagesToggle';
 import ResizableSidebar from './ResizableSidebar';
 import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig';
-import { buildNodeConfigs, generateBundleNodeId, getOrphanNodeConfigs } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils';
+import { buildNodeConfigs, getOrphanNodeConfigs } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import Modal from '../../../../shared/components/Modal';
 import { AppConfig } from '../../../../../../../contracts/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
@@ -39,7 +39,11 @@ import { useDisplayFilters } from '../utils/useDisplayFilters';
 import FolderScopeChangesBanner from './FolderScopeChangesBanner';
 import type { FolderScopeChangeExplanation } from '../../../../../../../contracts/types/folderScopeChanges';
 import { useIsFolderBasedBundle } from '../utils/bundleMode';
-import { mutateFileTracking, trackSafeNodeKeys } from '../utils/bundleTrackingClient';
+import {
+  ensureNodeConfigForPersistence,
+  mutateFileTrackingOptimistically,
+  trackNodesOptimistically,
+} from '../utils/bundleTrackingInteraction';
 
 interface BundleNodeTabsProps {
   graph: Graph;
@@ -58,6 +62,7 @@ interface BundleNodeTabsProps {
   hasDraftChanges: boolean;
   bundleSlug: string;
   onRefresh: () => void;
+  onRefreshNodeConfigs: () => void;
   untrackedNodeCount: number;
   graphUpdateTrigger: number;
   bundleNodeConfigs: BundleNodeConfig[] | null;
@@ -86,6 +91,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   hasDraftChanges,
   bundleSlug,
   onRefresh,
+  onRefreshNodeConfigs,
   untrackedNodeCount,
   graphUpdateTrigger,
   bundleNodeConfigs,
@@ -386,36 +392,14 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   }, []);
 
   const ensurePageConfigForPersistence = (page: IBundleNode, listType: 'whitelist' | 'blacklist') => {
-    let config = page.conf;
-    if (!config) {
-      const existingIds = [
+    ensureNodeConfigForPersistence({
+      node: page,
+      listType,
+      existingIds: [
         ...(bundleNodeConfigs ?? []).map(config => config.bundleNodeId),
         ...graph.getAllNodes().flatMap(node => node.bundleNodeId ? [node.bundleNodeId] : []),
-      ];
-      const bundleNodeId = generateBundleNodeId(existingIds);
-      page.bundleNodeId = bundleNodeId;
-      if (page.bundleNodeKind === 'collection') {
-        throw new Error('The bundle home cannot be configured through generic curation actions');
-      }
-      config = page.bundleNodeKind === 'folder'
-        ? {
-            bundleNodeName: page.bundleNodeName,
-            sourceGraphSubdirectory: page.sourceGraphSubdirectory,
-            bundleNodeKind: 'folder',
-            bundleNodeId,
-            listType,
-          }
-        : {
-            bundleNodeName: page.bundleNodeName,
-            sourceGraphSubdirectory: page.sourceGraphSubdirectory,
-            bundleNodeKind: 'file',
-            fileType: page.fileType,
-            bundleNodeId,
-            listType,
-          };
-      page.conf = config;
-    }
-    config.listType = listType;
+      ],
+    });
   };
 
   // Persist the full config array as a draft
@@ -449,12 +433,16 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
       if (page.bundleNodeKind === 'file') {
         try {
           const effectivelySensitive = currentDisplayGraph.getDisplayNode(bundleNodeKey)?.isEffectivelySensitive ?? false;
-          const operation = newTracked ? 'track' : 'untrack';
-          await mutateFileTracking({
-            bundleSlug, bundleNodeKey, operation,
-            includeSensitive: newTracked && effectivelySensitive,
+          await mutateFileTrackingOptimistically({
+            bundleSlug,
+            page,
+            tracked: newTracked,
+            effectivelySensitive,
+            notifyChange: () => graph.notifyChange(),
           });
-          onRefresh();
+          onSelectedNodeKeysChange(new Set(selectedNodeKeys));
+          onRefreshNodeConfigs();
+          onCheckDraftStatus?.();
         } catch (error) {
           logger.error('Error applying one-file tracking command:', error);
         }
@@ -555,9 +543,18 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
       );
     });
     if (nodeKeys.length === 0) return;
+    const nodes = nodeKeys
+      .map(bundleNodeKey => graph.getNode(bundleNodeKey))
+      .filter((node): node is IBundleNode => Boolean(node));
     try {
-      await trackSafeNodeKeys(bundleSlug, nodeKeys);
-      onRefresh();
+      await trackNodesOptimistically({
+        bundleSlug,
+        nodes,
+        notifyChange: () => graph.notifyChange(),
+      });
+      onSelectedNodeKeysChange(new Set(selectedNodeKeys));
+      onRefreshNodeConfigs();
+      onCheckDraftStatus?.();
     } catch (error) {
       logger.error('Error applying safe batch tracking command:', error);
     }

@@ -25,20 +25,21 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function successfulFetch() {
+function successfulFetch(body: unknown = {}) {
   const fetch = vi.fn(async (
     _input: Parameters<typeof globalThis.fetch>[0],
     _init?: Parameters<typeof globalThis.fetch>[1],
-  ) => new globalThis.Response('{}', { status: 200 }));
+  ) => new globalThis.Response(JSON.stringify(body), { status: 200 }));
   vi.stubGlobal('fetch', fetch);
   return fetch;
 }
 
 describe('Web bundle tracking client', () => {
   it('uses the one-file Runtime command with explicit sensitive inclusion', async () => {
-    const fetch = successfulFetch();
+    const responseBody = { operation: 'bundle.node.track', node: { tracked: true } };
+    const fetch = successfulFetch(responseBody);
 
-    await mutateFileTracking({
+    const result = await mutateFileTracking({
       bundleSlug: 'private-notes',
       bundleNodeKey: '/Personal.md',
       operation: 'track',
@@ -51,15 +52,18 @@ describe('Web bundle tracking client', () => {
       path: '/Personal.md',
       includeSensitive: true,
     });
+    expect(result).toEqual(responseBody);
   });
 
   it('keeps safe multi-node tracking on the conservative bulk command', async () => {
-    const fetch = successfulFetch();
+    const responseBody = { operation: 'bundle.track', newlyTracked: [] };
+    const fetch = successfulFetch(responseBody);
 
-    await trackSafeNodeKeys('garden', ['/Public.md']);
+    const result = await trackSafeNodeKeys('garden', ['/Public.md']);
 
     const [requestPath, request] = fetch.mock.calls[0];
     expect(requestPath).toBe('/api/bundles/garden/curation/track-nodes');
     expect(JSON.parse(String(request?.body))).toEqual({ nodeKeys: ['/Public.md'] });
+    expect(result).toEqual(responseBody);
   });
 });

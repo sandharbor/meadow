@@ -71,6 +71,7 @@ const BundleEditor: React.FC = () => {
 
   // Graph loading error state
   const [graphError, setGraphError] = useState<string | null>(null);
+  const [isRecalculatingGraph, setIsRecalculatingGraph] = useState(false);
 
   // Bundle logs modal state
   const [isBundleLogsModalOpen, setIsBundleLogsModalOpen] = useState(false);
@@ -192,8 +193,21 @@ const BundleEditor: React.FC = () => {
 
   // Auto-reload working graph when config changes
   const reloadWorkingGraph = useCallback(() => {
+    setIsRecalculatingGraph(true);
     setConfigChangeTrigger(prev => prev + 1);
   }, []);
+
+  const refreshBundleNodeConfigs = useCallback(() => {
+    if (!slug) return;
+    apiRequest(`bundles/${slug}/curation/bundle-config`)
+      .then(res => res.json())
+      .then(data => {
+        setBundleNodeConfigs(Array.isArray(data.configs) ? data.configs : []);
+      })
+      .catch(error => {
+        logger.error('Failed to refresh bundle-config:', error);
+      });
+  }, [slug]);
 
   // Check if bundle has published versions
   const checkPublishedVersions = useCallback(async () => {
@@ -390,6 +404,9 @@ const BundleEditor: React.FC = () => {
       .catch(err => {
         logger.error('Failed to load working graph:', err);
         setGraphError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        setIsRecalculatingGraph(false);
       });
   }, [slug, configLoaded, configChangeTrigger, viewFrontierEnabled, frontierDepth]);
 
@@ -1011,6 +1028,15 @@ const BundleEditor: React.FC = () => {
         <div className="ml-6 mr-8 font-medium">
           <span className="text-main-700">{slug}</span>
         </div>
+        {isRecalculatingGraph && (
+          <div
+            role="status"
+            className="flex items-center gap-2 text-xs text-neutral-500"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-main-500 animate-pulse" />
+            Recalculating graph…
+          </div>
+        )}
         {/* Middle Section - spacer */}
         <div className="flex-1" />
         
@@ -1209,7 +1235,8 @@ const BundleEditor: React.FC = () => {
           onPreviewPage={handlePreviewPage}
           hasDraftChanges={hasDraftChanges}
           bundleSlug={slug || ''}
-          onRefresh={() => setConfigChangeTrigger(prev => prev + 1)}
+          onRefresh={reloadWorkingGraph}
+          onRefreshNodeConfigs={refreshBundleNodeConfigs}
           untrackedNodeCount={getUntrackedNodeCount()}
           bundleNodeConfigs={bundleNodeConfigs}
           protectedBundleNodeIds={new Set([entryBundleNodeId, defaultTraversalBundleNodeId].filter((id): id is string => id !== null))}
