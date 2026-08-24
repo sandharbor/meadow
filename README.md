@@ -16,7 +16,7 @@ See the Readme in `_agent` for how we do agentic development
 
 `/dev` skill (either on `main` or in a worktree.  Works from either place)
 
-It starts the app's backend, frontend, and then the `dev_tools_app` which is
+It starts the app's backend, frontend, and then `app/tooling/dev_tools`, which is
 just a nice UI for launching the app with different configurations.
 
 # Building the app

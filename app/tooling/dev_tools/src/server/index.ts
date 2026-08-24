@@ -21,22 +21,22 @@ import { join, dirname } from "path";
 import { fileURLToPath, URL } from "url";
 import { spawn } from "child_process";
 import { homedir } from "os";
-import { getDefaultConfigDirectory } from "../../../shared_code/utils/appConfigUtils.js";
+import { getDefaultConfigDirectory } from "../../../../shared_code/utils/appConfigUtils.js";
 import {
   MEADOW_RUNTIME_SESSION_ENV,
   readLocalRuntimeSession,
-} from "../../../shared_code/utils/localRuntimeSession.js";
-import { preflightMeadowHome } from "../../../shared_code/utils/meadowHomeFormat.js";
+} from "../../../../shared_code/utils/localRuntimeSession.js";
+import { preflightMeadowHome } from "../../../../shared_code/utils/meadowHomeFormat.js";
 import {
   findProjectRoot,
   getHomeFixturesPath,
   copyTestBundleFixture,
-} from "../../../shared_code/shared_dev/testBundlesConfig.js";
+} from "../../../../shared_code/shared_dev/testBundlesConfig.js";
 import type { ConfigFixture, PublishingProviderConfProfile } from "../shared/types.js";
 import {
   AppConfigGitUtils,
   GIT_AUTHORS,
-} from "../../../shared_code/utils/appConfigGitUtils.js";
+} from "../../../../shared_code/utils/appConfigGitUtils.js";
 import { ConfigModeHelper } from "../shared/helpers/ConfigModeHelper.js";
 import {
   DevRuntimeManager,
@@ -347,7 +347,7 @@ app.post("/api/config/copy-back-to-fixture", (_req, res) => {
 // ============ Publishing Provider Confs ============
 
 function getPublishingProviderConfsPath(): string {
-  return join(getProjectRoot(), "app", "dev_tools_app", "publishing_provider_confs");
+  return join(getProjectRoot(), "app", "tooling", "dev_tools", "publishing_provider_confs");
 }
 
 function discoverPublishingProviderConfProfiles(): PublishingProviderConfProfile[] {

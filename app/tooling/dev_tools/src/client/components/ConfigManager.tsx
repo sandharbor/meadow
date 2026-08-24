@@ -477,7 +477,7 @@ const ConfigManager: React.FC = () => {
                     Drops a predefined publishing-provider bundle into{' '}
                     <span className="font-mono">MeadowHome/app/publishing_providers/</span>{' '}
                     so you can skip retyping settings and secrets. Each profile replaces matching provider folders. Disabled in Normal mode to avoid touching your real config. Add those predefined bundles at{' '}
-                    <span className="font-mono">app/dev_tools_app/publishing_provider_confs/</span>.
+                    <span className="font-mono">app/tooling/dev_tools/publishing_provider_confs/</span>.
                   </span>
                 </span>
                 {isNormalActive && (

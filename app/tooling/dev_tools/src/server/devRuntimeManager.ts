@@ -21,7 +21,7 @@ import { promisify } from "node:util";
 import {
   getLocalRuntimeStartupDiagnosticPath,
   type LocalRuntimeSession,
-} from "../../../shared_code/utils/localRuntimeSession.js";
+} from "../../../../shared_code/utils/localRuntimeSession.js";
 
 export const MEADOW_DEV_TMUX_SESSION_ENV = "MEADOW_DEV_TMUX_SESSION";
 

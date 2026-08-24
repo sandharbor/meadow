@@ -12,7 +12,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BACKEND_DIR="$REPO_ROOT/app/backend"
 FRONTEND_DIR="$REPO_ROOT/app/frontend"
-DEV_TOOLS_DIR="$REPO_ROOT/app/dev_tools_app"
+DEV_TOOLS_DIR="$REPO_ROOT/app/tooling/dev_tools"
 APP_VERSION=$(node -p "require('$REPO_ROOT/app/electron_app/package.json').version")
 
 ensure_dev_executable() {

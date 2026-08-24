@@ -32,7 +32,7 @@ export interface ConfigFixture {
 }
 
 export interface PublishingProviderConfProfile {
-  /** Folder name under app/dev_tools_app/publishing_provider_confs (used as both id and display) */
+  /** Folder name under app/tooling/dev_tools/publishing_provider_confs (used as both id and display) */
   name: string;
   /** ProviderClassName subfolders this profile would write into MeadowHome */
   providerClassNames: string[];
