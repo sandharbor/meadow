@@ -6,9 +6,9 @@
     "postinstall": "node scripts/ensure-node-pty.mjs && node scripts/link-agent-eval-package-views.mjs",
     "test": "npx playwright test",
     "test:headed": "npx playwright test --headed",
-    "test:agent-evals": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --preserve-symlinks --preserve-symlinks-main\" node --import tsx --test tests/agent-eval-harness.test.ts",
-    "test:agent-eval-isolation": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --preserve-symlinks --preserve-symlinks-main\" node --import tsx src/agent-evals/verifyIsolationCli.ts",
-    "agent-eval": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --preserve-symlinks --preserve-symlinks-main\" node --import tsx src/agent-evals/runCli.ts"
+    "test:agent-evals": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --preserve-symlinks --preserve-symlinks-main\" node --import ./scripts/clear-agent-eval-node-options.mjs --import tsx --test tests/agent-eval-harness.test.ts",
+    "test:agent-eval-isolation": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --preserve-symlinks --preserve-symlinks-main\" node --import ./scripts/clear-agent-eval-node-options.mjs --import tsx src/agent-evals/verifyIsolationCli.ts",
+    "agent-eval": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --preserve-symlinks --preserve-symlinks-main\" node --import ./scripts/clear-agent-eval-node-options.mjs --import tsx src/agent-evals/runCli.ts"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.999.0",
