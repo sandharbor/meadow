@@ -29,7 +29,7 @@ const BACKEND_DIRECTORY = path.resolve(TEST_DIRECTORY, '../../..');
 const APP_DIRECTORY = path.resolve(BACKEND_DIRECTORY, '..');
 const FIXTURE_DIRECTORY = path.join(APP_DIRECTORY, 'shared_data', 'home_fixtures', 'release-safety');
 const BACKEND_ENTRY = path.join(BACKEND_DIRECTORY, 'src', 'shared', 'app-shell', 'index.ts');
-const TSX_CLI = path.join(BACKEND_DIRECTORY, 'node_modules', 'tsx', 'dist', 'cli.mjs');
+const TSX_IMPORT = 'tsx';
 const NETWORK_DENY_PRELOAD = path.join(TEST_DIRECTORY, 'networkDeny.cjs');
 const FAST_GIT_OPS = path.join(
   APP_DIRECTORY,
@@ -149,7 +149,7 @@ async function startAndStopBackend(
     port,
   );
 
-  const child = spawn(process.execPath, [TSX_CLI, BACKEND_ENTRY], {
+  const child = spawn(process.execPath, ['--import', TSX_IMPORT, BACKEND_ENTRY], {
     cwd: BACKEND_DIRECTORY,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -216,7 +216,7 @@ async function expectBackendRefusal(
     logDirectory,
     port,
   );
-  const child = spawn(process.execPath, [TSX_CLI, BACKEND_ENTRY], {
+  const child = spawn(process.execPath, ['--import', TSX_IMPORT, BACKEND_ENTRY], {
     cwd: BACKEND_DIRECTORY,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
