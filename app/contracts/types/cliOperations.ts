@@ -234,6 +234,11 @@ export interface GenerateBundleCliResult extends CliOperationResultBase {
 export interface GenerateBundleReviewPauseCliResult extends CliOperationResultBase {
   operation: 'bundle.generate';
   paused: true;
+  resolution: {
+    browserRequired: false;
+    mode: 'command';
+    guidance: string;
+  };
   reviewRequest: BundleBoundaryReviewRequest;
 }
 

@@ -118,7 +118,8 @@ Commands:
   bundle publish                   Publish a saved version with the active provider.
   bundle nodes                     Describe a bundle's working graph as JSON.
   bundle filters                   List filters available to a bundle as JSON.
-  review open                      Open a durable Bundle Boundary Review Request.
+  review open                      Open the full Web Client in a browser at a
+                                   durable Bundle Boundary Review Request.
 
 Meadow starts or attaches to the local Runtime on demand. Commands stay
 headless unless their operation is explicitly named 'open'. JSON is written to
@@ -812,7 +813,11 @@ async function main(): Promise<void> {
 
   if (args[0] === "review" && args[1] === "open") {
     if (args[2] === "--help" || args[2] === "-h") {
-      console.log("Usage: meadow review open <review-request-id>");
+      console.log(`Usage: meadow review open <review-request-id>
+
+Opens the full Meadow Web Client in the default browser at a durable Bundle
+Boundary Review Request. This is an optional visual workflow; generation pause
+responses declare whether their returned command actions can resolve headlessly.`);
       return;
     }
     const reviewRequestId = parseSlugOnly(

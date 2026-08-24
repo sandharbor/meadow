@@ -218,6 +218,11 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
           changed: false,
           mutationBehavior: CLI_MUTATION_BEHAVIORS.generateBundle,
           paused: true,
+          resolution: {
+            browserRequired: false,
+            mode: 'command',
+            guidance: "Resolve headlessly by running every returned nextAction. 'meadow review open' launches a browser and is optional.",
+          },
           reviewRequest: request,
           nextActions: request.findings
             .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
@@ -307,6 +312,11 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
           changed: false,
           mutationBehavior: CLI_MUTATION_BEHAVIORS.generateBundle,
           paused: true,
+          resolution: {
+            browserRequired: false,
+            mode: 'command',
+            guidance: "Resolve headlessly by running every returned nextAction. 'meadow review open' launches a browser and is optional.",
+          },
           reviewRequest: request,
           nextActions: request.findings
             .filter(finding => finding.code === 'sensitivity-reaffirmation-required')

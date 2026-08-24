@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
 import type { GenerateBundleCliResult, SaveGenerationCliResult, TrackBundleNodesCliResult } from "../../../../../contracts/types/cliOperations.js";
@@ -109,6 +109,9 @@ export async function evaluateCreateSafeBundle(input: {
   requirePreviewRelay?: boolean;
 }): Promise<OracleResult[]> {
   const { scenario, configDir, sourceDirectory, outcome } = input;
+  const canonicalSourceDirectory = existsSync(sourceDirectory)
+    ? realpathSync(sourceDirectory)
+    : path.resolve(sourceDirectory);
   const bundleRoot = path.join(configDir, "bundles");
   const bundleNames = existsSync(bundleRoot)
     ? readdirSync(bundleRoot).filter(name => statSync(path.join(bundleRoot, name)).isDirectory()).sort()
@@ -186,12 +189,12 @@ export async function evaluateCreateSafeBundle(input: {
     ),
     result(
       "source-entry-and-defaults",
-      bundleConfig.sourceDirectory === sourceDirectory
+      bundleConfig.sourceDirectory === canonicalSourceDirectory
         && bundleConfig.defaultOutlinksDepth === scenario.defaults.outlinksDepth
         && bundleConfig.defaultInlinksDepth === scenario.defaults.inlinksDepth
         && typeof bundleConfig.entryBundleNodeId === "string",
       "The source, entry identity, and normal traversal defaults are preserved.",
-      { sourceDirectory, defaults: scenario.defaults, entryPage: scenario.entryPage },
+      { sourceDirectory: canonicalSourceDirectory, defaults: scenario.defaults, entryPage: scenario.entryPage },
       bundleConfig,
     ),
     result(

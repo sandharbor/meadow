@@ -286,6 +286,8 @@ export async function evaluateCurateSensitiveFile(input: {
         && pauseCommand?.exitCode === 2
         && pause?.operation === "bundle.generate"
         && pause.paused === true
+        && pause.resolution.browserRequired === false
+        && pause.resolution.mode === "command"
         && pause.reviewRequest.policy === "review-required"
         && pause.reviewRequest.findings.some(
           finding => finding.code === "sensitivity-reaffirmation-required",
@@ -297,12 +299,14 @@ export async function evaluateCurateSensitiveFile(input: {
         transitionChanges: [true, true],
         exitCode: 2,
         policy: "review-required",
+        resolution: { browserRequired: false, mode: "command" },
         finding: "sensitivity-reaffirmation-required",
         nextActions: ["track-node"],
       },
       {
         transitionChanges: successfulTransitionTracks.map(operation => operation.changed),
         exitCode: pauseCommand?.exitCode,
+        resolution: pause?.resolution,
         reviewRequest: pause?.reviewRequest,
       },
       true,
