@@ -10,8 +10,8 @@ while [[ -L "$SCRIPT_PATH" ]]; do
 done
 CLI_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
-if [[ -x "$CLI_DIR/../node" && -f "$CLI_DIR/meadow.cjs" ]]; then
-  exec "$CLI_DIR/../node" "$CLI_DIR/meadow.cjs" "$@"
+if [[ -x "$CLI_DIR/../runtime-payload/bin/node" && -f "$CLI_DIR/meadow.cjs" ]]; then
+  exec "$CLI_DIR/../runtime-payload/bin/node" "$CLI_DIR/meadow.cjs" "$@"
 fi
 
 if [[ -f "$CLI_DIR/../dist/meadow.cjs" ]]; then

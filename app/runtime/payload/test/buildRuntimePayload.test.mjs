@@ -29,11 +29,12 @@ test("Runtime Payload identity is deterministic and content-addressed", () => {
   try {
     writeFileSync(path.join(root, "z.txt"), "last\n");
     writeFileSync(path.join(root, "a.txt"), "first\n");
+    writeFileSync(path.join(root, "B.txt"), "uppercase\n");
     const options = { appVersion: "0.5.43", perspective: "standalone" };
     const first = createPayloadManifest(root, options);
     const second = createPayloadManifest(root, options);
     assert.deepEqual(first, second);
-    assert.deepEqual(first.files.map(file => file.path), ["a.txt", "z.txt"]);
+    assert.deepEqual(first.files.map(file => file.path), ["B.txt", "a.txt", "z.txt"]);
     assert.equal(verifyPayloadManifest(root, first), true);
 
     writeFileSync(path.join(root, "a.txt"), "changed\n");

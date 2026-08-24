@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { getDefaultConfigDirectory } from "../../../shared_code/utils/appConfigUtils.js";
 import {
@@ -23,8 +25,10 @@ import {
 } from "../../../contracts/types/runtime.js";
 import {
   ensureRuntime,
+  createBrowserLaunchUrl,
   RuntimeClientLease,
 } from "../../../runtime/supervisor/src/runtimeClient.js";
+import { createRuntimePayloadLaunchSpec } from "../../../runtime/supervisor/src/runtimePayload.js";
 import { createSourceRuntimeLaunchSpec } from "../../../runtime/supervisor/src/sourceLaunchSpec.js";
 import { runBundleNodeCommand, showBundleNodeHelp } from "./nodeCommands.js";
 
@@ -83,6 +87,7 @@ function showHelp(): void {
   console.log(`meadow - command-line access to a running Meadow application
 
 Usage:
+  meadow open
   meadow bundles list
   meadow bundles list --archived
   meadow bundles create --source <directory> --entry <relative-page>
@@ -91,6 +96,7 @@ Usage:
   meadow bundle track <bundle-slug> --all-safe
   meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
+  meadow bundle open <bundle-slug>
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
   meadow bundle publish <bundle-slug> --version <version-id>
@@ -99,6 +105,7 @@ Usage:
   meadow help
 
 Commands:
+  open                             Open the full Meadow Web Client explicitly.
   bundles list                     List current bundles as JSON.
   bundles list --archived          List archived bundles as JSON.
   bundles create                   Create a page-derived bundle using normal defaults.
@@ -107,14 +114,16 @@ Commands:
   bundle track                     Atomically track a selected set or all safe nodes.
   bundle node                      Inspect or mutate one node by stable ID or source path;
                                    use 'bundle node track' for one-at-a-time curation.
+  bundle open                      Open the full Web Client at a bundle explicitly.
   bundle generate                  Generate a read-only local preview version.
   bundle save-generation           Save a generated version in Meadow Home.
   bundle publish                   Publish a saved version with the active provider.
   bundle nodes                     Describe a bundle's working graph as JSON.
   bundle filters                   List filters available to a bundle as JSON.
 
-Meadow connects to the local runtime started by the desktop application or
-development server. JSON is written to standard output.`);
+Meadow starts or attaches to the local Runtime on demand. Commands stay
+headless unless their operation is explicitly named 'open'. JSON is written to
+standard output.`);
 }
 
 function showBundlesHelp(): void {
@@ -171,6 +180,7 @@ function showBundleHelp(): void {
   meadow bundle track <bundle-slug> --node-key <bundle-node-key> [--node-key <key> ...]
   meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
+  meadow bundle open <bundle-slug>
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
   meadow bundle publish <bundle-slug> --version <version-id>
@@ -181,6 +191,7 @@ Commands:
   track     Atomically track a selected set by stable bundleNodeKey, or use
             --all-safe for every trackable node Meadow does not consider sensitive.
   node      Inspect, curate, find, or set traversal depths for one node.
+  open      Open the full Meadow Web Client at this bundle explicitly.
   generate  Generate or regenerate the current version and return its versionId
             plus a bundle-scoped, read-only preview URL.
   save-generation
@@ -301,8 +312,29 @@ function resolveSourceProjectRoot(): string {
 
 async function ensureCliRuntime(): Promise<void> {
   if (runtimeLease) return;
-  const projectRoot = resolveSourceProjectRoot();
   const homeDirectory = getDefaultConfigDirectory();
+  const cliDirectory = path.dirname(process.argv[1] ?? process.cwd());
+  const payloadRoot = [
+    process.env.MEADOW_RUNTIME_PAYLOAD_ROOT,
+    path.resolve(cliDirectory, "../runtime-payload"),
+    path.resolve(cliDirectory, "../../runtime-payload"),
+  ].find((candidate): candidate is string => Boolean(
+    candidate && existsSync(path.join(candidate, "manifest.json")),
+  ));
+  if (payloadRoot) {
+    const launchSpec = createRuntimePayloadLaunchSpec({ payloadRoot, homeDirectory });
+    runtimeLease = await ensureRuntime({
+      homeDirectory,
+      payload: launchSpec.payload,
+      launchSpec,
+      supervisorEntryPath: path.join(payloadRoot, "supervisor/meadow-runtime-supervisor.cjs"),
+      descriptorPath: process.env[MEADOW_RUNTIME_SESSION_ENV],
+      nodeExecutable: launchSpec.service.executable,
+    });
+    return;
+  }
+
+  const projectRoot = resolveSourceProjectRoot();
   const appVersion = process.env.MEADOW_APP_VERSION ?? "0.5.43";
   const perspective = process.env.MEADOW_BUILD_PERSPECTIVE === "composed"
     ? "composed"
@@ -334,6 +366,24 @@ async function ensureCliRuntime(): Promise<void> {
     ),
     descriptorPath: process.env[MEADOW_RUNTIME_SESSION_ENV],
   });
+}
+
+async function openBrowser(targetPath: string, operation: string): Promise<void> {
+  const session = resolveSession();
+  const launchUrl = await createBrowserLaunchUrl(session, targetPath);
+  const executable = process.env.MEADOW_BROWSER_OPEN_EXECUTABLE
+    ?? (process.platform === "darwin" ? "/usr/bin/open" : "xdg-open");
+  await new Promise<void>((resolve, reject) => {
+    execFile(executable, [launchUrl], error => {
+      if (error) reject(new Error(`Could not open the Meadow Web Client: ${error.message}`));
+      else resolve();
+    });
+  });
+  console.log(JSON.stringify({
+    operation,
+    opened: true,
+    url: new URL(targetPath, session.frontendOrigin).toString(),
+  }, null, 2));
 }
 
 function resolveSession(): RuntimeSessionDescriptor {
@@ -669,13 +719,21 @@ async function main(): Promise<void> {
 
   const isHelpRequest = args.includes("--help") || args.includes("-h");
   const isRuntimeCommand = (
+    args[0] === "open"
+  ) || (
     args[0] === "bundles"
     && ["list", "create", "archive", "unarchive"].includes(args[1] ?? "")
   ) || (
     args[0] === "bundle"
-    && ["track", "node", "generate", "save-generation", "publish", "nodes", "filters"].includes(args[1] ?? "")
+    && ["track", "node", "open", "generate", "save-generation", "publish", "nodes", "filters"].includes(args[1] ?? "")
   );
   if (isRuntimeCommand && !isHelpRequest) await ensureCliRuntime();
+
+  if (args[0] === "open") {
+    if (args.length !== 1) throw new Error("Usage: meadow open");
+    await openBrowser("/", "open");
+    return;
+  }
 
   if (args[0] === "bundles" && args[1] === "list") {
     const options = args.slice(2);
@@ -730,6 +788,16 @@ async function main(): Promise<void> {
       args.slice(2),
       (pathname, method, body) => requestJson(resolveSession(), pathname, method, body),
     );
+    return;
+  }
+
+  if (args[0] === "bundle" && args[1] === "open") {
+    if (args[2] === "--help" || args[2] === "-h") {
+      console.log("Usage: meadow bundle open <bundle-slug>");
+      return;
+    }
+    const slug = parseSlugOnly(args.slice(2), "meadow bundle open <bundle-slug>");
+    await openBrowser(`/bundle/${encodeURIComponent(slug)}`, "bundle.open");
     return;
   }
 

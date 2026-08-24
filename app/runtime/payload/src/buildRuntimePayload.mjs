@@ -56,10 +56,16 @@ function relativeUnix(root, target) {
   return path.relative(root, target).split(path.sep).join("/");
 }
 
+function compareText(left, right) {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
 export function collectPayloadFiles(payloadRoot) {
   const files = [];
   function visit(directory) {
-    for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => compareText(a.name, b.name))) {
       const absolutePath = path.join(directory, entry.name);
       const relativePath = relativeUnix(payloadRoot, absolutePath);
       if (relativePath === MANIFEST) continue;
@@ -79,7 +85,7 @@ export function collectPayloadFiles(payloadRoot) {
     }
   }
   visit(payloadRoot);
-  return files.sort((a, b) => a.path.localeCompare(b.path));
+  return files.sort((a, b) => compareText(a.path, b.path));
 }
 
 export function createPayloadManifest(payloadRoot, { appVersion, perspective }) {
@@ -209,13 +215,25 @@ function parseArguments(args) {
       `runtime-payload-${perspective}`,
     ),
     nodeExecutable: path.resolve(value("--node-executable") ?? process.execPath),
+    manifestOnly: args.includes("--manifest-only"),
     skipBuild: args.includes("--skip-build"),
   };
 }
 
 export function buildRuntimePayload(options) {
-  validateComposition(options.perspective);
   const outputRoot = validateOutput(options.outputRoot);
+  if (options.manifestOnly) {
+    if (!existsSync(path.join(outputRoot, MARKER))) {
+      throw new Error(`Runtime Payload is unavailable for manifest refresh: ${outputRoot}`);
+    }
+    const manifest = createPayloadManifest(outputRoot, options);
+    writeFileSync(path.join(outputRoot, MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`);
+    if (!verifyPayloadManifest(outputRoot, manifest)) {
+      throw new Error("Runtime Payload manifest failed self-verification");
+    }
+    return { outputRoot, manifest };
+  }
+  validateComposition(options.perspective);
   const stagingRoot = `${outputRoot}.staging-${process.pid}`;
   rmSync(stagingRoot, { recursive: true, force: true });
   mkdirSync(stagingRoot, { recursive: true });
@@ -283,7 +301,7 @@ export function buildRuntimePayload(options) {
 
 function printHelp() {
   process.stdout.write(
-    "Usage: node src/buildRuntimePayload.mjs --perspective <standalone|composed> [--app-version <version>] [--output <directory>] [--node-executable <path>] [--skip-build]\n",
+    "Usage: node src/buildRuntimePayload.mjs --perspective <standalone|composed> [--app-version <version>] [--output <directory>] [--node-executable <path>] [--skip-build|--manifest-only]\n",
   );
 }
 

@@ -4,7 +4,6 @@
   "main": "src/shared/app-shell/index.js",
   "type": "module",
   "scripts": {
-    "start": "nodemon --ext ts,js,json --exec tsx src/shared/app-shell/index.ts",
     "build": "tsc",
     "test": "vitest run",
     "lint": "eslint . --ext .ts --config eslint.config.js"
