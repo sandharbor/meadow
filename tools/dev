@@ -14,6 +14,7 @@ FRONTEND_DIR="$REPO_ROOT/app/clients/web"
 DEV_TOOLS_DIR="$REPO_ROOT/app/tooling/dev_tools"
 SUPERVISOR_DIR="$REPO_ROOT/app/runtime/supervisor"
 APP_VERSION=$(node -p "require('$REPO_ROOT/app/hosts/desktop/package.json').version")
+BUILD_PERSPECTIVE="${MEADOW_BUILD_PERSPECTIVE:-standalone}"
 
 ensure_dev_executable() {
   local dir="$1"
@@ -103,7 +104,7 @@ tmux new-window -t "$SESSION" -n browser -c "$FRONTEND_DIR"
 tmux set-option -w -t "$SESSION:browser" remain-on-exit on
 
 tmux new-window -t "$SESSION" -n dev-tools -c "$DEV_TOOLS_DIR" \
-  "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_DEV_TMUX_SESSION='$SESSION' npm start; read"
+  "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_DEV_TMUX_SESSION='$SESSION' MEADOW_BUILD_PERSPECTIVE='$BUILD_PERSPECTIVE' npm start; read"
 
 # --- 6. Wait for Dev Tools to be ready, then open browser ---
 echo "Waiting for Dev Tools (http://localhost:$DEV_TOOLS_PORT)..."
