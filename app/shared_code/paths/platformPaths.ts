@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { BootstrapConfig } from "../types/bootstrapConfig.js";
+import { BootstrapConfig } from "../../contracts/types/bootstrapConfig.js";
 import { bootstrapConfigCodec } from "../utils/configDocumentCodecs.js";
 import { readDurableDocument, requireValidDocument } from "../utils/durableDocument.js";
 

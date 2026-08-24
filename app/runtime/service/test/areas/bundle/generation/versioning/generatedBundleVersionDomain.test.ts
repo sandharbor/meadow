@@ -19,7 +19,7 @@ import type {
   GeneratedBundleVersionId,
   GeneratedBundleVersionManifest,
   ProviderDestinationRecord,
-} from '../../../../../../../shared_code/types/generatedBundleVersioning.js';
+} from '../../../../../../../contracts/types/generatedBundleVersioning.js';
 import {
   appendGeneratedBundleVersion,
   cancelUnsavedCurrentVersion,

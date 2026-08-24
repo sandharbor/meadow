@@ -16,8 +16,8 @@ limitations under the License.
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Graph, IBundleNode } from '../../../../../../../shared_code/types/graph';
-import { FindInBundlesOptions } from '../../../../../../../shared_code/types/findInBundlesOptions';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
+import { FindInBundlesOptions } from '../../../../../../../contracts/types/findInBundlesOptions';
 import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../utils/selectionPaths';
 import { logger } from '../../../../shared/utils/logger';
 import { openExternal } from '../../../../shared/utils/openExternal';

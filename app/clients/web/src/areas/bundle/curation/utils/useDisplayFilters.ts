@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Graph } from '../../../../../../../shared_code/types/graph';
+import { Graph } from '../../../../../../../contracts/types/graph';
 import { IFilter, IBundleNodeSelector, NodeTypeFilterId, createFolderNodeSelector } from '../types/filters';
 import {
   FilterExpression,

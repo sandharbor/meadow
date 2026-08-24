@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { replaceOutsideCode } from '../html/markdown.js';
 import {

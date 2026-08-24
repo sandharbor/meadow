@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
-import type { Graph } from '../../../../../../../shared_code/types/graph.js';
+import type { Graph } from '../../../../../../../contracts/types/graph.js';
 import type { IFilter } from '../types/filters.js';
 
 interface GapFilterListProps {

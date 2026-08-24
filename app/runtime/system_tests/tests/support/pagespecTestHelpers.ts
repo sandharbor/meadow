@@ -21,8 +21,8 @@ import {
   getSourceGraphsPath,
 } from '../../helpers/serverManager.js';
 import type { SystemTestBundleSetup } from '../../helpers/testSetup.js';
-import type { BundleNodeConfig } from '../../../../shared_code/types/bundleNodeConfig.js';
-import { FILE_TYPES } from '../../../../shared_code/types/FileType.js';
+import type { BundleNodeConfig } from '../../../../contracts/types/bundleNodeConfig.js';
+import { FILE_TYPES } from '../../../../contracts/types/FileType.js';
 
 export const pagespecSourceGraphDirs = [
   path.join(getSourceGraphsPath(), 'meadow-test-bundles-data'),

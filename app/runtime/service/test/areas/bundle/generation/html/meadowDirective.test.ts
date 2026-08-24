@@ -19,8 +19,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { renderPageToHtml } from '../../../../../src/areas/bundle/generation/html/htmlGenerator.js';
-import type { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { makeBundleNodeConfig } from '../../../../shared/support/bundleNodeConfigTestUtils.js';
 
 function mkTmp(): { contentRoot: string; outputRoot: string; cleanup: () => void } {

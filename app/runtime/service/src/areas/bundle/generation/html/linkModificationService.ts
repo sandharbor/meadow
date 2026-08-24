@@ -16,11 +16,11 @@ limitations under the License.
 
 import path from 'path';
 import fs from 'fs';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { linkTextToLinkInfo, normalizePageTitle, calculateRelativePath, escapeHtmlAttribute } from './shared.js';
 import type { LinkInfo, PageNameToPage } from './types.js';
-import { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../../shared_code/types/IBundleNode.js';
+import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { extractContentWithoutPagespecs, hasPagespecsBlock } from '../../../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';

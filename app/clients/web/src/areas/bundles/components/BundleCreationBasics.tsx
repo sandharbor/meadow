@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
-import type { FindInBundlesOptions } from '../../../../../../shared_code/types/findInBundlesOptions';
+import type { FindInBundlesOptions } from '../../../../../../contracts/types/findInBundlesOptions';
 
 export interface CreateBundleForm {
   slug: string;

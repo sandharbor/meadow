@@ -16,7 +16,7 @@ limitations under the License.
 
 import express from 'express';
 import fs from 'fs';
-import type { BundleNodeId } from '../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeId } from '../../../../../../contracts/types/bundleNodeConfig.js';
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../shared_code/utils/appConfigGitUtils.js';
 import { saveBundleNodeConfigDocument } from '../../../../../../shared_code/utils/bundleNodeConfigPersistence.js';

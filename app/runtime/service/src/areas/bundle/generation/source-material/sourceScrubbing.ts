@@ -17,9 +17,9 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import LZString from 'lz-string';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
-import type { FileType } from '../../../../../../../shared_code/types/FileType.js';
-import type { LinkResolvedInfo } from '../../../../../../../shared_code/types/IBundleNode.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { FileType } from '../../../../../../../contracts/types/FileType.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import { replaceOutsideCode } from '../html/markdown.js';
 import { LINK_PATTERN } from '../html/constants.js';
 import { isLinkTracked } from '../html/linkModificationService.js';

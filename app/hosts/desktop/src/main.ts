@@ -22,7 +22,7 @@ import * as os from 'os';
 import {
   FindInBundlesOptions,
   parseFindInBundlesDeepLink,
-} from '../../../shared_code/types/findInBundlesOptions';
+} from '../../../contracts/types/findInBundlesOptions';
 import { preflightMeadowHome } from '../../../shared_code/utils/meadowHomeFormat';
 import { getDefaultConfigDirectory } from '../../../shared_code/utils/appConfigUtils';
 import { getPlatformPaths } from '../../../shared_code/paths/getPlatformPaths';

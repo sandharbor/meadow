@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, it, expect } from 'vitest';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { sanitizeExcalidrawSource } from '../../../../../src/areas/bundle/generation/source-material/sourceScrubbing.js';
 import { makeBundleNodeConfig } from '../../../../shared/support/bundleNodeConfigTestUtils.js';
 

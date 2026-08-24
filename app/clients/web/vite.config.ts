@@ -43,7 +43,7 @@ export default defineConfig(({ command }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        // Ensure a single copy of React is used across the app and shared_components
+        // Ensure a single copy of React is used across the app and Web-owned shared components
         'react': path.resolve(__dirname, 'node_modules/react'),
         'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       },

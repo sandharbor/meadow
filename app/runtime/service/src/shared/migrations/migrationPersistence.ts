@@ -17,7 +17,7 @@ limitations under the License.
 import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
-import type { MigrationLedger } from '../../../../../shared_code/types/migrations.js';
+import type { MigrationLedger } from '../../../../../contracts/types/migrations.js';
 import {
   isPlainObject,
   jsonDocumentCodec,

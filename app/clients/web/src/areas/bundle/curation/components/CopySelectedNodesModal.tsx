@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState } from 'react';
 import Modal from '../../../../shared/components/Modal';
-import type { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode';
+import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 
 type CopyFormat = 'titles' | 'paths' | 'json' | 'yaml';
 type PathsVariant = 'space-separated' | 'separate-lines';

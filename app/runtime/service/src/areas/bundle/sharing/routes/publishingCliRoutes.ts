@@ -19,7 +19,7 @@ import express from 'express';
 import {
   CLI_OPERATION_SCHEMA_VERSION,
   type PublishBundleCliResult,
-} from '../../../../../../../shared_code/types/cliOperations.js';
+} from '../../../../../../../contracts/types/cliOperations.js';
 import {
   PublishingProviderOperationError,
 } from '../../../../shared/publishing-provider-host/IPublishingProviderBackend.js';

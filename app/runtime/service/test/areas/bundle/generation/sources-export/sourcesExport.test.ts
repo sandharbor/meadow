@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, it, expect } from 'vitest';
 import { sanitizeMarkdownLinks } from '../../../../../src/areas/bundle/generation/sources-export/sourcesExport.js';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { makeBundleNodeConfig } from '../../../../shared/support/bundleNodeConfigTestUtils.js';
 
 function makeConfig(title: string, listType: 'whitelist' | 'blacklist', fileType: BundleNodeConfig['fileType'] = 'md', dir = ''): BundleNodeConfig {

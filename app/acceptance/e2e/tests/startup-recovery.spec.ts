@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { StartupFailureDiagnostic } from '../../../shared_code/types/startupRecovery.js';
+import type { StartupFailureDiagnostic } from '../../../contracts/types/startupRecovery.js';
 import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRecoveryHtml.js';
 import { startupRecovery } from '../src/scenario-docs/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';

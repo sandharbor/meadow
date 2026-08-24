@@ -20,7 +20,7 @@ import path from 'path';
 import os from 'os';
 import { HooksLoader } from '../../../../../src/areas/bundle/generation/utils/hooksLoader.js';
 import { AppConfigPaths } from '../../../../../../../shared_code/paths/appConfigPaths.js';
-import { HookType } from '../../../../../../../shared_code/types/hooks.js';
+import { HookType } from '../../../../../../../contracts/types/hooks.js';
 
 describe('HooksLoader', () => {
   const testConfigDir = path.join(os.tmpdir(), 'meadow-test-config');

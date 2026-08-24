@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { SourcePageFileInfo } from '../types/sourcePageFileInfo.js';
+import type { SourcePageFileInfo } from '../../contracts/types/sourcePageFileInfo.js';
 
 export type SourcePageSearchBucket = 1 | 2 | 3;
 

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { Graph } from '../../../../../../../shared_code/types/graph.js';
-import type { NodeTypeFilterId } from '../../../../../../../shared_code/types/graphInspection.js';
+import type { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { NodeTypeFilterId } from '../../../../../../../contracts/types/graphInspection.js';
 import type { IBundleNodeSelector } from './filterSelectors.js';
 import { NODE_TYPE_FILTER_DEFINITIONS } from '../../../../../../../shared_code/utils/builtInGraphFilters.js';
 

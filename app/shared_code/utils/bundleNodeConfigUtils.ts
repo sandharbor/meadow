@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import YAML from 'yaml';
-import { FILE_TYPES, type FileType } from '../types/FileType.js';
+import { FILE_TYPES, type FileType } from '../../contracts/types/FileType.js';
 import type {
   CollectionBundleNodeConfig,
   FileBundleNodeConfig,
@@ -24,9 +24,9 @@ import type {
   BundleNodeConfigDocument,
   BundleNodeId,
   BundleNodeKind,
-} from '../types/bundleNodeConfig.js';
-import type { BundleConfig } from '../types/bundleConfig.js';
-import type { IBundleNode } from '../types/IBundleNode.js';
+} from '../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../contracts/types/bundleConfig.js';
+import type { IBundleNode } from '../../contracts/types/IBundleNode.js';
 
 export const BUNDLE_NODE_ID_PATTERN = /^[a-z0-9]{12}$/;
 const BUNDLE_NODE_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';

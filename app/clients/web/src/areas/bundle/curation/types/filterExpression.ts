@@ -14,4 +14,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export * from '../../../../../../../shared_code/types/filterExpression.js';
+export * from '../../../../../../../contracts/types/filterExpression.js';

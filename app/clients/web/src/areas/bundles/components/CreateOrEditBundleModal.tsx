@@ -18,7 +18,7 @@ limitations under the License.
 import React, { useState, useEffect } from 'react';
 import Modal from '../../../shared/components/Modal';
 import { apiRequest } from '../../../shared/utils/apiClient';
-import type { SourcePageFileInfo } from '../../../../../../shared_code/types/sourcePageFileInfo';
+import type { SourcePageFileInfo } from '../../../../../../contracts/types/sourcePageFileInfo';
 import { logger } from '../../../shared/utils/logger';
 import FolderBundleFields from './FolderBundleFields';
 import PagePickerButton from './PagePickerButton';

@@ -20,7 +20,7 @@ import type {
   ProviderDestinationRecord,
   ProviderPublicationEvent,
   SelectedVersionPublicationStatus,
-} from '../../../../../../../shared_code/types/generatedBundleVersioning.js';
+} from '../../../../../../../contracts/types/generatedBundleVersioning.js';
 
 const PRESENT_EVENT_TYPES = new Set([
   'imported-publication',

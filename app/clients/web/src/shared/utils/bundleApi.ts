@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { apiJson } from './apiClient';
-import type { BundleConfig } from '../../../../../shared_code/types/bundleConfig';
+import type { BundleConfig } from '../../../../../contracts/types/bundleConfig';
 
 /**
  * Bundle config with slug included (as returned by the API). Provider-specific

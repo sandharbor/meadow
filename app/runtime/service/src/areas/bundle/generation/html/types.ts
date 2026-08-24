@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import type { BundleRouteTable } from './bundleRoutePlanner.js';
 export { makeBundleNodeKey, bundleNodeConfigToKey } from '../../../../shared/bundle-node/nodeKeys.js';
 

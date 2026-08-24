@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { LogLevel } from '../../../../../../shared_code/types/logging.js';
+import { LogLevel } from '../../../../../../contracts/types/logging.js';
 
 export { LogLevel };
 

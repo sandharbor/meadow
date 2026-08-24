@@ -20,7 +20,7 @@ limitations under the License.
  * so it won't be re-created.
  */
 
-import { CustomFilterConfig } from '../types/customFilters.js';
+import { CustomFilterConfig } from '../../contracts/types/customFilters.js';
 import { loadAppConfig } from './appConfigUtils.js';
 import { loadGlobalCustomFilters, saveGlobalCustomFilters } from './globalCustomFiltersUtils.js';
 

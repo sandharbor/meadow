@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Graph, IBundleNode } from '../../../../../../../shared_code/types/graph';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
 import CopySelectedNodesModal from './CopySelectedNodesModal';
 
 interface BundleNodeTabsDropdownProps {

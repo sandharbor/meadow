@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import type { ComponentType } from 'react';
-import type { PublishingProviderManifest } from '../../../../../shared_code/interfaces/IPublishingProvider.js';
+import type { PublishingProviderManifest } from '../../../../../contracts/interfaces/IPublishingProvider.js';
 
 /**
  * Props handed to a provider's publish-tab component. The outer modal stays

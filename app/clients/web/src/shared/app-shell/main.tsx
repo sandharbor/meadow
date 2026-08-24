@@ -23,7 +23,7 @@ import TitleBar from './components/TitleBar'
 import UpdateModal from './components/UpdateModal'
 import { initializeApiConfig } from '../utils/apiConfig'
 import { logger } from '../utils/logger'
-import { FindInBundlesOptions } from '../../../../../shared_code/types/findInBundlesOptions'
+import { FindInBundlesOptions } from '../../../../../contracts/types/findInBundlesOptions'
 import './index.css'
 
 const FindInBundlesDeepLinkListener: React.FC = () => {

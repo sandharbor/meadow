@@ -23,7 +23,7 @@ import PreviewChangesTab, {
   shouldShowHtmlForSectionFilters,
 } from '../../../../../src/areas/bundle/review/components/PreviewChangesTab';
 
-vi.mock('../../../../../../../shared_components/ConfigFileExplorer/index', async () => {
+vi.mock('../../../../../shared_components/ConfigFileExplorer/index', async () => {
   const ReactModule = await import('react');
 
   return {

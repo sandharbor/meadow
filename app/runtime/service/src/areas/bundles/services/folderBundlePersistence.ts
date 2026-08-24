@@ -17,8 +17,8 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import type { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
 import {
   stringifyBundleNodeConfig,
   validateCanonicalBundleConfiguration,

@@ -19,7 +19,7 @@ import os from 'os';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { GeneratedBundleVersionId } from '../../../../../../../shared_code/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
 import {
   SimulatedVersionOperationCrash,
   cancelCurrentGeneratedBundleVersion,

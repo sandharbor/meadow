@@ -17,7 +17,7 @@ limitations under the License.
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import type { StylePreset } from '../../../../../../../shared_code/types/stylePresets.js';
+import type { StylePreset } from '../../../../../../../contracts/types/stylePresets.js';
 import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';

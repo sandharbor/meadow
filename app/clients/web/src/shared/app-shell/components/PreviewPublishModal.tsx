@@ -24,7 +24,7 @@ import { UntrackedPagesButton } from '../../../areas/bundle/review/components/Un
 import PreviewChangesTab from '../../../areas/bundle/review/components/PreviewChangesTab';
 import { VersionsTab } from '../../../areas/bundle/review/components/VersionsTab';
 import { casualVersionName, versionCreatedDate } from '../../../areas/bundle/review/utils/versionLabels';
-import { ConfigFileExplorerApi } from '../../../../../../shared_components/ConfigFileExplorer/index';
+import { ConfigFileExplorerApi } from '../../../../shared_components/ConfigFileExplorer/index';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils';
 import { apiRequest, AuthenticatedEventSource } from '../../utils/apiClient';
 import { logger } from '../../utils/logger';

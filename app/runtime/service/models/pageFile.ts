@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { ITraversalPage } from '../types/ITraversalPage.js';
-import { FileType } from '../../../shared_code/types/FileType.js';
+import { FileType } from '../../../contracts/types/FileType.js';
 
 export class PageFile implements ITraversalPage {
   public conf_outlinks_depth?: number;

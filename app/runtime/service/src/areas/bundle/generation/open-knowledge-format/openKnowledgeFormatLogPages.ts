@@ -16,8 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
-import type { SourcePageFileInfo } from '../../../../../../../shared_code/types/sourcePageFileInfo.js';
+import type { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { SourcePageFileInfo } from '../../../../../../../contracts/types/sourcePageFileInfo.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import {
   rankSourcePageCandidatesWithCount,

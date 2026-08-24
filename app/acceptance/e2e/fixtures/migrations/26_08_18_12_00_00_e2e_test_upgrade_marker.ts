@@ -17,7 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import type { Migration } from '../../../../shared_code/types/migrations.js';
+import type { Migration } from '../../../../contracts/types/migrations.js';
 
 const MIGRATION_ID = '26_08_18_12_00_00_e2e_test_upgrade_marker';
 

@@ -18,9 +18,9 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import BundleNodeContextMenu from '../../../../../src/areas/bundle/curation/components/BundleNodeContextMenu';
-import { Graph } from '../../../../../../../shared_code/types/graph';
-import type { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode';
-import type { BundleNodeId, BundleNodeKey } from '../../../../../../../shared_code/types/bundleNodeConfig';
+import { Graph } from '../../../../../../../contracts/types/graph';
+import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import type { BundleNodeId, BundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig';
 
 const commonNode = {
   label: 'A',

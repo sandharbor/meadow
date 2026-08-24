@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Graph } from '../../../../../../../shared_code/types/graph';
-import { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode.js';
-import { FileType } from '../../../../../../../shared_code/types/FileType.js';
-import type { BundleNodeKind } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import { Graph } from '../../../../../../../contracts/types/graph';
+import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import { FileType } from '../../../../../../../contracts/types/FileType.js';
+import type { BundleNodeKind } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { IFilter, IBundleNodeSelector } from './filters';
 import { logger } from '../../../../shared/utils/logger';
 import { calculateHighlightDetail } from '../utils/highlightDetailCalculators';

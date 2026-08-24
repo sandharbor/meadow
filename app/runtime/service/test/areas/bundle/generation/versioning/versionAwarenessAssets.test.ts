@@ -19,7 +19,7 @@ import os from 'os';
 import path from 'path';
 import vm from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { BundleNodeId } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import {
   emitVersionAwarenessAssets,
   VERSION_AWARENESS_JAVASCRIPT,

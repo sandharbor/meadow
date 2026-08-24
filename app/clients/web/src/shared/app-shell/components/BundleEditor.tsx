@@ -17,8 +17,8 @@ limitations under the License.
 /* global alert */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiRequest } from '../../utils/apiClient';
-import { Graph, IEdge } from '../../../../../../shared_code/types/graph';
-import { IBundleNode } from '../../../../../../shared_code/types/IBundleNode.js';
+import { Graph, IEdge } from '../../../../../../contracts/types/graph';
+import { IBundleNode } from '../../../../../../contracts/types/IBundleNode.js';
 import BundleNodeTabs from '../../../areas/bundle/curation/components/BundleNodeTabs';
 import BundleLogsModal from './BundleLogsModal';
 import SinglePagePreviewCallout, { useSinglePagePreviewCallout } from '../../../areas/bundle/review/components/calloutModals/SinglePagePreviewCallout';
@@ -26,7 +26,7 @@ import CreateOrEditBundleModal from '../../../areas/bundles/components/CreateOrE
 import PreviewPublishModal from './PreviewPublishModal';
 import type { OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
 import { useFilterState, createUntrackedNodeSelector } from '../../../areas/bundle/curation/types/filters';
-import type { BundleNodeConfig } from '../../../../../../shared_code/types/bundleNodeConfig';
+import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig';
 import { nodeConfigMatchesNode, bundleNodeLocatorKey, getOrphanNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { applySensitiveFromApiData, applyNodeConfigsToNodes, buildNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { getActiveFrontendProvider } from '../../publishing-provider-host/providerRegistry';
@@ -36,7 +36,7 @@ import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import DeleteBundleModal from '../../bundle-management/DeleteBundleModal';
-import type { FolderScopeChangeExplanation } from '../../../../../../shared_code/types/folderScopeChanges';
+import type { FolderScopeChangeExplanation } from '../../../../../../contracts/types/folderScopeChanges';
 
 const BundleEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();

@@ -17,12 +17,12 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import type { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
-import type { BundleNodeTraversalDetails } from '../../../../../../../shared_code/types/bundleNodeGraph.js';
-import type { FileType } from '../../../../../../../shared_code/types/FileType.js';
-import type { FolderScopeGraphSnapshot } from '../../../../../../../shared_code/types/folderScopeChanges.js';
-import type { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeTraversalDetails } from '../../../../../../../contracts/types/bundleNodeGraph.js';
+import type { FileType } from '../../../../../../../contracts/types/FileType.js';
+import type { FolderScopeGraphSnapshot } from '../../../../../../../contracts/types/folderScopeChanges.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import {
   parseBundleNodeConfig,
   validateCanonicalBundleConfiguration,

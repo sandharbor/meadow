@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Graph } from '../../../../../../../shared_code/types/graph';
-import type { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode';
+import { Graph } from '../../../../../../../contracts/types/graph';
+import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import TraversalPathDetailsModal from './TraversalPathDetailsModal';
 import BundleNodeLinksModal from './BundleNodeLinksModal';
 import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { Graph, IBundleNode } from '../../../../../../../shared_code/types/graph';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
 import StructuralTreeRows from '../../../../../src/areas/bundle/curation/components/StructuralTreeRows';
 import { DisplayGraph } from '../../../../../src/areas/bundle/curation/types/displayGraph';
 

@@ -21,8 +21,8 @@ limitations under the License.
 
 import { existsSync } from "fs";
 import { randomUUID } from "crypto";
-import { AppConfig, CalloutDismissals } from "../types/appConfig.js";
-import { BootstrapConfig } from "../types/bootstrapConfig.js";
+import { AppConfig, CalloutDismissals } from "../../contracts/types/appConfig.js";
+import { BootstrapConfig } from "../../contracts/types/bootstrapConfig.js";
 import { AppConfigPaths } from "../paths/appConfigPaths.js";
 import { getPlatformPaths } from "../paths/getPlatformPaths.js";
 import { appConfigCodec } from "./configDocumentCodecs.js";

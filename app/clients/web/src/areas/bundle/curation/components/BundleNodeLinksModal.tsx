@@ -16,8 +16,8 @@ limitations under the License.
 
 import React, { useState, useCallback } from 'react';
 import Modal from '../../../../shared/components/Modal';
-import { IBundleNode, LinkResolvedInfo } from '../../../../../../../shared_code/types/IBundleNode';
-import { Graph } from '../../../../../../../shared_code/types/graph';
+import { IBundleNode, LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode';
+import { Graph } from '../../../../../../../contracts/types/graph';
 
 interface BundleNodeLinksModalProps {
   isOpen: boolean;

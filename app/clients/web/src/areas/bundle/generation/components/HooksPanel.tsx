@@ -17,7 +17,7 @@ limitations under the License.
 /* global alert, confirm */
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiRequest } from '../../../../shared/utils/apiClient';
-import { HookType, HookMetadata } from '../../../../../../../shared_code/types/hooks';
+import { HookType, HookMetadata } from '../../../../../../../contracts/types/hooks';
 import { logger } from '../../../../shared/utils/logger';
 import FloatingCodeEditor from './FloatingCodeEditor';
 

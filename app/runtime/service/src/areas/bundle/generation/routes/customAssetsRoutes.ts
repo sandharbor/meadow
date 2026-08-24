@@ -20,7 +20,7 @@ import path from 'path';
 import { getConfigDirectory, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { AppConfigPaths } from '../../../../../../../shared_code/paths/appConfigPaths.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
-import { CustomAssetType } from '../../../../../../../shared_code/types/customAssets.js';
+import { CustomAssetType } from '../../../../../../../contracts/types/customAssets.js';
 import { getCustomAssetMetadata, getCustomAssetsDir } from '../utils/customAssetsLoader.js';
 import { loadAppConfig, saveAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import { loadBundleConfig, saveBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';

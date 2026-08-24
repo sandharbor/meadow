@@ -22,7 +22,7 @@ import { bootstrapConfigCodec } from './configDocumentCodecs.js';
 import type {
   StartupFailureCategory,
   StartupFailureDiagnostic,
-} from '../types/startupRecovery.js';
+} from '../../contracts/types/startupRecovery.js';
 import {
   CURRENT_MEADOW_HOME_FORMAT_VERSION,
   OLDEST_UPGRADABLE_MEADOW_HOME_FORMAT_VERSION,

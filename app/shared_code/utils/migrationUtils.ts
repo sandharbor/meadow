@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { MigrationInfo, MigrationsYaml } from '../types/migrations.js';
+import type { MigrationInfo, MigrationsYaml } from '../../contracts/types/migrations.js';
 
 /**
  * Generate a random string of lowercase letters and numbers
@@ -98,7 +98,7 @@ export function getCompletedMigrations(migrationsYaml: MigrationsYaml | null): s
  * Generate migration template content
  */
 export function generateMigrationTemplate(name: string, description: string): string {
-  return `import type { Migration } from '../../../../shared_code/types/migrations.js';
+  return `import type { Migration } from '../../../../contracts/types/migrations.js';
 
 /**
  * Migration: ${name}

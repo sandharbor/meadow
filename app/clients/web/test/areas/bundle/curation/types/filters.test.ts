@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { Graph, IBundleNode } from '../../../../../../../shared_code/types/graph';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
 import { createTrackedNodeSelector, createUntrackedNodeSelector, createBlacklistedNodeSelector, createSearchByTitleSelector, createSensitiveNodeSelector, createFolderNodeSelector, useFilterState } from '../../../../../src/areas/bundle/curation/types/filters';
 
 describe('Built-in filter order', () => {

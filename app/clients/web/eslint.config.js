@@ -7,7 +7,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 export default [
   js.configs.recommended,
   {
-    ignores: ['dist/**/*']
+    ignores: ['dist/**/*', 'shared_components/**/*']
   },
   {
     files: ['server.js'],

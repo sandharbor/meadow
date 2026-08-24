@@ -16,7 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { apiRequest } from '../../../../shared/utils/apiClient';
-import { Graph, IBundleNode } from '../../../../../../../shared_code/types/graph';
+import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
 import { IFilter, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
 import { DisplayGraph } from '../types/displayGraph';
 import GraphVis from './GraphVis';
@@ -30,14 +30,14 @@ import BundleNodeContextMenu, { canMarkNodeSensitive, ObsidianInfo } from './Bun
 import EmptySoloCallout from './EmptySoloCallout';
 import BundlePagesToggle from './BundlePagesToggle';
 import ResizableSidebar from './ResizableSidebar';
-import { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig';
 import { buildNodeConfigs, generateBundleNodeId, getOrphanNodeConfigs } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import Modal from '../../../../shared/components/Modal';
-import { AppConfig } from '../../../../../../../shared_code/types/appConfig';
+import { AppConfig } from '../../../../../../../contracts/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
 import { useDisplayFilters } from '../utils/useDisplayFilters';
 import FolderScopeChangesBanner from './FolderScopeChangesBanner';
-import type { FolderScopeChangeExplanation } from '../../../../../../../shared_code/types/folderScopeChanges';
+import type { FolderScopeChangeExplanation } from '../../../../../../../contracts/types/folderScopeChanges';
 import { useIsFolderBasedBundle } from '../utils/bundleMode';
 
 interface BundleNodeTabsProps {

@@ -25,12 +25,12 @@ import {
   validateCanonicalBundleConfiguration,
 } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
-import { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
-import { FileType } from '../../../../../../../shared_code/types/FileType.js';
-import { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode.js';
-import type { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import { FileType } from '../../../../../../../contracts/types/FileType.js';
+import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import { loadAppConfig as loadAppConfigFromDisk } from '../../../../../../../shared_code/utils/appConfigUtils.js';
-import type { BundleNodeTraversalDetails } from '../../../../../../../shared_code/types/bundleNodeGraph.js';
+import type { BundleNodeTraversalDetails } from '../../../../../../../contracts/types/bundleNodeGraph.js';
 import { getConfigDirectory, getBundleDirectory, getBundleConfigPath, getBundleRawDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
@@ -42,12 +42,12 @@ import {
   loadFolderScopeSnapshot,
   writeFolderScopeSnapshot,
 } from '../../../../shared/bundle-config/folderScopeChanges.js';
-import type { FolderScopeGraphSnapshot } from '../../../../../../../shared_code/types/folderScopeChanges.js';
+import type { FolderScopeGraphSnapshot } from '../../../../../../../contracts/types/folderScopeChanges.js';
 import type {
   GraphFilterApplication,
   GraphFilterCombination,
   GraphInspectionScope,
-} from '../../../../../../../shared_code/types/graphInspection.js';
+} from '../../../../../../../contracts/types/graphInspection.js';
 import { describeWorkingGraph } from '../services/graphDescriptionService.js';
 import { loadCustomFiltersForBundle } from './customFiltersRoutes.js';
 

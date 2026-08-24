@@ -17,10 +17,10 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import type { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import type {
   BundleNodeConfig,
-} from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+} from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import {
   CLI_OPERATION_SCHEMA_VERSION,
   type BundleNodeDetails,
@@ -30,9 +30,9 @@ import {
   type DescribeBundleNodeCliResult,
   type FindBundleNodeCliResult,
   type MutateBundleNodeCliResult,
-} from '../../../../../../../shared_code/types/cliOperations.js';
-import { Graph } from '../../../../../../../shared_code/types/graph.js';
-import type { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode.js';
+} from '../../../../../../../contracts/types/cliOperations.js';
+import { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import {
   applyNodeConfigsToNodes,
   applySensitiveFromApiData,

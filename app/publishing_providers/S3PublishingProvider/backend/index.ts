@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import type { Express } from 'express';
-import type { PublishingProviderManifest } from '../../../shared_code/interfaces/IPublishingProvider.js';
+import type { PublishingProviderManifest } from '../../../contracts/interfaces/IPublishingProvider.js';
 import type {
   CleanupPublishedBundleOptions,
   CleanupPublishedBundleResult,

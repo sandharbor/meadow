@@ -23,7 +23,7 @@ import type {
   ProviderDestinationRecord,
   ProviderPublicationEvent,
   ProviderSuccessorManifest,
-} from '../../../../../shared_code/types/generatedBundleVersioning.js';
+} from '../../../../../contracts/types/generatedBundleVersioning.js';
 import { PublishingProviderPaths } from '../../../../../shared_code/paths/publishingProviderPaths.js';
 import { getConfigDirectory } from '../../../../../runtime/service/src/shared/bundle-config/bundleConfigPaths.js';
 import { loadGeneratedBundleVersionManifest } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';

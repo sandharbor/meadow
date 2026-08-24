@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../../shared_code/types/IBundleNode.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { BundleRouteTable } from './bundleRoutePlanner.js';
 import { resolveTrackedLinkHref } from './linkModificationService.js';
 

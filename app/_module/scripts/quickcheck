@@ -4,12 +4,12 @@
 REQUIRED_DIRS=(
     "clients"
     "acceptance"
+    "contracts"
     "hosts"
     "publishing_providers"
     "published_bundle"
     "runtime"
     "shared_code"
-    "shared_components"
     "shared_data"
     "tooling"
 )
@@ -96,7 +96,7 @@ function check_dir() {
 # Install dependencies in parallel, but only when lockfile is newer than stamp
 echo "📦 Installing dependencies..."
 install_pids=()
-for dir in "shared_code" "shared_components" "runtime/service" "clients/cli" "clients/web" "hosts/desktop" "runtime/system_tests" "runtime/native/source_page_search_by_title/source_page_search_by_title_integration_test" "runtime/native/fast_git_ops/fast_git_ops_test" "tooling/dev_tools" "published_bundle/srs"; do
+for dir in "shared_code" "clients/web/shared_components" "runtime/service" "clients/cli" "clients/web" "hosts/desktop" "runtime/system_tests" "runtime/native/source_page_search_by_title/source_page_search_by_title_integration_test" "runtime/native/fast_git_ops/fast_git_ops_test" "tooling/dev_tools" "published_bundle/srs"; do
     if [ -f "$dir/package.json" ]; then
         stamp="$dir/node_modules/.quickcheck_install_stamp"
         lock="$dir/package-lock.json"
@@ -117,7 +117,7 @@ fi
 # Run check_dir calls in parallel for speed
 echo "🧪 Running app directory checks in parallel..."
 
-APP_CHECK_DIRS=("acceptance" "shared_code" "shared_components" "clients" "hosts" "published_bundle" "runtime" "tooling")
+APP_CHECK_DIRS=("acceptance" "contracts" "shared_code" "clients" "hosts" "published_bundle" "runtime" "tooling")
 
 pids=()
 dir_for_pid=()

@@ -16,8 +16,8 @@ limitations under the License.
 
 import React from 'react';
 import Modal from '../../../../shared/components/Modal';
-import { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode';
-import { Graph } from '../../../../../../../shared_code/types/graph';
+import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import { Graph } from '../../../../../../../contracts/types/graph';
 
 interface TraversalPathDetailsModalProps {
   isOpen: boolean;

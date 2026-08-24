@@ -20,7 +20,7 @@ import { Page } from './page.js';
 import { IMAGE_EXTENSIONS, LINK_PATTERN } from './constants.js';
 import { removeFrontmatter } from './markdown.js';
 import { LinkInfo } from './types.js';
-import { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
+import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { logBundleDebug, logBundleWarn } from '../../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';

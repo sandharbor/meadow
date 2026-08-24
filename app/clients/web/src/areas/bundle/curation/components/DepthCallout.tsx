@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Graph } from '../../../../../../../shared_code/types/graph';
+import { Graph } from '../../../../../../../contracts/types/graph';
 import { apiRequest } from '../../../../shared/utils/apiClient';
-import { AppConfig } from '../../../../../../../shared_code/types/appConfig';
+import { AppConfig } from '../../../../../../../contracts/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
 
 // Hook to manage callout dismissal state (load from and persist to app config)

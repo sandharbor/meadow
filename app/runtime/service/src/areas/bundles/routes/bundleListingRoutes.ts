@@ -21,7 +21,7 @@ import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { randomUUID } from 'crypto';
 import { parseBundleNodeConfig } from '../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.js';
+import { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../shared_code/utils/appConfigGitUtils.js';
 import { rankSourcePageCandidatesWithCount, recentSourcePageCandidatesWithCount } from '../../../../../../shared_code/utils/sourcePageSearchUtils.js';

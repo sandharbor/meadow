@@ -17,7 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { GeneratedBundleVersionId } from '../../../../../../../shared_code/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
 import { requireGeneratedBundleVersionId } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
 import {
   generatedBundleVersionDirectory,

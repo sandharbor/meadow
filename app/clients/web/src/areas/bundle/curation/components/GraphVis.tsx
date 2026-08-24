@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Graph } from '../../../../../../../shared_code/types/graph';
+import { Graph } from '../../../../../../../contracts/types/graph';
 import { IFilter } from '../types/filters';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';

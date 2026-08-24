@@ -17,7 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
-import type { GeneratedBundleVersionId } from '../../../../../shared_code/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../../contracts/types/generatedBundleVersioning.js';
 import { findGitRoot } from '../utils/configFileExplorerUtils.js';
 import { generatedBundleVersionDirectory } from './generatedBundleVersionManifestService.js';
 

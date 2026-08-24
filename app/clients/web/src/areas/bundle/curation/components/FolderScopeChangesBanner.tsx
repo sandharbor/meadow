@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
-import type { FolderScopeChangeExplanation } from '../../../../../../../shared_code/types/folderScopeChanges';
+import type { FolderScopeChangeExplanation } from '../../../../../../../contracts/types/folderScopeChanges';
 
 const FolderScopeChangesBanner: React.FC<{ explanation?: FolderScopeChangeExplanation }> = ({ explanation }) => {
   if (!explanation || explanation.items.length === 0) return null;

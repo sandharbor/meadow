@@ -17,13 +17,13 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
-import type { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
 import {
   CLI_OPERATION_SCHEMA_VERSION,
   type CreateBundleCliResult,
-} from '../../../../../../shared_code/types/cliOperations.js';
-import type { SourcePageFileInfo } from '../../../../../../shared_code/types/sourcePageFileInfo.js';
+} from '../../../../../../contracts/types/cliOperations.js';
+import type { SourcePageFileInfo } from '../../../../../../contracts/types/sourcePageFileInfo.js';
 import { generateBundleGuid } from '../../../../../../shared_code/utils/bundleGuidUtils.js';
 import {
   generateBundleNodeId,

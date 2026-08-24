@@ -19,7 +19,7 @@ import {
   collectDirectoryPaths,
   findAutoSelectedChangedFile,
   type FileNode,
-} from '../../../../shared_components/ConfigFileExplorer/ConfigFileExplorer';
+} from '../../shared_components/ConfigFileExplorer/ConfigFileExplorer';
 
 const folder = (name: string, path: string, children: FileNode[]): FileNode => ({
   name,

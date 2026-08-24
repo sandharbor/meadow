@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createHash, randomUUID } from 'crypto';
 import YAML from 'yaml';
-import type { MeadowHomeManifest, MeadowHomePreflightResult } from '../types/meadowHome.js';
+import type { MeadowHomeManifest, MeadowHomePreflightResult } from '../../contracts/types/meadowHome.js';
 import {
   deterministicJson,
   isPlainObject,

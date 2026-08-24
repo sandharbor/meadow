@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import type { IPublishingProviderFrontend } from '../../../clients/web/src/shared/publishing-provider-host/IPublishingProviderFrontend.js';
-import type { PublishingProviderManifest } from '../../../shared_code/interfaces/IPublishingProvider.js';
+import type { PublishingProviderManifest } from '../../../contracts/interfaces/IPublishingProvider.js';
 import { apiRequest } from '../../../clients/web/src/shared/utils/apiClient.js';
 import { PublishToS3Tab } from './internal/PublishToS3Tab';
 import { s3Api } from './internal/s3Api';

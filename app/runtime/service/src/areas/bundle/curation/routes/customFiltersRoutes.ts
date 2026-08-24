@@ -16,7 +16,7 @@ limitations under the License.
 
 import express from 'express';
 import { getConfigDirectory, getBundleConfigPath, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { CustomFilterConfig, BundleCustomFiltersConfig } from '../../../../../../../shared_code/types/customFilters.js';
+import { CustomFilterConfig, BundleCustomFiltersConfig } from '../../../../../../../contracts/types/customFilters.js';
 import { loadBundleConfig, saveBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { loadGlobalCustomFilters, saveGlobalCustomFilters } from '../../../../../../../shared_code/utils/globalCustomFiltersUtils.js';
 import { DEFAULT_DAILY_NOTES_FILTER_ID } from '../../../../../../../shared_code/utils/defaultGlobalFiltersUtils.js';

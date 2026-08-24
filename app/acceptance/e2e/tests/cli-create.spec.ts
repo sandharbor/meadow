@@ -22,8 +22,8 @@ import type {
   GenerateBundleCliResult,
   SaveGenerationCliResult,
   TrackBundleNodesCliResult,
-} from "../../../shared_code/types/cliOperations.js";
-import type { GraphDescription } from "../../../shared_code/types/graphInspection.js";
+} from "../../../contracts/types/cliOperations.js";
+import type { GraphDescription } from "../../../contracts/types/graphInspection.js";
 import {
   EXPECTED_GENERATED_CONTENT_ASSETS,
   EXPECTED_GENERATED_PAGES,

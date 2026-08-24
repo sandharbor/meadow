@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { describe, expect, it } from 'vitest';
-import type { BundleNodeConfig, BundleNodeId } from '../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../../../../../contracts/types/bundleNodeConfig.js';
 import { planBundleRoutes } from '../../../../src/areas/bundle/generation/html/bundleRoutePlanner.js';
 
 const id = (value: string) => value as BundleNodeId;

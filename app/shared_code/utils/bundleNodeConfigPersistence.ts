@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeConfig } from '../types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../contracts/types/bundleNodeConfig.js';
 import { parseBundleNodeConfig, stringifyBundleNodeConfig } from './bundleNodeConfigUtils.js';
 import {
   readDurableDocument,

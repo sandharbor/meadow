@@ -21,7 +21,7 @@ import path from 'path';
 import request from 'supertest';
 import YAML from 'yaml';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { BundleConfig } from '../../../../../shared_code/types/bundleConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
 import bundleListingRoutes from '../../../src/areas/bundles/routes/bundleListingRoutes.js';
 
 const temporaryDirectories: string[] = [];

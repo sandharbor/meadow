@@ -17,7 +17,7 @@ limitations under the License.
 import type {
   GeneratedBundleVersionId,
   GeneratedBundleVersionManifest,
-} from '../../../../../shared_code/types/generatedBundleVersioning.js';
+} from '../../../../../contracts/types/generatedBundleVersioning.js';
 
 /**
  * Finds each remotely present version's furthest-forward connected publication.

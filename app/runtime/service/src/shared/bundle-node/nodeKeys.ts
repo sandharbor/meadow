@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeConfig } from '../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
 
 export interface BundleNodeConfigMap {
   [bundleNodeKey: string]: BundleNodeConfig;

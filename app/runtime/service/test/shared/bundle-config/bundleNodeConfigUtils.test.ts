@@ -21,7 +21,7 @@ import type {
   FolderBundleNodeConfig,
   BundleNodeConfig,
   BundleNodeId,
-} from '../../../../../shared_code/types/bundleNodeConfig.js';
+} from '../../../../../contracts/types/bundleNodeConfig.js';
 import {
   generateBundleNodeId,
   normalizeFolderSourceGraphSubdirectory,

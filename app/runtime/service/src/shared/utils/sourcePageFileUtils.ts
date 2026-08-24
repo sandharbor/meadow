@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { SourcePageFileInfo } from '../../../../../shared_code/types/sourcePageFileInfo.js';
+import type { SourcePageFileInfo } from '../../../../../contracts/types/sourcePageFileInfo.js';
 import { runSourcePageSearchByTitle } from './sourcePageSearchByTitleUtils.js';
 
 type SourcePageIndexCacheEntry = {

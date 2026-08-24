@@ -16,7 +16,7 @@ limitations under the License.
 
 import { execFile } from "node:child_process";
 import path from "node:path";
-import type { MutateBundleNodeCliResult } from "../../../../../shared_code/types/cliOperations.js";
+import type { MutateBundleNodeCliResult } from "../../../../../contracts/types/cliOperations.js";
 import type { OperatorLaunchContext } from "../runtime/StandaloneTrialRuntime.js";
 import type { AgentAdapter, AgentProfile, AgentTurnResult, TrialPhase } from "../types.js";
 

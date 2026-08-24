@@ -22,7 +22,7 @@ limitations under the License.
  * Supports a resources.local.yaml override file for per-copy customization.
  */
 
-import { ResourcesConfig } from "../types/resourcesConfig.js";
+import { ResourcesConfig } from "../../contracts/types/resourcesConfig.js";
 import { AppConfigPaths } from "../paths/appConfigPaths.js";
 import { getDefaultConfigDirectory } from "./appConfigUtils.js";
 import { resourcesConfigCodec } from "./configDocumentCodecs.js";

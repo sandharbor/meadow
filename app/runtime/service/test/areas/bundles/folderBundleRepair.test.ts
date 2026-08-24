@@ -19,8 +19,8 @@ import os from 'os';
 import path from 'path';
 import YAML from 'yaml';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { BundleConfig } from '../../../../../shared_code/types/bundleConfig.js';
-import type { BundleNodeConfig, BundleNodeId } from '../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../../../../contracts/types/bundleNodeConfig.js';
 import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import {
   getFolderBundleRepairStatus,

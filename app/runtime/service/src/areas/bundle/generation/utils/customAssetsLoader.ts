@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import { getConfigDirectory, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { AppConfigPaths } from '../../../../../../../shared_code/paths/appConfigPaths.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
-import type { CustomAssetType, CustomAssetMetadata } from '../../../../../../../shared_code/types/customAssets.js';
+import type { CustomAssetType, CustomAssetMetadata } from '../../../../../../../contracts/types/customAssets.js';
 
 const ASSET_TYPE_TO_FILENAME: Record<CustomAssetType, string> = {
   style_css: 'style.css',

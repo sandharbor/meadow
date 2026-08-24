@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useMemo, useState } from 'react';
-import { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode';
+import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import { IFilter, IFolderFilterState } from '../types/filters';
 import { buildFolderTree, FolderTreeNode, ROOT_FOLDER_LABEL } from '../utils/folderFilterUtils';
 

@@ -18,7 +18,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import type { BundleNodeConfig } from "../../../../../shared_code/types/bundleNodeConfig.js";
+import type { BundleNodeConfig } from "../../../../../contracts/types/bundleNodeConfig.js";
 import type { FrozenOutcome, OracleResult } from "../types.js";
 
 function result(

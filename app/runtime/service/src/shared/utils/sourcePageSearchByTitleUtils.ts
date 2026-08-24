@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { exec } from 'child_process';
-import type { SourcePageFileInfo } from '../../../../../shared_code/types/sourcePageFileInfo.js';
+import type { SourcePageFileInfo } from '../../../../../contracts/types/sourcePageFileInfo.js';
 import { logger } from './logging/backendLoggingUtils.js';
 import { resolveNativeRustBinaryPath } from '../../../../../shared_code/utils/nativeRustBinaryPath.js';
 

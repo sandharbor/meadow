@@ -24,8 +24,8 @@ import {
   loadBundleNodeConfigDocument,
   saveBundleNodeConfigDocument,
 } from '../../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
-import type { BundleConfig } from '../../../../../../shared_code/types/bundleConfig.js';
-import type { FileType } from '../../../../../../shared_code/types/FileType.js';
+import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
+import type { FileType } from '../../../../../../contracts/types/FileType.js';
 import { generateBundleGuid, isValidBundleGuid } from '../../../../../../shared_code/utils/bundleGuidUtils.js';
 import { getBundleConfigPath } from '../../../shared/bundle-config/bundleConfigPaths.js';
 import { clearBundleGuidCache, logBundleInfo } from '../../../shared/utils/logging/bundleLogger.js';

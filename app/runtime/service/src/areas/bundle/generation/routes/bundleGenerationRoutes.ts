@@ -22,7 +22,7 @@ import YAML from 'yaml';
 import { sourceFileRequestPathCandidates } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../../../shared_code/utils/compressionManifestUtils.js';
-import { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
+import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { getConfigDirectory, getBundleDirectory, getBundleConfigPath } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { generateHtmlForBundle } from '../html/htmlService.js';
@@ -47,7 +47,7 @@ import {
   createPreviewReadToken,
   MEADOW_PREVIEW_TOKEN_QUERY,
 } from '../../../../shared/app-shell/controlPlaneSecurity.js';
-import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../../shared_code/types/cliOperations.js';
+import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../../contracts/types/cliOperations.js';
 
 const router = express.Router();
 

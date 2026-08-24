@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React, { useState } from 'react';
-import { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig';
 import { bundleNodeLocatorKey } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils';
 
 interface OrphansViewProps {

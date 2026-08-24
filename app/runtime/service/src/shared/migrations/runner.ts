@@ -22,7 +22,7 @@ import { commitChangesNative } from '../utils/configDirectory/gitUtils/gitStatus
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { PublishingProviderPaths } from '../../../../../shared_code/paths/publishingProviderPaths.js';
 import { getAllBackendProviders } from '../publishing-provider-host/providerRegistry.js';
-import type { Migration, MigrationLedger } from '../../../../../shared_code/types/migrations.js';
+import type { Migration, MigrationLedger } from '../../../../../contracts/types/migrations.js';
 import {
   IncompleteMigrationError,
   clearMigrationRecovery,

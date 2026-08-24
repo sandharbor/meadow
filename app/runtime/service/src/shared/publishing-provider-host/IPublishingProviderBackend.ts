@@ -15,11 +15,11 @@ limitations under the License.
 */
 
 import type { Express } from 'express';
-import type { PublishingProviderManifest } from '../../../../../shared_code/interfaces/IPublishingProvider.js';
+import type { PublishingProviderManifest } from '../../../../../contracts/interfaces/IPublishingProvider.js';
 import type {
   BundlePublicationSummary,
   GeneratedBundleVersionId,
-} from '../../../../../shared_code/types/generatedBundleVersioning.js';
+} from '../../../../../contracts/types/generatedBundleVersioning.js';
 
 /**
  * SSE-friendly progress shape for cleanup flows. The core delete-bundle-stream

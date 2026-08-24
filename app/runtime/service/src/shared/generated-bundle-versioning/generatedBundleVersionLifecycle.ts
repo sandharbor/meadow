@@ -23,7 +23,7 @@ import type {
   GeneratedBundleVersionManifest,
   PresentGeneratedBundleVersionEntry,
   ReaderConnectionToPredecessor,
-} from '../../../../../shared_code/types/generatedBundleVersioning.js';
+} from '../../../../../contracts/types/generatedBundleVersioning.js';
 import {
   appendGeneratedBundleVersion,
   cancelUnsavedCurrentVersion,

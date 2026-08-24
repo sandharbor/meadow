@@ -16,8 +16,8 @@ limitations under the License.
 
 import path from 'path';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
-import type { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
-import type { FileBundleNodeConfig, BundleNodeConfig, BundleNodeId } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { FileBundleNodeConfig, BundleNodeConfig, BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { canonicalPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { normalizePageTitle } from './shared.js';
 

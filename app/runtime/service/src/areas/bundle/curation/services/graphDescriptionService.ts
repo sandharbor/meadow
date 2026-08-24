@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { CustomFilterConfig } from '../../../../../../../shared_code/types/customFilters.js';
-import { Graph, type IEdge } from '../../../../../../../shared_code/types/graph.js';
+import type { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
+import { Graph, type IEdge } from '../../../../../../../contracts/types/graph.js';
 import type {
   IBundleNode,
-} from '../../../../../../../shared_code/types/IBundleNode.js';
+} from '../../../../../../../contracts/types/IBundleNode.js';
 import type {
   GraphDescription,
   GraphDescriptionEdge,
@@ -26,11 +26,11 @@ import type {
   GraphFilterApplication,
   GraphFilterCombination,
   GraphInspectionScope,
-} from '../../../../../../../shared_code/types/graphInspection.js';
+} from '../../../../../../../contracts/types/graphInspection.js';
 import {
   GRAPH_DESCRIPTION_EDGE_FIELDS,
   GRAPH_DESCRIPTION_NODE_FIELDS,
-} from '../../../../../../../shared_code/types/graphInspection.js';
+} from '../../../../../../../contracts/types/graphInspection.js';
 import { selectGraphNodeKeys } from './graphFilterService.js';
 
 interface GraphLinkData {

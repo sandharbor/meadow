@@ -17,15 +17,15 @@ limitations under the License.
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { BundleNodeConfig, BundleNodeId } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import {
   CLI_OPERATION_SCHEMA_VERSION,
   type SkippedBundleNodeResult,
   type TrackBundleNodesCliResult,
   type TrackedBundleNodeResult,
-} from '../../../../../../../shared_code/types/cliOperations.js';
-import { Graph } from '../../../../../../../shared_code/types/graph.js';
-import type { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode.js';
+} from '../../../../../../../contracts/types/cliOperations.js';
+import { Graph } from '../../../../../../../contracts/types/graph.js';
+import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import {
   applyNodeConfigsToNodes,
   applySensitiveFromApiData,

@@ -20,7 +20,7 @@ import path from 'path';
 import YAML from 'yaml';
 import type { S3Client } from '@aws-sdk/client-s3';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { GeneratedBundleVersionId } from '../../../../shared_code/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../contracts/types/generatedBundleVersioning.js';
 import { uploadDirectory } from '../internal/s3Operations.js';
 import {
   appendS3PublicationEvent,

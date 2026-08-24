@@ -16,9 +16,9 @@ limitations under the License.
 
 import path from 'path';
 import { marked } from 'marked';
-import type { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
-import type { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
-import type { LinkResolvedInfo } from '../../../../../../../shared_code/types/IBundleNode.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import {
   isImageLikeWikiLink,

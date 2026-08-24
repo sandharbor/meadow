@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { ConfigFileExplorer, ConfigFileExplorerApi } from '../../../../../../../shared_components/ConfigFileExplorer';
-import type { FileNode, FileTreeResponse } from '../../../../../../../shared_components/ConfigFileExplorer';
-import { ToolbarIconButton } from '../../../../../../../shared_components/ToolbarIconButton';
+import { ConfigFileExplorer, ConfigFileExplorerApi } from '../../../../../shared_components/ConfigFileExplorer';
+import type { FileNode, FileTreeResponse } from '../../../../../shared_components/ConfigFileExplorer';
+import { ToolbarIconButton } from '../../../../../shared_components/ToolbarIconButton';
 import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
 

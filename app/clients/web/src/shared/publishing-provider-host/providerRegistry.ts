@@ -35,7 +35,7 @@ import type { IPublishingProviderFrontend } from './IPublishingProviderFrontend.
 import type {
   PublishingProviderId,
   PublishingProviderManifest,
-} from '../../../../../shared_code/interfaces/IPublishingProvider.js';
+} from '../../../../../contracts/interfaces/IPublishingProvider.js';
 
 type ProviderModule = { default?: IPublishingProviderFrontend; provider?: IPublishingProviderFrontend };
 

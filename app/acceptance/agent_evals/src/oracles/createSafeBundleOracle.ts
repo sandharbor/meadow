@@ -18,7 +18,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import type { GenerateBundleCliResult, SaveGenerationCliResult, TrackBundleNodesCliResult } from "../../../../../shared_code/types/cliOperations.js";
+import type { GenerateBundleCliResult, SaveGenerationCliResult, TrackBundleNodesCliResult } from "../../../../../contracts/types/cliOperations.js";
 import type { AgentEvalScenario, FrozenOutcome, OracleResult } from "../types.js";
 
 function sorted(values: readonly string[]): string[] {

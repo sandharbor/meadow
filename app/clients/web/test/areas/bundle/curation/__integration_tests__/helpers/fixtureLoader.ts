@@ -19,14 +19,14 @@ limitations under the License.
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { Graph } from '../../../../../../../../shared_code/types/graph';
-import { IBundleNode } from '../../../../../../../../shared_code/types/IBundleNode';
+import { Graph } from '../../../../../../../../contracts/types/graph';
+import { IBundleNode } from '../../../../../../../../contracts/types/IBundleNode';
 import {
   BundleNodeConfig,
   BundleNodeId,
   BundleNodeKey,
-} from '../../../../../../../../shared_code/types/bundleNodeConfig';
-import { FileType } from '../../../../../../../../shared_code/types/FileType';
+} from '../../../../../../../../contracts/types/bundleNodeConfig';
+import { FileType } from '../../../../../../../../contracts/types/FileType';
 
 // Path to the fixture directory - use process.cwd() which is the web client directory when running tests
 // The cwd is app/clients/web, so we go up to app then into shared_data/home_fixtures

@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { FileType } from '../types/FileType.js';
+import type { FileType } from '../../contracts/types/FileType.js';
 import type {
   BuiltInGraphFilterAction,
   GraphFilterDescriptor,
   NodeTypeFilterId,
-} from '../types/graphInspection.js';
+} from '../../contracts/types/graphInspection.js';
 import {
   createBlacklistedNodeSelector,
   createBundleNodeKindSelector,

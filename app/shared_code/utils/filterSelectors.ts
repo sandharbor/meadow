@@ -19,12 +19,12 @@ limitations under the License.
  * These pure selectors are shared by the frontend and backend.
  */
 
-import { Graph } from '../types/graph.js';
-import { IBundleNode } from '../types/IBundleNode.js';
-import { CustomBundleNodeSelectorConfig } from '../types/customFilters.js';
+import { Graph } from '../../contracts/types/graph.js';
+import { IBundleNode } from '../../contracts/types/IBundleNode.js';
+import { CustomBundleNodeSelectorConfig } from '../../contracts/types/customFilters.js';
 import { nodeIsInFolder } from './folderFilterUtils.js';
-import type { BundleNodeKind } from '../types/bundleNodeConfig.js';
-import type { FileType } from '../types/FileType.js';
+import type { BundleNodeKind } from '../../contracts/types/bundleNodeConfig.js';
+import type { FileType } from '../../contracts/types/FileType.js';
 
 export interface SelectorBase {
   id: string;

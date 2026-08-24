@@ -68,3 +68,6 @@ else
     echo "✅ All checks passed. Running tests..."
     npm test
 fi
+
+echo "🧪 Checking Web-owned shared components..."
+(cd shared_components && ./_module/scripts/quickcheck)

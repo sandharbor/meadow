@@ -18,10 +18,10 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useDisplayFilters } from '../../../../../src/areas/bundle/curation/utils/useDisplayFilters';
 import type { IFilter } from '../../../../../src/areas/bundle/curation/types/filters';
-import { Graph } from '../../../../../../../shared_code/types/graph';
-import type { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode';
-import type { FileType } from '../../../../../../../shared_code/types/FileType';
-import type { BundleNodeKey } from '../../../../../../../shared_code/types/bundleNodeConfig';
+import { Graph } from '../../../../../../../contracts/types/graph';
+import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import type { FileType } from '../../../../../../../contracts/types/FileType';
+import type { BundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig';
 
 const fileNode = (key: string, fileType: FileType): IBundleNode => ({
   bundleNodeKey: key as BundleNodeKey,

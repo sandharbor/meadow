@@ -20,7 +20,7 @@ import { useLocation } from 'react-router-dom';
 import { apiRequest } from '../../../shared/utils/apiClient';
 import { getActiveFrontendProvider } from '../../../shared/publishing-provider-host/providerRegistry';
 import { fetchBundles, fetchDirectories, BundleConfigWithSlug } from '../../../shared/utils/bundleApi';
-import { FindInBundlesOptions } from '../../../../../../shared_code/types/findInBundlesOptions';
+import { FindInBundlesOptions } from '../../../../../../contracts/types/findInBundlesOptions';
 import Modal from '../../../shared/components/Modal';
 import CreateOrEditBundleModal from './CreateOrEditBundleModal';
 import DeleteBundleModal from '../../../shared/bundle-management/DeleteBundleModal';

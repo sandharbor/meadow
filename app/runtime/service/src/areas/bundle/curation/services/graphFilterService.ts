@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { CustomFilterConfig } from '../../../../../../../shared_code/types/customFilters.js';
+import type { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
 import type {
   GraphFilterApplication,
   GraphFilterCatalog,
   GraphFilterCombination,
   GraphFilterDescriptor,
-} from '../../../../../../../shared_code/types/graphInspection.js';
-import { Graph } from '../../../../../../../shared_code/types/graph.js';
+} from '../../../../../../../contracts/types/graphInspection.js';
+import { Graph } from '../../../../../../../contracts/types/graph.js';
 import {
   createCustomBundleNodeSelector,
   type IBundleNodeSelector,
@@ -36,7 +36,7 @@ import {
   type ActiveFilterExpressionTerm,
   type FilterExpression,
   type FilterExpressionOperator,
-} from '../../../../../../../shared_code/types/filterExpression.js';
+} from '../../../../../../../contracts/types/filterExpression.js';
 
 interface ExecutableFilter {
   id: string;

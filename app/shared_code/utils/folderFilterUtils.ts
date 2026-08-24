@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { IBundleNode } from '../types/IBundleNode.js';
+import { IBundleNode } from '../../contracts/types/IBundleNode.js';
 
 export const ROOT_FOLDER_LABEL = 'Root';
 

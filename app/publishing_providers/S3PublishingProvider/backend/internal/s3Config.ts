@@ -43,7 +43,7 @@ import { getConfigDirectory } from '../../../../runtime/service/src/shared/bundl
 import type {
   PublishingProviderConfigBase,
   PublishingProviderSecretsBase,
-} from '../../../../shared_code/interfaces/PublishingProviderConfig.js';
+} from '../../../../contracts/interfaces/PublishingProviderConfig.js';
 import {
   extensibleObjectValidation,
   readDurableDocument,

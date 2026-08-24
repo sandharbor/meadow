@@ -24,8 +24,8 @@ import { getDefaultConfigDirectory } from './appConfigUtils.js';
 import type {
   PublishingProviderConfigBase,
   PublishingProviderSecretsBase,
-} from '../interfaces/PublishingProviderConfig.js';
-import type { PublishingProviderId } from '../interfaces/IPublishingProvider.js';
+} from '../../contracts/interfaces/PublishingProviderConfig.js';
+import type { PublishingProviderId } from '../../contracts/interfaces/IPublishingProvider.js';
 import { extensibleYamlObjectCodec } from './configDocumentCodecs.js';
 import { readDurableDocument, requireValidDocument } from './durableDocument.js';
 

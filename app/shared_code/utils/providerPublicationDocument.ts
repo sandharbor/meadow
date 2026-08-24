@@ -17,7 +17,7 @@ limitations under the License.
 import {
   GENERATED_BUNDLE_VERSION_ID_PATTERN,
   type ProviderDestinationRecord,
-} from '../types/generatedBundleVersioning.js';
+} from '../../contracts/types/generatedBundleVersioning.js';
 import { isPlainObject, yamlDocumentCodec } from './durableDocument.js';
 
 const EVENT_TYPES = new Set([

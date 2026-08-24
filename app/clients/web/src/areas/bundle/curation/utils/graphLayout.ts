@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { IEdge } from '../../../../../../../shared_code/types/graph';
-import type { BundleNodeKind } from '../../../../../../../shared_code/types/bundleNodeConfig';
+import type { IEdge } from '../../../../../../../contracts/types/graph';
+import type { BundleNodeKind } from '../../../../../../../contracts/types/bundleNodeConfig';
 import type { NodePosition } from '../types/graphViewport';
 
 export interface GraphLayoutNode {

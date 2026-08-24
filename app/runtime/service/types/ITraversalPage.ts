@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { FileType } from '../../../shared_code/types/FileType.js';
+import { FileType } from '../../../contracts/types/FileType.js';
 
 export interface ITraversalPage {
   directory: string;

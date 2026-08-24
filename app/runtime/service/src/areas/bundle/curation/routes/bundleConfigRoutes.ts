@@ -22,8 +22,8 @@ import {
   validateCanonicalBundleConfiguration,
 } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { saveBundleNodeConfigDocument } from '../../../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
-import { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
-import { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import fs from 'fs';
 import { getBundleConfigPath } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { loadBundleConfigFromPath } from '../../../../shared/utils/bundleConfigUtils.js';

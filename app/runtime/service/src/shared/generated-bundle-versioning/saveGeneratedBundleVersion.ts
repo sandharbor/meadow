@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { loadAppConfig } from '../../../../../shared_code/utils/appConfigUtils.js';
-import type { GeneratedBundleVersionId } from '../../../../../shared_code/types/generatedBundleVersioning.js';
+import type { GeneratedBundleVersionId } from '../../../../../contracts/types/generatedBundleVersioning.js';
 import { commitBundleChanges } from '../utils/configDirectory/gitUtils/generatedHtmlGitService.js';
 import {
   assertFrozenGeneratedVersionsIntegrity,

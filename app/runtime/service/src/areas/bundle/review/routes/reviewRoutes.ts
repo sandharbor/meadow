@@ -52,7 +52,7 @@ import {
   saveGeneratedBundleVersion,
   SaveGeneratedBundleVersionError,
 } from '../../../../shared/generated-bundle-versioning/saveGeneratedBundleVersion.js';
-import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../../shared_code/types/cliOperations.js';
+import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../../contracts/types/cliOperations.js';
 
 const router = express.Router();
 

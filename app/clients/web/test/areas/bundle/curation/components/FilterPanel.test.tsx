@@ -18,10 +18,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, screen, waitFor } from '@testing-library/react';
 import FilterPanel from '../../../../../src/areas/bundle/curation/components/FilterPanel';
 import { IFilter } from '../../../../../src/areas/bundle/curation/types/filters';
-import { Graph } from '../../../../../../../shared_code/types/graph';
-import type { IBundleNode } from '../../../../../../../shared_code/types/IBundleNode';
-import type { FileType } from '../../../../../../../shared_code/types/FileType';
-import type { BundleNodeKey } from '../../../../../../../shared_code/types/bundleNodeConfig';
+import { Graph } from '../../../../../../../contracts/types/graph';
+import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import type { FileType } from '../../../../../../../contracts/types/FileType';
+import type { BundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig';
 
 describe('FilterPanel', () => {
   const fileNode = (key: string, fileType: FileType): IBundleNode => ({

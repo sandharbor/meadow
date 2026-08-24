@@ -38,7 +38,7 @@ import publishingCliRoutes from '../../areas/bundle/sharing/routes/publishingCli
 import { createHealthRoutes } from '../routes/healthRoutes.js';
 import reviewRoutes from '../../areas/bundle/review/routes/reviewRoutes.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
-import { ResourcesConfig } from '../../../../../shared_code/types/resourcesConfig.js';
+import { ResourcesConfig } from '../../../../../contracts/types/resourcesConfig.js';
 import {
   ensureAllProviderResourcesInitialized,
   registerAllProviderRoutes,

@@ -26,8 +26,8 @@ import {
   mutateBundleNode,
   type BundleNodeMutation,
 } from '../services/bundleNodeOperations.js';
-import type { BundleNodeId } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
-import type { BundleNodeLocator } from '../../../../../../../shared_code/types/cliOperations.js';
+import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeLocator } from '../../../../../../../contracts/types/cliOperations.js';
 import { WorkingGraphOperationError } from '../services/workingGraphService.js';
 import { runSerializedBundleNodeMutation } from '../services/bundleNodeMutationQueue.js';
 

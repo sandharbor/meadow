@@ -33,8 +33,8 @@ import {
   RenderOptions,
   BacklinkContext
 } from './types.js';
-import { BundleConfig } from '../../../../../../../shared_code/types/bundleConfig.js';
-import { BundleNodeConfig } from '../../../../../../../shared_code/types/bundleNodeConfig.js';
+import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import {
   normalizePageTitle,
   getMdContent,
@@ -50,7 +50,7 @@ import {
   resolveTrackedLinkHref,
   type MediaEmbedOptions,
 } from './linkModificationService.js';
-import type { LinkResolvedInfo } from '../../../../../../../shared_code/types/IBundleNode.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import { IMAGE_FILE_TYPES, KNOWN_FILE_TYPES } from './constants.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';

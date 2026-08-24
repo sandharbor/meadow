@@ -19,7 +19,7 @@ import type {
   DescribeBundleNodeCliResult,
   FindBundleNodeCliResult,
   MutateBundleNodeCliResult,
-} from "../../../shared_code/types/cliOperations.js";
+} from "../../../contracts/types/cliOperations.js";
 import { materializeCreateSafeBundleSource } from "../src/agent-evals/scenarios/createSafeBundle.js";
 import { bundles } from "../src/app-area-docs/index.js";
 import { cli } from "../src/scenario-docs/index.js";
