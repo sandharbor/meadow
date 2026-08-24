@@ -29,6 +29,22 @@ const FIXTURE_ROW_IDS = [
   ['home_fixture_hooks', 'home_fixture_nested', 'home_fixture_srs'],
 ] as const;
 
+async function requestOrThrow(endpoint: string, init?: Parameters<typeof fetch>[1]) {
+  const response = await fetch(endpoint, init);
+  if (response.ok) return response;
+
+  let message = `Request failed (${response.status})`;
+  try {
+    const data = await response.json() as { error?: unknown };
+    if (typeof data.error === 'string' && data.error.length > 0) {
+      message = data.error;
+    }
+  } catch {
+    // Keep the status-based fallback when the response is not JSON.
+  }
+  throw new Error(message);
+}
+
 interface ConfigStatus {
   configMode: ConfigMode;
   normalConfBackupExists: boolean;
@@ -159,17 +175,12 @@ const ConfigManager: React.FC = () => {
   ) => {
     setActionLoading(endpoint);
     try {
-      const res = await fetch(endpoint, {
+      await requestOrThrow(endpoint, {
         method,
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Action failed');
-      } else {
-        setError(null);
-      }
+      setError(null);
       await fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -267,15 +278,13 @@ const ConfigManager: React.FC = () => {
                 if (switchDoesClearLogs) {
                   await clearLogs();
                 }
-                const res = await fetch(option.endpoint, { method: 'POST' });
-                if (res.ok) {
-                  await fetchStatus();
-                }
-                if (launchMode === 'browser') {
-                  await fetch('/api/app/open-browser', { method: 'POST' });
-                } else {
-                  await fetch('/api/app/launch-dev', { method: 'POST' });
-                }
+                await requestOrThrow(option.endpoint, { method: 'POST' });
+                await fetchStatus();
+                const launchEndpoint = launchMode === 'browser'
+                  ? '/api/app/open-browser'
+                  : '/api/app/launch-dev';
+                await requestOrThrow(launchEndpoint, { method: 'POST' });
+                setError(null);
               } catch (err) {
                 setError(err instanceof Error ? err.message : 'Unknown error');
               } finally {
@@ -353,11 +362,11 @@ const ConfigManager: React.FC = () => {
                     setOpenDropdown(null);
                     setActionLoading(`${option.endpoint}-restart-only`);
                     try {
-                      if (launchMode === 'browser') {
-                        await fetch('/api/app/open-browser', { method: 'POST' });
-                      } else {
-                        await fetch('/api/app/launch-dev', { method: 'POST' });
-                      }
+                      const launchEndpoint = launchMode === 'browser'
+                        ? '/api/app/open-browser'
+                        : '/api/app/launch-dev';
+                      await requestOrThrow(launchEndpoint, { method: 'POST' });
+                      setError(null);
                     } catch (err) {
                       setError(err instanceof Error ? err.message : 'Unknown error');
                     } finally {

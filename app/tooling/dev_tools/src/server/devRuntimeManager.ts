@@ -20,6 +20,7 @@ import {
   ensureRuntime,
   postRuntimeControl,
   RuntimeClientLease,
+  waitForRuntimeHomeRelease,
   type EnsureRuntimeOptions,
 } from "../../../../runtime/supervisor/src/runtimeClient.js";
 import { createSourceRuntimeLaunchSpec } from "../../../../runtime/supervisor/src/sourceLaunchSpec.js";
@@ -95,8 +96,9 @@ export class DevRuntimeManager {
     const result = await this.postControl(lease.descriptor, "/shutdown", {});
     if (!result.response.ok) {
       throw new Error(
-        "The Runtime is still in use. Close Meadow Desktop and wait for active operations before changing the test Home.",
+        "The Runtime is still in use. Close connected Meadow clients and wait for active operations before changing the test Home.",
       );
     }
+    await waitForRuntimeHomeRelease(lease.descriptor);
   }
 }

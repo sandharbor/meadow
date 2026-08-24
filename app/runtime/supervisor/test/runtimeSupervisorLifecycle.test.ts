@@ -21,8 +21,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { RuntimePayloadReference, RuntimeSupervisorLaunchSpec } from "../../../contracts/types/runtime.js";
 import {
   ensureRuntime,
+  postRuntimeControl,
   RuntimeClientLease,
   RuntimeUpgradeRequiredError,
+  waitForRuntimeHomeRelease,
 } from "../src/runtimeClient.js";
 import { getRuntimePaths } from "../src/runtimePaths.js";
 
@@ -130,5 +132,20 @@ describe("Runtime Supervisor lifecycle", () => {
     const replacement = await attach(home, "payload-b", "desktop-b");
     expect(replacement.descriptor.instanceId).not.toBe(firstInstanceId);
     expect(replacement.descriptor.payload.identity).toBe("payload-b");
+  }, 20_000);
+
+  it("waits for cooperative shutdown to release Home ownership before relaunch", async () => {
+    const home = makeHome();
+    const first = await attach(home, "payload-a", "desktop-a");
+    const firstDescriptor = first.descriptor;
+    await first.release();
+
+    const shutdown = await postRuntimeControl(firstDescriptor, "/shutdown", {});
+    expect(shutdown.response.status).toBe(202);
+    await waitForRuntimeHomeRelease(firstDescriptor);
+    expect(existsSync(getRuntimePaths(home).ownershipLock)).toBe(false);
+
+    const replacement = await attach(home, "payload-b", "desktop-b");
+    expect(replacement.descriptor.instanceId).not.toBe(firstDescriptor.instanceId);
   }, 20_000);
 });

@@ -59,6 +59,13 @@ export interface EnsureRuntimeOptions {
   isProcessAlive?: (pid: number) => boolean;
 }
 
+export interface WaitForRuntimeHomeReleaseOptions {
+  runtimeRoot?: string;
+  timeoutMs?: number;
+  pollIntervalMs?: number;
+  isProcessAlive?: (pid: number) => boolean;
+}
+
 interface ControlResponse {
   response: Response;
   body: Record<string, unknown>;
@@ -103,6 +110,52 @@ export async function postRuntimeControl(
     signal: AbortSignal.timeout(2_000),
   });
   return { response, body: await readControlResponse(response) };
+}
+
+/**
+ * A successful shutdown request is only an acknowledgement. The Supervisor
+ * removes its session descriptor before it finishes terminating children and
+ * releasing the Home Ownership Lock, so callers that will move or relaunch a
+ * Home must wait for the lock itself to become available.
+ */
+export async function waitForRuntimeHomeRelease(
+  descriptor: RuntimeSessionDescriptor,
+  options: WaitForRuntimeHomeReleaseOptions = {},
+): Promise<void> {
+  const ownershipLock = getRuntimePaths(
+    descriptor.homeDirectory,
+    options.runtimeRoot,
+  ).ownershipLock;
+  const isProcessAlive = options.isProcessAlive ?? defaultIsProcessAlive;
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  const pollIntervalMs = options.pollIntervalMs ?? 50;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (!existsSync(ownershipLock)) return;
+
+    try {
+      const owner = readHomeOwnershipLock(ownershipLock);
+      if (!isProcessAlive(owner.supervisorPid)) return;
+      if (owner.instanceId !== descriptor.instanceId) {
+        throw new Error(
+          `Meadow Home ownership transferred to Runtime Supervisor ${owner.supervisorPid} while waiting for shutdown`,
+        );
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("ownership transferred")) {
+        throw error;
+      }
+      // A lock being rewritten or removed between exists/read calls is a
+      // transient shutdown state. Confirm its disappearance on the next poll.
+    }
+
+    await delay(pollIntervalMs);
+  }
+
+  throw new Error(
+    `Runtime Supervisor ${descriptor.supervisorPid} did not release Meadow Home ownership within ${timeoutMs}ms`,
+  );
 }
 
 async function runtimeControlIsReady(descriptor: RuntimeSessionDescriptor): Promise<boolean> {

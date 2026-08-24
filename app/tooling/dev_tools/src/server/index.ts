@@ -60,6 +60,10 @@ const configDir = getDefaultConfigDirectory();
 const normalConfBackup = join(dirname(configDir), "MeadowHome_normal");
 const activeFixtureFile = join(dirname(configDir), "meadow_active_fixture");
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 const projectRoot = getProjectRoot();
 const electronPackage = JSON.parse(
   readFileSync(join(projectRoot, "app", "hosts", "desktop", "package.json"), "utf8"),
@@ -186,7 +190,7 @@ app.post("/api/config/test-mode/missing", async (_req, res) => {
     });
   } catch (error) {
     console.error("Error setting test mode missing:", error);
-    res.status(500).json({ error: "Failed to set test mode" });
+    res.status(500).json({ error: errorMessage(error, "Failed to set test mode") });
   }
 });
 
@@ -275,7 +279,7 @@ app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
     }
   } catch (error) {
     console.error("Error setting test mode with fixture:", error);
-    res.status(500).json({ error: "Failed to set test mode with fixture" });
+    res.status(500).json({ error: errorMessage(error, "Failed to set test mode with fixture") });
   }
 });
 
@@ -452,7 +456,7 @@ app.post("/api/config/normal", async (_req, res) => {
     });
   } catch (error) {
     console.error("Error restoring normal mode:", error);
-    res.status(500).json({ error: "Failed to restore normal mode" });
+    res.status(500).json({ error: errorMessage(error, "Failed to restore normal mode") });
   }
 });
 
@@ -524,7 +528,7 @@ app.post("/api/app/launch-dev", async (_req, res) => {
     });
   } catch (error) {
     console.error("Error launching dev app:", error);
-    res.status(500).json({ error: "Failed to launch dev app" });
+    res.status(500).json({ error: errorMessage(error, "Failed to launch dev app") });
   }
 });
 
@@ -616,7 +620,7 @@ app.post("/api/app/open-browser", async (req, res) => {
     });
   } catch (error) {
     console.error("Error opening browser:", error);
-    res.status(500).json({ error: "Failed to open browser" });
+    res.status(500).json({ error: errorMessage(error, "Failed to open browser") });
   }
 });
 
