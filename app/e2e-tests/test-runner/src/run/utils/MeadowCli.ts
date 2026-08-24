@@ -21,7 +21,7 @@ import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../shared_code/utils/loc
 
 const CLI_EXECUTABLE = path.resolve(
   import.meta.dirname,
-  "../../../../../cli/bin/meadow",
+  "../../../../../clients/cli/bin/meadow",
 );
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 const MAX_OUTPUT_BYTES = 1024 * 1024;

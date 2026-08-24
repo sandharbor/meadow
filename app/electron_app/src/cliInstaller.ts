@@ -47,6 +47,7 @@ const SHELL_ENVIRONMENT_TIMEOUT_MS = 10_000;
 function isManagedMeadowLinkTarget(target: string): boolean {
   const normalized = target.replace(/\\/g, '/');
   return normalized.endsWith('/Contents/Resources/cli/meadow')
+    || normalized.endsWith('/app/clients/cli/bin/meadow')
     || normalized.endsWith('/app/cli/bin/meadow');
 }
 

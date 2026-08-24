@@ -449,7 +449,7 @@ class MeadowApp {
         throw new Error('Command-line installation is unavailable to this renderer');
       }
       const sourcePath = this.isDev
-        ? path.join(__dirname, '../../../../cli/bin/meadow')
+        ? path.join(__dirname, '../../../../clients/cli/bin/meadow')
         : path.join((process as NodeJS.Process & { resourcesPath: string }).resourcesPath, 'cli', 'meadow');
       return installCommandLineInterface(sourcePath);
     });

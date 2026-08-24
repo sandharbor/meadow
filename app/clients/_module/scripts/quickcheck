@@ -1,0 +1,36 @@
+#!/bin/bash
+set -euo pipefail
+
+REQUIRED_DIRS=("cli")
+OK_DIRS=("_module")
+OK_FILES=(".DS_Store")
+
+echo_and_exit() {
+    echo "$1"
+    exit 1
+}
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    [ -d "$dir" ] || echo_and_exit "❌ Required directory '$dir' is missing."
+done
+
+for entry in * .[^.]*; do
+    [ "$entry" = "." ] && continue
+    [ "$entry" = ".." ] && continue
+    [ "$entry" = '.[^.]*' ] && continue
+    [ ! -e "$entry" ] && continue
+    allowed=false
+    for candidate in "${REQUIRED_DIRS[@]}" "${OK_DIRS[@]}" "${OK_FILES[@]}"; do
+        if [ "$entry" = "$candidate" ]; then
+            allowed=true
+            break
+        fi
+    done
+    [ "$allowed" = true ] || echo_and_exit "❌ Extraneous entry in app/clients/: $entry"
+done
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    [ -f "$dir/_module/scripts/quickcheck" ] \
+        || echo_and_exit "❌ _module/scripts/quickcheck not found at app/clients/$dir."
+    (cd "$dir" && ./_module/scripts/quickcheck)
+done

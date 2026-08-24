@@ -16,7 +16,7 @@
     "build:all": "npm run build:rust && npm run build:backend && npm run build:cli && npm run build:frontend && npm run build:main",
     "build:rust": "cd ../runtime/native/source_page_search_by_title/source_page_search_by_title_code && cargo build --release && cd ../../fast_git_ops/fast_git_ops_code && cargo build --release && cd ../../working_graph/working_graph_code && cargo build --release",
     "build:backend": "cd ../backend && npm run build",
-    "build:cli": "cd ../cli && npm run build",
+    "build:cli": "cd ../clients/cli && npm run build",
     "build:frontend": "cd ../frontend && npm run build && npm run build:server",
     "build:main": "tsc",
     "build:electron": "electron-builder",
@@ -142,12 +142,12 @@
         "filter": ["node-wrapper.sh"]
       },
       {
-        "from": "../cli/dist",
+        "from": "../clients/cli/dist",
         "to": "cli",
         "filter": ["meadow.cjs"]
       },
       {
-        "from": "../cli/bin/meadow",
+        "from": "../clients/cli/bin/meadow",
         "to": "cli/meadow",
         "filter": ["meadow"]
       },

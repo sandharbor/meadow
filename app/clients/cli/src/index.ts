@@ -15,14 +15,14 @@ limitations under the License.
 */
 
 import { existsSync } from "node:fs";
-import { getDefaultConfigDirectory } from "../../shared_code/utils/appConfigUtils.js";
+import { getDefaultConfigDirectory } from "../../../shared_code/utils/appConfigUtils.js";
 import {
   getLocalRuntimeSessionPath,
   MEADOW_CONTROL_PROTOCOL,
   MEADOW_RUNTIME_SESSION_ENV,
   readLocalRuntimeSession,
   type LocalRuntimeSession,
-} from "../../shared_code/utils/localRuntimeSession.js";
+} from "../../../shared_code/utils/localRuntimeSession.js";
 import { runBundleNodeCommand, showBundleNodeHelp } from "./nodeCommands.js";
 
 interface BundleSummary {

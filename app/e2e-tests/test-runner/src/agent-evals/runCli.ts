@@ -49,7 +49,7 @@ import {
 import { StandaloneTrialRuntime } from "./runtime/StandaloneTrialRuntime.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
-const CLI_DIR = path.join(REPO_ROOT, "app", "cli");
+const CLI_DIR = path.join(REPO_ROOT, "app", "clients", "cli");
 const DEFAULT_ARTIFACT_ROOT = path.join(os.homedir(), "meadow-agent-eval-artifacts", "current");
 const PUBLISHING_EXTENSION_ENTRYPOINT = path.resolve(
   import.meta.dirname,

@@ -23,7 +23,7 @@ import { StandaloneTrialRuntime } from "./runtime/StandaloneTrialRuntime.js";
 import { CREATE_SAFE_BUNDLE_SCENARIO } from "./scenarios/createSafeBundle.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
-const CLI_DIR = path.join(REPO_ROOT, "app", "cli");
+const CLI_DIR = path.join(REPO_ROOT, "app", "clients", "cli");
 
 async function main(): Promise<void> {
   execFileSync("npm", ["run", "build"], { cwd: CLI_DIR, stdio: "inherit" });
