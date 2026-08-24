@@ -225,7 +225,7 @@ export function mergeAgent(agentId: string): MergeResult {
   }
 
   // Rebuild native utils if the merged branch changed them
-  const nativeChanged = shellSafe(`git diff HEAD^1 HEAD --name-only -- app/native_utils/`, { cwd: repoRoot });
+  const nativeChanged = shellSafe(`git diff HEAD^1 HEAD --name-only -- app/runtime/native/`, { cwd: repoRoot });
   if (nativeChanged && nativeChanged.trim().length > 0) {
     const prepareResult = shellSafe(`./prepare`, { cwd: repoRoot });
     if (prepareResult === null) {

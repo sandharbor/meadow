@@ -54,8 +54,8 @@ function runWorkingGraph(args: {
   bundleNodeConfig?: string;
 }): WorkingGraphOutput {
   // Path relative to working_graph_code working directory
-  const graphRoot = args.graphRoot ?? "../../../shared_data/source_graphs/meadow-test-bundles-data";
-  const bundleNodeConfig = args.bundleNodeConfig ?? "../../../shared_data/home_fixtures/home_fixture_big_and_small/bundles/meadow-test-bundle-big/config/bundle_node_config.yaml";
+  const graphRoot = args.graphRoot ?? "../../../../shared_data/source_graphs/meadow-test-bundles-data";
+  const bundleNodeConfig = args.bundleNodeConfig ?? "../../../../shared_data/home_fixtures/home_fixture_big_and_small/bundles/meadow-test-bundle-big/config/bundle_node_config.yaml";
 
   const cmd = [
     `cargo run --quiet --bin working_graph_bin --`,

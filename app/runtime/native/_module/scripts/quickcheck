@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🧪 Running native_utils checks in parallel..."
+echo "🧪 Running runtime native checks in parallel..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -35,8 +35,8 @@ for pid in "${pids[@]}"; do
 done
 
 if [ $exit_code -ne 0 ]; then
-    echo "❌ One or more native_utils checks failed"
+    echo "❌ One or more runtime native checks failed"
     exit 1
 fi
 
-echo "✅ All native_utils checks passed!"
+echo "✅ All runtime native checks passed!"

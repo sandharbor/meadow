@@ -32,10 +32,10 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            app/native_utils/fast_git_ops/fast_git_ops_code/target
-            app/native_utils/working_graph/working_graph_code/target
-            app/native_utils/source_page_search_by_title/source_page_search_by_title_code/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('app/native_utils/**/Cargo.lock') }}
+            app/runtime/native/fast_git_ops/fast_git_ops_code/target
+            app/runtime/native/working_graph/working_graph_code/target
+            app/runtime/native/source_page_search_by_title/source_page_search_by_title_code/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('app/runtime/native/**/Cargo.lock') }}
           restore-keys: |
             cargo-${{ runner.os }}-
 

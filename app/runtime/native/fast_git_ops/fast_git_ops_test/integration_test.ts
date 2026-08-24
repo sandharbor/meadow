@@ -21,12 +21,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
 import git from 'isomorphic-git';
-import { resolveNativeRustBinaryPath } from '../../../shared_code/utils/nativeRustBinaryPath.js';
+import { resolveNativeRustBinaryPath } from '../../../../shared_code/utils/nativeRustBinaryPath.js';
 
 const TEST_REPO_DIR = path.join(import.meta.dirname, 'test_repo');
 const FAST_GIT_OPS_BINARY = resolveNativeRustBinaryPath({
   importMetaUrl: import.meta.url,
-  upLevelsToApp: 3,
+  upLevelsToApp: 4,
   cratePathSegments: ['fast_git_ops', 'fast_git_ops_code'],
   binaryName: 'fast_git_ops_bin',
 });

@@ -30,7 +30,7 @@ import {
   describeStartupFailure,
   readStartupFailureDiagnostic,
 } from '../../shared_code/utils/startupRecovery';
-import { resolveNativeRustBinaryPathFromNativeUtilsParent } from '../../shared_code/utils/nativeRustBinaryPath';
+import { resolveNativeRustBinaryPathFromRuntimeParent } from '../../shared_code/utils/nativeRustBinaryPath';
 import {
   DESKTOP_WEB_SECURITY_PREFERENCES,
   isTrustedDesktopRenderer,
@@ -188,19 +188,19 @@ class MeadowApp {
     
     if (this.isDev) {
       // Development paths (release preferred, debug fallback — same as backend)
-      const nativeUtilsParentDir = path.join(__dirname, '../..');
-      this.sourcePageSearchByTitlePath = resolveNativeRustBinaryPathFromNativeUtilsParent({
-        nativeUtilsParentDir,
+      const runtimeParentDir = path.join(__dirname, '../..');
+      this.sourcePageSearchByTitlePath = resolveNativeRustBinaryPathFromRuntimeParent({
+        runtimeParentDir,
         cratePathSegments: ['source_page_search_by_title', 'source_page_search_by_title_code'],
         binaryName: 'source_page_search_by_title_bin',
       });
-      this.fastGitOpsPath = resolveNativeRustBinaryPathFromNativeUtilsParent({
-        nativeUtilsParentDir,
+      this.fastGitOpsPath = resolveNativeRustBinaryPathFromRuntimeParent({
+        runtimeParentDir,
         cratePathSegments: ['fast_git_ops', 'fast_git_ops_code'],
         binaryName: 'fast_git_ops_bin',
       });
-      this.workingGraphPath = resolveNativeRustBinaryPathFromNativeUtilsParent({
-        nativeUtilsParentDir,
+      this.workingGraphPath = resolveNativeRustBinaryPathFromRuntimeParent({
+        runtimeParentDir,
         cratePathSegments: ['working_graph', 'working_graph_code'],
         binaryName: 'working_graph_bin',
       });

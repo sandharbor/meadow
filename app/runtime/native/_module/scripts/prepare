@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "🔧 Preparing native_utils..."
+echo "🔧 Preparing runtime native utilities..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -18,8 +18,8 @@ for job in $(jobs -p); do
 done
 
 if [ $exit_code -ne 0 ]; then
-    echo "❌ native_utils prepare failed"
+    echo "❌ Runtime native utilities prepare failed"
     exit 1
 fi
 
-echo "✅ native_utils prepared"
+echo "✅ Runtime native utilities prepared"

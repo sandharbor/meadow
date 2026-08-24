@@ -53,7 +53,7 @@ export function getWorkingGraphPath(): string {
   if (!fs.existsSync(binaryPath)) {
     throw new Error(
       `working_graph_bin not found at ${binaryPath}. Build it with ` +
-        '`cd app/native_utils/working_graph/working_graph_code && cargo build --release --bin working_graph_bin` ' +
+        '`cd app/runtime/native/working_graph/working_graph_code && cargo build --release --bin working_graph_bin` ' +
         'or set WORKING_GRAPH_PATH.'
     );
   }

@@ -215,7 +215,7 @@ the user asks to fix the underlying bug, use this tight loop:
      it's upstream in the Meadow app (some code path writes to the file
      without committing).
    - If git disagrees, the bug is in `fast_git_ops` (see
-     `app/native_utils/fast_git_ops/fast_git_ops_code/src/main.rs`) or in
+     `app/runtime/native/fast_git_ops/fast_git_ops_code/src/main.rs`) or in
      how `test-fixtures.ts` consumes its output.
 2. **Fix at the source.** For "file written but not committed" bugs,
    the typical fix location is `app/backend/src/index.ts startServer()`

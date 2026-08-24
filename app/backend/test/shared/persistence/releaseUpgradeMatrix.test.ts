@@ -33,7 +33,8 @@ const TSX_CLI = path.join(BACKEND_DIRECTORY, 'node_modules', 'tsx', 'dist', 'cli
 const NETWORK_DENY_PRELOAD = path.join(TEST_DIRECTORY, 'networkDeny.cjs');
 const FAST_GIT_OPS = path.join(
   APP_DIRECTORY,
-  'native_utils',
+  'runtime',
+  'native',
   'fast_git_ops',
   'fast_git_ops_code',
   'target',

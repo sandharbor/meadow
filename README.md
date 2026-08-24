@@ -27,7 +27,7 @@ There is an `app-build` skill that runs the build script under `app/electron_app
 
 `./quickcheck` recursively runs the `./quickcheck` files nested under the
 `_module/scripts` directories.  Mostly that's linting and unit tests, but it can
-also be small (quick) integration tests (like for the `native_utils` Rust files)
+also be small (quick) integration tests (like for the `runtime/native` Rust files)
 or even slightly more comprehensive `app/system_tests` (which are still pretty
 quick).
 

@@ -36,7 +36,7 @@ function runSourcePageSearch(args: { root: string }): SourcePageFileInfo[] {
 }
 
 test('source_page_search_by_title integration', (t) => {
-  const graphRoot = "../../../shared_data/source_graphs/meadow-test-bundles-data";
+  const graphRoot = "../../../../shared_data/source_graphs/meadow-test-bundles-data";
   const all = runSourcePageSearch({ root: graphRoot });
 
   t.ok(Array.isArray(all), 'returns an array');

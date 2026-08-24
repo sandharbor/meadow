@@ -14,7 +14,7 @@ For each link it shows:
 		* If no
 			* if [[outlink]]
 				* is it because it exceeds the _link not tracked_
-				* Note that even [[leaf bundle page]]s should have information about [[source page]]s at one-greater depth, which they get from [[native_utils -- working_graph]], even if those source pages are not [[bundle page]]s
+				* Note that even [[leaf bundle page]]s should have information about [[source page]]s at one-greater depth, which they get from [[runtime native -- working_graph]], even if those source pages are not [[bundle page]]s
 			* if [[inlink]]
 				* is it because the remaining inlink depth is < 0?
 				* Note that this [[bundle page]] we're looking at has information about all its [[source page]] inlinks, even if those inlinks are not part of the [[raw working graph]]

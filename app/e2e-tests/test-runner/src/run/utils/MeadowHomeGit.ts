@@ -73,7 +73,7 @@ export class MeadowHomeGit {
 export function resolveFastGitOpsBinary(): string {
   // utils → run → src → test-runner → e2e-tests → app → repo root
   const repoRoot = path.resolve(import.meta.dirname, "..", "..", "..", "..", "..", "..");
-  const crateRoot = path.join(repoRoot, "app", "native_utils", "fast_git_ops", "fast_git_ops_code");
+  const crateRoot = path.join(repoRoot, "app", "runtime", "native", "fast_git_ops", "fast_git_ops_code");
   const releasePath = path.join(crateRoot, "target", "release", "fast_git_ops_bin");
   const debugPath = path.join(crateRoot, "target", "debug", "fast_git_ops_bin");
   if (existsSync(releasePath)) return releasePath;

@@ -36,10 +36,10 @@ After merging, check if the merged branch touched any native utility source code
 Use the merge commit's two parents to see what the branch changed:
 
 ```bash
-git diff HEAD^1 HEAD --name-only -- app/native_utils/
+git diff HEAD^1 HEAD --name-only -- app/runtime/native/
 ```
 
-If any files under `app/native_utils/` were changed, recompile the Rust binaries
+If any files under `app/runtime/native/` were changed, recompile the Rust binaries
 by running `./prepare` from the repo root. This is critical because worktree
 builds don't carry over to main — the release binaries in `target/release/`
 are local to each worktree checkout.

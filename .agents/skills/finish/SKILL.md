@@ -83,10 +83,10 @@ or "invoke the /e2e skill". Instead, use this prompt:
 > After merging, check if native utility source code changed:
 >
 > ```bash
-> git diff HEAD^1 HEAD --name-only -- app/native_utils/
+> git diff HEAD^1 HEAD --name-only -- app/runtime/native/
 > ```
 >
-> If any files under `app/native_utils/` were changed, run `./prepare` from
+> If any files under `app/runtime/native/` were changed, run `./prepare` from
 > the repo root. If none changed, skip this.
 >
 > ### Run checks

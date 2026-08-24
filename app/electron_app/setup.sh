@@ -29,7 +29,7 @@ if [ -f "package.json" ]; then
 fi
 
 echo "🦀 Building Rust source_page_search_by_title binary..."
-cd ../native_utils/source_page_search_by_title/source_page_search_by_title_code
+cd ../runtime/native/source_page_search_by_title/source_page_search_by_title_code
 cargo build --release
 
 echo "🦀 Building Rust fast_git_ops binary..."
@@ -37,7 +37,7 @@ cd ../../fast_git_ops/fast_git_ops_code
 cargo build --release
 
 echo "🏗️  Building backend..."
-cd ../../../backend
+cd ../../../../backend
 npm run build
 
 echo "⚡ Building frontend..."
@@ -56,4 +56,4 @@ echo ""
 echo "📦 To build for distribution, run:"
 echo "   npm run dist:mac"
 echo ""
-echo "📝 Note: You may want to replace the placeholder icons in assets/ with proper app icons" 
+echo "📝 Note: You may want to replace the placeholder icons in assets/ with proper app icons"

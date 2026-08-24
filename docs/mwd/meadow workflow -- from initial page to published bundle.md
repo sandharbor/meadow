@@ -6,7 +6,7 @@
 
 First, in configuration we specify the [[bundle page type -- initial]] and [[bundle page config -- outlinksDepth]] for that page.
 
-Then we pass that configuration (and more) to the [[native_utils -- working_graph]] which does the [[constrained graph expansion]] based on that config to get [[raw working graph]].  That raw working graph shows [[bundle page tracking state -- untracked]] as well as [[bundle page tracking state -- tracked]] [[bundle page]]s.
+Then we pass that configuration (and more) to the [[runtime native -- working_graph]] which does the [[constrained graph expansion]] based on that config to get [[raw working graph]].  That raw working graph shows [[bundle page tracking state -- untracked]] as well as [[bundle page tracking state -- tracked]] [[bundle page]]s.
 :
 This raw working graph is the graph that powers the [[app component -- bundle page views]].  Each of the [[bundle page]]s in it has [[bundle page metadata]] including [[bundle page config]]
 

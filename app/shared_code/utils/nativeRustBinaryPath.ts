@@ -26,10 +26,10 @@ function nativeRustExecutableFileName(binaryName: string): string {
   return binaryName;
 }
 
-export type ResolveNativeRustBinaryFromNativeUtilsParentOptions = {
-  /** Directory that contains `native_utils` (usually the repo `app/` folder). */
-  nativeUtilsParentDir: string;
-  /** Segments under `native_utils/` to the Cargo crate root (contains `target/`). */
+export type ResolveNativeRustBinaryFromRuntimeParentOptions = {
+  /** Directory that contains `runtime` (usually the repo `app/` folder). */
+  runtimeParentDir: string;
+  /** Segments under `runtime/native/` to the Cargo crate root (contains `target/`). */
   cratePathSegments: string[];
   /** Built binary name (e.g. `fast_git_ops_bin`). */
   binaryName: string;
@@ -38,17 +38,17 @@ export type ResolveNativeRustBinaryFromNativeUtilsParentOptions = {
 };
 
 /**
- * Resolves `app/native_utils/.../target/{release|debug}/<binary>` from the directory above `native_utils`.
+ * Resolves `app/runtime/native/.../target/{release|debug}/<binary>` from the directory above `runtime`.
  */
-export function resolveNativeRustBinaryPathFromNativeUtilsParent(
-  options: ResolveNativeRustBinaryFromNativeUtilsParentOptions
+export function resolveNativeRustBinaryPathFromRuntimeParent(
+  options: ResolveNativeRustBinaryFromRuntimeParentOptions
 ): string {
-  const { nativeUtilsParentDir, cratePathSegments, binaryName, envVar } = options;
+  const { runtimeParentDir, cratePathSegments, binaryName, envVar } = options;
   if (envVar && process.env[envVar]) {
     return process.env[envVar]!;
   }
   const exeName = nativeRustExecutableFileName(binaryName);
-  const crateRoot = path.resolve(nativeUtilsParentDir, 'native_utils', ...cratePathSegments);
+  const crateRoot = path.resolve(runtimeParentDir, 'runtime', 'native', ...cratePathSegments);
   const releasePath = path.resolve(crateRoot, 'target', 'release', exeName);
   const debugPath = path.resolve(crateRoot, 'target', 'debug', exeName);
   if (fs.existsSync(releasePath)) return releasePath;
@@ -59,9 +59,9 @@ export function resolveNativeRustBinaryPathFromNativeUtilsParent(
 export type ResolveNativeRustBinaryPathOptions = {
   /** Typically `import.meta.url` from the caller module. */
   importMetaUrl: string;
-  /** Number of `..` steps from this file's directory to reach the parent of `native_utils` (usually `app/`). */
+  /** Number of `..` steps from this file's directory to reach the parent of `runtime` (usually `app/`). */
   upLevelsToApp: number;
-  /** Segments under `native_utils/` leading to the Cargo crate root (contains `target/`). */
+  /** Segments under `runtime/native/` leading to the Cargo crate root (contains `target/`). */
   cratePathSegments: string[];
   /** Built binary name (e.g. `fast_git_ops_bin`). */
   binaryName: string;
@@ -70,15 +70,15 @@ export type ResolveNativeRustBinaryPathOptions = {
 };
 
 /**
- * Resolves the path to a Rust binary under `native_utils/.../target/{release|debug}/`.
+ * Resolves the path to a Rust binary under `runtime/native/.../target/{release|debug}/`.
  * Uses `fileURLToPath` so Windows file URLs do not produce `C:\\C:\\...` paths.
  */
 export function resolveNativeRustBinaryPath(options: ResolveNativeRustBinaryPathOptions): string {
   const thisFileDir = path.dirname(fileURLToPath(options.importMetaUrl));
   const upSegments = Array.from({ length: options.upLevelsToApp }, () => '..');
-  const nativeUtilsParentDir = path.resolve(thisFileDir, ...upSegments);
-  return resolveNativeRustBinaryPathFromNativeUtilsParent({
-    nativeUtilsParentDir,
+  const runtimeParentDir = path.resolve(thisFileDir, ...upSegments);
+  return resolveNativeRustBinaryPathFromRuntimeParent({
+    runtimeParentDir,
     cratePathSegments: options.cratePathSegments,
     binaryName: options.binaryName,
     envVar: options.envVar,
