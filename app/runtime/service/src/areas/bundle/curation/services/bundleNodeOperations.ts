@@ -46,13 +46,18 @@ import {
   getBundlesDirectory,
 } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { FrontmatterUtils } from '../../../../shared/utils/frontmatterUtils.js';
-import { loadCustomFiltersForBundle } from '../routes/customFiltersRoutes.js';
-import { selectEffectivelySensitiveNodeKeys } from './graphFilterService.js';
+import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
+import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { persistBundleNodeConfigsAtomically } from './bundleTrackingOperations.js';
-import { loadWorkingGraph, type LoadedWorkingGraph } from './workingGraphService.js';
+import {
+  currentSourceContentDigest,
+  trackingEvidenceMatches,
+} from '../../../../shared/bundle-node/trackingEvidence.js';
+import { loadWorkingGraph, type LoadedWorkingGraph } from '../../../../shared/bundle-graph/workingGraphService.js';
 
 export type BundleNodeMutation =
-  | { operation: Exclude<BundleNodeMutationOperation, 'set-depths'> }
+  | { operation: Exclude<BundleNodeMutationOperation, 'track' | 'set-depths'> }
+  | { operation: 'track'; includeSensitive?: boolean }
   | { operation: 'set-depths'; outlinksDepth?: number | null; inlinksDepth?: number | null };
 
 export class BundleNodeOperationError extends Error {
@@ -307,17 +312,57 @@ function ensureCanBlacklist(context: NodeContext): void {
 
 type TraversalBundleNodeConfig = Exclude<BundleNodeConfig, { bundleNodeKind: 'collection' }>;
 
-function newConfigForNode(context: NodeContext): TraversalBundleNodeConfig {
+export function assertIncludeSensitiveFileNode(
+  bundleNodeKind: IBundleNode['bundleNodeKind'],
+  includeSensitive: boolean,
+): void {
+  if (includeSensitive && bundleNodeKind !== 'file') {
+    throw new BundleNodeOperationError('--include-sensitive is valid only for one file node', 409);
+  }
+}
+
+function locatorArguments(locator: BundleNodeLocator): string[] {
+  return locator.kind === 'id' ? ['--id', locator.value] : ['--path', locator.value];
+}
+
+function sensitiveTrackingRefusal(slug: string, locator: BundleNodeLocator): BundleNodeOperationError {
+  const retryArgs = ['bundle', 'node', 'track', slug, ...locatorArguments(locator), '--include-sensitive'];
+  return new BundleNodeOperationError(
+    'Refusing to track an effectively sensitive file without --include-sensitive',
+    409,
+    {
+      code: 'sensitive-tracking-requires-explicit-inclusion',
+      retry: {
+        operation: 'track-node',
+        args: retryArgs,
+        displayCommand: `meadow ${retryArgs.map(value => JSON.stringify(value)).join(' ')}`,
+      },
+      open: {
+        operation: 'open-bundle',
+        args: ['bundle', 'open', slug],
+        displayCommand: `meadow bundle open ${JSON.stringify(slug)}`,
+      },
+    },
+  );
+}
+
+function newConfigForNode(
+  context: NodeContext,
+  slug: string,
+  locator: BundleNodeLocator,
+  includeSensitive = false,
+): TraversalBundleNodeConfig {
   const node = context.node;
   if (node.bundleNodeKind === 'collection') {
     throw new BundleNodeOperationError('The bundle home cannot be configured by this operation', 409);
   }
+  assertIncludeSensitiveFileNode(node.bundleNodeKind, includeSensitive);
   if (node.isFrontierNode) throw new BundleNodeOperationError('Frontier nodes cannot be tracked', 409);
   if (node.effectiveBlacklistingBundleNodeId) {
     throw new BundleNodeOperationError('Nodes below a blacklisted folder cannot be tracked', 409);
   }
-  if (context.effectivelySensitive.has(node.bundleNodeKey)) {
-    throw new BundleNodeOperationError('Refusing to track an effectively sensitive node', 409);
+  if (context.effectivelySensitive.has(node.bundleNodeKey) && !includeSensitive) {
+    throw sensitiveTrackingRefusal(slug, locator);
   }
   const bundleNodeId = generateBundleNodeId(
     context.loaded.committedNodes.map(config => config.bundleNodeId),
@@ -339,17 +384,6 @@ function newConfigForNode(context: NodeContext): TraversalBundleNodeConfig {
         sourceGraphSubdirectory: node.sourceGraphSubdirectory,
         fileType: node.fileType,
       };
-}
-
-async function persist(slug: string, context: NodeContext, configs: BundleNodeConfig[], operation: string): Promise<void> {
-  const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
-  if (!sourceDirectory) throw new BundleNodeOperationError(`Bundle '${slug}' has no source directory`, 409);
-  await persistBundleNodeConfigsAtomically({
-    slug,
-    sourceDirectory,
-    configs,
-    commitMessage: `${operation} bundle node for ${slug}`,
-  });
 }
 
 function sourceMarkdownPath(context: NodeContext): string {
@@ -375,17 +409,34 @@ export async function mutateBundleNode(
   let configs = [...context.loaded.committedNodes];
   let changed = false;
   let resultLocator = locator;
+  const evidenceDecisions = new Map<string, boolean>();
 
   if (mutation.operation === 'mark-sensitive' || mutation.operation === 'mark-not-sensitive') {
     const sensitive = mutation.operation === 'mark-sensitive';
     changed = context.node.sensitive !== sensitive;
     if (changed) FrontmatterUtils.updateSensitiveProperty(sourceMarkdownPath(context), sensitive);
   } else if (mutation.operation === 'track') {
+    const effectivelySensitive = context.effectivelySensitive.has(context.node.bundleNodeKey);
+    assertIncludeSensitiveFileNode(context.node.bundleNodeKind, mutation.includeSensitive === true);
+    if (effectivelySensitive && !mutation.includeSensitive) {
+      throw sensitiveTrackingRefusal(slug, locator);
+    }
     if (!context.node.tracked) {
-      const config = newConfigForNode(context);
+      const config = newConfigForNode(context, slug, locator, mutation.includeSensitive);
       configs.push(config);
       resultLocator = { kind: 'id', value: config.bundleNodeId };
       changed = true;
+      if (config.bundleNodeKind === 'file') {
+        evidenceDecisions.set(config.bundleNodeId, effectivelySensitive);
+      }
+    } else if (context.node.bundleNodeKind === 'file' && context.node.conf?.bundleNodeKind === 'file') {
+      const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
+      if (!sourceDirectory) throw new BundleNodeOperationError(`Bundle '${slug}' has no source directory`, 409);
+      const digest = currentSourceContentDigest(sourceDirectory, context.node.conf);
+      if (!trackingEvidenceMatches(context.node.conf.trackingEvidence, digest, effectivelySensitive)) {
+        evidenceDecisions.set(context.node.conf.bundleNodeId, effectivelySensitive);
+        changed = true;
+      }
     }
   } else if (mutation.operation === 'untrack') {
     ensureCanUntrack(context);
@@ -416,10 +467,11 @@ export async function mutateBundleNode(
     }
     let config = context.node.conf;
     if (!config) {
-      config = newConfigForNode(context);
+      config = newConfigForNode(context, slug, locator);
       configs.push(config);
       resultLocator = { kind: 'id', value: config.bundleNodeId };
       changed = true;
+      if (config.bundleNodeKind === 'file') evidenceDecisions.set(config.bundleNodeId, false);
     }
     for (const [field, value] of [
       ['outlinksDepth', mutation.outlinksDepth],
@@ -437,7 +489,15 @@ export async function mutateBundleNode(
   }
 
   if (changed && mutation.operation !== 'mark-sensitive' && mutation.operation !== 'mark-not-sensitive') {
-    await persist(slug, context, configs, mutation.operation);
+    const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
+    if (!sourceDirectory) throw new BundleNodeOperationError(`Bundle '${slug}' has no source directory`, 409);
+    await persistBundleNodeConfigsAtomically({
+      slug,
+      sourceDirectory,
+      configs,
+      commitMessage: `${mutation.operation} bundle node for ${slug}`,
+      effectivelySensitiveByNodeId: evidenceDecisions,
+    });
   }
   const fallbackLocator: BundleNodeLocator = {
     kind: 'path',

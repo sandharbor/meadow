@@ -14,29 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
+import type { CustomFilterConfig } from '../../../../../contracts/types/customFilters.js';
 import type {
   GraphFilterApplication,
   GraphFilterCatalog,
   GraphFilterCombination,
   GraphFilterDescriptor,
-} from '../../../../../../../contracts/types/graphInspection.js';
-import { Graph } from '../../../../../../../contracts/types/graph.js';
+} from '../../../../../contracts/types/graphInspection.js';
+import { Graph } from '../../../../../contracts/types/graph.js';
 import {
   createCustomBundleNodeSelector,
   type IBundleNodeSelector,
-} from '../../../../../../../shared_code/utils/filterSelectors.js';
+} from '../../../../../shared_code/utils/filterSelectors.js';
 import {
   BUILT_IN_GRAPH_FILTER_DEFINITIONS,
   flattenBuiltInGraphFilterDefinitions,
-} from '../../../../../../../shared_code/utils/builtInGraphFilters.js';
+} from '../../../../../shared_code/utils/builtInGraphFilters.js';
 import {
   createDefaultFilterExpression,
   evaluateFilterExpression,
   type ActiveFilterExpressionTerm,
   type FilterExpression,
   type FilterExpressionOperator,
-} from '../../../../../../../contracts/types/filterExpression.js';
+} from '../../../../../contracts/types/filterExpression.js';
 
 interface ExecutableFilter {
   id: string;

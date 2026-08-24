@@ -31,6 +31,7 @@ import {
 import { createRuntimePayloadLaunchSpec } from "../../../runtime/supervisor/src/runtimePayload.js";
 import { createSourceRuntimeLaunchSpec } from "../../../runtime/supervisor/src/sourceLaunchSpec.js";
 import { runBundleNodeCommand, showBundleNodeHelp } from "./nodeCommands.js";
+import { parseTrackBundleOptions, type TrackBundleOptions } from "./trackCommands.js";
 
 interface BundleSummary {
   slug?: unknown;
@@ -50,10 +51,6 @@ interface CreateBundleOptions {
   entryPage: string;
   slug?: string;
 }
-
-type TrackBundleOptions =
-  | { slug: string; mode: "all-safe" }
-  | { slug: string; mode: "targeted"; nodeKeys: string[] };
 
 interface BundleVersionOptions {
   slug: string;
@@ -102,6 +99,7 @@ Usage:
   meadow bundle publish <bundle-slug> --version <version-id>
   meadow bundle nodes <bundle-slug> --scope <all|final>
   meadow bundle filters <bundle-slug>
+  meadow review open <review-request-id>
   meadow help
 
 Commands:
@@ -120,6 +118,7 @@ Commands:
   bundle publish                   Publish a saved version with the active provider.
   bundle nodes                     Describe a bundle's working graph as JSON.
   bundle filters                   List filters available to a bundle as JSON.
+  review open                      Open a durable Bundle Boundary Review Request.
 
 Meadow starts or attaches to the local Runtime on demand. Commands stay
 headless unless their operation is explicitly named 'open'. JSON is written to
@@ -368,7 +367,11 @@ async function ensureCliRuntime(): Promise<void> {
   });
 }
 
-async function openBrowser(targetPath: string, operation: string): Promise<void> {
+async function openBrowser(
+  targetPath: string,
+  operation: string,
+  details: Record<string, unknown> = {},
+): Promise<void> {
   const session = resolveSession();
   const launchUrl = await createBrowserLaunchUrl(session, targetPath);
   const executable = process.env.MEADOW_BROWSER_OPEN_EXECUTABLE
@@ -383,6 +386,7 @@ async function openBrowser(targetPath: string, operation: string): Promise<void>
     operation,
     opened: true,
     url: new URL(targetPath, session.frontendOrigin).toString(),
+    ...details,
   }, null, 2));
 }
 
@@ -479,34 +483,6 @@ async function createBundle(options: CreateBundleOptions): Promise<void> {
   console.log(JSON.stringify(response, null, 2));
 }
 
-function parseTrackBundleOptions(args: string[]): TrackBundleOptions {
-  const slug = args[0];
-  if (!slug || slug.startsWith("--")) {
-    throw new Error("Usage: meadow bundle track <bundle-slug> <--all-safe|--node-key <key>>");
-  }
-  let allSafe = false;
-  const nodeKeys: string[] = [];
-  for (let index = 1; index < args.length; index += 1) {
-    const option = args[index];
-    if (option === "--all-safe") {
-      if (allSafe) throw new Error("--all-safe may only be provided once");
-      allSafe = true;
-      continue;
-    }
-    if (option === "--node-key") {
-      const value = args[index + 1];
-      if (!value || value.startsWith("--")) throw new Error("--node-key requires a bundleNodeKey value");
-      nodeKeys.push(value);
-      index += 1;
-      continue;
-    }
-    throw new Error(`Unknown option: ${option}. Run 'meadow bundle track --help'.`);
-  }
-  if (allSafe && nodeKeys.length > 0) throw new Error("Choose either --all-safe or --node-key, not both");
-  if (!allSafe && nodeKeys.length === 0) throw new Error("Provide --all-safe or at least one --node-key");
-  return allSafe ? { slug, mode: "all-safe" } : { slug, mode: "targeted", nodeKeys };
-}
-
 async function trackBundle(options: TrackBundleOptions): Promise<void> {
   const response = await requestJson(
     resolveSession(),
@@ -552,6 +528,17 @@ async function generateBundle(slug: string): Promise<void> {
     {},
   );
   if (
+    typeof response === "object"
+    && response !== null
+    && (response as { operation?: unknown }).operation === "bundle.generate"
+    && (response as { paused?: unknown }).paused === true
+    && typeof (response as { reviewRequest?: { reviewRequestId?: unknown } }).reviewRequest?.reviewRequestId === "string"
+  ) {
+    console.log(JSON.stringify(response, null, 2));
+    process.exitCode = 2;
+    return;
+  }
+  if (
     typeof response !== "object"
     || response === null
     || (response as { operation?: unknown }).operation !== "bundle.generate"
@@ -561,6 +548,26 @@ async function generateBundle(slug: string): Promise<void> {
     throw new Error("Meadow returned an invalid bundle generation response.");
   }
   console.log(JSON.stringify(response, null, 2));
+}
+
+async function openReview(reviewRequestId: string): Promise<void> {
+  const response = await requestJson(
+    resolveSession(),
+    `/review/requests/${encodeURIComponent(reviewRequestId)}`,
+  );
+  if (
+    typeof response !== "object"
+    || response === null
+    || (response as { reviewRequestId?: unknown }).reviewRequestId !== reviewRequestId
+    || typeof (response as { deepLinkPath?: unknown }).deepLinkPath !== "string"
+  ) {
+    throw new Error("Meadow returned an invalid Bundle Boundary Review Request.");
+  }
+  await openBrowser(
+    (response as { deepLinkPath: string }).deepLinkPath,
+    "review.open",
+    { reviewRequestId },
+  );
 }
 
 async function saveBundleGeneration(options: BundleVersionOptions): Promise<void> {
@@ -726,6 +733,8 @@ async function main(): Promise<void> {
   ) || (
     args[0] === "bundle"
     && ["track", "node", "open", "generate", "save-generation", "publish", "nodes", "filters"].includes(args[1] ?? "")
+  ) || (
+    args[0] === "review" && args[1] === "open"
   );
   if (isRuntimeCommand && !isHelpRequest) await ensureCliRuntime();
 
@@ -798,6 +807,19 @@ async function main(): Promise<void> {
     }
     const slug = parseSlugOnly(args.slice(2), "meadow bundle open <bundle-slug>");
     await openBrowser(`/bundle/${encodeURIComponent(slug)}`, "bundle.open");
+    return;
+  }
+
+  if (args[0] === "review" && args[1] === "open") {
+    if (args[2] === "--help" || args[2] === "-h") {
+      console.log("Usage: meadow review open <review-request-id>");
+      return;
+    }
+    const reviewRequestId = parseSlugOnly(
+      args.slice(2),
+      "meadow review open <review-request-id>",
+    );
+    await openReview(reviewRequestId);
     return;
   }
 

@@ -17,30 +17,30 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { BundleNodeTraversalDetails } from '../../../../../../../contracts/types/bundleNodeGraph.js';
-import type { FileType } from '../../../../../../../contracts/types/FileType.js';
-import type { FolderScopeGraphSnapshot } from '../../../../../../../contracts/types/folderScopeChanges.js';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
+import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeTraversalDetails } from '../../../../../contracts/types/bundleNodeGraph.js';
+import type { FileType } from '../../../../../contracts/types/FileType.js';
+import type { FolderScopeGraphSnapshot } from '../../../../../contracts/types/folderScopeChanges.js';
+import type { IBundleNode } from '../../../../../contracts/types/IBundleNode.js';
 import {
   parseBundleNodeConfig,
   validateCanonicalBundleConfiguration,
-} from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
+} from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { loadAppConfig } from '../../../../../shared_code/utils/appConfigUtils.js';
 import {
   getBundleConfigPath,
   getBundleDirectory,
   getBundleRawDirectory,
   getConfigDirectory,
-} from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { getFolderBundleRepairStatus } from '../../../../shared/bundle-config/folderBundleRepair.js';
+} from '../bundle-config/bundleConfigPaths.js';
+import { getFolderBundleRepairStatus } from '../bundle-config/folderBundleRepair.js';
 import {
   explainFolderScopeChanges,
   loadFolderScopeSnapshot,
   writeFolderScopeSnapshot,
-} from '../../../../shared/bundle-config/folderScopeChanges.js';
-import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+} from '../bundle-config/folderScopeChanges.js';
+import { runWorkingGraphRaw } from '../utils/workingGraphUtils.js';
 
 interface RustLinkResolvedInfo {
   link_resolved_target_directory: string;

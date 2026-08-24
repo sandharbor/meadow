@@ -8,6 +8,18 @@ pub struct BundleNodeConfigYaml {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(dead_code)]
+pub struct TrackingEvidence {
+    #[serde(rename = "trackedAt")]
+    tracked_at: String,
+    #[serde(rename = "sourceContentDigest")]
+    source_content_digest: String,
+    #[serde(rename = "effectivelySensitive")]
+    effectively_sensitive: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "bundleNodeKind", deny_unknown_fields)]
 pub enum BundleNodeConfig {
     #[serde(rename = "file")]
@@ -26,6 +38,8 @@ pub enum BundleNodeConfig {
         outlinks_depth: Option<i32>,
         #[serde(default, rename = "inlinksDepth")]
         inlinks_depth: Option<i32>,
+        #[serde(default, rename = "trackingEvidence")]
+        tracking_evidence: Option<TrackingEvidence>,
     },
     #[serde(rename = "folder")]
     Folder {
@@ -73,6 +87,7 @@ impl BundleNodeConfig {
             list_type,
             outlinks_depth,
             inlinks_depth,
+            tracking_evidence: None,
         }
     }
 

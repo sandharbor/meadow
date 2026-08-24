@@ -39,6 +39,7 @@ import { useDisplayFilters } from '../utils/useDisplayFilters';
 import FolderScopeChangesBanner from './FolderScopeChangesBanner';
 import type { FolderScopeChangeExplanation } from '../../../../../../../contracts/types/folderScopeChanges';
 import { useIsFolderBasedBundle } from '../utils/bundleMode';
+import { mutateFileTracking, trackSafeNodeKeys } from '../utils/bundleTrackingClient';
 
 interface BundleNodeTabsProps {
   graph: Graph;
@@ -444,6 +445,22 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
       if (page.bundleNodeKind === 'collection' || page.effectiveBlacklistingBundleNodeId) return;
       const newTracked = !page.tracked;
       if (!newTracked && page.bundleNodeId && untrackProtectedBundleNodeIds.has(page.bundleNodeId)) return;
+
+      if (page.bundleNodeKind === 'file') {
+        try {
+          const effectivelySensitive = currentDisplayGraph.getDisplayNode(bundleNodeKey)?.isEffectivelySensitive ?? false;
+          const operation = newTracked ? 'track' : 'untrack';
+          await mutateFileTracking({
+            bundleSlug, bundleNodeKey, operation,
+            includeSensitive: newTracked && effectivelySensitive,
+          });
+          onRefresh();
+          onConfigChange?.();
+        } catch (error) {
+          logger.error('Error applying one-file tracking command:', error);
+        }
+        return;
+      }
       page.tracked = newTracked;
 
       if (page.tracked) {
@@ -528,36 +545,23 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   };
 
   const handleTrackSelected = async () => {
-    let anyChanged = false;
-    selectedNodeKeys.forEach(bundleNodeKey => {
+    const nodeKeys = [...selectedNodeKeys].filter(bundleNodeKey => {
       const page = graph.getNode(bundleNodeKey);
-      if (page && page.bundleNodeKind !== 'collection' && !page.effectiveBlacklistingBundleNodeId && !currentDisplayGraph.getDisplayNode(bundleNodeKey)?.isEffectivelySensitive) {
-        page.tracked = true;
-        ensurePageConfigForPersistence(page, 'whitelist');
-        anyChanged = true;
-      }
+      return Boolean(
+        page
+        && !page.tracked
+        && page.bundleNodeKind !== 'collection'
+        && !page.effectiveBlacklistingBundleNodeId
+        && !currentDisplayGraph.getDisplayNode(bundleNodeKey)?.isEffectivelySensitive,
+      );
     });
-
-    // Persist all tracking changes. Auto-save (commit) when there are no
-    // pending complex-op draft changes; otherwise fall back to the draft flow.
-    if (anyChanged) {
-      try {
-        if (!hasDraftChanges && onAutoSave) {
-          await onAutoSave();
-        } else {
-          await persistAllConfigs();
-        }
-      } catch (error) {
-        logger.error('Error persisting batch tracking changes:', error);
-      }
-    }
-
-    // Skip onConfigChange (which reloads the graph from backend) since the
-    // persist/auto-save above already saved the config. See handleTrackPage.
-    graph.notifyChange();
-    onSelectedNodeKeysChange(new Set(selectedNodeKeys));
-    if (hasDraftChanges) {
-      onCheckDraftStatus?.();
+    if (nodeKeys.length === 0) return;
+    try {
+      await trackSafeNodeKeys(bundleSlug, nodeKeys);
+      onRefresh();
+      onConfigChange?.();
+    } catch (error) {
+      logger.error('Error applying safe batch tracking command:', error);
     }
   };
 

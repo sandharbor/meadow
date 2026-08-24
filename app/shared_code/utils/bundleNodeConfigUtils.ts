@@ -24,6 +24,7 @@ import type {
   BundleNodeConfigDocument,
   BundleNodeId,
   BundleNodeKind,
+  TrackingEvidence,
 } from '../../contracts/types/bundleNodeConfig.js';
 import type { BundleConfig } from '../../contracts/types/bundleConfig.js';
 import type { IBundleNode } from '../../contracts/types/IBundleNode.js';
@@ -42,6 +43,7 @@ const canonicalNodeFields = new Set([
   'outlinksDepth',
   'inlinksDepth',
   'memberBundleNodeIds',
+  'trackingEvidence',
 ]);
 
 export class BundleNodeConfigValidationError extends Error {
@@ -75,6 +77,33 @@ function validateDepth(value: unknown, filePath: string, recordIndex: number | n
 
 function hasOwn(value: Record<string, unknown>, field: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, field);
+}
+
+function parseTrackingEvidence(
+  value: unknown,
+  index: number,
+  filePath: string,
+): TrackingEvidence | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) fail(filePath, index, 'trackingEvidence', 'must be a mapping when present');
+  const fields = new Set(['trackedAt', 'sourceContentDigest', 'effectivelySensitive']);
+  for (const field of Object.keys(value)) {
+    if (!fields.has(field)) fail(filePath, index, `trackingEvidence.${field}`, 'is not recognized');
+  }
+  if (typeof value.trackedAt !== 'string' || Number.isNaN(Date.parse(value.trackedAt)) || !value.trackedAt.endsWith('Z')) {
+    fail(filePath, index, 'trackingEvidence.trackedAt', 'must be an ISO-8601 UTC timestamp');
+  }
+  if (typeof value.sourceContentDigest !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(value.sourceContentDigest)) {
+    fail(filePath, index, 'trackingEvidence.sourceContentDigest', 'must be a lowercase sha256 digest');
+  }
+  if (typeof value.effectivelySensitive !== 'boolean') {
+    fail(filePath, index, 'trackingEvidence.effectivelySensitive', 'must be a boolean');
+  }
+  return {
+    trackedAt: value.trackedAt,
+    sourceContentDigest: value.sourceContentDigest as `sha256:${string}`,
+    effectivelySensitive: value.effectivelySensitive,
+  };
 }
 
 /** Canonical source-root-relative folder locator. The empty string denotes the source root. */
@@ -137,6 +166,9 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
         }),
         bundleNodeKind: 'file',
         fileType: value.fileType as FileType,
+        ...(value.trackingEvidence !== undefined && {
+          trackingEvidence: parseTrackingEvidence(value.trackingEvidence, index, filePath),
+        }),
         ...(value.outlinksDepth !== undefined && {
           outlinksDepth: validateDepth(value.outlinksDepth, filePath, index, 'outlinksDepth'),
         }),
@@ -165,6 +197,9 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
       if (hasOwn(value, 'memberBundleNodeIds')) {
         fail(filePath, index, 'memberBundleNodeIds', 'is only valid for collection nodes');
       }
+      if (hasOwn(value, 'trackingEvidence')) {
+        fail(filePath, index, 'trackingEvidence', 'is only valid for file nodes');
+      }
       return {
         ...common,
         sourceGraphSubdirectory: normalized,
@@ -184,6 +219,9 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
       if (hasOwn(value, 'fileType')) fail(filePath, index, 'fileType', 'is not valid for collection nodes');
       if (hasOwn(value, 'outlinksDepth') || hasOwn(value, 'inlinksDepth')) {
         fail(filePath, index, 'outlinksDepth', 'depth overrides are not valid for collection nodes');
+      }
+      if (hasOwn(value, 'trackingEvidence')) {
+        fail(filePath, index, 'trackingEvidence', 'is only valid for file nodes');
       }
       if (common.listType !== 'whitelist') {
         fail(filePath, index, 'listType', 'collection nodes must be whitelisted');
@@ -300,6 +338,9 @@ export function stringifyBundleNodeConfig(nodes: BundleNodeConfig[]): string {
         }),
         bundleNodeKind: node.bundleNodeKind,
         ...(node.bundleNodeKind === 'file' && { fileType: node.fileType }),
+        ...(node.bundleNodeKind === 'file' && node.trackingEvidence && {
+          trackingEvidence: node.trackingEvidence,
+        }),
         bundleNodeId: node.bundleNodeId,
         listType: node.listType,
         ...(node.bundleNodeKind !== 'collection' && node.outlinksDepth !== undefined && {
@@ -314,6 +355,16 @@ export function stringifyBundleNodeConfig(nodes: BundleNodeConfig[]): string {
     }),
   };
   return YAML.stringify(document);
+}
+
+/** Explicitly remove Meadow-Home-only inclusion evidence from generation inputs. */
+export function projectBundleNodeConfigsForGeneration(nodes: BundleNodeConfig[]): BundleNodeConfig[] {
+  return nodes.map(node => {
+    if (node.bundleNodeKind !== 'file') return { ...node };
+    const projected = { ...node };
+    delete projected.trackingEvidence;
+    return projected;
+  });
 }
 
 export function generateBundleNodeId(
@@ -511,7 +562,14 @@ export function buildNodeConfigs(nodes: IBundleNode[]): BundleNodeConfig[] {
         ...(node.conf!.inlinksDepth !== undefined && { inlinksDepth: node.conf!.inlinksDepth }),
       };
       if (node.bundleNodeKind === 'folder') return { ...common, bundleNodeKind: 'folder' } satisfies FolderBundleNodeConfig;
-      return { ...common, bundleNodeKind: 'file', fileType: node.fileType } satisfies FileBundleNodeConfig;
+      return {
+        ...common,
+        bundleNodeKind: 'file',
+        fileType: node.fileType,
+        ...(node.conf!.bundleNodeKind === 'file' && node.conf!.trackingEvidence && {
+          trackingEvidence: node.conf!.trackingEvidence,
+        }),
+      } satisfies FileBundleNodeConfig;
     });
 }
 

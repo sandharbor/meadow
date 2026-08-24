@@ -16,9 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
 import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, FileBundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig.js';
 import {
   CLI_OPERATION_SCHEMA_VERSION,
   type CreateBundleCliResult,
@@ -42,6 +41,12 @@ import {
 } from '../../../shared/utils/bundleConfigUtils.js';
 import { clearBundleGuidCache, logBundleInfo } from '../../../shared/utils/logging/bundleLogger.js';
 import { listMarkdownSourcePages } from '../../../shared/utils/sourcePageFileUtils.js';
+import { syncTrackedSourceContent } from '../../../shared/bundle-node/trackedSourceContentSync.js';
+import {
+  applyTrackingEvidenceFromSnapshot,
+  sourceFilePathForConfig,
+} from '../../../shared/bundle-node/trackingEvidence.js';
+import { FrontmatterUtils } from '../../../shared/utils/frontmatterUtils.js';
 
 const DEFAULT_OUTLINKS_DEPTH = 3;
 const DEFAULT_INLINKS_DEPTH = 1;
@@ -288,14 +293,15 @@ export async function createPageBundle(
     bundleUpdatedAt: now,
     bundleNotes: options.bundleNotes ?? '',
   };
-  const initialNodes: BundleNodeConfig[] = [{
+  const entryNode: FileBundleNodeConfig = {
     bundleNodeName: entry.title,
     ...(entry.directory && { sourceGraphSubdirectory: entry.directory }),
     bundleNodeKind: 'file',
     fileType: entry.file_type,
     bundleNodeId: entryBundleNodeId,
     listType: 'whitelist',
-  }];
+  };
+  const initialNodes: BundleNodeConfig[] = [entryNode];
 
   const stagingDirectory = path.join(
     getBundlesDirectory(),
@@ -304,15 +310,30 @@ export async function createPageBundle(
   try {
     fs.mkdirSync(path.join(stagingDirectory, 'config'), { recursive: true });
     saveBundleConfigToPath(path.join(stagingDirectory, 'config', 'bundle_config.yaml'), bundleConfig);
+    syncTrackedSourceContent({
+      bundleDirectory: stagingDirectory,
+      sourceDirectory,
+      configs: initialNodes,
+    });
+    const entrySourcePath = sourceFilePathForConfig(sourceDirectory, entryNode);
+    applyTrackingEvidenceFromSnapshot({
+      bundleDirectory: stagingDirectory,
+      configs: [entryNode],
+      effectivelySensitiveByNodeId: new Map([[
+        entryNode.bundleNodeId,
+        entryNode.fileType === 'md' && FrontmatterUtils.getSensitiveProperty(entrySourcePath),
+      ]]),
+      trackedAt: now,
+    });
     saveBundleNodeConfigDocument(
       path.join(stagingDirectory, 'config', 'bundle_node_config.yaml'),
       initialNodes,
     );
     fs.renameSync(stagingDirectory, bundleDirectory);
     const git = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
-    await git.commitFiles([
-      AppConfigPaths.relative.bundleConfigFile(slug),
-      AppConfigPaths.relative.bundleNodeConfigFile(slug),
+    await git.commitDirs([
+      `bundles/${slug}/config`,
+      `bundles/${slug}/raw`,
     ], `initial bundle config for ${slug}`);
     clearBundleGuidCache(slug);
     logBundleInfo(slug, 'Page-derived bundle created');

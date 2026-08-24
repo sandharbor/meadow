@@ -17,7 +17,7 @@ limitations under the License.
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import type { BundleNodeConfig, BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, BundleNodeId, FileBundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import {
   CLI_OPERATION_SCHEMA_VERSION,
   type SkippedBundleNodeResult,
@@ -30,6 +30,7 @@ import {
   applyNodeConfigsToNodes,
   applySensitiveFromApiData,
   generateBundleNodeId,
+  nodeConfigMatchesNode,
 } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { saveBundleNodeConfigDocument } from '../../../../../../../shared_code/utils/bundleNodeConfigPersistence.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../../shared_code/utils/appConfigGitUtils.js';
@@ -40,9 +41,10 @@ import {
   getConfigDirectory,
 } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { syncTrackedSourceContent } from '../../../../shared/bundle-node/trackedSourceContentSync.js';
-import { loadCustomFiltersForBundle } from '../routes/customFiltersRoutes.js';
-import { selectEffectivelySensitiveNodeKeys } from './graphFilterService.js';
-import { loadWorkingGraph } from './workingGraphService.js';
+import { applyTrackingEvidenceFromSnapshot } from '../../../../shared/bundle-node/trackingEvidence.js';
+import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
+import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
+import { loadWorkingGraph } from '../../../../shared/bundle-graph/workingGraphService.js';
 
 export type TrackBundleNodesOptions =
   | { mode: 'targeted'; nodeKeys: string[] }
@@ -116,6 +118,8 @@ export async function persistBundleNodeConfigsAtomically(options: {
   sourceDirectory: string;
   configs: BundleNodeConfig[];
   commitMessage?: string;
+  effectivelySensitiveByNodeId?: ReadonlyMap<string, boolean>;
+  trackedAt?: string;
 }): Promise<void> {
   const bundleDirectory = getBundleDirectory(options.slug);
   const configPath = getBundleConfigPath(options.slug, 'bundle_node_config.yaml');
@@ -129,12 +133,20 @@ export async function persistBundleNodeConfigsAtomically(options: {
   if (hadRaw) fs.cpSync(rawDirectory, rollbackRawPath, { recursive: true });
 
   try {
-    saveBundleNodeConfigDocument(configPath, options.configs);
     syncTrackedSourceContent({
       bundleDirectory,
       sourceDirectory: options.sourceDirectory,
       configs: options.configs,
     });
+    applyTrackingEvidenceFromSnapshot({
+      bundleDirectory,
+      configs: options.configs.filter(
+        (config): config is FileBundleNodeConfig => config.bundleNodeKind === 'file',
+      ),
+      effectivelySensitiveByNodeId: options.effectivelySensitiveByNodeId ?? new Map(),
+      trackedAt: options.trackedAt ?? new Date().toISOString(),
+    });
+    saveBundleNodeConfigDocument(configPath, options.configs);
     const git = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
     await git.commitDirs([
       `bundles/${options.slug}/config`,
@@ -149,6 +161,45 @@ export async function persistBundleNodeConfigsAtomically(options: {
   } finally {
     fs.rmSync(rollbackRoot, { recursive: true, force: true });
   }
+}
+
+export async function trackingEvidenceDecisionsForNewFiles(
+  slug: string,
+  candidate: BundleNodeConfig[],
+  committed: BundleNodeConfig[],
+): Promise<Map<string, boolean>> {
+  const newFileConfigs = candidate.filter(
+    (config): config is FileBundleNodeConfig => config.bundleNodeKind === 'file'
+      && !committed.some(existing => existing.bundleNodeId === config.bundleNodeId),
+  );
+  if (newFileConfigs.length === 0) return new Map();
+
+  const loaded = await loadWorkingGraph({ bundleSlug: slug });
+  applySensitiveFromApiData(loaded.nodes);
+  applyNodeConfigsToNodes(loaded.nodes, candidate);
+  const graph = new Graph();
+  loaded.nodes.forEach(node => graph.addNode(node));
+  loaded.edges.forEach(edge => graph.addEdge(edge));
+  graph.setLinkSourceData(loaded.allInlinkSources, loaded.allOutlinkTargets);
+  const effectivelySensitive = selectEffectivelySensitiveNodeKeys(
+    graph,
+    loadCustomFiltersForBundle(slug),
+  );
+
+  const decisions = new Map<string, boolean>();
+  for (const config of newFileConfigs) {
+    const node = loaded.nodes.find(candidateNode => nodeConfigMatchesNode(
+      config,
+      candidateNode.bundleNodeName,
+      candidateNode.sourceGraphSubdirectory,
+      candidateNode.fileType,
+      candidateNode.bundleNodeKind,
+      candidateNode.bundleNodeId,
+    ));
+    if (!node) throw new Error(`New tracked file is unavailable in the working graph: ${config.bundleNodeName}`);
+    decisions.set(config.bundleNodeId, effectivelySensitive.has(node.bundleNodeKey));
+  }
+  return decisions;
 }
 
 export async function trackBundleNodes(
@@ -219,6 +270,7 @@ export async function trackBundleNodes(
   const rejected: SkippedBundleNodeResult[] = [];
   const existingIds = new Set<string>(loaded.committedNodes.map(config => config.bundleNodeId));
   const newConfigs: BundleNodeConfig[] = [];
+  const evidenceDecisions = new Map<string, boolean>();
 
   for (const node of selectedNodes) {
     if (node.tracked) {
@@ -244,6 +296,7 @@ export async function trackBundleNodes(
     node.tracked = true;
     node.conf = configForNode(node, bundleNodeId);
     newConfigs.push(node.conf);
+    if (node.conf.bundleNodeKind === 'file') evidenceDecisions.set(bundleNodeId, false);
     newlyTrackedNodes.push(node);
   }
 
@@ -254,6 +307,7 @@ export async function trackBundleNodes(
       slug,
       sourceDirectory,
       configs: [...loaded.committedNodes, ...newConfigs],
+      effectivelySensitiveByNodeId: evidenceDecisions,
     });
   }
 

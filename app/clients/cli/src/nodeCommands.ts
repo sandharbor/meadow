@@ -20,11 +20,12 @@ type RequestJson = (
   body?: unknown,
 ) => Promise<unknown>;
 
-interface ParsedNodeCommand {
+export interface ParsedNodeCommand {
   operation: string;
   slug: string;
   locator: { nodeId: string } | { path: string };
   depths?: { outlinksDepth?: number | null; inlinksDepth?: number | null };
+  includeSensitive?: true;
 }
 
 const OPERATIONS = new Set([
@@ -42,7 +43,7 @@ const OPERATIONS = new Set([
 export function showBundleNodeHelp(): void {
   console.log(`Usage:
   meadow bundle node describe <bundle-slug> (--id <bundle-node-id> | --path <node-path>)
-  meadow bundle node track <bundle-slug> (--id <bundle-node-id> | --path <node-path>)
+  meadow bundle node track <bundle-slug> (--id <bundle-node-id> | --path <node-path>) [--include-sensitive]
   meadow bundle node untrack <bundle-slug> (--id <bundle-node-id> | --path <node-path>)
   meadow bundle node blacklist <bundle-slug> (--id <bundle-node-id> | --path <node-path>)
   meadow bundle node unblacklist <bundle-slug> (--id <bundle-node-id> | --path <node-path>)
@@ -59,6 +60,10 @@ Node identity:
 Depths:
   --outlinks <depth|inherit>   Set an outlink-depth override or remove it.
   --inlinks <depth|inherit>    Set an inlink-depth override or remove it.
+
+Sensitive files:
+  --include-sensitive         Explicitly include exactly one effectively
+                              sensitive file. Other tracking invariants remain.
 
 Examples:
   meadow bundle node track my-site --path "Charlie Munger.md"
@@ -80,7 +85,7 @@ function parseDepth(option: string, value: string | undefined): number | null {
   return depth;
 }
 
-function parseNodeCommand(args: string[]): ParsedNodeCommand {
+export function parseNodeCommand(args: string[]): ParsedNodeCommand {
   const operation = args[0];
   const slug = args[1];
   if (!operation || !OPERATIONS.has(operation) || !slug || slug.startsWith('--')) {
@@ -90,6 +95,7 @@ function parseNodeCommand(args: string[]): ParsedNodeCommand {
   let path: string | undefined;
   let outlinksDepth: number | null | undefined;
   let inlinksDepth: number | null | undefined;
+  let includeSensitive = false;
   for (let index = 2; index < args.length; index += 1) {
     const option = args[index];
     const value = args[index + 1];
@@ -119,6 +125,14 @@ function parseNodeCommand(args: string[]): ParsedNodeCommand {
       index += 1;
       continue;
     }
+    if (option === '--include-sensitive') {
+      if (operation !== 'track') {
+        throw new Error('--include-sensitive is only valid for the track operation');
+      }
+      if (includeSensitive) throw new Error('--include-sensitive may only be provided once');
+      includeSensitive = true;
+      continue;
+    }
     throw new Error(`Unknown option: ${option}. Run 'meadow bundle node --help'.`);
   }
   if ((nodeId === undefined) === (path === undefined)) {
@@ -134,6 +148,7 @@ function parseNodeCommand(args: string[]): ParsedNodeCommand {
     ...(operation === 'set-depths' && {
       depths: { outlinksDepth, inlinksDepth },
     }),
+    ...(includeSensitive && { includeSensitive: true }),
   };
 }
 
@@ -145,7 +160,11 @@ export async function runBundleNodeCommand(
   const response = await requestJson(
     `/bundles/${encodeURIComponent(command.slug)}/curation/node/${command.operation}`,
     'POST',
-    { ...command.locator, ...command.depths },
+    {
+      ...command.locator,
+      ...command.depths,
+      ...(command.includeSensitive && { includeSensitive: true }),
+    },
   );
   const expectedOperation = `bundle.node.${command.operation}`;
   if (

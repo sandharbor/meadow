@@ -48,6 +48,8 @@ import {
   MEADOW_PREVIEW_TOKEN_QUERY,
 } from '../../../../shared/app-shell/controlPlaneSecurity.js';
 import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../../contracts/types/cliOperations.js';
+import { assessBundleBoundary } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
+import type { BundleBoundaryReviewRequest } from '../../../../../../../contracts/types/bundleBoundaryReview.js';
 
 const router = express.Router();
 
@@ -202,6 +204,37 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
       if (!fs.existsSync(bundleDirectory)) {
         return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
+
+      const boundaryReview = await assessBundleBoundary(bundleSlug);
+      if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
+        const request = boundaryReview.reviewRequest;
+        return res.status(202).json({
+          schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
+          operation: 'bundle.generate',
+          slug: bundleSlug,
+          changed: false,
+          paused: true,
+          reviewRequest: request,
+          nextActions: [
+            {
+              operation: 'open-review',
+              args: ['review', 'open', request.reviewRequestId],
+              displayCommand: `meadow review open ${request.reviewRequestId}`,
+            },
+            ...request.findings
+              .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
+              .map(finding => ({
+                operation: 'track-node' as const,
+                args: [
+                  'bundle', 'node', 'track', bundleSlug,
+                  '--id', finding.bundleNodeId,
+                  '--include-sensitive',
+                ],
+                displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
+              })),
+          ],
+        });
+      }
       const body = (req.body ?? {}) as {
         notes?: unknown;
         readerConnectionToPredecessor?: unknown;
@@ -265,6 +298,37 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
       
       if (!fs.existsSync(bundleDirectory)) {
         return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
+      }
+
+      const boundaryReview = await assessBundleBoundary(bundleSlug);
+      if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
+        const request = boundaryReview.reviewRequest;
+        return res.status(202).json({
+          schemaVersion: CLI_OPERATION_SCHEMA_VERSION,
+          operation: 'bundle.generate',
+          slug: bundleSlug,
+          changed: false,
+          paused: true,
+          reviewRequest: request,
+          nextActions: [
+            {
+              operation: 'open-review',
+              args: ['review', 'open', request.reviewRequestId],
+              displayCommand: `meadow review open ${request.reviewRequestId}`,
+            },
+            ...request.findings
+              .filter(finding => finding.code === 'sensitivity-reaffirmation-required')
+              .map(finding => ({
+                operation: 'track-node' as const,
+                args: [
+                  'bundle', 'node', 'track', bundleSlug,
+                  '--id', finding.bundleNodeId,
+                  '--include-sensitive',
+                ],
+                displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
+              })),
+          ],
+        });
       }
 
       // Load bundle config to get source directory
@@ -344,11 +408,19 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
           previewUrl: traversalPageUrl,
           message: 'Bundle preview generated successfully',
           traversalPageUrl,
-          nextActions: [{
-            operation: 'save-generation',
-            args: ['bundle', 'save-generation', bundleSlug, '--version', generationResult.versionId],
-            displayCommand: `meadow bundle save-generation ${bundleSlug} --version ${generationResult.versionId}`,
-          }],
+          ...(boundaryReview.reviewRequest && { reviewRequest: boundaryReview.reviewRequest }),
+          nextActions: [
+            ...(boundaryReview.reviewRequest ? [{
+              operation: 'open-review' as const,
+              args: ['review', 'open', boundaryReview.reviewRequest.reviewRequestId],
+              displayCommand: `meadow review open ${boundaryReview.reviewRequest.reviewRequestId}`,
+            }] : []),
+            {
+              operation: 'save-generation' as const,
+              args: ['bundle', 'save-generation', bundleSlug, '--version', generationResult.versionId],
+              displayCommand: `meadow bundle save-generation ${bundleSlug} --version ${generationResult.versionId}`,
+            },
+          ],
         });
         
       } catch (execError) {
@@ -386,6 +458,7 @@ export interface PreviewProgress {
     success: boolean;
     traversalPageUrl?: string;
     error?: string;
+    reviewRequest?: BundleBoundaryReviewRequest;
   };
 }
 
@@ -446,6 +519,21 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
     try {
       if (!bundleSlug) {
         sendProgress({ stage: 'error', message: 'bundleSlug is required', result: { success: false, error: 'bundleSlug is required' } });
+        res.end();
+        return;
+      }
+
+      const boundaryReview = await assessBundleBoundary(bundleSlug);
+      if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
+        sendProgress({
+          stage: 'error',
+          message: 'Bundle Boundary Review requires explicit sensitive-file reaffirmation before generation.',
+          result: {
+            success: false,
+            error: 'bundle-boundary-review-required',
+            reviewRequest: boundaryReview.reviewRequest,
+          },
+        });
         res.end();
         return;
       }

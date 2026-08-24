@@ -27,6 +27,10 @@ import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.
 import fs from 'fs';
 import { getBundleConfigPath } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { loadBundleConfigFromPath } from '../../../../shared/utils/bundleConfigUtils.js';
+import {
+  persistBundleNodeConfigsAtomically,
+  trackingEvidenceDecisionsForNewFiles,
+} from '../services/bundleTrackingOperations.js';
 
 const router = express.Router();
 
@@ -99,12 +103,20 @@ router.get('/bundles/:bundleSlug/curation/bundle-config', validateBundleSlug, as
 }));
 
 // Save bundle page configuration
-router.post('/bundles/:bundleSlug/curation/bundle-config', validateBundleSlug, asyncHandler((req, res) => {
+router.post('/bundles/:bundleSlug/curation/bundle-config', validateBundleSlug, asyncHandler(async (req, res) => {
   const { bundleSlug } = req.params;
-  const { configs, isDraft = true } = req.body as { configs?: BundleNodeConfig[], isDraft?: boolean };
+  const { configs, isDraft = true, commitMessage } = req.body as {
+    configs?: BundleNodeConfig[];
+    isDraft?: boolean;
+    commitMessage?: unknown;
+  };
 
   if (!configs || !Array.isArray(configs)) { 
     res.status(400).json({ error: 'Configs are required and must be an array' });
+    return;
+  }
+  if (commitMessage !== undefined && typeof commitMessage !== 'string') {
+    res.status(400).json({ error: 'commitMessage must be a string when present' });
     return;
   }
   
@@ -140,9 +152,23 @@ router.post('/bundles/:bundleSlug/curation/bundle-config', validateBundleSlug, a
     // Save to draft file
     saveBundleNodeConfigDocument(draftPath, candidate);
   } else {
-    // Save to main file and remove draft
-    // Note: Commit happens in copy-tracked-pages endpoint to include both config and tracked content
-    saveBundleNodeConfigDocument(mainPath, candidate);
+    const sourceDirectory = bundleConfig.sourceDirectory;
+    if (!sourceDirectory) {
+      res.status(409).json({ error: `Bundle '${bundleSlug}' has no source directory` });
+      return;
+    }
+    const evidenceDecisions = await trackingEvidenceDecisionsForNewFiles(
+      bundleSlug,
+      candidate,
+      committed,
+    );
+    await persistBundleNodeConfigsAtomically({
+      slug: bundleSlug,
+      sourceDirectory,
+      configs: candidate,
+      commitMessage: commitMessage || `update bundle page configuration for ${bundleSlug}`,
+      effectivelySensitiveByNodeId: evidenceDecisions,
+    });
     if (fs.existsSync(draftPath)) {
       fs.unlinkSync(draftPath);
     }

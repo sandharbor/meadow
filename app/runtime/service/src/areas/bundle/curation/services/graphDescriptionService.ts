@@ -31,7 +31,7 @@ import {
   GRAPH_DESCRIPTION_EDGE_FIELDS,
   GRAPH_DESCRIPTION_NODE_FIELDS,
 } from '../../../../../../../contracts/types/graphInspection.js';
-import { selectGraphNodeKeys } from './graphFilterService.js';
+import { selectGraphNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
 
 interface GraphLinkData {
   allInlinkSources: Record<string, string[]>;

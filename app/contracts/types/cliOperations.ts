@@ -17,6 +17,7 @@ limitations under the License.
 import type { BundleNodeConfig, BundleNodeId, BundleNodeKey, BundleNodeKind } from './bundleNodeConfig.js';
 import type { FileType } from './FileType.js';
 import type { GeneratedBundleVersionId } from './generatedBundleVersioning.js';
+import type { BundleBoundaryReviewRequest } from './bundleBoundaryReview.js';
 
 export const CLI_OPERATION_SCHEMA_VERSION = 1 as const;
 
@@ -25,6 +26,7 @@ export type CliSemanticOperation =
   | 'track-safe-nodes'
   | 'inspect-node'
   | 'track-node'
+  | 'open-review'
   | 'generate-bundle'
   | 'save-generation'
   | 'publish-generation';
@@ -150,6 +152,13 @@ export interface GenerateBundleCliResult extends CliOperationResultBase {
   versionId: GeneratedBundleVersionId;
   saved: false;
   previewUrl: string;
+  reviewRequest?: BundleBoundaryReviewRequest;
+}
+
+export interface GenerateBundleReviewPauseCliResult extends CliOperationResultBase {
+  operation: 'bundle.generate';
+  paused: true;
+  reviewRequest: BundleBoundaryReviewRequest;
 }
 
 export interface SaveGenerationCliResult extends CliOperationResultBase {

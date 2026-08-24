@@ -8,6 +8,10 @@
       "reason": "Large bundle-generation orchestration service still owns preview, publish, export, and version pointer flows.",
       "followUp": "Split preview, publish, sources export, and version pointer services under the bundle/generation area."
     },
+    "areas/bundle/generation/routes/bundleGenerationRoutes.ts": {
+      "reason": "Legacy generation routes still own preview, progress streaming, generated-file serving, and version creation; Goal 3 adds only calls into the transport-independent boundary-review service.",
+      "followUp": "Thin the remaining legacy generation routes into command/query services after the Runtime distribution work, as documented by the parent goal."
+    },
     "areas/bundle/generation/html/shared/excalidraw-vendor.js": {
       "reason": "Generated vendor bundle served as a static asset for Excalidraw rendering.",
       "followUp": "Keep generated bundles exempt or move them under a generated-assets path excluded from source line limits."

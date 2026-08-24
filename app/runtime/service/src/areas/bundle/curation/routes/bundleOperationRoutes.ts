@@ -28,7 +28,7 @@ import {
 } from '../services/bundleNodeOperations.js';
 import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import type { BundleNodeLocator } from '../../../../../../../contracts/types/cliOperations.js';
-import { WorkingGraphOperationError } from '../services/workingGraphService.js';
+import { WorkingGraphOperationError } from '../../../../shared/bundle-graph/workingGraphService.js';
 import { runSerializedBundleNodeMutation } from '../services/bundleNodeMutationQueue.js';
 
 const router = express.Router();
@@ -105,7 +105,15 @@ router.post('/bundles/:bundleSlug/curation/node/:operation', (req, res, next) =>
       }
       mutation = { operation, outlinksDepth, inlinksDepth };
     } else {
-      mutation = { operation: operation as Exclude<BundleNodeMutation['operation'], 'set-depths'> };
+      if (body.includeSensitive !== undefined && operation !== 'track') {
+        throw new BundleNodeOperationError('includeSensitive is only valid for the track operation', 400);
+      }
+      if (body.includeSensitive !== undefined && typeof body.includeSensitive !== 'boolean') {
+        throw new BundleNodeOperationError('includeSensitive must be a boolean', 400);
+      }
+      mutation = operation === 'track'
+        ? { operation, includeSensitive: body.includeSensitive === true }
+        : { operation: operation as Exclude<BundleNodeMutation['operation'], 'track' | 'set-depths'> };
     }
     const { bundleSlug } = req.params;
     res.json(await runSerializedBundleNodeMutation(
@@ -118,7 +126,10 @@ router.post('/bundles/:bundleSlug/curation/node/:operation', (req, res, next) =>
 router.post('/bundles/:bundleSlug/curation/track-nodes', (req, res, next) => {
   void (async () => {
     const { bundleSlug } = req.params;
-    const body = (req.body ?? {}) as { nodeKeys?: unknown; allSafe?: unknown };
+    const body = (req.body ?? {}) as { nodeKeys?: unknown; allSafe?: unknown; includeSensitive?: unknown };
+    if (body.includeSensitive !== undefined) {
+      return res.status(400).json({ error: '--include-sensitive is not valid for multi-node or safe-bulk tracking' });
+    }
     if (body.allSafe === true && body.nodeKeys !== undefined) {
       return res.status(400).json({ error: 'Choose either allSafe or nodeKeys, not both' });
     }

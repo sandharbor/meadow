@@ -21,7 +21,10 @@ import { parseBundleNodeConfig, resolveBundleNodeRoles } from '../../../../../..
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import { stringifyBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import {
+  projectBundleNodeConfigsForGeneration,
+  stringifyBundleNodeConfig,
+} from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
@@ -199,7 +202,11 @@ export async function ensureTrackedPageContent(
 
   if (bundleNodeConfigs.length > persistedBundleNodeConfigs.length) {
     fs.mkdirSync(path.dirname(trackedBundleNodeConfigPath), { recursive: true });
-    fs.writeFileSync(trackedBundleNodeConfigPath, stringifyBundleNodeConfig(bundleNodeConfigs), 'utf8');
+    fs.writeFileSync(
+      trackedBundleNodeConfigPath,
+      stringifyBundleNodeConfig(projectBundleNodeConfigsForGeneration(bundleNodeConfigs)),
+      'utf8',
+    );
   } else {
     fs.rmSync(trackedBundleNodeConfigPath, { force: true });
   }
@@ -434,7 +441,10 @@ export function prepareGenerationSourceMaterial(
     fs.mkdirSync(path.dirname(preparedBundleNodeConfigPath), { recursive: true });
     fs.writeFileSync(
       preparedBundleNodeConfigPath,
-      stringifyBundleNodeConfig([...nonTagConfigs, ...desiredTagPageConfigs]),
+      stringifyBundleNodeConfig(projectBundleNodeConfigsForGeneration([
+        ...nonTagConfigs,
+        ...desiredTagPageConfigs,
+      ])),
       'utf8'
     );
 

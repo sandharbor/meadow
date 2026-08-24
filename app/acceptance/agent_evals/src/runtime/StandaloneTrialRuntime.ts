@@ -36,6 +36,7 @@ import { createSourceRuntimeLaunchSpec } from "../../../../../runtime/supervisor
 import { MeadowCommandBroker } from "../broker/MeadowCommandBroker.js";
 import { evaluateCreateSafeBundle } from "../oracles/createSafeBundleOracle.js";
 import { evaluateCurateSpecificNodes } from "../oracles/curateSpecificNodesOracle.js";
+import { evaluateCurateSensitiveFile } from "../oracles/curateSensitiveFileOracle.js";
 import {
   CREATE_SAFE_BUNDLE_SCENARIO,
   materializeCreateSafeBundleSource,
@@ -69,7 +70,7 @@ export interface OperatorLaunchContext {
 }
 
 export class StandaloneTrialRuntime implements TrialRuntime {
-  readonly sourceFixture = materializeCreateSafeBundleSource({ readOnly: true });
+  readonly sourceFixture: ReturnType<typeof materializeCreateSafeBundleSource>;
   readonly isolationRoot = mkdtempSync(path.join(os.tmpdir(), "meadow-agent-eval-isolation-"));
   readonly operatorWorkingDirectory = path.join(this.isolationRoot, "operator-workdir");
   readonly brokerRoot = path.join(this.isolationRoot, "broker");
@@ -88,6 +89,9 @@ export class StandaloneTrialRuntime implements TrialRuntime {
     backendExtraEnv?: Record<string, string>;
     extension?: TrialRuntimeExtension;
   }) {
+    this.sourceFixture = materializeCreateSafeBundleSource({
+      readOnly: options.scenario?.id !== "curate-sensitive-file",
+    });
     mkdirSync(this.operatorWorkingDirectory, { recursive: true, mode: 0o700 });
     mkdirSync(this.options.artifactDirectory, { recursive: true });
   }
@@ -220,7 +224,9 @@ export class StandaloneTrialRuntime implements TrialRuntime {
   async evaluate(outcome: FrozenOutcome): Promise<OracleResult[]> {
     const baseResults = this.scenario.id === "curate-specific-nodes"
       ? await evaluateCurateSpecificNodes({ configDir: this.configDir, outcome })
-      : await evaluateCreateSafeBundle({
+      : this.scenario.id === "curate-sensitive-file"
+        ? await evaluateCurateSensitiveFile({ configDir: this.configDir, outcome })
+        : await evaluateCreateSafeBundle({
           scenario: this.scenario,
           configDir: this.configDir,
           sourceDirectory: this.sourceFixture.directory,

@@ -607,41 +607,11 @@ const BundleEditor: React.FC = () => {
       const response = await apiRequest(`bundles/${slug || ''}/curation/bundle-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ configs: nodeConfigs, isDraft: false })
+        body: JSON.stringify({ configs: nodeConfigs, isDraft: false, commitMessage })
       });
       if (!response.ok) throw new Error('Failed to save configuration');
       logger.info('Configuration saved successfully!');
       checkDraftStatus();
-
-      // Copy tracked pages and commit changes after saving configuration
-      // This endpoint also commits both config and tracked content together
-      const trackedNodes = graph.getAllNodes()
-        .filter(page => page.bundleNodeKind === 'file' && page.tracked && !page.blacklisted)
-        .map(page => ({
-          sourceGraphSubdirectory: page.sourceGraphSubdirectory,
-          title: page.bundleNodeName,
-          fileType: page.fileType
-        }));
-
-      try {
-        const copyResponse = await apiRequest(`bundles/${slug || ''}/curation/copy-tracked-pages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trackedNodes, commitMessage })
-        });
-
-        if (copyResponse.ok) {
-          const copyData = await copyResponse.json();
-          logger.info('Tracked pages copied:', copyData.message);
-          if (copyData.errors && copyData.errors.length > 0) {
-            logger.warn('Some files had errors:', copyData.errors);
-          }
-        } else {
-          logger.error('Failed to copy tracked pages');
-        }
-      } catch (copyError) {
-        logger.error('Error copying tracked pages:', copyError);
-      }
     } catch (error) {
       logger.error('Error saving configuration:', error);
     }

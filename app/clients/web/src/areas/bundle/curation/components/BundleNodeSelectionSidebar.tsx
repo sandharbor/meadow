@@ -486,7 +486,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                             : 'bg-success-100 text-success-700 hover:bg-success-200'
                         }`}
                       >
-                        Track
+                        {isEffectivelySensitive(page!) ? 'Track Sensitive File' : 'Track'}
                       </button>
                     </DisabledTooltip>
                     {!page!.blacklisted && (

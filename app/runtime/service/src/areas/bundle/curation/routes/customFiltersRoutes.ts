@@ -27,7 +27,8 @@ import {
   requireValidDocument,
   writeDurableDocument,
 } from '../../../../../../../shared_code/utils/durableDocument.js';
-import { getGraphFilterCatalog } from '../services/graphFilterService.js';
+import { getGraphFilterCatalog } from '../../../../shared/bundle-graph/graphFilterService.js';
+import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 
 const router = express.Router();
 
@@ -49,23 +50,6 @@ const saveBundleCustomFilters = (bundleSlug: string, config: BundleCustomFilters
     value: { ...config, version: '1.0.0' },
     codec: bundleCustomFiltersCodec,
   });
-};
-
-export const loadCustomFiltersForBundle = (bundleSlug: string): CustomFilterConfig[] => {
-  const globalConfig = loadGlobalCustomFilters(getConfigDirectory());
-  const bundleConfig = loadBundleCustomFilters(bundleSlug);
-  const bundleDirectory = getBundleDirectory(bundleSlug);
-  const bundleCf = loadBundleConfig(bundleDirectory);
-  const disabledGlobalFilters = bundleCf.disabledGlobalFilters || [];
-
-  return [
-    ...globalConfig.filters.map(filter => ({
-      ...filter,
-      scope: 'global' as const,
-      enabled: !disabledGlobalFilters.includes(filter.id),
-    })),
-    ...bundleConfig.filters.map(filter => ({ ...filter, scope: 'bundle' as const })),
-  ];
 };
 
 // Middleware to validate bundleSlug

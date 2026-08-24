@@ -36,10 +36,17 @@ interface TraversalBundleNodeConfig {
   inlinksDepth?: number;
 }
 
+export interface TrackingEvidence {
+  trackedAt: string;
+  sourceContentDigest: `sha256:${string}`;
+  effectivelySensitive: boolean;
+}
+
 export interface FileBundleNodeConfig extends BaseBundleNodeConfig, TraversalBundleNodeConfig {
   sourceGraphSubdirectory?: string;
   bundleNodeKind: 'file';
   fileType: FileType;
+  trackingEvidence?: TrackingEvidence;
 }
 
 export interface FolderBundleNodeConfig extends BaseBundleNodeConfig, TraversalBundleNodeConfig {
@@ -47,6 +54,7 @@ export interface FolderBundleNodeConfig extends BaseBundleNodeConfig, TraversalB
   bundleNodeKind: 'folder';
   fileType?: never;
   memberBundleNodeIds?: never;
+  trackingEvidence?: never;
 }
 
 export interface CollectionBundleNodeConfig extends BaseBundleNodeConfig {
@@ -56,6 +64,7 @@ export interface CollectionBundleNodeConfig extends BaseBundleNodeConfig {
   outlinksDepth?: never;
   inlinksDepth?: never;
   memberBundleNodeIds: BundleNodeId[];
+  trackingEvidence?: never;
 }
 
 export type BundleNodeConfig =

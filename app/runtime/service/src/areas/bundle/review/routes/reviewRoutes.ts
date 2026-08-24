@@ -53,10 +53,17 @@ import {
   SaveGeneratedBundleVersionError,
 } from '../../../../shared/generated-bundle-versioning/saveGeneratedBundleVersion.js';
 import { CLI_OPERATION_SCHEMA_VERSION } from '../../../../../../../contracts/types/cliOperations.js';
+import { findBundleBoundaryReviewRequest } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
 
 const router = express.Router();
 
 const loadAppConfig = () => loadAppConfigFromDisk(getConfigDirectory());
+
+router.get('/review/requests/:reviewRequestId', (req, res) => {
+  const request = findBundleBoundaryReviewRequest(req.params.reviewRequestId);
+  if (!request) return res.status(404).json({ error: 'Bundle Boundary Review Request not found' });
+  res.json(request);
+});
 
 router.post('/bundles/:bundleSlug/review/versions/:versionId/save-generation', (req, res, next) => {
   void (async () => {

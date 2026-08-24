@@ -26,6 +26,7 @@ import {
   generateBundleNodeId,
   normalizeFolderSourceGraphSubdirectory,
   parseBundleNodeConfig,
+  projectBundleNodeConfigsForGeneration,
   stringifyBundleNodeConfig,
   validateCanonicalBundleConfiguration,
 } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
@@ -60,6 +61,28 @@ const collection = (overrides: Partial<CollectionBundleNodeConfig> = {}): Collec
 });
 
 describe('canonical bundle node configuration', () => {
+  it('round-trips tracking evidence and explicitly excludes it from generation projection', () => {
+    const withEvidence = node({
+      trackingEvidence: {
+        trackedAt: '2026-08-24T08:00:00.000Z',
+        sourceContentDigest: `sha256:${'a'.repeat(64)}`,
+        effectivelySensitive: true,
+      },
+    });
+    const persisted = stringifyBundleNodeConfig([withEvidence]);
+    expect(persisted).toContain('trackingEvidence:');
+    expect(parseBundleNodeConfig(persisted)[0]).toMatchObject({
+      trackingEvidence: withEvidence.trackingEvidence,
+    });
+    const projected = stringifyBundleNodeConfig(projectBundleNodeConfigsForGeneration([withEvidence]));
+    expect(projected).not.toContain('trackingEvidence');
+    expect(projected).not.toContain(withEvidence.trackingEvidence!.sourceContentDigest);
+    expect(() => stringifyBundleNodeConfig([{
+      ...folder(),
+      trackingEvidence: withEvidence.trackingEvidence,
+    } as unknown as BundleNodeConfig])).toThrow(/trackingEvidence.*only valid for file/);
+  });
+
   it('serializes in deterministic record and field order and is byte-stable', () => {
     const first = stringifyBundleNodeConfig([
       node({ bundleNodeName: 'zeta', bundleNodeId: id('z1b2c3d4e5f6') }),

@@ -31,6 +31,7 @@ import { CodexProcess } from "./adapters/codexProcess.js";
 import { ScriptedManagingAgent } from "./adapters/scriptedAdapter.js";
 import { ScriptedCliAdapter } from "./adapters/scriptedCliAdapter.js";
 import { ScriptedNodeCurationAdapter } from "./adapters/scriptedNodeCurationAdapter.js";
+import { ScriptedSensitiveCurationAdapter } from "./adapters/scriptedSensitiveCurationAdapter.js";
 import {
   hashFixture,
   writeAgentTrialArtifacts,
@@ -46,6 +47,11 @@ import {
   curateSpecificNodesAnswerSheet,
   resolveCurateSpecificNodesRequest,
 } from "./scenarios/curateSpecificNodes.js";
+import {
+  CURATE_SENSITIVE_FILE_SCENARIO,
+  curateSensitiveFileAnswerSheet,
+  resolveCurateSensitiveFileRequest,
+} from "./scenarios/curateSensitiveFile.js";
 import { StandaloneTrialRuntime } from "./runtime/StandaloneTrialRuntime.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -56,7 +62,7 @@ const PUBLISHING_EXTENSION_ENTRYPOINT = path.resolve(
   "../run/meadow-extension/agent-evals/index.ts",
 );
 type AdapterName = "codex" | "scripted";
-type ScenarioName = "create-safe-bundle" | "curate-specific-nodes";
+type ScenarioName = "create-safe-bundle" | "curate-specific-nodes" | "curate-sensitive-file";
 
 function runId(): string {
   const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
@@ -90,15 +96,21 @@ function parseArgs(args: string[]): {
       publishing = true;
     } else if (arg === "--scenario") {
       const value = args[++index];
-      if (value !== "create-safe-bundle" && value !== "curate-specific-nodes") {
-        throw new Error("--scenario must be create-safe-bundle or curate-specific-nodes");
+      if (
+        value !== "create-safe-bundle"
+        && value !== "curate-specific-nodes"
+        && value !== "curate-sensitive-file"
+      ) {
+        throw new Error(
+          "--scenario must be create-safe-bundle, curate-specific-nodes, or curate-sensitive-file",
+        );
       }
       scenario = value;
     } else if (arg === "--help" || arg === "-h") {
       process.stdout.write([
         "Usage: npm run agent-eval -- [--scenario <name>] [--trials <count>] [--adapter codex|scripted] [--publishing]",
         "",
-        "Scenarios: create-safe-bundle (default), curate-specific-nodes.",
+        "Scenarios: create-safe-bundle (default), curate-specific-nodes, curate-sensitive-file.",
         "Runs clean, isolated trials and writes portable review artifacts.",
         "One trial is the sanity form; --trials 5 is the acceptance form.",
         "",
@@ -118,7 +130,9 @@ async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const scenario = options.scenario === "curate-specific-nodes"
     ? CURATE_SPECIFIC_NODES_SCENARIO
-    : CREATE_SAFE_BUNDLE_SCENARIO;
+    : options.scenario === "curate-sensitive-file"
+      ? CURATE_SENSITIVE_FILE_SCENARIO
+      : CREATE_SAFE_BUNDLE_SCENARIO;
   let publishingExtensionFactory: (() => TrialRuntimeExtension) | undefined;
   if (options.publishing) {
     if (!existsSync(PUBLISHING_EXTENSION_ENTRYPOINT)) {
@@ -151,10 +165,14 @@ async function main(): Promise<void> {
     });
     const exactRequest = options.scenario === "curate-specific-nodes"
       ? resolveCurateSpecificNodesRequest(runtime.sourceFixture.directory)
-      : resolveCreateSafeBundleRequest(runtime.sourceFixture.directory, options.publishing);
+      : options.scenario === "curate-sensitive-file"
+        ? resolveCurateSensitiveFileRequest(runtime.sourceFixture.directory)
+        : resolveCreateSafeBundleRequest(runtime.sourceFixture.directory, options.publishing);
     const answerSheet = options.scenario === "curate-specific-nodes"
       ? curateSpecificNodesAnswerSheet(runtime.sourceFixture.directory)
-      : createSafeBundleAnswerSheet(runtime.sourceFixture.directory, options.publishing);
+      : options.scenario === "curate-sensitive-file"
+        ? curateSensitiveFileAnswerSheet(runtime.sourceFixture.directory)
+        : createSafeBundleAnswerSheet(runtime.sourceFixture.directory, options.publishing);
     const fixtureSha256 = hashFixture(runtime.sourceFixture.directory);
     let manager: ManagingAgent;
     let operator: AgentAdapter;
@@ -175,7 +193,9 @@ async function main(): Promise<void> {
       manager = new ScriptedManagingAgent();
       operator = options.scenario === "curate-specific-nodes"
         ? new ScriptedNodeCurationAdapter(() => runtime.operatorLaunchContext())
-        : new ScriptedCliAdapter(() => runtime.operatorLaunchContext(), options.publishing);
+        : options.scenario === "curate-sensitive-file"
+          ? new ScriptedSensitiveCurationAdapter(() => runtime.operatorLaunchContext())
+          : new ScriptedCliAdapter(() => runtime.operatorLaunchContext(), options.publishing);
     }
     const result = await runAgentTrial({
       scenario,

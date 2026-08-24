@@ -49,7 +49,7 @@ import type {
   GraphInspectionScope,
 } from '../../../../../../../contracts/types/graphInspection.js';
 import { describeWorkingGraph } from '../services/graphDescriptionService.js';
-import { loadCustomFiltersForBundle } from './customFiltersRoutes.js';
+import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 
 const router = express.Router();
 
