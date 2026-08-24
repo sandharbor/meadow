@@ -25,11 +25,6 @@ function isCommittedCurationResponse(response: Response): boolean {
   );
 }
 
-function isWorkingGraphResponse(response: Response): boolean {
-  return response.request().method() === "GET"
-    && response.url().includes("/curation/working-graph");
-}
-
 function isBundleConfigResponse(response: Response): boolean {
   return response.request().method() === "GET"
     && new URL(response.url()).pathname.endsWith("/curation/bundle-config");
@@ -116,7 +111,6 @@ export class SelectedPageDetailComponent {
           isCommittedCurationResponse,
           { timeout: 15000 },
         ),
-        page.waitForResponse(isWorkingGraphResponse, { timeout: 15000 }),
         page.waitForResponse(isBundleConfigResponse, { timeout: 15000 }),
         loc.click(),
       ]);

@@ -67,7 +67,7 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await editor.switchToListView();
   await page.waitForTimeout(250);
   await editor.rightClickRow("Razors");
-  await editor.clickContextMenuItemAndAwaitAutoSave("Blacklist");
+  await editor.clickContextMenuItemAndAwaitAutoSaveAndGraphReload("Blacklist");
 
   // Auto-save means there is no pending draft — Save/Undo should not appear.
   await editor.expectUndoNotVisible();

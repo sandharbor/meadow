@@ -90,9 +90,10 @@ const MAX_WORKING_GRAPH_CACHE_ENTRIES = 8;
 const sourceWatches = new Map<string, SourceWatch>();
 const workingGraphCache = new Map<string, CachedWorkingGraph>();
 
-function clearCachedWorkingGraphsForRoot(graphRoot: string): void {
+export function invalidateWorkingGraphCache(graphRoot: string): void {
+  const normalizedRoot = path.resolve(graphRoot);
   for (const [key, entry] of workingGraphCache) {
-    if (entry.graphRoot === graphRoot) workingGraphCache.delete(key);
+    if (entry.graphRoot === normalizedRoot) workingGraphCache.delete(key);
   }
 }
 
@@ -105,11 +106,11 @@ function sourceRevision(graphRoot: string): number | null {
       revision: 0,
       watcher: fs.watch(normalizedRoot, { recursive: true }, () => {
         watch.revision += 1;
-        clearCachedWorkingGraphsForRoot(normalizedRoot);
+        invalidateWorkingGraphCache(normalizedRoot);
       }),
     };
     watch.watcher.on('error', () => {
-      clearCachedWorkingGraphsForRoot(normalizedRoot);
+      invalidateWorkingGraphCache(normalizedRoot);
       sourceWatches.delete(normalizedRoot);
       watch.watcher.close();
     });

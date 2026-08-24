@@ -309,7 +309,6 @@ export class BundleEditorPage {
         isCommittedCurationResponse,
         { timeout: 15000 },
       ),
-      this.page.waitForResponse(isWorkingGraphResponse, { timeout: 15000 }),
       this.page.waitForResponse(isBundleConfigResponse, { timeout: 15000 }),
       btn.click(),
     ]);
@@ -564,7 +563,6 @@ export class BundleEditorPage {
         isCommittedCurationResponse,
         { timeout: 15000 },
       ),
-      this.page.waitForResponse(isWorkingGraphResponse, { timeout: 15000 }),
       this.page.waitForResponse(isBundleConfigResponse, { timeout: 15000 }),
       item.click(),
     ]);

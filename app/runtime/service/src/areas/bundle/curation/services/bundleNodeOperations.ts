@@ -55,6 +55,7 @@ import {
   trackingEvidenceMatches,
 } from '../../../../shared/bundle-node/trackingEvidence.js';
 import { loadWorkingGraph, type LoadedWorkingGraph } from '../../../../shared/bundle-graph/workingGraphService.js';
+import { invalidateWorkingGraphCache } from '../../../../shared/utils/workingGraphUtils.js';
 
 export type BundleNodeMutation =
   | { operation: Exclude<BundleNodeMutationOperation, 'track' | 'set-depths'> }
@@ -415,7 +416,14 @@ export async function mutateBundleNode(
   if (mutation.operation === 'mark-sensitive' || mutation.operation === 'mark-not-sensitive') {
     const sensitive = mutation.operation === 'mark-sensitive';
     changed = context.node.sensitive !== sensitive;
-    if (changed) FrontmatterUtils.updateSensitiveProperty(sourceMarkdownPath(context), sensitive);
+    if (changed) {
+      FrontmatterUtils.updateSensitiveProperty(sourceMarkdownPath(context), sensitive);
+      const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
+      if (!sourceDirectory) throw new BundleNodeOperationError(`Bundle '${slug}' has no source directory`, 409);
+      invalidateWorkingGraphCache(sourceDirectory);
+      context.node.data = { ...context.node.data, is_sensitive: sensitive };
+      context.node.sensitive = sensitive;
+    }
   } else if (mutation.operation === 'track') {
     const effectivelySensitive = context.effectivelySensitive.has(context.node.bundleNodeKey);
     assertIncludeSensitiveFileNode(context.node.bundleNodeKind, mutation.includeSensitive === true);
@@ -510,8 +518,6 @@ export async function mutateBundleNode(
     mutation.operation === 'set-depths'
     || mutation.operation === 'blacklist'
     || mutation.operation === 'unblacklist'
-    || mutation.operation === 'mark-sensitive'
-    || mutation.operation === 'mark-not-sensitive'
   );
   if (topologyChanged) {
     context = await loadContext(slug, resultNodeLocator);

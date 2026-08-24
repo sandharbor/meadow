@@ -38,7 +38,10 @@ import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundle
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import { resolveEffectiveGenerationOptions } from '../../../../../../../shared_code/utils/generationOptionsUtils.js';
-import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+import {
+  invalidateWorkingGraphCache,
+  runWorkingGraphRaw,
+} from '../../../../shared/utils/workingGraphUtils.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { IEdge } from '../../../../../../../contracts/types/graph.js';
@@ -459,6 +462,10 @@ export async function generateHtmlForBundle(
       fs.rmSync(legacyRenderSourceContentDirectory, { recursive: true, force: true });
     });
   }
+
+  // Generation roots are rebuilt synchronously. Invalidate explicitly rather
+  // than waiting for filesystem watch callbacks before traversing them.
+  invalidateWorkingGraphCache(sourceContentDirectory);
   
   // Markdown pages use Meadow's renderer. Native HTML pages are emitted by a
   // separate pass below so their document structure remains intact.
@@ -534,6 +541,7 @@ export async function generateHtmlForBundle(
   }
 
   const renderContentDirectory = scrubbedSourceContentDirectory;
+  invalidateWorkingGraphCache(renderContentDirectory);
   
 
   // Create and clean the current generated HTML directory.

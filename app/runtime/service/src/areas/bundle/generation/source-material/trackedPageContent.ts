@@ -42,7 +42,10 @@ import {
   pageMatchesConfiguredSrsTags,
 } from '../render-source/srsMarkdown.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+import {
+  invalidateWorkingGraphCache,
+  runWorkingGraphRaw,
+} from '../../../../shared/utils/workingGraphUtils.js';
 import { copySourceFileToTrackedSnapshot } from '../../../../shared/bundle-node/trackedSourceContentSync.js';
 import {
   textDocumentCodec,
@@ -336,11 +339,14 @@ export async function ensureTrackedPageContent(
   }
 
   logger.info(`Synced ${copiedCount} tracked pages to ${targetDir}`);
+  invalidateWorkingGraphCache(targetDir);
 }
 
 function cleanupPreparedGenerationSourceMaterial(bundleDirectory: string): void {
   const preparedSourceContentDir = BundleConfigPaths.getPreparedSourceContentDir(bundleDirectory);
   const preparedBundleNodeConfigPath = BundleConfigPaths.getPreparedBundleNodeConfigFile(bundleDirectory);
+
+  invalidateWorkingGraphCache(preparedSourceContentDir);
 
   if (fs.existsSync(preparedSourceContentDir)) {
     fs.rmSync(preparedSourceContentDir, { recursive: true, force: true });
@@ -468,6 +474,8 @@ export function prepareGenerationSourceMaterial(
         fs.writeFileSync(filePath, rewritten, 'utf8');
       }
     }
+
+    invalidateWorkingGraphCache(preparedSourceContentDir);
 
     return {
       sourceContentDirectory: preparedSourceContentDir,
