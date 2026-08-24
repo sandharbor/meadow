@@ -183,12 +183,32 @@ class GenerationOptionsSection {
 
   /** Set the Sources ZIP bundle-level setting to "On" (enabled). */
   async enableSourcesExport() {
+    const previewStarted = this.page.waitForResponse(response => (
+      response.url().includes("/preview-stream")
+    ));
     await this.selectHoverOption("Sources ZIP", "On");
+    await previewStarted;
+    const changesSpinner = this.page
+      .locator("nav button", { hasText: "Changes" })
+      .first()
+      .locator("span.animate-spin");
+    await this.expect(changesSpinner).toBeVisible({ timeout: 10_000 });
+    await this.expect(changesSpinner).not.toBeVisible({ timeout: 60_000 });
   }
 
   /** Set the Sources ZIP bundle-level setting to "Off" (disabled). */
   async disableSourcesExport() {
+    const previewStarted = this.page.waitForResponse(response => (
+      response.url().includes("/preview-stream")
+    ));
     await this.selectHoverOption("Sources ZIP", "Off");
+    await previewStarted;
+    const changesSpinner = this.page
+      .locator("nav button", { hasText: "Changes" })
+      .first()
+      .locator("span.animate-spin");
+    await this.expect(changesSpinner).toBeVisible({ timeout: 10_000 });
+    await this.expect(changesSpinner).not.toBeVisible({ timeout: 60_000 });
   }
 
   /** Set generated-bundle Folder Navigation to "On" for this bundle. */
