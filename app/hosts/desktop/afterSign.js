@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 exports.default = async function(context) {
   // Only run on macOS
@@ -17,8 +17,11 @@ exports.default = async function(context) {
   console.log('Re-signing binaries with proper entitlements after electron-builder signing...');
   
   const appOutDir = context.appOutDir;
-  const resourcesPath = path.join(appOutDir, 'Contents', 'Resources');
+  const productFilename = context.packager.appInfo.productFilename;
+  const appBundle = path.join(appOutDir, `${productFilename}.app`);
+  const resourcesPath = path.join(appBundle, 'Contents', 'Resources');
   const entitlementsPath = path.join(__dirname, 'entitlements.mac.plist');
+  const signingIdentity = 'Developer ID Application: Sand Harbor Software, LLC (3Y93X67X8P)';
   
   const payloadRoot = path.join(resourcesPath, 'runtime-payload');
   const nodeBinary = path.join(payloadRoot, 'bin', 'node');
@@ -29,21 +32,18 @@ exports.default = async function(context) {
   // Re-sign binaries with entitlements that allow JIT and loading external libraries
   const signBinary = (binaryPath, name) => {
     if (!fs.existsSync(binaryPath)) {
-      console.log(`Skipping ${name}: not found`);
-      return;
+      throw new Error(`Required packaged binary was not found: ${name} (${binaryPath})`);
     }
-    
-    try {
-      // Sign with the same identity and entitlements as the main app
-      // The --force flag replaces the existing signature
-      // --options runtime enables hardened runtime
-      const cmd = `codesign --force --options runtime --entitlements "${entitlementsPath}" --sign "Developer ID Application: Sand Harbor Software, LLC (3Y93X67X8P)" "${binaryPath}"`;
-      console.log(`Re-signing ${name} with JIT entitlements...`);
-      execSync(cmd, { stdio: 'inherit' });
-      console.log(`Successfully re-signed: ${name}`);
-    } catch (error) {
-      console.error(`Warning: Failed to sign ${name}: ${error.message}`);
-    }
+
+    console.log(`Re-signing ${name} with JIT entitlements...`);
+    execFileSync('codesign', [
+      '--force',
+      '--options', 'runtime',
+      '--entitlements', entitlementsPath,
+      '--sign', signingIdentity,
+      binaryPath,
+    ], { stdio: 'inherit' });
+    console.log(`Successfully re-signed: ${name}`);
   };
   
   // Re-sign all bundled binaries with proper entitlements
@@ -51,6 +51,17 @@ exports.default = async function(context) {
   signBinary(workingGraphBin, 'working_graph_bin');
   signBinary(sourcePageSearchBin, 'source_page_search_by_title_bin');
   signBinary(fastGitOpsBin, 'fast_git_ops_bin');
-  
+
+  // Re-seal the outer bundle after replacing signatures on nested binaries.
+  execFileSync('codesign', [
+    '--force',
+    '--deep',
+    '--options', 'runtime',
+    '--entitlements', entitlementsPath,
+    '--sign', signingIdentity,
+    appBundle,
+  ], { stdio: 'inherit' });
+
+  execFileSync(nodeBinary, ['--version'], { stdio: 'inherit' });
   console.log('Binary re-signing complete.');
 };

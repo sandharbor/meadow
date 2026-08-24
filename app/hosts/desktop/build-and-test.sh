@@ -154,29 +154,40 @@ npx electron-builder --mac --dir -c.mac.notarize=false
 log_info "Re-signing binaries with JIT entitlements..."
 app_bundle=$(find build -name "Meadow.app" -type d | head -n 1)
 if [ -n "$app_bundle" ]; then
-    node_binary="$app_bundle/Contents/Resources/node"
-    if [ -f "$node_binary" ]; then
-        codesign --force --options runtime --entitlements "$(pwd)/entitlements.mac.plist" --sign "Developer ID Application: Sand Harbor Software, LLC (3Y93X67X8P)" "$node_binary"
-        log_success "Re-signed node binary"
+    payload_root="$app_bundle/Contents/Resources/runtime-payload"
+    node_binary="$payload_root/bin/node"
+    required_binaries=(
+        "$node_binary"
+        "$payload_root/native/working_graph_bin"
+        "$payload_root/native/source_page_search_by_title_bin"
+        "$payload_root/native/fast_git_ops_bin"
+    )
+    for required_binary in "${required_binaries[@]}"; do
+        if [ ! -f "$required_binary" ]; then
+            log_error "Required packaged binary not found: $required_binary"
+            exit 1
+        fi
+    done
 
-        log_info "Verifying node entitlements:"
-        codesign -d --entitlements - "$node_binary" 2>&1 | grep -A 20 "Executable"
-    fi
+    codesign --force --options runtime --entitlements "$(pwd)/entitlements.mac.plist" --sign "Developer ID Application: Sand Harbor Software, LLC (3Y93X67X8P)" "$node_binary"
+    log_success "Re-signed node binary"
+
+    log_info "Verifying node entitlements:"
+    codesign -d --entitlements - "$node_binary" 2>&1 | grep -A 20 "Executable"
 
     # Re-sign Rust binaries too
-    for rust_bin in "$app_bundle/Contents/Resources/working_graph/working_graph_bin" \
-                    "$app_bundle/Contents/Resources/source_page_search_by_title/source_page_search_by_title_bin" \
-                    "$app_bundle/Contents/Resources/fast_git_ops/fast_git_ops_bin"; do
-        if [ -f "$rust_bin" ]; then
-            codesign --force --options runtime --entitlements "$(pwd)/entitlements.mac.plist" --sign "Developer ID Application: Sand Harbor Software, LLC (3Y93X67X8P)" "$rust_bin"
-            log_info "Re-signed $(basename $rust_bin)"
-        fi
+    for rust_bin in "${required_binaries[@]:1}"; do
+        codesign --force --options runtime --entitlements "$(pwd)/entitlements.mac.plist" --sign "Developer ID Application: Sand Harbor Software, LLC (3Y93X67X8P)" "$rust_bin"
+        log_info "Re-signed $(basename "$rust_bin")"
     done
 
     # Re-sign the entire app bundle to update the seal
     log_info "Re-signing app bundle to update seal..."
     codesign --force --deep --options runtime --entitlements "$(pwd)/entitlements.mac.plist" --sign "Developer ID Application: Sand Harbor Software, LLC (3Y93X67X8P)" "$app_bundle"
     log_success "App bundle re-signed with JIT entitlements"
+
+    packaged_node_version=$("$node_binary" --version)
+    log_success "Packaged node starts successfully ($packaged_node_version)"
 else
     log_error "Could not find app bundle to re-sign"
     exit 1
