@@ -134,10 +134,15 @@ function commandOutput(command, args, cwd) {
   return result.stdout;
 }
 
-function copy(source, destination) {
+export function copyRuntimePayloadInput(source, destination) {
   if (!existsSync(source)) throw new Error(`Runtime Payload input is missing: ${source}`);
   mkdirSync(path.dirname(destination), { recursive: true });
-  cpSync(source, destination, { recursive: true, force: true, preserveTimestamps: true });
+  cpSync(source, destination, {
+    recursive: true,
+    force: true,
+    preserveTimestamps: true,
+    verbatimSymlinks: true,
+  });
 }
 
 function copyProductionDependencies(serviceRoot, destination) {
@@ -148,7 +153,7 @@ function copyProductionDependencies(serviceRoot, destination) {
   ).trim().split("\n").filter(candidate => candidate.includes(`${path.sep}node_modules${path.sep}`));
   for (const packageDirectory of packageDirectories) {
     const relativePath = path.relative(serviceRoot, packageDirectory);
-    copy(packageDirectory, path.join(destination, relativePath));
+    copyRuntimePayloadInput(packageDirectory, path.join(destination, relativePath));
   }
 }
 
@@ -159,7 +164,7 @@ function copyGenerationAssets(serviceRoot, destinationServiceRoot) {
     "dist/runtime/service/src/areas/bundle/generation/html",
   );
   for (const directory of GENERATION_ASSET_DIRECTORIES) {
-    copy(path.join(sourceHtmlRoot, directory), path.join(destinationHtmlRoot, directory));
+    copyRuntimePayloadInput(path.join(sourceHtmlRoot, directory), path.join(destinationHtmlRoot, directory));
   }
 }
 
@@ -241,18 +246,18 @@ export function buildRuntimePayload(options) {
     }
   }
 
-  copy(
+  copyRuntimePayloadInput(
     path.join(supervisorRoot, "dist/meadow-runtime-supervisor.cjs"),
     path.join(stagingRoot, "supervisor/meadow-runtime-supervisor.cjs"),
   );
-  copy(path.join(serviceRoot, "dist"), path.join(stagingRoot, "service/dist"));
+  copyRuntimePayloadInput(path.join(serviceRoot, "dist"), path.join(stagingRoot, "service/dist"));
   copyFileSync(path.join(serviceRoot, "package.json"), path.join(stagingRoot, "service/package.json"));
   copyProductionDependencies(serviceRoot, path.join(stagingRoot, "service"));
   copyGenerationAssets(serviceRoot, path.join(stagingRoot, "service"));
 
-  copy(path.join(webRoot, "dist"), path.join(stagingRoot, "web"));
-  copy(path.join(webRoot, "server.js"), path.join(stagingRoot, "web/server.js"));
-  copy(path.join(webRoot, "package.json"), path.join(stagingRoot, "web/package.json"));
+  copyRuntimePayloadInput(path.join(webRoot, "dist"), path.join(stagingRoot, "web"));
+  copyRuntimePayloadInput(path.join(webRoot, "server.js"), path.join(stagingRoot, "web/server.js"));
+  copyRuntimePayloadInput(path.join(webRoot, "package.json"), path.join(stagingRoot, "web/package.json"));
 
   const nativeInputs = [
     ["source_page_search_by_title/source_page_search_by_title_code/target/release/source_page_search_by_title_bin", "source_page_search_by_title_bin"],
@@ -260,16 +265,16 @@ export function buildRuntimePayload(options) {
     ["working_graph/working_graph_code/target/release/working_graph_bin", "working_graph_bin"],
   ];
   for (const [source, name] of nativeInputs) {
-    copy(path.join(meadowRoot, "app/runtime/native", source), path.join(stagingRoot, "native", name));
+    copyRuntimePayloadInput(path.join(meadowRoot, "app/runtime/native", source), path.join(stagingRoot, "native", name));
     chmodSync(path.join(stagingRoot, "native", name), 0o755);
   }
-  copy(options.nodeExecutable, path.join(stagingRoot, "bin/node"));
+  copyRuntimePayloadInput(options.nodeExecutable, path.join(stagingRoot, "bin/node"));
   chmodSync(path.join(stagingRoot, "bin/node"), 0o755);
-  copy(
+  copyRuntimePayloadInput(
     path.join(meadowRoot, "app/shared_data/home_fixtures/home_fixture_example"),
     path.join(stagingRoot, "example/home_fixture"),
   );
-  copy(
+  copyRuntimePayloadInput(
     path.join(meadowRoot, "app/shared_data/source_graphs/example-bundle-data"),
     path.join(stagingRoot, "example/source_graph"),
   );

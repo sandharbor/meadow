@@ -15,14 +15,39 @@ limitations under the License.
 */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  copyRuntimePayloadInput,
   createPayloadManifest,
   verifyPayloadManifest,
 } from "../src/buildRuntimePayload.mjs";
+
+test("Runtime Payload copies preserve relative symlinks", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "meadow-runtime-payload-copy-"));
+  try {
+    const source = path.join(root, "source");
+    const destination = path.join(root, "relocated", "payload");
+    mkdirSync(source, { recursive: true });
+    writeFileSync(path.join(source, "target.txt"), "target\n");
+    symlinkSync("target.txt", path.join(source, "link.txt"));
+
+    copyRuntimePayloadInput(source, destination);
+
+    assert.equal(readlinkSync(path.join(destination, "link.txt")), "target.txt");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("Runtime Payload identity is deterministic and content-addressed", () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "meadow-runtime-payload-manifest-"));
