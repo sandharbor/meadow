@@ -200,7 +200,7 @@ fi
 # Run e2e tests after parallel checks (they depend on app being installed)
 if [ "$CHECK_E2E" = "1" ]; then
     echo "🧪 Running e2e tests (slow)..."
-    ./app/e2e-tests/test-runner/_module/scripts/slowcheck
+    ./app/acceptance/e2e/_module/scripts/slowcheck
 fi
 
 # If we get here, everything worked!

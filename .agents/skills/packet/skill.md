@@ -18,7 +18,7 @@ lsof -ti:5175 | xargs kill -9 2>/dev/null || true
 lsof -ti:3456 | xargs kill -9 2>/dev/null || true
 
 # 2. Start the report viewer (server + client) in the background
-cd app/e2e-tests/report-viewer && npm start &
+cd app/acceptance/report_viewer && npm start &
 
 # 3. Wait for the client to be ready
 sleep 3

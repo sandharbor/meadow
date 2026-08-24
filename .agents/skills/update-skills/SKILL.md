@@ -30,9 +30,9 @@ Work through the skills one at a time. For each skill:
 Read the skill file and extract every factual claim about the system. These
 fall into several categories:
 
-- **File paths** — e.g. `app/e2e-tests/tests/*.spec.ts`, `app/hosts/desktop/package.json`
+- **File paths** — e.g. `app/acceptance/e2e/tests/*.spec.ts`, `app/hosts/desktop/package.json`
 - **Directory structures** — e.g. ASCII trees showing project layout
-- **Command names and flags** — e.g. `./app/e2e-tests/check`, `./app/e2e-tests/dev-e2e`
+- **Command names and flags** — e.g. `./app/acceptance/e2e/_module/scripts/slowcheck`, `./app/acceptance/e2e/dev-e2e`
 - **Script behavior descriptions** — e.g. "starts MinIO in Docker", "allocates free ports"
 - **Code patterns** — e.g. fixture APIs like `snapshot(message)`, function signatures
 - **Architecture details** — e.g. port numbers, API routes, file formats

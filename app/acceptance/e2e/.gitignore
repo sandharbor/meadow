@@ -1,0 +1,8 @@
+node_modules/
+.minio-endpoint
+.minio-container
+.frontend-dist-dir
+test-results/
+playwright-report/
+/src/agent-evals
+/tests/agent-eval-harness.test.ts

@@ -99,7 +99,7 @@ or "invoke the /e2e skill". Instead, use this prompt:
 >    is available, omit the "from agent" part. The agent name for this
 >    worktree is: "${AGENT_NAME}". Run:
 >    ```bash
->    ./app/e2e-tests/_module/scripts/slowcheck --run-notes "<your note>"
+>    ./app/acceptance/e2e/_module/scripts/slowcheck --run-notes "<your note>"
 >    ```
 > 3. If any check fails:
 >    a. Read the output carefully to identify what failed.
@@ -114,10 +114,10 @@ or "invoke the /e2e skill". Instead, use this prompt:
 >
 > ### Key files for e2e debugging
 >
-> - `app/e2e-tests/tests/*.spec.ts` — test specs
-> - `app/e2e-tests/src/run/test-fixtures.ts` — custom Playwright fixtures
-> - `app/e2e-tests/src/run/pages/` — page object models used by tests
-> - `app/e2e-tests/playwright.config.ts` — test configuration, Docker container setup
+> - `app/acceptance/e2e/tests/*.spec.ts` — test specs
+> - `app/acceptance/e2e/src/run/test-fixtures.ts` — custom Playwright fixtures
+> - `app/acceptance/e2e/src/run/pages/` — page object models used by tests
+> - `app/acceptance/e2e/playwright.config.ts` — test configuration, Docker container setup
 > - `~/meadow-e2e-artifacts/` — test run output (videos, logs, state snapshots)
 >
 > ### Report back

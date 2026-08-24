@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+node ../e2e/scripts/link-agent-eval-package-views.mjs
+
+echo "Running deterministic agent-eval harness tests..."
+npm --prefix ../e2e run test:agent-evals

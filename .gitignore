@@ -10,7 +10,7 @@ _agent/agent/.agent_info
 # Local integration artifacts — not part of this repo.
 /cloud
 /app/publishing_providers/MeadowPublishingProvider
-/app/e2e-tests/test-runner/tests/meadow-extension
-/app/e2e-tests/test-runner/src/run/meadow-extension
-/app/e2e-tests/test-runner/src/scenario-docs/meadow-extension
-/app/e2e-tests/test-runner/fixtures/pre-migration/meadow-extension
+/app/acceptance/e2e/tests/meadow-extension
+/app/acceptance/e2e/src/run/meadow-extension
+/app/acceptance/e2e/src/scenario-docs/meadow-extension
+/app/acceptance/e2e/fixtures/pre-migration/meadow-extension

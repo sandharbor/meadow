@@ -41,7 +41,7 @@ function branchExists(name: string): boolean {
 function copyImportantUntrackedFiles(repoRoot: string, wtPath: string): void {
   const relativePaths = [
     "docs/tools/source_markdown_path.local",
-    "app/e2e-tests/test-runner/export-scenarios-to-docs/living-spec_export_dir.local"
+    "app/acceptance/e2e/export-scenarios-to-docs/living-spec_export_dir.local"
   ];
 
   for (const rel of relativePaths) {

@@ -5,10 +5,10 @@ description: Add, run, or fix bugs exposed by end-to-end tests for the report vi
 
 # Report Viewer E2E Specs
 
-The e2e report viewer (`app/e2e-tests/report-viewer/`) has grown into a
+The e2e report viewer (`app/acceptance/report_viewer/`) has grown into a
 complicated application in its own right, so it needs its own end-to-end
 test suite — separate from the main Meadow e2e tests in
-`app/e2e-tests/test-runner/tests/`.
+`app/acceptance/e2e/tests/`.
 
 When invoked, the user wants to either **add a new spec**, **run the
 existing suite**, or **fix a bug a spec exposed**. Use this skill to
@@ -17,7 +17,7 @@ establish shared context, then follow the user's specific ask.
 ## Where everything lives
 
 ```
-app/e2e-tests/report-viewer/
+app/acceptance/report_viewer/
 ├── e2e/
 │   ├── playwright.config.ts       # two-entry webServer (express + vite)
 │   ├── fixtures/
@@ -36,7 +36,7 @@ app/e2e-tests/report-viewer/
 Specs should be thin. DOM selectors and interaction sequences belong in
 page-object components under `e2e/pages/`, mirroring the convention used
 by the main e2e suite (see
-`app/e2e-tests/test-runner/src/run/pages/BundleEditorPage/components/FilterPanelComponent.ts`
+`app/acceptance/e2e/src/run/pages/BundleEditorPage/components/FilterPanelComponent.ts`
 for the reference).
 
 - One class per logical area of the UI (a tab, a panel, a modal).
@@ -62,7 +62,7 @@ for the reference).
 ## How to run the suite
 
 ```bash
-cd app/e2e-tests/report-viewer
+cd app/acceptance/report_viewer
 
 # First time only (or after package-lock changes):
 npm install
@@ -95,9 +95,9 @@ webServer subprocesses and uses `reuseExistingServer: false`.
 ## The cached publish-flow fixture
 
 All specs share a single fixture: the artifact directory produced by running
-`app/e2e-tests/test-runner/tests/publish-flow.spec.ts`.
+`app/acceptance/e2e/tests/publish-flow.spec.ts`.
 
-- **Builder:** `app/e2e-tests/report-viewer/e2e/fixtures/publish-flow-fixture.ts`
+- **Builder:** `app/acceptance/report_viewer/e2e/fixtures/publish-flow-fixture.ts`
   — exports `ensurePublishFlowArtifact()` which returns
   `{ runId, testSlug, artifactDir }`.
 - **Cache key:** SHA-256 of `publish-flow.spec.ts` contents (first 12 chars).
@@ -109,7 +109,7 @@ All specs share a single fixture: the artifact directory produced by running
   test slug dir says `passed`.
 - **How it rebuilds:** shells out to
   `npx tsx src/cli.ts --run-id <stableId> --grep "Publish flow"` inside
-  `app/e2e-tests/test-runner/`. Assumes test-runner deps are already installed
+  `app/acceptance/e2e/`. Assumes test-runner deps are already installed
   (quickcheck does this). It bypasses `slowcheck.sh` to avoid the
   `npm install --force` on every invocation.
 - **Invalidation:** content-hash of the spec file only. Changes to the
@@ -162,7 +162,7 @@ message if the fixture is malformed.
 
 ## Useful report-viewer server endpoints
 
-(Served by `app/e2e-tests/report-viewer/src/server/index.ts` on port 3456,
+(Served by `app/acceptance/report_viewer/src/server/index.ts` on port 3456,
 proxied through Vite at 5175.)
 
 - `GET /api/:runId/:testSlug/manifest` — full manifest, includes
@@ -189,11 +189,11 @@ ever changes, update `PUBLISH_FLOW_TEST_SLUG` in
 
 ## After adding a spec
 
-1. Run `npm run e2e` in `app/e2e-tests/report-viewer/` and confirm it passes.
+1. Run `npm run e2e` in `app/acceptance/report_viewer/` and confirm it passes.
 2. Run `./quickcheck` from the repo root (per project AGENTS.md). If
-   changes are limited to `app/e2e-tests/`, the scoped check is faster:
+   changes are limited to `app/acceptance/`, the scoped check is faster:
    ```bash
-   cd app/e2e-tests && _module/scripts/quickcheck
+   cd app/acceptance && _module/scripts/quickcheck
    ```
    Quickcheck type-checks the e2e/ directory via `tsconfig.e2e.json` but
    does NOT run the Playwright tests — those are opt-in via `npm run e2e`.
@@ -231,7 +231,7 @@ the user asks to fix the underlying bug, use this tight loop:
    rm -rf ~/meadow-e2e-artifacts/current/rv-fixture-*
    ```
 4. **Regenerate + verify.** Run `npm run e2e` in
-   `app/e2e-tests/report-viewer/`. The fixture builder will rerun
+   `app/acceptance/report_viewer/`. The fixture builder will rerun
    `publish-flow.spec.ts` (slow, ~20s) to produce a fresh artifact, then
    Playwright runs every spec against it. Confirm the target spec flips
    from red to green — and that no other spec regresses.

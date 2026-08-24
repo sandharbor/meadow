@@ -33,10 +33,10 @@ Keep notes to 1-2 sentences.
 Pass the note via the `--run-notes` flag:
 
 ```bash
-./app/e2e-tests/test-runner/_module/scripts/slowcheck --run-notes "<your note here>"
+./app/acceptance/e2e/_module/scripts/slowcheck --run-notes "<your note here>"
 ```
 
-This runs the full Playwright test suite (all specs in `app/e2e-tests/test-runner/tests/`),
+This runs the full Playwright test suite (all specs in `app/acceptance/e2e/tests/`),
 assembles artifacts, and reports results.
 
 ### Running a single test
@@ -45,7 +45,7 @@ If arguments were passed to `/e2e` (e.g. `/e2e html-post-processing-hook`),
 use `--grep` to filter to only matching test(s):
 
 ```bash
-./app/e2e-tests/test-runner/_module/scripts/slowcheck --run-notes "<note>" --grep "<pattern>"
+./app/acceptance/e2e/_module/scripts/slowcheck --run-notes "<note>" --grep "<pattern>"
 ```
 
 The grep pattern is passed to Playwright's `--grep` flag, which matches
@@ -58,12 +58,12 @@ If the user asks to run tests for specific "scenario docs" or "scenarios" (they
 may not use exact names), use `--scenarios` to filter by scenario doc ID:
 
 ```bash
-./app/e2e-tests/test-runner/_module/scripts/slowcheck --run-notes "<note>" --scenarios callout publishing
+./app/acceptance/e2e/_module/scripts/slowcheck --run-notes "<note>" --scenarios callout publishing
 ```
 
 This finds all spec files that import the given scenario docs and runs only
 those. To see available scenario doc IDs, look at the filenames in
-`app/e2e-tests/test-runner/src/scenario-docs/` (strip the `.ts` extension, skip
+`app/acceptance/e2e/src/scenario-docs/` (strip the `.ts` extension, skip
 `types.ts` and `index.ts`). If you pass an invalid name, the error output
 lists all valid IDs.
 
@@ -80,7 +80,7 @@ above the normal Failing / Passing sections (thumbs, list, and videos tabs),
 and their scenario docs glow amber in the filter chips.
 
 ```bash
-./app/e2e-tests/test-runner/_module/scripts/slowcheck --run-notes "<note>" --highlighted delete-then-republish
+./app/acceptance/e2e/_module/scripts/slowcheck --run-notes "<note>" --highlighted delete-then-republish
 ```
 
 Pass one or more spec basenames (the filename without `.spec.ts`). If a name
@@ -107,7 +107,7 @@ When a test fails, don't stop. Diagnose and fix the failure:
 
 1. Read the test output carefully — Playwright prints the failing assertion,
    the test file, and line number.
-2. Read the failing test spec in `app/e2e-tests/test-runner/tests/`.
+2. Read the failing test spec in `app/acceptance/e2e/tests/`.
 3. Determine whether the failure is in the test or in the application code:
    - **Timing issue in test**: add appropriate waits, fix selectors, or
      adjust assertions. A test that fails under parallel load but passes
@@ -118,10 +118,10 @@ When a test fails, don't stop. Diagnose and fix the failure:
 4. After fixing, re-run the **full suite** (not just the single test) to
    confirm the fix works under parallel load.
 5. Run quickcheck to make sure nothing else broke. If the changes are
-     limited to `app/e2e-tests/` code (test specs, report viewer, etc.), use
+     limited to `app/acceptance/` code (test specs, report viewer, etc.), use
      the scoped quickcheck for faster feedback:
      ```bash
-     cd app/e2e-tests && _module/scripts/quickcheck
+     cd app/acceptance && _module/scripts/quickcheck
      ```
      If application code was also changed, run the full `./quickcheck` from
      the repo root instead.
@@ -132,7 +132,7 @@ If you encounter flaky failures and need a dedicated, thorough stability pass,
 run the `e2e_full_suite_stability` agent task:
 
 ```bash
-tools/agent_task/run_agent_task app/e2e-tests/test-runner/_module/agent_tasks/e2e_full_suite_stability.md
+tools/agent_task/run_agent_task app/acceptance/e2e/_module/agent_tasks/e2e_full_suite_stability.md
 ```
 
 This task is purpose-built for ferreting out flaky tests. It runs the full
@@ -142,10 +142,10 @@ whenever you see intermittent failures — do not hand-wave them away.
 
 ### Key files for debugging
 
-- `app/e2e-tests/test-runner/tests/*.spec.ts` — test specs
-- `app/e2e-tests/test-runner/src/run/test-fixtures.ts` — custom Playwright fixtures (`artifactDir`, `snapshot`)
-- `app/e2e-tests/test-runner/src/run/pages/` — page object models used by tests
-- `app/e2e-tests/test-runner/playwright.config.ts` — test configuration, Docker container setup
+- `app/acceptance/e2e/tests/*.spec.ts` — test specs
+- `app/acceptance/e2e/src/run/test-fixtures.ts` — custom Playwright fixtures (`artifactDir`, `snapshot`)
+- `app/acceptance/e2e/src/run/pages/` — page object models used by tests
+- `app/acceptance/e2e/playwright.config.ts` — test configuration, Docker container setup
 - `~/meadow-e2e-artifacts/` — test run output (videos, logs, state snapshots)
 
 ### Checking pass/fail after a run
@@ -167,5 +167,5 @@ file contains the Playwright status string (`passed`, `failed`, etc.).
 
 For failure details, check `manifest.json` in the test's artifact directory
 (it contains the test source, snapshots, and logs) and
-`error-context.md` in `app/e2e-tests/test-runner/test-results/<test-dir>/`
+`error-context.md` in `app/acceptance/e2e/test-results/<test-dir>/`
 (it contains the page snapshot at the time of failure).

@@ -17,7 +17,7 @@ it without breaking its invariants.
 ## Where everything lives
 
 ```
-app/e2e-tests/report-viewer/src/server/fixture-scenario/
+app/acceptance/report_viewer/src/server/fixture-scenario/
 ├── index.ts                     # generateFixtureScenario() — orchestrator
 ├── CanonicalScenarioBuilder.ts  # the API the scenario script talks to
 ├── canonical-scenario.ts        # the actual story (the file you most often edit)
@@ -30,7 +30,7 @@ app/e2e-tests/report-viewer/src/server/fixture-scenario/
 └── assets/mock-video.webm       # 5-second silent placeholder
 ```
 
-Server-side wiring is in `app/e2e-tests/report-viewer/src/server/index.ts`:
+Server-side wiring is in `app/acceptance/report_viewer/src/server/index.ts`:
 
 - The middleware on `/api/__fixture/canonical` regenerates the artifact
   when the newest mtime under `fixture-scenario/` changes.
@@ -38,7 +38,7 @@ Server-side wiring is in `app/e2e-tests/report-viewer/src/server/index.ts`:
   the fixture is reachable only via the menu (or direct URL).
 
 Client-side menu is in
-`app/e2e-tests/report-viewer/src/client/main.tsx` (`AppActionsMenu`).
+`app/acceptance/report_viewer/src/client/main.tsx` (`AppActionsMenu`).
 
 ## How a request becomes an artifact
 
@@ -52,7 +52,7 @@ Client-side menu is in
 4. The factories write the same input files a real test would write
    (`ticks.jsonl`, `frontend.log`, state repos as git histories with
    fake-clock commit dates, etc.).
-5. `assembleTestArtifacts()` (from `test-runner/src/artifacts/assemble.ts`,
+5. `assembleTestArtifacts()` (from `acceptance/e2e/src/artifacts/assemble.ts`,
    the same one a real run uses) turns the inputs into `manifest.json`
    and `report-meta.json`.
 6. Concurrent API calls during one page load share a single inflight
@@ -189,7 +189,7 @@ Useful one-liners while debugging:
 
 ```bash
 # Force a regen and inspect the first 12 tick rows
-cd app/e2e-tests/report-viewer
+cd app/acceptance/report_viewer
 rm -rf ~/meadow-e2e-artifacts/current/__fixture
 npx tsx -e "import('./src/server/fixture-scenario/index.ts').then((m) => m.generateFixtureScenario())"
 head -13 ~/meadow-e2e-artifacts/current/__fixture/canonical/ticks.jsonl | \
@@ -251,7 +251,7 @@ ffmpeg -y -hide_banner -loglevel error \
   -f lavfi -i "color=c=#1f2937:s=640x360:d=5" \
   -f lavfi -i "anullsrc=r=44100:cl=mono" \
   -shortest -c:v libvpx -b:v 50k -c:a libvorbis -pix_fmt yuv420p \
-  app/e2e-tests/report-viewer/src/server/fixture-scenario/assets/mock-video.webm
+  app/acceptance/report_viewer/src/server/fixture-scenario/assets/mock-video.webm
 ```
 
 If you change the scenario's fake-clock duration, regenerate the video
@@ -261,7 +261,7 @@ mapping won't be useful).
 ## Running the viewer
 
 ```bash
-cd app/e2e-tests/report-viewer
+cd app/acceptance/report_viewer
 npm run start    # concurrently runs server (3456) and Vite (5175)
 ```
 

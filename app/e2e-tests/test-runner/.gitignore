@@ -1,6 +1,0 @@
-node_modules/
-.minio-endpoint
-.minio-container
-.frontend-dist-dir
-test-results/
-playwright-report/

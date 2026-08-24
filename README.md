@@ -33,11 +33,11 @@ quick).
 
 # Testing - E2E (Slow)
 
-Run with the `/e2e` skill, which runs `app/e2e-tests/test-runner/_module/scripts/slowcheck`
+Run with the `/e2e` skill, which runs `app/acceptance/e2e/_module/scripts/slowcheck`
 
 It runs a large number of end-to-end scenarios using Playwright, recording
 videos and snapshotting state.
 
 To see the resulting "review packet" you can use the `/packet` skill.  That runs
-the app/e2e-tests/report-viewer where you can see the results of the run, view the videos,
+the app/acceptance/report_viewer where you can see the results of the run, view the videos,
 and look at the "packet" associated with each scenario.
