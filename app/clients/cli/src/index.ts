@@ -14,15 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { existsSync } from "node:fs";
+import path from "node:path";
 import { getDefaultConfigDirectory } from "../../../shared_code/utils/appConfigUtils.js";
 import {
-  getLocalRuntimeSessionPath,
-  MEADOW_CONTROL_PROTOCOL,
+  MEADOW_RUNTIME_PROTOCOL,
   MEADOW_RUNTIME_SESSION_ENV,
-  readLocalRuntimeSession,
-  type LocalRuntimeSession,
-} from "../../../shared_code/utils/localRuntimeSession.js";
+  type RuntimeSessionDescriptor,
+} from "../../../contracts/types/runtime.js";
+import {
+  ensureRuntime,
+  RuntimeClientLease,
+} from "../../../runtime/supervisor/src/runtimeClient.js";
+import { createSourceRuntimeLaunchSpec } from "../../../runtime/supervisor/src/sourceLaunchSpec.js";
 import { runBundleNodeCommand, showBundleNodeHelp } from "./nodeCommands.js";
 
 interface BundleSummary {
@@ -287,18 +290,59 @@ entry states whether it is bundle-scoped or global and whether it can be passed
 directly to 'meadow bundle nodes --filter'.`);
 }
 
-function resolveSession(): LocalRuntimeSession {
-  const configuredPath = process.env[MEADOW_RUNTIME_SESSION_ENV];
-  const sessionPath = configuredPath
-    ?? getLocalRuntimeSessionPath(getDefaultConfigDirectory());
-  if (!existsSync(sessionPath)) {
-    throw new Error("No running Meadow application was found. Open Meadow and try again.");
-  }
-  return readLocalRuntimeSession(sessionPath);
+let runtimeLease: RuntimeClientLease | null = null;
+
+function resolveSourceProjectRoot(): string {
+  return path.resolve(
+    process.env.MEADOW_PROJECT_ROOT
+      ?? path.join(path.dirname(process.argv[1] ?? process.cwd()), "../../../.."),
+  );
+}
+
+async function ensureCliRuntime(): Promise<void> {
+  if (runtimeLease) return;
+  const projectRoot = resolveSourceProjectRoot();
+  const homeDirectory = getDefaultConfigDirectory();
+  const appVersion = process.env.MEADOW_APP_VERSION ?? "0.5.43";
+  const perspective = process.env.MEADOW_BUILD_PERSPECTIVE === "composed"
+    ? "composed"
+    : "standalone";
+  const payload = {
+    identity: process.env.MEADOW_RUNTIME_PAYLOAD_IDENTITY
+      ?? `source-${perspective}-${appVersion}`,
+    appVersion,
+    perspective,
+  } as const;
+  const launchSpec = createSourceRuntimeLaunchSpec({
+    projectRoot,
+    homeDirectory,
+    appVersion,
+    payloadIdentity: payload.identity,
+    perspective,
+  });
+  runtimeLease = await ensureRuntime({
+    homeDirectory,
+    payload,
+    launchSpec,
+    supervisorEntryPath: path.join(
+      projectRoot,
+      "app",
+      "runtime",
+      "supervisor",
+      "dist",
+      "meadow-runtime-supervisor.cjs",
+    ),
+    descriptorPath: process.env[MEADOW_RUNTIME_SESSION_ENV],
+  });
+}
+
+function resolveSession(): RuntimeSessionDescriptor {
+  if (!runtimeLease) throw new Error("The Meadow Runtime client lease is unavailable");
+  return runtimeLease.descriptor;
 }
 
 async function requestJson(
-  session: LocalRuntimeSession,
+  session: RuntimeSessionDescriptor,
   pathname: string,
   method: "GET" | "POST" = "GET",
   body?: unknown,
@@ -308,7 +352,7 @@ async function requestJson(
     throw new Error("The running Meadow application is not ready.");
   }
   const health = await healthResponse.json() as { ready?: unknown; protocol?: unknown };
-  if (health.ready !== true || health.protocol !== MEADOW_CONTROL_PROTOCOL) {
+  if (health.ready !== true || health.protocol !== MEADOW_RUNTIME_PROTOCOL) {
     throw new Error("The running Meadow application uses an incompatible local protocol.");
   }
 
@@ -623,6 +667,16 @@ async function main(): Promise<void> {
     return;
   }
 
+  const isHelpRequest = args.includes("--help") || args.includes("-h");
+  const isRuntimeCommand = (
+    args[0] === "bundles"
+    && ["list", "create", "archive", "unarchive"].includes(args[1] ?? "")
+  ) || (
+    args[0] === "bundle"
+    && ["track", "node", "generate", "save-generation", "publish", "nodes", "filters"].includes(args[1] ?? "")
+  );
+  if (isRuntimeCommand && !isHelpRequest) await ensureCliRuntime();
+
   if (args[0] === "bundles" && args[1] === "list") {
     const options = args.slice(2);
     const unknown = options.filter((option) => option !== "--archived");
@@ -741,7 +795,15 @@ async function main(): Promise<void> {
   throw new Error(`Unknown command: ${args.join(" ")}`);
 }
 
-main().catch((error: unknown) => {
+async function run(): Promise<void> {
+  try {
+    await main();
+  } finally {
+    await runtimeLease?.release();
+  }
+}
+
+run().catch((error: unknown) => {
   if (error instanceof CliApiError) {
     console.error(JSON.stringify(error.body, null, 2));
   } else {

@@ -77,18 +77,28 @@ export function parseRuntimeSessionDescriptor(value: unknown): RuntimeSessionDes
 
   const backendPort = requirePort(candidate.backendPort, "backendPort");
   const frontendPort = requirePort(candidate.frontendPort, "frontendPort");
-  if (backendPort === frontendPort) {
+  const controlPort = requirePort(candidate.controlPort, "controlPort");
+  if (new Set([backendPort, frontendPort, controlPort]).size !== 3) {
     throw new Error("Runtime Session Descriptor ports must be distinct");
   }
   const backendUrl = `http://127.0.0.1:${backendPort}/api`;
   const frontendOrigin = `http://127.0.0.1:${frontendPort}`;
-  if (candidate.backendUrl !== backendUrl || candidate.frontendOrigin !== frontendOrigin) {
+  const controlUrl = `http://127.0.0.1:${controlPort}`;
+  if (
+    candidate.backendUrl !== backendUrl
+    || candidate.frontendOrigin !== frontendOrigin
+    || candidate.controlUrl !== controlUrl
+  ) {
     throw new Error("Runtime Session Descriptor URLs do not match their ports");
   }
   if (candidate.frontendUrl !== `${frontendOrigin}/`) {
     throw new Error("Invalid Runtime Session Descriptor frontendUrl");
   }
-  if (candidate.state !== "ready" && candidate.state !== "handoff-requested") {
+  if (
+    candidate.state !== "starting"
+    && candidate.state !== "ready"
+    && candidate.state !== "handoff-requested"
+  ) {
     throw new Error("Invalid Runtime Session Descriptor state");
   }
 
@@ -99,9 +109,11 @@ export function parseRuntimeSessionDescriptor(value: unknown): RuntimeSessionDes
     instanceId: requireString(candidate.instanceId, "instanceId"),
     supervisorPid: requirePid(candidate.supervisorPid, "supervisorPid"),
     runtimePid: requirePid(candidate.runtimePid, "runtimePid"),
+    controlPort,
     backendPort,
     frontendPort,
     backendUrl,
+    controlUrl,
     frontendUrl: `${frontendOrigin}/`,
     frontendOrigin,
     capability: requireString(candidate.capability, "capability"),

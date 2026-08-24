@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 #
-# Start the dev-tools server and reserve backend/frontend tmux windows.
-# - Every run allocates fresh frontend/backend ports and a private capability.
+# Start the Dev Tools server and reserve Runtime/browser QA tmux windows.
+# - The Runtime Supervisor allocates ports and owns service/Web processes.
 # - Worktrees also keep their config and dev-tools ports isolated.
-# - Dev Tools starts a fresh backend for each app/browser kickoff and lazily
-#   starts the Home-independent frontend on the first kickoff.
+# - Dev Tools attaches to or starts the Runtime on the first app/browser kickoff.
 # Re-running kills and recreates the session.
 #
 set -euo pipefail
@@ -13,6 +12,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BACKEND_DIR="$REPO_ROOT/app/runtime/service"
 FRONTEND_DIR="$REPO_ROOT/app/clients/web"
 DEV_TOOLS_DIR="$REPO_ROOT/app/tooling/dev_tools"
+SUPERVISOR_DIR="$REPO_ROOT/app/runtime/supervisor"
 APP_VERSION=$(node -p "require('$REPO_ROOT/app/hosts/desktop/package.json').version")
 
 ensure_dev_executable() {
@@ -32,6 +32,8 @@ ensure_dev_executable() {
 ensure_dev_executable "$BACKEND_DIR" "tsx"
 ensure_dev_executable "$FRONTEND_DIR" "vite"
 ensure_dev_executable "$DEV_TOOLS_DIR" "vite"
+ensure_dev_executable "$SUPERVISOR_DIR" "esbuild"
+(cd "$SUPERVISOR_DIR" && npm run build)
 
 # --- 1. Derive instance name from environment or directory basename ---
 BASENAME="$(basename "$REPO_ROOT")"
@@ -71,7 +73,7 @@ else
 fi
 echo "Config directory: $CONFIG_DIR"
 
-# --- 4. Allocate the shared local runtime and read dev-tools ports ---
+# --- 4. Read Dev Tools ports. Runtime ports are allocated on demand. ---
 RESOURCES_YAML="$CONFIG_DIR/app/resources.yaml"
 RESOURCES_LOCAL="$CONFIG_DIR/app/resources.local.yaml"
 
@@ -88,27 +90,20 @@ get_port() {
   echo "${value:-$default}"
 }
 
-RUNTIME_OUTPUT=$(cd "$BACKEND_DIR" && npx tsx src/shared/scripts/create_local_runtime_session.ts "$CONFIG_DIR")
-IFS=$'\t' read -r RUNTIME_SESSION_PATH BACKEND_PORT FRONTEND_PORT <<< "$RUNTIME_OUTPUT"
 DEV_TOOLS_PORT=$(get_port devToolsPort 5174)
 DEV_TOOLS_SERVER_PORT=$(get_port devToolsServerPort 3002)
 
-if [ -z "$RUNTIME_SESSION_PATH" ] || [ -z "$BACKEND_PORT" ] || [ -z "$FRONTEND_PORT" ]; then
-  echo "Error: failed to allocate the local Meadow runtime" >&2
-  exit 1
-fi
-
 # --- 5. Create tmux session with 3 windows ---
-# Backend and frontend intentionally begin as idle shells. The Dev Tools server
-# respawns these panes after it has selected the Home that should be launched.
-tmux new-session -d -s "$SESSION" -n backend -c "$BACKEND_DIR"
-tmux set-option -w -t "$SESSION:backend" remain-on-exit on
+# Runtime and browser windows remain available for inspection commands; the
+# supervisor and Dev Tools process own all actual child-process creation.
+tmux new-session -d -s "$SESSION" -n runtime -c "$SUPERVISOR_DIR"
+tmux set-option -w -t "$SESSION:runtime" remain-on-exit on
 
-tmux new-window -t "$SESSION" -n frontend -c "$FRONTEND_DIR"
-tmux set-option -w -t "$SESSION:frontend" remain-on-exit on
+tmux new-window -t "$SESSION" -n browser -c "$FRONTEND_DIR"
+tmux set-option -w -t "$SESSION:browser" remain-on-exit on
 
 tmux new-window -t "$SESSION" -n dev-tools -c "$DEV_TOOLS_DIR" \
-  "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_RUNTIME_SESSION_PATH='$RUNTIME_SESSION_PATH' MEADOW_DEV_TMUX_SESSION='$SESSION' npm start; read"
+  "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_DEV_TMUX_SESSION='$SESSION' npm start; read"
 
 # --- 6. Wait for Dev Tools to be ready, then open browser ---
 echo "Waiting for Dev Tools (http://localhost:$DEV_TOOLS_PORT)..."
@@ -138,12 +133,9 @@ echo ""
 echo "======================================"
 echo "  Meadow dev servers running [$WORKTREE_NAME]"
 echo ""
-echo "  Backend:   http://127.0.0.1:$BACKEND_PORT"
-echo "  Frontend:  http://127.0.0.1:$FRONTEND_PORT"
 echo "  Dev Tools: http://localhost:$DEV_TOOLS_PORT"
-echo "  App services start from Dev Tools on the first kickoff."
+echo "  Runtime:   starts on demand from Dev Tools App or Web mode"
 echo "  Config:    $CONFIG_DIR"
-echo "  Runtime:   $RUNTIME_SESSION_PATH"
 echo ""
 echo "  Attach: tmux attach -t $SESSION"
 echo "  Kill:   tmux kill-session -t $SESSION"

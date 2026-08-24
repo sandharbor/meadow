@@ -22,10 +22,6 @@ import { fileURLToPath, URL } from "url";
 import { spawn } from "child_process";
 import { homedir } from "os";
 import { getDefaultConfigDirectory } from "../../../../shared_code/utils/appConfigUtils.js";
-import {
-  MEADOW_RUNTIME_SESSION_ENV,
-  readLocalRuntimeSession,
-} from "../../../../shared_code/utils/localRuntimeSession.js";
 import { preflightMeadowHome } from "../../../../shared_code/utils/meadowHomeFormat.js";
 import {
   findProjectRoot,
@@ -38,9 +34,9 @@ import {
   GIT_AUTHORS,
 } from "../../../../shared_code/utils/appConfigGitUtils.js";
 import { ConfigModeHelper } from "../shared/helpers/ConfigModeHelper.js";
+import { createBrowserLaunchUrl } from "../../../../runtime/supervisor/src/runtimeClient.js";
 import {
   DevRuntimeManager,
-  MEADOW_DEV_TMUX_SESSION_ENV,
 } from "./devRuntimeManager.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -64,12 +60,6 @@ const configDir = getDefaultConfigDirectory();
 const normalConfBackup = join(dirname(configDir), "MeadowHome_normal");
 const activeFixtureFile = join(dirname(configDir), "meadow_active_fixture");
 
-// Cache the frontend port at startup so it survives config directory moves (e.g. Missing Conf mode)
-const runtimeSessionPath = process.env[MEADOW_RUNTIME_SESSION_ENV];
-const runtimeSession = runtimeSessionPath
-  ? readLocalRuntimeSession(runtimeSessionPath)
-  : null;
-const cachedFrontendPort = runtimeSession?.frontendPort;
 const projectRoot = getProjectRoot();
 const electronPackage = JSON.parse(
   readFileSync(join(projectRoot, "app", "hosts", "desktop", "package.json"), "utf8"),
@@ -79,12 +69,9 @@ if (typeof appVersion !== "string" || appVersion.length === 0) {
   throw new Error("Electron app package does not declare a version");
 }
 const devRuntimeManager = new DevRuntimeManager({
-  tmuxSession: process.env[MEADOW_DEV_TMUX_SESSION_ENV] ?? null,
   projectRoot,
   configDirectory: configDir,
   appVersion,
-  runtimeSessionPath: runtimeSessionPath ?? null,
-  runtimeSession,
 });
 
 // ============ Fixture Discovery ============
@@ -174,8 +161,9 @@ app.get("/api/config/fixtures", (_req, res) => {
 // ============ Test Mode Operations ============
 
 // Set test mode: missing (simulates fresh install)
-app.post("/api/config/test-mode/missing", (_req, res) => {
+app.post("/api/config/test-mode/missing", async (_req, res) => {
   try {
+    await devRuntimeManager.stopRuntime();
     const alreadyInTestMode = existsSync(normalConfBackup);
 
     if (alreadyInTestMode) {
@@ -213,6 +201,8 @@ app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
       res.status(404).json({ error: `Fixture not found: ${fixtureName}` });
       return;
     }
+
+    await devRuntimeManager.stopRuntime();
 
     const alreadyInTestMode = existsSync(normalConfBackup);
 
@@ -381,13 +371,15 @@ app.get("/api/publishing-provider-confs", (_req, res) => {
   }
 });
 
-app.post("/api/publishing-provider-confs/apply", (req, res) => {
+app.post("/api/publishing-provider-confs/apply", async (req, res) => {
   try {
     const { profileName } = (req.body || {}) as { profileName?: string };
     if (!profileName) {
       res.status(400).json({ error: "profileName is required" });
       return;
     }
+
+    await devRuntimeManager.stopRuntime();
 
     const inTestMode = existsSync(normalConfBackup);
     if (!inTestMode) {
@@ -438,8 +430,9 @@ app.post("/api/publishing-provider-confs/apply", (req, res) => {
 });
 
 // Restore normal mode
-app.post("/api/config/normal", (_req, res) => {
+app.post("/api/config/normal", async (_req, res) => {
   try {
+    await devRuntimeManager.stopRuntime();
     if (!existsSync(normalConfBackup)) {
       res.status(400).json({ error: "Not in test mode. No backup to restore from." });
       return;
@@ -510,9 +503,9 @@ app.post("/api/app/launch-dev", async (_req, res) => {
     // Small delay to ensure processes are fully terminated
     await new Promise(r => globalThis.setTimeout(r, 300));
 
-    // Electron performs the readiness wait so it can render any startup
-    // diagnostic emitted by the externally managed backend.
-    await devRuntimeManager.prepareForLaunch({ waitForReady: false });
+    // Start or attach before Electron launches; Electron negotiates its own
+    // client lease against the same supervisor-owned Runtime.
+    await devRuntimeManager.prepareForLaunch();
 
     console.log(`[dev] Starting electron dev in ${electronAppDir}`);
 
@@ -541,21 +534,23 @@ app.post("/api/app/launch-dev", async (_req, res) => {
 app.post("/api/app/open-browser", async (req, res) => {
   try {
     const { url } = (req.body || {}) as { url?: string };
-    const frontendPort = cachedFrontendPort;
-    if (!frontendPort) {
-      res.status(500).json({ error: "frontendPort not found in local runtime session" });
-      return;
-    }
-    const targetUrl = url || runtimeSession?.frontendUrl || `http://127.0.0.1:${frontendPort}`;
-
-    const parsedTarget = new URL(targetUrl);
-    if (parsedTarget.hostname !== "localhost" && parsedTarget.hostname !== "127.0.0.1") {
+    const requestedTarget = url ? new URL(url) : null;
+    if (
+      requestedTarget
+      && requestedTarget.hostname !== "localhost"
+      && requestedTarget.hostname !== "127.0.0.1"
+    ) {
       res.status(400).json({ error: "Only local Meadow URLs may be opened" });
       return;
     }
-    const localhostPattern = parsedTarget.host;
+    const runtimeSession = await devRuntimeManager.prepareForLaunch();
+    const targetPath = requestedTarget
+      ? `${requestedTarget.pathname}${requestedTarget.search}${requestedTarget.hash}`
+      : "/";
+    const targetUrl = await createBrowserLaunchUrl(runtimeSession, targetPath);
 
-    await devRuntimeManager.prepareForLaunch();
+    const parsedTarget = new URL(targetUrl);
+    const localhostPattern = parsedTarget.host;
 
     console.log(`[browser] Opening/focusing Chrome for ${targetUrl}`);
 

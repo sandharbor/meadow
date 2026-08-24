@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { spawn, ChildProcess, execSync } from 'child_process';
+import { execSync } from 'child_process';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { randomBytes } from 'crypto';
 import { fileURLToPath } from 'url';
 import { saveResourcesLocalConfig } from '../../../shared_code/utils/resourcesConfigUtils.js';
+import { RuntimeSupervisor } from '../../supervisor/src/runtimeSupervisor.js';
+import { findFreeLoopbackPort } from '../../supervisor/src/freePort.js';
 
 const SYSTEM_TESTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WORKSPACE_ROOT = path.resolve(SYSTEM_TESTS_DIR, '../..');
@@ -73,7 +75,7 @@ export const TEST_CONFIG_DIR =
   process.env.MEADOW_SYSTEM_TEST_CONFIG_DIR ??
   path.join(os.tmpdir(), 'meadow_system_tests', RUN_ID);
 
-let serverProcess: ChildProcess | null = null;
+let serverSupervisor: RuntimeSupervisor | null = null;
 let serverStartCount = 0;
 
 async function killAnyServerOnTestPort(): Promise<void> {
@@ -121,13 +123,13 @@ export async function startServer(): Promise<void> {
 
   // If we already started a server in THIS test run, reuse it (if healthy).
   // If it's not healthy, restart it.
-  if (serverProcess) {
+  if (serverSupervisor) {
     if (await isServerRunning()) {
       return;
     }
-    console.log('Server process exists but not responding, cleaning up...');
-    serverProcess.kill('SIGKILL');
-    serverProcess = null;
+    console.log('Runtime Supervisor exists but is not responding, cleaning up...');
+    await serverSupervisor.shutdown('requested');
+    serverSupervisor = null;
   }
   
   // If something else is already listening on this port, fail fast.
@@ -152,72 +154,55 @@ export async function startServer(): Promise<void> {
   // Write test port to resources.local.yaml so the backend reads it from config
   saveResourcesLocalConfig({ backendPort: TEST_PORT }, TEST_CONFIG_DIR);
 
-  return new Promise((resolve, reject) => {
-    console.log(`Starting server on port ${TEST_PORT}...`);
-
-    serverProcess = spawn('npx', ['tsx', 'src/shared/app-shell/index.ts'], {
+  console.log(`Starting supervised server on port ${TEST_PORT}...`);
+  let controlPort = await findFreeLoopbackPort();
+  while (controlPort === TEST_PORT) controlPort = await findFreeLoopbackPort();
+  let frontendPort = await findFreeLoopbackPort();
+  while (frontendPort === TEST_PORT || frontendPort === controlPort) {
+    frontendPort = await findFreeLoopbackPort();
+  }
+  const appVersion = '0.5.41-system-test';
+  const perspective = process.env.MEADOW_BUILD_PERSPECTIVE === 'composed'
+    ? 'composed'
+    : 'standalone';
+  const supervisor = new RuntimeSupervisor({
+    schemaVersion: 1,
+    homeDirectory: TEST_CONFIG_DIR,
+    payload: {
+      identity: `source-${perspective}-${appVersion}`,
+      appVersion,
+      perspective,
+    },
+    service: {
+      executable: path.join(BACKEND_DIR, 'node_modules', '.bin', 'tsx'),
+      args: ['src/shared/app-shell/index.ts'],
       cwd: BACKEND_DIR,
-      env: {
-        ...process.env,
-        MEADOW_HOME_DIRECTORY_OVERRIDE: TEST_CONFIG_DIR,
-        MEADOW_IS_DEV: 'true',
-        MEADOW_APP_VERSION: '0.5.41-system-test',
-        MEADOW_BACKEND_PORT: String(TEST_PORT),
-        MEADOW_API_CAPABILITY: TEST_API_CAPABILITY,
-        MEADOW_UI_ORIGIN: `http://127.0.0.1:${TEST_PORT + 1}`,
-      },
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    let started = false;
-
-    serverProcess.stdout?.on('data', (data: Buffer) => {
-      const output = data.toString();
-      if (process.env.DEBUG) {
-        console.log(`[server stdout]: ${output}`);
-      }
-      if (output.includes('Server running on IPv4 loopback port') && !started) {
-        started = true;
-        // Give it a moment to fully initialize
-        setTimeout(() => {
-          waitForHealthy()
-            .then(resolve)
-            .catch(reject);
-        }, 100);
-      }
-    });
-
-    serverProcess.stderr?.on('data', (data: Buffer) => {
-      const output = data.toString();
-      if (process.env.DEBUG) {
-        console.error(`[server stderr]: ${output}`);
-      }
-    });
-
-    serverProcess.on('error', (error) => {
-      console.error('Failed to start server:', error);
-      serverProcess = null;
-      reject(error);
-    });
-
-    serverProcess.on('exit', (code) => {
-      if (!started) {
-        reject(new Error(`Server exited with code ${code} before starting`));
-      }
-      serverProcess = null;
-    });
-
-    const startupTimeoutMs = parseInt(
-      process.env.MEADOW_SYSTEM_TESTS_SERVER_STARTUP_TIMEOUT_MS ?? '15000',
-      10
-    );
-    setTimeout(() => {
-      if (!started) {
-        stopServer();
-        reject(new Error('Server startup timed out'));
-      }
-    }, startupTimeoutMs);
+      environment: { MEADOW_IS_DEV: 'true' },
+    },
+    web: {
+      executable: process.execPath,
+      args: [
+        '-e',
+        "require('http').createServer((q,s)=>{s.writeHead(200);s.end('ready')}).listen(Number(process.env.PORT),'127.0.0.1')",
+      ],
+      cwd: SYSTEM_TESTS_DIR,
+    },
+    idleTimeoutMs: 60 * 60 * 1_000,
+  }, {
+    ports: { controlPort, backendPort: TEST_PORT, frontendPort },
+    capability: TEST_API_CAPABILITY,
+    childStdio: () => process.env.DEBUG ? 'inherit' : 'ignore',
   });
+  supervisor.leases.acquire('client', `system-tests-${process.pid}`, process.pid);
+  try {
+    const descriptor = await supervisor.start();
+    serverSupervisor = supervisor;
+    process.env.MEADOW_SYSTEM_TEST_API_CAPABILITY = descriptor.capability;
+    await waitForHealthy();
+  } catch (error) {
+    await supervisor.shutdown('startup-failure');
+    throw error;
+  }
 }
 
 /**
@@ -251,10 +236,12 @@ export function stopServer(): void {
     return;
   }
   
-  if (serverProcess) {
-    console.log('Stopping server...');
-    serverProcess.kill('SIGKILL');
-    serverProcess = null;
+  if (serverSupervisor) {
+    console.log('Stopping supervised server...');
+    const supervisor = serverSupervisor;
+    serverSupervisor = null;
+    supervisor.leases.release('client', `system-tests-${process.pid}`);
+    void supervisor.shutdown('requested');
   }
 }
 
@@ -263,11 +250,12 @@ export function stopServer(): void {
  */
 export function forceStopServer(): void {
   serverStartCount = 0;
-  if (serverProcess) {
-    console.log('Force stopping server...');
-    const proc = serverProcess;
-    serverProcess = null;
-    proc.kill('SIGKILL');
+  if (serverSupervisor) {
+    console.log('Force stopping supervised server...');
+    const supervisor = serverSupervisor;
+    serverSupervisor = null;
+    supervisor.leases.release('client', `system-tests-${process.pid}`);
+    void supervisor.shutdown('requested');
   }
 }
 

@@ -15,15 +15,12 @@ limitations under the License.
 */
 
 import { app, BrowserWindow, ipcMain, dialog, Menu, shell } from 'electron';
-import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
 import {
   FindInBundlesOptions,
   parseFindInBundlesDeepLink,
 } from '../../../contracts/types/findInBundlesOptions';
-import { preflightMeadowHome } from '../../../shared_code/utils/meadowHomeFormat';
 import { getDefaultConfigDirectory } from '../../../shared_code/utils/appConfigUtils';
 import { getPlatformPaths } from '../../../shared_code/paths/getPlatformPaths';
 import {
@@ -36,17 +33,19 @@ import {
   isTrustedDesktopRenderer,
 } from '../../../shared_code/utils/desktopLaunchSecurity';
 import {
-  createLocalRuntimeSession,
-  getLocalRuntimeStartupDiagnosticPath,
   MEADOW_RUNTIME_SESSION_ENV,
-  readLocalRuntimeSession,
-  removeLocalRuntimeSession,
-} from '../../../shared_code/utils/localRuntimeSession';
+  type RuntimeSupervisorLaunchSpec,
+} from '../../../contracts/types/runtime';
+import {
+  ensureRuntime,
+  RuntimeClientLease,
+} from '../../../runtime/supervisor/src/runtimeClient';
+import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths';
+import { createSourceRuntimeLaunchSpec } from '../../../runtime/supervisor/src/sourceLaunchSpec';
 import { UpdateManager } from './updateManager';
 import { acknowledgeUpdateHealthFromEnvironment } from './verifiedUpdater';
 import { showRecoveryWindow } from './recoveryWindow';
 import { installCommandLineInterface } from './cliInstaller';
-import { hasChildProcessExited } from './childProcessState';
 
 // Set the app name immediately, before any other operations (important for macOS menu bar)
 app.name = 'Meadow';
@@ -84,8 +83,7 @@ function log(level: 'INFO' | 'ERROR' | 'WARN' | 'SUCCESS', message: string, data
 class MeadowApp {
   private mainWindow: BrowserWindow | null = null;
   private recoveryWindow: BrowserWindow | null = null;
-  private backendProcess: ChildProcess | null = null;
-  private frontendProcess: ChildProcess | null = null;
+  private runtimeLease: RuntimeClientLease | null = null;
   private sourcePageSearchByTitlePath: string = '';
   private fastGitOpsPath: string = '';
   private workingGraphPath: string = '';
@@ -93,21 +91,15 @@ class MeadowApp {
   private backendPort: number = 0;
   private frontendPort: number = 0;
   private apiCapability: string = '';
-  private runtimeSessionPath: string | null = null;
-  private ownsRuntimeSession = false;
-  private usesExternalRuntime = false;
   private isDev: boolean = !app.isPackaged;
   private findInBundlesOptions: FindInBundlesOptions | null = null;
   private updateManager: UpdateManager;
-  private readonly startupDiagnosticDirectory: string;
   private startupDiagnosticPath: string;
   private selectedHomePath: string;
 
   constructor() {
-    this.startupDiagnosticDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-startup-'));
-    fs.chmodSync(this.startupDiagnosticDirectory, 0o700);
-    this.startupDiagnosticPath = path.join(this.startupDiagnosticDirectory, 'failure.json');
     this.selectedHomePath = getPlatformPaths().defaultConfigDirectory;
+    this.startupDiagnosticPath = getRuntimePaths(this.selectedHomePath).startupDiagnostic;
     log('INFO', 'Initializing MeadowApp', { 
       isDev: this.isDev, 
       isTestMode, 
@@ -293,12 +285,9 @@ class MeadowApp {
 
       try {
         this.selectedHomePath = getDefaultConfigDirectory();
-        preflightMeadowHome(this.selectedHomePath, app.getVersion());
         this.setupMenu();
         await this.allocatePorts();
         this.createWindow();
-        this.startBackendServer();
-        this.startFrontendServer();
         await this.loadFrontend();
 
         // The updater removes its rollback copy only after the new application
@@ -395,37 +384,84 @@ class MeadowApp {
 
   private async allocatePorts(): Promise<void> {
     const configDir = getDefaultConfigDirectory();
-    const externalSessionPath = process.env[MEADOW_RUNTIME_SESSION_ENV];
-    if (externalSessionPath) {
-      const session = readLocalRuntimeSession(externalSessionPath);
-      if (path.resolve(session.homeDirectory) !== path.resolve(configDir)) {
-        throw new Error('External runtime session belongs to a different Meadow Home');
-      }
-      this.backendPort = session.backendPort;
-      this.frontendPort = session.frontendPort;
-      this.apiCapability = session.capability;
-      this.runtimeSessionPath = externalSessionPath;
-      this.startupDiagnosticPath = getLocalRuntimeStartupDiagnosticPath(externalSessionPath);
-      this.usesExternalRuntime = true;
-      log('SUCCESS', 'Attached to external local runtime', {
-        backendPort: this.backendPort,
-        frontendPort: this.frontendPort,
+    this.startupDiagnosticPath = getRuntimePaths(configDir).startupDiagnostic;
+    const perspective = process.env.MEADOW_BUILD_PERSPECTIVE === 'composed'
+      ? 'composed'
+      : 'standalone';
+    const payload = {
+      identity: process.env.MEADOW_RUNTIME_PAYLOAD_IDENTITY
+        ?? `source-${perspective}-${app.getVersion()}`,
+      appVersion: app.getVersion(),
+      perspective,
+    } as const;
+
+    let launchSpec: RuntimeSupervisorLaunchSpec;
+    let supervisorEntryPath: string;
+    if (this.isDev) {
+      const projectRoot = path.resolve(__dirname, '../../../../../../..');
+      launchSpec = createSourceRuntimeLaunchSpec({
+        projectRoot,
+        homeDirectory: configDir,
+        appVersion: app.getVersion(),
+        payloadIdentity: payload.identity,
+        perspective,
       });
-      return;
+      supervisorEntryPath = path.join(
+        projectRoot,
+        'app',
+        'runtime',
+        'supervisor',
+        'dist',
+        'meadow-runtime-supervisor.cjs',
+      );
+    } else {
+      const resourcesPath = (process as NodeJS.Process & { resourcesPath: string }).resourcesPath;
+      launchSpec = {
+        schemaVersion: 1,
+        homeDirectory: configDir,
+        payload,
+        service: {
+          executable: this.nodePath,
+          args: ['src/shared/app-shell/index.js'],
+          cwd: path.join(resourcesPath, 'backend'),
+          environment: {
+            NODE_ENV: 'production',
+            MEADOW_IS_DEV: 'false',
+            SOURCE_PAGE_SEARCH_BY_TITLE_PATH: this.sourcePageSearchByTitlePath,
+            FAST_GIT_OPS_PATH: this.fastGitOpsPath,
+            WORKING_GRAPH_PATH: this.workingGraphPath,
+            MEADOW_EXAMPLE_BUNDLE_PATH: path.join(resourcesPath, 'example_bundle'),
+          },
+        },
+        web: {
+          executable: this.nodePath,
+          args: ['server.js'],
+          cwd: path.join(resourcesPath, 'frontend'),
+          environment: { NODE_ENV: 'production' },
+        },
+        idleTimeoutMs: 30_000,
+      };
+      supervisorEntryPath = path.join(resourcesPath, 'runtime-supervisor', 'meadow-runtime-supervisor.cjs');
     }
 
-    const { session, sessionPath } = await createLocalRuntimeSession({
+    this.runtimeLease = await ensureRuntime({
       homeDirectory: configDir,
-      ownerPid: process.pid,
+      payload,
+      launchSpec,
+      supervisorEntryPath,
+      descriptorPath: process.env[MEADOW_RUNTIME_SESSION_ENV],
+      nodeExecutable: this.nodePath,
     });
+    const session = this.runtimeLease.descriptor;
     this.backendPort = session.backendPort;
     this.frontendPort = session.frontendPort;
     this.apiCapability = session.capability;
-    this.runtimeSessionPath = sessionPath;
-    this.ownsRuntimeSession = true;
-    log('SUCCESS', 'Allocated per-launch local runtime', {
+    log('SUCCESS', 'Attached to supervised local Runtime', {
       backendPort: this.backendPort,
       frontendPort: this.frontendPort,
+      supervisorPid: session.supervisorPid,
+      runtimePid: session.runtimePid,
+      payloadIdentity: session.payload.identity,
     });
   }
 
@@ -628,7 +664,6 @@ class MeadowApp {
     while (attempts < maxAttempts) {
       if (
         fs.existsSync(this.startupDiagnosticPath)
-        || hasChildProcessExited(this.backendProcess)
       ) {
         throw new Error('Backend reported a safe startup failure');
       }
@@ -659,10 +694,7 @@ class MeadowApp {
     const checkInterval = 500; // 500ms
     let attempts = 0;
     const maxAttempts = maxWaitTime / checkInterval;
-    // In dev mode, Vite serves at root; in production, check /api/health
-    const checkUrl = this.isDev
-      ? `http://127.0.0.1:${this.frontendPort}/`
-      : `http://127.0.0.1:${this.frontendPort}/api/health`;
+    const checkUrl = `http://127.0.0.1:${this.frontendPort}/`;
 
     log('INFO', 'Waiting for frontend server to be ready...', { checkUrl });
 
@@ -715,217 +747,11 @@ class MeadowApp {
     }
   }
 
-  private startBackendServer(): void {
-    log('INFO', 'Starting backend server');
-
-    if (this.usesExternalRuntime) {
-      log('INFO', 'Backend is managed by the external local runtime');
-      return;
-    }
-    
-    try {
-      let backendScript: string;
-      let cwd: string;
-
-      if (this.isDev) {
-        // Development: run the backend from source
-        // In dev mode, __dirname is hosts/desktop/dist/hosts/desktop/src
-        // We need to go up to the project root and then into backend
-        backendScript = 'src/shared/app-shell/index.ts';
-        cwd = path.join(__dirname, '../../../../../../runtime/service');
-        const tsxPath = path.join(cwd, 'node_modules', '.bin', 'tsx');
-        log('INFO', 'Starting backend in development mode', { backendScript, cwd, tsxPath });
-        
-        this.backendProcess = spawn(tsxPath, [backendScript], {
-          cwd,
-          env: {
-            ...process.env,
-            NODE_ENV: 'production',
-            MEADOW_APP_VERSION: app.getVersion(),
-            MEADOW_IS_DEV: 'true',
-            MEADOW_BACKEND_PORT: this.backendPort.toString(),
-            MEADOW_API_CAPABILITY: this.apiCapability,
-            MEADOW_UI_ORIGIN: `http://127.0.0.1:${this.frontendPort}`,
-            MEADOW_STARTUP_DIAGNOSTIC_PATH: this.startupDiagnosticPath,
-            ...(this.runtimeSessionPath ? { [MEADOW_RUNTIME_SESSION_ENV]: this.runtimeSessionPath } : {}),
-          },
-          stdio: 'pipe'
-        });
-      } else {
-        // Production: run the built backend with embedded Node.js
-        backendScript = 'src/shared/app-shell/index.js';
-        cwd = path.join((process as any).resourcesPath, 'backend');
-        log('INFO', 'Starting backend in production mode', { backendScript, cwd, nodePath: this.nodePath });
-        
-        this.backendProcess = spawn(this.nodePath, [backendScript], {
-          cwd,
-          env: {
-            ...process.env,
-            NODE_ENV: 'production',
-            SOURCE_PAGE_SEARCH_BY_TITLE_PATH: this.sourcePageSearchByTitlePath,
-            FAST_GIT_OPS_PATH: this.fastGitOpsPath,
-            WORKING_GRAPH_PATH: this.workingGraphPath,
-            MEADOW_EXAMPLE_BUNDLE_PATH: path.join((process as any).resourcesPath, 'example_bundle'),
-            MEADOW_APP_VERSION: app.getVersion(),
-            MEADOW_IS_DEV: 'false',
-            MEADOW_BACKEND_PORT: this.backendPort.toString(),
-            MEADOW_API_CAPABILITY: this.apiCapability,
-            MEADOW_UI_ORIGIN: `http://127.0.0.1:${this.frontendPort}`,
-            MEADOW_STARTUP_DIAGNOSTIC_PATH: this.startupDiagnosticPath,
-          },
-          stdio: 'pipe'
-        });
-      }
-
-      this.backendProcess.stdout?.on('data', (data) => {
-        const message = data.toString().trim();
-        log('INFO', 'Backend stdout', { message });
-        console.log(`Backend: ${data}`);
-      });
-
-      this.backendProcess.stderr?.on('data', (data) => {
-        const message = data.toString().trim();
-        log('ERROR', 'Backend stderr', { message });
-        console.error(`Backend Error: ${data}`);
-      });
-
-      this.backendProcess.on('close', (code) => {
-        log('WARN', 'Backend process exited', { code });
-        console.log(`Backend process exited with code ${code}`);
-      });
-
-      this.backendProcess.on('error', (error) => {
-        log('ERROR', 'Failed to start backend', { error: error.message, stack: error.stack });
-        console.error('Failed to start backend:', error);
-        dialog.showErrorBox(
-          'Backend Error', 
-          `Failed to start the backend server: ${error.message}`
-        );
-      });
-
-      log('SUCCESS', 'Backend server startup initiated', { 
-        port: this.backendPort, 
-        pid: this.backendProcess?.pid 
-      });
-
-    } catch (error) {
-      log('ERROR', 'Error starting backend', { error: (error as Error).message, stack: (error as Error).stack });
-      console.error('Error starting backend:', error);
-      dialog.showErrorBox(
-        'Startup Error', 
-        `Failed to initialize the backend: ${error}`
-      );
-    }
-  }
-
-  private startFrontendServer(): void {
-    log('INFO', 'Starting frontend server');
-
-    if (this.usesExternalRuntime) {
-      log('INFO', 'Frontend is managed by the external local runtime');
-      return;
-    }
-
-    try {
-      if (this.isDev) {
-        // Development: start Vite dev server for the frontend
-        const cwd = path.join(__dirname, '../../../../../../clients/web');
-        const vitePath = path.join(cwd, 'node_modules', '.bin', 'vite');
-        log('INFO', 'Starting Vite dev server for frontend', { cwd, vitePath, frontendPort: this.frontendPort, backendPort: this.backendPort });
-
-        this.frontendProcess = spawn(vitePath, [], {
-          cwd,
-          env: {
-            ...process.env,
-            VITE_FRONTEND_PORT: this.frontendPort.toString(),
-            VITE_BACKEND_PORT: this.backendPort.toString(),
-            ...(this.runtimeSessionPath ? { [MEADOW_RUNTIME_SESSION_ENV]: this.runtimeSessionPath } : {}),
-          },
-          stdio: 'pipe'
-        });
-      } else {
-        const frontendScript = 'server.js';
-        const cwd = path.join((process as any).resourcesPath, 'frontend');
-
-        log('INFO', 'Starting frontend in production mode', { frontendScript, cwd, nodePath: this.nodePath });
-
-        this.frontendProcess = spawn(this.nodePath, [frontendScript], {
-          cwd,
-          env: { ...process.env, NODE_ENV: 'production', PORT: this.frontendPort.toString() },
-          stdio: 'pipe'
-        });
-      }
-
-      this.frontendProcess.stdout?.on('data', (data) => {
-        const message = data.toString().trim();
-        log('INFO', 'Frontend stdout', { message });
-        console.log(`Frontend: ${data}`);
-      });
-
-      this.frontendProcess.stderr?.on('data', (data) => {
-        const message = data.toString().trim();
-        log('ERROR', 'Frontend stderr', { message });
-        console.error(`Frontend Error: ${data}`);
-        
-        // Detect critical frontend errors
-        if (message.includes('Frontend build not found')) {
-          log('ERROR', 'Critical frontend error detected - build files missing', { message });
-          // Show error dialog to user
-          dialog.showErrorBox(
-            'Frontend Build Error',
-            'The frontend build files were not found. The application may not have been built correctly.'
-          );
-        }
-      });
-
-      this.frontendProcess.on('close', (code) => {
-        log('WARN', 'Frontend process exited', { code });
-        console.log(`Frontend process exited with code ${code}`);
-      });
-
-      this.frontendProcess.on('error', (error) => {
-        log('ERROR', 'Failed to start frontend', { error: error.message, stack: error.stack });
-        console.error('Failed to start frontend:', error);
-        dialog.showErrorBox(
-          'Frontend Error', 
-          `Failed to start the frontend server: ${error.message}`
-        );
-      });
-
-      log('SUCCESS', 'Frontend server startup initiated', { 
-        port: this.frontendPort, 
-        backendPort: this.backendPort,
-        pid: this.frontendProcess?.pid 
-      });
-
-    } catch (error) {
-      log('ERROR', 'Error starting frontend', { error: (error as Error).message, stack: (error as Error).stack });
-      console.error('Error starting frontend:', error);
-      dialog.showErrorBox(
-        'Startup Error', 
-        `Failed to initialize the frontend: ${error}`
-      );
-    }
-  }
-
   private cleanup(): void {
-    log('INFO', 'Cleaning up processes and resources');
-    
-    if (this.backendProcess) {
-      log('INFO', 'Terminating backend process', { pid: this.backendProcess.pid });
-      this.backendProcess.kill();
-      this.backendProcess = null;
-    }
-    if (this.frontendProcess) {
-      log('INFO', 'Terminating frontend process', { pid: this.frontendProcess.pid });
-      this.frontendProcess.kill();
-      this.frontendProcess = null;
-    }
-    if (this.ownsRuntimeSession && this.runtimeSessionPath) {
-      removeLocalRuntimeSession(this.runtimeSessionPath, process.pid);
-      this.runtimeSessionPath = null;
-      this.ownsRuntimeSession = false;
-    }
+    log('INFO', 'Releasing Desktop Runtime lease');
+    const lease = this.runtimeLease;
+    this.runtimeLease = null;
+    void lease?.release();
     
     log('SUCCESS', 'Cleanup completed');
   }

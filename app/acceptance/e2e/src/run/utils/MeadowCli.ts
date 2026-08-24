@@ -17,7 +17,8 @@ limitations under the License.
 import { execFile, type ExecFileException } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../shared_code/utils/localRuntimeSession.js";
+import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../contracts/types/runtime.js";
+import { readRuntimeSessionDescriptor } from "../../../../../runtime/supervisor/src/sessionDescriptor.js";
 
 const CLI_EXECUTABLE = path.resolve(
   import.meta.dirname,
@@ -160,6 +161,7 @@ export class MeadowCli {
   }
 
   private exec(args: string[]): Promise<MeadowCliExecution> {
+    const descriptor = readRuntimeSessionDescriptor(this.runtimeSessionPath);
     return new Promise((resolve) => {
       execFile(
         CLI_EXECUTABLE,
@@ -170,6 +172,10 @@ export class MeadowCli {
           env: {
             ...process.env,
             [MEADOW_RUNTIME_SESSION_ENV]: this.runtimeSessionPath,
+            MEADOW_HOME_DIRECTORY_OVERRIDE: descriptor.homeDirectory,
+            MEADOW_APP_VERSION: descriptor.payload.appVersion,
+            MEADOW_BUILD_PERSPECTIVE: descriptor.payload.perspective,
+            MEADOW_RUNTIME_PAYLOAD_IDENTITY: descriptor.payload.identity,
           },
           maxBuffer: MAX_OUTPUT_BYTES,
         },

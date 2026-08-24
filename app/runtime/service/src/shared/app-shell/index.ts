@@ -66,7 +66,7 @@ import {
   describeStartupFailure,
   writeStartupFailureDiagnostic,
 } from '../../../../../shared_code/utils/startupRecovery.js';
-import { readLocalRuntimeSessionFromEnvironment } from '../../../../../shared_code/utils/localRuntimeSession.js';
+import { createRuntimeOperationLeaseMiddleware } from './runtimeOperationLease.js';
 
 // Configure dotenv to load environment variables
 dotenv.config();
@@ -85,9 +85,8 @@ let port: number = 0;
 const platformPaths = getPlatformPaths();
 let selectedHomePath = platformPaths.defaultConfigDirectory;
 
-const runtimeSession = readLocalRuntimeSessionFromEnvironment();
-const launchCapability = process.env.MEADOW_API_CAPABILITY ?? runtimeSession?.capability;
-const allowedUiOrigin = process.env.MEADOW_UI_ORIGIN ?? runtimeSession?.frontendOrigin;
+const launchCapability = process.env.MEADOW_API_CAPABILITY;
+const allowedUiOrigin = process.env.MEADOW_UI_ORIGIN;
 if (!launchCapability || !allowedUiOrigin) {
   throw new Error('MEADOW_API_CAPABILITY and MEADOW_UI_ORIGIN are required');
 }
@@ -105,6 +104,10 @@ app.use('/api', createControlPlaneSecurity({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use('/api', createRuntimeOperationLeaseMiddleware({
+  controlUrl: process.env.MEADOW_RUNTIME_CONTROL_URL,
+  capability: launchCapability,
+}));
 
 
 
@@ -229,7 +232,7 @@ async function startServer(): Promise<void> {
   // The launch contract provides one random loopback port, whether it was
   // created by Electron, the dev stack, or the E2E harness.
   const launchPort = Number.parseInt(
-    process.env.MEADOW_BACKEND_PORT ?? String(runtimeSession?.backendPort ?? ''),
+    process.env.MEADOW_BACKEND_PORT ?? '',
     10,
   );
   if (Number.isInteger(launchPort) && launchPort > 0 && launchPort <= 65535) {
@@ -282,16 +285,3 @@ function shutdown(signal: string) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
-
-// Orphan detection: exit if parent process dies (parent PID becomes 1 on Unix/macOS)
-// This protects against cases where the Electron app crashes or is killed without cleanup
-const originalPpid = process.ppid;
-if (originalPpid && originalPpid !== 1) {
-  const orphanCheckInterval = setInterval(() => {
-    if (process.ppid === 1 || process.ppid !== originalPpid) {
-      logger.warn(`Parent process died (was ${originalPpid}, now ${process.ppid}), exiting...`);
-      clearInterval(orphanCheckInterval);
-      shutdown('ORPHAN');
-    }
-  }, 5000); // Check every 5 seconds
-}

@@ -15,10 +15,8 @@ limitations under the License.
 */
 
 import { execFileSync } from "node:child_process";
-import type { ChildProcess } from "node:child_process";
-import { spawn } from "node:child_process";
 import {
-  appendFileSync,
+  closeSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -32,11 +30,9 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {
-  createLocalRuntimeSession,
-  MEADOW_RUNTIME_SESSION_ENV,
-  removeLocalRuntimeSession,
-} from "../../../../../shared_code/utils/localRuntimeSession.js";
+import { RuntimeSupervisor } from "../../../../../runtime/supervisor/src/runtimeSupervisor.js";
+import { getRuntimePaths } from "../../../../../runtime/supervisor/src/runtimePaths.js";
+import { createSourceRuntimeLaunchSpec } from "../../../../../runtime/supervisor/src/sourceLaunchSpec.js";
 import { MeadowCommandBroker } from "../broker/MeadowCommandBroker.js";
 import { evaluateCreateSafeBundle } from "../oracles/createSafeBundleOracle.js";
 import { evaluateCurateSpecificNodes } from "../oracles/curateSpecificNodesOracle.js";
@@ -53,7 +49,6 @@ import type {
   TrialRuntimeExtension,
   TrialRuntimeExtensionContext,
 } from "../types.js";
-import { waitForHttpReady } from "../../run/test-fixtures.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 const BACKEND_DIR = path.join(REPO_ROOT, "app", "runtime", "service");
@@ -83,7 +78,7 @@ export class StandaloneTrialRuntime implements TrialRuntime {
   private phase: TrialPhase = "autonomous";
   private configDir = "";
   private runtimeSessionPath = "";
-  private backendProc: ChildProcess | null = null;
+  private runtimeSupervisor: RuntimeSupervisor | null = null;
   private broker: MeadowCommandBroker | null = null;
   private stopped = false;
 
@@ -129,42 +124,31 @@ export class StandaloneTrialRuntime implements TrialRuntime {
     mkdirSync(appDir, { recursive: true });
     writeFileSync(path.join(appDir, "app_config.yaml"), "version: 1.0.0\n", "utf8");
     const extensionSetup = await this.options.extension?.prepare(this.extensionContext());
-    const { session, sessionPath } = await createLocalRuntimeSession({
-      homeDirectory: this.configDir,
-      ownerPid: process.pid,
-    });
-    this.runtimeSessionPath = sessionPath;
-
     const backendLogPath = path.join(this.options.artifactDirectory, "backend.log");
     const backendLogFd = openSync(backendLogPath, "a");
-    this.backendProc = spawn(
-      process.execPath,
-      ["--import", "tsx", "src/shared/app-shell/index.ts"],
-      {
-        cwd: BACKEND_DIR,
-        env: {
-          ...process.env,
-          MEADOW_HOME_DIRECTORY_OVERRIDE: this.configDir,
-          MEADOW_IS_DEV: "true",
-          MEADOW_APP_VERSION: "0.5.41-agent-eval",
-          [MEADOW_RUNTIME_SESSION_ENV]: this.runtimeSessionPath,
-          ...this.options.backendExtraEnv,
-          ...extensionSetup?.backendEnvironment,
-        },
-        stdio: ["ignore", backendLogFd, backendLogFd],
-      },
-    );
-    this.backendProc.on("exit", (code, signal) => {
-      appendFileSync(backendLogPath, `backend process exited: code=${String(code)} signal=${String(signal)}\n`);
+    const appVersion = "0.5.41-agent-eval";
+    const perspective = process.env.MEADOW_BUILD_PERSPECTIVE === "composed"
+      ? "composed"
+      : "standalone";
+    const launchSpec = createSourceRuntimeLaunchSpec({
+      projectRoot: REPO_ROOT,
+      homeDirectory: this.configDir,
+      appVersion,
+      payloadIdentity: `source-${perspective}-${appVersion}`,
+      perspective,
     });
-    await waitForHttpReady(
-      session.backendPort,
-      "/api/app-config",
-      60_000,
-      this.backendProc,
-      true,
-      { "x-meadow-capability": session.capability },
-    );
+    launchSpec.service.environment = {
+      ...launchSpec.service.environment,
+      ...this.options.backendExtraEnv,
+      ...extensionSetup?.backendEnvironment,
+    };
+    this.runtimeSupervisor = new RuntimeSupervisor(launchSpec, {
+      childStdio: () => ["ignore", backendLogFd, backendLogFd],
+    });
+    this.runtimeSupervisor.leases.acquire("client", `agent-eval-${process.pid}`, process.pid);
+    await this.runtimeSupervisor.start();
+    closeSync(backendLogFd);
+    this.runtimeSessionPath = getRuntimePaths(this.configDir).sessionDescriptor;
 
     this.broker = new MeadowCommandBroker({
       socketPath: this.brokerSocketPath,
@@ -254,20 +238,11 @@ export class StandaloneTrialRuntime implements TrialRuntime {
     if (this.stopped) return;
     this.stopped = true;
     await this.broker?.stop();
-    if (this.backendProc?.exitCode === null) {
-      this.backendProc.kill("SIGTERM");
-      await new Promise<void>(resolve => {
-        const timer = setTimeout(() => {
-          if (this.backendProc?.exitCode === null) this.backendProc.kill("SIGKILL");
-          resolve();
-        }, 3_000);
-        this.backendProc!.once("exit", () => {
-          clearTimeout(timer);
-          resolve();
-        });
-      });
+    if (this.runtimeSupervisor) {
+      this.runtimeSupervisor.leases.release("client", `agent-eval-${process.pid}`);
+      await this.runtimeSupervisor.shutdown("requested");
+      this.runtimeSupervisor = null;
     }
-    if (this.runtimeSessionPath) removeLocalRuntimeSession(this.runtimeSessionPath, process.pid);
     await this.options.extension?.stop();
     if (this.configDir) rmSync(this.configDir, { recursive: true, force: true });
     this.sourceFixture.cleanup();

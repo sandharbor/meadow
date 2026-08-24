@@ -16,7 +16,7 @@ limitations under the License.
 
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { RequestHandler } from 'express';
-import { MEADOW_CONTROL_PROTOCOL } from '../../../../../shared_code/utils/localRuntimeSession.js';
+import { MEADOW_RUNTIME_PROTOCOL as MEADOW_CONTROL_PROTOCOL } from '../../../../../contracts/types/runtime.js';
 
 export const MEADOW_CAPABILITY_HEADER = 'x-meadow-capability';
 export { MEADOW_CONTROL_PROTOCOL };

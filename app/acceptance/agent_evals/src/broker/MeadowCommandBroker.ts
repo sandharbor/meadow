@@ -18,7 +18,8 @@ import { spawn } from "node:child_process";
 import { chmodSync, copyFileSync, mkdirSync, unlinkSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../shared_code/utils/localRuntimeSession.js";
+import { MEADOW_RUNTIME_SESSION_ENV } from "../../../../../contracts/types/runtime.js";
+import { readRuntimeSessionDescriptor } from "../../../../../runtime/supervisor/src/sessionDescriptor.js";
 import type { MeadowCommandRecord, TrialPhase } from "../types.js";
 
 interface BrokerRequest {
@@ -115,11 +116,16 @@ export class MeadowCommandBroker {
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     let capturedBytes = 0;
+    const descriptor = readRuntimeSessionDescriptor(this.options.runtimeSessionPath);
     const child = spawn(this.options.cliExecutable, request.args, {
       cwd: this.options.cliWorkingDirectory,
       env: {
         ...process.env,
         [MEADOW_RUNTIME_SESSION_ENV]: this.options.runtimeSessionPath,
+        MEADOW_HOME_DIRECTORY_OVERRIDE: descriptor.homeDirectory,
+        MEADOW_APP_VERSION: descriptor.payload.appVersion,
+        MEADOW_BUILD_PERSPECTIVE: descriptor.payload.perspective,
+        MEADOW_RUNTIME_PAYLOAD_IDENTITY: descriptor.payload.identity,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });

@@ -30,28 +30,21 @@ limitations under the License.
  *   dev server's proxy config — see app/clients/web/vite.config.ts).
  *
  * Usage:
- *   MEADOW_RUNTIME_SESSION_PATH=... npx tsx start_static_frontend.ts <distDir>
+ *   PORT=... VITE_BACKEND_PORT=... MEADOW_API_CAPABILITY=... npx tsx start_static_frontend.ts <distDir>
  */
 
 import http from "http";
 import fs from "fs";
 import path from "path";
-import {
-  MEADOW_RUNTIME_SESSION_ENV,
-  readLocalRuntimeSession,
-} from "../../../../../shared_code/utils/localRuntimeSession.js";
-
 const distDir = process.argv[2];
-const runtimeSessionPath = process.env[MEADOW_RUNTIME_SESSION_ENV];
-const runtimeSession = runtimeSessionPath
-  ? readLocalRuntimeSession(runtimeSessionPath)
-  : null;
-const port = runtimeSession?.frontendPort;
-const backendPort = runtimeSession?.backendPort;
-const apiCapability = runtimeSession?.capability;
+const port = Number.parseInt(process.env.PORT ?? "", 10);
+const backendPort = Number.parseInt(process.env.VITE_BACKEND_PORT ?? "", 10);
+const apiCapability = process.env.MEADOW_API_CAPABILITY;
+const runtimeControlUrl = process.env.MEADOW_RUNTIME_CONTROL_URL;
+const browserSessionCookie = "meadow_browser_session";
 
-if (!port || isNaN(port) || !backendPort || isNaN(backendPort) || !distDir || !apiCapability) {
-  process.stderr.write("Usage: MEADOW_RUNTIME_SESSION_PATH=... start_static_frontend.ts <distDir>\n");
+if (!port || !backendPort || !distDir || !apiCapability || !runtimeControlUrl) {
+  process.stderr.write("Usage: Runtime Supervisor environment start_static_frontend.ts <distDir>\n");
   process.exit(1);
 }
 
@@ -80,6 +73,25 @@ const CONTENT_TYPES: Record<string, string> = {
 
 const absDistDir = path.resolve(distDir);
 
+function readCookie(cookieHeader: string | undefined, name: string): string | null {
+  for (const item of cookieHeader?.split(";") ?? []) {
+    const [key, ...value] = item.trim().split("=");
+    if (key === name) return decodeURIComponent(value.join("="));
+  }
+  return null;
+}
+
+async function control(pathname: string, body: Record<string, unknown>): Promise<Response> {
+  return fetch(`${runtimeControlUrl!}${pathname}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-meadow-capability": apiCapability!,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 function serveFile(res: http.ServerResponse, filePath: string) {
   fs.stat(filePath, (err, stat) => {
     if (err || !stat.isFile()) {
@@ -96,9 +108,51 @@ function serveFile(res: http.ServerResponse, filePath: string) {
 
 const server = http.createServer((req, res) => {
   const rawUrl = req.url || "/";
+  const requestUrl = new URL(rawUrl, `http://127.0.0.1:${port}`);
+
+  const launchToken = requestUrl.searchParams.get("meadowLaunchToken");
+  if (launchToken) {
+    void control("/browser-session/exchange", { token: launchToken })
+      .then(async exchange => {
+        if (!exchange.ok) {
+          res.writeHead(403);
+          res.end("Browser launch token is invalid or expired");
+          return;
+        }
+        const session = await exchange.json() as {
+          sessionId: string;
+          targetPath: string;
+          maxAgeSeconds: number;
+        };
+        res.writeHead(303, {
+          "set-cookie": `${browserSessionCookie}=${encodeURIComponent(session.sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${session.maxAgeSeconds}`,
+          location: session.targetPath,
+          "cache-control": "no-store",
+        });
+        res.end();
+      })
+      .catch(() => {
+        res.writeHead(503);
+        res.end("Runtime browser session is unavailable");
+      });
+    return;
+  }
 
   // Proxy /api/* to backend
   if (rawUrl.startsWith("/api")) {
+    const sessionId = readCookie(req.headers.cookie, browserSessionCookie);
+    if (!sessionId) {
+      res.writeHead(401);
+      res.end("Browser session is required");
+      return;
+    }
+    void control("/browser-session/validate", { sessionId })
+      .then(validation => {
+        if (!validation.ok) {
+          res.writeHead(401);
+          res.end("Browser session is required");
+          return;
+        }
     const proxyReq = http.request(
       {
         host: "127.0.0.1",
@@ -139,6 +193,11 @@ const server = http.createServer((req, res) => {
       }
     });
     req.pipe(proxyReq);
+      })
+      .catch(() => {
+        res.writeHead(503);
+        res.end("Runtime browser session is unavailable");
+      });
     return;
   }
 

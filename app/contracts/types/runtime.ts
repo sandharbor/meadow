@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 export const MEADOW_RUNTIME_PROTOCOL = "meadow-local-v1";
+export const MEADOW_RUNTIME_SESSION_ENV = "MEADOW_RUNTIME_SESSION_PATH";
 export const RUNTIME_SESSION_DESCRIPTOR_SCHEMA_VERSION = 2;
 export const HOME_OWNERSHIP_LOCK_SCHEMA_VERSION = 1;
 export const RUNTIME_PAYLOAD_MANIFEST_SCHEMA_VERSION = 1;
@@ -34,14 +35,16 @@ export interface RuntimeSessionDescriptor {
   instanceId: string;
   supervisorPid: number;
   runtimePid: number;
+  controlPort: number;
   backendPort: number;
   frontendPort: number;
   backendUrl: string;
+  controlUrl: string;
   frontendUrl: string;
   frontendOrigin: string;
   capability: string;
   payload: RuntimePayloadReference;
-  state: "ready" | "handoff-requested";
+  state: "starting" | "ready" | "handoff-requested";
   startedAt: string;
   lastLeaseAt: string;
 }
@@ -94,4 +97,20 @@ export interface RuntimePayloadManifest {
   appVersion: string;
   perspective: RuntimeBuildPerspective;
   files: RuntimePayloadFile[];
+}
+
+export interface RuntimeChildLaunchCommand {
+  executable: string;
+  args: string[];
+  cwd: string;
+  environment?: Record<string, string>;
+}
+
+export interface RuntimeSupervisorLaunchSpec {
+  schemaVersion: 1;
+  homeDirectory: string;
+  payload: RuntimePayloadReference;
+  service: RuntimeChildLaunchCommand;
+  web: RuntimeChildLaunchCommand;
+  idleTimeoutMs: number;
 }

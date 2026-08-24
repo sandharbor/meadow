@@ -30,6 +30,7 @@ import {
   readdirSync,
   statSync,
   openSync,
+  closeSync,
 } from "fs";
 import net from "net";
 import http from "http";
@@ -42,11 +43,9 @@ import { MinioS3 } from "./utils/MinioS3.js";
 import type { BundleMode } from "./bundleMode.js";
 import type { ExecutionSurface } from "./executionSurface.js";
 import { isPrivateMeadowHomePath } from "../../../../shared_code/utils/privateMeadowHomePaths.js";
-import {
-  createLocalRuntimeSession,
-  MEADOW_RUNTIME_SESSION_ENV,
-  removeLocalRuntimeSession,
-} from "../../../../shared_code/utils/localRuntimeSession.js";
+import { RuntimeSupervisor } from "../../../../runtime/supervisor/src/runtimeSupervisor.js";
+import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
+import { createBrowserLaunchUrl } from "../../../../runtime/supervisor/src/runtimeClient.js";
 // assembleTestArtifacts is called in assembleRun() post-run, not during fixture teardown
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -142,12 +141,12 @@ export function waitForHttpReady(
   port: number,
   path: string,
   timeoutMs: number,
-  proc: ChildProcess,
+  proc: ChildProcess | undefined,
   requireSuccess = false,
   headers: Record<string, string> = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (proc.exitCode !== null || proc.signalCode !== null) {
+    if (proc && (proc.exitCode !== null || proc.signalCode !== null)) {
       reject(new Error(
         `Process already exited with code ${String(proc.exitCode)} signal ${String(proc.signalCode)} while waiting for HTTP readiness on port ${port}`,
       ));
@@ -156,7 +155,7 @@ export function waitForHttpReady(
     const deadline = Date.now() + timeoutMs;
     let exited = false;
 
-    proc.on("exit", (code) => {
+    proc?.on("exit", (code) => {
       exited = true;
       reject(new Error(`Process exited with code ${code} while waiting for HTTP readiness on port ${port}`));
     });
@@ -411,6 +410,7 @@ export interface TestServer {
   sourceGraphsDir: string;
   backendPort: number;
   frontendPort: number;
+  browserLaunchUrl: string;
   webServerPort: number;
   minioEndpoint: string;
   minioBucket: string;
@@ -593,7 +593,7 @@ export const test = base.extend<{
   // the browser context (and its video recording) only starts AFTER the
   // backend / frontend / web-server are ready, keeping video duration
   // close to the actual test-body duration.
-  context: async ({ browser, testServer: _ts, recordVideo }, use, testInfo) => {
+  context: async ({ browser, testServer, recordVideo }, use, testInfo) => {
     const testSlug = testInfo.title
       .replace(/[^a-zA-Z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
@@ -609,6 +609,10 @@ export const test = base.extend<{
       ...(recordVideo ? { recordVideo: { dir: videoDir, size: { width: 1200, height: 675 } } } : {}),
       viewport: { width: 1200, height: 675 },
     });
+    const browserSessionResponse = await context.request.get(testServer.browserLaunchUrl);
+    if (!browserSessionResponse.ok()) {
+      throw new Error(`Browser launch-token exchange failed (${browserSessionResponse.status()})`);
+    }
     await use(context);
     await context.close();
   },
@@ -631,14 +635,17 @@ export const test = base.extend<{
         trackBigBundleExcalidrawPages(configDir);
       }
 
-      // 3. Allocate the same private launch contract used by desktop, web
-      // development, and the CLI.
-      const { session: runtimeSession, sessionPath: runtimeSessionPath } =
-        await createLocalRuntimeSession({
-          homeDirectory: configDir,
-          ownerPid: process.pid,
-        });
-      const { backendPort, frontendPort, capability: apiCapability } = runtimeSession;
+      // 3. Declare the build identity required by every client in this run.
+      // The Runtime Supervisor will allocate connection details atomically.
+      const appVersion = "0.5.41-e2e";
+      const perspective = process.env.MEADOW_BUILD_PERSPECTIVE === "composed"
+        ? "composed"
+        : "standalone";
+      const payload = {
+        identity: `source-${perspective}-${appVersion}`,
+        appVersion,
+        perspective,
+      } as const;
 
       // 4. Read shared container endpoint from marker file
       const minioEndpoint = readFileSync(path.join(E2E_DIR, ".minio-endpoint"), "utf8").trim();
@@ -669,62 +676,48 @@ export const test = base.extend<{
       const backendStderrFd = openSync(backendStderrPath, "a");
       const frontendStderrFd = openSync(frontendStderrPath, "a");
 
-      // 7. Spawn backend. Fixture layers can supply additional env vars
-      //    via the `_backendExtraEnv` option (e.g. provider-specific stubs).
-      const backendProc = spawn(
-        process.execPath,
-        ["--import", "tsx", "src/shared/app-shell/index.ts"],
-        {
-          cwd: BACKEND_DIR,
-          env: {
-            ...process.env,
-            MEADOW_HOME_DIRECTORY_OVERRIDE: configDir,
-            MEADOW_IS_DEV: "true",
-            MEADOW_APP_VERSION: "0.5.41-e2e",
-            [MEADOW_RUNTIME_SESSION_ENV]: runtimeSessionPath,
-            ..._backendExtraEnv,
-          },
-          stdio: ["ignore", "ignore", backendStderrFd],
-        }
-      );
-      backendProc.on("exit", (code, signal) => {
-        appendFileSync(
-          backendStderrPath,
-          `backend process exited: code=${String(code)} signal=${String(signal)}\n`,
-        );
-      });
-
-      // 8. Spawn frontend — a lightweight static file server serving the
-      // pre-built dist/ (built once in playwright.config.ts). This replaces
-      // `npx vite` because vite dev mode paid a ~1.8s module transform
-      // cold-start on the very first page.goto("/") of every test.
+      // 7. Describe the service and lightweight static Web child. The
+      // Runtime Supervisor below is the sole process allowed to create them.
       const frontendDistDir = readFileSync(
         path.join(E2E_DIR, ".frontend-dist-dir"),
         "utf8",
       ).trim();
-      const frontendProc = spawn(
-        process.execPath,
-        [
-          "--import",
-          "tsx",
-          path.join(E2E_DIR, "src/run/scripts/start_static_frontend.ts"),
-          frontendDistDir,
-        ],
-        {
-          cwd: E2E_DIR,
-          env: {
-            ...process.env,
-            [MEADOW_RUNTIME_SESSION_ENV]: runtimeSessionPath,
+      const runtimeSupervisor = new RuntimeSupervisor({
+        schemaVersion: 1,
+        homeDirectory: configDir,
+        payload,
+        service: {
+          executable: process.execPath,
+          args: ["--import", "tsx", "src/shared/app-shell/index.ts"],
+          cwd: BACKEND_DIR,
+          environment: {
+            MEADOW_IS_DEV: "true",
+            ..._backendExtraEnv,
           },
-          stdio: ["ignore", "ignore", frontendStderrFd],
-        }
-      );
-      frontendProc.on("exit", (code, signal) => {
-        appendFileSync(
-          frontendStderrPath,
-          `frontend process exited: code=${String(code)} signal=${String(signal)}\n`,
-        );
+        },
+        web: {
+          executable: process.execPath,
+          args: [
+            "--import",
+            "tsx",
+            path.join(E2E_DIR, "src/run/scripts/start_static_frontend.ts"),
+            frontendDistDir,
+          ],
+          cwd: E2E_DIR,
+        },
+        idleTimeoutMs: 60 * 60 * 1_000,
+      }, {
+        childStdio: kind => [
+          "ignore",
+          "ignore",
+          kind === "service" ? backendStderrFd : frontendStderrFd,
+        ],
       });
+      runtimeSupervisor.leases.acquire("client", `e2e-${process.pid}-${testInfo.testId}`, process.pid);
+      const runtimeSession = await runtimeSupervisor.start();
+      const runtimeSessionPath = getRuntimePaths(configDir).sessionDescriptor;
+      const { backendPort, frontendPort, capability: apiCapability } = runtimeSession;
+      const browserLaunchUrl = await createBrowserLaunchUrl(runtimeSession);
 
       // 9. Spawn web server
       const webServerProc = spawn(
@@ -741,28 +734,28 @@ export const test = base.extend<{
         }
       );
 
-      const procs = [backendProc, frontendProc, webServerProc];
+      const procs = [webServerProc];
 
-      // 11. Wait for all ports to be ready (TCP accept)
-      await Promise.all([
-        waitForPort(backendPort, 30_000, backendProc),
-        waitForPort(frontendPort, 30_000, frontendProc),
-        waitForPort(webServerPort, 15_000, webServerProc),
-      ]);
+      // 11. RuntimeSupervisor.start() already proved the service and Web
+      // client are healthy; only the independent MinIO web fixture remains.
+      await waitForPort(webServerPort, 15_000, webServerProc);
 
       // 11b. Wait for backend to actually respond to HTTP requests. TCP
       // accept is not sufficient — under heavy parallel load it has been
       // observed as bound-but-unresponsive, surfacing as 502s through the
       // static-frontend proxy (frontend page load).
-      await waitForHttpReady(backendPort, "/api/app-config", 60_000, backendProc, true, {
+      await waitForHttpReady(backendPort, "/api/app-config", 60_000, undefined, true, {
         "x-meadow-capability": apiCapability,
       });
+      closeSync(backendStderrFd);
+      closeSync(frontendStderrFd);
       const server: TestServer = {
         configDir,
         runtimeSessionPath,
         sourceGraphsDir,
         backendPort,
         frontendPort,
+        browserLaunchUrl,
         webServerPort,
         minioEndpoint,
         minioBucket,
@@ -891,9 +884,8 @@ export const test = base.extend<{
 
       await use(server);
 
-      // 12. Teardown: retire the frontend proxy before the backend. Stopping
-      // all three simultaneously allows an in-flight proxy request to observe
-      // the backend disappearing and emit a spurious 502 during teardown.
+      // 12. Teardown the independent MinIO fixture, then ask the sole process
+      // owner to retire its Web and service children in order.
       const stopProcesses = async (processes: typeof procs) => {
         for (const proc of processes) {
           if (proc.exitCode === null) {
@@ -930,9 +922,9 @@ export const test = base.extend<{
         });
       };
 
-      await stopProcesses([frontendProc]);
-      await stopProcesses([backendProc, webServerProc]);
-      removeLocalRuntimeSession(runtimeSessionPath, process.pid);
+      await stopProcesses(procs);
+      runtimeSupervisor.leases.release("client", `e2e-${process.pid}-${testInfo.testId}`);
+      await runtimeSupervisor.shutdown("requested");
     },
     { auto: true },
   ],
