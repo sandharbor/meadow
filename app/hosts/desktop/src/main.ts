@@ -805,23 +805,25 @@ class MeadowApp {
         resolve(false);
       }, 10000);
       
-      const testUrl = `http://127.0.0.1:${this.frontendPort}/api/health`;
-      log('INFO', 'Checking frontend health', { url: testUrl });
+      // The embedded Web server protects /api/* with a browser session. Its
+      // public document root is the readiness surface used before navigation.
+      const testUrl = `http://127.0.0.1:${this.frontendPort}/`;
+      log('INFO', 'Checking frontend readiness', { url: testUrl });
       
       fetch(testUrl)
         .then(response => {
           clearTimeout(timeout);
           if (response.ok) {
-            log('SUCCESS', 'Frontend health check passed');
+            log('SUCCESS', 'Frontend readiness check passed');
             resolve(true);
           } else {
-            log('ERROR', 'Frontend health check failed', { status: response.status });
+            log('ERROR', 'Frontend readiness check failed', { status: response.status });
             resolve(false);
           }
         })
         .catch(error => {
           clearTimeout(timeout);
-          log('ERROR', 'Frontend health check error', { error: error.message });
+          log('ERROR', 'Frontend readiness check error', { error: error.message });
           resolve(false);
         });
     });

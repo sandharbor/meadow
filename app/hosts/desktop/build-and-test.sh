@@ -72,7 +72,20 @@ cleanup() {
     for volume in /Volumes/*Meadow*; do
         if [ -d "$volume" ]; then
             log_info "Unmounting $volume"
-            diskutil eject "$volume" || true
+            volume_ejected=false
+            for attempt in $(seq 1 40); do
+                if diskutil eject "$volume" >/dev/null 2>&1; then
+                    volume_ejected=true
+                    break
+                fi
+                if [ "$attempt" -eq 1 ]; then
+                    log_info "Waiting for the supervised Runtime to release $volume"
+                fi
+                sleep 1
+            done
+            if [ "$volume_ejected" = false ]; then
+                log_warning "Could not unmount $volume after waiting for Runtime shutdown"
+            fi
         fi
     done
 
@@ -399,14 +412,14 @@ frontend_started=false
 window_created=false
 
 if [ -f "$TEST_LOG_FILE" ]; then
-    if grep -q "Backend server startup initiated" "$TEST_LOG_FILE"; then
+    if grep -q "Backend server is ready!" "$TEST_LOG_FILE"; then
         backend_started=true
         log_success "✓ Backend server started successfully"
     else
         log_error "✗ Backend server failed to start"
     fi
 
-    if grep -q "Frontend server startup initiated" "$TEST_LOG_FILE"; then
+    if grep -q "Frontend server is ready!" "$TEST_LOG_FILE"; then
         frontend_started=true
         log_success "✓ Frontend server started successfully"
     else
