@@ -159,8 +159,12 @@ export class RuntimeSupervisor {
       });
 
       await Promise.all([
-        this.waitUntilHealthy(`${this.descriptor.backendUrl}/health`, paths.startupDiagnostic),
-        this.waitUntilHealthy(this.descriptor.frontendUrl),
+        this.waitUntilHealthy(
+          `${this.descriptor.backendUrl}/health`,
+          this.serviceProcess,
+          paths.startupDiagnostic,
+        ),
+        this.waitUntilHealthy(this.descriptor.frontendUrl, this.webProcess),
       ]);
       this.descriptor.state = "ready";
       this.descriptor.lastLeaseAt = new Date(this.now()).toISOString();
@@ -232,10 +236,17 @@ export class RuntimeSupervisor {
     if (child && child.exitCode === null && !child.killed) child.kill("SIGTERM");
   }
 
-  private async waitUntilHealthy(url: string, diagnosticPath?: string): Promise<void> {
+  private async waitUntilHealthy(
+    url: string,
+    child: ChildProcess,
+    diagnosticPath?: string,
+  ): Promise<void> {
     for (let attempt = 0; attempt < 60; attempt += 1) {
       if (diagnosticPath && existsSync(diagnosticPath)) {
         throw new Error("Runtime service reported a safe startup failure");
+      }
+      if (child.exitCode !== null || child.signalCode !== null || this.shutdownStarted) {
+        throw new Error(`Runtime child exited before becoming healthy: ${url}`);
       }
       if (await this.healthCheck(url)) return;
       await new Promise(resolve => setTimeout(resolve, 500));

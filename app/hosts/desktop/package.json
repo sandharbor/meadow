@@ -13,17 +13,14 @@
     "electron-dev-args": "./electron-dev.sh",
     "build": "npm run build:all && npm run build:electron",
     "build:dev": "npm run build:main -- --watch",
-    "build:all": "npm run build:rust && npm run build:backend && npm run build:cli && npm run build:frontend && npm run build:main",
-    "build:rust": "cd ../../runtime/native/source_page_search_by_title/source_page_search_by_title_code && cargo build --release && cd ../../fast_git_ops/fast_git_ops_code && cargo build --release && cd ../../working_graph/working_graph_code && cargo build --release",
-    "build:backend": "cd ../../runtime/service && npm run build",
+    "build:all": "npm run build:payload && npm run build:cli && npm run build:main",
+    "build:payload": "node ../../runtime/payload/src/buildRuntimePayload.mjs --perspective ${MEADOW_BUILD_PERSPECTIVE:-standalone} --app-version $npm_package_version --output ../../runtime/payload/dist",
     "build:cli": "cd ../../clients/cli && npm run build",
-    "build:frontend": "cd ../../clients/web && npm run build && npm run build:server",
     "build:main": "tsc",
     "build:electron": "electron-builder",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "fix-backend": "mkdir -p build/mac/Meadow.app/Contents/Resources/backend && cp -r ../../runtime/service/dist/runtime/service/* build/mac/Meadow.app/Contents/Resources/backend/ && cp ../../runtime/service/package.json build/mac/Meadow.app/Contents/Resources/backend/ && cp -r ../../runtime/service/node_modules build/mac/Meadow.app/Contents/Resources/backend/ && cp -r ../../runtime/service/dist/shared_code build/mac/Meadow.app/Contents/Resources/shared_code && cp -r ../../runtime/service/dist/contracts build/mac/Meadow.app/Contents/Resources/contracts && cp -r ../../runtime/service/src/areas/bundle/generation/html/templates build/mac/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/templates && cp -r ../../runtime/service/src/areas/bundle/generation/html/shared build/mac/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/shared && cp -r ../../runtime/service/src/areas/bundle/generation/html/presets build/mac/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/presets && cp node-wrapper.sh build/mac/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac/Meadow.app/Contents/Resources/node && mkdir -p build/mac-arm64/Meadow.app/Contents/Resources/backend && cp -r ../../runtime/service/dist/runtime/service/* build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp ../../runtime/service/package.json build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp -r ../../runtime/service/node_modules build/mac-arm64/Meadow.app/Contents/Resources/backend/ && cp -r ../../runtime/service/dist/shared_code build/mac-arm64/Meadow.app/Contents/Resources/shared_code && cp -r ../../runtime/service/dist/contracts build/mac-arm64/Meadow.app/Contents/Resources/contracts && cp -r ../../runtime/service/src/areas/bundle/generation/html/templates build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/templates && cp -r ../../runtime/service/src/areas/bundle/generation/html/shared build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/shared && cp -r ../../runtime/service/src/areas/bundle/generation/html/presets build/mac-arm64/Meadow.app/Contents/Resources/backend/src/areas/bundle/generation/html/presets && cp node-wrapper.sh build/mac-arm64/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac-arm64/Meadow.app/Contents/Resources/node-wrapper.sh && chmod +x build/mac-arm64/Meadow.app/Contents/Resources/node",
     "postinstall": "electron-builder install-app-deps",
     "clean": "rimraf dist build",
     "generate-icons": "./generate-icons.sh"
@@ -49,102 +46,9 @@
     ],
     "extraResources": [
       {
-        "from": "../../clients/web/dist",
-        "to": "frontend",
+        "from": "../../runtime/payload/dist",
+        "to": "runtime-payload",
         "filter": ["**/*"]
-      },
-      {
-        "from": "../../clients/web/package.json",
-        "to": "frontend/package.json"
-      },
-      {
-        "from": "../../clients/web/node_modules",
-        "to": "frontend/node_modules",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/dist/runtime/service",
-        "to": "backend",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/dist/publishing_providers",
-        "to": "publishing_providers",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/dist/shared_code",
-        "to": "shared_code",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/dist/contracts",
-        "to": "contracts",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../shared_code/package.json",
-        "to": "shared_code/package.json"
-      },
-      {
-        "from": "../../shared_code/node_modules",
-        "to": "shared_code/node_modules",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/package.json",
-        "to": "backend/package.json",
-        "filter": ["package.json"]
-      },
-      {
-        "from": "../../runtime/service/node_modules",
-        "to": "backend/node_modules",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/src/areas/bundle/generation/html/templates",
-        "to": "backend/src/areas/bundle/generation/html/templates",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/src/areas/bundle/generation/html/shared",
-        "to": "backend/src/areas/bundle/generation/html/shared",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/src/areas/bundle/generation/html/presets",
-        "to": "backend/src/areas/bundle/generation/html/presets",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/service/src/areas/bundle/generation/html/published_bundle_utils/srs",
-        "to": "backend/src/areas/bundle/generation/html/published_bundle_utils/srs",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../runtime/native/source_page_search_by_title/source_page_search_by_title_code/target/release",
-        "to": "source_page_search_by_title",
-        "filter": ["source_page_search_by_title_bin*", "*.exe"]
-      },
-      {
-        "from": "../../runtime/native/fast_git_ops/fast_git_ops_code/target/release",
-        "to": "fast_git_ops",
-        "filter": ["fast_git_ops_bin*", "*.exe"]
-      },
-      {
-        "from": "../../runtime/native/working_graph/working_graph_code/target/release",
-        "to": "working_graph",
-        "filter": ["working_graph_bin*", "*.exe"]
-      },
-      {
-        "from": "./vendor/node",
-        "to": "node",
-        "filter": ["node"]
-      },
-      {
-        "from": "./node-wrapper.sh",
-        "to": "node-wrapper.sh",
-        "filter": ["node-wrapper.sh"]
       },
       {
         "from": "../../clients/cli/dist",
@@ -155,16 +59,6 @@
         "from": "../../clients/cli/bin/meadow",
         "to": "cli/meadow",
         "filter": ["meadow"]
-      },
-      {
-        "from": "../../shared_data/home_fixtures/home_fixture_example",
-        "to": "example_bundle/home_fixture",
-        "filter": ["**/*"]
-      },
-      {
-        "from": "../../shared_data/source_graphs/example-bundle-data",
-        "to": "example_bundle/source_graph",
-        "filter": ["**/*"]
       }
     ],
     "mac": {

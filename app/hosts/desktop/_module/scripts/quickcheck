@@ -7,45 +7,20 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Verify that every Runtime service HTML asset directory containing files is covered
-# by an extraResources entry in package.json. This prevents assets from being
-# silently excluded from the distribution build.
-echo "🧪 Checking extraResources covers all Runtime service HTML assets..."
-HTML_DIR="../../runtime/service/src/areas/bundle/generation/html"
-EXTRA_RESOURCES=$(node -e "
-  const pkg = require('./package.json');
-  const entries = pkg.build.extraResources
-    .map(r => typeof r === 'string' ? r : r.from)
-    .filter(f => f.startsWith('../../runtime/service/src/areas/bundle/generation/html/'));
-  entries.forEach(e => console.log(e));
-")
-
-# Find all Runtime service HTML directories that directly contain files
-MISSING=0
-while IFS= read -r dir; do
-    rel="${dir#$HTML_DIR/}"
-    # Check if this relative path (or any ancestor) is covered by an extraResources entry
-    covered=false
-    while [ -n "$rel" ]; do
-        check="../../runtime/service/src/areas/bundle/generation/html/$rel"
-        if echo "$EXTRA_RESOURCES" | grep -qxF "$check"; then
-            covered=true
-            break
-        fi
-        # Move up one directory level
-        parent="$(dirname "$rel")"
-        [ "$parent" = "$rel" ] && break
-        rel="$parent"
-    done
-    if [ "$covered" = false ]; then
-        echo "❌ Runtime service HTML directory '${dir#$HTML_DIR/}' is not covered by any extraResources entry in package.json"
-        MISSING=1
-    fi
-done < <(find "$HTML_DIR" -mindepth 1 -type d -exec sh -c 'ls -1qA "$1"/*.* >/dev/null 2>&1' _ {} \; -print | sort)
-
-if [ "$MISSING" = "1" ]; then
-    echo "❌ Add the missing directories to extraResources in hosts/desktop/package.json"
-    exit 1
-fi
+# Desktop embeds the complete, manifest-verified Runtime Payload. The payload
+# assembler owns the lower-level service asset inventory.
+echo "🧪 Checking Desktop embeds the Runtime Payload..."
+node --input-type=module -e "
+  import { readFileSync } from 'node:fs';
+  import { GENERATION_ASSET_DIRECTORIES } from '../../runtime/payload/src/buildRuntimePayload.mjs';
+  const packageJson = JSON.parse(readFileSync('./package.json', 'utf8'));
+  const resources = packageJson.build.extraResources.map(entry => typeof entry === 'string' ? entry : entry.from);
+  if (!resources.includes('../../runtime/payload/dist')) {
+    throw new Error('Desktop extraResources must embed ../../runtime/payload/dist');
+  }
+  if (GENERATION_ASSET_DIRECTORIES.length === 0) {
+    throw new Error('Runtime Payload generation asset inventory is empty');
+  }
+"
 
 echo "✅ Desktop host checks passed"

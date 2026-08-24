@@ -1,0 +1,11 @@
+{
+  "name": "meadow-runtime-payload",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node src/buildRuntimePayload.mjs",
+    "smoke": "node src/smokeRuntimePayload.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

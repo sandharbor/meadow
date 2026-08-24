@@ -42,6 +42,7 @@ import {
 } from '../../../runtime/supervisor/src/runtimeClient';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths';
 import { createSourceRuntimeLaunchSpec } from '../../../runtime/supervisor/src/sourceLaunchSpec';
+import { createRuntimePayloadLaunchSpec } from '../../../runtime/supervisor/src/runtimePayload';
 import { UpdateManager } from './updateManager';
 import { acknowledgeUpdateHealthFromEnvironment } from './verifiedUpdater';
 import { showRecoveryWindow } from './recoveryWindow';
@@ -199,18 +200,13 @@ class MeadowApp {
       this.nodePath = 'node';
       log('INFO', 'Using development paths', { sourcePageSearchByTitlePath: this.sourcePageSearchByTitlePath, fastGitOpsPath: this.fastGitOpsPath, workingGraphPath: this.workingGraphPath, nodePath: this.nodePath });
     } else {
-      // Production paths
+      // Production paths resolve from the single embedded Runtime Payload.
       const resourcesPath = (process as any).resourcesPath;
-      this.sourcePageSearchByTitlePath = path.join(resourcesPath, 'source_page_search_by_title', 'source_page_search_by_title_bin');
-      this.fastGitOpsPath = path.join(resourcesPath, 'fast_git_ops', 'fast_git_ops_bin');
-      this.workingGraphPath = path.join(resourcesPath, 'working_graph', 'working_graph_bin');
-      
-      // Use wrapper script for Node.js to handle execution from mounted DMG
-      if (process.platform === 'darwin') {
-        this.nodePath = path.join(resourcesPath, 'node-wrapper.sh');
-      } else {
-        this.nodePath = path.join(resourcesPath, 'node');
-      }
+      const payloadRoot = path.join(resourcesPath, 'runtime-payload');
+      this.sourcePageSearchByTitlePath = path.join(payloadRoot, 'native/source_page_search_by_title_bin');
+      this.fastGitOpsPath = path.join(payloadRoot, 'native/fast_git_ops_bin');
+      this.workingGraphPath = path.join(payloadRoot, 'native/working_graph_bin');
+      this.nodePath = path.join(payloadRoot, 'bin/node');
       
       log('INFO', 'Using production paths', { 
         resourcesPath, 
@@ -388,7 +384,7 @@ class MeadowApp {
     const perspective = process.env.MEADOW_BUILD_PERSPECTIVE === 'composed'
       ? 'composed'
       : 'standalone';
-    const payload = {
+    let payload = {
       identity: process.env.MEADOW_RUNTIME_PAYLOAD_IDENTITY
         ?? `source-${perspective}-${app.getVersion()}`,
       appVersion: app.getVersion(),
@@ -416,32 +412,16 @@ class MeadowApp {
       );
     } else {
       const resourcesPath = (process as NodeJS.Process & { resourcesPath: string }).resourcesPath;
-      launchSpec = {
-        schemaVersion: 1,
+      const payloadRoot = path.join(resourcesPath, 'runtime-payload');
+      launchSpec = createRuntimePayloadLaunchSpec({
+        payloadRoot,
         homeDirectory: configDir,
-        payload,
-        service: {
-          executable: this.nodePath,
-          args: ['src/shared/app-shell/index.js'],
-          cwd: path.join(resourcesPath, 'backend'),
-          environment: {
-            NODE_ENV: 'production',
-            MEADOW_IS_DEV: 'false',
-            SOURCE_PAGE_SEARCH_BY_TITLE_PATH: this.sourcePageSearchByTitlePath,
-            FAST_GIT_OPS_PATH: this.fastGitOpsPath,
-            WORKING_GRAPH_PATH: this.workingGraphPath,
-            MEADOW_EXAMPLE_BUNDLE_PATH: path.join(resourcesPath, 'example_bundle'),
-          },
-        },
-        web: {
-          executable: this.nodePath,
-          args: ['server.js'],
-          cwd: path.join(resourcesPath, 'frontend'),
-          environment: { NODE_ENV: 'production' },
-        },
-        idleTimeoutMs: 30_000,
-      };
-      supervisorEntryPath = path.join(resourcesPath, 'runtime-supervisor', 'meadow-runtime-supervisor.cjs');
+      });
+      if (launchSpec.payload.appVersion !== app.getVersion()) {
+        throw new Error('Desktop and Runtime Payload versions do not match');
+      }
+      payload = launchSpec.payload;
+      supervisorEntryPath = path.join(payloadRoot, 'supervisor/meadow-runtime-supervisor.cjs');
     }
 
     this.runtimeLease = await ensureRuntime({
@@ -450,7 +430,7 @@ class MeadowApp {
       launchSpec,
       supervisorEntryPath,
       descriptorPath: process.env[MEADOW_RUNTIME_SESSION_ENV],
-      nodeExecutable: this.nodePath,
+      nodeExecutable: launchSpec.service.executable,
     });
     const session = this.runtimeLease.descriptor;
     this.backendPort = session.backendPort;

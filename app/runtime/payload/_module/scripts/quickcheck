@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+npm test
+node src/buildRuntimePayload.mjs --help >/dev/null

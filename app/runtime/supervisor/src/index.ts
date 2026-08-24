@@ -6,6 +6,7 @@ export * from "./launchSpec.js";
 export * from "./leaseRegistry.js";
 export * from "./runtimeClient.js";
 export * from "./runtimeSupervisor.js";
+export * from "./runtimePayload.js";
 export * from "./runtimePaths.js";
 export * from "./sessionDescriptor.js";
 export * from "./sourceLaunchSpec.js";

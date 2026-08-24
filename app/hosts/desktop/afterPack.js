@@ -14,12 +14,13 @@ exports.default = async function(context) {
   const appBundle = path.join(appOutDir, `${productFilename}.app`);
   const resourcesPath = path.join(appBundle, 'Contents', 'Resources');
   
-  const nodeWrapperSh = path.join(resourcesPath, 'node-wrapper.sh');
-  const nodeBinary = path.join(resourcesPath, 'node');
+  const payloadRoot = path.join(resourcesPath, 'runtime-payload');
+  const nodeBinary = path.join(payloadRoot, 'bin', 'node');
   const meadowCli = path.join(resourcesPath, 'cli', 'meadow');
-  const workingGraphBin = path.join(resourcesPath, 'working_graph', 'working_graph_bin');
-  const sourcePageSearchBin = path.join(resourcesPath, 'source_page_search_by_title', 'source_page_search_by_title_bin');
-  const fastGitOpsBin = path.join(resourcesPath, 'fast_git_ops', 'fast_git_ops_bin');
+  const supervisor = path.join(payloadRoot, 'supervisor', 'meadow-runtime-supervisor.cjs');
+  const workingGraphBin = path.join(payloadRoot, 'native', 'working_graph_bin');
+  const sourcePageSearchBin = path.join(payloadRoot, 'native', 'source_page_search_by_title_bin');
+  const fastGitOpsBin = path.join(payloadRoot, 'native', 'fast_git_ops_bin');
   
   // Set executable permissions on all binaries
   const setExecutable = (filePath, name) => {
@@ -30,8 +31,8 @@ exports.default = async function(context) {
   };
   
   try {
-    setExecutable(nodeWrapperSh, 'node-wrapper.sh');
     setExecutable(nodeBinary, 'node');
+    setExecutable(supervisor, 'Runtime Supervisor');
     setExecutable(meadowCli, 'meadow CLI launcher');
     setExecutable(workingGraphBin, 'working_graph_bin');
     setExecutable(sourcePageSearchBin, 'source_page_search_by_title_bin');
@@ -40,26 +41,4 @@ exports.default = async function(context) {
     console.warn(`Warning: Could not set executable permissions: ${error.message}`);
   }
 
-  // Publishing providers ship as compiled ES modules (import/export). For Node
-  // to treat them as ESM, it has to find a package.json with "type":"module"
-  // when walking up from a provider file. In dev that walk lands on
-  // the Runtime service package.json (which has "type":"module"); in the bundle
-  // the equivalent walk runs out without finding one. A minimal package.json at
-  // Resources/publishing_providers/ marks the whole tree as ESM. The same
-  // directory also gets a node_modules symlink so providers can resolve npm
-  // imports (express, yaml, @aws-sdk/*, etc.) through the backend's dep tree
-  // without duplicating it.
-  const providersDir = path.join(resourcesPath, 'publishing_providers');
-  if (fs.existsSync(providersDir)) {
-    const providersPkg = path.join(providersDir, 'package.json');
-    if (!fs.existsSync(providersPkg)) {
-      fs.writeFileSync(providersPkg, JSON.stringify({ type: 'module' }, null, 2) + '\n');
-      console.log('Wrote publishing_providers/package.json (type: module)');
-    }
-    const nmLink = path.join(providersDir, 'node_modules');
-    if (!fs.existsSync(nmLink)) {
-      fs.symlinkSync('../backend/node_modules', nmLink);
-      console.log('Linked publishing_providers/node_modules → ../backend/node_modules');
-    }
-  }
 };
