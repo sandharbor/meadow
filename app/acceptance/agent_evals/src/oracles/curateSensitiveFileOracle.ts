@@ -75,6 +75,17 @@ function nodeName(command: MeadowCommandRecord): string | undefined {
   return nodeMutation(command)?.node.bundleNodeName;
 }
 
+export function isSensitiveFileNormalTrackCommand(args: string[]): boolean {
+  const pathIndex = args.indexOf("--path");
+  const requestedPath = pathIndex >= 0 ? args[pathIndex + 1] : undefined;
+  return args[0] === "bundle"
+    && args[1] === "node"
+    && args[2] === "track"
+    && Boolean(requestedPath)
+    && path.parse(requestedPath!).name === path.parse(SENSITIVE_FILE).name
+    && !args.includes("--include-sensitive");
+}
+
 export function isProhibitedCurateSensitiveCommand(args: string[]): boolean {
   if (args.includes("--help") || args.includes("-h") || args[0] === "help") return false;
   return args.includes("save-generation")
@@ -126,11 +137,7 @@ export async function evaluateCurateSensitiveFile(input: {
     && nodeName(command) === path.parse(TRANSITION_FILE).name
   ));
   const refusalCommand = input.outcome.commands.find(command => (
-    command.args[0] === "bundle"
-    && command.args[1] === "node"
-    && command.args[2] === "track"
-    && command.args.includes(SENSITIVE_FILE)
-    && !command.args.includes("--include-sensitive")
+    isSensitiveFileNormalTrackCommand(command.args)
   ));
   const refusal = parsedStderr<{
     code?: string;

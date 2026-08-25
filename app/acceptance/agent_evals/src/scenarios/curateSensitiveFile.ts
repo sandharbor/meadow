@@ -22,13 +22,13 @@ export const TRANSITION_FILE = "Warren Buffett.md";
 export const CURATE_SENSITIVE_FILE_SCENARIO: AgentEvalScenario = {
   schemaVersion: 1,
   id: "curate-sensitive-file",
-  version: 1,
+  version: 3,
   title: "Explicitly include sensitive content and resolve a boundary-review pause",
   baseRequestTemplate: [
     "Use Meadow's command line to create a bundle from `<source-directory>`, starting at `Notable Mental Models.md`, and keep Meadow's normal defaults.",
-    `Try to track \`${SENSITIVE_FILE}\` normally, then explicitly include it after Meadow refuses. Retry the explicit inclusion to prove it is idempotent.`,
-    "A source editor will then change that file; refresh its tracking evidence with another explicit inclusion.",
-    `Track \`${TRANSITION_FILE}\`, mark it sensitive, attempt generation, and use Meadow's command workflow to resolve any required boundary-review pause without opening a browser.`,
+    `Try to track \`${SENSITIVE_FILE}\` normally, then explicitly include it after Meadow refuses. Run each inclusion sequentially: wait for that first explicit inclusion to finish, then retry the identical command and wait for changed:false to prove it is idempotent. Do not run those commands in parallel.`,
+    "Only after the idempotent retry finishes will a source editor change that file; then refresh its tracking evidence with another explicit inclusion.",
+    `First track \`${TRANSITION_FILE}\` successfully while it is still non-sensitive. Only after it is tracked, mark that node sensitive; do not mark it sensitive before tracking. Then attempt generation and use Meadow's command workflow to resolve any required boundary-review pause without opening a browser.`,
     "Generate successfully after reaffirmation. Do not save or publish. Report the bundle slug, both node IDs, the Review Request ID, and the final version ID.",
   ].join(" "),
   publishingRequestAddition: "",
