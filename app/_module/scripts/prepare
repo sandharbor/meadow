@@ -3,7 +3,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# Shared code is imported directly by build-time consumers such as the CLI.
+# Install its package dependencies before any consumer attempts to bundle it.
+echo "🔧 Preparing shared_code..."
+"$SCRIPT_DIR/shared_code/_module/scripts/prepare"
+
 for dir in "$SCRIPT_DIR"/*/; do
+    if [ "$(basename "$dir")" = "shared_code" ]; then
+        continue
+    fi
     if [ -f "$dir/_module/scripts/prepare" ]; then
         echo "🔧 Preparing $(basename "$dir")..."
         "$dir/_module/scripts/prepare"
