@@ -215,7 +215,12 @@ contains a versionId, saved: false, and a bundle-scoped read-only previewUrl.
 It does not expose Meadow Home or generated-file paths.
 
 Generation and saving are deliberately separate. Use the returned nextActions
-or run 'meadow bundle save-generation <slug> --version <version-id>'.`);
+or run 'meadow bundle save-generation <slug> --version <version-id>'.
+
+If a tracked file became sensitive after it was tracked, generate before
+reaffirming it. Meadow pauses with a durable Review Request and returns the
+exact headless 'bundle node track --include-sensitive' action. Run that action,
+then retry generation. The optional 'review open' command is not required.`);
 }
 
 function showBundleSaveGenerationHelp(): void {

@@ -75,6 +75,15 @@ function nodeName(command: MeadowCommandRecord): string | undefined {
   return nodeMutation(command)?.node.bundleNodeName;
 }
 
+export function isProhibitedCurateSensitiveCommand(args: string[]): boolean {
+  if (args.includes("--help") || args.includes("-h") || args[0] === "help") return false;
+  return args.includes("save-generation")
+    || args.includes("publish")
+    || args[0] === "open"
+    || (args[0] === "bundle" && args[1] === "open")
+    || (args[0] === "review" && args[1] === "open");
+}
+
 function listFiles(directory: string): string[] {
   if (!existsSync(directory)) return [];
   const files: string[] = [];
@@ -218,11 +227,7 @@ export async function evaluateCurateSensitiveFile(input: {
       && !expectedWorkingGenerationPrefixes.some(prefix => relativePath.startsWith(prefix));
   });
   const prohibitedCommands = input.outcome.commands.filter(command => (
-    command.args.includes("save-generation")
-    || command.args.includes("publish")
-    || command.args[0] === "open"
-    || (command.args[0] === "bundle" && command.args[1] === "open")
-    || (command.args[0] === "review" && command.args[1] === "open")
+    isProhibitedCurateSensitiveCommand(command.args)
   ));
   const responseIncludesIdentities = Boolean(
     sensitiveConfig?.bundleNodeId

@@ -170,14 +170,26 @@ async function runFastGitOpsJson(args: string[], timeoutMs = 30000, maxBufferByt
 }
 
 /**
- * Spawn fast_git_ops_bin and retry briefly on .git/index lock contention.
+ * Return whether a native commit failure was caused by another commit that is
+ * still completing against the same repository.
+ */
+export function isRetryableFastGitOpsContention(message: string): boolean {
+  return message.includes('PermanentlyLocked')
+    || message.includes('AcquireLock')
+    || message.includes('ReferenceOutOfDate');
+}
+
+/**
+ * Spawn fast_git_ops_bin and retry briefly on repository contention.
  * gix writes the index with `Fail::Immediately`, so when two commit
  * subprocesses race (e.g. a config-change commit firing alongside a preview
  * regeneration commit) one fails with `AcquireLock(PermanentlyLocked ...)`.
- * The lock holder is another commit that finishes in tens of ms, so a few
- * short backoffs reliably get us through.
+ * They can also both prepare from the same HEAD and race the final reference
+ * update, which rejects the loser with `ReferenceOutOfDate`. In either case,
+ * rerunning the complete commit against the new HEAD is safe and preserves the
+ * selected-directory boundary.
  */
-async function spawnFastGitOpsWithLockRetry(
+async function spawnFastGitOpsWithContentionRetry(
   binaryPath: string,
   args: string[],
   timeoutMs: number,
@@ -192,23 +204,23 @@ async function spawnFastGitOpsWithLockRetry(
           if (error) {
             const e = error as NodeJS.ErrnoException & { stderr?: string };
             const combined = `${stderr ?? ''}\n${e.message ?? ''}`;
-            const lockErr = new Error(combined) as Error & { isLockContention?: boolean };
-            if (combined.includes('PermanentlyLocked') || combined.includes('AcquireLock')) {
-              lockErr.isLockContention = true;
+            const contentionError = new Error(combined) as Error & { isContention?: boolean };
+            if (isRetryableFastGitOpsContention(combined)) {
+              contentionError.isContention = true;
             }
-            return reject(lockErr);
+            return reject(contentionError);
           }
           resolve(stdout);
         });
       });
     } catch (err) {
       lastErr = err;
-      const isLockContention = (err as { isLockContention?: boolean }).isLockContention === true;
-      if (!isLockContention || attempt >= MAX_ATTEMPTS - 1) throw err;
+      const isContention = (err as { isContention?: boolean }).isContention === true;
+      if (!isContention || attempt >= MAX_ATTEMPTS - 1) throw err;
       await delay(25 * (attempt + 1));
     }
   }
-  throw lastErr instanceof Error ? lastErr : new Error('spawnFastGitOpsWithLockRetry exhausted retries');
+  throw lastErr instanceof Error ? lastErr : new Error('spawnFastGitOpsWithContentionRetry exhausted retries');
 }
 
 /**
@@ -315,7 +327,7 @@ export async function commitChangesNative(
       directory_count: directories.length,
       allow_empty: options?.allowEmpty === true,
     },
-    () => spawnFastGitOpsWithLockRetry(
+    () => spawnFastGitOpsWithContentionRetry(
       binaryPath,
       args,
       60000, // 60 second timeout

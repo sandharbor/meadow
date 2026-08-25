@@ -180,13 +180,18 @@ const BundleEditor: React.FC = () => {
   const [bundleGenerationSpacedRepetitionTags, setBundleGenerationSpacedRepetitionTags] = useState<string[] | null>(null);
 
   // Check draft status
-  const checkDraftStatus = useCallback(async () => {
+  const checkDraftStatus = useCallback(async (signal?: AbortSignal) => {
     if (!slug) return;
     try {
-      const response = await apiRequest(`bundles/${slug}/curation/bundle-config-draft-status`);
+      const response = await apiRequest(
+        `bundles/${slug}/curation/bundle-config-draft-status`,
+        { signal },
+      );
       const data = await response.json();
+      if (signal?.aborted) return;
       setHasDraftChanges(data.hasChanges);
     } catch (error) {
+      if (signal?.aborted) return;
       logger.error('Failed to check draft status:', error);
     }
   }, [slug]);
@@ -438,18 +443,25 @@ const BundleEditor: React.FC = () => {
 
   useEffect(() => {
     if (!graph) return;
+    const controller = new AbortController();
     // Fetch bundle-config after graph is loaded
-    apiRequest(`bundles/${slug || ''}/curation/bundle-config`)
+    apiRequest(
+      `bundles/${slug || ''}/curation/bundle-config`,
+      { signal: controller.signal },
+    )
       .then(res => res.json())
       .then(data => {
+        if (controller.signal.aborted) return;
         const loadedBundleNodeConfigs: BundleNodeConfig[] = Array.isArray(data.configs) ? data.configs : [];
         setBundleNodeConfigs(loadedBundleNodeConfigs);
         // Check draft status after loading config
-        checkDraftStatus();
+        void checkDraftStatus(controller.signal);
       })
       .catch(err => {
+        if (controller.signal.aborted) return;
         logger.error('Failed to load bundle-config:', err);
       });
+    return () => controller.abort();
   }, [graph, slug, checkDraftStatus, entryBundleNodeId]);
 
   useEffect(() => {

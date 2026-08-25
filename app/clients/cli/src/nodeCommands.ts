@@ -65,6 +65,13 @@ Sensitive files:
   --include-sensitive         Explicitly include exactly one effectively
                               sensitive file. Other tracking invariants remain.
 
+Sensitivity transitions:
+  When a tracked file becomes sensitive, run 'bundle generate' before tracking
+  it again. Meadow pauses generation with a durable Review Request and returns
+  the exact headless 'track --include-sensitive' action that reaffirms the file.
+  Run that action, then retry generation. Reaffirming before the first generate
+  intentionally accepts the new boundary, so no review pause will be needed.
+
 Examples:
   meadow bundle node track my-site --path "Charlie Munger.md"
   meadow bundle node blacklist my-site --id <bundle-node-id>
