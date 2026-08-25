@@ -75,10 +75,18 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   // The same script-shard loader works when the self-contained HTML is opened
   // directly from disk, without an HTTP server.
   const localPage = await page.context().newPage();
-  const versionResponse = await page.request.get(
-    `/api/bundles/${encodeURIComponent(Bundle.Big)}/review/versions`,
-  );
-  const versionState = await versionResponse.json() as {
+  // Fetch through the active browser page so Chromium owns stale keep-alive
+  // recovery. Playwright's APIRequestContext can reuse an idle proxy socket
+  // here and surface a sporadic ECONNRESET instead of retrying this safe GET.
+  const versionState = await page.evaluate(async (bundleSlug) => {
+    const response = await fetch(
+      `/api/bundles/${encodeURIComponent(bundleSlug)}/review/versions`,
+    );
+    if (!response.ok) {
+      throw new Error(`Could not load generated versions (${response.status})`);
+    }
+    return response.json();
+  }, Bundle.Big) as {
     versions: Array<{ versionId: string; derivedState: string }>;
   };
   const currentVersionId = versionState.versions.find(
