@@ -100,7 +100,7 @@ Usage:
   meadow bundle nodes <bundle-slug> --scope <all|final>
   meadow bundle filters <bundle-slug>
   meadow review open <review-request-id>
-  meadow help
+  meadow help [command ...]
 
 Commands:
   open                             Open the full Meadow Web Client explicitly.
@@ -724,7 +724,10 @@ async function listBundleFilters(slug: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
+  const rawArgs = process.argv.slice(2);
+  const args = rawArgs[0] === "help" && rawArgs.length > 1
+    ? [...rawArgs.slice(1), "--help"]
+    : rawArgs;
   if (args.length === 0 || args[0] === "help" || args[0] === "--help" || args[0] === "-h") {
     showHelp();
     return;

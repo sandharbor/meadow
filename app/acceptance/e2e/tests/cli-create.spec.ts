@@ -376,11 +376,21 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     );
     expect(nodeHelp).toContain('meadow bundle node track my-site --path "Charlie Munger.md"');
     expect(nodeHelp).toContain("bundle node set-depths");
+    const nodeHelpAlias = await meadowCli.run(
+      ["help", "bundle", "node"],
+      { artifactName: "nested-node-help-alias" },
+    );
+    expect(nodeHelpAlias).toBe(nodeHelp);
     const generateHelp = await meadowCli.run(
       ["bundle", "generate", "--help"],
       { artifactName: "nested-generate-help" },
     );
     expect(generateHelp).toContain("bundle-scoped read-only previewUrl");
+    const generateHelpAlias = await meadowCli.run(
+      ["help", "bundle", "generate"],
+      { artifactName: "nested-generate-help-alias" },
+    );
+    expect(generateHelpAlias).toBe(generateHelp);
     const saveHelp = await meadowCli.run(
       ["bundle", "save-generation", "--help"],
       { artifactName: "nested-save-generation-help" },
