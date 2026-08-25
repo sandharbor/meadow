@@ -23,6 +23,10 @@ limitations under the License.
  *   MINIO_ENDPOINT=http://localhost:9000 MINIO_BUCKET=meadow-e2e-test \
  *     npx tsx start_web_server.ts <port>
  *
+ * Pass 0 to have the operating system choose and reserve an available port
+ * atomically. The parent fixture uses this mode so parallel workers cannot
+ * race between probing a port and binding it.
+ *
  * Outputs JSON to stdout once listening: { "port": <n>, "url": "http://localhost:<n>" }
  */
 
@@ -31,8 +35,8 @@ import path from "path";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import type { Readable } from "stream";
 
-const port = parseInt(process.argv[2], 10);
-if (!port || isNaN(port)) {
+const requestedPort = Number.parseInt(process.argv[2], 10);
+if (!Number.isInteger(requestedPort) || requestedPort < 0 || requestedPort > 65_535) {
   process.stderr.write("Usage: start_web_server.ts <port>\n");
   process.exit(1);
 }
@@ -116,9 +120,23 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, () => {
-  const url = `http://localhost:${port}`;
+server.on("error", (error) => {
+  process.stderr.write(`Web server failed to listen: ${error.stack ?? error.message}\n`);
+  process.exitCode = 1;
+});
+
+server.listen(requestedPort, "127.0.0.1", () => {
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    process.stderr.write("Web server did not receive a TCP address.\n");
+    process.exitCode = 1;
+    server.close();
+    return;
+  }
+  const port = address.port;
+  const url = `http://127.0.0.1:${port}`;
   process.stderr.write(`Web server listening on ${url}\n`);
-  // Output JSON for Playwright to detect readiness
-  process.stdout.write(JSON.stringify({ port, url }));
+  // A newline lets the parent parse a complete readiness record without
+  // depending on pipe chunk boundaries.
+  process.stdout.write(`${JSON.stringify({ port, url })}\n`);
 });

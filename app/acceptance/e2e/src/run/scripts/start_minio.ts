@@ -25,12 +25,14 @@ limitations under the License.
  * - Outputs JSON to stdout: { port, endpoint, containerName }
  */
 
-import { execSync, spawn, ChildProcess } from "child_process";
+import { execFileSync, spawn, spawnSync } from "child_process";
 import { createServer } from "net";
 import { S3Client, CreateBucketCommand } from "@aws-sdk/client-s3";
 
 const BUCKET_PREFIX = "meadow-e2e-test";
 const CONTAINER_PREFIX = "meadow-minio-e2e";
+const MAX_START_ATTEMPTS = 3;
+const READY_TIMEOUT_MS = 45_000;
 const WORKER_COUNT = parseInt(process.argv[2] || "1", 10);
 
 async function findFreePort(): Promise<number> {
@@ -49,7 +51,7 @@ async function findFreePort(): Promise<number> {
   });
 }
 
-function startMinIO(port: number, containerName: string): ChildProcess {
+function startMinIO(port: number, containerName: string): void {
   process.stderr.write(`Starting MinIO on port ${port}...\n`);
   const proc = spawn("docker", [
     "run", "--rm",
@@ -64,12 +66,16 @@ function startMinIO(port: number, containerName: string): ChildProcess {
     detached: true,
   });
   proc.unref();
-  return proc;
 }
 
-async function waitForMinIO(port: number, maxWaitMs = 30000): Promise<void> {
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function waitForMinIO(port: number, maxWaitMs: number): Promise<void> {
   const endpoint = `http://localhost:${port}/minio/health/live`;
   const start = Date.now();
+  let lastError: unknown;
 
   while (Date.now() - start < maxWaitMs) {
     try {
@@ -78,12 +84,16 @@ async function waitForMinIO(port: number, maxWaitMs = 30000): Promise<void> {
         process.stderr.write("MinIO is ready.\n");
         return;
       }
-    } catch {
-      // Not ready yet
+      lastError = new Error(`health endpoint returned HTTP ${res.status}`);
+    } catch (error) {
+      lastError = error;
     }
     await new Promise((r) => setTimeout(r, 500));
   }
-  throw new Error(`MinIO did not become ready within ${maxWaitMs}ms`);
+  throw new Error(
+    `MinIO did not become ready within ${maxWaitMs}ms. ` +
+    `Last readiness error: ${errorMessage(lastError)}`,
+  );
 }
 
 async function createBuckets(port: number, workerCount: number): Promise<void> {
@@ -105,33 +115,76 @@ async function createBuckets(port: number, workerCount: number): Promise<void> {
   s3.destroy();
 }
 
+function stopContainer(containerName: string): void {
+  try {
+    execFileSync("docker", ["stop", containerName], { stdio: "ignore" });
+  } catch {
+    // The container may already be stopped or removed.
+  }
+}
+
+function printContainerLogs(containerName: string): void {
+  const result = spawnSync(
+    "docker",
+    ["logs", "--tail", "100", containerName],
+    { encoding: "utf8" },
+  );
+  const logs = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
+  if (logs) {
+    process.stderr.write(`MinIO container logs (${containerName}):\n${logs}\n`);
+  }
+}
+
 async function main(): Promise<void> {
-  const port = await findFreePort();
-  const containerName = `${CONTAINER_PREFIX}-${Date.now()}`;
+  let activeContainerName: string | undefined;
 
-  const proc = startMinIO(port, containerName);
-
-  // Ensure cleanup if this script is killed before it prints output
   const cleanup = () => {
-    try {
-      execSync(`docker stop ${containerName}`, { stdio: "ignore" });
-    } catch { /* already stopped */ }
+    if (activeContainerName) stopContainer(activeContainerName);
   };
   process.on("SIGINT", () => { cleanup(); process.exit(1); });
   process.on("SIGTERM", () => { cleanup(); process.exit(1); });
 
-  try {
-    await waitForMinIO(port);
-    await createBuckets(port, WORKER_COUNT);
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MAX_START_ATTEMPTS; attempt += 1) {
+    const port = await findFreePort();
+    const containerName = `${CONTAINER_PREFIX}-${Date.now()}-${attempt}`;
+    activeContainerName = containerName;
 
-    // Output JSON to stdout for the caller to parse
-    const result = { port, endpoint: `http://localhost:${port}`, containerName };
-    process.stdout.write(JSON.stringify(result));
-    process.exit(0);
-  } catch (error) {
-    cleanup();
-    throw error;
+    if (attempt > 1) {
+      process.stderr.write(
+        `Retrying MinIO startup (attempt ${attempt}/${MAX_START_ATTEMPTS})...\n`,
+      );
+    }
+
+    try {
+      startMinIO(port, containerName);
+      await waitForMinIO(port, READY_TIMEOUT_MS);
+      await createBuckets(port, WORKER_COUNT);
+
+      const result = {
+        port,
+        endpoint: `http://localhost:${port}`,
+        containerName,
+      };
+      activeContainerName = undefined;
+      process.stdout.write(JSON.stringify(result));
+      return;
+    } catch (error) {
+      lastError = error;
+      process.stderr.write(
+        `MinIO startup attempt ${attempt}/${MAX_START_ATTEMPTS} failed: ` +
+        `${errorMessage(error)}\n`,
+      );
+      printContainerLogs(containerName);
+      cleanup();
+      activeContainerName = undefined;
+    }
   }
+
+  throw new Error(
+    `MinIO failed to start after ${MAX_START_ATTEMPTS} attempts. ` +
+    `Last error: ${errorMessage(lastError)}`,
+  );
 }
 
 main().catch((err) => {

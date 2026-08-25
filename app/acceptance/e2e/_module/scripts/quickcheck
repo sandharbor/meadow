@@ -12,6 +12,9 @@ echo "Running acceptance E2E type checking..."
 npx tsc --noEmit --project tsconfig.json
 echo "Type checking passed."
 
+echo "Testing E2E service lifecycle..."
+node --import tsx --test _module/tests/*.test.ts
+
 echo "Linting one-test-per-spec rule..."
 npx tsx _module/scripts/lint-single-test-per-spec.ts
 

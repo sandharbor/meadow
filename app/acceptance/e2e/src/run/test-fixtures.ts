@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { test as base, expect } from "@playwright/test";
-import { execSync, spawn, ChildProcess } from "child_process";
+import { execSync, type ChildProcess } from "child_process";
 import { createHash } from "crypto";
 import {
   mkdirSync,
@@ -46,6 +46,10 @@ import { isPrivateMeadowHomePath } from "../../../../shared_code/utils/privateMe
 import { RuntimeSupervisor } from "../../../../runtime/supervisor/src/runtimeSupervisor.js";
 import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
 import { createBrowserLaunchUrl } from "../../../../runtime/supervisor/src/runtimeClient.js";
+import {
+  startTestWebServer,
+  stopTestWebServer,
+} from "./scripts/test_web_server_process.js";
 // assembleTestArtifacts is called in assembleRun() post-run, not during fixture teardown
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -657,13 +661,27 @@ export const test = base.extend<{
         tempS3.destroy();
       }
 
-      // 5. Allocate web server port
-      const webServerPort = await findFreePort();
+      // 5. Let the child bind port 0 so the OS chooses and reserves its port
+      // atomically. Probing a free port and launching later races with every
+      // other Playwright worker doing the same thing.
+      const startedWebServer = await startTestWebServer({
+        e2eDir: E2E_DIR,
+        minioEndpoint,
+        minioBucket,
+      });
+      const webServerProc = startedWebServer.process;
+      const webServerPort = startedWebServer.port;
+      let backendStderrFd: number | undefined;
+      let frontendStderrFd: number | undefined;
+      let runtimeSupervisor: RuntimeSupervisor | undefined;
+      const leaseId = `e2e-${process.pid}-${testInfo.testId}`;
+      let leaseAcquired = false;
 
-      // 6. Pre-spawn provider seeding hook. Base does nothing; fixture layers
-      //    override to write provider-specific pp_resources.local.yaml entries
-      //    (e.g. an S3-backed provider wiring up MinIO endpoints).
-      await _preSpawnSeed({ configDir, minioEndpoint, minioBucket, webServerPort });
+      try {
+        // 6. Pre-spawn provider seeding hook. Base does nothing; fixture layers
+        //    override to write provider-specific pp_resources.local.yaml entries
+        //    (e.g. an S3-backed provider wiring up MinIO endpoints).
+        await _preSpawnSeed({ configDir, minioEndpoint, minioBucket, webServerPort });
 
       // Capture stderr from the backend and static-frontend processes to
       // files in configDir/logs so crashes and proxy errors are
@@ -673,8 +691,8 @@ export const test = base.extend<{
       // root-cause.
       const backendStderrPath = path.join(configDir, "logs", "backend-stderr.log");
       const frontendStderrPath = path.join(configDir, "logs", "frontend-stderr.log");
-      const backendStderrFd = openSync(backendStderrPath, "a");
-      const frontendStderrFd = openSync(frontendStderrPath, "a");
+      backendStderrFd = openSync(backendStderrPath, "a");
+      frontendStderrFd = openSync(frontendStderrPath, "a");
 
       // 7. Describe the service and lightweight static Web child. The
       // Runtime Supervisor below is the sole process allowed to create them.
@@ -682,7 +700,7 @@ export const test = base.extend<{
         path.join(E2E_DIR, ".frontend-dist-dir"),
         "utf8",
       ).trim();
-      const runtimeSupervisor = new RuntimeSupervisor({
+      runtimeSupervisor = new RuntimeSupervisor({
         schemaVersion: 1,
         homeDirectory: configDir,
         payload,
@@ -710,37 +728,21 @@ export const test = base.extend<{
         childStdio: kind => [
           "ignore",
           "ignore",
-          kind === "service" ? backendStderrFd : frontendStderrFd,
+          kind === "service" ? backendStderrFd! : frontendStderrFd!,
         ],
       });
-      runtimeSupervisor.leases.acquire("client", `e2e-${process.pid}-${testInfo.testId}`, process.pid);
+      runtimeSupervisor.leases.acquire("client", leaseId, process.pid);
+      leaseAcquired = true;
       const runtimeSession = await runtimeSupervisor.start();
       const runtimeSessionPath = getRuntimePaths(configDir).sessionDescriptor;
       const { backendPort, frontendPort, capability: apiCapability } = runtimeSession;
       const browserLaunchUrl = await createBrowserLaunchUrl(runtimeSession);
 
-      // 9. Spawn web server
-      const webServerProc = spawn(
-        process.execPath,
-        ["--import", "tsx", "src/run/scripts/start_web_server.ts", String(webServerPort)],
-        {
-          cwd: E2E_DIR,
-          env: {
-            ...process.env,
-            MINIO_ENDPOINT: minioEndpoint,
-            MINIO_BUCKET: minioBucket,
-          },
-          stdio: "ignore",
-        }
-      );
+      // 9. RuntimeSupervisor.start() already proved the service and Web
+      // client are healthy; the independent MinIO web fixture reported
+      // readiness only after its operating-system-assigned port was bound.
 
-      const procs = [webServerProc];
-
-      // 11. RuntimeSupervisor.start() already proved the service and Web
-      // client are healthy; only the independent MinIO web fixture remains.
-      await waitForPort(webServerPort, 15_000, webServerProc);
-
-      // 11b. Wait for backend to actually respond to HTTP requests. TCP
+      // 9b. Wait for backend to actually respond to HTTP requests. TCP
       // accept is not sufficient — under heavy parallel load it has been
       // observed as bound-but-unresponsive, surfacing as 502s through the
       // static-frontend proxy (frontend page load).
@@ -748,7 +750,9 @@ export const test = base.extend<{
         "x-meadow-capability": apiCapability,
       });
       closeSync(backendStderrFd);
+      backendStderrFd = undefined;
       closeSync(frontendStderrFd);
+      frontendStderrFd = undefined;
       const server: TestServer = {
         configDir,
         runtimeSessionPath,
@@ -883,48 +887,25 @@ export const test = base.extend<{
       };
 
       await use(server);
-
-      // 12. Teardown the independent MinIO fixture, then ask the sole process
-      // owner to retire its Web and service children in order.
-      const stopProcesses = async (processes: typeof procs) => {
-        for (const proc of processes) {
-          if (proc.exitCode === null) {
-            proc.kill("SIGTERM");
+      } finally {
+        // Setup failures must clean up just as completely as test-body
+        // failures; otherwise a failed worker poisons later retries.
+        for (const fd of [backendStderrFd, frontendStderrFd]) {
+          if (fd === undefined) continue;
+          try {
+            closeSync(fd);
+          } catch {
+            // The descriptor may already have been closed during readiness.
           }
         }
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => {
-            for (const proc of processes) {
-              if (proc.exitCode === null) {
-                proc.kill("SIGKILL");
-              }
-            }
-            resolve();
-          }, 3000);
-
-          let remaining = processes.filter((proc) => proc.exitCode === null).length;
-          if (remaining === 0) {
-            clearTimeout(timeout);
-            resolve();
-            return;
+        await stopTestWebServer(webServerProc);
+        if (runtimeSupervisor) {
+          if (leaseAcquired) {
+            runtimeSupervisor.leases.release("client", leaseId);
           }
-          for (const proc of processes) {
-            if (proc.exitCode === null) {
-              proc.on("exit", () => {
-                remaining--;
-                if (remaining === 0) {
-                  clearTimeout(timeout);
-                  resolve();
-                }
-              });
-            }
-          }
-        });
-      };
-
-      await stopProcesses(procs);
-      runtimeSupervisor.leases.release("client", `e2e-${process.pid}-${testInfo.testId}`);
-      await runtimeSupervisor.shutdown("requested");
+          await runtimeSupervisor.shutdown("requested");
+        }
+      }
     },
     { auto: true },
   ],
