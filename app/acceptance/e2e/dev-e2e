@@ -2,6 +2,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
+REPO_ROOT="$(cd ../../.. && pwd)"
+"$REPO_ROOT/_module/scripts/require-node-version"
 
 # Clean up stale marker files from any previous failed run so that
 # playwright.config.ts re-creates the config dir and starts fresh containers.

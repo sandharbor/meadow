@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+
+read_version() {
+  tr -d '[:space:]' < "$1"
+}
+
+NODE_VERSION_FILE="$REPO_ROOT/.node-version"
+NPM_VERSION_FILE="$REPO_ROOT/.npm-version"
+
+if [ ! -f "$NODE_VERSION_FILE" ] || [ ! -f "$NPM_VERSION_FILE" ]; then
+  echo "❌ Meadow's Node.js or npm version pin is missing." >&2
+  exit 1
+fi
+
+EXPECTED_NODE="$(read_version "$NODE_VERSION_FILE")"
+EXPECTED_NPM="$(read_version "$NPM_VERSION_FILE")"
+ACTUAL_NODE="$(node -p 'process.versions.node' 2>/dev/null || true)"
+ACTUAL_NPM="$(npm --version 2>/dev/null || true)"
+
+if [ "$ACTUAL_NODE" != "$EXPECTED_NODE" ] || [ "$ACTUAL_NPM" != "$EXPECTED_NPM" ]; then
+  echo "❌ Meadow toolchain mismatch." >&2
+  echo "   Required: Node.js $EXPECTED_NODE, npm $EXPECTED_NPM" >&2
+  echo "   Active:   Node.js ${ACTUAL_NODE:-missing}, npm ${ACTUAL_NPM:-missing}" >&2
+  echo "   Activate the versions pinned in $NODE_VERSION_FILE and $NPM_VERSION_FILE, then retry." >&2
+  exit 1
+fi

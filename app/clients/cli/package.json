@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm --prefix ../../runtime/supervisor run build && esbuild src/index.ts --bundle --platform=node --format=cjs --target=node20 --outfile=dist/meadow.cjs",
+    "build": "npm --prefix ../../runtime/supervisor run build && esbuild src/index.ts --bundle --platform=node --format=cjs --target=node24 --outfile=dist/meadow.cjs",
     "lint": "eslint --max-warnings 0 src",
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },

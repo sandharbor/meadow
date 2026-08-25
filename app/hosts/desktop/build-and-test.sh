@@ -10,6 +10,9 @@
 
 set -e  # Exit on any error
 
+REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+"$REPO_ROOT/_module/scripts/require-node-version"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

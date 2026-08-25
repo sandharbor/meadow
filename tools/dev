@@ -9,6 +9,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+"$REPO_ROOT/_module/scripts/require-node-version"
+
 BACKEND_DIR="$REPO_ROOT/app/runtime/service"
 FRONTEND_DIR="$REPO_ROOT/app/clients/web"
 DEV_TOOLS_DIR="$REPO_ROOT/app/tooling/dev_tools"

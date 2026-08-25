@@ -3,6 +3,9 @@
 # Meadow Electron App Setup Script
 set -e
 
+REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+"$REPO_ROOT/_module/scripts/require-node-version"
+
 echo "🌿 Setting up Meadow Electron Desktop App..."
 
 # Check if we're in the right directory

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+"$REPO_ROOT/_module/scripts/require-node-version"
+
 # --- Self-imposed 2-minute timeout ---
 # quickcheck must finish fast. If it takes longer than 2 minutes, something
 # is stuck and we should fail loudly rather than block indefinitely.
@@ -45,6 +48,8 @@ REQUIRED_DIRS=(
     "_agent"
 )
 REQUIRED_FILES=(
+    ".node-version"
+    ".npm-version"
     ".gitignore"
     "AGENTS.md"
     "LICENSE"
