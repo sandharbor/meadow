@@ -48,12 +48,12 @@ artifacts together, use the Runtime Payload assembler:
 cd ../../runtime/payload
 npm run build:qa-distributions -- \
   --perspective standalone \
-  --node-executable ../../hosts/desktop/vendor/node
+  --node-executable vendor/node
 ```
 
-The assembler does not sign, notarize, upload, or configure updates. It emits a
-payload parity report proving that the `.app` and relocatable Command archive
-contain the same Runtime Payload identity.
+The assembler marks both artifacts for local QA and emits a payload parity
+report proving that the `.app` and relocatable Command archive contain the same
+Runtime Payload identity.
 
 
 ## Debugging the distribution application

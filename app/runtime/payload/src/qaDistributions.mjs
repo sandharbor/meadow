@@ -25,19 +25,11 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { verifyPayloadManifest } from "./buildRuntimePayload.mjs";
+import { RUNTIME_PAYLOAD_CRITICAL_FILES } from "./runtimePayloadDefinition.mjs";
 
 export const QA_DISTRIBUTION_MARKER = ".meadow-qa-distributions";
 export const COMMAND_DISTRIBUTION_MARKER = ".meadow-command-distribution";
-export const CRITICAL_PAYLOAD_FILES = [
-  "bin/node",
-  "native/fast_git_ops_bin",
-  "native/source_page_search_by_title_bin",
-  "native/working_graph_bin",
-  "service/dist/runtime/service/src/shared/app-shell/index.js",
-  "supervisor/meadow-runtime-supervisor.cjs",
-  "web/index.html",
-  "web/server.js",
-];
+export const CRITICAL_PAYLOAD_FILES = RUNTIME_PAYLOAD_CRITICAL_FILES;
 
 function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
@@ -64,6 +56,9 @@ export function assembleCommandDistribution({
   cliBundle,
   cliLauncher,
   commandRoot,
+  status = "local-qa",
+  platform,
+  arch,
 }) {
   const manifest = readVerifiedPayloadManifest(payloadRoot);
   mkdirSync(path.join(commandRoot, "bin"), { recursive: true });
@@ -71,18 +66,21 @@ export function assembleCommandDistribution({
     recursive: true,
     force: true,
     preserveTimestamps: true,
+    verbatimSymlinks: true,
   });
   cpSync(cliBundle, path.join(commandRoot, "bin/meadow.cjs"), { force: true });
   cpSync(cliLauncher, path.join(commandRoot, "bin/meadow"), { force: true });
   chmodSync(path.join(commandRoot, "bin/meadow"), 0o755);
-  writeFileSync(path.join(commandRoot, COMMAND_DISTRIBUTION_MARKER), "Meadow Command QA Distribution\n");
+  writeFileSync(path.join(commandRoot, COMMAND_DISTRIBUTION_MARKER), "Meadow Command Distribution\n");
   const metadata = {
     schemaVersion: 1,
-    status: "local-qa",
+    status,
     perspective: manifest.perspective,
     appVersion: manifest.appVersion,
     payloadIdentity: manifest.identity,
     entrypoint: "bin/meadow",
+    ...(platform ? { platform } : {}),
+    ...(arch ? { arch } : {}),
   };
   writeFileSync(path.join(commandRoot, "artifact.json"), `${JSON.stringify(metadata, null, 2)}\n`);
   return metadata;

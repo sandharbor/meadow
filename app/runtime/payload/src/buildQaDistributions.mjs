@@ -30,10 +30,10 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { buildCommandArtifact } from "./buildCommandArtifact.mjs";
 import { buildRuntimePayload } from "./buildRuntimePayload.mjs";
 import {
   QA_DISTRIBUTION_MARKER,
-  assembleCommandDistribution,
   createArtifactInventory,
   createPayloadParityReport,
   readVerifiedPayloadManifest,
@@ -42,7 +42,6 @@ import {
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const meadowRoot = path.resolve(scriptDirectory, "../../../..");
 const desktopRoot = path.join(meadowRoot, "app/hosts/desktop");
-const cliRoot = path.join(meadowRoot, "app/clients/cli");
 
 function value(args, name) {
   const index = args.indexOf(name);
@@ -109,7 +108,7 @@ function parseArguments(args) {
       "goal-3",
       perspective,
     )),
-    nodeExecutable: path.resolve(value(args, "--node-executable") ?? path.join(desktopRoot, "vendor/node")),
+    nodeExecutable: path.resolve(value(args, "--node-executable") ?? path.join(meadowRoot, "app/runtime/payload/vendor/node")),
     suppliedPayloadRoot: value(args, "--payload-root")
       ? path.resolve(value(args, "--payload-root"))
       : null,
@@ -153,16 +152,13 @@ export function buildQaDistributions(options) {
       });
     }
 
-    run("npm", ["run", "build"], cliRoot, { MEADOW_BUILD_PERSPECTIVE: options.perspective });
     const commandRoot = path.join(stagingRoot, `Meadow-Command-${options.appVersion}-${options.perspective}`);
-    assembleCommandDistribution({
-      payloadRoot,
-      cliBundle: path.join(cliRoot, "dist/meadow.cjs"),
-      cliLauncher: path.join(cliRoot, "bin/meadow"),
-      commandRoot,
-    });
     const commandArchive = `${commandRoot}.zip`;
-    run("/usr/bin/ditto", ["-c", "-k", "--keepParent", commandRoot, commandArchive], stagingRoot);
+    buildCommandArtifact({
+      payloadRoot,
+      commandRoot,
+      commandArchive,
+    });
 
     let desktopApp = null;
     let parityReport = null;
@@ -172,7 +168,11 @@ export function buildQaDistributions(options) {
         throw new Error(`Refusing to replace an unmarked Desktop payload directory: ${desktopPayloadRoot}`);
       }
       rmSync(desktopPayloadRoot, { recursive: true, force: true });
-      cpSync(payloadRoot, desktopPayloadRoot, { recursive: true, preserveTimestamps: true });
+      cpSync(payloadRoot, desktopPayloadRoot, {
+        recursive: true,
+        preserveTimestamps: true,
+        verbatimSymlinks: true,
+      });
       run("npm", ["run", "build:main"], desktopRoot, { MEADOW_BUILD_PERSPECTIVE: options.perspective });
       const desktopBuildRoot = path.join(stagingRoot, "desktop");
       run(

@@ -34,6 +34,10 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import {
+  RUNTIME_NATIVE_COMPONENTS,
+  RUNTIME_NODE_PAYLOAD_PATH,
+} from "./runtimePayloadDefinition.mjs";
 
 const PAYLOAD_SCHEMA_VERSION = 1;
 const RUNTIME_PROTOCOL = "meadow-local-v1";
@@ -237,12 +241,12 @@ export function buildRuntimePayload(options) {
     requireCommand("npm", ["run", "build"], supervisorRoot, buildEnvironment);
     requireCommand("npm", ["run", "build"], serviceRoot, buildEnvironment);
     requireCommand("npm", ["run", "build"], webRoot, buildEnvironment);
-    for (const nativeProject of [
-      "source_page_search_by_title/source_page_search_by_title_code",
-      "fast_git_ops/fast_git_ops_code",
-      "working_graph/working_graph_code",
-    ]) {
-      requireCommand("cargo", ["build", "--release"], path.join(meadowRoot, "app/runtime/native", nativeProject));
+    for (const component of RUNTIME_NATIVE_COMPONENTS) {
+      requireCommand(
+        "cargo",
+        ["build", "--release"],
+        path.join(meadowRoot, "app/runtime/native", component.projectPath),
+      );
     }
   }
 
@@ -259,17 +263,21 @@ export function buildRuntimePayload(options) {
   copyRuntimePayloadInput(path.join(webRoot, "server.js"), path.join(stagingRoot, "web/server.js"));
   copyRuntimePayloadInput(path.join(webRoot, "package.json"), path.join(stagingRoot, "web/package.json"));
 
-  const nativeInputs = [
-    ["source_page_search_by_title/source_page_search_by_title_code/target/release/source_page_search_by_title_bin", "source_page_search_by_title_bin"],
-    ["fast_git_ops/fast_git_ops_code/target/release/fast_git_ops_bin", "fast_git_ops_bin"],
-    ["working_graph/working_graph_code/target/release/working_graph_bin", "working_graph_bin"],
-  ];
-  for (const [source, name] of nativeInputs) {
-    copyRuntimePayloadInput(path.join(meadowRoot, "app/runtime/native", source), path.join(stagingRoot, "native", name));
-    chmodSync(path.join(stagingRoot, "native", name), 0o755);
+  for (const component of RUNTIME_NATIVE_COMPONENTS) {
+    const source = path.join(
+      meadowRoot,
+      "app/runtime/native",
+      component.projectPath,
+      "target/release",
+      component.executableName,
+    );
+    const destination = path.join(stagingRoot, component.payloadPath);
+    copyRuntimePayloadInput(source, destination);
+    chmodSync(destination, 0o755);
   }
-  copyRuntimePayloadInput(options.nodeExecutable, path.join(stagingRoot, "bin/node"));
-  chmodSync(path.join(stagingRoot, "bin/node"), 0o755);
+  const payloadNodeExecutable = path.join(stagingRoot, RUNTIME_NODE_PAYLOAD_PATH);
+  copyRuntimePayloadInput(options.nodeExecutable, payloadNodeExecutable);
+  chmodSync(payloadNodeExecutable, 0o755);
   copyRuntimePayloadInput(
     path.join(meadowRoot, "app/shared_data/home_fixtures/home_fixture_example"),
     path.join(stagingRoot, "example/home_fixture"),
