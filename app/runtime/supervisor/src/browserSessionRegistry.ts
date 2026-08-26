@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { createHash, randomBytes } from "node:crypto";
+import type { browserSession, ParticipatesIn } from "../../../concepts/index.js";
 
 interface LaunchRecord {
   targetPath: string;
@@ -102,3 +103,7 @@ export class BrowserSessionRegistry {
     }
   }
 }
+
+export type BrowserSessionMeadowConceptParticipations = [
+  ParticipatesIn<typeof browserSession, "exchange-and-track", typeof BrowserSessionRegistry>,
+];

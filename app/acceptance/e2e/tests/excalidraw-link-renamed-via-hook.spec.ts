@@ -21,7 +21,7 @@ import {
   PreviewPublishModal,
   CustomizeTab,
 } from "../src/run/pages/index.js";
-import { excalidraw, hooks } from "../src/scenario-docs/index.js";
+import { excalidraw, hooks } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

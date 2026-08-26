@@ -67,6 +67,10 @@ import {
   writeStartupFailureDiagnostic,
 } from '../../../../../shared_code/utils/startupRecovery.js';
 import { createRuntimeOperationLeaseMiddleware } from './runtimeOperationLease.js';
+import type {
+  ParticipatesIn,
+  runtimeService,
+} from '../../../../../concepts/index.js';
 
 // Configure dotenv to load environment variables
 dotenv.config();
@@ -146,7 +150,7 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-async function startServer(): Promise<void> {
+export async function startRuntimeService(): Promise<void> {
   const appVersion = process.env.MEADOW_APP_VERSION ?? '';
   const isDev = process.env.MEADOW_IS_DEV === 'true';
   // Path resolution only reads the strict bootstrap file. The format preflight
@@ -258,7 +262,7 @@ async function startServer(): Promise<void> {
   });
 }
 
-startServer().catch((error) => {
+startRuntimeService().catch((error) => {
   const diagnosticPath = process.env.MEADOW_STARTUP_DIAGNOSTIC_PATH;
   const diagnostic = describeStartupFailure(error, {
     selectedHomePath,
@@ -285,3 +289,8 @@ function shutdown(signal: string) {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+export type RuntimeServiceMeadowConceptParticipations = [
+  ParticipatesIn<typeof runtimeService, 'start-service', typeof startRuntimeService>,
+  ParticipatesIn<typeof runtimeService, 'mutate-home', typeof startRuntimeService>,
+];

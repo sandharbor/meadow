@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage } from "../src/run/pages/index.js";
-import { folderBundles, paths } from "../src/scenario-docs/index.js";
+import { folderBundles, paths } from "../../../concepts/index.js";
 import { Bundle, Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "multiple-folders" });

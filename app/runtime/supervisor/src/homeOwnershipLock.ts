@@ -24,6 +24,11 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import type {
+  cooperativeHandoff,
+  homeOwnershipLock,
+  ParticipatesIn,
+} from "../../../concepts/index.js";
 import path from "node:path";
 import {
   HOME_OWNERSHIP_LOCK_SCHEMA_VERSION,
@@ -159,3 +164,10 @@ export function acquireHomeOwnership(options: AcquireHomeOwnershipOptions): Home
   }
   throw new Error("Unable to acquire Home Ownership Lock after stale-owner cleanup");
 }
+
+export type HomeOwnershipMeadowConceptParticipations = [
+  ParticipatesIn<typeof homeOwnershipLock, "acquire", typeof acquireHomeOwnership>,
+  ParticipatesIn<typeof homeOwnershipLock, "recover-stale-owner", typeof acquireHomeOwnership>,
+  ParticipatesIn<typeof homeOwnershipLock, "release", typeof HomeOwnershipLease>,
+  ParticipatesIn<typeof cooperativeHandoff, "ownership-transfer", typeof acquireHomeOwnership>,
+];

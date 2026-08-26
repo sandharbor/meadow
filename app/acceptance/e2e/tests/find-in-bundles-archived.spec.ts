@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { findInBundles, archived, multiBundle } from "../src/scenario-docs/index.js";
+import { findInBundles, archived, multiBundle } from "../../../concepts/index.js";
 import { bigBundle, smallBundle, exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

@@ -35,6 +35,12 @@ import {
   removeRuntimeSessionDescriptor,
   writeRuntimeSessionDescriptor,
 } from "./sessionDescriptor.js";
+import type {
+  cooperativeHandoff,
+  ParticipatesIn,
+  runtimeInstance,
+  runtimeSupervisor,
+} from "../../../concepts/index.js";
 
 type SupervisorExitReason = "idle" | "handoff" | "requested" | "signal" | "child-exit" | "startup-failure";
 
@@ -270,3 +276,10 @@ export class RuntimeSupervisor {
     return this.descriptor;
   }
 }
+
+export type RuntimeSupervisorMeadowConceptParticipations = [
+  ParticipatesIn<typeof runtimeInstance, "coordinate", typeof RuntimeSupervisor>,
+  ParticipatesIn<typeof runtimeSupervisor, "create-runtime-service", typeof RuntimeSupervisor>,
+  ParticipatesIn<typeof runtimeSupervisor, "coordinate-lifecycle", typeof RuntimeSupervisor>,
+  ParticipatesIn<typeof cooperativeHandoff, "owner-shutdown", typeof RuntimeSupervisor>,
+];

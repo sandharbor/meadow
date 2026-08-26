@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, OrphansModal } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { orphan, callout } from "../src/scenario-docs/index.js";
+import { orphan, callout } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const EXPECTED_ORPHAN_COUNT = 13;

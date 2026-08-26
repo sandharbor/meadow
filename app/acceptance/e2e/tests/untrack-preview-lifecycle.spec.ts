@@ -27,7 +27,7 @@ import {
   changesTab as changesTabDoc,
   htmlGeneration,
   tracking,
-} from "../src/scenario-docs/index.js";
+} from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

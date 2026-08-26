@@ -23,7 +23,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
-import { htmlNode } from "../src/scenario-docs/index.js";
+import { htmlNode } from "../../../concepts/index.js";
 import { Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "single-file" });

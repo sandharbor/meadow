@@ -55,7 +55,7 @@ interface Manifest {
   endTime?: string
   bundleMode?: BundleMode | null
   logs: LogEntry[]
-  scenarioDocIds?: string[]
+  conceptIds?: string[]
   appAreaDocIds?: string[]
   keyFrames?: KeyFrame[]
 }
@@ -85,14 +85,14 @@ interface UncommittedEntry {
   uncommittedFiles: { status: string; path: string }[]
 }
 
-interface ScenarioDoc {
+interface ConceptView {
   id: string
   name: string
   description: string
-  isMeadowExtension?: boolean
+  isContribution?: boolean
 }
 
-interface AppAreaDoc {
+interface AppAreaView {
   id: string
   name: string
   description: string
@@ -491,7 +491,7 @@ export default function ScenarioViewer() {
   const [s3Snapshots, setS3Snapshots] = useState<Snapshot[]>([])
   const [snapshotMessages, setSnapshotMessages] = useState<SnapshotMessage[]>([])
   const [uncommittedEntries, setUncommittedEntries] = useState<UncommittedEntry[]>([])
-  const [scenarioDocs, setScenarioDocs] = useState<ScenarioDoc[]>([])
+  const [concepts, setConcepts] = useState<ConceptView[]>([])
 
   // Index states
   const [currentSnapshotIndex, setCurrentSnapshotIndex] = useState(-1)
@@ -524,7 +524,7 @@ export default function ScenarioViewer() {
 
   // Content state
   const [fileList, setFileList] = useState<string[]>([])
-  const [appAreaDocs, setAppAreaDocs] = useState<AppAreaDoc[]>([])
+  const [appAreas, setAppAreas] = useState<AppAreaView[]>([])
   const [stateTables, setStateTables] = useState<Record<string, string>>({})
   const [prevStateTables, setPrevStateTables] = useState<Record<string, string>>({})
   const [stateSnapshotDeltas, setStateSnapshotDeltas] = useState<Record<number, FileDelta>>({})
@@ -647,30 +647,30 @@ export default function ScenarioViewer() {
     return data
   }, [API])
 
-  // --- Scenario docs ---
+  // --- Acceptance concepts ---
 
   useEffect(() => {
-    fetch('/api/scenario-docs')
+    fetch('/api/concepts')
       .then((r) => r.ok ? r.json() : [])
-      .then((d) => setScenarioDocs(d))
+      .then((d) => setConcepts(d))
       .catch(() => {})
-    fetch('/api/app-area-docs')
+    fetch('/api/app-areas')
       .then((r) => r.ok ? r.json() : [])
-      .then((d) => setAppAreaDocs(d))
+      .then((d) => setAppAreas(d))
       .catch(() => {})
   }, [])
 
   const matchingDocs = useMemo(() => {
-    const docIds = manifest?.scenarioDocIds || []
+    const docIds = manifest?.conceptIds || []
     if (docIds.length === 0) return []
-    return scenarioDocs.filter((doc) => docIds.includes(doc.id))
-  }, [scenarioDocs, manifest])
+    return concepts.filter((doc) => docIds.includes(doc.id))
+  }, [concepts, manifest])
 
   const matchingAppAreas = useMemo(() => {
     const docIds = manifest?.appAreaDocIds || []
     if (docIds.length === 0) return []
-    return appAreaDocs.filter((doc) => docIds.includes(doc.id))
-  }, [appAreaDocs, manifest])
+    return appAreas.filter((doc) => docIds.includes(doc.id))
+  }, [appAreas, manifest])
 
   const parseOptions = useMemo(() => ({
     recordKeyMap: stateRepoMeta?.recordKeyMap,
@@ -1911,7 +1911,7 @@ export default function ScenarioViewer() {
           </div>
           {/* Keyframe hover popup — sized to match video player */}
           {hoveredKeyFrame && (() => {
-            const doc = scenarioDocs.find(d => d.id === hoveredKeyFrame.docId)
+            const doc = concepts.find(d => d.id === hoveredKeyFrame.docId)
             const videoEl = videoRef.current
             const videoRect = videoEl?.getBoundingClientRect()
             const popupWidth = videoRect ? videoRect.width * 0.85 : 320
@@ -2116,7 +2116,7 @@ export default function ScenarioViewer() {
           )}
         </div>
 
-        {/* Bundle-origin mode, app area, and scenario doc chips */}
+        {/* Bundle-origin mode, app area, and concept chips */}
         {manifest?.bundleMode && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200">
             <span className="text-[11px] text-neutral-400">Starts with:</span>
@@ -2145,14 +2145,14 @@ export default function ScenarioViewer() {
         )}
         {matchingDocs.length > 0 && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200">
-            <span className="text-[11px] text-neutral-400">Docs:</span>
+            <span className="text-[11px] text-neutral-400">Concepts:</span>
             {matchingDocs.map((doc) => {
               const hasKeyFrame = manifest?.keyFrames?.some(kf => kf.docId === doc.id)
               return (
                 <Link
                   key={doc.id}
                   to={`/${runId}?doc=${doc.id}`}
-                  title={doc.isMeadowExtension ? 'Meadow Extension scenario' : undefined}
+                  title={doc.isContribution ? 'Contributed Meadow concept' : undefined}
                   className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
                     hoveredDocId === doc.id
                       ? 'bg-brand-500 text-white'
@@ -2161,7 +2161,7 @@ export default function ScenarioViewer() {
                   onMouseEnter={() => hasKeyFrame ? setHoveredDocId(doc.id) : undefined}
                   onMouseLeave={() => setHoveredDocId(null)}
                 >
-                  {doc.isMeadowExtension && <span className="mr-0.5" aria-hidden>☁</span>}
+                  {doc.isContribution && <span className="mr-0.5" aria-hidden>☁</span>}
                   {doc.name}
                 </Link>
               )

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { bundles } from "../src/app-area-docs/index.js";
-import { cli } from "../src/scenario-docs/index.js";
+import { bundles } from "../../../concepts/index.js";
+import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 
 interface BundleSummary {

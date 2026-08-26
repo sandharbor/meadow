@@ -18,7 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab } from "../src/run/pages/index.js";
 import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { htmlGeneration, changesTab as changesTabDoc, versioning } from "../src/scenario-docs/index.js";
+import { htmlGeneration, changesTab as changesTabDoc, versioning } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

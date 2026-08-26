@@ -35,11 +35,11 @@ import {
 
 type ViewTab = 'thumbs' | 'list' | 'videos' | 'timing'
 
-interface ScenarioDoc {
+interface ConceptView {
   id: string
   name: string
   description: string
-  isMeadowExtension?: boolean
+  isContribution?: boolean
 }
 
 interface BundleDoc {
@@ -48,7 +48,7 @@ interface BundleDoc {
   description: string
 }
 
-interface AppAreaDoc {
+interface AppAreaView {
   id: string
   name: string
   description: string
@@ -68,7 +68,7 @@ interface Scenario {
   duration: number | null
   bundleMode: BundleMode | null
   executionSurface: ExecutionSurface
-  scenarioDocIds: string[]
+  conceptIds: string[]
   bundleDocIds: string[]
   appAreaDocIds: string[]
   failureReason?: string
@@ -79,7 +79,7 @@ interface Scenario {
 interface RunData {
   runId: string
   scenarios: Scenario[]
-  targetedScenarioIds?: string[]
+  targetedConceptIds?: string[]
   targetedAppAreaIds?: string[]
   highlightedTestBasenames?: string[]
 }
@@ -90,9 +90,9 @@ export default function RunDetail() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<RunData | null>(null)
   const [healthMap, setHealthMap] = useState<Record<string, HealthSummary>>({})
-  const [docs, setDocs] = useState<ScenarioDoc[]>([])
+  const [docs, setDocs] = useState<ConceptView[]>([])
   const [bundleDocs, setBundleDocs] = useState<BundleDoc[]>([])
-  const [appAreaDocs, setAppAreaDocs] = useState<AppAreaDoc[]>([])
+  const [appAreas, setAppAreas] = useState<AppAreaView[]>([])
   const [notes, setNotes] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<ViewTab>('thumbs')
@@ -101,7 +101,7 @@ export default function RunDetail() {
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
 
   const selectedAreaIds = searchParams.getAll('area')
-  const selectedAreas = appAreaDocs.filter((d) => selectedAreaIds.includes(d.id))
+  const selectedAreas = appAreas.filter((d) => selectedAreaIds.includes(d.id))
   const selectedDocIds = searchParams.getAll('doc')
   const selectedDocs = docs.filter((d) => selectedDocIds.includes(d.id))
   const selectedBundleIds = searchParams.getAll('bundle')
@@ -110,22 +110,22 @@ export default function RunDetail() {
   const surfaceParam = searchParams.get('surface')
   const selectedExecutionSurface = isExecutionSurface(surfaceParam) ? surfaceParam : null
 
-  // Track which scenario doc IDs appear in this run's data
+  // Track which acceptance concept IDs appear in this run's data.
   const presentDocIds = new Set(
-    (data?.scenarios ?? []).flatMap((s) => s.scenarioDocIds)
+    (data?.scenarios ?? []).flatMap((s) => s.conceptIds)
   )
   const presentAreaIds = new Set(
     (data?.scenarios ?? []).flatMap((s) => s.appAreaDocIds)
   )
   const isPartialRun = docs.length > 0 && presentDocIds.size < docs.length
-  const isPartialAreaRun = appAreaDocs.length > 0 && presentAreaIds.size < appAreaDocs.length
-  const targetedDocIds = new Set(data?.targetedScenarioIds ?? [])
+  const isPartialAreaRun = appAreas.length > 0 && presentAreaIds.size < appAreas.length
+  const targetedDocIds = new Set(data?.targetedConceptIds ?? [])
   const targetedAreaIds = new Set(data?.targetedAppAreaIds ?? [])
   const highlightedBasenames = new Set(data?.highlightedTestBasenames ?? [])
   const highlightedDocIds = new Set(
     (data?.scenarios ?? [])
       .filter((s) => s.testBasename && highlightedBasenames.has(s.testBasename))
-      .flatMap((s) => s.scenarioDocIds)
+      .flatMap((s) => s.conceptIds)
   )
 
   const setFilters = (next: { areaIds?: string[]; docIds?: string[]; bundleIds?: string[]; bundleModes?: BundleMode[]; executionSurface?: ExecutionSurface | null }) => {
@@ -170,7 +170,7 @@ export default function RunDetail() {
   }, [playSpeed])
 
   useEffect(() => {
-    fetch('/api/scenario-docs')
+    fetch('/api/concepts')
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setDocs([...d].sort((a, b) => a.name.localeCompare(b.name))))
       .catch(() => {})
@@ -178,9 +178,9 @@ export default function RunDetail() {
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setBundleDocs(d))
       .catch(() => {})
-    fetch('/api/app-area-docs')
+    fetch('/api/app-areas')
       .then((r) => r.ok ? r.json() : [])
-      .then((d) => setAppAreaDocs(d))
+      .then((d) => setAppAreas(d))
       .catch(() => {})
   }, [])
 
@@ -249,7 +249,7 @@ export default function RunDetail() {
 
   const docFiltered = selectedDocs.length > 0
     ? areaFiltered.filter((s) =>
-        selectedDocs.some((doc) => s.scenarioDocIds.includes(doc.id))
+        selectedDocs.some((doc) => s.conceptIds.includes(doc.id))
       )
     : areaFiltered
 
@@ -391,11 +391,11 @@ export default function RunDetail() {
       </div>
 
       {/* App area filter chips */}
-      {appAreaDocs.length > 0 && (() => {
-        const rootAreas = appAreaDocs.filter((d) => !d.parentId)
-        const bundleAreas = appAreaDocs.filter((d) => d.parentId === 'bundle')
+      {appAreas.length > 0 && (() => {
+        const rootAreas = appAreas.filter((d) => !d.parentId)
+        const bundleAreas = appAreas.filter((d) => d.parentId === 'bundle')
 
-        const renderAreaPill = (area: AppAreaDoc) => {
+        const renderAreaPill = (area: AppAreaView) => {
           const isSelected = selectedAreaIds.includes(area.id)
           const hasData = presentAreaIds.has(area.id)
           const isTargeted = targetedAreaIds.has(area.id)
@@ -451,14 +451,14 @@ export default function RunDetail() {
         )
       })()}
 
-      {/* Doc filter chips — two rows: base, then meadow-extension */}
+      {/* Concept filter chips — two rows: core, then contributions. */}
       {docs.length > 0 && (() => {
-        const baseDocs = docs.filter((d) => !d.isMeadowExtension)
-        const extensionDocs = docs.filter((d) => d.isMeadowExtension)
+        const baseDocs = docs.filter((d) => !d.isContribution)
+        const extensionDocs = docs.filter((d) => d.isContribution)
         const extensionDocIds = extensionDocs.map((d) => d.id)
         const allExtensionSelected = extensionDocIds.length > 0 && extensionDocIds.every((id) => selectedDocIds.includes(id))
 
-        const renderDocPill = (doc: ScenarioDoc) => {
+        const renderDocPill = (doc: ConceptView) => {
           const isSelected = selectedDocIds.includes(doc.id)
           const hasData = presentDocIds.has(doc.id)
           const isTargeted = targetedDocIds.has(doc.id)
@@ -471,7 +471,7 @@ export default function RunDetail() {
           return (
             <button
               key={doc.id}
-              title={doc.isMeadowExtension ? 'Meadow Extension scenario' : undefined}
+              title={doc.isContribution ? 'Contributed Meadow concept' : undefined}
               className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
                 isSelected
                   ? 'bg-brand-500 text-white'
@@ -484,7 +484,7 @@ export default function RunDetail() {
                 setFilters({ docIds: nextDocs })
               }}
             >
-              {doc.isMeadowExtension && <span className="mr-1" aria-hidden>☁</span>}
+              {doc.isContribution && <span className="mr-1" aria-hidden>☁</span>}
               {doc.name}
             </button>
           )
@@ -507,7 +507,7 @@ export default function RunDetail() {
               {baseDocs.map(renderDocPill)}
             </div>
 
-            {/* Meadow-extension row — hidden when no scenario in this run uses an extension doc. */}
+            {/* Contribution row — hidden when no scenario in this run uses one. */}
             {extensionDocs.length > 0 && extensionDocIds.some((id) => presentDocIds.has(id)) && (
               <div className="flex flex-wrap gap-1.5 items-center mt-1.5">
                 <span className="text-xs text-neutral-400 font-medium mr-1">meadow-extension:</span>
@@ -517,7 +517,7 @@ export default function RunDetail() {
                       ? 'bg-brand-500 text-white'
                       : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                   }`}
-                  title="Select all Meadow Extension scenarios"
+                  title="Select all contributed concepts"
                   onClick={() => setFilters({ docIds: extensionDocIds })}
                 >
                   All

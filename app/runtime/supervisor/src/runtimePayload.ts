@@ -23,6 +23,10 @@ import {
   type RuntimePayloadManifest,
   type RuntimeSupervisorLaunchSpec,
 } from "../../../contracts/types/runtime.js";
+import type {
+  ParticipatesIn,
+  runtimePayload,
+} from "../../../concepts/index.js";
 
 function parsePayloadFile(value: unknown): RuntimePayloadFile {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -123,3 +127,7 @@ export function createRuntimePayloadLaunchSpec(options: {
     idleTimeoutMs: options.idleTimeoutMs ?? 30_000,
   };
 }
+
+export type RuntimePayloadMeadowConceptParticipations = [
+  ParticipatesIn<typeof runtimePayload, "build-launch-spec", typeof createRuntimePayloadLaunchSpec>,
+];

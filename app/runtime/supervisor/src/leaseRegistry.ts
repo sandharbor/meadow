@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import type { RuntimeLeaseSnapshot } from "../../../contracts/types/runtime.js";
+import type { lease, ParticipatesIn } from "../../../concepts/index.js";
 
 export type RuntimeLeaseKind = "client" | "operation";
 
@@ -79,3 +80,7 @@ export class RuntimeLeaseRegistry {
     if (!leaseId || leaseId.length > 200) throw new Error("A bounded Runtime leaseId is required");
   }
 }
+
+export type RuntimeLeaseMeadowConceptParticipations = [
+  ParticipatesIn<typeof lease, "track-liveness", typeof RuntimeLeaseRegistry>,
+];

@@ -27,10 +27,16 @@ import {
 import os from "os";
 import path from "path";
 import { performance } from "perf_hooks";
-import * as scenarioDocExports from "../scenario-docs/index.ts";
+import {
+  acceptanceConcepts as baseConcepts,
+  allCoreConcepts,
+  acceptanceAppAreaConcepts as appAreaConcepts,
+  assertConceptRegistry,
+  deriveAppAreaIds,
+  type AnyMeadowConcept,
+} from "../../../../concepts/index.ts";
+import * as coreConceptExports from "../../../../concepts/index.ts";
 import * as bundleDocExports from "../bundle-docs/index.ts";
-import * as appAreaDocExports from "../app-area-docs/index.ts";
-import { deriveAppAreaDocIds } from "../app-area-docs/index.ts";
 import { isBundleMode, type BundleMode } from "../run/bundleMode.ts";
 import {
   isExecutionSurface,
@@ -41,37 +47,37 @@ import {
   type TestSourceFixture,
 } from "./testSourceFixtures.ts";
 
-// Build a map from export name (e.g. "htmlGeneration") to doc ID (e.g. "html-generation")
-const exportNameToDocId = new Map<string, string>();
-const moduleScenarioDocToAppAreaIds = new Map<string, readonly string[]>();
-for (const [key, value] of Object.entries(scenarioDocExports)) {
+// Build a map from export name (e.g. "htmlGeneration") to canonical concept ID.
+const exportNameToConceptId = new Map<string, string>();
+for (const [key, value] of Object.entries(coreConceptExports)) {
   if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
-    exportNameToDocId.set(key, value.id);
-    if ("appAreaDocIds" in value && Array.isArray(value.appAreaDocIds)) {
-      moduleScenarioDocToAppAreaIds.set(value.id, value.appAreaDocIds as string[]);
-    }
+    exportNameToConceptId.set(key, value.id);
   }
 }
 
-// Merge in extension scenario-doc exports when an extension layer is
-// mounted. When no extension is mounted, the folder is gone and we use
-// only the base exports.
+type ConceptLike = AnyMeadowConcept;
+let contributedConcepts: ConceptLike[] = [];
+
+// Merge in contributed concept exports when a contribution is mounted.
 {
-  const extIndex = path.join(import.meta.dirname, "..", "scenario-docs", "meadow-extension", "index.ts");
+  const extIndex = path.join(import.meta.dirname, "..", "..", "..", "..", "concepts", "meadow-extension", "index.ts");
   if (existsSync(extIndex)) {
-    const extPath = "../scenario-docs/meadow-extension/index.ts";
-    const mod = await import(extPath) as Record<string, unknown>;
+    const extPath = "../../../../concepts/meadow-extension/index.ts";
+    const mod = await import(extPath) as { meadowExtensionConcepts?: ConceptLike[] } & Record<string, unknown>;
+    contributedConcepts = mod.meadowExtensionConcepts ?? [];
     for (const [key, value] of Object.entries(mod)) {
       if (value && typeof value === "object" && "id" in value && typeof (value as { id: unknown }).id === "string") {
-        const scenarioDoc = value as { id: string; appAreaDocIds?: string[] };
-        exportNameToDocId.set(key, scenarioDoc.id);
-        if (scenarioDoc.appAreaDocIds) {
-          moduleScenarioDocToAppAreaIds.set(scenarioDoc.id, scenarioDoc.appAreaDocIds);
-        }
+        exportNameToConceptId.set(key, (value as { id: string }).id);
       }
     }
   }
 }
+
+const allAcceptanceConcepts = [...baseConcepts, ...contributedConcepts];
+const allConcepts = [...allCoreConcepts, ...contributedConcepts];
+assertConceptRegistry(allConcepts);
+const acceptanceIds = new Set(allAcceptanceConcepts.map(concept => concept.id));
+const appAreaIds = new Set(appAreaConcepts.map(concept => concept.id));
 
 // Build a parallel map for bundle doc exports
 const bundleExportNameToDocId = new Map<string, string>();
@@ -81,31 +87,25 @@ for (const [key, value] of Object.entries(bundleDocExports)) {
   }
 }
 
-const appAreaExportNameToDocId = new Map<string, string>();
-for (const [key, value] of Object.entries(appAreaDocExports)) {
-  if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
-    appAreaExportNameToDocId.set(key, value.id);
-  }
-}
-
-function extractScenarioDocIds(testSource: string): string[] {
-  // Tests often import from both the base and an extension scenario-doc
-  // barrel, so match every scenario-docs import statement (global flag).
-  const re = /import\s+\{([^}]+)\}\s+from\s+["'][^"']*scenario-docs[^"']*["']/g;
+function extractImportedConceptIds(testSource: string, acceptedIds: ReadonlySet<string>): string[] {
+  const re = /import\s+\{([^}]+)\}\s+from\s+["'][^"']*concepts[^"']*["']/g;
   const ids: string[] = [];
   const seen = new Set<string>();
   for (const match of testSource.matchAll(re)) {
     const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
     for (const name of names) {
-      const id = exportNameToDocId.get(name.split(/\s+as\s+/)[0]);
-      if (id && !seen.has(id)) {
-        seen.add(id);
-        ids.push(id);
+      const conceptId = exportNameToConceptId.get(name.split(/\s+as\s+/)[0]);
+      if (conceptId && acceptedIds.has(conceptId) && !seen.has(conceptId)) {
+        seen.add(conceptId);
+        ids.push(conceptId);
       }
     }
   }
   return ids;
 }
+
+const extractAcceptanceConceptIds = (source: string) => extractImportedConceptIds(source, acceptanceIds);
+const extractExplicitAppAreaIds = (source: string) => extractImportedConceptIds(source, appAreaIds);
 
 function extractBundleDocIds(testSource: string): string[] {
   const match = testSource.match(
@@ -116,18 +116,6 @@ function extractBundleDocIds(testSource: string): string[] {
   const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
   return names
     .map((name) => bundleExportNameToDocId.get(name.split(/\s+as\s+/)[0]))
-    .filter((id): id is string => !!id);
-}
-
-function extractExplicitAppAreaDocIds(testSource: string): string[] {
-  const match = testSource.match(
-    /import\s+\{([^}]+)\}\s+from\s+["'][^"']*app-area-docs[^"']*["']/
-  );
-  if (!match) return [];
-
-  const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
-  return names
-    .map((name) => appAreaExportNameToDocId.get(name.split(/\s+as\s+/)[0]))
     .filter((id): id is string => !!id);
 }
 
@@ -257,7 +245,7 @@ interface Manifest {
   testSourceFixtures: TestSourceFixture[];
   bundleMode: BundleMode | null;
   executionSurface: ExecutionSurface;
-  scenarioDocIds: string[];
+  conceptIds: string[];
   bundleDocIds: string[];
   appAreaDocIds: string[];
   keyFrames: KeyFrame[];
@@ -340,7 +328,7 @@ interface ScenarioReportMeta {
     duration: number | null;
     bundleMode: BundleMode | null;
     executionSurface: ExecutionSurface;
-    scenarioDocIds: string[];
+    conceptIds: string[];
     bundleDocIds: string[];
     appAreaDocIds: string[];
     keyFrames: { docId: string; filename: string; timestamp?: string }[];
@@ -1015,7 +1003,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
+  const { testName, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1028,7 +1016,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { testName, duration, bundleMode, executionSurface, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { testName, duration, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1295,16 +1283,17 @@ export function assembleTestArtifacts(testDir: string): void {
     return value;
   });
 
-  // Extract scenario doc IDs, app area doc IDs, and bundle doc IDs from test source imports.
-  const { scenarioDocIds, bundleDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
-    const scenarioIds = extractScenarioDocIds(testSource);
+  // Extract concept, app-area, and bundle-doc IDs from test source imports.
+  const { conceptIds, bundleDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
+    const scenarioIds = extractAcceptanceConceptIds(testSource);
     return {
-      scenarioDocIds: scenarioIds,
+      conceptIds: scenarioIds,
       bundleDocIds: extractBundleDocIds(testSource),
-      appAreaDocIds: deriveAppAreaDocIds(
+      appAreaDocIds: deriveAppAreaIds(
         scenarioIds,
-        extractExplicitAppAreaDocIds(testSource),
-        moduleScenarioDocToAppAreaIds
+        allConcepts,
+        appAreaConcepts,
+        extractExplicitAppAreaIds(testSource),
       ),
     };
   });
@@ -1323,7 +1312,7 @@ export function assembleTestArtifacts(testDir: string): void {
   );
 
   // Write manifest
-  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, bundleMode, executionSurface, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
   const manifestJson = measured(assemblySteps, "manifest stringify", () =>
     JSON.stringify(manifest, null, 2)
   );

@@ -52,20 +52,18 @@ The grep pattern is passed to Playwright's `--grep` flag, which matches
 against test titles. When `--grep` is active, the artifact count guardrail
 is skipped (since not all specs will run).
 
-### Running tests for specific scenario docs
+### Running tests for specific concepts
 
-If the user asks to run tests for specific "scenario docs" or "scenarios" (they
-may not use exact names), use `--scenarios` to filter by scenario doc ID:
+If the user asks to run tests for specific concepts or scenarios (they may not
+use exact names), use `--scenarios` to filter by acceptance concept ID:
 
 ```bash
 ./app/acceptance/e2e/_module/scripts/slowcheck --run-notes "<note>" --scenarios callout publishing
 ```
 
-This finds all spec files that import the given scenario docs and runs only
-those. To see available scenario doc IDs, look at the filenames in
-`app/acceptance/e2e/src/scenario-docs/` (strip the `.ts` extension, skip
-`types.ts` and `index.ts`). If you pass an invalid name, the error output
-lists all valid IDs.
+This finds all spec files that import the given concepts and runs only those.
+Available IDs are exported in `app/concepts/index.ts`; an invalid name prints
+the complete valid list.
 
 This is useful for faster feedback when you know which area of the app changed.
 `--scenarios` and `--grep` are mutually exclusive.
@@ -77,7 +75,7 @@ to mark the specs the reviewer should look at first. Unlike `--scenarios`, this
 does **not** filter the run — every spec still runs. It only annotates the
 report viewer so the highlighted specs land in a dedicated "Highlighted" section
 above the normal Failing / Passing sections (thumbs, list, and videos tabs),
-and their scenario docs glow amber in the filter chips.
+and their concept chips glow amber in the filter chips.
 
 ```bash
 ./app/acceptance/e2e/_module/scripts/slowcheck --run-notes "<note>" --highlighted delete-then-republish

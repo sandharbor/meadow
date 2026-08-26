@@ -17,7 +17,7 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from "../src/run/pages/index.js";
-import { callout } from "../src/scenario-docs/index.js";
+import { callout } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

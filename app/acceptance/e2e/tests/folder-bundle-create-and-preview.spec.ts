@@ -21,7 +21,7 @@ import {
   BundleListPage,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { folderBundles, htmlGeneration } from "../src/scenario-docs/index.js";
+import { folderBundles, htmlGeneration } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });

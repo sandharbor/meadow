@@ -20,7 +20,7 @@ import { Fixture } from "../src/run/workflows.js";
 import {
   tracking,
   sensitive,
-} from "../src/scenario-docs/index.js";
+} from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

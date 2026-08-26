@@ -24,7 +24,7 @@ import fs from "fs";
 import path from "path";
 import { PreviewPublishModal, PublishToS3Tab, PublishedBundlePage } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { publishing, s3, deletion } from "../src/scenario-docs/index.js";
+import { publishing, s3, deletion } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

@@ -20,9 +20,9 @@ import YAML from "yaml";
 import { test as baseTest, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage } from "../src/run/pages/index.js";
 import { MeadowHomeMigrations } from "../src/run/utils/index.js";
-import { migration } from "../src/scenario-docs/index.js";
+import { migration } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
-import { bundles } from "../src/app-area-docs/index.js";
+import { bundles } from "../../../concepts/index.js";
 
 const MIGRATION_ID = "26_08_18_12_00_00_e2e_test_upgrade_marker";
 const MIGRATIONS_DIRECTORY = path.resolve(import.meta.dirname, "../fixtures/migrations");

@@ -20,7 +20,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { tracking, callout } from "../src/scenario-docs/index.js";
+import { tracking, callout } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill, ActionButton } from "../src/run/pages/index.js";
-import { frontier } from "../src/scenario-docs/index.js";
+import { frontier } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

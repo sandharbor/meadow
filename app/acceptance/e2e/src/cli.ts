@@ -20,25 +20,31 @@ import os from "os";
 import path from "path";
 import { performance } from "perf_hooks";
 import { assembleRun } from "./artifacts/assemble.ts";
-import { allDocs as baseDocs } from "./scenario-docs/index.ts";
-import { allAppAreaDocs, deriveAppAreaDocIds, scenarioDocToAppAreaIds } from "./app-area-docs/index.ts";
-import { assertScenarioDocAppAreaAssignments } from "./app-area-docs/validation.ts";
+import {
+  acceptanceConcepts as baseConcepts,
+  allCoreConcepts,
+  acceptanceAppAreaConcepts as appAreaConcepts,
+  assertConceptRegistry,
+  deriveAppAreaIds,
+  type AnyMeadowConcept,
+} from "../../../concepts/index.ts";
+import * as coreConceptExports from "../../../concepts/index.ts";
 
 const E2E_DIR = path.join(import.meta.dirname, "..");
 
-// Optionally load an extension scenario-doc layer. When no extension is
-// mounted, this folder is gone and the import no-ops.
+// Optionally load contributed concepts. When no contribution is mounted, this
+// folder is gone and the import no-ops.
 // Runtime-computed path so tsc doesn't require the module to exist.
-type ScenarioDocLike = { id: string; appAreaDocIds?: readonly string[] | null };
-let meadowExtensionDocs: ScenarioDocLike[] = [];
-let meadowExtensionScenarioDocExports: Record<string, unknown> = {};
+type ConceptLike = AnyMeadowConcept;
+let contributedConcepts: ConceptLike[] = [];
+let contributedConceptExports: Record<string, unknown> = {};
 {
-  const extIndex = path.join(import.meta.dirname, "scenario-docs", "meadow-extension", "index.ts");
+  const extIndex = path.join(import.meta.dirname, "..", "..", "..", "concepts", "meadow-extension", "index.ts");
   if (existsSync(extIndex)) {
-    const extPath = "./scenario-docs/meadow-extension/index.ts";
-    const mod = await import(extPath) as { meadowExtensionDocs?: ScenarioDocLike[] } & Record<string, unknown>;
-    meadowExtensionDocs = mod.meadowExtensionDocs ?? [];
-    meadowExtensionScenarioDocExports = mod;
+    const extPath = "../../../concepts/meadow-extension/index.ts";
+    const mod = await import(extPath) as { meadowExtensionConcepts?: ConceptLike[] } & Record<string, unknown>;
+    contributedConcepts = mod.meadowExtensionConcepts ?? [];
+    contributedConceptExports = mod;
   }
 }
 
@@ -61,65 +67,42 @@ function countSpecFiles(dir: string): number {
 }
 const ARTIFACTS_BASE = path.join(os.homedir(), "meadow-e2e-artifacts", "current");
 
-const allDocs = [...baseDocs, ...meadowExtensionDocs];
-assertScenarioDocAppAreaAssignments({
-  baseScenarioDocs: baseDocs,
-  moduleScenarioDocs: meadowExtensionDocs,
-  appAreaDocs: allAppAreaDocs,
-  baseAssignments: scenarioDocToAppAreaIds,
-});
-const moduleScenarioDocToAppAreaIds = new Map<string, readonly string[]>(
-  allDocs
-    .filter((doc): doc is typeof doc & { appAreaDocIds: readonly string[] } => Array.isArray(doc.appAreaDocIds))
-    .map((doc) => [doc.id, doc.appAreaDocIds])
-);
+const allAcceptanceConcepts = [...baseConcepts, ...contributedConcepts];
+const allConcepts = [...allCoreConcepts, ...contributedConcepts];
+assertConceptRegistry(allConcepts);
 
-// Build a map from scenario doc export name to doc ID (mirrors assemble.ts logic)
-import * as scenarioDocExports from "./scenario-docs/index.ts";
-import * as appAreaDocExports from "./app-area-docs/index.ts";
-const exportNameToDocId = new Map<string, string>();
-for (const exports of [scenarioDocExports, meadowExtensionScenarioDocExports]) {
+// Build maps from imported concept export names to canonical IDs.
+const exportNameToConceptId = new Map<string, string>();
+for (const exports of [coreConceptExports, contributedConceptExports]) {
   for (const [key, value] of Object.entries(exports)) {
     if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
-      exportNameToDocId.set(key, value.id);
+      exportNameToConceptId.set(key, value.id);
     }
   }
 }
 
-const appAreaExportNameToDocId = new Map<string, string>();
-for (const [key, value] of Object.entries(appAreaDocExports)) {
-  if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
-    appAreaExportNameToDocId.set(key, value.id);
-  }
-}
+const acceptanceIds = new Set(allAcceptanceConcepts.map(concept => concept.id));
+const appAreaIds = new Set(appAreaConcepts.map(concept => concept.id));
 
-function extractScenarioDocIds(testSource: string): string[] {
-  const re = /import\s+\{([^}]+)\}\s+from\s+["'][^"']*scenario-docs[^"']*["']/g;
+function extractImportedConceptIds(testSource: string, acceptedIds: ReadonlySet<string>): string[] {
+  const re = /import\s+\{([^}]+)\}\s+from\s+["'][^"']*concepts[^"']*["']/g;
   const ids: string[] = [];
   const seen = new Set<string>();
   for (const match of testSource.matchAll(re)) {
     const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
     for (const name of names) {
-      const id = exportNameToDocId.get(name.split(/\s+as\s+/)[0]);
-      if (id && !seen.has(id)) {
-        seen.add(id);
-        ids.push(id);
+      const conceptId = exportNameToConceptId.get(name.split(/\s+as\s+/)[0]);
+      if (conceptId && acceptedIds.has(conceptId) && !seen.has(conceptId)) {
+        seen.add(conceptId);
+        ids.push(conceptId);
       }
     }
   }
   return ids;
 }
 
-function extractExplicitAppAreaDocIds(testSource: string): string[] {
-  const match = testSource.match(
-    /import\s+\{([^}]+)\}\s+from\s+["'][^"']*app-area-docs[^"']*["']/
-  );
-  if (!match) return [];
-  const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
-  return names
-    .map((name) => appAreaExportNameToDocId.get(name.split(/\s+as\s+/)[0]))
-    .filter((id): id is string => !!id);
-}
+const extractAcceptanceConceptIds = (source: string) => extractImportedConceptIds(source, acceptanceIds);
+const extractExplicitAppAreaIds = (source: string) => extractImportedConceptIds(source, appAreaIds);
 
 function listSpecFiles(dir: string): string[] {
   const files: string[] = [];
@@ -141,8 +124,8 @@ function resolveSpecFilesForScenarios(scenarioIds: string[]): string[] {
 
   for (const specFile of listSpecFiles(testsDir)) {
     const source = readFileSync(specFile, "utf8");
-    const docIds = extractScenarioDocIds(source);
-    if (scenarioIds.some((id) => docIds.includes(id))) {
+    const conceptIds = extractAcceptanceConceptIds(source);
+    if (scenarioIds.some((id) => conceptIds.includes(id))) {
       matchingFiles.add(specFile);
     }
   }
@@ -156,14 +139,10 @@ function resolveSpecFilesForAppAreas(appAreaIds: string[]): string[] {
 
   for (const specFile of listSpecFiles(testsDir)) {
     const source = readFileSync(specFile, "utf8");
-    const scenarioDocIds = extractScenarioDocIds(source);
-    const explicitAppAreaDocIds = extractExplicitAppAreaDocIds(source);
-    const docIds = deriveAppAreaDocIds(
-      scenarioDocIds,
-      explicitAppAreaDocIds,
-      moduleScenarioDocToAppAreaIds
-    );
-    if (appAreaIds.some((id) => docIds.includes(id))) {
+    const conceptIds = extractAcceptanceConceptIds(source);
+    const explicitAreaIds = extractExplicitAppAreaIds(source);
+    const derivedAreaIds = deriveAppAreaIds(conceptIds, allConcepts, appAreaConcepts, explicitAreaIds);
+    if (appAreaIds.some((id) => derivedAreaIds.includes(id))) {
       matchingFiles.add(specFile);
     }
   }
@@ -339,7 +318,7 @@ function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: s
         scenarios.push(argv[++i]);
       }
       if (scenarios.length === 0) {
-        console.error("ERROR: --scenarios requires at least one scenario doc ID.");
+        console.error("ERROR: --scenarios requires at least one acceptance concept ID.");
         process.exit(1);
       }
     } else if (argv[i] === "--areas") {
@@ -348,7 +327,7 @@ function parseArgs(argv: string[]): { runId: string; runNotes?: string; grep?: s
         appAreas.push(argv[++i]);
       }
       if (appAreas.length === 0) {
-        console.error("ERROR: --areas requires at least one app area doc ID.");
+        console.error("ERROR: --areas requires at least one app area ID.");
         process.exit(1);
       }
     } else if (argv[i] === "--highlighted") {
@@ -395,8 +374,8 @@ if ([specs, scenarios, appAreas].filter(Boolean).length > 1) {
 if ((specs || scenarios || appAreas) && highlighted) {
   console.error("ERROR: --highlighted cannot be combined with --spec, --scenarios, or --areas.");
   console.error("  --spec filters the run to exact spec files.");
-  console.error("  --scenarios filters the run to specific scenario docs.");
-  console.error("  --areas filters the run to specific app area docs.");
+  console.error("  --scenarios filters the run to specific acceptance concepts.");
+  console.error("  --areas filters the run to specific app areas.");
   console.error("  --highlighted marks specific specs for reviewer focus — it does not filter.");
   console.error("  Pick one.");
   process.exit(1);
@@ -434,16 +413,16 @@ if (highlighted) {
 // Validate and resolve --scenarios
 let scenarioSpecFiles: string[] | undefined;
 if (scenarios) {
-  const validIds = allDocs.map((d) => d.id);
+  const validIds = allAcceptanceConcepts.map((concept) => concept.id);
   const invalidIds = scenarios.filter((s) => !validIds.includes(s));
   if (invalidIds.length > 0) {
-    console.error(`ERROR: Unknown scenario doc ID(s): ${invalidIds.join(", ")}`);
-    console.error(`\nAvailable scenario doc IDs:\n  ${validIds.join("\n  ")}`);
+    console.error(`ERROR: Unknown acceptance concept ID(s): ${invalidIds.join(", ")}`);
+    console.error(`\nAvailable acceptance concept IDs:\n  ${validIds.join("\n  ")}`);
     process.exit(1);
   }
   scenarioSpecFiles = resolveSpecFilesForScenarios(scenarios);
   if (scenarioSpecFiles.length === 0) {
-    console.error(`ERROR: No spec files found that import scenario doc(s): ${scenarios.join(", ")}`);
+    console.error(`ERROR: No spec files found that import concept(s): ${scenarios.join(", ")}`);
     process.exit(1);
   }
   console.log(`Filtering to ${scenarioSpecFiles.length} spec file(s) for scenario(s): ${scenarios.join(", ")}`);
@@ -452,16 +431,16 @@ if (scenarios) {
 // Validate and resolve --areas
 let appAreaSpecFiles: string[] | undefined;
 if (appAreas) {
-  const validIds = allAppAreaDocs.map((d) => d.id);
+  const validIds: string[] = appAreaConcepts.map((concept) => concept.id);
   const invalidIds = appAreas.filter((s) => !validIds.includes(s));
   if (invalidIds.length > 0) {
-    console.error(`ERROR: Unknown app area doc ID(s): ${invalidIds.join(", ")}`);
-    console.error(`\nAvailable app area doc IDs:\n  ${validIds.join("\n  ")}`);
+    console.error(`ERROR: Unknown app area ID(s): ${invalidIds.join(", ")}`);
+    console.error(`\nAvailable app area IDs:\n  ${validIds.join("\n  ")}`);
     process.exit(1);
   }
   appAreaSpecFiles = resolveSpecFilesForAppAreas(appAreas);
   if (appAreaSpecFiles.length === 0) {
-    console.error(`ERROR: No spec files found for app area doc(s): ${appAreas.join(", ")}`);
+    console.error(`ERROR: No spec files found for app area(s): ${appAreas.join(", ")}`);
     process.exit(1);
   }
   console.log(`Filtering to ${appAreaSpecFiles.length} spec file(s) for app area(s): ${appAreas.join(", ")}`);
@@ -522,7 +501,7 @@ if (runNotes && existsSync(artifactsDir)) {
   writeFileSync(path.join(artifactsDir, "notes.md"), runNotes, "utf8");
 }
 if (scenarios && existsSync(artifactsDir)) {
-  writeFileSync(path.join(artifactsDir, "targeted-scenarios.json"), JSON.stringify(scenarios), "utf8");
+  writeFileSync(path.join(artifactsDir, "targeted-concepts.json"), JSON.stringify(scenarios), "utf8");
 }
 if (appAreas && existsSync(artifactsDir)) {
   writeFileSync(path.join(artifactsDir, "targeted-app-areas.json"), JSON.stringify(appAreas), "utf8");

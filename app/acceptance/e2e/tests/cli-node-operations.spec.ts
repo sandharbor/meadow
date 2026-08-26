@@ -21,8 +21,8 @@ import type {
   MutateBundleNodeCliResult,
 } from "../../../contracts/types/cliOperations.js";
 import { materializeCreateSafeBundleSource } from "../src/agent-evals/scenarios/createSafeBundle.js";
-import { bundles } from "../src/app-area-docs/index.js";
-import { cli } from "../src/scenario-docs/index.js";
+import { bundles } from "../../../concepts/index.js";
+import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 
 test.use({ bundleMode: "single-file" });

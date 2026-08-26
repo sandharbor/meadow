@@ -1,7 +1,7 @@
 [[e2e scenario]] -- [[filter - HTML section changes]] in [[app component - modal -- bundle preview -- tab changes]] correctly reflects changes
 
 ---
-### ScenarioDocs
+### Meadow concepts
 
 "HTML generation", "customization", "changes"
 ### Steps
@@ -21,4 +21,3 @@ go to changes tab
 only has modified files (no new or deleted)
 open the HTML section changes filter
 only the header section has changes
-

@@ -24,7 +24,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { customize, search } from "../src/scenario-docs/index.js";
+import { customize, generatedBundleSearch } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -54,7 +54,7 @@ test("generated bundle search finds titles and contents, navigates, and can be d
     "t021 ---- inlink gap",
     "t021 ---- outlink gap",
   ]);
-  await addKeyFrame(search);
+  await addKeyFrame(generatedBundleSearch);
   await snapshot("generated bundle title search results");
 
   await generatedBundle.search.clickResult("title", "t021 ---- outlink gap");

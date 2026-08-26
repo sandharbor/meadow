@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { filters, overrides, initialPage } from "../src/scenario-docs/index.js";
+import { filters, overrides, initialPage } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

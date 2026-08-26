@@ -21,6 +21,10 @@ import type {
   RuntimeChildLaunchCommand,
   RuntimeSupervisorLaunchSpec,
 } from "../../../contracts/types/runtime.js";
+import type {
+  ParticipatesIn,
+  runtimeLaunchSpec,
+} from "../../../concepts/index.js";
 
 function parseCommand(value: unknown, field: string): RuntimeChildLaunchCommand {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -105,3 +109,8 @@ export function writeRuntimeSupervisorLaunchSpec(
   writeFileSync(specPath, `${JSON.stringify(validated, null, 2)}\n`, { mode: 0o600 });
   chmodSync(specPath, 0o600);
 }
+
+export type LaunchSpecMeadowConceptParticipations = [
+  ParticipatesIn<typeof runtimeLaunchSpec, "write", typeof writeRuntimeSupervisorLaunchSpec>,
+  ParticipatesIn<typeof runtimeLaunchSpec, "read-once", typeof readRuntimeSupervisorLaunchSpec>,
+];

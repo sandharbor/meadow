@@ -5,6 +5,7 @@ REQUIRED_DIRS=(
     "clients"
     "acceptance"
     "contracts"
+    "concepts"
     "hosts"
     "publishing_providers"
     "published_bundle"
@@ -117,7 +118,7 @@ fi
 # Run check_dir calls in parallel for speed
 echo "🧪 Running app directory checks in parallel..."
 
-APP_CHECK_DIRS=("acceptance" "contracts" "shared_code" "clients" "hosts" "published_bundle" "runtime" "tooling")
+APP_CHECK_DIRS=("acceptance" "concepts" "contracts" "shared_code" "clients" "hosts" "published_bundle" "runtime" "tooling")
 
 pids=()
 dir_for_pid=()

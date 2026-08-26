@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { hooks, customize } from "../src/scenario-docs/index.js";
+import { hooks, customize } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

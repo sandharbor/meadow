@@ -19,7 +19,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, sourcesExport, openKnowledgeFormat, changesTab as changesTabDoc, git } from "../src/scenario-docs/index.js";
+import { customize, sourcesExport, openKnowledgeFormat, changesTab as changesTabDoc, git } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { MeadowHomeGit, seedTrackedAndLinkedFile } from "../src/run/utils/index.js";
 

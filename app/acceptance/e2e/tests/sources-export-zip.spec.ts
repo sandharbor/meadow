@@ -20,7 +20,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
 import { MeadowHomeGit } from "../src/run/utils/index.js";
-import { customize, sourcesExport, changesTab as changesTabDoc, filters, git } from "../src/scenario-docs/index.js";
+import { customize, sourcesExport, changesTab as changesTabDoc, filters, git } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 async function applyGenerationOptionAndWait(page: Page, action: () => Promise<void>) {

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { softwareUpdate } from '../src/scenario-docs/index.js';
+import { softwareUpdate } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ bundleMode: 'single-file' });

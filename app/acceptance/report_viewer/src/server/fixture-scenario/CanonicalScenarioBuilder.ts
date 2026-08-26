@@ -191,7 +191,7 @@ export class CanonicalScenarioBuilder {
   }
 
   // Add a key-frame (e.g. "publish modal opened") that the viewer can pin
-  // alongside scenario docs.
+  // alongside acceptance concepts.
   addKeyFrame(docId: string, filename: string): void {
     this.keyFrames.push({ docId, filename, timestamp: this.current().atIso });
   }

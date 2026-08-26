@@ -18,7 +18,7 @@ import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { PreviewPublishModal, ChangesTab, CustomizeTab } from "../src/run/pages/index.js";
 import { Workflows, Bundle } from "../src/run/workflows.js";
-import { customize, openKnowledgeFormat } from "../src/scenario-docs/index.js";
+import { customize, openKnowledgeFormat } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 import { seedTrackedAndLinkedFile, seedTrackedFile } from "../src/run/utils/index.js";
 import { OpenKnowledgeFormatBundle } from "./open-knowledge-format-support.js";

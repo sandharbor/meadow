@@ -19,9 +19,13 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync,
 import { execSync } from "child_process";
 import os from "os";
 import path from "path";
-import { allDocs } from "../../../e2e/src/scenario-docs/index.ts";
+import {
+  acceptanceConcepts,
+  acceptanceConceptView,
+  acceptanceAppAreaConcepts as appAreaConcepts,
+  renderConceptText,
+} from "../../../../concepts/index.ts";
 import { allBundleDocs } from "../../../e2e/src/bundle-docs/index.ts";
-import { allAppAreaDocs } from "../../../e2e/src/app-area-docs/index.ts";
 import {
   extractReferencedCliFixtureNames,
   extractReferencedCliFixtureReferences,
@@ -39,19 +43,19 @@ import {
   FIXTURE_TEST_SLUG,
 } from "./fixture-scenario/index.ts";
 
-// Optionally load an extension scenario-doc layer. When no extension is
-// mounted, this folder is gone and the import no-ops.
+// Optionally load contributed concepts. When none are mounted, the import
+// no-ops.
 // Runtime-computed path so tsc doesn't require the module to exist.
-type ScenarioDocLike = { id: string };
-let meadowExtensionDocs: ScenarioDocLike[] = [];
+type ConceptLike = Parameters<typeof acceptanceConceptView>[0];
+let contributedConcepts: ConceptLike[] = [];
 {
   const extIndex = path.join(
-    import.meta.dirname, "..", "..", "..", "e2e", "src", "scenario-docs", "meadow-extension", "index.ts"
+    import.meta.dirname, "..", "..", "..", "..", "concepts", "meadow-extension", "index.ts"
   );
   if (existsSync(extIndex)) {
-    const extPath = "../../../e2e/src/scenario-docs/meadow-extension/index.ts";
-    const mod = await import(extPath) as { meadowExtensionDocs?: ScenarioDocLike[] };
-    meadowExtensionDocs = mod.meadowExtensionDocs ?? [];
+    const extPath = "../../../../concepts/meadow-extension/index.ts";
+    const mod = await import(extPath) as { meadowExtensionConcepts?: ConceptLike[] };
+    contributedConcepts = mod.meadowExtensionConcepts ?? [];
   }
 }
 
@@ -322,15 +326,20 @@ app.use(
   }
 );
 
-// --- Scenario docs API ---
+// --- Concept API ---
 
-// GET /api/scenario-docs — return all scenario doc definitions (base plus
-// any extension layer). Each doc is tagged with isMeadowExtension so the
-// client can group them.
-app.get("/api/scenario-docs", (_req, res) => {
-  const base = allDocs.map((d) => ({ ...d, isMeadowExtension: false }));
-  const extension = meadowExtensionDocs.map((d) => ({ ...d, isMeadowExtension: true }));
-  res.json([...base, ...extension]);
+// Return the acceptance projection of canonical concepts. Each contribution is
+// tagged so the client can group it without owning another prose registry.
+app.get("/api/concepts", (_req, res) => {
+  const core = acceptanceConcepts.map(concept => ({
+    ...acceptanceConceptView(concept),
+    isContribution: false,
+  }));
+  const contributions = contributedConcepts.map(concept => ({
+    ...acceptanceConceptView(concept),
+    isContribution: true,
+  }));
+  res.json([...core, ...contributions]);
 });
 
 // GET /api/bundle-docs — return all bundle doc definitions
@@ -338,9 +347,14 @@ app.get("/api/bundle-docs", (_req, res) => {
   res.json(allBundleDocs);
 });
 
-// GET /api/app-area-docs — return all app area doc definitions
-app.get("/api/app-area-docs", (_req, res) => {
-  res.json(allAppAreaDocs);
+// Return app areas as a concept projection.
+app.get("/api/app-areas", (_req, res) => {
+  res.json(appAreaConcepts.map(area => ({
+    id: area.id,
+    name: area.name,
+    description: renderConceptText(area.definition),
+    parentId: area.parentId,
+  })));
 });
 
 // --- Agent evaluation APIs ---
@@ -664,7 +678,7 @@ app.get("/api/runs/:runId", (req, res) => {
       let duration: number | null = null;
       let bundleMode: BundleMode | null = null;
       let executionSurface: ExecutionSurface = "browser";
-      let scenarioDocIds: string[] = [];
+      let conceptIds: string[] = [];
       let bundleDocIds: string[] = [];
       let appAreaDocIds: string[] = [];
       let keyFrames: { docId: string; filename: string }[] = [];
@@ -690,7 +704,7 @@ app.get("/api/runs/:runId", (req, res) => {
             executionSurface = isExecutionSurface(meta.scenarioInfo.executionSurface)
               ? meta.scenarioInfo.executionSurface
               : "browser";
-            scenarioDocIds = meta.scenarioInfo.scenarioDocIds || [];
+            conceptIds = meta.scenarioInfo.conceptIds ?? meta.scenarioInfo.scenarioDocIds ?? [];
             bundleDocIds = meta.scenarioInfo.bundleDocIds || [];
             appAreaDocIds = meta.scenarioInfo.appAreaDocIds || [];
             keyFrames = meta.scenarioInfo.keyFrames || [];
@@ -714,7 +728,7 @@ app.get("/api/runs/:runId", (req, res) => {
             executionSurface = isExecutionSurface(manifest.executionSurface)
               ? manifest.executionSurface
               : "browser";
-            scenarioDocIds = manifest.scenarioDocIds || [];
+            conceptIds = manifest.conceptIds ?? manifest.scenarioDocIds ?? [];
             bundleDocIds = manifest.bundleDocIds || [];
             appAreaDocIds = manifest.appAreaDocIds || [];
             keyFrames = manifest.keyFrames || [];
@@ -752,15 +766,18 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, testBasename, status, duration, bundleMode, executionSurface, scenarioDocIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { slug, testName, testBasename, status, duration, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
-  // Read targeted-scenarios metadata (written when --scenarios flag was used)
-  let targetedScenarioIds: string[] | undefined;
-  const targetedFile = path.join(runDir, "targeted-scenarios.json");
+  // Read concept targeting metadata, with a fallback for historical runs.
+  let targetedConceptIds: string[] | undefined;
+  const targetedConceptsFile = path.join(runDir, "targeted-concepts.json");
+  const targetedFile = existsSync(targetedConceptsFile)
+    ? targetedConceptsFile
+    : path.join(runDir, "targeted-scenarios.json");
   if (existsSync(targetedFile)) {
     try {
-      targetedScenarioIds = JSON.parse(readFileSync(targetedFile, "utf8"));
+      targetedConceptIds = JSON.parse(readFileSync(targetedFile, "utf8"));
     } catch {
       // ignore
     }
@@ -787,7 +804,7 @@ app.get("/api/runs/:runId", (req, res) => {
     }
   }
 
-  res.json({ runId: req.params.runId, scenarios, targetedScenarioIds, targetedAppAreaIds, highlightedTestBasenames });
+  res.json({ runId: req.params.runId, scenarios, targetedConceptIds, targetedAppAreaIds, highlightedTestBasenames });
 });
 
 // GET /api/runs/:runId/health — health summaries for all scenarios in a run

@@ -22,12 +22,12 @@ import {
   LinksModal,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { search, labels, linkGap, callout, links } from "../src/scenario-docs/index.js";
+import { sourceGraphSearch, labels, linkGap, callout, links } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test("search for outlink gap page, inspect links, and navigate via inlink", async ({
+test("sourceGraphSearch for outlink gap page, inspect links, and navigate via inlink", async ({
   page,
   snapshot,
   assertMeadowHomeState,
@@ -37,23 +37,23 @@ test("search for outlink gap page, inspect links, and navigate via inlink", asyn
   await wf.navigateToBigBundle();
   await snapshot("bundle editor loaded");
 
-  // Search for "outlink gap" in the filter panel search input
+  // Search for "outlink gap" in the filter panel sourceGraphSearch input
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.fillSearch("outlink gap");
   await page.waitForTimeout(500);
   await snapshot("searched for outlink gap");
 
-  // Keyframe for search scenario doc — shows search results on graph
-  await addKeyFrame(search);
+  // Keyframe for Source Graph Search — shows its results on the graph.
+  await addKeyFrame(sourceGraphSearch);
 
-  // Keyframe for labels — search results display labels
+  // Keyframe for labels — sourceGraphSearch results display labels
   await addKeyFrame(labels);
 
   // Switch to list view and select the page
   const editor = new BundleEditorPage(page, expect);
   await editor.switchToListView();
   await page.waitForTimeout(250);
-  await snapshot("list view with search results");
+  await snapshot("list view with sourceGraphSearch results");
 
   // Should have one result for outlink gap
   const listCount = await editor.getListViewPageCount();
@@ -106,7 +106,7 @@ test("search for outlink gap page, inspect links, and navigate via inlink", asyn
   // The modal title should now show "Links: t021 - link gaps"
   await linksModal.expectModalTitle("Links: t021 - link gaps");
 
-  // Keyframe for links scenario doc
+  // Keyframe for Bundle Page Links.
   await addKeyFrame(links);
   await snapshot("links modal showing t021 link gaps page");
   void bigBundle;

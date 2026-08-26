@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "typeRoots": ["../acceptance/e2e/node_modules/@types"],
+    "noEmit": true
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["meadow-extension"]
+}

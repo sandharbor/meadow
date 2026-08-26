@@ -24,6 +24,10 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import type {
+  ParticipatesIn,
+  runtimeSessionDescriptor as runtimeSessionDescriptorConcept,
+} from "../../../concepts/index.js";
 import path from "node:path";
 import {
   MEADOW_RUNTIME_PROTOCOL,
@@ -175,3 +179,9 @@ export function removeStaleRuntimeSessionDescriptor(
   removeRuntimeSessionDescriptor(descriptorPath, descriptor.instanceId);
   return true;
 }
+
+export type SessionDescriptorMeadowConceptParticipations = [
+  ParticipatesIn<typeof runtimeSessionDescriptorConcept, "publish", typeof writeRuntimeSessionDescriptor>,
+  ParticipatesIn<typeof runtimeSessionDescriptorConcept, "discover", typeof readRuntimeSessionDescriptor>,
+  ParticipatesIn<typeof runtimeSessionDescriptorConcept, "remove-stale", typeof removeStaleRuntimeSessionDescriptor>,
+];

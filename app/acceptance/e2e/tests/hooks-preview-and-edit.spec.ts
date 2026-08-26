@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, PreviewPublishModal, CustomizeTab } from "../src/run/pages/index.js";
-import { htmlGeneration, hooks } from "../src/scenario-docs/index.js";
+import { htmlGeneration, hooks } from "../../../concepts/index.js";
 import { hooksBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

@@ -21,8 +21,8 @@ npx tsx _module/scripts/lint-single-test-per-spec.ts
 echo "Linting bundle-mode classification..."
 npx tsx _module/scripts/lint-bundle-mode.ts
 
-echo "Linting scenario app-area ownership..."
-NODE_OPTIONS="${NODE_OPTIONS:-} --preserve-symlinks" npx tsx _module/scripts/lint-scenario-app-areas.ts
+echo "Validating the concept registry and app-area ownership..."
+NODE_OPTIONS="${NODE_OPTIONS:-} --preserve-symlinks" npx tsx _module/scripts/lint-concepts.ts
 
 echo "Linting page-object boundary in specs..."
 npx tsx _module/scripts/lint-no-direct-locators.ts

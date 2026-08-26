@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "nodemon --ext ts,js,json --exec tsx src/server/index.ts",
+    "server": "NODE_OPTIONS=\"${NODE_OPTIONS:-} --preserve-symlinks --preserve-symlinks-main\" nodemon --ext ts,js,json --exec tsx src/server/index.ts",
     "client": "vite",
     "build": "tsc && vite build",
     "test": "vitest run",

@@ -16,7 +16,7 @@ limitations under the License.
 
 import type { StartupFailureDiagnostic } from '../../../contracts/types/startupRecovery.js';
 import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRecoveryHtml.js';
-import { startupRecovery } from '../src/scenario-docs/index.js';
+import { startupRecovery } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ fixtureHome: 'none' });

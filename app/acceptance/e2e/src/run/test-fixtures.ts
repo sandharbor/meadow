@@ -530,7 +530,7 @@ export const test = base.extend<{
    * `assertMeadowHomeState()`.
    */
   skipMeadowHomeStateCheck: () => Promise<void>;
-  addKeyFrame: (scenarioDoc: { id: string }) => Promise<void>;
+  addKeyFrame: (concept: { id: string }) => Promise<void>;
   meadowCli: MeadowCli;
   minioS3: MinioS3;
   /**
@@ -1630,14 +1630,14 @@ export const test = base.extend<{
 
     const docIdCounts = new Map<string, number>();
 
-    const addKeyFrameFn = async (scenarioDoc: { id: string }) => {
-      const count = (docIdCounts.get(scenarioDoc.id) ?? 0) + 1;
-      docIdCounts.set(scenarioDoc.id, count);
+    const addKeyFrameFn = async (concept: { id: string }) => {
+      const count = (docIdCounts.get(concept.id) ?? 0) + 1;
+      docIdCounts.set(concept.id, count);
       const filename = count === 1
-        ? `keyframe-${scenarioDoc.id}.png`
-        : `keyframe-${scenarioDoc.id}-${count}.png`;
+        ? `keyframe-${concept.id}.png`
+        : `keyframe-${concept.id}-${count}.png`;
       await page.screenshot({ path: path.join(artifactDir, filename) });
-      keyFrames.push({ docId: scenarioDoc.id, filename, timestamp: new Date().toISOString() });
+      keyFrames.push({ docId: concept.id, filename, timestamp: new Date().toISOString() });
     };
 
     await use(addKeyFrameFn);

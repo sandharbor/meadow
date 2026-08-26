@@ -23,7 +23,7 @@ import {
   PreviewPublishModal,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { excalidraw, initialPage } from "../src/scenario-docs/index.js";
+import { excalidraw, initialPage } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

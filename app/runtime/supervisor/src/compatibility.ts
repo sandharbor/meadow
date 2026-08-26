@@ -20,6 +20,11 @@ import type {
   RuntimeLeaseSnapshot,
   RuntimeSessionDescriptor,
 } from "../../../contracts/types/runtime.js";
+import type {
+  compatibilityNegotiation,
+  cooperativeHandoff,
+  ParticipatesIn,
+} from "../../../concepts/index.js";
 
 function requiredHandoffCode(
   current: RuntimeSessionDescriptor,
@@ -47,3 +52,8 @@ export function decideRuntimeCompatibility(
   }
   return { action: "handoff", code: handoffCode };
 }
+
+export type RuntimeCompatibilityMeadowConceptParticipations = [
+  ParticipatesIn<typeof compatibilityNegotiation, "decide", typeof decideRuntimeCompatibility>,
+  ParticipatesIn<typeof cooperativeHandoff, "compatibility-decision", typeof decideRuntimeCompatibility>,
+];

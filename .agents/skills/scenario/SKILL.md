@@ -11,7 +11,7 @@ existing scenarios.
 ## Step 1: Understand the request
 
 The user will describe what the scenario should test. They may also mention
-scenario docs they want to create or attach to.
+Meadow concepts they want the scenario to exercise.
 
 ## Step 2: Study existing patterns
 
@@ -21,7 +21,7 @@ conventions:
 - `app/acceptance/e2e/tests/*.spec.ts` — existing test scenarios
 - `app/acceptance/e2e/src/run/workflows.ts` — composable navigation helpers (use these first!)
 - `app/acceptance/e2e/src/run/pages/` — page object models
-- `app/acceptance/e2e/src/scenario-docs/` — scenario doc definitions
+- `app/concepts/` — canonical Meadow concepts and app areas
 - `app/acceptance/e2e/src/run/test-fixtures.ts` — custom fixtures (`artifactDir`, `snapshot`, `addKeyFrame`)
 
 ## Step 3: Create the scenario
@@ -34,43 +34,48 @@ Read and follow the coding standards in
 ### Creating the spec file
 
 1. Create the new test spec in `app/acceptance/e2e/tests/` — **one test per file**.
-2. Wire up scenario docs (create new ones or reuse existing) — see below.
+2. Wire up Meadow concepts (normally reuse existing ones) — see below.
 3. Add keyframe captures at meaningful moments — see below.
 4. Use workflows for navigation and page objects for interactions.
 
-### Scenario Docs and Keyframes
+### Meadow Concepts and Keyframes
 
-Every test must be tied to at least one **Scenario Doc** via a **keyframe**.
+Every test must be tied to at least one **MeadowConcept** via a **keyframe**.
 This is how tests are categorized and visually documented in the report viewer.
 
-**Scenario Docs** describe broad functional areas of the app (e.g. "Publishing",
-"HTML Generation", "S3"). Think of them as rich area tags — but instead of
-plain string tags, each one is a small document with an `id`, `name`, and
-`description` that explains what the area covers. They are defined in
-`app/acceptance/e2e/src/scenario-docs/`:
+**MeadowConcepts** define Meadow's stable domain and architecture language, not
+just test tags. They live with their owning app area under `app/concepts/` and
+include typed definition, mechanics, interplay, and links to other concepts:
 
 ```typescript
-// app/acceptance/e2e/src/scenario-docs/publishing.ts
-export const publishing: ScenarioDoc = {
-  id: "publishing",
+// app/concepts/bundle/sharing/concepts.ts
+export const publishing = defineMeadowConcept({
+  id: coreConceptIds.publishing,
   name: "Publishing",
-  description: "Tests the publish flow including S3/MinIO uploads...",
-};
+  kind: "process",
+  appAreaIds: [coreConceptIds.bundleSharing],
+  definition: conceptText`The flow that makes reviewed output available...`,
+  mechanics: [conceptText`It previews, reviews, and transfers artifacts.`],
+  interplay: conceptText`It consumes ${conceptLink(coreConceptIds.bundleGeneration, "Bundle Generation")} output.`,
+});
 ```
 
-New scenario docs must be registered in `app/acceptance/e2e/src/scenario-docs/index.ts`.
+Read `app/concepts/README.md` before adding one. Reuse a concept when the test
+exercises existing language. Add or sharpen one only when the behavior exposes a
+durable distinction that the rest of the system should also name; do not create
+a concept for every test or UI control. New concepts must be exported through
+`app/concepts/index.ts`.
 
-The relationship between tests and scenario docs is **many-to-many**. A single
+The relationship between tests and concepts is **many-to-many**. A single
 test often touches multiple functional areas, so it imports and tags multiple
-scenario docs. Conversely, a single scenario doc (like `s3`) may appear across
-many different tests. When creating a scenario, import whichever existing
-scenario docs are relevant — and create new ones only for areas not yet covered.
+concepts. Conversely, one concept may appear across many tests. Acceptance
+coverage is derived from those imports; never maintain a reverse coverage list.
 
-**Keyframes** are the mechanism that links tests to scenario docs. Calling
-`await addKeyFrame(scenarioDoc)` does two things:
+**Keyframes** are the mechanism that links tests to concepts. Calling
+`await addKeyFrame(concept)` does two things:
 1. Takes a screenshot saved as `keyframe-{docId}.png` in the artifact directory
-2. Links that screenshot to the scenario doc so the report viewer can display
-   it as a visual checkpoint, filtered by scenario doc
+2. Links that screenshot to the concept so the report viewer can display it as
+   a visual checkpoint, filtered by concept
 
 **Every test must call `addKeyFrame` at least once.** Capture a keyframe at the
 moment that best represents each functional area being tested — typically right
@@ -80,7 +85,7 @@ Example — a test using workflows and covering multiple areas:
 
 ```typescript
 import { test, expect } from "../src/run/test-fixtures.js";
-import { publishing, s3 } from "../src/scenario-docs/index.js";
+import { publishing, s3 } from "../../../concepts/index.js";
 import { Workflows } from "../src/run/workflows.js";
 
 test("Bundle publishes to S3", async ({
@@ -107,7 +112,7 @@ spec so the reviewer can spot it immediately in the report viewer. The
 `--highlighted` flag takes the spec filename without `.spec.ts` and, unlike
 `--scenarios`, doesn't filter the run — it just promotes the spec into a
 dedicated "Highlighted" section in the thumbs / list / videos tabs and tints
-its scenario-doc chips amber. See the `/e2e` skill for details.
+its concept chips amber. See the `/e2e` skill for details.
 
 ---
 
@@ -125,9 +130,9 @@ verify compliance. Report pass/fail for each item.
 3. **Page object locators centralized** — Any new page object locators are defined as private getters, not duplicated across methods.
 4. **No inline selectors in tests** — The test file doesn't contain raw `page.locator(...)` calls for things a page object should own. (One-off assertions on text content are fine.)
 5. **Test spec exists** — A `.spec.ts` file exists in `app/acceptance/e2e/tests/` for the scenario.
-6. **Scenario docs identified** — The test imports one or more scenario docs covering all functional areas it touches. Existing docs are reused where applicable; new docs are created only for areas not yet covered.
-7. **New scenario docs registered** — Any newly created scenario docs are exported from `app/acceptance/e2e/src/scenario-docs/index.ts`.
-8. **Keyframes captured** — The test calls `await addKeyFrame(scenarioDoc)` at least once per scenario doc it imports, at a meaningful moment for that area.
+6. **Concepts identified** — The test imports one or more canonical concepts covering the stable language it exercises. Existing concepts are reused where applicable; new concepts satisfy the inclusion boundary in `app/concepts/README.md`.
+7. **New concepts registered** — Any newly created concept is placed in its owning app-area hierarchy and exported from `app/concepts/index.ts`; implementation roles are declared inline beside real symbols.
+8. **Keyframes captured** — The test calls `await addKeyFrame(concept)` at least once per imported acceptance concept, at a meaningful moment for that area.
 9. **`addKeyFrame` fixture destructured** — The test destructures `addKeyFrame` from the test function argument.
 10. **Page objects reused** — The test reuses existing page objects from `app/acceptance/e2e/src/run/pages/` where applicable.
 11. **Snapshots taken** — The test calls `await snapshot(...)` at key assertion points.

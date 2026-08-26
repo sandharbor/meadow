@@ -18,7 +18,7 @@ import { execSync } from "child_process";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { git } from "../src/scenario-docs/index.js";
+import { git } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

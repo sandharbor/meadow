@@ -20,7 +20,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { ChangesTab, PreviewPublishModal } from "../src/run/pages/index.js";
 import { GeneratedBundleVersions } from "../src/run/utils/index.js";
 import { Bundle, Workflows } from "../src/run/workflows.js";
-import { versioning } from "../src/scenario-docs/index.js";
+import { versioning } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });

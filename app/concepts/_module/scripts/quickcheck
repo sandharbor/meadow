@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+echo "Type checking Meadow concepts..."
+../acceptance/e2e/node_modules/.bin/tsc --noEmit --project tsconfig.json
+
+echo "Validating inline concept participation..."
+node --import ../acceptance/e2e/node_modules/tsx/dist/loader.mjs _module/scripts/validateConceptParticipations.ts

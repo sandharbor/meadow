@@ -25,6 +25,11 @@ import {
   type RuntimeSessionDescriptor,
   type RuntimeSupervisorLaunchSpec,
 } from "../../../contracts/types/runtime.js";
+import type {
+  cooperativeHandoff,
+  officialClient,
+  ParticipatesIn,
+} from "../../../concepts/index.js";
 import { readHomeOwnershipLock } from "./homeOwnershipLock.js";
 import { writeRuntimeSupervisorLaunchSpec } from "./launchSpec.js";
 import { getRuntimePaths } from "./runtimePaths.js";
@@ -345,3 +350,8 @@ export async function ensureRuntime(options: EnsureRuntimeOptions): Promise<Runt
   }
   throw new Error("Runtime Supervisor did not advertise a ready session before the startup timeout");
 }
+
+export type RuntimeClientMeadowConceptParticipations = [
+  ParticipatesIn<typeof officialClient, "discover-and-attach", typeof ensureRuntime>,
+  ParticipatesIn<typeof cooperativeHandoff, "request", typeof waitForRuntimeHomeRelease>,
+];
