@@ -6,8 +6,7 @@
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
     "server": "nodemon --ext ts,js,json --exec tsx src/server/index.ts",
-    "client": "vite",
-    "build": "tsc && vite build"
+    "client": "vite"
   },
   "dependencies": {
     "cors": "^2.8.6",

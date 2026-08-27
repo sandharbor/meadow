@@ -55,7 +55,11 @@ function descriptor(): RuntimeSessionDescriptor {
   };
 }
 
-async function startControl(leases: RuntimeLeaseRegistry, onHandoff: (value: RuntimeCompatibilityDecision) => void = () => {}) {
+async function startControl(
+  leases: RuntimeLeaseRegistry,
+  onHandoff: (value: RuntimeCompatibilityDecision) => void = () => {},
+  onShutdown: () => void = () => {},
+) {
   const current = descriptor();
   const server = await startRuntimeControlServer({
     port: 0,
@@ -63,7 +67,7 @@ async function startControl(leases: RuntimeLeaseRegistry, onHandoff: (value: Run
     descriptor: () => current,
     leases,
     requestHandoff: onHandoff,
-    requestShutdown: () => {},
+    requestShutdown: onShutdown,
     browserSessions: new BrowserSessionRegistry(),
   });
   servers.push(server);
@@ -143,6 +147,27 @@ describe("Runtime leases and control plane", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ action: "refuse", code: "runtime-busy" });
     expect(handoffs).toEqual([]);
+  });
+
+  it("lets authenticated development tooling force shutdown despite active leases", async () => {
+    const leases = new RuntimeLeaseRegistry();
+    leases.acquire("client", "desktop-a", 101);
+    leases.acquire("operation", "publish-a");
+    let shutdowns = 0;
+    const url = await startControl(leases, () => {}, () => { shutdowns += 1; });
+
+    const cooperative = await post(url, "/shutdown", {});
+    expect(cooperative.status).toBe(409);
+    expect(shutdowns).toBe(0);
+
+    const forced = await post(url, "/shutdown", { force: true });
+    expect(forced.status).toBe(202);
+    expect(await forced.json()).toMatchObject({
+      success: true,
+      forced: true,
+      leases: { clientLeases: 1, operationLeases: 1 },
+    });
+    expect(shutdowns).toBe(1);
   });
 
   it("requests cooperative handoff when the owner is idle", async () => {

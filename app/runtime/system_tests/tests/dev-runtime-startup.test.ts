@@ -91,23 +91,102 @@ describe("development Runtime startup", () => {
     expect(ensure).toHaveBeenCalledTimes(1);
   });
 
-  it("releases its lease before cooperatively shutting down for a fixture change", async () => {
+  it("releases its lease and forces shutdown before changing a fixture", async () => {
     const release = vi.fn(() => Promise.resolve());
     const postControl = vi.fn(() => Promise.resolve({
       response: new Response(null, { status: 202 }),
       body: { success: true },
     }));
+    const waitForRelease = vi.fn(() => Promise.resolve());
     const manager = new DevRuntimeManager({
       projectRoot: "/tmp/meadow",
       configDirectory: "/tmp/Meadow Home",
       appVersion: "0.5.43",
       ensure: () => Promise.resolve({ descriptor: descriptor(), leaseId: "dev-tools-a", release } as unknown as RuntimeClientLease),
       postControl,
+      waitForRelease,
     });
 
     await manager.prepareForLaunch();
     await manager.stopRuntime();
     expect(release).toHaveBeenCalledOnce();
-    expect(postControl).toHaveBeenCalledWith(descriptor(), "/shutdown", {});
+    expect(postControl).toHaveBeenCalledWith(descriptor(), "/shutdown", { force: true });
+    expect(waitForRelease).toHaveBeenCalledWith(descriptor());
+  });
+
+  it("discovers and force-stops a Runtime left alive across a Dev Tools restart", async () => {
+    const postControl = vi.fn(() => Promise.resolve({
+      response: new Response(null, { status: 202 }),
+      body: { success: true },
+    }));
+    const waitForRelease = vi.fn(() => Promise.resolve());
+    const manager = new DevRuntimeManager({
+      projectRoot: "/tmp/meadow",
+      configDirectory: "/tmp/Meadow Home",
+      appVersion: "0.5.43",
+      postControl,
+      waitForRelease,
+      readActiveDescriptor: () => descriptor(),
+    });
+
+    await manager.stopRuntime();
+    expect(postControl).toHaveBeenCalledWith(descriptor(), "/shutdown", { force: true });
+    expect(waitForRelease).toHaveBeenCalledWith(descriptor());
+  });
+
+  it("terminates a pre-force Supervisor after its authenticated shutdown refusal", async () => {
+    const release = vi.fn(() => Promise.resolve());
+    const postControl = vi.fn(() => Promise.resolve({
+      response: new Response(null, { status: 409 }),
+      body: { error: "The Runtime is busy and cannot shut down cooperatively" },
+    }));
+    const waitForRelease = vi.fn(() => Promise.resolve());
+    const terminateProcess = vi.fn();
+    const manager = new DevRuntimeManager({
+      projectRoot: "/tmp/meadow",
+      configDirectory: "/tmp/Meadow Home",
+      appVersion: "0.5.43",
+      ensure: () => Promise.resolve({ descriptor: descriptor(), leaseId: "dev-tools-a", release } as unknown as RuntimeClientLease),
+      postControl,
+      waitForRelease,
+      terminateProcess,
+    });
+
+    await manager.prepareForLaunch();
+    await manager.stopRuntime();
+
+    expect(terminateProcess).toHaveBeenCalledWith(descriptor().supervisorPid);
+    expect(waitForRelease).toHaveBeenCalledWith(descriptor());
+  });
+
+  it("does not forget a Runtime when a forced shutdown request fails", async () => {
+    const release = vi.fn(() => Promise.resolve());
+    const postControl = vi.fn()
+      .mockResolvedValueOnce({
+        response: new Response(null, { status: 503 }),
+        body: { error: "not ready" },
+      })
+      .mockResolvedValueOnce({
+        response: new Response(null, { status: 202 }),
+        body: { success: true },
+      });
+    const waitForRelease = vi.fn(() => Promise.resolve());
+    const manager = new DevRuntimeManager({
+      projectRoot: "/tmp/meadow",
+      configDirectory: "/tmp/Meadow Home",
+      appVersion: "0.5.43",
+      ensure: () => Promise.resolve({ descriptor: descriptor(), leaseId: "dev-tools-a", release } as unknown as RuntimeClientLease),
+      postControl,
+      waitForRelease,
+      terminateProcess: vi.fn(),
+    });
+
+    await manager.prepareForLaunch();
+    await expect(manager.stopRuntime()).rejects.toThrow("could not be stopped");
+    await manager.stopRuntime();
+
+    expect(postControl).toHaveBeenCalledTimes(2);
+    expect(postControl).toHaveBeenNthCalledWith(2, descriptor(), "/shutdown", { force: true });
+    expect(waitForRelease).toHaveBeenCalledOnce();
   });
 });

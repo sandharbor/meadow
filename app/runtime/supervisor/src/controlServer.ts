@@ -175,15 +175,20 @@ export async function startRuntimeControlServer(options: ControlServerOptions): 
         return;
       }
       if (request.method === "POST" && requestUrl.pathname === "/shutdown") {
+        const body = await readJson(request);
+        if (body.force !== undefined && typeof body.force !== "boolean") {
+          throw new Error("force must be a boolean");
+        }
+        const force = body.force === true;
         const leases = leaseSnapshot(options);
-        if (leases.clientLeases > 0 || leases.operationLeases > 0) {
+        if (!force && (leases.clientLeases > 0 || leases.operationLeases > 0)) {
           sendJson(response, 409, {
             error: "The Runtime is busy and cannot shut down cooperatively",
             leases,
           });
           return;
         }
-        sendJson(response, 202, { success: true });
+        sendJson(response, 202, { success: true, forced: force, leases });
         options.requestShutdown();
         return;
       }

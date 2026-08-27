@@ -148,4 +148,20 @@ describe("Runtime Supervisor lifecycle", () => {
     const replacement = await attach(home, "payload-b", "desktop-b");
     expect(replacement.descriptor.instanceId).not.toBe(firstDescriptor.instanceId);
   }, 20_000);
+
+  it("force-stops a leased development Runtime before relaunching the same Home", async () => {
+    const home = makeHome();
+    const first = await attach(home, "payload-a", "desktop-a");
+    const firstDescriptor = first.descriptor;
+
+    const shutdown = await postRuntimeControl(firstDescriptor, "/shutdown", { force: true });
+    expect(shutdown.response.status).toBe(202);
+    expect(shutdown.body).toMatchObject({ success: true, forced: true });
+    await waitForRuntimeHomeRelease(firstDescriptor);
+    expect(existsSync(getRuntimePaths(home).ownershipLock)).toBe(false);
+
+    const replacement = await attach(home, "payload-b", "desktop-b");
+    expect(replacement.descriptor.instanceId).not.toBe(firstDescriptor.instanceId);
+    expect(replacement.descriptor.payload.identity).toBe("payload-b");
+  }, 20_000);
 });

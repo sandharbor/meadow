@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { existsSync } from "node:fs";
 import path from "node:path";
 import type { RuntimeSessionDescriptor } from "../../../../contracts/types/runtime.js";
 import {
@@ -23,6 +24,8 @@ import {
   waitForRuntimeHomeRelease,
   type EnsureRuntimeOptions,
 } from "../../../../runtime/supervisor/src/runtimeClient.js";
+import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
+import { readRuntimeSessionDescriptor } from "../../../../runtime/supervisor/src/sessionDescriptor.js";
 import { createSourceRuntimeLaunchSpec } from "../../../../runtime/supervisor/src/sourceLaunchSpec.js";
 
 export interface DevRuntimeManagerOptions {
@@ -31,6 +34,15 @@ export interface DevRuntimeManagerOptions {
   appVersion: string;
   ensure?: (options: EnsureRuntimeOptions) => Promise<RuntimeClientLease>;
   postControl?: typeof postRuntimeControl;
+  waitForRelease?: typeof waitForRuntimeHomeRelease;
+  readActiveDescriptor?: (configDirectory: string) => RuntimeSessionDescriptor | null;
+  terminateProcess?: (pid: number) => void;
+}
+
+function readActiveRuntimeDescriptor(configDirectory: string): RuntimeSessionDescriptor | null {
+  const descriptorPath = getRuntimePaths(configDirectory).sessionDescriptor;
+  if (!existsSync(descriptorPath)) return null;
+  return readRuntimeSessionDescriptor(descriptorPath);
 }
 
 /**
@@ -43,6 +55,9 @@ export class DevRuntimeManager {
   private readonly appVersion: string;
   private readonly ensure: (options: EnsureRuntimeOptions) => Promise<RuntimeClientLease>;
   private readonly postControl: typeof postRuntimeControl;
+  private readonly waitForRelease: typeof waitForRuntimeHomeRelease;
+  private readonly readActiveDescriptor: (configDirectory: string) => RuntimeSessionDescriptor | null;
+  private readonly terminateProcess: (pid: number) => void;
   private lease: RuntimeClientLease | null = null;
 
   constructor(options: DevRuntimeManagerOptions) {
@@ -51,6 +66,9 @@ export class DevRuntimeManager {
     this.appVersion = options.appVersion;
     this.ensure = options.ensure ?? ensureRuntime;
     this.postControl = options.postControl ?? postRuntimeControl;
+    this.waitForRelease = options.waitForRelease ?? waitForRuntimeHomeRelease;
+    this.readActiveDescriptor = options.readActiveDescriptor ?? readActiveRuntimeDescriptor;
+    this.terminateProcess = options.terminateProcess ?? (pid => { process.kill(pid, "SIGTERM"); });
   }
 
   get descriptor(): RuntimeSessionDescriptor | null {
@@ -90,15 +108,36 @@ export class DevRuntimeManager {
 
   async stopRuntime(): Promise<void> {
     const lease = this.lease;
-    if (!lease) return;
-    this.lease = null;
-    await lease.release();
-    const result = await this.postControl(lease.descriptor, "/shutdown", {});
+    const descriptor = lease?.descriptor ?? this.readActiveDescriptor(this.configDirectory);
+    if (!descriptor) return;
+
+    // Fixture switching is an authoritative development reset. Release Dev
+    // Tools' own lease, then ask the Supervisor to stop even when an App, Web
+    // session, or operation still holds another lease. Keep our local lease
+    // until Home ownership is actually released so a failed request remains
+    // retryable instead of letting the next switch mutate a live Home.
+    await lease?.release();
+    const result = await this.postControl(descriptor, "/shutdown", { force: true });
     if (!result.response.ok) {
+      // A Supervisor that predates forced shutdown ignores the flag and
+      // returns the old cooperative 409. The descriptor proves which local
+      // Supervisor owns this Home, so terminate that exact process and wait
+      // for its ownership lock to disappear before replacing the fixture.
+      if (result.response.status === 409) {
+        this.terminateProcess(descriptor.supervisorPid);
+        await this.waitForRelease(descriptor);
+        if (this.lease?.descriptor.instanceId === descriptor.instanceId) {
+          this.lease = null;
+        }
+        return;
+      }
       throw new Error(
-        "The Runtime is still in use. Close connected Meadow clients and wait for active operations before changing the test Home.",
+        `The development Runtime could not be stopped before changing the test Home (${result.response.status}).`,
       );
     }
-    await waitForRuntimeHomeRelease(lease.descriptor);
+    await this.waitForRelease(descriptor);
+    if (this.lease?.descriptor.instanceId === descriptor.instanceId) {
+      this.lease = null;
+    }
   }
 }
