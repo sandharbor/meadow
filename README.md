@@ -6,7 +6,7 @@ Turn source graphs of notes into focused, shareable bundles and publish them as 
 
 <img src="ui.png" alt="Meadow UI" width="500">
 
-Learn more about Meadow at [meadow-notes.com](https://meadow-notes.com).
+Learn more about Meadow at [meadowshare.com](https://meadowshare.com).
 
 # Node.js toolchain
 
