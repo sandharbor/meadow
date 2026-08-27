@@ -64,6 +64,12 @@ echo_and_exit() {
     exit 1
 }
 
+check_dist_directories() {
+    node "$REPO_ROOT/_module/scripts/check-dist-directories.mjs" \
+        --root "$REPO_ROOT" \
+        --policy "$REPO_ROOT/_module/dist-policy.json"
+}
+
 # If --network, verify AWS credentials (must happen before background jobs)
 if [ "$CHECK_NETWORK" = "1" ]; then
     echo "🔑 Verifying AWS credentials for dev environment..."
@@ -86,6 +92,12 @@ if [ -n "$win_bad_files" ]; then
     echo "$win_bad_files"
     exit 1
 fi
+
+echo "🔍 Checking for unexpected dist directories..."
+node --test "$REPO_ROOT/_module/tests/check-dist-directories.test.mjs" \
+    || echo_and_exit "❌ Dist-directory policy tests failed."
+check_dist_directories \
+    || echo_and_exit "❌ Dist-directory policy failed."
 
 # .git is a directory in normal repos but a file in worktrees
 if [ ! -d ".git" ] && [ ! -f ".git" ]; then
@@ -207,6 +219,11 @@ if [ "$CHECK_E2E" = "1" ]; then
     echo "🧪 Running e2e tests (slow)..."
     ./app/acceptance/e2e/_module/scripts/slowcheck
 fi
+
+# Catch a project check that generated a new, unapproved dist directory during
+# this run as well as directories that already existed when quickcheck started.
+check_dist_directories \
+    || echo_and_exit "❌ A check generated an unexpected dist directory."
 
 # If we get here, everything worked!
 echo "✅ All checks passed!"

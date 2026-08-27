@@ -1,0 +1,38 @@
+{
+  "allowedDistDirectories": [
+    {
+      "path": "app/clients/cli/dist",
+      "reason": "The distributable Meadow CLI is bundled here and the CLI quickcheck intentionally builds it."
+    },
+    {
+      "path": "app/clients/web/dist",
+      "reason": "Production web-client assets are assembled here before being copied into the Runtime Payload."
+    },
+    {
+      "path": "app/hosts/desktop/dist",
+      "reason": "TypeScript output for Electron main and preload processes is loaded from this directory."
+    },
+    {
+      "path": "app/published_bundle/srs/dist",
+      "reason": "The published-bundle editor assets are built here before being synchronized into the service."
+    },
+    {
+      "path": "app/runtime/payload/dist",
+      "reason": "The manifest-verified Runtime Payload is assembled here for Electron and command distributions."
+    },
+    {
+      "path": "app/runtime/service/dist",
+      "reason": "Compiled runtime-service JavaScript is copied from here into the Runtime Payload."
+    },
+    {
+      "path": "app/runtime/supervisor/dist",
+      "reason": "The runtime supervisor is bundled here as a standalone executable JavaScript entry point."
+    }
+  ],
+  "ignoredTrees": [
+    {
+      "path": "app/hosts/desktop/build",
+      "reason": "electron-builder owns this generated packaging tree, including embedded copies of approved dist outputs."
+    }
+  ]
+}
