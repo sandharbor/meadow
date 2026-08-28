@@ -46,7 +46,6 @@ import { createRuntimePayloadLaunchSpec } from '../../../runtime/supervisor/src/
 import { UpdateManager } from './updateManager';
 import { acknowledgeUpdateHealthFromEnvironment } from './verifiedUpdater';
 import { showRecoveryWindow } from './recoveryWindow';
-import { installCommandLineInterface } from './cliInstaller';
 
 // Set the app name immediately, before any other operations (important for macOS menu bar)
 app.name = 'Meadow';
@@ -460,16 +459,6 @@ class MeadowApp {
         baseUrl: `http://127.0.0.1:${this.backendPort}/api`,
         capability: this.apiCapability,
       };
-    });
-
-    ipcMain.handle('install-command-line-interface', (event) => {
-      if (!isTrustedDesktopRenderer(event.senderFrame.url, this.frontendPort)) {
-        throw new Error('Command-line installation is unavailable to this renderer');
-      }
-      const sourcePath = this.isDev
-        ? path.join(__dirname, '../../../../../../clients/cli/bin/meadow')
-        : path.join((process as NodeJS.Process & { resourcesPath: string }).resourcesPath, 'cli', 'meadow');
-      return installCommandLineInterface(sourcePath);
     });
 
     ipcMain.handle('get-target-page-info', () => {

@@ -20,7 +20,6 @@ import { contextBridge, ipcRenderer, OpenDialogOptions, SaveDialogOptions } from
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
   getBackendConnection: () => ipcRenderer.invoke('get-backend-connection'),
-  installCommandLineInterface: () => ipcRenderer.invoke('install-command-line-interface'),
   getTargetPageInfo: () => ipcRenderer.invoke('get-target-page-info'),
 
   onOpenFindInBundles: (callback: (options: {
@@ -72,11 +71,6 @@ declare global {
       getBackendConnection: () => Promise<{
         baseUrl: string;
         capability: string;
-      }>;
-      installCommandLineInterface: () => Promise<{
-        status: 'installed' | 'already-installed' | 'conflict' | 'unavailable';
-        commandPath: string | null;
-        message: string;
       }>;
       getTargetPageInfo: () => Promise<{
         vaultPath: string;

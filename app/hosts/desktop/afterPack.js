@@ -16,7 +16,6 @@ exports.default = async function(context) {
   
   const payloadRoot = path.join(resourcesPath, 'runtime-payload');
   const nodeBinary = path.join(payloadRoot, 'bin', 'node');
-  const meadowCli = path.join(resourcesPath, 'cli', 'meadow');
   const supervisor = path.join(payloadRoot, 'supervisor', 'meadow-runtime-supervisor.cjs');
   const workingGraphBin = path.join(payloadRoot, 'native', 'working_graph_bin');
   const sourcePageSearchBin = path.join(payloadRoot, 'native', 'source_page_search_by_title_bin');
@@ -33,7 +32,6 @@ exports.default = async function(context) {
   try {
     setExecutable(nodeBinary, 'node');
     setExecutable(supervisor, 'Runtime Supervisor');
-    setExecutable(meadowCli, 'meadow CLI launcher');
     setExecutable(workingGraphBin, 'working_graph_bin');
     setExecutable(sourcePageSearchBin, 'source_page_search_by_title_bin');
     setExecutable(fastGitOpsBin, 'fast_git_ops_bin');

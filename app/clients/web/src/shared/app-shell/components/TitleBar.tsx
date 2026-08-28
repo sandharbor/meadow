@@ -24,11 +24,6 @@ declare global {
       windowMaximize: () => Promise<void>;
       windowClose: () => Promise<void>;
       getBackendConnection: () => Promise<{ baseUrl: string; capability: string }>;
-      installCommandLineInterface: () => Promise<{
-        status: 'installed' | 'already-installed' | 'conflict' | 'unavailable';
-        commandPath: string | null;
-        message: string;
-      }>;
       getTargetPageInfo: () => Promise<{
         vaultPath: string;
         folderPath: string;
