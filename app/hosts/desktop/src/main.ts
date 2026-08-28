@@ -97,6 +97,8 @@ class MeadowApp {
   private updateManager: UpdateManager;
   private startupDiagnosticPath: string;
   private selectedHomePath: string;
+  private rendererReady: boolean = false;
+  private rendererFailure: string | null = null;
 
   constructor() {
     this.selectedHomePath = getPlatformPaths().defaultConfigDirectory;
@@ -593,6 +595,8 @@ class MeadowApp {
 
   private createWindow(): void {
     log('INFO', 'Creating main application window');
+    this.rendererReady = false;
+    this.rendererFailure = null;
     
     this.mainWindow = new BrowserWindow({
       width: 1200,
@@ -622,6 +626,20 @@ class MeadowApp {
     this.mainWindow.once('ready-to-show', () => {
       log('SUCCESS', 'Main window is ready to show');
       this.mainWindow?.show();
+    });
+
+    this.mainWindow.webContents.once('did-finish-load', () => {
+      this.rendererReady = true;
+      log('SUCCESS', 'Main window renderer finished loading');
+    });
+
+    this.mainWindow.webContents.on('render-process-gone', (_event, details) => {
+      this.rendererReady = false;
+      this.rendererFailure = `${details.reason} (exit ${details.exitCode})`;
+      log('ERROR', 'Main window renderer exited', {
+        reason: details.reason,
+        exitCode: details.exitCode,
+      });
     });
 
     this.mainWindow.on('closed', () => {
@@ -755,11 +773,16 @@ class MeadowApp {
         return false;
       }
       
-      // Check main window
-      if (!this.mainWindow) {
+      // Check the renderer rather than only the BrowserWindow wrapper. A
+      // hardened-runtime entitlement failure can leave the wrapper alive after
+      // Chromium's Renderer process has crashed.
+      if (!this.mainWindow || this.mainWindow.isDestroyed()) {
         log('ERROR', 'Main window is null');
         return false;
       }
+
+      const rendererHealthy = await this.waitForRendererReady();
+      if (!rendererHealthy) return false;
       
       log('SUCCESS', 'All health checks passed');
       return true;
@@ -767,6 +790,28 @@ class MeadowApp {
       log('ERROR', 'Health check failed with error', { error: (error as Error).message });
       return false;
     }
+  }
+
+  private async waitForRendererReady(): Promise<boolean> {
+    const deadline = Date.now() + 10000;
+    while (Date.now() < deadline) {
+      if (this.rendererFailure) {
+        log('ERROR', 'Renderer health check failed', { failure: this.rendererFailure });
+        return false;
+      }
+      if (
+        this.rendererReady
+        && this.mainWindow
+        && !this.mainWindow.isDestroyed()
+        && !this.mainWindow.webContents.isDestroyed()
+      ) {
+        log('SUCCESS', 'Renderer health check passed');
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    log('ERROR', 'Renderer health check timeout');
+    return false;
   }
   
   private async checkBackendHealth(): Promise<boolean> {

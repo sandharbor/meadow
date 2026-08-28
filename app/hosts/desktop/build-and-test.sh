@@ -185,6 +185,9 @@ if [ -n "$app_bundle" ]; then
         --payload-root "$payload_root"
     log_success "Signed Runtime Payload and content manifest verified"
 
+    node "$REPO_ROOT/app/hosts/desktop/verifyMacAppSigning.mjs" "$app_bundle"
+    log_success "App signature and Electron helper entitlements verified"
+
     packaged_node_version=$("$node_binary" --version)
     log_success "Packaged node starts successfully ($packaged_node_version)"
 else
@@ -327,6 +330,8 @@ if [ ! -f "$app_path/Contents/MacOS/Meadow" ]; then
 fi
 
 log_success "App bundle verification passed"
+node "$REPO_ROOT/app/hosts/desktop/verifyMacAppSigning.mjs" "$app_path"
+log_success "Mounted app signature and Electron helper entitlements verified"
 
 # Clear any previous test log
 if [ -f "$TEST_LOG_FILE" ]; then
@@ -399,6 +404,7 @@ log_info "📊 Analyzing startup log..."
 backend_started=false
 frontend_started=false
 window_created=false
+renderer_ready=false
 
 if [ -f "$TEST_LOG_FILE" ]; then
     if grep -q "Backend server is ready!" "$TEST_LOG_FILE"; then
@@ -422,6 +428,13 @@ if [ -f "$TEST_LOG_FILE" ]; then
         log_error "✗ Main window failed to create"
     fi
 
+    if grep -q "Main window renderer finished loading" "$TEST_LOG_FILE"; then
+        renderer_ready=true
+        log_success "✓ Main window renderer loaded successfully"
+    else
+        log_error "✗ Main window renderer failed to load"
+    fi
+
     if grep -q "Frontend build not found" "$TEST_LOG_FILE"; then
         frontend_started=false
         log_error "✗ Frontend build files missing"
@@ -435,7 +448,7 @@ if [ -f "$TEST_LOG_FILE" ]; then
 fi
 
 # Final verification
-if [ "$backend_started" = true ] && [ "$frontend_started" = true ] && [ "$window_created" = true ]; then
+if [ "$backend_started" = true ] && [ "$frontend_started" = true ] && [ "$window_created" = true ] && [ "$renderer_ready" = true ]; then
     log_success "🎉 ALL SYSTEMS OPERATIONAL!"
     log_success "The Meadow application has been built and is running correctly."
     echo
@@ -463,6 +476,7 @@ else
     [ "$backend_started" = false ] && log_error "  • Backend Server: Failed"
     [ "$frontend_started" = false ] && log_error "  • Frontend Server: Failed"
     [ "$window_created" = false ] && log_error "  • Main Window: Failed"
+    [ "$renderer_ready" = false ] && log_error "  • Main Window Renderer: Failed"
     echo
     log_error "📄 Full test log:"
     if [ -f "$TEST_LOG_FILE" ]; then
