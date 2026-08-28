@@ -75,6 +75,10 @@
       "entitlements": "entitlements.mac.plist",
       "entitlementsInherit": "entitlements.mac.inherit.plist",
       "identity": "Sand Harbor Software, LLC (3Y93X67X8P)",
+      "signIgnore": [
+        "/Contents/Resources/runtime-payload/bin/node$",
+        "/Contents/Resources/runtime-payload/native/(working_graph_bin|source_page_search_by_title_bin|fast_git_ops_bin)$"
+      ],
       "notarize": true
     },
     "dmg": {

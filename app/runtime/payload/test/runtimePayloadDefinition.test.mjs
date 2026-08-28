@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   RUNTIME_NATIVE_COMPONENTS,
@@ -22,6 +23,11 @@ import {
   RUNTIME_PAYLOAD_CRITICAL_FILES,
   RUNTIME_PAYLOAD_EXECUTABLE_PATHS,
 } from "../src/runtimePayloadDefinition.mjs";
+
+const desktopPackage = JSON.parse(readFileSync(
+  new URL("../../../hosts/desktop/package.json", import.meta.url),
+  "utf8",
+));
 
 test("Runtime Payload executable inventory has one canonical mapping", () => {
   const nativePayloadPaths = RUNTIME_NATIVE_COMPONENTS.map(component => component.payloadPath);
@@ -43,4 +49,16 @@ test("Runtime Payload executable inventory has one canonical mapping", () => {
     )),
     true,
   );
+});
+
+test("Desktop signing defers exactly the Runtime Payload executable inventory", () => {
+  const signIgnore = desktopPackage.build.mac.signIgnore.map(pattern => new RegExp(pattern));
+  const packagedPath = relativePath => (
+    `/tmp/Meadow.app/Contents/Resources/runtime-payload/${relativePath}`
+  );
+  const deferredCriticalFiles = RUNTIME_PAYLOAD_CRITICAL_FILES.filter(relativePath => (
+    signIgnore.some(pattern => pattern.test(packagedPath(relativePath)))
+  ));
+
+  assert.deepEqual(deferredCriticalFiles, RUNTIME_PAYLOAD_EXECUTABLE_PATHS);
 });
