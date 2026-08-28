@@ -145,6 +145,7 @@ export class RuntimeSupervisor {
       this.serviceProcess = this.startChild("service", this.launchSpec.service, {
         MEADOW_HOME_DIRECTORY_OVERRIDE: this.launchSpec.homeDirectory,
         MEADOW_APP_VERSION: this.launchSpec.payload.appVersion,
+        MEADOW_BUILD_PERSPECTIVE: this.launchSpec.payload.perspective,
         MEADOW_BACKEND_PORT: String(ports.backendPort),
         MEADOW_API_CAPABILITY: this.capability,
         MEADOW_UI_ORIGIN: frontendOrigin,

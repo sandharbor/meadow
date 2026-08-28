@@ -23,11 +23,12 @@ limitations under the License.
  *
  * Active-provider selection is owned by the backend: `GET
  * /api/sharing/publishing-providers` returns each provider's manifest plus an
- * `isActive` flag (driven by `pp_config.yaml.isActive`). Callers reach the
- * currently-active provider via `getActiveFrontendProvider()` (async; caches
- * the fetch). Specific-id lookups are still available for providers that
- * need to coordinate with themselves (e.g. a provider's own component
- * importing its manifest).
+ * `isActive` flag (resolved from explicit provider configuration and the
+ * distribution's build-perspective default). Callers reach the currently-active
+ * provider via `getActiveFrontendProvider()` (async; caches the fetch).
+ * Specific-id lookups are still available for providers that need to
+ * coordinate with themselves (e.g. a provider's own component importing its
+ * manifest).
  */
 import { apiRequest } from '../utils/apiClient';
 import { logger } from '../utils/logger';

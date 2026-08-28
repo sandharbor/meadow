@@ -14,10 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import type { RuntimeBuildPerspective } from '../types/runtime.js';
+
 export type PublishingProviderId = string;
 
 export interface PublishingProviderManifest {
   id: PublishingProviderId;
   displayName: string;
   publishTabLabel: string;
+  /**
+   * Build perspectives for which this provider is the distribution default
+   * when the user has not explicitly activated another provider.
+   */
+  defaultForBuildPerspectives?: readonly RuntimeBuildPerspective[];
 }

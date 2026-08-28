@@ -23,7 +23,12 @@ import { logger } from './logger';
 export async function openExternal(url: string, source: string): Promise<void> {
   logger.debug(`[openExternal] Opening URL from ${source}:`, url);
   try {
-    await window.electronAPI?.openExternal(url);
+    if (window.electronAPI) {
+      await window.electronAPI.openExternal(url);
+      return;
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer');
   } catch (err) {
     logger.error(`[openExternal] Failed to open URL from ${source}:`, err);
   }

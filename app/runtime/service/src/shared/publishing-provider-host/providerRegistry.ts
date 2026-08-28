@@ -20,7 +20,9 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import type { IPublishingProviderBackend } from './IPublishingProviderBackend.js';
 import { loadProviderConfig } from '../../../../../shared_code/utils/publishingProviderConfigUtils.js';
+import type { RuntimeBuildPerspective } from '../../../../../contracts/types/runtime.js';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
+import { resolveActivePublishingProviders } from './providerActivation.js';
 
 /**
  * Backend registry for publishing providers.
@@ -95,11 +97,20 @@ export function ensureAllProviderResourcesInitialized(configDir: string, isDev: 
 }
 
 export function getActiveBackendProviders(): IPublishingProviderBackend[] {
-  return providers.filter((p) => isProviderActive(p));
+  const perspective: RuntimeBuildPerspective = process.env.MEADOW_BUILD_PERSPECTIVE === 'composed'
+    ? 'composed'
+    : 'standalone';
+  return resolveActivePublishingProviders(
+    providers.map(provider => ({
+      provider,
+      manifest: provider.manifest,
+      configuredActivation: readConfiguredActivation(provider),
+    })),
+    perspective,
+  ).map(candidate => candidate.provider);
 }
 
-function isProviderActive(provider: IPublishingProviderBackend): boolean {
-  // A provider is active unless its pp_config.yaml sets isActive: false.
-  const config = loadProviderConfig<{ isActive?: boolean }>(provider.manifest.id);
-  return config.isActive !== false;
+function readConfiguredActivation(provider: IPublishingProviderBackend): boolean | undefined {
+  const config = loadProviderConfig<{ isActive?: unknown }>(provider.manifest.id);
+  return typeof config.isActive === 'boolean' ? config.isActive : undefined;
 }
