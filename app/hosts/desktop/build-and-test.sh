@@ -26,6 +26,7 @@ TIMEOUT_SECONDS=60
 HEALTH_CHECK_INTERVAL=5
 PRUNE_DIRS="../../clients/web ../../runtime/service ../../shared_code"
 DEV_DEPENDENCIES_PRUNED=false
+SMOKE_HOME=""
 
 # Helper functions
 log_info() {
@@ -95,6 +96,13 @@ cleanup() {
     # Remove test log file
     if [ -f "$TEST_LOG_FILE" ]; then
         rm -f "$TEST_LOG_FILE"
+    fi
+
+    if [ -n "$SMOKE_HOME" ] && [ -d "$SMOKE_HOME" ]; then
+        case "$SMOKE_HOME" in
+            */meadow-desktop-smoke.*) rm -rf "$SMOKE_HOME" ;;
+            *) log_warning "Refusing to remove unexpected smoke-test path: $SMOKE_HOME" ;;
+        esac
     fi
 }
 
@@ -327,7 +335,10 @@ fi
 
 # Launch the application in test mode
 log_info "🚀 Launching Meadow application in test mode..."
-"$app_path/Contents/MacOS/Meadow" --test-mode --log-file "$TEST_LOG_FILE" &
+SMOKE_HOME="$(mktemp -d "${TMPDIR:-/tmp}/meadow-desktop-smoke.XXXXXX")"
+log_info "Using isolated Meadow home: $SMOKE_HOME"
+MEADOW_HOME_DIRECTORY_OVERRIDE="$SMOKE_HOME" \
+    "$app_path/Contents/MacOS/Meadow" --test-mode --log-file "$TEST_LOG_FILE" &
 MEADOW_PID=$!
 
 log_info "Meadow launched with PID: $MEADOW_PID"
