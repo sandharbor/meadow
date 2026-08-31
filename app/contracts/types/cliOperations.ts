@@ -37,6 +37,12 @@ export interface CliNextAction {
   displayCommand: string;
 }
 
+export interface CliUserAction {
+  kind: 'open-url';
+  label: string;
+  url: string;
+}
+
 export interface CliMutationBehavior {
   atomicity: 'atomic' | 'provider-defined';
   idempotency: 'idempotent' | 'conditional' | 'not-idempotent' | 'provider-defined';

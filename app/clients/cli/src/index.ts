@@ -252,7 +252,8 @@ URL, provider and provider-instance IDs, whether an identity was created, and
 any remaining provider allowance.
 
 Publish refuses an unsaved version. It never chooses between multiple active
-providers; leave exactly one active and retry.`);
+providers; leave exactly one active and retry. When publishing requires an
+explicit user step, the JSON error includes a structured userAction.`);
 }
 
 function showBundleTrackHelp(): void {

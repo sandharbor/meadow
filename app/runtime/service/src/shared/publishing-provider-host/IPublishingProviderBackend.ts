@@ -20,6 +20,7 @@ import type {
   BundlePublicationSummary,
   GeneratedBundleVersionId,
 } from '../../../../../contracts/types/generatedBundleVersioning.js';
+import type { CliUserAction } from '../../../../../contracts/types/cliOperations.js';
 
 /**
  * SSE-friendly progress shape for cleanup flows. The core delete-bundle-stream
@@ -74,6 +75,7 @@ export class PublishingProviderOperationError extends Error {
   readonly code: string;
   readonly details?: string;
   readonly nextActions?: string[];
+  readonly userAction?: CliUserAction;
 
   constructor(options: {
     statusCode: number;
@@ -81,6 +83,7 @@ export class PublishingProviderOperationError extends Error {
     message: string;
     details?: string;
     nextActions?: string[];
+    userAction?: CliUserAction;
   }) {
     super(options.message);
     this.name = 'PublishingProviderOperationError';
@@ -88,6 +91,7 @@ export class PublishingProviderOperationError extends Error {
     this.code = options.code;
     this.details = options.details;
     this.nextActions = options.nextActions;
+    this.userAction = options.userAction;
   }
 }
 

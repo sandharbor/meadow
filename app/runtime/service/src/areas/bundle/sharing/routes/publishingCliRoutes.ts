@@ -20,6 +20,7 @@ import {
   CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
   type CliMutationBehavior,
+  type CliUserAction,
   type PublishBundleCliResult,
 } from '../../../../../../../contracts/types/cliOperations.js';
 import {
@@ -39,6 +40,7 @@ interface CliPublishingErrorBody {
   mutationBehavior: CliMutationBehavior;
   details?: string;
   nextActions: string[];
+  userAction?: CliUserAction;
 }
 
 function sendError(
@@ -127,6 +129,7 @@ router.post('/bundles/:bundleSlug/sharing/publish', (req, res) => {
           error: error.message,
           ...(error.details ? { details: error.details } : {}),
           nextActions: error.nextActions ?? ['Correct the provider configuration or bundle state, then retry.'],
+          ...(error.userAction ? { userAction: error.userAction } : {}),
         });
         return;
       }
