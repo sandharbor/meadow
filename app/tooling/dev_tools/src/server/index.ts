@@ -38,6 +38,7 @@ import { createBrowserLaunchUrl } from "../../../../runtime/supervisor/src/runti
 import {
   DevRuntimeManager,
 } from "./devRuntimeManager.js";
+import { activateNormalConfig } from "./normalConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -437,22 +438,17 @@ app.post("/api/publishing-provider-confs/apply", async (req, res) => {
 app.post("/api/config/normal", async (_req, res) => {
   try {
     await devRuntimeManager.stopRuntime();
-    if (!existsSync(normalConfBackup)) {
-      res.status(400).json({ error: "Not in test mode. No backup to restore from." });
-      return;
-    }
-
-    if (existsSync(configDir)) {
-      rmSync(configDir, { recursive: true });
-    }
-
-    renameSync(normalConfBackup, configDir);
-
-    setActiveFixture(null);
+    const result = activateNormalConfig({
+      configDirectory: configDir,
+      normalConfigBackup: normalConfBackup,
+      activeFixtureFile,
+    });
 
     res.json({
       success: true,
-      message: "Normal config restored from backup.",
+      message: result === "restored-backup"
+        ? "Normal config restored from backup."
+        : "Normal config is already active.",
     });
   } catch (error) {
     console.error("Error restoring normal mode:", error);
