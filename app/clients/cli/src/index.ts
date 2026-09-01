@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { getDefaultConfigDirectory } from "../../../shared_code/utils/appConfigUtils.js";
 import {
@@ -84,6 +84,7 @@ function showHelp(): void {
   console.log(`meadow - command-line access to a running Meadow application
 
 Usage:
+  meadow version
   meadow open
   meadow bundles list
   meadow bundles list --archived
@@ -103,6 +104,7 @@ Usage:
   meadow help [command ...]
 
 Commands:
+  version, --version, -v           Print the installed Meadow version.
   open                             Open the full Meadow Web Client explicitly.
   bundles list                     List current bundles as JSON.
   bundles list --archived          List archived bundles as JSON.
@@ -124,6 +126,45 @@ Commands:
 Meadow starts or attaches to the local Runtime on demand. Commands stay
 headless unless their operation is explicitly named 'open'. JSON is written to
 standard output.`);
+}
+
+function readVersionProperty(filePath: string, property: string): string | null {
+  if (!existsSync(filePath)) return null;
+  try {
+    const contents: unknown = JSON.parse(readFileSync(filePath, "utf8"));
+    if (typeof contents !== "object" || contents === null) return null;
+    const value = (contents as Record<string, unknown>)[property];
+    return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveCliVersion(): string {
+  const cliDirectory = path.dirname(process.argv[1] ?? process.cwd());
+  const packagedVersion = readVersionProperty(
+    path.resolve(cliDirectory, "../artifact.json"),
+    "appVersion",
+  ) ?? readVersionProperty(
+    path.resolve(cliDirectory, "../runtime-payload/manifest.json"),
+    "appVersion",
+  );
+  if (packagedVersion) return packagedVersion;
+
+  const environmentVersion = process.env.MEADOW_APP_VERSION?.trim();
+  if (environmentVersion) return environmentVersion;
+
+  const sourceVersion = readVersionProperty(
+    path.join(resolveSourceProjectRoot(), "app/hosts/desktop/package.json"),
+    "version",
+  );
+  if (sourceVersion) return sourceVersion;
+
+  throw new Error("Unable to determine the Meadow version.");
+}
+
+function showVersion(): void {
+  console.log(`meadow ${resolveCliVersion()}`);
 }
 
 function showBundlesHelp(): void {
@@ -731,6 +772,13 @@ async function main(): Promise<void> {
     : rawArgs;
   if (args.length === 0 || args[0] === "help" || args[0] === "--help" || args[0] === "-h") {
     showHelp();
+    return;
+  }
+  if (
+    args.length === 1
+    && (args[0] === "version" || args[0] === "--version" || args[0] === "-v")
+  ) {
+    showVersion();
     return;
   }
 

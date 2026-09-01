@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npm --prefix ../../runtime/supervisor run build && esbuild src/index.ts --bundle --platform=node --format=cjs --target=node24 --outfile=dist/meadow.cjs",
     "lint": "eslint --max-warnings 0 src",
+    "test": "node --test",
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "dependencies": {
