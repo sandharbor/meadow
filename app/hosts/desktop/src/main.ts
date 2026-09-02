@@ -294,8 +294,16 @@ class MeadowApp {
         // Start auto-update check timer (skip in dev mode)
         this.updateManager.startAutoCheckTimer();
       } catch (error) {
-        log('ERROR', 'Safe startup stopped', {
+        const ownershipTraceId = error instanceof Error
+          && 'ownershipTraceId' in error
+          && typeof error.ownershipTraceId === 'string'
+          ? error.ownershipTraceId
+          : undefined;
+        log('ERROR', ownershipTraceId
+          ? '[runtime-ownership] Safe startup stopped'
+          : 'Safe startup stopped', {
           error: error instanceof Error ? error.name : 'Unknown error',
+          ownershipTraceId,
         });
         this.showStartupRecovery(error);
         return;
@@ -432,12 +440,19 @@ class MeadowApp {
       supervisorEntryPath,
       descriptorPath: process.env[MEADOW_RUNTIME_SESSION_ENV],
       nodeExecutable: launchSpec.service.executable,
+      ownership: {
+        clientName: 'Meadow Desktop',
+        userAction: 'opened the Meadow desktop app',
+      },
     });
     const session = this.runtimeLease.descriptor;
     this.backendPort = session.backendPort;
     this.frontendPort = session.frontendPort;
     this.apiCapability = session.capability;
-    log('SUCCESS', 'Attached to supervised local Runtime', {
+    log('SUCCESS', '[runtime-ownership] Attached to supervised local Runtime', {
+      ownershipTraceId: this.runtimeLease.ownershipTraceId,
+      userAction: this.runtimeLease.userAction,
+      instanceId: session.instanceId,
       backendPort: this.backendPort,
       frontendPort: this.frontendPort,
       supervisorPid: session.supervisorPid,
@@ -735,10 +750,16 @@ class MeadowApp {
   }
 
   private cleanup(): void {
-    log('INFO', 'Releasing Desktop Runtime lease');
     const lease = this.runtimeLease;
+    log('INFO', lease
+      ? '[runtime-ownership] Releasing Desktop Runtime lease'
+      : 'No Desktop Runtime lease to release', lease ? {
+        ownershipTraceId: lease.ownershipTraceId,
+        instanceId: lease.descriptor.instanceId,
+        userAction: 'closed or relaunched the Meadow desktop app',
+      } : undefined);
     this.runtimeLease = null;
-    void lease?.release();
+    void lease?.release('closed or relaunched the Meadow desktop app');
     
     log('SUCCESS', 'Cleanup completed');
   }

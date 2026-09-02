@@ -16,7 +16,7 @@ limitations under the License.
 
 import type { StartupFailureDiagnostic } from '../../../contracts/types/startupRecovery.js';
 import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRecoveryHtml.js';
-import { startupRecovery } from '../../../concepts/index.js';
+import { callout, startupRecovery } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ fixtureHome: 'none' });
@@ -36,7 +36,7 @@ const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 's
   checkpointAvailable: false,
 };
 
-test('Safe startup recovery surfaces remain actionable and secret-free', async ({
+test('Startup recovery surfaces remain actionable and secret-free', async ({
   page,
   snapshot,
   addKeyFrame,
@@ -44,13 +44,10 @@ test('Safe startup recovery surfaces remain actionable and secret-free', async (
 }) => {
   const show = async (diagnostic: StartupFailureDiagnostic): Promise<void> => {
     await page.setContent(renderStartupRecoveryHtml(diagnostic));
-    await expect(page.getByText('Safe startup recovery')).toBeVisible();
-    await expect(page.getByText('Meadow 0.5.41')).toBeVisible();
-    await expect(page.getByText('0–1')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Retry startup' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Reveal relevant file' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Copy redacted diagnostic' })).toBeVisible();
+    await expect(page.getByRole('banner').getByText('Meadow', { exact: true })).toBeVisible();
+    await expect(page.getByText('Meadow stopped before making recovery changes to your Home.')).toBeVisible();
+    await expect(page.getByText('Technical details')).toBeVisible();
+    await expect(page.getByText('Selected Meadow Home')).toBeHidden();
   };
 
   await show({
@@ -60,11 +57,14 @@ test('Safe startup recovery surfaces remain actionable and secret-free', async (
     summary: 'Meadow preserved the existing bootstrap file and did not select a default Home.',
     relevantPath: commonDiagnostic.bootstrapPath,
   });
+  await expect(page.getByRole('button', { name: 'Show the file' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0);
   await snapshot('invalid bootstrap recovery screen');
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  await addKeyFrame(startupRecovery);
+  await addKeyFrame(startupRecovery, callout);
 
   await show({
     ...commonDiagnostic,
@@ -73,10 +73,12 @@ test('Safe startup recovery surfaces remain actionable and secret-free', async (
     summary: 'Meadow Home format 2 is newer than supported format 1.',
     relevantPath: '/Users/example/Meadow Home/meadow_home.yaml',
   });
+  await expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show this Home' })).toBeVisible();
   await snapshot('unsupported Home recovery screen');
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  await addKeyFrame(startupRecovery);
+  await addKeyFrame(startupRecovery, callout);
 
   await show({
     ...commonDiagnostic,
@@ -89,13 +91,14 @@ test('Safe startup recovery surfaces remain actionable and secret-free', async (
     checkpointPath: '/Users/example/Meadow Home/.meadow-migration-recovery',
     checkpointAvailable: true,
   });
-  await expect(page.getByText('Pre-migration Git commit', { exact: true })).toBeVisible();
-  await expect(page.getByText('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show recovery files' })).toBeVisible();
+  await expect(page.getByText('Pre-migration Git commit', { exact: true })).toBeHidden();
+  await expect(page.getByText('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0);
   await snapshot('incomplete migration recovery screen');
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  await addKeyFrame(startupRecovery);
+  await addKeyFrame(startupRecovery, callout);
 
   await assertMeadowHomeState();
 });

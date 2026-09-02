@@ -151,6 +151,7 @@ export class StandaloneTrialRuntime implements TrialRuntime {
     };
     this.runtimeSupervisor = new RuntimeSupervisor(launchSpec, {
       childStdio: () => ["ignore", backendLogFd, backendLogFd],
+      ownershipLogPath: path.join(this.options.artifactDirectory, "meadow.log"),
     });
     this.runtimeSupervisor.leases.acquire("client", `agent-eval-${process.pid}`, process.pid);
     await this.runtimeSupervisor.start();

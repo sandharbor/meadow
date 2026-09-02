@@ -105,7 +105,7 @@ export const commandClient = define({
 export const webClient = define({
   id: id.webClient, name: "Web Client", kind: "interface",
   definition: text`The complete visual Meadow application, used in a browser session or embedded inside the ${link(id.desktopHost, "Desktop Host")}.`,
-  mechanics: [text`Its static assets are served by the ${link(id.runtimeInstance, "Runtime Instance")}.`, text`A browser launch uses a one-time token that becomes a bounded ${link(id.browserSession, "Browser Session")}.`],
+  mechanics: [text`Its static assets are served by the ${link(id.runtimeInstance, "Runtime Instance")}.`, text`A browser launch uses a one-time token that becomes a bounded ${link(id.browserSession, "Browser Session")} whose open pages send a ${link(id.heartbeat, "Heartbeat")}.`],
   interplay: text`A Browser Session can keep the Runtime alive while the Desktop Host supplies native integration around the same Web Client.`,
 });
 
@@ -134,9 +134,17 @@ export const operationLease = define({
 export const browserSession = define({
   id: id.browserSession, name: "Browser Session", kind: "entity",
   definition: text`A bounded ${link(id.webClient, "Web Client")} session created by exchanging a one-time launch token.`,
-  mechanics: [text`The session is represented by an HttpOnly, SameSite=Strict cookie.`, text`It keeps the Runtime alive until the browser closes or the session expires.`],
+  mechanics: [text`The session is represented by an HttpOnly, SameSite=Strict cookie and a ${link(id.heartbeat, "Heartbeat")} from each open page.`, text`A clean page close shortens its liveness claim; a lost browser expires after its last Heartbeat.`],
   interplay: text`It acts as a client-liveness claim without becoming a general Runtime capability.`,
   implementationRoles: ["exchange-and-track"] as const,
+});
+
+export const heartbeat = define({
+  id: id.heartbeat, name: "Heartbeat", aliases: ["browser heartbeat"], kind: "mechanism",
+  definition: text`A periodic liveness signal sent by each open browser page to keep its ${link(id.browserSession, "Browser Session")} active.`,
+  mechanics: [text`The ${link(id.webClient, "Web Client")} sends one immediately and then at a fixed interval, identifying the page that remains open.`, text`The ${link(id.runtimeSupervisor, "Runtime Supervisor")} renews that page's bounded lifetime only when the Heartbeat arrives; ordinary application requests do not renew it.`, text`If the Heartbeat stops, the page's liveness claim expires after a bounded TTL; a clean close signal shortens that wait.`],
+  interplay: text`It renews the Browser Session's ${link(id.lease, "Lease")}-like liveness claim; its absence eventually lets the Runtime become idle and shut down safely.`,
+  implementationRoles: ["emit-page-liveness", "renew-page-liveness"] as const,
 });
 
 export const compatibilityNegotiation = define({
@@ -159,7 +167,7 @@ export const runtimeOwnershipConcepts = [
   meadowHome, runtimeInstance, runtimeSupervisor, runtimeLaunchSpec, runtimeService,
   runtimePayload, homeOwnershipLock, runtimeSessionDescriptor, officialClient,
   desktopHost, commandClient, webClient, lease, clientLease, operationLease,
-  browserSession, compatibilityNegotiation, cooperativeHandoff,
+  browserSession, heartbeat, compatibilityNegotiation, cooperativeHandoff,
 ] as const;
 
 export type RuntimeOwnershipConcept = typeof runtimeOwnershipConcepts[number];

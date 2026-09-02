@@ -20,7 +20,21 @@ export type StartupFailureCategory =
   | 'unsupported-home-format'
   | 'incomplete-migration'
   | 'checkpoint-failure'
+  | 'runtime-busy'
+  | 'runtime-unavailable'
   | 'startup-failure';
+
+export interface StartupRuntimeBlocker {
+  ownershipTraceId?: string | null;
+  instanceId: string;
+  supervisorPid: number;
+  appVersion: string | null;
+  startedAt: string | null;
+  clientLeases: number;
+  browserSessions: number;
+  operationLeases: number;
+  sessionAvailable: boolean;
+}
 
 export interface StartupFailureDiagnostic {
   schemaVersion: 1;
@@ -37,4 +51,5 @@ export interface StartupFailureDiagnostic {
   checkpointId: string | null;
   checkpointPath: string | null;
   checkpointAvailable: boolean;
+  runtimeBlocker?: StartupRuntimeBlocker | null;
 }

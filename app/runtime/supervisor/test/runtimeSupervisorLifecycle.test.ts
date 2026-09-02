@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -73,6 +73,11 @@ async function attach(homeDirectory: string, identity: string, leaseId: string):
     nodeExecutable: tsxExecutable,
     clientLeaseId: leaseId,
     startupTimeoutMs: 10_000,
+    ownership: {
+      clientName: leaseId,
+      userAction: `attached test client ${leaseId}`,
+      logPath: path.join(homeDirectory, "logs", "meadow.log"),
+    },
   });
   leases.push(lease);
   return lease;
@@ -118,9 +123,35 @@ describe("Runtime Supervisor lifecycle", () => {
     const home = makeHome();
     await attach(home, "payload-a", "desktop-a");
 
-    await expect(attach(home, "payload-b", "cli-b")).rejects.toBeInstanceOf(
-      RuntimeUpgradeRequiredError,
-    );
+    const blocked = await attach(home, "payload-b", "cli-b").catch(error => error);
+    expect(blocked).toBeInstanceOf(RuntimeUpgradeRequiredError);
+    const ownershipTraceId = (blocked as RuntimeUpgradeRequiredError).ownershipTraceId;
+    const log = readFileSync(path.join(home, "logs", "meadow.log"), "utf8");
+    const traceLines = log.split("\n").filter(line => line.includes(ownershipTraceId));
+    expect(traceLines.length).toBeGreaterThanOrEqual(4);
+    expect(traceLines.every(line => line.includes("[runtime-ownership]"))).toBe(true);
+    const records = traceLines.map(line => JSON.parse(line.slice(line.indexOf("{"))));
+    expect(records).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event: "client-access-requested",
+        traceId: ownershipTraceId,
+        source: "cli-b",
+        userAction: "attached test client cli-b",
+      }),
+      expect.objectContaining({
+        event: "compatibility-request-decided",
+        requestTraceId: ownershipTraceId,
+        action: "refuse",
+        code: "runtime-busy",
+        clientLeases: 1,
+      }),
+      expect.objectContaining({
+        event: "client-access-blocked",
+        traceId: ownershipTraceId,
+        reason: "runtime-busy",
+        clientLeases: 1,
+      }),
+    ]));
   }, 20_000);
 
   it("hands an idle Home cooperatively to a different payload", async () => {

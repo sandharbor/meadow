@@ -17,6 +17,7 @@ limitations under the License.
 import type {
   RuntimeAttachRequirement,
   RuntimeCompatibilityDecision,
+  RuntimeBusyLeaseSnapshot,
   RuntimeLeaseSnapshot,
   RuntimeSessionDescriptor,
 } from "../../../contracts/types/runtime.js";
@@ -39,7 +40,7 @@ function requiredHandoffCode(
 export function decideRuntimeCompatibility(
   current: RuntimeSessionDescriptor,
   requested: RuntimeAttachRequirement,
-  leases: RuntimeLeaseSnapshot,
+  leases: RuntimeLeaseSnapshot & { browserSessions?: number },
 ): RuntimeCompatibilityDecision {
   const handoffCode = requiredHandoffCode(current, requested);
   if (!handoffCode) return { action: "attach", code: "compatible" };
@@ -48,6 +49,11 @@ export function decideRuntimeCompatibility(
       action: "refuse",
       code: "runtime-busy",
       message: "The active Runtime is busy. Close connected clients or wait for the current operation before upgrading.",
+      leases: {
+        clientLeases: leases.clientLeases,
+        operationLeases: leases.operationLeases,
+        browserSessions: leases.browserSessions ?? 0,
+      } satisfies RuntimeBusyLeaseSnapshot,
     };
   }
   return { action: "handoff", code: handoffCode };

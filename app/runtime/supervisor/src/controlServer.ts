@@ -32,13 +32,29 @@ interface ControlServerOptions {
   requestHandoff: (decision: RuntimeCompatibilityDecision) => void;
   requestShutdown: () => void;
   browserSessions: BrowserSessionRegistry;
+  ownershipEvent?: (
+    event: string,
+    details?: Record<string, string | number | boolean | null | undefined>,
+  ) => void;
+}
+
+function ownershipRequestDetails(body: Record<string, unknown>) {
+  return {
+    requestTraceId: typeof body.ownershipTraceId === "string"
+      ? body.ownershipTraceId
+      : undefined,
+    clientName: typeof body.clientName === "string" ? body.clientName : undefined,
+    userAction: typeof body.userAction === "string" ? body.userAction : undefined,
+  };
 }
 
 function leaseSnapshot(options: ControlServerOptions) {
   const leases = options.leases.snapshot();
+  const browserSessions = options.browserSessions.activeSessionCount();
   return {
     ...leases,
-    clientLeases: leases.clientLeases + options.browserSessions.activeSessionCount(),
+    clientLeases: leases.clientLeases + browserSessions,
+    browserSessions,
   };
 }
 
@@ -133,16 +149,37 @@ export async function startRuntimeControlServer(options: ControlServerOptions): 
           body.leaseId,
           clientPid === undefined ? undefined : Number(clientPid),
         );
+        const leaseEvent = `${route.kind}-lease-${route.action === "acquire"
+          ? "acquired"
+          : "released"}`;
+        options.ownershipEvent?.(leaseEvent, {
+          ...ownershipRequestDetails(body),
+          clientPid: clientPid === undefined ? undefined : Number(clientPid),
+          clientLeases: leases.clientLeases,
+          operationLeases: leases.operationLeases,
+        });
         sendJson(response, 200, { success: true, leases });
         return;
       }
       if (request.method === "POST" && requestUrl.pathname === "/handoff") {
-        const requirement = parseAttachRequirement(await readJson(request));
+        const body = await readJson(request);
+        const requirement = parseAttachRequirement(body);
+        const leases = leaseSnapshot(options);
         const decision = decideRuntimeCompatibility(
           options.descriptor(),
           requirement,
-          leaseSnapshot(options),
+          leases,
         );
+        options.ownershipEvent?.("compatibility-request-decided", {
+          ...ownershipRequestDetails(body),
+          action: decision.action,
+          code: decision.code,
+          requestedPayloadIdentity: requirement.payload.identity,
+          requestedAppVersion: requirement.payload.appVersion,
+          clientLeases: leases.clientLeases,
+          browserSessions: leases.browserSessions,
+          operationLeases: leases.operationLeases,
+        });
         sendJson(response, decision.action === "refuse" ? 409 : 200, decision);
         if (decision.action === "handoff") options.requestHandoff(decision);
         return;
@@ -150,7 +187,16 @@ export async function startRuntimeControlServer(options: ControlServerOptions): 
       if (request.method === "POST" && requestUrl.pathname === "/browser-session/create") {
         const body = await readJson(request);
         const targetPath = typeof body.targetPath === "string" ? body.targetPath : "/";
-        const launch = options.browserSessions.createLaunchToken(targetPath);
+        const ownership = ownershipRequestDetails(body);
+        const launch = options.browserSessions.createLaunchToken(targetPath, {
+          traceId: ownership.requestTraceId,
+          clientName: ownership.clientName,
+          userAction: ownership.userAction,
+        });
+        options.ownershipEvent?.("browser-launch-created", {
+          ...ownership,
+          activeBrowserSessions: options.browserSessions.activeSessionCount(),
+        });
         const url = new URL(launch.targetPath, options.descriptor().frontendOrigin);
         url.searchParams.set("meadowLaunchToken", launch.token);
         sendJson(response, 200, { launchUrl: url.toString() });
@@ -161,10 +207,69 @@ export async function startRuntimeControlServer(options: ControlServerOptions): 
         if (typeof body.token !== "string") throw new Error("Browser launch token is required");
         const session = options.browserSessions.exchangeLaunchToken(body.token);
         if (!session) {
+          options.ownershipEvent?.("browser-launch-exchange-refused", {
+            reason: "invalid-or-expired-launch-token",
+          });
           sendJson(response, 403, { error: "Browser launch token is invalid or expired" });
           return;
         }
-        sendJson(response, 200, session);
+        options.ownershipEvent?.("browser-session-started", {
+          requestTraceId: session.ownership?.traceId,
+          clientName: session.ownership?.clientName,
+          userAction: session.ownership?.userAction,
+          activeBrowserSessions: options.browserSessions.activeSessionCount(),
+          sessionTtlSeconds: session.maxAgeSeconds,
+        });
+        sendJson(response, 200, {
+          sessionId: session.sessionId,
+          targetPath: session.targetPath,
+          maxAgeSeconds: session.maxAgeSeconds,
+        });
+        return;
+      }
+      if (request.method === "POST" && requestUrl.pathname === "/browser-session/heartbeat") {
+        const body = await readJson(request);
+        if (typeof body.sessionId !== "string" || typeof body.pageId !== "string") {
+          throw new Error("Browser sessionId and pageId are required");
+        }
+        const heartbeat = options.browserSessions.heartbeatSession(body.sessionId, body.pageId);
+        if (!heartbeat) {
+          sendJson(response, 401, { alive: false });
+          return;
+        }
+        if (heartbeat.firstHeartbeat) {
+          options.ownershipEvent?.("browser-session-heartbeat-started", {
+            requestTraceId: heartbeat.ownership?.traceId,
+            clientName: heartbeat.ownership?.clientName,
+            userAction: heartbeat.ownership?.userAction,
+            activeBrowserSessions: options.browserSessions.activeSessionCount(),
+            sessionTtlSeconds: heartbeat.maxAgeSeconds,
+          });
+        }
+        sendJson(response, 200, {
+          alive: true,
+          maxAgeSeconds: heartbeat.maxAgeSeconds,
+        });
+        return;
+      }
+      if (request.method === "POST" && requestUrl.pathname === "/browser-session/closing") {
+        const body = await readJson(request);
+        if (typeof body.sessionId !== "string" || typeof body.pageId !== "string") {
+          throw new Error("Browser sessionId and pageId are required");
+        }
+        const closing = options.browserSessions.beginPageClose(body.sessionId, body.pageId);
+        if (!closing) {
+          sendJson(response, 401, { closing: false });
+          return;
+        }
+        options.ownershipEvent?.("browser-session-close-received", {
+          requestTraceId: closing.ownership?.traceId,
+          clientName: closing.ownership?.clientName,
+          userAction: closing.ownership?.userAction,
+          activeBrowserSessions: options.browserSessions.activeSessionCount(),
+          closeGraceSeconds: closing.closeGraceSeconds,
+        });
+        sendJson(response, 200, { closing: true });
         return;
       }
       if (request.method === "POST" && requestUrl.pathname === "/browser-session/validate") {
@@ -182,12 +287,26 @@ export async function startRuntimeControlServer(options: ControlServerOptions): 
         const force = body.force === true;
         const leases = leaseSnapshot(options);
         if (!force && (leases.clientLeases > 0 || leases.operationLeases > 0)) {
+          options.ownershipEvent?.("shutdown-request-refused", {
+            ...ownershipRequestDetails(body),
+            forced: false,
+            clientLeases: leases.clientLeases,
+            browserSessions: leases.browserSessions,
+            operationLeases: leases.operationLeases,
+          });
           sendJson(response, 409, {
             error: "The Runtime is busy and cannot shut down cooperatively",
             leases,
           });
           return;
         }
+        options.ownershipEvent?.("shutdown-request-accepted", {
+          ...ownershipRequestDetails(body),
+          forced: force,
+          clientLeases: leases.clientLeases,
+          browserSessions: leases.browserSessions,
+          operationLeases: leases.operationLeases,
+        });
         sendJson(response, 202, { success: true, forced: force, leases });
         options.requestShutdown();
         return;

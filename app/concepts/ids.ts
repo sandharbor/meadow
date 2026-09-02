@@ -79,6 +79,7 @@ export const coreConceptIds = {
   clientLease: "client-lease",
   operationLease: "operation-lease",
   browserSession: "browser-session",
+  heartbeat: "heartbeat",
   compatibilityNegotiation: "compatibility-negotiation",
   cooperativeHandoff: "cooperative-handoff",
 } as const;

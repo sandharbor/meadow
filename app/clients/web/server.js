@@ -12,6 +12,8 @@ const backendPort = Number.parseInt(process.env.VITE_BACKEND_PORT || '', 10);
 const apiCapability = process.env.MEADOW_API_CAPABILITY;
 const runtimeControlUrl = process.env.MEADOW_RUNTIME_CONTROL_URL;
 const browserSessionCookie = 'meadow_browser_session';
+const browserHeartbeatPath = '/__meadow/browser-session/heartbeat';
+const browserClosingPath = '/__meadow/browser-session/closing';
 
 if (!backendPort || !apiCapability || !runtimeControlUrl) {
   throw new Error('Runtime Supervisor browser environment is required');
@@ -51,6 +53,10 @@ function control(pathname, body) {
   });
 }
 
+function browserSessionCookieHeader(sessionId, maxAgeSeconds) {
+  return `${browserSessionCookie}=${encodeURIComponent(sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAgeSeconds}`;
+}
+
 function send(response, status, body, headers = {}) {
   const contents = Buffer.isBuffer(body) ? body : Buffer.from(body, 'utf8');
   response.writeHead(status, {
@@ -71,11 +77,50 @@ async function exchangeLaunchToken(requestUrl, response) {
     }
     const session = await exchange.json();
     response.writeHead(303, {
-      'set-cookie': `${browserSessionCookie}=${encodeURIComponent(session.sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${session.maxAgeSeconds}`,
+      'set-cookie': browserSessionCookieHeader(session.sessionId, session.maxAgeSeconds),
       'cache-control': 'no-store',
       location: session.targetPath,
     });
     response.end();
+  } catch {
+    send(response, 503, 'Runtime browser session is unavailable');
+  }
+  return true;
+}
+
+async function handleBrowserSessionLifecycle(request, requestUrl, response) {
+  if (requestUrl.pathname !== browserHeartbeatPath && requestUrl.pathname !== browserClosingPath) {
+    return false;
+  }
+  if (request.method !== 'POST') {
+    send(response, 405, 'Method Not Allowed', { allow: 'POST' });
+    return true;
+  }
+  const sessionId = readCookie(request.headers.cookie, browserSessionCookie);
+  const pageId = requestUrl.searchParams.get('pageId');
+  if (!sessionId || !pageId) {
+    send(response, 401, 'Browser session is required');
+    return true;
+  }
+  try {
+    const heartbeat = requestUrl.pathname === browserHeartbeatPath;
+    const controlResponse = await control(
+      heartbeat ? '/browser-session/heartbeat' : '/browser-session/closing',
+      { sessionId, pageId },
+    );
+    if (!controlResponse.ok) {
+      send(response, 401, 'Browser session is no longer active');
+      return true;
+    }
+    if (heartbeat) {
+      const result = await controlResponse.json();
+      send(response, 204, '', {
+        'cache-control': 'no-store',
+        'set-cookie': browserSessionCookieHeader(sessionId, result.maxAgeSeconds),
+      });
+    } else {
+      send(response, 204, '', { 'cache-control': 'no-store' });
+    }
   } catch {
     send(response, 503, 'Runtime browser session is unavailable');
   }
@@ -136,6 +181,7 @@ const server = http.createServer((request, response) => {
   void (async () => {
     const requestUrl = new URL(request.url || '/', `http://127.0.0.1:${port}`);
     if (await exchangeLaunchToken(requestUrl, response)) return;
+    if (await handleBrowserSessionLifecycle(request, requestUrl, response)) return;
     if (requestUrl.pathname.startsWith('/api/')) {
       await proxyApi(request, response);
       return;

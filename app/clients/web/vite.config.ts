@@ -19,6 +19,8 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 const BROWSER_SESSION_COOKIE = 'meadow_browser_session';
+const BROWSER_HEARTBEAT_PATH = '/__meadow/browser-session/heartbeat';
+const BROWSER_CLOSING_PATH = '/__meadow/browser-session/closing';
 
 function readCookie(cookieHeader: string | undefined, name: string): string | null {
   for (const item of cookieHeader?.split(';') ?? []) {
@@ -26,6 +28,10 @@ function readCookie(cookieHeader: string | undefined, name: string): string | nu
     if (key === name) return decodeURIComponent(value.join('='));
   }
   return null;
+}
+
+function browserSessionCookieHeader(sessionId: string, maxAgeSeconds: number): string {
+  return `${BROWSER_SESSION_COOKIE}=${encodeURIComponent(sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAgeSeconds}`;
 }
 
 async function runtimeControl(
@@ -87,10 +93,51 @@ export default defineConfig(({ command }) => {
                 response.statusCode = 303;
                 response.setHeader(
                   'set-cookie',
-                  `${BROWSER_SESSION_COOKIE}=${encodeURIComponent(session.sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${session.maxAgeSeconds}`,
+                  browserSessionCookieHeader(session.sessionId, session.maxAgeSeconds),
                 );
                 response.setHeader('location', session.targetPath);
                 response.setHeader('cache-control', 'no-store');
+                response.end();
+                return;
+              }
+              if (
+                requestUrl.pathname === BROWSER_HEARTBEAT_PATH
+                || requestUrl.pathname === BROWSER_CLOSING_PATH
+              ) {
+                if (request.method !== 'POST') {
+                  response.statusCode = 405;
+                  response.setHeader('allow', 'POST');
+                  response.end('Method Not Allowed');
+                  return;
+                }
+                const sessionId = readCookie(request.headers.cookie, BROWSER_SESSION_COOKIE);
+                const pageId = requestUrl.searchParams.get('pageId');
+                if (!sessionId || !pageId) {
+                  response.statusCode = 401;
+                  response.end('Browser session is required');
+                  return;
+                }
+                const heartbeat = requestUrl.pathname === BROWSER_HEARTBEAT_PATH;
+                const lifecycleResponse = await runtimeControl(
+                  runtimeControlUrl,
+                  apiCapability,
+                  heartbeat ? '/browser-session/heartbeat' : '/browser-session/closing',
+                  { sessionId, pageId },
+                );
+                if (!lifecycleResponse.ok) {
+                  response.statusCode = 401;
+                  response.end('Browser session is no longer active');
+                  return;
+                }
+                response.statusCode = 204;
+                response.setHeader('cache-control', 'no-store');
+                if (heartbeat) {
+                  const result = await lifecycleResponse.json() as { maxAgeSeconds: number };
+                  response.setHeader(
+                    'set-cookie',
+                    browserSessionCookieHeader(sessionId, result.maxAgeSeconds),
+                  );
+                }
                 response.end();
                 return;
               }

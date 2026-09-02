@@ -24,6 +24,7 @@ import UpdateModal from './components/UpdateModal'
 import { initializeApiConfig } from '../utils/apiConfig'
 import { logger } from '../utils/logger'
 import { FindInBundlesOptions } from '../../../../../contracts/types/findInBundlesOptions'
+import { startBrowserSessionHeartbeat } from './browserSessionHeartbeat'
 import './index.css'
 
 const FindInBundlesDeepLinkListener: React.FC = () => {
@@ -80,6 +81,7 @@ const App: React.FC = () => {
 };
 
 const initializeApp = async () => {
+  startBrowserSessionHeartbeat();
   try {
     logger.info('Initializing API configuration...');
     await initializeApiConfig();

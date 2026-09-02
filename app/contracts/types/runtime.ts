@@ -64,6 +64,10 @@ export interface RuntimeLeaseSnapshot {
   operationLeases: number;
 }
 
+export interface RuntimeBusyLeaseSnapshot extends RuntimeLeaseSnapshot {
+  browserSessions: number;
+}
+
 export interface RuntimeAttachRequirement {
   protocol: string;
   payload: RuntimePayloadReference;
@@ -82,6 +86,7 @@ export type RuntimeCompatibilityDecision =
       action: "refuse";
       code: "runtime-busy";
       message: string;
+      leases: RuntimeBusyLeaseSnapshot;
     };
 
 export interface RuntimePayloadFile {

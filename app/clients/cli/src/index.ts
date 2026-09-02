@@ -357,7 +357,7 @@ function resolveSourceProjectRoot(): string {
   );
 }
 
-async function ensureCliRuntime(): Promise<void> {
+async function ensureCliRuntime(userAction: string): Promise<void> {
   if (runtimeLease) return;
   const homeDirectory = getDefaultConfigDirectory();
   const cliDirectory = path.dirname(process.argv[1] ?? process.cwd());
@@ -377,6 +377,10 @@ async function ensureCliRuntime(): Promise<void> {
       supervisorEntryPath: path.join(payloadRoot, "supervisor/meadow-runtime-supervisor.cjs"),
       descriptorPath: process.env[MEADOW_RUNTIME_SESSION_ENV],
       nodeExecutable: launchSpec.service.executable,
+      ownership: {
+        clientName: 'Meadow Command',
+        userAction,
+      },
     });
     return;
   }
@@ -412,6 +416,10 @@ async function ensureCliRuntime(): Promise<void> {
       "meadow-runtime-supervisor.cjs",
     ),
     descriptorPath: process.env[MEADOW_RUNTIME_SESSION_ENV],
+    ownership: {
+      clientName: 'Meadow Command',
+      userAction,
+    },
   });
 }
 
@@ -421,7 +429,11 @@ async function openBrowser(
   details: Record<string, unknown> = {},
 ): Promise<void> {
   const session = resolveSession();
-  const launchUrl = await createBrowserLaunchUrl(session, targetPath);
+  const launchUrl = await createBrowserLaunchUrl(session, targetPath, {
+    ownershipTraceId: runtimeLease?.ownershipTraceId,
+    source: 'Meadow Command',
+    userAction: `ran "meadow ${operation.replace('.', ' ')}" and opened a browser session`,
+  });
   const executable = process.env.MEADOW_BROWSER_OPEN_EXECUTABLE
     ?? (process.platform === "darwin" ? "/usr/bin/open" : "xdg-open");
   await new Promise<void>((resolve, reject) => {
@@ -794,7 +806,10 @@ async function main(): Promise<void> {
   ) || (
     args[0] === "review" && args[1] === "open"
   );
-  if (isRuntimeCommand && !isHelpRequest) await ensureCliRuntime();
+  if (isRuntimeCommand && !isHelpRequest) {
+    const commandName = args.slice(0, args[0] === 'open' ? 1 : 2).join(' ');
+    await ensureCliRuntime(`ran "meadow ${commandName}"`);
+  }
 
   if (args[0] === "open") {
     if (args.length !== 1) throw new Error("Usage: meadow open");
@@ -951,7 +966,7 @@ async function run(): Promise<void> {
   try {
     await main();
   } finally {
-    await runtimeLease?.release();
+    await runtimeLease?.release('Meadow Command finished the requested command');
   }
 }
 

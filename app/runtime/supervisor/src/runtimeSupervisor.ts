@@ -35,6 +35,10 @@ import {
   removeRuntimeSessionDescriptor,
   writeRuntimeSessionDescriptor,
 } from "./sessionDescriptor.js";
+import {
+  logRuntimeOwnership,
+  type RuntimeOwnershipLogContext,
+} from "./runtimeOwnershipLog.js";
 import type {
   cooperativeHandoff,
   ParticipatesIn,
@@ -53,6 +57,8 @@ export interface RuntimeSupervisorOptions {
   childStdio?: (kind: "service" | "web") => StdioOptions;
   ports?: RuntimePorts | (() => Promise<RuntimePorts>);
   capability?: string;
+  ownershipTraceId?: string;
+  ownershipLogPath?: string;
 }
 
 function defaultHealthCheck(url: string): Promise<boolean> {
@@ -75,6 +81,7 @@ export class RuntimeSupervisor {
   private readonly spawnChild: typeof spawn;
   private readonly healthCheck: (url: string) => Promise<boolean>;
   private readonly onExit: (reason: SupervisorExitReason) => void;
+  private readonly ownershipTraceId: string;
   private descriptor: RuntimeSessionDescriptor | null = null;
   private ownership: HomeOwnershipLease | null = null;
   private serviceProcess: ChildProcess | null = null;
@@ -92,16 +99,57 @@ export class RuntimeSupervisor {
     this.spawnChild = options.spawnChild ?? spawn;
     this.healthCheck = options.healthCheck ?? defaultHealthCheck;
     this.onExit = options.onExit ?? (() => {});
+    this.ownershipTraceId = options.ownershipTraceId ?? randomUUID();
+    this.browserSessions.setActivityListener(() => this.leases.touch(this.now()));
+    this.browserSessions.setExpirationListener(event => {
+      logRuntimeOwnership(this.ownershipLog(), "browser-session-expired", { ...event });
+    });
+  }
+
+  private ownershipLog(): RuntimeOwnershipLogContext {
+    return {
+      homeDirectory: this.launchSpec.homeDirectory,
+      traceId: this.ownershipTraceId,
+      source: "runtime-supervisor",
+      instanceId: this.instanceId,
+      logPath: this.options.ownershipLogPath,
+    };
   }
 
   async start(): Promise<RuntimeSessionDescriptor> {
     const paths = getRuntimePaths(this.launchSpec.homeDirectory, this.options.runtimeRoot);
-    this.ownership = acquireHomeOwnership({
-      homeDirectory: this.launchSpec.homeDirectory,
-      instanceId: this.instanceId,
+    logRuntimeOwnership(this.ownershipLog(), "home-ownership-acquire-requested", {
       supervisorPid: process.pid,
       payloadIdentity: this.launchSpec.payload.identity,
-      runtimeRoot: this.options.runtimeRoot,
+      appVersion: this.launchSpec.payload.appVersion,
+    });
+    try {
+      this.ownership = acquireHomeOwnership({
+        homeDirectory: this.launchSpec.homeDirectory,
+        instanceId: this.instanceId,
+        supervisorPid: process.pid,
+        payloadIdentity: this.launchSpec.payload.identity,
+        runtimeRoot: this.options.runtimeRoot,
+      });
+    } catch (error) {
+      const owner = error instanceof Error
+        && "owner" in error
+        && error.owner
+        && typeof error.owner === "object"
+        ? error.owner as { instanceId?: unknown; supervisorPid?: unknown }
+        : null;
+      logRuntimeOwnership(this.ownershipLog(), "home-ownership-acquire-blocked", {
+        error: error instanceof Error ? error.message : String(error),
+        currentInstanceId: typeof owner?.instanceId === "string" ? owner.instanceId : undefined,
+        currentSupervisorPid: typeof owner?.supervisorPid === "number"
+          ? owner.supervisorPid
+          : undefined,
+      });
+      throw error;
+    }
+    logRuntimeOwnership(this.ownershipLog(), "home-ownership-acquired", {
+      supervisorPid: process.pid,
+      acquiredAt: this.ownership.record.acquiredAt,
     });
 
     try {
@@ -140,6 +188,9 @@ export class RuntimeSupervisor {
         requestHandoff: decision => this.handleHandoff(decision),
         requestShutdown: () => void this.shutdown("requested"),
         browserSessions: this.browserSessions,
+        ownershipEvent: (event, details) => {
+          logRuntimeOwnership(this.ownershipLog(), event, details);
+        },
       });
 
       this.serviceProcess = this.startChild("service", this.launchSpec.service, {
@@ -156,6 +207,10 @@ export class RuntimeSupervisor {
       if (!this.serviceProcess.pid) throw new Error("Runtime service did not report a process ID");
       this.descriptor.runtimePid = this.serviceProcess.pid;
       this.ownership.updateRuntimePid(this.serviceProcess.pid);
+      logRuntimeOwnership(this.ownershipLog(), "runtime-service-started", {
+        supervisorPid: process.pid,
+        runtimePid: this.serviceProcess.pid,
+      });
 
       this.webProcess = this.startChild("web", this.launchSpec.web, {
         PORT: String(ports.frontendPort),
@@ -194,8 +249,17 @@ export class RuntimeSupervisor {
         }
       }, Math.min(1_000, Math.max(100, Math.floor(this.launchSpec.idleTimeoutMs / 4))));
       this.idleTimer.unref();
+      logRuntimeOwnership(this.ownershipLog(), "runtime-ready", {
+        supervisorPid: this.descriptor.supervisorPid,
+        runtimePid: this.descriptor.runtimePid,
+        backendPort: this.descriptor.backendPort,
+        frontendPort: this.descriptor.frontendPort,
+      });
       return this.descriptor;
     } catch (error) {
+      logRuntimeOwnership(this.ownershipLog(), "runtime-startup-failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       await this.shutdown("startup-failure");
       throw error;
     }
@@ -204,6 +268,13 @@ export class RuntimeSupervisor {
   async shutdown(reason: SupervisorExitReason): Promise<void> {
     if (this.shutdownStarted) return;
     this.shutdownStarted = true;
+    const leases = this.leases.snapshot();
+    logRuntimeOwnership(this.ownershipLog(), "runtime-shutdown-started", {
+      reason,
+      clientLeases: leases.clientLeases,
+      operationLeases: leases.operationLeases,
+      browserSessions: this.browserSessions.activeSessionCount(),
+    });
     if (this.idleTimer) clearInterval(this.idleTimer);
     this.idleTimer = null;
     const paths = getRuntimePaths(this.launchSpec.homeDirectory, this.options.runtimeRoot);
@@ -216,6 +287,7 @@ export class RuntimeSupervisor {
     this.controlServer = null;
     this.ownership?.release();
     this.ownership = null;
+    logRuntimeOwnership(this.ownershipLog(), "home-ownership-released", { reason });
     this.onExit(reason);
   }
 
@@ -263,6 +335,9 @@ export class RuntimeSupervisor {
 
   private handleHandoff(decision: RuntimeCompatibilityDecision): void {
     if (decision.action !== "handoff") return;
+    logRuntimeOwnership(this.ownershipLog(), "runtime-handoff-started", {
+      reason: decision.code,
+    });
     const descriptor = this.requireDescriptor();
     descriptor.state = "handoff-requested";
     writeRuntimeSessionDescriptor(

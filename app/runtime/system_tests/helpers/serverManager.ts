@@ -192,6 +192,7 @@ export async function startServer(): Promise<void> {
     ports: { controlPort, backendPort: TEST_PORT, frontendPort },
     capability: TEST_API_CAPABILITY,
     childStdio: () => process.env.DEBUG ? 'inherit' : 'ignore',
+    ownershipLogPath: path.join(TEST_CONFIG_DIR, 'logs', 'meadow.log'),
   });
   supervisor.leases.acquire('client', `system-tests-${process.pid}`, process.pid);
   try {

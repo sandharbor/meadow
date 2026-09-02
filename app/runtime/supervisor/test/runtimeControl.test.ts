@@ -182,7 +182,7 @@ describe("Runtime leases and control plane", () => {
     expect(handoffs).toEqual([{ action: "handoff", code: "payload-upgrade" }]);
   });
 
-  it("exchanges a launch token once for a short-lived browser session", async () => {
+  it("exchanges a launch token once and accepts browser heartbeats", async () => {
     const url = await startControl(new RuntimeLeaseRegistry());
     const create = await post(url, "/browser-session/create", { targetPath: "/bundle/example?tab=review" });
     expect(create.status).toBe(200);
@@ -198,9 +198,13 @@ describe("Runtime leases and control plane", () => {
     expect((await post(url, "/browser-session/validate", {
       sessionId: browserSession.sessionId,
     })).status).toBe(200);
+    expect(await (await post(url, "/browser-session/heartbeat", {
+      sessionId: browserSession.sessionId,
+      pageId: "browser-page-a",
+    })).json()).toMatchObject({ alive: true, maxAgeSeconds: 75 });
   });
 
-  it("treats an active browser session as a client lease until it expires", async () => {
+  it("treats browser heartbeats as a client lease until the heartbeat expires", async () => {
     let now = 1_000;
     const sessions = new BrowserSessionRegistry(() => now, 100, 200);
     const handoffs: RuntimeCompatibilityDecision[] = [];
@@ -214,13 +218,62 @@ describe("Runtime leases and control plane", () => {
       .searchParams.get("meadowLaunchToken");
     const exchange = await post(url, "/browser-session/exchange", { token });
     expect(exchange.status).toBe(200);
+    const sessionId = (await exchange.json() as { sessionId: string }).sessionId;
+    expect((await post(url, "/browser-session/heartbeat", {
+      sessionId,
+      pageId: "browser-page-a",
+    })).status).toBe(200);
 
     const requirement = {
       protocol: MEADOW_RUNTIME_PROTOCOL,
       payload: { identity: "payload-b", appVersion: "0.5.43", perspective: "standalone" },
     };
     expect((await post(url, "/handoff", requirement)).status).toBe(409);
+    now += 150;
+    expect((await post(url, "/browser-session/heartbeat", {
+      sessionId,
+      pageId: "browser-page-a",
+    })).status).toBe(200);
+    now += 150;
+    expect((await post(url, "/handoff", requirement)).status).toBe(409);
     now += 201;
+    expect((await post(url, "/handoff", requirement)).status).toBe(200);
+    expect(handoffs).toEqual([{ action: "handoff", code: "payload-upgrade" }]);
+  });
+
+  it("shortens a closing browser page lease while another page may keep the session alive", async () => {
+    let now = 1_000;
+    const sessions = new BrowserSessionRegistry(() => now, 100, 200, 20);
+    const handoffs: RuntimeCompatibilityDecision[] = [];
+    const url = await startControlWithBrowserSessions(
+      new RuntimeLeaseRegistry(),
+      sessions,
+      decision => handoffs.push(decision),
+    );
+    const create = await post(url, "/browser-session/create", { targetPath: "/" });
+    const token = new URL((await create.json() as { launchUrl: string }).launchUrl)
+      .searchParams.get("meadowLaunchToken");
+    const exchange = await post(url, "/browser-session/exchange", { token });
+    const sessionId = (await exchange.json() as { sessionId: string }).sessionId;
+    await post(url, "/browser-session/heartbeat", { sessionId, pageId: "browser-page-a" });
+    await post(url, "/browser-session/heartbeat", { sessionId, pageId: "browser-page-b" });
+
+    const requirement = {
+      protocol: MEADOW_RUNTIME_PROTOCOL,
+      payload: { identity: "payload-b", appVersion: "0.5.43", perspective: "standalone" },
+    };
+    expect((await post(url, "/browser-session/closing", {
+      sessionId,
+      pageId: "browser-page-a",
+    })).status).toBe(200);
+    now += 21;
+    expect((await post(url, "/handoff", requirement)).status).toBe(409);
+
+    expect((await post(url, "/browser-session/closing", {
+      sessionId,
+      pageId: "browser-page-b",
+    })).status).toBe(200);
+    now += 21;
     expect((await post(url, "/handoff", requirement)).status).toBe(200);
     expect(handoffs).toEqual([{ action: "handoff", code: "payload-upgrade" }]);
   });

@@ -130,6 +130,73 @@ describe('startup recovery diagnostics', () => {
     expect(startupSupportDiagnosticText(diagnostic)).not.toContain(secret);
   });
 
+  it('turns a browser-blocked Runtime handoff into direct, non-secret recovery guidance', () => {
+    const root = temporaryDirectory();
+    const capability = 'PRIVATE-CAPABILITY-MUST-NOT-LEAK';
+    const error = Object.assign(new Error('busy'), {
+      name: 'RuntimeUpgradeRequiredError',
+      decision: {
+        action: 'refuse',
+        code: 'runtime-busy',
+        message: 'technical refusal',
+        leases: { clientLeases: 1, browserSessions: 1, operationLeases: 0 },
+      },
+      descriptor: {
+        instanceId: 'runtime-a',
+        supervisorPid: 123,
+        startedAt: '2026-09-01T12:00:00.000Z',
+        capability,
+        payload: { appVersion: '0.5.48' },
+      },
+    });
+    const diagnostic = describeStartupFailure(error, {
+      selectedHomePath: path.join(root, 'Home'),
+      bootstrapPath: path.join(root, 'bootstrap_config.yaml'),
+      appVersion: '0.5.49',
+    });
+
+    expect(diagnostic).toMatchObject({
+      category: 'runtime-busy',
+      title: 'Meadow is already open in your browser',
+      runtimeBlocker: {
+        instanceId: 'runtime-a',
+        appVersion: '0.5.48',
+        browserSessions: 1,
+        operationLeases: 0,
+        sessionAvailable: true,
+      },
+    });
+    const supportText = startupSupportDiagnosticText(diagnostic);
+    expect(supportText).not.toContain(capability);
+    const html = renderStartupRecoveryHtml(diagnostic);
+    expect(html).toContain('data-recovery-action="take-over"');
+    expect(html).toContain('data-recovery-action="open-active"');
+    expect(html).toContain('Open here instead');
+    expect(html).not.toContain(capability);
+  });
+
+  it('names a live owner without a usable Runtime session instead of reporting an unknown failure', () => {
+    const root = temporaryDirectory();
+    const error = Object.assign(new Error('owner unavailable'), {
+      name: 'RuntimeOwnershipBlockedError',
+      owner: { instanceId: 'runtime-a', supervisorPid: 123 },
+    });
+    const diagnostic = describeStartupFailure(error, {
+      selectedHomePath: path.join(root, 'Home'),
+      bootstrapPath: path.join(root, 'bootstrap_config.yaml'),
+      appVersion: '0.5.49',
+    });
+
+    expect(diagnostic).toMatchObject({
+      category: 'runtime-unavailable',
+      title: 'A previous Meadow session is still closing',
+      runtimeBlocker: { instanceId: 'runtime-a', sessionAvailable: false },
+    });
+    const html = renderStartupRecoveryHtml(diagnostic);
+    expect(html).toContain('Try again');
+    expect(html).not.toContain('data-recovery-action="take-over"');
+  });
+
   it('reports an available Git checkpoint and the last successful migration', () => {
     const root = temporaryDirectory();
     const home = path.join(root, 'Home');

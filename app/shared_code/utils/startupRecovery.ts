@@ -22,6 +22,7 @@ import { bootstrapConfigCodec } from './configDocumentCodecs.js';
 import type {
   StartupFailureCategory,
   StartupFailureDiagnostic,
+  StartupRuntimeBlocker,
 } from '../../contracts/types/startupRecovery.js';
 import {
   CURRENT_MEADOW_HOME_FORMAT_VERSION,
@@ -56,6 +57,35 @@ interface MigrationLedgerFailureLike {
   ledgerPath: unknown;
 }
 
+interface RuntimeUpgradeRequiredLike {
+  name: 'RuntimeUpgradeRequiredError';
+  ownershipTraceId?: unknown;
+  decision: {
+    action: 'refuse';
+    code: 'runtime-busy';
+    leases: {
+      clientLeases: number;
+      browserSessions: number;
+      operationLeases: number;
+    };
+  };
+  descriptor: {
+    instanceId: string;
+    supervisorPid: number;
+    startedAt: string;
+    payload: { appVersion: string };
+  };
+}
+
+interface RuntimeOwnershipBlockedLike {
+  name: 'RuntimeOwnershipBlockedError';
+  ownershipTraceId?: unknown;
+  owner: {
+    instanceId: string;
+    supervisorPid: number;
+  };
+}
+
 function isIncompleteMigration(error: unknown): error is IncompleteMigrationLike {
   return error instanceof Error
     && error.name === 'IncompleteMigrationError'
@@ -67,6 +97,37 @@ function isMigrationLedgerFailure(error: unknown): error is Error & MigrationLed
   return error instanceof Error
     && error.name === 'MigrationLedgerConsistencyError'
     && 'ledgerPath' in error;
+}
+
+function isRuntimeUpgradeRequired(error: unknown): error is Error & RuntimeUpgradeRequiredLike {
+  if (!(error instanceof Error)
+    || error.name !== 'RuntimeUpgradeRequiredError'
+    || !('decision' in error)
+    || !('descriptor' in error)
+    || !isPlainObject(error.decision)
+    || !isPlainObject(error.descriptor)) return false;
+  const decision = error.decision;
+  const descriptor = error.descriptor;
+  return decision.action === 'refuse'
+    && decision.code === 'runtime-busy'
+    && isPlainObject(decision.leases)
+    && Number.isInteger(decision.leases.clientLeases)
+    && Number.isInteger(decision.leases.browserSessions)
+    && Number.isInteger(decision.leases.operationLeases)
+    && typeof descriptor.instanceId === 'string'
+    && Number.isInteger(descriptor.supervisorPid)
+    && typeof descriptor.startedAt === 'string'
+    && isPlainObject(descriptor.payload)
+    && typeof descriptor.payload.appVersion === 'string';
+}
+
+function isRuntimeOwnershipBlocked(error: unknown): error is Error & RuntimeOwnershipBlockedLike {
+  return error instanceof Error
+    && error.name === 'RuntimeOwnershipBlockedError'
+    && 'owner' in error
+    && isPlainObject(error.owner)
+    && typeof error.owner.instanceId === 'string'
+    && Number.isInteger(error.owner.supervisorPid);
 }
 
 function migrationLedgerPaths(homePath: string): string[] {
@@ -117,12 +178,56 @@ export function describeStartupFailure(
   context: StartupFailureContext,
 ): StartupFailureDiagnostic {
   let category: StartupFailureCategory = 'startup-failure';
-  let title = 'Meadow could not start safely';
-  let summary = 'Startup stopped before Meadow could safely continue. No files were reset.';
+  let title = 'Meadow didn’t open';
+  let summary = 'Something unexpected stopped Meadow before it opened. Your Home was left unchanged.';
   let relevantPath: string | null = null;
   let checkpointId: string | null = null;
+  let runtimeBlocker: StartupRuntimeBlocker | null = null;
 
-  if (error instanceof InvalidDurableDocumentError) {
+  if (isRuntimeUpgradeRequired(error)) {
+    category = 'runtime-busy';
+    const { leases } = error.decision;
+    if (leases.operationLeases > 0) {
+      title = 'Meadow is finishing work in another session';
+      summary = 'Another Meadow session is running a background operation. Meadow paused so two copies cannot change this Home at once.';
+    } else if (leases.browserSessions > 0) {
+      title = 'Meadow is already open in your browser';
+      summary = 'The browser session is keeping another copy of Meadow active. You can move this Home into the app now.';
+    } else {
+      title = 'Another Meadow session is using this Home';
+      summary = 'Another Meadow client is using this Home. You can move the Home into this app now.';
+    }
+    runtimeBlocker = {
+      ownershipTraceId: typeof error.ownershipTraceId === 'string'
+        ? error.ownershipTraceId
+        : null,
+      instanceId: error.descriptor.instanceId,
+      supervisorPid: error.descriptor.supervisorPid,
+      appVersion: error.descriptor.payload.appVersion,
+      startedAt: error.descriptor.startedAt,
+      clientLeases: leases.clientLeases,
+      browserSessions: leases.browserSessions,
+      operationLeases: leases.operationLeases,
+      sessionAvailable: true,
+    };
+  } else if (isRuntimeOwnershipBlocked(error)) {
+    category = 'runtime-unavailable';
+    title = 'A previous Meadow session is still closing';
+    summary = 'That session still has exclusive access to this Home, but Meadow can no longer reconnect to it. Meadow will wait rather than opening a second copy.';
+    runtimeBlocker = {
+      ownershipTraceId: typeof error.ownershipTraceId === 'string'
+        ? error.ownershipTraceId
+        : null,
+      instanceId: error.owner.instanceId,
+      supervisorPid: error.owner.supervisorPid,
+      appVersion: null,
+      startedAt: null,
+      clientLeases: 0,
+      browserSessions: 0,
+      operationLeases: 0,
+      sessionAvailable: false,
+    };
+  } else if (error instanceof InvalidDurableDocumentError) {
     category = error.result.kind === 'syntax' ? 'invalid-syntax' : 'invalid-schema';
     title = error.result.kind === 'syntax'
       ? 'A configuration file has invalid syntax'
@@ -181,7 +286,28 @@ export function describeStartupFailure(
     checkpointAvailable: checkpointPath !== null
       && fs.existsSync(path.join(context.selectedHomePath, '.git'))
       && fs.existsSync(path.join(checkpointPath, 'checkpoint.json')),
+    runtimeBlocker,
   };
+}
+
+function validateRuntimeBlocker(value: unknown): value is StartupRuntimeBlocker {
+  if (!isPlainObject(value)) return false;
+  const fields = new Set([
+    'ownershipTraceId', 'instanceId', 'supervisorPid', 'appVersion', 'startedAt', 'clientLeases',
+    'browserSessions', 'operationLeases', 'sessionAvailable',
+  ]);
+  if (Object.keys(value).some(field => !fields.has(field))) return false;
+  return (value.ownershipTraceId === undefined
+      || value.ownershipTraceId === null
+      || typeof value.ownershipTraceId === 'string')
+    && typeof value.instanceId === 'string'
+    && Number.isInteger(value.supervisorPid)
+    && (value.appVersion === null || typeof value.appVersion === 'string')
+    && (value.startedAt === null || typeof value.startedAt === 'string')
+    && Number.isInteger(value.clientLeases)
+    && Number.isInteger(value.browserSessions)
+    && Number.isInteger(value.operationLeases)
+    && typeof value.sessionAvailable === 'boolean';
 }
 
 function validateDiagnostic(value: unknown) {
@@ -190,13 +316,15 @@ function validateDiagnostic(value: unknown) {
     'schemaVersion', 'category', 'title', 'summary', 'selectedHomePath', 'bootstrapPath',
     'relevantPath', 'appVersion', 'supportedHomeFormatMinimum', 'supportedHomeFormatMaximum',
     'lastSuccessfulMigration', 'checkpointId', 'checkpointPath', 'checkpointAvailable',
+    'runtimeBlocker',
   ]);
   const unknown = Object.keys(value).filter(field => !fields.has(field));
   if (unknown.length > 0) return { valid: false as const, diagnostic: `$.${unknown[0]} is not supported` };
   if (value.schemaVersion !== 1) return { valid: false as const, diagnostic: '$.schemaVersion must be 1' };
   if (![
     'invalid-syntax', 'invalid-schema', 'unsupported-home-format',
-    'incomplete-migration', 'checkpoint-failure', 'startup-failure',
+    'incomplete-migration', 'checkpoint-failure', 'runtime-busy',
+    'runtime-unavailable', 'startup-failure',
   ].includes(String(value.category))) {
     return { valid: false as const, diagnostic: '$.category is invalid' };
   }
@@ -212,6 +340,11 @@ function validateDiagnostic(value: unknown) {
     || !Number.isInteger(value.supportedHomeFormatMaximum)
     || typeof value.checkpointAvailable !== 'boolean') {
     return { valid: false as const, diagnostic: '$ has invalid compatibility fields' };
+  }
+  if (value.runtimeBlocker !== undefined
+    && value.runtimeBlocker !== null
+    && !validateRuntimeBlocker(value.runtimeBlocker)) {
+    return { valid: false as const, diagnostic: '$.runtimeBlocker is invalid' };
   }
   return { valid: true as const, value: value as unknown as StartupFailureDiagnostic };
 }
@@ -250,6 +383,13 @@ export function startupSupportDiagnosticText(diagnostic: StartupFailureDiagnosti
     `Last successful migration: ${diagnostic.lastSuccessfulMigration ?? 'none recorded'}`,
     `Pre-migration Git commit: ${diagnostic.checkpointId ?? 'none'}`,
     `Migration recovery available: ${diagnostic.checkpointAvailable ? 'yes' : 'no'}`,
+    ...(diagnostic.runtimeBlocker ? [
+      `Runtime ownership trace: ${diagnostic.runtimeBlocker.ownershipTraceId ?? 'not recorded'}`,
+      `Active Runtime version: ${diagnostic.runtimeBlocker.appVersion ?? 'unknown'}`,
+      `Active Runtime clients: ${diagnostic.runtimeBlocker.clientLeases}`,
+      `Active browser sessions: ${diagnostic.runtimeBlocker.browserSessions}`,
+      `Active operations: ${diagnostic.runtimeBlocker.operationLeases}`,
+    ] : []),
     `Summary: ${diagnostic.summary}`,
   ].join('\n');
 }

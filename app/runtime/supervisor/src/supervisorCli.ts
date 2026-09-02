@@ -18,6 +18,10 @@ limitations under the License.
 import { rmSync } from "node:fs";
 import { readRuntimeSupervisorLaunchSpec } from "./launchSpec.js";
 import { RuntimeSupervisor } from "./runtimeSupervisor.js";
+import {
+  MEADOW_RUNTIME_OWNERSHIP_LOG_PATH_ENV,
+  MEADOW_RUNTIME_OWNERSHIP_TRACE_ENV,
+} from "./runtimeOwnershipLog.js";
 
 function parseSpecPath(args: string[]): string {
   const index = args.indexOf("--launch-spec");
@@ -32,7 +36,11 @@ async function main(): Promise<void> {
   rmSync(specPath, { force: true });
   let resolveExit: (() => void) | null = null;
   const completed = new Promise<void>(resolve => { resolveExit = resolve; });
-  const supervisor = new RuntimeSupervisor(spec, { onExit: () => resolveExit?.() });
+  const supervisor = new RuntimeSupervisor(spec, {
+    onExit: () => resolveExit?.(),
+    ownershipTraceId: process.env[MEADOW_RUNTIME_OWNERSHIP_TRACE_ENV],
+    ownershipLogPath: process.env[MEADOW_RUNTIME_OWNERSHIP_LOG_PATH_ENV],
+  });
   process.once("SIGINT", () => void supervisor.shutdown("signal"));
   process.once("SIGTERM", () => void supervisor.shutdown("signal"));
   await supervisor.start();

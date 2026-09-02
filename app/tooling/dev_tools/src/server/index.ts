@@ -505,7 +505,9 @@ app.post("/api/app/launch-dev", async (_req, res) => {
 
     // Start or attach before Electron launches; Electron negotiates its own
     // client lease against the same supervisor-owned Runtime.
-    await devRuntimeManager.prepareForLaunch();
+    await devRuntimeManager.prepareForLaunch(
+      "clicked Start Dev App in Meadow Dev Tools",
+    );
 
     console.log(`[dev] Starting electron dev in ${electronAppDir}`);
 
@@ -543,11 +545,20 @@ app.post("/api/app/open-browser", async (req, res) => {
       res.status(400).json({ error: "Only local Meadow URLs may be opened" });
       return;
     }
-    const runtimeSession = await devRuntimeManager.prepareForLaunch();
+    const userAction = "clicked Open Browser in Meadow Dev Tools";
+    const preparedRuntime = await devRuntimeManager.prepareForLaunch(userAction);
     const targetPath = requestedTarget
       ? `${requestedTarget.pathname}${requestedTarget.search}${requestedTarget.hash}`
       : "/";
-    const targetUrl = await createBrowserLaunchUrl(runtimeSession, targetPath);
+    const targetUrl = await createBrowserLaunchUrl(
+      preparedRuntime.descriptor,
+      targetPath,
+      {
+        ownershipTraceId: preparedRuntime.ownershipTraceId,
+        source: "Meadow Dev Tools",
+        userAction,
+      },
+    );
 
     const parsedTarget = new URL(targetUrl);
     const localhostPattern = parsedTarget.host;

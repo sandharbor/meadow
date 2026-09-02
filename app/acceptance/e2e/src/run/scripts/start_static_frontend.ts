@@ -42,6 +42,8 @@ const backendPort = Number.parseInt(process.env.VITE_BACKEND_PORT ?? "", 10);
 const apiCapability = process.env.MEADOW_API_CAPABILITY;
 const runtimeControlUrl = process.env.MEADOW_RUNTIME_CONTROL_URL;
 const browserSessionCookie = "meadow_browser_session";
+const browserHeartbeatPath = "/__meadow/browser-session/heartbeat";
+const browserClosingPath = "/__meadow/browser-session/closing";
 
 if (!port || !backendPort || !distDir || !apiCapability || !runtimeControlUrl) {
   process.stderr.write("Usage: Runtime Supervisor environment start_static_frontend.ts <distDir>\n");
@@ -79,6 +81,10 @@ function readCookie(cookieHeader: string | undefined, name: string): string | nu
     if (key === name) return decodeURIComponent(value.join("="));
   }
   return null;
+}
+
+function browserSessionCookieHeader(sessionId: string, maxAgeSeconds: number): string {
+  return `${browserSessionCookie}=${encodeURIComponent(sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAgeSeconds}`;
 }
 
 async function control(pathname: string, body: Record<string, unknown>): Promise<Response> {
@@ -125,7 +131,7 @@ const server = http.createServer((req, res) => {
           maxAgeSeconds: number;
         };
         res.writeHead(303, {
-          "set-cookie": `${browserSessionCookie}=${encodeURIComponent(session.sessionId)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${session.maxAgeSeconds}`,
+          "set-cookie": browserSessionCookieHeader(session.sessionId, session.maxAgeSeconds),
           location: session.targetPath,
           "cache-control": "no-store",
         });
@@ -135,6 +141,43 @@ const server = http.createServer((req, res) => {
         res.writeHead(503);
         res.end("Runtime browser session is unavailable");
       });
+    return;
+  }
+
+  if (requestUrl.pathname === browserHeartbeatPath || requestUrl.pathname === browserClosingPath) {
+    if (req.method !== "POST") {
+      res.writeHead(405, { allow: "POST" });
+      res.end("Method Not Allowed");
+      return;
+    }
+    const sessionId = readCookie(req.headers.cookie, browserSessionCookie);
+    const pageId = requestUrl.searchParams.get("pageId");
+    if (!sessionId || !pageId) {
+      res.writeHead(401);
+      res.end("Browser session is required");
+      return;
+    }
+    const heartbeat = requestUrl.pathname === browserHeartbeatPath;
+    void control(
+      heartbeat ? "/browser-session/heartbeat" : "/browser-session/closing",
+      { sessionId, pageId },
+    ).then(async lifecycleResponse => {
+      if (!lifecycleResponse.ok) {
+        res.writeHead(401);
+        res.end("Browser session is no longer active");
+        return;
+      }
+      const headers: http.OutgoingHttpHeaders = { "cache-control": "no-store" };
+      if (heartbeat) {
+        const result = await lifecycleResponse.json() as { maxAgeSeconds: number };
+        headers["set-cookie"] = browserSessionCookieHeader(sessionId, result.maxAgeSeconds);
+      }
+      res.writeHead(204, headers);
+      res.end();
+    }).catch(() => {
+      res.writeHead(503);
+      res.end("Runtime browser session is unavailable");
+    });
     return;
   }
 

@@ -530,7 +530,7 @@ export const test = base.extend<{
    * `assertMeadowHomeState()`.
    */
   skipMeadowHomeStateCheck: () => Promise<void>;
-  addKeyFrame: (concept: { id: string }) => Promise<void>;
+  addKeyFrame: (...concepts: { id: string }[]) => Promise<void>;
   meadowCli: MeadowCli;
   minioS3: MinioS3;
   /**
@@ -730,6 +730,7 @@ export const test = base.extend<{
           "ignore",
           kind === "service" ? backendStderrFd! : frontendStderrFd!,
         ],
+        ownershipLogPath: path.join(configDir, "logs", "meadow.log"),
       });
       runtimeSupervisor.leases.acquire("client", leaseId, process.pid);
       leaseAcquired = true;
@@ -1630,14 +1631,19 @@ export const test = base.extend<{
 
     const docIdCounts = new Map<string, number>();
 
-    const addKeyFrameFn = async (concept: { id: string }) => {
-      const count = (docIdCounts.get(concept.id) ?? 0) + 1;
-      docIdCounts.set(concept.id, count);
+    const addKeyFrameFn = async (...concepts: { id: string }[]) => {
+      if (concepts.length === 0) throw new Error("A keyframe requires at least one concept");
+      const primaryConcept = concepts[0];
+      const count = (docIdCounts.get(primaryConcept.id) ?? 0) + 1;
+      docIdCounts.set(primaryConcept.id, count);
       const filename = count === 1
-        ? `keyframe-${concept.id}.png`
-        : `keyframe-${concept.id}-${count}.png`;
+        ? `keyframe-${primaryConcept.id}.png`
+        : `keyframe-${primaryConcept.id}-${count}.png`;
       await page.screenshot({ path: path.join(artifactDir, filename) });
-      keyFrames.push({ docId: concept.id, filename, timestamp: new Date().toISOString() });
+      const timestamp = new Date().toISOString();
+      for (const concept of concepts) {
+        keyFrames.push({ docId: concept.id, filename, timestamp });
+      }
     };
 
     await use(addKeyFrameFn);

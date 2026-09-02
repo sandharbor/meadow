@@ -48,15 +48,14 @@ export const bundleConfig = defineMeadowConcept({
 
 export const callout = defineMeadowConcept({
   id: coreConceptIds.callout,
-  name: "Curation Callout",
-  aliases: ["Callout"],
+  name: "Callout",
   kind: "interface",
   appAreaIds: curationArea,
-  definition: conceptText`A contextual warning or action surface that explains a curation condition requiring attention.`,
+  definition: conceptText`A contextual message or action surface that textually explains a system condition requiring attention.`,
   mechanics: [
     conceptText`A callout remains tied to the condition that produced it and offers only actions that can resolve or inspect that condition.`,
   ],
-  interplay: conceptText`Callouts surface conditions such as ${conceptLink(coreConceptIds.orphan, "Orphaned Bundle Pages")}, ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, and untracked pages before generation.`,
+  interplay: conceptText`Callouts surface conditions such as ${conceptLink(coreConceptIds.orphan, "Orphaned Bundle Pages")}, ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, untracked pages before generation, and failures handled by ${conceptLink(coreConceptIds.startupRecovery, "Safe Startup Recovery")}.`,
 });
 
 export const filters = defineMeadowConcept({

@@ -20,9 +20,9 @@ import type { RuntimeSessionDescriptor } from "../../../../contracts/types/runti
 import {
   ensureRuntime,
   postRuntimeControl,
-  RuntimeClientLease,
   waitForRuntimeHomeRelease,
   type EnsureRuntimeOptions,
+  type RuntimeClientLease,
 } from "../../../../runtime/supervisor/src/runtimeClient.js";
 import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
 import { readRuntimeSessionDescriptor } from "../../../../runtime/supervisor/src/sessionDescriptor.js";
@@ -39,6 +39,11 @@ export interface DevRuntimeManagerOptions {
   terminateProcess?: (pid: number) => void;
 }
 
+export interface PreparedDevRuntime {
+  descriptor: RuntimeSessionDescriptor;
+  ownershipTraceId: string;
+}
+
 function readActiveRuntimeDescriptor(configDirectory: string): RuntimeSessionDescriptor | null {
   const descriptorPath = getRuntimePaths(configDirectory).sessionDescriptor;
   if (!existsSync(descriptorPath)) return null;
@@ -46,8 +51,9 @@ function readActiveRuntimeDescriptor(configDirectory: string): RuntimeSessionDes
 }
 
 /**
- * Dev Tools is an ordinary official Runtime client. It may ask the Runtime
- * Supervisor to start or attach, but it never creates service or Web processes.
+ * Dev Tools coordinates a launch but is not itself a long-lived Runtime
+ * client. Its bootstrap lease ends as soon as the Runtime is ready; Desktop or
+ * browser liveness takes over from there.
  */
 export class DevRuntimeManager {
   private readonly projectRoot: string;
@@ -58,7 +64,6 @@ export class DevRuntimeManager {
   private readonly waitForRelease: typeof waitForRuntimeHomeRelease;
   private readonly readActiveDescriptor: (configDirectory: string) => RuntimeSessionDescriptor | null;
   private readonly terminateProcess: (pid: number) => void;
-  private lease: RuntimeClientLease | null = null;
 
   constructor(options: DevRuntimeManagerOptions) {
     this.projectRoot = options.projectRoot;
@@ -71,12 +76,9 @@ export class DevRuntimeManager {
     this.terminateProcess = options.terminateProcess ?? (pid => { process.kill(pid, "SIGTERM"); });
   }
 
-  get descriptor(): RuntimeSessionDescriptor | null {
-    return this.lease?.descriptor ?? null;
-  }
-
-  async prepareForLaunch(): Promise<RuntimeSessionDescriptor> {
-    if (this.lease) return this.lease.descriptor;
+  async prepareForLaunch(
+    userAction = "prepared a development client launch",
+  ): Promise<PreparedDevRuntime> {
     const perspective = process.env.MEADOW_BUILD_PERSPECTIVE === "composed"
       ? "composed"
       : "standalone";
@@ -89,7 +91,7 @@ export class DevRuntimeManager {
       payloadIdentity,
       perspective,
     });
-    this.lease = await this.ensure({
+    const lease = await this.ensure({
       homeDirectory: this.configDirectory,
       payload: launchSpec.payload,
       launchSpec,
@@ -102,21 +104,25 @@ export class DevRuntimeManager {
         "meadow-runtime-supervisor.cjs",
       ),
       supervisorStdio: "inherit",
+      ownership: {
+        clientName: "Meadow Dev Tools",
+        userAction,
+      },
     });
-    return this.lease.descriptor;
+    await lease.release("finished the Dev Tools launch handoff");
+    return {
+      descriptor: lease.descriptor,
+      ownershipTraceId: lease.ownershipTraceId,
+    };
   }
 
   async stopRuntime(): Promise<void> {
-    const lease = this.lease;
-    const descriptor = lease?.descriptor ?? this.readActiveDescriptor(this.configDirectory);
+    const descriptor = this.readActiveDescriptor(this.configDirectory);
     if (!descriptor) return;
 
-    // Fixture switching is an authoritative development reset. Release Dev
-    // Tools' own lease, then ask the Supervisor to stop even when an App, Web
-    // session, or operation still holds another lease. Keep our local lease
-    // until Home ownership is actually released so a failed request remains
-    // retryable instead of letting the next switch mutate a live Home.
-    await lease?.release();
+    // Fixture switching is an authoritative development reset. Dev Tools has
+    // no lease of its own, so ask the Supervisor to stop even when an App, Web
+    // session, or operation still holds a client or operation lease.
     const result = await this.postControl(descriptor, "/shutdown", { force: true });
     if (!result.response.ok) {
       // A Supervisor that predates forced shutdown ignores the flag and
@@ -126,9 +132,6 @@ export class DevRuntimeManager {
       if (result.response.status === 409) {
         this.terminateProcess(descriptor.supervisorPid);
         await this.waitForRelease(descriptor);
-        if (this.lease?.descriptor.instanceId === descriptor.instanceId) {
-          this.lease = null;
-        }
         return;
       }
       throw new Error(
@@ -136,8 +139,5 @@ export class DevRuntimeManager {
       );
     }
     await this.waitForRelease(descriptor);
-    if (this.lease?.descriptor.instanceId === descriptor.instanceId) {
-      this.lease = null;
-    }
   }
 }

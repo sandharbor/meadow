@@ -49,20 +49,33 @@ function descriptor(): RuntimeSessionDescriptor {
   };
 }
 
+function runtimeLease(release = vi.fn(() => Promise.resolve())): RuntimeClientLease {
+  return {
+    descriptor: descriptor(),
+    leaseId: "dev-tools-a",
+    ownershipTraceId: "trace-a",
+    release,
+  } as unknown as RuntimeClientLease;
+}
+
 describe("development Runtime startup", () => {
   it("asks only the Runtime Supervisor to start the service and Web children", async () => {
     const calls: EnsureRuntimeOptions[] = [];
+    const release = vi.fn(() => Promise.resolve());
     const manager = new DevRuntimeManager({
       projectRoot: "/tmp/meadow",
       configDirectory: "/tmp/Meadow Home",
       appVersion: "0.5.43",
       ensure: options => {
         calls.push(options);
-        return Promise.resolve(new RuntimeClientLease(descriptor(), "dev-tools-a"));
+        return Promise.resolve(runtimeLease(release));
       },
     });
 
-    expect(await manager.prepareForLaunch()).toEqual(descriptor());
+    expect(await manager.prepareForLaunch("clicked Start Dev App")).toEqual({
+      descriptor: descriptor(),
+      ownershipTraceId: "trace-a",
+    });
     expect(calls).toHaveLength(1);
     expect(calls[0].supervisorEntryPath).toBe(
       "/tmp/meadow/app/runtime/supervisor/dist/meadow-runtime-supervisor.cjs",
@@ -75,10 +88,20 @@ describe("development Runtime startup", () => {
       cwd: "/tmp/meadow/app/clients/web",
       args: [],
     });
+    expect(calls[0].ownership).toEqual({
+      clientName: "Meadow Dev Tools",
+      userAction: "clicked Start Dev App",
+    });
+    expect(release).toHaveBeenCalledWith("finished the Dev Tools launch handoff");
   });
 
-  it("retains one official client lease across App and Web launches", async () => {
-    const ensure = vi.fn(() => Promise.resolve(new RuntimeClientLease(descriptor(), "dev-tools-a")));
+  it("uses only transient bootstrap leases across App and Web launches", async () => {
+    const releases = [
+      vi.fn(() => Promise.resolve()),
+      vi.fn(() => Promise.resolve()),
+    ];
+    let call = 0;
+    const ensure = vi.fn(() => Promise.resolve(runtimeLease(releases[call++])));
     const manager = new DevRuntimeManager({
       projectRoot: "/tmp/meadow",
       configDirectory: "/tmp/Meadow Home",
@@ -86,13 +109,14 @@ describe("development Runtime startup", () => {
       ensure,
     });
 
-    await manager.prepareForLaunch();
-    await manager.prepareForLaunch();
-    expect(ensure).toHaveBeenCalledTimes(1);
+    await manager.prepareForLaunch("clicked Start Dev App");
+    await manager.prepareForLaunch("clicked Open Browser");
+    expect(ensure).toHaveBeenCalledTimes(2);
+    expect(releases[0]).toHaveBeenCalledOnce();
+    expect(releases[1]).toHaveBeenCalledOnce();
   });
 
-  it("releases its lease and forces shutdown before changing a fixture", async () => {
-    const release = vi.fn(() => Promise.resolve());
+  it("forces shutdown before changing a fixture without holding its own lease", async () => {
     const postControl = vi.fn(() => Promise.resolve({
       response: new Response(null, { status: 202 }),
       body: { success: true },
@@ -102,14 +126,12 @@ describe("development Runtime startup", () => {
       projectRoot: "/tmp/meadow",
       configDirectory: "/tmp/Meadow Home",
       appVersion: "0.5.43",
-      ensure: () => Promise.resolve({ descriptor: descriptor(), leaseId: "dev-tools-a", release } as unknown as RuntimeClientLease),
       postControl,
       waitForRelease,
+      readActiveDescriptor: () => descriptor(),
     });
 
-    await manager.prepareForLaunch();
     await manager.stopRuntime();
-    expect(release).toHaveBeenCalledOnce();
     expect(postControl).toHaveBeenCalledWith(descriptor(), "/shutdown", { force: true });
     expect(waitForRelease).toHaveBeenCalledWith(descriptor());
   });
@@ -135,7 +157,6 @@ describe("development Runtime startup", () => {
   });
 
   it("terminates a pre-force Supervisor after its authenticated shutdown refusal", async () => {
-    const release = vi.fn(() => Promise.resolve());
     const postControl = vi.fn(() => Promise.resolve({
       response: new Response(null, { status: 409 }),
       body: { error: "The Runtime is busy and cannot shut down cooperatively" },
@@ -146,13 +167,12 @@ describe("development Runtime startup", () => {
       projectRoot: "/tmp/meadow",
       configDirectory: "/tmp/Meadow Home",
       appVersion: "0.5.43",
-      ensure: () => Promise.resolve({ descriptor: descriptor(), leaseId: "dev-tools-a", release } as unknown as RuntimeClientLease),
       postControl,
       waitForRelease,
       terminateProcess,
+      readActiveDescriptor: () => descriptor(),
     });
 
-    await manager.prepareForLaunch();
     await manager.stopRuntime();
 
     expect(terminateProcess).toHaveBeenCalledWith(descriptor().supervisorPid);
@@ -160,7 +180,6 @@ describe("development Runtime startup", () => {
   });
 
   it("does not forget a Runtime when a forced shutdown request fails", async () => {
-    const release = vi.fn(() => Promise.resolve());
     const postControl = vi.fn()
       .mockResolvedValueOnce({
         response: new Response(null, { status: 503 }),
@@ -175,13 +194,12 @@ describe("development Runtime startup", () => {
       projectRoot: "/tmp/meadow",
       configDirectory: "/tmp/Meadow Home",
       appVersion: "0.5.43",
-      ensure: () => Promise.resolve({ descriptor: descriptor(), leaseId: "dev-tools-a", release } as unknown as RuntimeClientLease),
       postControl,
       waitForRelease,
       terminateProcess: vi.fn(),
+      readActiveDescriptor: () => descriptor(),
     });
 
-    await manager.prepareForLaunch();
     await expect(manager.stopRuntime()).rejects.toThrow("could not be stopped");
     await manager.stopRuntime();
 
