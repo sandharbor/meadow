@@ -146,14 +146,8 @@ export function renderStartupRecoveryHtml(diagnostic: StartupFailureDiagnostic):
 :root { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: ${neutralPalette[900]}; background: ${neutralPalette[50]}; font-synthesis: none; }
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; background: linear-gradient(180deg, #fff 0, ${neutralPalette[50]} 100%); }
-.brand { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 24px; border-bottom: 1px solid ${neutralPalette[200]}; background: rgba(255,255,255,.92); font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
-.brand-mark { position: relative; width: 24px; height: 24px; overflow: hidden; border-radius: 7px; background: ${mainPalette[700]}; box-shadow: inset 0 0 0 1px rgba(4,47,46,.18); }
-.brand-mark::before, .brand-mark::after { content: ""; position: absolute; bottom: 4px; width: 8px; height: 15px; border: 2px solid ${mainPalette[100]}; border-left: 0; border-bottom: 0; border-radius: 100% 0; transform-origin: bottom; }
-.brand-mark::before { left: 5px; transform: rotate(-24deg); }
-.brand-mark::after { right: 4px; transform: scaleX(-1) rotate(-18deg); }
+.brand { height: 52px; display: flex; align-items: center; padding: 0 24px; border-bottom: 1px solid ${neutralPalette[200]}; background: rgba(255,255,255,.92); font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
 main { max-width: 680px; margin: 0 auto; padding: 58px 32px 44px; }
-.status-mark { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; margin-bottom: 22px; border-radius: 13px; color: ${mainPalette[700]}; background: ${mainPalette[50]}; box-shadow: inset 0 0 0 1px ${mainPalette[200]}; }
-.status-mark svg { width: 22px; height: 22px; }
 h1 { max-width: 620px; margin: 0; font-size: 34px; line-height: 1.14; letter-spacing: -.035em; font-weight: 680; }
 .summary { max-width: 620px; margin: 14px 0 0; color: ${neutralPalette[600]}; font-size: 17px; line-height: 1.55; }
 .assurance { display: flex; align-items: flex-start; gap: 9px; margin: 20px 0 0; color: ${mainPalette[800]}; font-size: 13px; line-height: 1.5; font-weight: 550; }
@@ -190,9 +184,8 @@ dd { margin: 0; color: ${neutralPalette[700]}; font-family: ui-monospace, SFMono
 .technical-actions button { min-height: 34px; padding: 6px 10px; font-size: 12px; box-shadow: none; }
 @media (max-width: 620px) { main { padding: 42px 22px 34px; } h1 { font-size: 29px; } dl { grid-template-columns: 1fr; gap: 3px; } dd { margin-bottom: 8px; } }
 </style></head><body>
-<header class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Meadow</span></header>
+<header class="brand">Meadow</header>
 <main data-recovery-category="${escapeHtml(diagnostic.category)}">
-<div class="status-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5v10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M12 8.5c-3.7 0-6-1.8-6-4.5 3.7 0 6 1.8 6 4.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 12c3.7 0 6-1.8 6-4.5-3.7 0-6 1.8-6 4.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 20h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
 <h1>${escapeHtml(diagnostic.title)}</h1>
 <p class="summary">${escapeHtml(diagnostic.summary)}</p>
 <p class="assurance"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5.5 10 3 3 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${escapeHtml(assurance)}</span></p>

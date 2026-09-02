@@ -172,6 +172,8 @@ describe('startup recovery diagnostics', () => {
     expect(html).toContain('data-recovery-action="take-over"');
     expect(html).toContain('data-recovery-action="open-active"');
     expect(html).toContain('Open here instead');
+    expect(html).not.toContain('brand-mark');
+    expect(html).not.toContain('status-mark');
     expect(html).not.toContain(capability);
   });
 
