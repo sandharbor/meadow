@@ -26,6 +26,7 @@ import CreateOrEditBundleModal from './CreateOrEditBundleModal';
 import DeleteBundleModal from '../../../shared/bundle-management/DeleteBundleModal';
 import { logger } from '../../../shared/utils/logger';
 import { openExternal } from '../../../shared/utils/openExternal';
+import { useAppNavigation } from '../../../shared/utils/appNavigation';
 import SelectedFolderRepairModal from './SelectedFolderRepairModal';
 
 type BundleConfig = BundleConfigWithSlug;
@@ -153,6 +154,7 @@ const formatBundleDate = (value?: string | null): string | null => {
 
 const BundleList: React.FC = () => {
   const location = useLocation();
+  const navigateInApp = useAppNavigation('bundleList');
   const [bundles, setBundles] = useState<BundleConfig[]>([]);
   const [directories, setDirectories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -479,8 +481,7 @@ const BundleList: React.FC = () => {
       sessionStorage.removeItem('autoSelectPageName');
     }
 
-    // Navigate to the bundle's working graph or main view
-    window.location.href = `/bundle/${slug}`;
+    navigateInApp({ page: 'bundle', slug });
   };
 
   const handleOpenWebsite = async (slug: string) => {
@@ -560,7 +561,7 @@ const BundleList: React.FC = () => {
   const handleBundleCreated = (slug: string) => {
     loadBundles();
     setIsCreateModalOpen(false);
-    window.location.href = `/bundle/${slug}`;
+    navigateInApp({ page: 'bundle', slug });
   };
 
   const handleAddExampleBundle = async () => {
@@ -568,7 +569,7 @@ const BundleList: React.FC = () => {
       const response = await apiRequest(`bundles/add-example`, { method: 'POST' });
       const data = await response.json();
       if (data.success) {
-        window.location.href = `/bundle/${data.slug}`;
+        navigateInApp({ page: 'bundle', slug: data.slug });
       }
     } catch (error) {
       logger.error('Failed to add example bundle:', error);

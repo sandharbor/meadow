@@ -16,31 +16,32 @@ limitations under the License.
 
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import BundleEditor from './components/BundleEditor'
 import BundleList from '../../areas/bundles/components/BundleList'
 import TitleBar from './components/TitleBar'
 import UpdateModal from './components/UpdateModal'
 import { initializeApiConfig } from '../utils/apiConfig'
 import { logger } from '../utils/logger'
+import { useAppNavigation } from '../utils/appNavigation'
 import { FindInBundlesOptions } from '../../../../../contracts/types/findInBundlesOptions'
 import { startBrowserSessionHeartbeat } from './browserSessionHeartbeat'
 import './index.css'
 
 const FindInBundlesDeepLinkListener: React.FC = () => {
-  const navigate = useNavigate();
+  const navigateInApp = useAppNavigation('findInBundlesDeepLink');
 
   useEffect(() => {
     if (!window.electronAPI) return;
 
     window.electronAPI.onOpenFindInBundles((findInBundlesOptions: FindInBundlesOptions) => {
-      navigate('/', { state: { findInBundlesOptions } });
+      navigateInApp({ page: 'bundle-list', findInBundlesOptions });
     });
 
     return () => {
       window.electronAPI.offOpenFindInBundles();
     };
-  }, [navigate]);
+  }, [navigateInApp]);
 
   return null;
 };

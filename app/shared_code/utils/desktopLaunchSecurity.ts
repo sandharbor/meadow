@@ -27,3 +27,21 @@ export function isTrustedDesktopRenderer(url: string, frontendPort: number): boo
     return false;
   }
 }
+
+/**
+ * Validates URLs before handing them to the operating system. Obsidian links
+ * are intentionally limited to opening an existing path; arbitrary custom
+ * protocols and other Obsidian actions remain blocked.
+ */
+export function parseAllowedExternalUrl(url: string): InstanceType<typeof globalThis.URL> {
+  const parsed = new globalThis.URL(url);
+  const isWebUrl = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  const isObsidianOpenUrl = parsed.protocol === 'obsidian:'
+    && parsed.hostname === 'open'
+    && Boolean(parsed.searchParams.get('path'));
+
+  if (!isWebUrl && !isObsidianOpenUrl) {
+    throw new Error('Only HTTP(S) links and Obsidian path-open links may be opened externally');
+  }
+  return parsed;
+}

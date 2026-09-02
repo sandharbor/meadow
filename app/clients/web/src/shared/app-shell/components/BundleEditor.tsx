@@ -34,12 +34,14 @@ import { fetchBundleEditData, BundleEditData } from '../../utils/bundleApi';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
+import { useAppNavigation } from '../../utils/appNavigation';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import DeleteBundleModal from '../../bundle-management/DeleteBundleModal';
 import type { FolderScopeChangeExplanation } from '../../../../../../contracts/types/folderScopeChanges';
 
 const BundleEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigateInApp = useAppNavigation('bundleEditor');
   const [searchParams, setSearchParams] = useSearchParams();
   const [graph, setGraph] = useState<Graph | null>(null);
   const [folderScopeChanges, setFolderScopeChanges] = useState<FolderScopeChangeExplanation | undefined>();
@@ -1006,7 +1008,7 @@ const BundleEditor: React.FC = () => {
             </pre>
             <div className="flex space-x-4">
               <button
-                onClick={() => { window.location.href = '/'; }}
+                onClick={() => navigateInApp({ page: 'bundle-list' })}
                 className="px-4 py-2 bg-neutral-200 rounded hover:bg-neutral-300"
               >
                 ← Back to Home
@@ -1033,7 +1035,7 @@ const BundleEditor: React.FC = () => {
       <div className="flex border-b border-neutral-200 items-center py-2 flex-shrink-0">
         <button
           className="ml-4 px-3 py-1 bg-neutral-200 rounded hover:bg-neutral-300"
-          onClick={() => { window.location.href = '/'; }}
+          onClick={() => navigateInApp({ page: 'bundle-list' })}
         >
           ← Bundles
         </button>
@@ -1207,7 +1209,7 @@ const BundleEditor: React.FC = () => {
       <DeleteBundleModal
         isOpen={isDeleteBundleModalOpen}
         onClose={() => setIsDeleteBundleModalOpen(false)}
-        onDeleted={() => { window.location.href = '/'; }}
+        onDeleted={() => navigateInApp({ page: 'bundle-list' })}
         bundleSlug={slug || ''}
         isPublished={hasPublishedVersions}
       />

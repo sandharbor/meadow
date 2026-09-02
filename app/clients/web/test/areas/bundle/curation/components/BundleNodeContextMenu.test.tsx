@@ -14,13 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import BundleNodeContextMenu from '../../../../../src/areas/bundle/curation/components/BundleNodeContextMenu';
 import { Graph } from '../../../../../../../contracts/types/graph';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import type { BundleNodeId, BundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig';
+
+const { openExternalMock } = vi.hoisted(() => ({
+  openExternalMock: vi.fn(async () => undefined),
+}));
+
+vi.mock('../../../../../src/shared/utils/openExternal', () => ({
+  openExternal: openExternalMock,
+}));
 
 const commonNode = {
   label: 'A',
@@ -63,7 +72,10 @@ const bundleHomeNode: IBundleNode = {
   memberBundleNodeIds: ['folder-id' as BundleNodeId],
 };
 
-const renderMenu = (page: IBundleNode) => render(
+const renderMenu = (
+  page: IBundleNode,
+  obsidianInfo: ComponentProps<typeof BundleNodeContextMenu>['obsidianInfo'] = null,
+) => render(
   <MemoryRouter>
     <BundleNodeContextMenu
       page={page}
@@ -75,7 +87,7 @@ const renderMenu = (page: IBundleNode) => render(
       onPreviewPage={vi.fn()}
       onSelectedNodeKeysChange={vi.fn()}
       onMarkSensitive={vi.fn()}
-      obsidianInfo={null}
+      obsidianInfo={obsidianInfo}
     />
   </MemoryRouter>
 );
@@ -103,5 +115,26 @@ describe('BundleNodeContextMenu file-specific actions', () => {
 
     expect(screen.queryByRole('button', { name: 'Mark Sensitive' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Find in Bundles' })).not.toBeInTheDocument();
+  });
+
+  it('sends an encoded absolute page path through the external-open boundary', async () => {
+    renderMenu({
+      ...markdownNode,
+      bundleNodeName: 'Project note',
+      sourceGraphSubdirectory: 'Work notes',
+    }, {
+      hasObsidianVault: true,
+      sourceDirectory: '/Users/example/My Vault',
+      vaultNameGuess: 'My Vault',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open in Obsidian' }));
+
+    await waitFor(() => {
+      expect(openExternalMock).toHaveBeenCalledWith(
+        'obsidian://open?path=%2FUsers%2Fexample%2FMy%20Vault%2FWork%20notes%2FProject%20note.md',
+        'pageContextMenu:openInObsidian',
+      );
+    });
   });
 });

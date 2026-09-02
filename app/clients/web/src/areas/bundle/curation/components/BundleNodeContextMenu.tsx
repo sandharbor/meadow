@@ -15,12 +15,11 @@ limitations under the License.
 */
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
 import { FindInBundlesOptions } from '../../../../../../../contracts/types/findInBundlesOptions';
 import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../utils/selectionPaths';
-import { logger } from '../../../../shared/utils/logger';
 import { openExternal } from '../../../../shared/utils/openExternal';
+import { useAppNavigation } from '../../../../shared/utils/appNavigation';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 
 export interface ObsidianInfo {
@@ -79,7 +78,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
   onMarkSensitive,
   obsidianInfo,
 }) => {
-  const navigate = useNavigate();
+  const navigateInApp = useAppNavigation('pageContextMenu');
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedTop, setAdjustedTop] = useState(position.y);
 
@@ -130,7 +129,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
       pageName: pageName,
     };
 
-    navigate('/', { state: { findInBundlesOptions } });
+    navigateInApp({ page: 'bundle-list', findInBundlesOptions });
     onClose();
   };
 
@@ -139,12 +138,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
     const rel = getPageRelativePath(page);
     const abs = joinFsPath(obsidianInfo.sourceDirectory, rel);
     const url = `obsidian://open?path=${encodeURIComponent(abs)}`;
-    try {
-      await openExternal(url, 'pageContextMenu:openInObsidian');
-    } catch (err) {
-      logger.warn('Failed to open in Obsidian:', err);
-      window.location.href = url;
-    }
+    await openExternal(url, 'pageContextMenu:openInObsidian');
     onClose();
   };
 

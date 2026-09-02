@@ -44,7 +44,6 @@ import { clearBundleGuidCache, logBundleError, logBundleInfo } from '../../../sh
 import { logger } from '../../../shared/utils/logging/backendLoggingUtils.js';
 import { findUniqueName } from '../../../shared/utils/uniqueNameUtils.js';
 import { listMarkdownSourcePages } from '../../../shared/utils/sourcePageFileUtils.js';
-import { loadValidatedBundleNodeConfiguration } from '../../../shared/bundle-node/bundleNodeConfigLoader.js';
 import {
   preflightFolderBundle,
   verifyFolderBundlePreflight,
@@ -52,7 +51,7 @@ import {
 } from '../services/folderBundleCreation.js';
 import { persistFolderBundleAtomically } from '../services/folderBundlePersistence.js';
 import {
-  getFolderBundleRepairStatus,
+  getFolderBundleRepairStatusFromConfiguration,
 } from '../../../shared/bundle-config/folderBundleRepair.js';
 import selectedFolderRepairRoutes from './selectedFolderRepairRoutes.js';
 import bundleSettingsRoutes from './bundleSettingsRoutes.js';
@@ -62,6 +61,7 @@ import {
   createPageBundle,
   PageBundleOperationError,
 } from '../services/pageBundleOperations.js';
+import { bundleListConfigurationCache } from '../services/bundleListConfigurationCache.js';
 
 const router = express.Router();
 router.use(selectedFolderRepairRoutes);
@@ -163,13 +163,23 @@ router.get('/bundles/detailed', (req, res, next) => {
     const bundleSlugs = fs.readdirSync(bundlesDir, { withFileTypes: true })
       .filter(dirent => dirent.isDirectory())
       .map(dirent => dirent.name);
-    
+
+    const bundleDirectories = bundleSlugs.map(slug => join(bundlesDir, slug));
+    bundleListConfigurationCache.prune(bundleDirectories);
+
     const bundlesWithConfig = bundleSlugs.map(slug => {
       try {
         const bundleDirectory = join(bundlesDir, slug);
-        const config = loadBundleConfig(bundleDirectory);
-        const { entryNode } = loadValidatedBundleNodeConfiguration(bundleDirectory);
-        const repairStatus = getFolderBundleRepairStatus(bundleDirectory);
+        const {
+          bundleConfig: config,
+          nodes,
+          entryNode,
+        } = bundleListConfigurationCache.load(bundleDirectory);
+        const repairStatus = getFolderBundleRepairStatusFromConfiguration(
+          bundleDirectory,
+          config,
+          nodes,
+        );
         const generatedVersionCount = loadGeneratedBundleVersionManifest(bundleDirectory).versions.length;
         const publicationSummaries = getAllBackendProviders().flatMap(provider =>
           provider.getBundlePublicationSummaries?.(slug) ?? []

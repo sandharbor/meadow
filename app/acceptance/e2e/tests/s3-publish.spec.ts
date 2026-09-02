@@ -110,7 +110,12 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   });
   expect(lockedDestinationResponse.status()).toBe(409);
 
-  const publishedBundle = new PublishedBundlePage(page, expect);
+  // Keep the Meadow page open while checking the published site. Navigating
+  // the only app page away correctly closes its browser-session heartbeat,
+  // which would make the later authenticated API setup depend on close-grace
+  // timing rather than the publication behavior under test.
+  const readerPage = await page.context().newPage();
+  const publishedBundle = new PublishedBundlePage(readerPage, expect);
   await publishedBundle.goto(publishedUrl);
   await publishedBundle.expectMainHeadingVisible();
   await publishedBundle.expectNoNewerVersionNotice();
@@ -183,7 +188,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   await publishedBundle.goto(publishedUrl);
   await publishedBundle.expectMissingPageNotice(successorUrl);
   await snapshot("missing-page reader callout links only to successor entry");
-  await page.screenshot({
+  await readerPage.screenshot({
     path: path.join(artifactDir, "missing-page-reader-callout.png"),
     fullPage: true,
   });

@@ -31,6 +31,7 @@ import { resolveNativeRustBinaryPathFromRuntimeParent } from '../../../shared_co
 import {
   DESKTOP_WEB_SECURITY_PREFERENCES,
   isTrustedDesktopRenderer,
+  parseAllowedExternalUrl,
 } from '../../../shared_code/utils/desktopLaunchSecurity';
 import {
   MEADOW_RUNTIME_SESSION_ENV,
@@ -511,10 +512,7 @@ class MeadowApp {
     });
 
     ipcMain.handle('open-external', async (_event: unknown, url: string) => {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-        throw new Error('Only HTTP(S) links may be opened externally');
-      }
+      const parsed = parseAllowedExternalUrl(url);
       await shell.openExternal(parsed.toString());
     });
   }

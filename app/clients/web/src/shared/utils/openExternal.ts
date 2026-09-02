@@ -17,7 +17,7 @@ limitations under the License.
 import { logger } from './logger';
 
 /**
- * Opens a URL in the user's default external browser.
+ * Opens a URL with the operating system's external handler.
  * Centralizes logging and error handling for all external URL opens.
  */
 export async function openExternal(url: string, source: string): Promise<void> {

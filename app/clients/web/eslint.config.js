@@ -102,7 +102,53 @@ export default [
         name: 'fetch',
         message: 'Use apiRequest, apiJson, or resourceRequest from shared/utils/apiClient.'
       }],
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: 'react-router-dom',
+          importNames: ['Link', 'NavLink', 'Navigate', 'useNavigate'],
+          message: 'Use useAppNavigation from shared/utils/appNavigation for internal app navigation.'
+        }]
+      }],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "AssignmentExpression[left.object.name='window'][left.property.name='location']",
+          message: 'Use useAppNavigation for internal routes or openExternal for external URLs.'
+        },
+        {
+          selector: "AssignmentExpression[left.object.object.name='window'][left.object.property.name='location']",
+          message: 'Use useAppNavigation for internal routes or openExternal for external URLs.'
+        },
+        {
+          selector: "AssignmentExpression[left.name='location'], AssignmentExpression[left.object.name='location']",
+          message: 'Use useAppNavigation for internal routes or openExternal for external URLs.'
+        },
+        {
+          selector: "CallExpression[callee.object.object.name='window'][callee.object.property.name='location'], CallExpression[callee.object.name='location']",
+          message: 'Use useAppNavigation for internal routes or openExternal for external URLs.'
+        },
+        {
+          selector: "CallExpression[callee.object.name='window'][callee.property.name='open']",
+          message: 'Use openExternal from shared/utils/openExternal for external URLs.'
+        },
+        {
+          selector: "CallExpression[callee.object.object.name='window'][callee.object.property.name='history'], CallExpression[callee.object.name='history']",
+          message: 'Use useAppNavigation from shared/utils/appNavigation for internal app navigation.'
+        }
+      ],
       '@typescript-eslint/no-unused-vars': ['error', { 'argsIgnorePattern': '^_' }]
+    }
+  },
+  {
+    files: ['src/shared/utils/appNavigation.ts'],
+    rules: {
+      'no-restricted-imports': 'off'
+    }
+  },
+  {
+    files: ['src/shared/utils/openExternal.ts'],
+    rules: {
+      'no-restricted-syntax': 'off'
     }
   },
   {

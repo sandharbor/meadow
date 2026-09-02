@@ -40,6 +40,15 @@ describe('openExternal', () => {
     expect(browserOpen).not.toHaveBeenCalled();
   });
 
+  it('passes Obsidian URLs to the Desktop host for protocol handling', async () => {
+    const desktopOpen = vi.fn(async () => undefined);
+    electronWindow.electronAPI = { openExternal: desktopOpen };
+
+    await openExternal('obsidian://open?path=%2Fnotes%2FExample.md', 'test');
+
+    expect(desktopOpen).toHaveBeenCalledWith('obsidian://open?path=%2Fnotes%2FExample.md');
+  });
+
   it('opens a new isolated tab when running as a browser client', async () => {
     const browserOpen = vi.spyOn(window, 'open').mockReturnValue(null);
 

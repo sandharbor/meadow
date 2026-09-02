@@ -105,6 +105,22 @@ function loadFolderBundle(bundleDirectory: string): LoadedFolderBundle {
   const originalNodeConfig = fs.readFileSync(nodeConfigPath, 'utf8');
   const nodes = parseBundleNodeConfig(originalNodeConfig, nodeConfigPath);
   const bundleConfig = YAML.parse(fs.readFileSync(bundleConfigPath, 'utf8')) as BundleConfig;
+  return folderBundleFromConfiguration(
+    bundleDirectory,
+    bundleConfig,
+    nodes,
+    originalNodeConfig,
+  );
+}
+
+function folderBundleFromConfiguration(
+  bundleDirectory: string,
+  bundleConfig: BundleConfig,
+  nodes: BundleNodeConfig[],
+  originalNodeConfig = '',
+): LoadedFolderBundle {
+  const nodeConfigPath = path.join(bundleDirectory, 'config', 'bundle_node_config.yaml');
+  const bundleConfigPath = path.join(bundleDirectory, 'config', 'bundle_config.yaml');
   const entry = nodes.find(node => node.bundleNodeId === bundleConfig.entryBundleNodeId);
   if (!entry || entry.bundleNodeKind === 'file') {
     return {
@@ -166,6 +182,15 @@ function repairStatusForLoaded(loaded: LoadedFolderBundle): FolderBundleRepairSt
 
 export function getFolderBundleRepairStatus(bundleDirectory: string): FolderBundleRepairStatus {
   return repairStatusForLoaded(loadFolderBundle(bundleDirectory));
+}
+
+/** Avoid re-reading a bundle configuration that the caller has already validated. */
+export function getFolderBundleRepairStatusFromConfiguration(
+  bundleDirectory: string,
+  bundleConfig: BundleConfig,
+  nodes: BundleNodeConfig[],
+): FolderBundleRepairStatus {
+  return repairStatusForLoaded(folderBundleFromConfiguration(bundleDirectory, bundleConfig, nodes));
 }
 
 function candidateNodes(loaded: LoadedFolderBundle, bundleNodeId: BundleNodeId, selectedFolder: string): {

@@ -66,6 +66,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
   const [layoutGuides, setLayoutGuides] = useState<GraphLayoutGuide[]>([]);
   const [showSemanticEdges, setShowSemanticEdges] = useState(true);
   const [showStructuralEdges, setShowStructuralEdges] = useState(true);
+  const positionsRef = useRef<Map<string, NodePosition>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNode, setHoveredNode] = useState<{
     id: string;
@@ -106,8 +107,6 @@ const GraphVis: React.FC<GraphVisProps> = ({
   const [viewBox, setViewBox] = useState<ViewBox>(DEFAULT_VIEWBOX);
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef<{ x: number; y: number; viewBoxX: number; viewBoxY: number } | null>(null);
-  const isAnimatingRef = useRef(false);
-  const pendingAnimationRef = useRef(false);
 
   const calculateLayout = useCallback((nodes: DisplayNode[], includeHidden: boolean = false) => (
     calculateGraphLayout(nodes, graph.getAllEdges(), includeHidden)
@@ -117,73 +116,59 @@ const GraphVis: React.FC<GraphVisProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Skip if animation is already running to avoid compounding animations
-    // Mark that we have a pending update so we re-animate when current animation finishes
-    if (isAnimatingRef.current) {
-      pendingAnimationRef.current = true;
-      return;
-    }
-
     const layout = calculateLayout(displayGraph.allDisplayNodes, true);
     const newPositions = layout.positions;
     setLayoutGuides(layout.guides);
+    const startPositions = positionsRef.current;
 
-    if (positions.size === 0) {
+    if (startPositions.size === 0) {
       // Initial position setup - no animation
+      positionsRef.current = newPositions;
       setPositions(newPositions);
-    } else {
-      // Animate to new positions using a fixed number of frames
-      // to avoid performance issues with many elements
-      const startPositions = new Map(positions);
-      const totalFrames = 10;
-      let currentFrame = 0;
-
-      isAnimatingRef.current = true;
-      pendingAnimationRef.current = false;
-
-      const animate = () => {
-        currentFrame++;
-        const progress = currentFrame / totalFrames;
-
-        // Ease in-out function
-        const easeProgress = progress < 0.5
-          ? 2 * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-        const currentPositions = new Map<string, NodePosition>();
-
-        newPositions.forEach((endPos, bundleNodeKey) => {
-          const startPos = startPositions.get(bundleNodeKey);
-          if (startPos) {
-            currentPositions.set(bundleNodeKey, {
-              x: startPos.x + (endPos.x - startPos.x) * easeProgress,
-              y: startPos.y + (endPos.y - startPos.y) * easeProgress,
-            });
-          } else {
-            currentPositions.set(bundleNodeKey, endPos);
-          }
-        });
-
-        setPositions(currentPositions);
-
-        if (currentFrame < totalFrames) {
-          requestAnimationFrame(animate);
-        } else {
-          isAnimatingRef.current = false;
-          // If there was a pending update during animation, trigger a re-render
-          // by setting positions to trigger the effect again
-          if (pendingAnimationRef.current) {
-            pendingAnimationRef.current = false;
-            // Force re-run by setting the same positions (effect will recalculate)
-            setPositions(new Map(currentPositions));
-          }
-        }
-      };
-
-      requestAnimationFrame(animate);
+      return;
     }
+
+    const positionsUnchanged = startPositions.size === newPositions.size
+      && [...newPositions].every(([bundleNodeKey, position]) => {
+        const current = startPositions.get(bundleNodeKey);
+        return current?.x === position.x && current.y === position.y;
+      });
+    if (positionsUnchanged) return;
+
+    // Animate a changed layout for a fixed number of frames. The effect is
+    // driven only by graph inputs—not by the position state it updates—so an
+    // animation cannot accidentally restart itself forever.
+    const totalFrames = 10;
+    let currentFrame = 0;
+    let animationFrame: number | null = null;
+
+    const animate = () => {
+      currentFrame++;
+      const progress = currentFrame / totalFrames;
+      const easeProgress = progress < 0.5
+        ? 2 * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      const currentPositions = new Map<string, NodePosition>();
+
+      newPositions.forEach((endPos, bundleNodeKey) => {
+        const startPos = startPositions.get(bundleNodeKey);
+        currentPositions.set(bundleNodeKey, startPos ? {
+          x: startPos.x + (endPos.x - startPos.x) * easeProgress,
+          y: startPos.y + (endPos.y - startPos.y) * easeProgress,
+        } : endPos);
+      });
+
+      positionsRef.current = currentPositions;
+      setPositions(currentPositions);
+      if (currentFrame < totalFrames) animationFrame = requestAnimationFrame(animate);
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => {
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+    };
   // graphUpdateTrigger forces recompute when graph is mutated in-place.
-  }, [displayGraph, positions, calculateLayout, graphUpdateTrigger]);
+  }, [displayGraph, calculateLayout, graphUpdateTrigger]);
 
   // Convert screen coordinates to SVG coordinates
   const screenToSVGCoords = useCallback((clientX: number, clientY: number): { x: number; y: number } | null => {

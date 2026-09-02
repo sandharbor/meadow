@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DESKTOP_WEB_SECURITY_PREFERENCES,
   isTrustedDesktopRenderer,
+  parseAllowedExternalUrl,
 } from '../../../../../shared_code/utils/desktopLaunchSecurity.js';
 
 describe('desktop launch security', () => {
@@ -30,5 +31,16 @@ describe('desktop launch security', () => {
     expect(isTrustedDesktopRenderer('http://127.0.0.1:3200/bundle/example', 3200)).toBe(true);
     expect(isTrustedDesktopRenderer('http://localhost:3200/', 3200)).toBe(false);
     expect(isTrustedDesktopRenderer('https://attacker.example/', 3200)).toBe(false);
+  });
+
+  it('allows web URLs and path-opening Obsidian URLs while rejecting other protocols and actions', () => {
+    expect(parseAllowedExternalUrl('https://example.test/page').toString())
+      .toBe('https://example.test/page');
+    expect(parseAllowedExternalUrl('obsidian://open?path=%2Fnotes%2FExample.md').toString())
+      .toBe('obsidian://open?path=%2Fnotes%2FExample.md');
+
+    expect(() => parseAllowedExternalUrl('file:///Users/example/private.txt')).toThrow();
+    expect(() => parseAllowedExternalUrl('obsidian://new?name=Unexpected')).toThrow();
+    expect(() => parseAllowedExternalUrl('obsidian://open')).toThrow();
   });
 });
