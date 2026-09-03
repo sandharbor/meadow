@@ -40,6 +40,7 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
   const isExcalidraw = imagePath.toLowerCase().endsWith('.excalidraw.md');
   return (
     <div
+      data-testid="image-hover-preview"
       style={{
         pointerEvents: 'none',
         zIndex: 50,

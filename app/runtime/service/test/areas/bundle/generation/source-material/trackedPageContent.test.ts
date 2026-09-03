@@ -15,10 +15,14 @@ limitations under the License.
 */
 
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
-import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import {
+  parseBundleNodeConfig,
+  stringifyBundleNodeConfig,
+} from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generation/html/htmlService.js';
 import { ensureTrackedPageContent } from '../../../../../src/areas/bundle/generation/source-material/trackedPageContent.js';
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
@@ -38,13 +42,17 @@ describe('tracked page content for folder-derived bundles', () => {
     'folder-structure-test',
   );
   let bundlePath: string;
+  const temporarySourceRoots: string[] = [];
 
   beforeEach(() => {
     setup.setUp();
     bundlePath = setup.getBundlePath();
   });
 
-  afterEach(() => setup.tearDown());
+  afterEach(() => {
+    setup.tearDown();
+    temporarySourceRoots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
+  });
 
   it('materializes selected-folder descendants and linked pages for preview generation', async () => {
     const persistedConfigPath = BundleConfigPaths.getBundleNodeConfigFile(bundlePath);
@@ -56,14 +64,19 @@ describe('tracked page content for folder-derived bundles', () => {
     const trackedConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundlePath);
     const trackedConfigBefore = fs.readFileSync(trackedConfigPath, 'utf8');
     const trackedConfigs = parseBundleNodeConfig(trackedConfigBefore, trackedConfigPath);
-    expect(trackedConfigs).toHaveLength(7);
+    expect(trackedConfigs).toHaveLength(8);
     expect(trackedConfigs.map(config => config.bundleNodeName)).toEqual(expect.arrayContaining([
-      'Alpha', 'Alpha note', 'Nested note', 'Beyond outside', 'Outside note', 'Nested', 'Visual map',
+      'Alpha', 'Alpha note', 'Nested note', 'Beyond outside', 'Frontier image', 'Outside note', 'Nested', 'Visual map',
     ]));
     const derivedByName = new Map(trackedConfigs.slice(1).map(config => [config.bundleNodeName, config]));
     expect(derivedByName.get('Alpha note')).toMatchObject({ outlinksDepth: 2, inlinksDepth: 0 });
     expect(derivedByName.get('Outside note')).toMatchObject({ outlinksDepth: 1, inlinksDepth: 0 });
     expect(derivedByName.get('Beyond outside')).toMatchObject({ outlinksDepth: 0, inlinksDepth: 0 });
+    expect(derivedByName.get('Frontier image')).toMatchObject({
+      fileType: 'png',
+      outlinksDepth: 0,
+      inlinksDepth: 0,
+    });
 
     const trackedContent = BundleConfigPaths.getTrackedPageContentDir(bundlePath);
     for (const relativePath of [
@@ -72,6 +85,7 @@ describe('tracked page content for folder-derived bundles', () => {
       'Alpha/Nested/Nested note.md',
       'Outside/Outside note.md',
       'Outside/Beyond outside.md',
+      'Outside/Frontier image.png',
     ]) {
       expect(fs.existsSync(path.join(trackedContent, ...relativePath.split('/')))).toBe(true);
     }
@@ -89,6 +103,7 @@ describe('tracked page content for folder-derived bundles', () => {
       'Alpha/Nested/Nested note.html',
       'Outside/Outside note.html',
       'Outside/Beyond outside.html',
+      'Outside/Frontier image.png',
     ]) {
       expect(fs.existsSync(path.join(generatedHtml, ...relativePath.split('/'))), relativePath).toBe(true);
     }
@@ -111,5 +126,91 @@ describe('tracked page content for folder-derived bundles', () => {
     const outsideHtml = fs.readFileSync(path.join(generatedHtml, 'Outside', 'Outside note.html'), 'utf8');
     expect(outsideHtml).toContain('<a href="../index.html" class="breadcrumb-link">Alpha</a>');
     expect(outsideHtml).not.toContain('folder%3AAlpha');
+  });
+
+  it('normalizes a frontier-image sentinel depth for preview generation', async () => {
+    const temporarySourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-folder-frontier-image-'));
+    temporarySourceRoots.push(temporarySourceRoot);
+    const isolatedSourceGraph = path.join(temporarySourceRoot, 'folder-structure-test');
+    fs.cpSync(sourceGraphDirectory, isolatedSourceGraph, { recursive: true });
+
+    const bundleConfigPath = BundleConfigPaths.getBundleConfigFile(bundlePath);
+    fs.writeFileSync(
+      bundleConfigPath,
+      fs.readFileSync(bundleConfigPath, 'utf8').replace('defaultOutlinksDepth: 2', 'defaultOutlinksDepth: 1'),
+      'utf8',
+    );
+    const outsideNotePath = path.join(isolatedSourceGraph, 'Outside', 'Outside note.md');
+    fs.writeFileSync(
+      outsideNotePath,
+      `[[Frontier visual.png]]\n\n${fs.readFileSync(outsideNotePath, 'utf8')}`,
+      'utf8',
+    );
+    fs.copyFileSync(
+      path.join(
+        process.cwd(),
+        '..',
+        '..',
+        'shared_data',
+        'source_graphs',
+        'meadow-test-bundles-data',
+        't016 ---- level 5 - frontier image.png',
+      ),
+      path.join(isolatedSourceGraph, 'Outside', 'Frontier visual.png'),
+    );
+
+    await ensureTrackedPageContent(bundlePath, isolatedSourceGraph);
+
+    const trackedConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundlePath);
+    const trackedConfigs = parseBundleNodeConfig(
+      fs.readFileSync(trackedConfigPath, 'utf8'),
+      trackedConfigPath,
+    );
+    expect(trackedConfigs.find(config => config.bundleNodeName === 'Frontier visual')).toMatchObject({
+      fileType: 'png',
+      outlinksDepth: 0,
+      inlinksDepth: 0,
+    });
+    expect(fs.existsSync(path.join(
+      BundleConfigPaths.getTrackedPageContentDir(bundlePath),
+      'Outside',
+      'Frontier visual.png',
+    ))).toBe(true);
+
+    const generatedHtml = getGeneratedBundleTestOutputDirectory(bundlePath);
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtml });
+    expect(fs.existsSync(path.join(generatedHtml, 'Outside', 'Outside note.html'))).toBe(true);
+  });
+
+  it('does not derive a duplicate config for an explicitly tracked frontier image', async () => {
+    const persistedConfigPath = BundleConfigPaths.getBundleNodeConfigFile(bundlePath);
+    const persistedConfigs = parseBundleNodeConfig(
+      fs.readFileSync(persistedConfigPath, 'utf8'),
+      persistedConfigPath,
+    );
+    fs.writeFileSync(persistedConfigPath, stringifyBundleNodeConfig([
+      ...persistedConfigs,
+      {
+        bundleNodeName: 'Frontier image',
+        sourceGraphSubdirectory: 'Outside',
+        bundleNodeKind: 'file',
+        fileType: 'png',
+        bundleNodeId: 'frontier0001',
+        listType: 'whitelist',
+      },
+    ]), 'utf8');
+
+    await ensureTrackedPageContent(bundlePath, sourceGraphDirectory);
+
+    const trackedConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundlePath);
+    const trackedConfigs = parseBundleNodeConfig(
+      fs.readFileSync(trackedConfigPath, 'utf8'),
+      trackedConfigPath,
+    );
+    expect(trackedConfigs.filter(config => config.bundleNodeName === 'Frontier image')).toHaveLength(1);
+
+    const generatedHtml = getGeneratedBundleTestOutputDirectory(bundlePath);
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtml });
+    expect(fs.existsSync(path.join(generatedHtml, 'Outside', 'Frontier image.png'))).toBe(true);
   });
 });

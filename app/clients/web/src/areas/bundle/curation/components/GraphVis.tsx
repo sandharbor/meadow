@@ -16,6 +16,7 @@ limitations under the License.
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Graph } from '../../../../../../../contracts/types/graph';
+import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode';
 import { IFilter } from '../types/filters';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
@@ -87,7 +88,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
   const previewBundleNodeKeys = useMemo(() => {
     const ids = new Set<string>();
     graph.getAllNodes().forEach(page => {
-      if (page.tracked && !page.blacklisted && !page.isFrontierNode) {
+      if (page.tracked && !page.blacklisted && !isUntrackableFrontierNode(page)) {
         ids.add(page.bundleNodeKey);
       }
     });
@@ -615,7 +616,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
         )}
         <svg 
           ref={svgRef} 
-          className="w-full h-full" 
+          className="w-full h-full select-none"
+          data-testid="graph-canvas"
           viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
           preserveAspectRatio="xMidYMin meet"
           onPointerDown={handlePointerDown}
@@ -624,7 +626,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
           onMouseLeave={handleMouseLeave}
           onWheel={handleWheel}
           onContextMenu={(e) => e.preventDefault()} // Prevent context menu on middle click
-          style={{ cursor: isPanning ? 'grabbing' : 'default', touchAction: 'none' }}
+          style={{ cursor: isPanning ? 'grabbing' : 'default', touchAction: 'none', userSelect: 'none' }}
         >
           <defs>
             {/* Arrowheads for normal (unselected) edges - tracked targets */}

@@ -89,6 +89,13 @@ export interface CollectionBundleNode extends BaseBundleNode {
 
 export type IBundleNode = FileBundleNode | FolderBundleNode | CollectionBundleNode;
 
+/** Frontier-image extensions remain trackable even though they also carry the frontier flag. */
+export function isUntrackableFrontierNode(
+  node: Pick<IBundleNode, 'isFrontierNode' | 'isFrontierImageExtension'>,
+): boolean {
+  return node.isFrontierNode === true && node.isFrontierImageExtension !== true;
+}
+
 type WithoutRuntimeMethods<T> = T extends IBundleNode ? Omit<T, 'getIdent'> : never;
 
 /** The canonical bundle-node representation when crossing a JSON boundary. */

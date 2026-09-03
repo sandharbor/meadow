@@ -17,6 +17,7 @@ limitations under the License.
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { apiRequest } from '../../../../shared/utils/apiClient';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
+import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode';
 import { IFilter, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector, createInlinkDiscrepancySelector } from '../types/filters';
 import { DisplayGraph } from '../types/displayGraph';
 import GraphVis from './GraphVis';
@@ -36,8 +37,6 @@ import Modal from '../../../../shared/components/Modal';
 import { AppConfig } from '../../../../../../../contracts/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
 import { useDisplayFilters } from '../utils/useDisplayFilters';
-import FolderScopeChangesBanner from './FolderScopeChangesBanner';
-import type { FolderScopeChangeExplanation } from '../../../../../../../contracts/types/folderScopeChanges';
 import { useIsFolderBasedBundle } from '../utils/bundleMode';
 import {
   ensureNodeConfigForPersistence,
@@ -69,7 +68,6 @@ interface BundleNodeTabsProps {
   protectedBundleNodeIds: Set<string>;
   onRemoveOrphanConfig: (config: BundleNodeConfig) => Promise<void>;
   onRemoveAllOrphanConfigs: () => Promise<void>;
-  folderScopeChanges?: FolderScopeChangeExplanation;
 }
 
 type ViewType = 'graph' | 'list';
@@ -98,7 +96,6 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   protectedBundleNodeIds,
   onRemoveOrphanConfig,
   onRemoveAllOrphanConfigs,
-  folderScopeChanges,
 }) => {
   const [activeView, setActiveView] = useState<ViewType>(() => {
     const stored = sessionStorage.getItem('graphActiveView');
@@ -330,7 +327,9 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     let visibleNodes = currentDisplayGraph.visibleDisplayNodes;
     if (isBundlePreviewOnlyActive) {
       visibleNodes = visibleNodes.filter(page =>
-        page.underlyingNode.tracked && !page.underlyingNode.blacklisted && !page.underlyingNode.isFrontierNode
+        page.underlyingNode.tracked
+        && !page.underlyingNode.blacklisted
+        && !isUntrackableFrontierNode(page.underlyingNode)
       );
     }
     onSelectedNodeKeysChange(new Set(visibleNodes.map(page => page.bundleNodeKey)));
@@ -708,7 +707,6 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
           orphanCount={orphanConfigs.length}
           onReview={() => setIsOrphansModalOpen(true)}
         />
-        <FolderScopeChangesBanner explanation={folderScopeChanges} />
         <div className="border-b bg-white">
           <nav className="flex items-center justify-between">
             <div className="flex">

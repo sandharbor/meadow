@@ -93,8 +93,9 @@ export const frontier = defineMeadowConcept({
   definition: conceptText`A reachable page just beyond the bundle's current traversal boundary.`,
   mechanics: [
     conceptText`Frontier depth and frontier-focused filtering explain how the graph would expand if the boundary moved.`,
+    conceptText`A frontier image extension remains directly trackable so an image referenced at the boundary can be preserved without expanding ordinary page traversal.`,
   ],
-  interplay: conceptText`A frontier page is visible for boundary reasoning but cannot become an ordinary ${conceptLink(coreConceptIds.tracking, "tracked bundle page")} until the graph constraints admit it.`,
+  interplay: conceptText`An ordinary frontier page is visible for boundary reasoning but cannot become a ${conceptLink(coreConceptIds.tracking, "tracked bundle page")} until the graph constraints admit it; frontier image extensions are the deliberate exception.`,
 });
 
 export const initialPage = defineMeadowConcept({

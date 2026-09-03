@@ -22,10 +22,12 @@ interface StructuralTreeRowsProps {
   displayGraph: DisplayGraph;
   entryBundleNodeId?: string;
   selectedNodeKeys?: Set<string>;
+  compareNodes: (left: DisplayNode, right: DisplayNode) => number;
   onNodeClick: (bundleNodeKey: string) => void;
   onNodeContextMenu?: (bundleNodeKey: string, x: number, y: number) => void;
   onGlyphMouseEnter?: (event: React.MouseEvent<SVGSVGElement>, node: DisplayNode) => void;
   onGlyphMouseLeave?: () => void;
+  renderInlineThumbnail?: (node: DisplayNode) => React.ReactNode;
 }
 
 interface StructuralRow {
@@ -42,10 +44,12 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
   displayGraph,
   entryBundleNodeId,
   selectedNodeKeys,
+  compareNodes,
   onNodeClick,
   onNodeContextMenu,
   onGlyphMouseEnter,
   onGlyphMouseLeave,
+  renderInlineThumbnail,
 }) => {
   const graph = displayGraph.underlyingGraph;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -75,7 +79,13 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
       const isVisible = Boolean(displayNode && visible.has(key));
       if (isVisible) rows.push({ node: displayNode!, depth, hasChildren: (children.get(key)?.length ?? 0) > 0 });
       if (collapsed.has(key)) return;
-      for (const child of children.get(key) ?? []) visit(child, isVisible ? depth + 1 : depth);
+      const orderedChildren = [...(children.get(key) ?? [])].sort((leftKey, rightKey) => {
+        const left = displayGraph.getDisplayNode(leftKey);
+        const right = displayGraph.getDisplayNode(rightKey);
+        if (!left || !right) return leftKey.localeCompare(rightKey);
+        return compareNodes(left, right);
+      });
+      for (const child of orderedChildren) visit(child, isVisible ? depth + 1 : depth);
     };
     if (entry) {
       collectStructuralDescendants(entry.bundleNodeKey);
@@ -83,9 +93,9 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
     }
     const semanticOnly = displayGraph.visibleDisplayNodes
       .filter(node => !structurallyReached.has(node.bundleNodeKey))
-      .sort((left, right) => left.bundleNodeName.localeCompare(right.bundleNodeName));
+      .sort(compareNodes);
     return { rows, semanticOnly };
-  }, [collapsed, displayGraph, entryBundleNodeId, graph]);
+  }, [collapsed, compareNodes, displayGraph, entryBundleNodeId, graph]);
 
   useEffect(() => setCollapsed(new Set()), [entryBundleNodeId, graph]);
 
@@ -96,6 +106,8 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
       <tr
         key={`${semanticOnly ? 'semantic-' : 'structural-'}${node.bundleNodeKey}`}
         data-bundle-node-key={node.bundleNodeKey}
+        data-bundle-node-name={node.bundleNodeName}
+        data-structure-section={semanticOnly ? 'outside' : 'selected-folders'}
         className={`cursor-pointer hover:bg-gray-50 ${selected ? 'bg-orange-100' : ''}`}
         onClick={() => onNodeClick(node.bundleNodeKey)}
         onContextMenu={event => {
@@ -127,7 +139,7 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
               onMouseLeave={onGlyphMouseLeave}
             />
             <span>{node.bundleNodeName}</span>
-            {node.tracked && <span className="text-xs text-green-700">Tracked</span>}
+            {node.bundleNodeKind === 'file' && renderInlineThumbnail?.(node)}
             {node.underlyingNode.effectiveBlacklistingBundleNodeId && <span className="text-xs text-red-700">Excluded by folder</span>}
           </span>
         </td>

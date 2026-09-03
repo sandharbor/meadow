@@ -33,7 +33,10 @@ import {
   type MutateBundleNodeCliResult,
 } from '../../../../../../../contracts/types/cliOperations.js';
 import { Graph } from '../../../../../../../contracts/types/graph.js';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import {
+  isUntrackableFrontierNode,
+  type IBundleNode,
+} from '../../../../../../../contracts/types/IBundleNode.js';
 import {
   applyNodeConfigsToNodes,
   applySensitiveFromApiData,
@@ -359,7 +362,9 @@ function newConfigForNode(
     throw new BundleNodeOperationError('The bundle home cannot be configured by this operation', 409);
   }
   assertIncludeSensitiveFileNode(node.bundleNodeKind, includeSensitive);
-  if (node.isFrontierNode) throw new BundleNodeOperationError('Frontier nodes cannot be tracked', 409);
+  if (isUntrackableFrontierNode(node)) {
+    throw new BundleNodeOperationError('Frontier nodes cannot be tracked', 409);
+  }
   if (node.effectiveBlacklistingBundleNodeId) {
     throw new BundleNodeOperationError('Nodes below a blacklisted folder cannot be tracked', 409);
   }

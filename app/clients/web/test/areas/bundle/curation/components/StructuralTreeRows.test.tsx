@@ -18,6 +18,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
 import StructuralTreeRows from '../../../../../src/areas/bundle/curation/components/StructuralTreeRows';
+import { compareListNodes } from '../../../../../src/areas/bundle/curation/components/ListView';
 import { DisplayGraph } from '../../../../../src/areas/bundle/curation/types/displayGraph';
 
 const node = (
@@ -39,6 +40,10 @@ const node = (
 } as IBundleNode);
 
 describe('StructuralTreeRows', () => {
+  const compareByTitle = (left: DisplayGraph['visibleDisplayNodes'][number], right: DisplayGraph['visibleDisplayNodes'][number]) => (
+    compareListNodes(left, right, 'title', 'asc')
+  );
+
   it('keeps collapsed descendants out of the outside-selected-folders section', () => {
     const graph = new Graph();
     graph.addNode(node('alpha', 'Alpha', 'folder', 'Alpha'));
@@ -51,6 +56,7 @@ describe('StructuralTreeRows', () => {
       <table><tbody><StructuralTreeRows
         displayGraph={new DisplayGraph(graph)}
         entryBundleNodeId={'alpha' as IBundleNode['bundleNodeId']}
+        compareNodes={compareByTitle}
         onNodeClick={vi.fn()}
       /></tbody></table>,
     );
@@ -62,5 +68,86 @@ describe('StructuralTreeRows', () => {
 
     expect(screen.queryByText('Alpha note')).not.toBeInTheDocument();
     expect(screen.getByText('Outside note')).toBeInTheDocument();
+  });
+
+  it('sorts siblings and outside-folder nodes while preserving the tree', () => {
+    const graph = new Graph();
+    graph.addNode(node('alpha', 'Alpha', 'folder', 'Alpha'));
+    graph.addNode(node('zeta-note', 'Zeta note', 'file', 'Alpha'));
+    graph.addNode(node('beta-note', 'Beta note', 'file', 'Alpha'));
+    graph.addNode(node('outside-zeta', 'Outside zeta', 'file', 'Outside/Zeta'));
+    graph.addNode(node('outside-alpha', 'Outside alpha', 'file', 'Outside/Alpha'));
+    graph.addEdge({ source: 'alpha', target: 'zeta-note', bundleEdgeKind: 'directoryContainment' });
+    graph.addEdge({ source: 'alpha', target: 'beta-note', bundleEdgeKind: 'directoryContainment' });
+
+    const { container } = render(
+      <table><tbody><StructuralTreeRows
+        displayGraph={new DisplayGraph(graph)}
+        entryBundleNodeId={'alpha' as IBundleNode['bundleNodeId']}
+        compareNodes={compareByTitle}
+        onNodeClick={vi.fn()}
+      /></tbody></table>,
+    );
+
+    expect([...container.querySelectorAll('[data-structure-section="selected-folders"]')]
+      .map(row => row.getAttribute('data-bundle-node-name'))).toEqual([
+      'Alpha',
+      'Beta note',
+      'Zeta note',
+    ]);
+    expect([...container.querySelectorAll('[data-structure-section="outside"]')]
+      .map(row => row.getAttribute('data-bundle-node-name'))).toEqual([
+      'Outside alpha',
+      'Outside zeta',
+    ]);
+  });
+
+  it('shows image thumbnails without per-row tracking labels', () => {
+    const graph = new Graph();
+    const alpha = node('alpha', 'Alpha', 'folder', 'Alpha');
+    const visual = node('visual', 'Visual map', 'file', 'Alpha');
+    alpha.tracked = true;
+    visual.tracked = true;
+    visual.fileType = 'svg';
+    graph.addNode(alpha);
+    graph.addNode(visual);
+    graph.addEdge({ source: 'alpha', target: 'visual', bundleEdgeKind: 'directoryContainment' });
+
+    render(
+      <table><tbody><StructuralTreeRows
+        displayGraph={new DisplayGraph(graph)}
+        entryBundleNodeId={'alpha' as IBundleNode['bundleNodeId']}
+        compareNodes={compareByTitle}
+        onNodeClick={vi.fn()}
+        renderInlineThumbnail={displayNode => (
+          <span data-testid="thumbnail">{displayNode.bundleNodeName} thumbnail</span>
+        )}
+      /></tbody></table>,
+    );
+
+    expect(screen.getByTestId('thumbnail')).toHaveTextContent('Visual map thumbnail');
+    expect(screen.queryByText('Tracked')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not Tracked')).not.toBeInTheDocument();
+  });
+
+  it('compares every list sort field in either direction', () => {
+    const graph = new Graph();
+    const alpha = node('alpha', 'Alpha', 'file', 'Zeta');
+    const beta = node('beta', 'Beta', 'file', 'Alpha');
+    alpha.fileType = 'svg';
+    beta.fileType = 'md';
+    graph.addNode(alpha);
+    graph.addNode(beta);
+    const displayGraph = new DisplayGraph(graph);
+    const alphaDisplay = displayGraph.getDisplayNode('alpha')!;
+    const betaDisplay = displayGraph.getDisplayNode('beta')!;
+    alphaDisplay.setDistance(2);
+    betaDisplay.setDistance(1);
+
+    expect(compareListNodes(alphaDisplay, betaDisplay, 'title', 'asc')).toBeLessThan(0);
+    expect(compareListNodes(alphaDisplay, betaDisplay, 'directory', 'asc')).toBeGreaterThan(0);
+    expect(compareListNodes(alphaDisplay, betaDisplay, 'fileType', 'asc')).toBeGreaterThan(0);
+    expect(compareListNodes(alphaDisplay, betaDisplay, 'depth', 'asc')).toBeGreaterThan(0);
+    expect(compareListNodes(alphaDisplay, betaDisplay, 'depth', 'desc')).toBeLessThan(0);
   });
 });

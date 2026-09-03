@@ -16,6 +16,7 @@ limitations under the License.
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
+import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode';
 import { FindInBundlesOptions } from '../../../../../../../contracts/types/findInBundlesOptions';
 import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, getSelectionPathFromHereOrdered, getSelectionPathToHereOrdered } from '../utils/selectionPaths';
 import { openExternal } from '../../../../shared/utils/openExternal';
@@ -78,6 +79,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
   onMarkSensitive,
   obsidianInfo,
 }) => {
+  const isUntrackableFrontier = isUntrackableFrontierNode(page);
   const navigateInApp = useAppNavigation('pageContextMenu');
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedTop, setAdjustedTop] = useState(position.y);
@@ -152,7 +154,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
       style={{ left: position.x, top: adjustedTop }}
     >
       {/* Untrack option if already tracked */}
-      {page.tracked && !page.isFrontierNode && page.depth === 0 && (
+      {page.tracked && !isUntrackableFrontier && page.depth === 0 && (
         <button
           disabled
           className={disabledClass}
@@ -161,7 +163,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
           Untrack
         </button>
       )}
-      {page.tracked && !page.isFrontierNode && page.depth !== 0 && (
+      {page.tracked && !isUntrackableFrontier && page.depth !== 0 && (
         <button
           onClick={() => { onTrackPage(page.bundleNodeKey); onClose(); }}
           className={buttonClass}
@@ -170,7 +172,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
         </button>
       )}
       {/* Add to blacklist option */}
-      {page.tracked && !page.blacklisted && !page.isFrontierNode && page.depth !== 0 && (
+      {page.tracked && !page.blacklisted && !isUntrackableFrontier && page.depth !== 0 && (
         <button
           onClick={() => { onBlacklistPage(page.bundleNodeKey); onClose(); }}
           className="w-full text-left px-3 py-2 text-xs hover:bg-neutral-100 text-danger-700"
@@ -179,7 +181,7 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
         </button>
       )}
       {/* Remove from blacklist option */}
-      {page.blacklisted && !page.isFrontierNode && (
+      {page.blacklisted && !isUntrackableFrontier && (
         <button
           onClick={() => { onBlacklistPage(page.bundleNodeKey); onClose(); }}
           className={buttonClass}
@@ -188,13 +190,13 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
         </button>
       )}
       {/* Separator if there are top items */}
-      {!page.isFrontierNode && (
+      {!isUntrackableFrontier && (
         <div className="border-t border-neutral-200" />
       )}
       {/* Preview HTML */}
       {(() => {
-        const previewDisabled = !page.tracked || page.isFrontierNode || hasDraftChanges;
-        const tooltipText = hasDraftChanges ? 'Save your unsaved changes before previewing' : page.isFrontierNode ? 'Cannot preview frontier pages' : !page.tracked ? 'Track this page first to preview it' : undefined;
+        const previewDisabled = !page.tracked || isUntrackableFrontier || hasDraftChanges;
+        const tooltipText = hasDraftChanges ? 'Save your unsaved changes before previewing' : isUntrackableFrontier ? 'Cannot preview frontier pages' : !page.tracked ? 'Track this page first to preview it' : undefined;
         return (
           <DisabledTooltip disabled={previewDisabled} tooltip={tooltipText} className="block">
             <button

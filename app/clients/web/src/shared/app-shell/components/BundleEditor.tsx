@@ -37,14 +37,12 @@ import { openExternal } from '../../utils/openExternal';
 import { useAppNavigation } from '../../utils/appNavigation';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import DeleteBundleModal from '../../bundle-management/DeleteBundleModal';
-import type { FolderScopeChangeExplanation } from '../../../../../../contracts/types/folderScopeChanges';
 
 const BundleEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigateInApp = useAppNavigation('bundleEditor');
   const [searchParams, setSearchParams] = useSearchParams();
   const [graph, setGraph] = useState<Graph | null>(null);
-  const [folderScopeChanges, setFolderScopeChanges] = useState<FolderScopeChangeExplanation | undefined>();
   const [filters, setFilters, reloadCustomFilters] = useFilterState(slug || '');
   const [updateTrigger, setUpdateTrigger] = useState(0);
 
@@ -405,7 +403,6 @@ const BundleEditor: React.FC = () => {
           data.allOutlinkTargets || {}
         );
         setGraph(g);
-        setFolderScopeChanges(data.changeExplanations as FolderScopeChangeExplanation | undefined);
         setGraphError(null); // Clear error on success
       })
       .catch(err => {
@@ -1256,7 +1253,6 @@ const BundleEditor: React.FC = () => {
           protectedBundleNodeIds={new Set([entryBundleNodeId, defaultTraversalBundleNodeId].filter((id): id is string => id !== null))}
           onRemoveOrphanConfig={handleRemoveOrphanConfig}
           onRemoveAllOrphanConfigs={handleRemoveAllOrphanConfigs}
-          folderScopeChanges={folderScopeChanges}
         />
       </div>
     </div>

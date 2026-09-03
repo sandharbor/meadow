@@ -16,7 +16,10 @@ limitations under the License.
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Graph } from '../../../../../../../contracts/types/graph';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
+import {
+  isUntrackableFrontierNode,
+  type IBundleNode,
+} from '../../../../../../../contracts/types/IBundleNode';
 import TraversalPathDetailsModal from './TraversalPathDetailsModal';
 import BundleNodeLinksModal from './BundleNodeLinksModal';
 import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';
@@ -275,7 +278,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                   {(() => {
                     const hasSensitiveOrFrontier = Array.from(selectedNodeKeys).some(id => {
                       const page = graph.getNode(id);
-                      return page && (isEffectivelySensitive(page) || page.isFrontierNode);
+                      return page && (isEffectivelySensitive(page) || isUntrackableFrontierNode(page));
                     });
                     const allAlreadyTracked = Array.from(selectedNodeKeys).every(id => {
                       const page = graph.getNode(id);
@@ -302,12 +305,12 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                     onClick={onBlacklistSelected}
                     disabled={Array.from(selectedNodeKeys).some(id => {
                       const page = graph.getNode(id);
-                      return page && page.isFrontierNode;
+                      return page && isUntrackableFrontierNode(page);
                     })}
                     className={`flex-1 px-4 py-2 text-sm rounded ${
                       Array.from(selectedNodeKeys).some(id => {
                         const page = graph.getNode(id);
-                        return page && page.isFrontierNode;
+                        return page && isUntrackableFrontierNode(page);
                       })
                         ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                         : 'bg-danger-100 text-danger-700 hover:bg-danger-200'
@@ -341,7 +344,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                 )}
                 {Array.from(selectedNodeKeys)
                   .map(id => graph.getNode(id))
-                  .some(page => page && page.isFrontierNode) && (
+                  .some(page => page && isUntrackableFrontierNode(page)) && (
                   <div className="space-y-2">
                     <p className="text-sm text-neutral-500 italic">
                       Cannot track/blacklist frontier pages (they are outside the working area).
@@ -351,7 +354,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                         const nonFrontierNodeKeys = Array.from(selectedNodeKeys).filter(
                           id => {
                             const page = graph.getNode(id);
-                            return !(page && page.isFrontierNode);
+                            return !(page && isUntrackableFrontierNode(page));
                           }
                         );
                         onSelectedNodeKeysChange(new Set(nonFrontierNodeKeys));
@@ -476,12 +479,12 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                 {/* For untracked pages, show Track + Blacklist as the primary quick-actions */}
                 {!page!.tracked && (
                   <div className="mt-2 flex gap-2">
-                    <DisabledTooltip disabled={page!.isFrontierNode || Boolean(page!.effectiveBlacklistingBundleNodeId) || page!.bundleNodeKind === 'collection'} tooltip={page!.effectiveBlacklistingBundleNodeId ? 'Cannot track below a folder blacklist' : 'Cannot track this node'} className="flex-1">
+                    <DisabledTooltip disabled={isUntrackableFrontierNode(page!) || Boolean(page!.effectiveBlacklistingBundleNodeId) || page!.bundleNodeKind === 'collection'} tooltip={page!.effectiveBlacklistingBundleNodeId ? 'Cannot track below a folder blacklist' : 'Cannot track this node'} className="flex-1">
                       <button
                         onClick={() => onTrackPage(page!.bundleNodeKey)}
-                        disabled={page!.isFrontierNode || Boolean(page!.effectiveBlacklistingBundleNodeId) || page!.bundleNodeKind === 'collection'}
+                        disabled={isUntrackableFrontierNode(page!) || Boolean(page!.effectiveBlacklistingBundleNodeId) || page!.bundleNodeKind === 'collection'}
                         className={`w-full px-2 py-1 text-xs rounded ${
-                          page!.isFrontierNode || page!.effectiveBlacklistingBundleNodeId || page!.bundleNodeKind === 'collection'
+                          isUntrackableFrontierNode(page!) || page!.effectiveBlacklistingBundleNodeId || page!.bundleNodeKind === 'collection'
                             ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                             : 'bg-success-100 text-success-700 hover:bg-success-200'
                         }`}
@@ -490,12 +493,12 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                       </button>
                     </DisabledTooltip>
                     {!page!.blacklisted && (
-                      <DisabledTooltip disabled={page!.isFrontierNode || page!.bundleNodeKind === 'collection'} tooltip="Cannot blacklist this node" align="right" className="flex-1">
+                      <DisabledTooltip disabled={isUntrackableFrontierNode(page!) || page!.bundleNodeKind === 'collection'} tooltip="Cannot blacklist this node" align="right" className="flex-1">
                         <button
                           onClick={() => onBlacklistPage(page!.bundleNodeKey)}
-                          disabled={page!.isFrontierNode || page!.bundleNodeKind === 'collection'}
+                          disabled={isUntrackableFrontierNode(page!) || page!.bundleNodeKind === 'collection'}
                           className={`w-full px-2 py-1 text-xs rounded ${
-                            page!.isFrontierNode || page!.bundleNodeKind === 'collection'
+                            isUntrackableFrontierNode(page!) || page!.bundleNodeKind === 'collection'
                               ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
                               : 'bg-danger-100 text-danger-700 hover:bg-danger-200'
                           }`}

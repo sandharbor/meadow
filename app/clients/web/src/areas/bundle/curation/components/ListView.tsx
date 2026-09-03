@@ -34,9 +34,46 @@ interface ListViewProps {
   selectedNodeKeys?: Set<string>;
 }
 
-type SortField = 'title' | 'directory' | 'fileType' | 'depth';
+export type SortField = 'title' | 'directory' | 'fileType' | 'depth';
 type SortDirection = 'asc' | 'desc';
 type ViewMode = 'flat' | 'grouped';
+
+export function compareListNodes(
+  a: DisplayNode,
+  b: DisplayNode,
+  sortField: SortField,
+  sortDirection: SortDirection,
+): number {
+  let comparison = 0;
+
+  switch (sortField) {
+    case 'title': {
+      comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
+      break;
+    }
+    case 'directory': {
+      comparison = a.sourceGraphSubdirectory.localeCompare(b.sourceGraphSubdirectory);
+      if (comparison === 0) comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
+      break;
+    }
+    case 'fileType': {
+      comparison = a.fileType.localeCompare(b.fileType);
+      if (comparison === 0) comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
+      break;
+    }
+    case 'depth': {
+      const aDistance = a.distance;
+      const bDistance = b.distance;
+      comparison = aDistance === undefined
+        ? (bDistance === undefined ? 0 : 1)
+        : bDistance === undefined ? -1 : aDistance - bDistance;
+      if (comparison === 0) comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
+      break;
+    }
+  }
+
+  return sortDirection === 'asc' ? comparison : -comparison;
+}
 
 const ListView: React.FC<ListViewProps> = ({
   displayGraph,
@@ -68,50 +105,15 @@ const ListView: React.FC<ListViewProps> = ({
     sessionStorage.setItem('listViewMode', viewMode);
   }, [viewMode]);
 
-  const sortedNodes = useMemo(() => {
-    const nodes = displayGraph.visibleDisplayNodes;
+  const compareNodes = React.useCallback(
+    (a: DisplayNode, b: DisplayNode) => compareListNodes(a, b, sortField, sortDirection),
+    [sortDirection, sortField],
+  );
 
-    return nodes.sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortField) {
-        case 'title': {
-          comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
-          break;
-        }
-        case 'directory': {
-          const dirA = a.sourceGraphSubdirectory || '';
-          const dirB = b.sourceGraphSubdirectory || '';
-          comparison = dirA.localeCompare(dirB);
-          // Secondary sort by title when directories are equal
-          if (comparison === 0) {
-            comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
-          }
-          break;
-        }
-        case 'fileType': {
-          comparison = a.fileType.localeCompare(b.fileType);
-          // Secondary sort by title when file types are equal
-          if (comparison === 0) {
-            comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
-          }
-          break;
-        }
-        case 'depth': {
-          const depthA = a.distance ?? Infinity;
-          const depthB = b.distance ?? Infinity;
-          comparison = depthA - depthB;
-          // Secondary sort by title when depths are equal
-          if (comparison === 0) {
-            comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
-          }
-          break;
-        }
-      }
-      
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-  }, [displayGraph, sortField, sortDirection]);
+  const sortedNodes = useMemo(
+    () => [...displayGraph.visibleDisplayNodes].sort(compareNodes),
+    [compareNodes, displayGraph],
+  );
 
   const handleHeaderClick = (field: SortField) => {
     if (sortField === field) {
@@ -328,10 +330,12 @@ const ListView: React.FC<ListViewProps> = ({
                 displayGraph={displayGraph}
                 entryBundleNodeId={entryBundleNodeId}
                 selectedNodeKeys={selectedNodeKeys}
+                compareNodes={compareNodes}
                 onNodeClick={onPageClick}
                 onNodeContextMenu={onBundleNodeContextMenu}
                 onGlyphMouseEnter={(event, node) => handleHighlightMouseEnter(event, node.bundleNodeName, node.highlights)}
                 onGlyphMouseLeave={() => setHoveredHighlights(null)}
+                renderInlineThumbnail={renderInlineThumbnail}
               />
             )}
           </tbody>

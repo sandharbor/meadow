@@ -54,6 +54,7 @@ test("folder context selections include structural children and deeper paths", a
     "Alpha",
     "Alpha note",
     "Beyond outside",
+    "Frontier image",
     "Nested",
     "Nested note",
     "Outside note",

@@ -59,6 +59,7 @@ test("previews a configured multiple-folder collection bundle", async ({
   await editor.expectListViewRowByExactNamePresent("Nested note");
   await editor.expectListViewRowByExactNamePresent("Outside note");
   await editor.expectListViewRowByExactNamePresent("Beyond outside");
+  await editor.expectListViewRowByExactNamePresent("Frontier image");
   await snapshot("ordered folder structure in the editor");
 
   await editor.clickPreview();

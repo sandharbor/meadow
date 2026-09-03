@@ -1,4 +1,10 @@
 This page is linked from Outside note at the second configured outlink depth.
+Its links extend one step farther, to contrast an ordinary depth-three frontier
+page with a frontier image extension.
+
+[[Frontier image.png]]
+
+[[Frontier page]]
 
 ```yaml
 pagespecs:
@@ -7,13 +13,18 @@ pagespecs:
       isTracked: false
       isInWorkingGraph: true
       links:
-        outlinks: []
+        outlinks:
+          - linkPath: /Outside/Frontier image.png
+            isInGraph: true
+          - linkPath: /Outside/Frontier page.md
+            isInGraph: false
         inlinks:
           - linkPath: /Outside/Outside note.md
             isInGraph: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
+        mainSectionLinks:
+          - relativeLinkPath: Frontier image.png
         footerSectionBacklinks:
           - relativeLinkPath: Outside note.html
             backlinkContexts:
@@ -24,13 +35,18 @@ pagespecs:
       isTracked: false
       isInWorkingGraph: true
       links:
-        outlinks: []
+        outlinks:
+          - linkPath: /Outside/Frontier image.png
+            isInGraph: true
+          - linkPath: /Outside/Frontier page.md
+            isInGraph: false
         inlinks:
           - linkPath: /Outside/Outside note.md
             isInGraph: true
     generation:
       htmlRenderedLinks:
-        mainSectionLinks: []
+        mainSectionLinks:
+          - relativeLinkPath: Frontier image.png
         footerSectionBacklinks:
           - relativeLinkPath: Outside note.html
             backlinkContexts:

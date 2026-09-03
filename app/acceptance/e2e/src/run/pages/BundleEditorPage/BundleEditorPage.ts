@@ -146,6 +146,14 @@ export class BundleEditorPage {
     await this.expect(this.page.getByRole("button", { name: "Structure", exact: true })).toHaveCount(0);
   }
 
+  async expectGraphTextIsNotSelectable() {
+    const graphCanvas = this.page.getByTestId("graph-canvas");
+    await this.expect(graphCanvas).toBeVisible();
+    await this.expect.poll(() => graphCanvas.evaluate(element => (
+      window.getComputedStyle(element).userSelect
+    ))).toBe("none");
+  }
+
   async clickBackToBundles() {
     const btn = this.page.locator("button", { hasText: "← Bundles" });
     await this.expect(btn).toBeVisible();
@@ -255,6 +263,27 @@ export class BundleEditorPage {
     await this.expect(this.page.locator("table thead th")).toHaveCount(4);
   }
 
+  async expectStructuralListHasNoTrackingLabels() {
+    await this.expect(
+      this.page.locator('tr[data-structure-section]').getByText(/^(Tracked|Not Tracked)$/),
+    ).toHaveCount(0);
+  }
+
+  async expectFolderScopeChangesBannerNotVisible() {
+    await this.expect(this.page.getByText(/Folder scope changes:/)).toHaveCount(0);
+  }
+
+  async clickListSort(column: "Title" | "Directory" | "Type" | "Distance") {
+    await this.page.getByRole("columnheader", { name: new RegExp(`^${column}`) }).click();
+  }
+
+  async expectStructuralSectionOrder(section: "selected-folders" | "outside", titles: string[]) {
+    const rows = this.page.locator(`tr[data-structure-section="${section}"]`);
+    await this.expect.poll(() => rows.evaluateAll(elements => (
+      elements.map(element => element.getAttribute("data-bundle-node-name"))
+    ))).toEqual(titles);
+  }
+
   async expectListViewNodeGlyph(title: string, nodeKind: "file" | "folder" | "collection") {
     const row = this.listViewRows.filter({
       has: this.page.locator(`td >> text="${title}"`),
@@ -282,7 +311,7 @@ export class BundleEditorPage {
 
   private listViewThumbnail(title: string, fileType: string) {
     return this.listViewRowByTitleAndFileType(title, fileType)
-      .locator('[role="img"] svg')
+      .locator('[data-thumbnail-state="loaded"], [role="img"] svg')
       .first();
   }
 
@@ -296,6 +325,12 @@ export class BundleEditorPage {
 
   async hoverListViewThumbnail(title: string, fileType: string) {
     await this.listViewThumbnail(title, fileType).hover();
+  }
+
+  async expectImageHoverPreviewVisible(title: string) {
+    const preview = this.page.getByTestId("image-hover-preview");
+    await this.expect(preview).toBeVisible();
+    await this.expect(preview).toContainText(title);
   }
 
   async clickTrackAll() {

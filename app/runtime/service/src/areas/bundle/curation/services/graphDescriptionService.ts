@@ -16,8 +16,9 @@ limitations under the License.
 
 import type { CustomFilterConfig } from '../../../../../../../contracts/types/customFilters.js';
 import { Graph, type IEdge } from '../../../../../../../contracts/types/graph.js';
-import type {
-  IBundleNode,
+import {
+  isUntrackableFrontierNode,
+  type IBundleNode,
 } from '../../../../../../../contracts/types/IBundleNode.js';
 import type {
   GraphDescription,
@@ -87,7 +88,7 @@ export function describeWorkingGraph(options: {
     filterVisibleKeys.has(node.bundleNodeKey)
     && (
       options.scope === 'all'
-      || (node.tracked === true && node.blacklisted !== true && node.isFrontierNode !== true)
+      || (node.tracked === true && node.blacklisted !== true && !isUntrackableFrontierNode(node))
     )
   ));
   const visibleKeys = new Set<string>(visibleNodes.map(node => node.bundleNodeKey));

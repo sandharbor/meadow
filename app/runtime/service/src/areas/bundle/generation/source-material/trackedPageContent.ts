@@ -17,7 +17,11 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { parseBundleNodeConfig, resolveBundleNodeRoles } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import {
+  nodeConfigMatchesNode,
+  parseBundleNodeConfig,
+  resolveBundleNodeRoles,
+} from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
@@ -82,6 +86,8 @@ type FolderGenerationNode = {
   effectiveBlacklistingBundleNodeId?: string;
   remaining_depth: number;
   remaining_inlinks_depth?: number;
+  isFrontierNode?: boolean;
+  isFrontierImageExtension?: boolean;
 };
 
 type FolderGenerationOutput = {
@@ -133,7 +139,18 @@ async function materializeFolderGenerationConfigs(options: {
   const bundleIdentity = bundleConfig.bundleGuid || path.basename(bundleDirectory);
   const derivedConfigs: BundleNodeConfig[] = [];
   const derivedNodes = output.nodes
-    .filter(node => !node.bundleNodeId && !node.effectiveBlacklistingBundleNodeId)
+    .filter(node => (
+      !node.bundleNodeId
+      && !bundleNodeConfigs.some(config => nodeConfigMatchesNode(
+        config,
+        node.bundleNodeName,
+        node.sourceGraphSubdirectory,
+        node.fileType,
+        node.bundleNodeKind,
+      ))
+      && !node.effectiveBlacklistingBundleNodeId
+      && (!node.isFrontierNode || node.isFrontierImageExtension)
+    ))
     .sort((left, right) => left.bundleNodeKey.localeCompare(right.bundleNodeKey));
   for (const node of derivedNodes) {
     const bundleNodeId = generatedFolderBundleNodeId(bundleIdentity, node.bundleNodeKey, assignedIds);
@@ -146,8 +163,11 @@ async function materializeFolderGenerationConfigs(options: {
         fileType: node.fileType,
         bundleNodeId,
         listType: 'whitelist',
-        outlinksDepth: node.remaining_depth,
-        inlinksDepth: node.remaining_inlinks_depth ?? 0,
+        // Frontier-preserving images use -1 as an internal traversal sentinel.
+        // A materialized canonical config seeds generation rather than describing
+        // traversal state, so clamp that sentinel to the terminal depth of zero.
+        outlinksDepth: Math.max(0, node.remaining_depth),
+        inlinksDepth: Math.max(0, node.remaining_inlinks_depth ?? 0),
       });
     } else if (node.bundleNodeKind === 'folder') {
       derivedConfigs.push({

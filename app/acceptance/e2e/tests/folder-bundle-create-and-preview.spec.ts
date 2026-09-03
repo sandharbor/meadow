@@ -43,16 +43,50 @@ test("previews a configured bundle from one recursively scanned folder", async (
   await editor.waitForLoad(Bundle.FolderStructureSingle);
   await editor.expectGraphViewHasPages();
   await editor.expectGraphEdgeKindControlsVisible();
+  await editor.expectGraphTextIsNotSelectable();
+  await editor.expectFolderScopeChangesBannerNotVisible();
   await snapshot("single folder graph with two linked depth rows");
   await addKeyFrame(folderBundles);
   await editor.switchToListView();
   await editor.switchToStructuralListView();
+  await editor.expectStructuralListHasNoTrackingLabels();
   await editor.expectListViewRowByExactNamePresent("Alpha note");
   await editor.expectListViewRowByExactNamePresent("Visual map");
   await editor.expectListViewRowByExactNamePresent("Nested note");
   await editor.expectListViewRowByExactNameNotPresent("Beta note");
   await editor.expectListViewRowByExactNamePresent("Outside note");
   await editor.expectListViewRowByExactNamePresent("Beyond outside");
+  await editor.expectListViewRowByExactNamePresent("Frontier image");
+  await editor.expectListViewThumbnailVisible("Frontier image", "png");
+  await editor.expectListViewThumbnailVisible("Visual map", "svg");
+  await editor.hoverListViewThumbnail("Visual map", "svg");
+  await editor.expectImageHoverPreviewVisible("Visual map");
+  await addKeyFrame(folderBundles);
+  await editor.clickListSort("Title");
+  await editor.expectStructuralSectionOrder("outside", [
+    "Beyond outside",
+    "Frontier image",
+    "Outside note",
+  ]);
+  await editor.clickListSort("Title");
+  await editor.expectStructuralSectionOrder("outside", [
+    "Outside note",
+    "Frontier image",
+    "Beyond outside",
+  ]);
+  await editor.clickListSort("Distance");
+  await editor.expectStructuralSectionOrder("outside", [
+    "Outside note",
+    "Beyond outside",
+    "Frontier image",
+  ]);
+  await editor.clickListSort("Distance");
+  await editor.expectStructuralSectionOrder("outside", [
+    "Frontier image",
+    "Beyond outside",
+    "Outside note",
+  ]);
+  await page.mouse.move(0, 0);
   await snapshot("single folder recursive structure in the editor");
 
   await editor.clickPreview();

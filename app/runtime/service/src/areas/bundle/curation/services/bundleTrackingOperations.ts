@@ -26,7 +26,10 @@ import {
   type TrackedBundleNodeResult,
 } from '../../../../../../../contracts/types/cliOperations.js';
 import { Graph } from '../../../../../../../contracts/types/graph.js';
-import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
+import {
+  isUntrackableFrontierNode,
+  type IBundleNode,
+} from '../../../../../../../contracts/types/IBundleNode.js';
 import {
   applyNodeConfigsToNodes,
   applySensitiveFromApiData,
@@ -93,7 +96,7 @@ function skippedResult(node: IBundleNode, reason: string): SkippedBundleNodeResu
 
 function untrackableReason(node: IBundleNode): string | null {
   if (node.bundleNodeKind === 'collection') return 'bundle-home';
-  if (node.isFrontierNode) return 'frontier';
+  if (isUntrackableFrontierNode(node)) return 'frontier';
   if (node.effectiveBlacklistingBundleNodeId) return 'below-blacklisted-folder';
   return null;
 }

@@ -35,7 +35,7 @@ test("a collection member folder can be blacklisted and restored", async ({
   await bundleList.clickBundle(Bundle.FolderStructureMultiple);
   await editor.waitForLoad(Bundle.FolderStructureMultiple);
   await editor.switchToListView();
-  await expect.poll(() => editor.getListViewPageCount()).toBe(10);
+  await expect.poll(() => editor.getListViewPageCount()).toBe(11);
 
   await editor.clickListViewRowByNodeKey("folder:Alpha");
   await editor.expectSelectedPageBadge("folder:Alpha", "Tracked");
@@ -60,6 +60,7 @@ test("a collection member folder can be blacklisted and restored", async ({
     "Nested note",
     "Outside note",
     "Beyond outside",
+    "Frontier image",
   ]) {
     await editor.expectListViewRowByExactNameNotPresent(removedTitle);
   }
@@ -70,7 +71,7 @@ test("a collection member folder can be blacklisted and restored", async ({
   await editor.rightClickListViewRowByNodeKey("folder:Alpha");
   await editor.clickContextMenuItemAndAwaitAutoSaveAndGraphReload("Remove from Blacklist");
 
-  await expect.poll(() => editor.getListViewPageCount()).toBe(10);
+  await expect.poll(() => editor.getListViewPageCount()).toBe(11);
   for (const restoredTitle of [
     "Alpha",
     "Alpha note",
@@ -79,6 +80,7 @@ test("a collection member folder can be blacklisted and restored", async ({
     "Nested note",
     "Outside note",
     "Beyond outside",
+    "Frontier image",
   ]) {
     await editor.expectListViewRowByExactNamePresent(restoredTitle);
   }
