@@ -96,6 +96,16 @@ get_port() {
 DEV_TOOLS_PORT=$(get_port devToolsPort 5174)
 DEV_TOOLS_SERVER_PORT=$(get_port devToolsServerPort 3002)
 
+# Ensure the replacement session cannot accidentally validate against stale
+# listeners left behind by a previous session.
+for port in "$DEV_TOOLS_PORT" "$DEV_TOOLS_SERVER_PORT"; do
+  while IFS= read -r pid; do
+    if [ -n "$pid" ]; then
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+  done < <(lsof -ti:"$port" 2>/dev/null || true)
+done
+
 # --- 5. Create tmux session with 3 windows ---
 # Runtime and browser windows remain available for inspection commands; the
 # supervisor and Dev Tools process own all actual child-process creation.
@@ -108,28 +118,44 @@ tmux set-option -w -t "$SESSION:browser" remain-on-exit on
 tmux new-window -t "$SESSION" -n dev-tools -c "$DEV_TOOLS_DIR" \
   "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_DEV_TMUX_SESSION='$SESSION' MEADOW_BUILD_PERSPECTIVE='$BUILD_PERSPECTIVE' npm start; read"
 
-# --- 6. Wait for Dev Tools to be ready, then open browser ---
-echo "Waiting for Dev Tools (http://localhost:$DEV_TOOLS_PORT)..."
-for i in $(seq 1 60); do
-  if curl -s -o /dev/null -w '' "http://localhost:$DEV_TOOLS_PORT" 2>/dev/null; then
-    echo "Dev Tools is ready."
-    if [ "${MEADOW_DEV_NO_OPEN:-}" = "1" ]; then
-      echo "Skipping browser open because MEADOW_DEV_NO_OPEN=1."
-    else
-      open "http://localhost:$DEV_TOOLS_PORT"
-    fi
+# --- 6. Wait for the replacement Dev Tools processes, verify their ports,
+# then open the browser and verify they survived the open. ---
+DEV_TOOLS_URL="http://localhost:$DEV_TOOLS_PORT"
+DEV_TOOLS_STATUS_URL="http://localhost:$DEV_TOOLS_SERVER_PORT/api/config/status"
+
+dev_tools_is_running() {
+  tmux has-session -t "$SESSION" 2>/dev/null \
+    && lsof -nP -iTCP:"$DEV_TOOLS_PORT" -sTCP:LISTEN >/dev/null \
+    && lsof -nP -iTCP:"$DEV_TOOLS_SERVER_PORT" -sTCP:LISTEN >/dev/null \
+    && curl --fail --silent --show-error --max-time 2 "$DEV_TOOLS_URL" >/dev/null 2>&1 \
+    && curl --fail --silent --show-error --max-time 2 "$DEV_TOOLS_STATUS_URL" >/dev/null 2>&1
+}
+
+echo "Waiting for Dev Tools ($DEV_TOOLS_URL)..."
+dev_tools_ready=false
+for _attempt in $(seq 1 60); do
+  if dev_tools_is_running; then
+    dev_tools_ready=true
     break
-  fi
-  if [ "$i" -eq 60 ]; then
-    echo "Warning: Dev Tools did not respond within 30s. Opening anyway..."
-    if [ "${MEADOW_DEV_NO_OPEN:-}" = "1" ]; then
-      echo "Skipping browser open because MEADOW_DEV_NO_OPEN=1."
-    else
-      open "http://localhost:$DEV_TOOLS_PORT"
-    fi
   fi
   sleep 0.5
 done
+
+if [ "$dev_tools_ready" != true ]; then
+  echo "Dev Tools failed to become ready. Session output:" >&2
+  tmux capture-pane -p -t "$SESSION:dev-tools" >&2 2>/dev/null || true
+  exit 1
+fi
+
+echo "Dev Tools is ready and listening on ports $DEV_TOOLS_PORT and $DEV_TOOLS_SERVER_PORT."
+if [ "${MEADOW_DEV_NO_OPEN:-}" = "1" ]; then
+  echo "Skipping browser open because MEADOW_DEV_NO_OPEN=1."
+else
+  open "$DEV_TOOLS_URL"
+fi
+
+sleep 1
+dev_tools_is_running
 
 # --- 7. Print summary ---
 echo ""
