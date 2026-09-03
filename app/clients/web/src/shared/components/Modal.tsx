@@ -24,6 +24,7 @@ interface ModalProps {
   className?: string;
   showCloseButton?: boolean;
   movable?: boolean;
+  allowContentScroll?: boolean;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -34,6 +35,7 @@ const Modal: React.FC<ModalProps> = ({
   className = "w-4/5 h-4/5",
   showCloseButton = true,
   movable = false,
+  allowContentScroll = true,
 }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
@@ -114,7 +116,9 @@ const Modal: React.FC<ModalProps> = ({
           )}
         </div>
         
-        <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1">
+        <div className={`flex-1 min-h-0 -mx-1 px-1 ${
+          allowContentScroll ? 'overflow-y-auto' : 'overflow-y-hidden'
+        }`}>
           {children}
         </div>
       </div>

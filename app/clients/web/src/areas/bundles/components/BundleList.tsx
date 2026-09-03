@@ -188,7 +188,6 @@ const BundleList: React.FC = () => {
   
   // Find in bundles filter state (from CLI args or "Find in Bundles" button)
   const [findInBundlesOptions, setFindInBundlesOptions] = useState<FindInBundlesOptions | null>(null);
-  const [isFindInBundlesFilterActive, setIsFindInBundlesFilterActive] = useState(false);
   const [bundlesThatTrackPage, setBundlesThatTrackPage] = useState<Set<string>>(new Set());
   const [loadingPageTracking, setLoadingPageTracking] = useState(false);
   
@@ -311,7 +310,6 @@ const BundleList: React.FC = () => {
         logger.debug('[BundleList] Found find in bundles options from navigation state');
         logger.debug('[BundleList] Find in bundles options from navigation:', navigationState.findInBundlesOptions);
         setFindInBundlesOptions(navigationState.findInBundlesOptions);
-        setIsFindInBundlesFilterActive(true);
         logger.debug('[BundleList] Find in bundles options from navigation loaded and set');
         return;
       }
@@ -327,7 +325,6 @@ const BundleList: React.FC = () => {
           folderPath: cliTargetPageInfo.folderPath,
           pageName: cliTargetPageInfo.pageName
         });
-        setIsFindInBundlesFilterActive(true);
         logger.debug('[BundleList] Find in bundles options from CLI loaded and set:', cliTargetPageInfo);
       } else {
         logger.debug('[BundleList] No find in bundles options available from navigation state or CLI args');
@@ -475,7 +472,7 @@ const BundleList: React.FC = () => {
       return;
     }
     // Store find in bundles page name in sessionStorage for auto-selection
-    if (findInBundlesOptions && isFindInBundlesFilterActive) {
+    if (findInBundlesOptions) {
       sessionStorage.setItem('autoSelectPageName', findInBundlesOptions.pageName);
     } else {
       sessionStorage.removeItem('autoSelectPageName');
@@ -579,11 +576,11 @@ const BundleList: React.FC = () => {
   const currentBundles = bundles.filter(bundle => !bundle.archivedAt);
   const archivedBundles = bundles.filter(bundle => bundle.archivedAt);
 
-  // Apply find in bundles filter if active
-  let filteredCurrentBundles = isFindInBundlesFilterActive && findInBundlesOptions
+  // Apply the find-in-bundles filter when a target page is present.
+  let filteredCurrentBundles = findInBundlesOptions
     ? currentBundles.filter(bundle => bundlesThatTrackPage.has(bundle.slug))
     : currentBundles;
-  let filteredArchivedBundles = isFindInBundlesFilterActive && findInBundlesOptions
+  let filteredArchivedBundles = findInBundlesOptions
     ? archivedBundles.filter(bundle => bundlesThatTrackPage.has(bundle.slug))
     : archivedBundles;
 
@@ -602,7 +599,7 @@ const BundleList: React.FC = () => {
 
     bundlesToSort.sort((a, b) => {
       // Preserve existing behavior: exact page matches (Find in Bundles) are pinned to the top.
-      if (isFindInBundlesFilterActive && findInBundlesOptions) {
+      if (findInBundlesOptions) {
         const aExactMatch = a.entryBundleNodeName === findInBundlesOptions.pageName;
         const bExactMatch = b.entryBundleNodeName === findInBundlesOptions.pageName;
         if (aExactMatch && !bExactMatch) return -1;
@@ -623,7 +620,6 @@ const BundleList: React.FC = () => {
     return bundlesToSort;
   }, [
     displayBundlesRaw,
-    isFindInBundlesFilterActive,
     findInBundlesOptions,
     sortState.key,
     sortState.direction
@@ -648,16 +644,13 @@ const BundleList: React.FC = () => {
         <div className="flex items-start justify-between gap-8 mb-7 flex-shrink-0">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">Bundles</h1>
-            <p className="mt-1 text-sm text-neutral-500">
-              Create, revisit, and publish bundles from your notes.
-            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="px-4 py-2 bg-main-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-main-700 transition-colors"
             >
-              {findInBundlesOptions && isFindInBundlesFilterActive ? 'Create Bundle for Page' : 'Create New Bundle'}
+              {findInBundlesOptions ? 'Create Bundle for Page' : 'Create New Bundle'}
             </button>
             <div className="relative" ref={bundleListMenuRef}>
               <button
@@ -695,38 +688,11 @@ const BundleList: React.FC = () => {
           </div>
         </div>
 
-        {findInBundlesOptions && !isFindInBundlesFilterActive && (
-          <div className="mb-4 flex items-center justify-between gap-4 rounded-lg border border-main-200 bg-main-50 px-4 py-3">
-            <span className="text-sm text-main-900">
-              Show only bundles that contain &quot;{findInBundlesOptions.pageName}&quot;?
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsFindInBundlesFilterActive(true)}
-                className="px-3 py-1.5 bg-main-600 hover:bg-main-700 text-white rounded-md text-sm font-medium transition-colors"
-                title="Apply find in bundles filter"
-              >
-                Apply filter
-              </button>
-              <button
-                onClick={() => {
-                  setFindInBundlesOptions(null);
-                  setIsFindInBundlesFilterActive(false);
-                }}
-                className="px-2 py-1.5 text-sm text-neutral-600 hover:text-neutral-900"
-                title="Clear find in bundles filter"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        )}
-
-        {findInBundlesOptions && isFindInBundlesFilterActive && (
+        {findInBundlesOptions && (
           <div className="mb-4 flex items-center gap-2 self-start rounded-full border border-main-200 bg-main-50 py-1.5 pl-3 pr-1.5 text-main-800">
             <span className="text-sm">Find in bundles filter: &quot;{findInBundlesOptions.pageName}&quot;</span>
             <button
-              onClick={() => setIsFindInBundlesFilterActive(false)}
+              onClick={() => setFindInBundlesOptions(null)}
               className="flex h-6 w-6 items-center justify-center rounded-full text-main-600 hover:bg-main-100 hover:text-main-900"
               title="Remove filter"
               aria-label="Remove find in bundles filter"
@@ -756,7 +722,7 @@ const BundleList: React.FC = () => {
               <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                 activeTab === 'current' ? 'bg-main-50 text-main-700' : 'bg-neutral-100 text-neutral-500'
               }`}>
-                {isFindInBundlesFilterActive && findInBundlesOptions ? filteredCurrentBundles.length : currentBundles.length}
+                {findInBundlesOptions ? filteredCurrentBundles.length : currentBundles.length}
               </span>
             </button>
             <button
@@ -771,7 +737,7 @@ const BundleList: React.FC = () => {
               <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
                 activeTab === 'archived' ? 'bg-main-50 text-main-700' : 'bg-neutral-100 text-neutral-500'
               }`}>
-                {isFindInBundlesFilterActive && findInBundlesOptions ? filteredArchivedBundles.length : archivedBundles.length}
+                {findInBundlesOptions ? filteredArchivedBundles.length : archivedBundles.length}
               </span>
             </button>
           </nav>
@@ -825,7 +791,7 @@ const BundleList: React.FC = () => {
 
         {/* Bundles list */}
         <div className="mt-4 flex-1 min-h-0 overflow-y-auto rounded-xl border border-neutral-200 bg-white">
-          {isFindInBundlesFilterActive && findInBundlesOptions && loadingPageTracking && (
+          {findInBundlesOptions && loadingPageTracking && (
             <div className="px-5 py-3 bg-main-50 border-b border-main-200">
               <div className="flex items-center space-x-2">
                 <div className="animate-spin h-4 w-4 border border-main-300 border-t-main-600 rounded-full"></div>
@@ -836,12 +802,12 @@ const BundleList: React.FC = () => {
             </div>
           )}
           
-          {isFindInBundlesFilterActive && findInBundlesOptions && !loadingPageTracking && displayBundles.length === 0 && (
+          {findInBundlesOptions && !loadingPageTracking && displayBundles.length === 0 && (
             <div className="px-5 py-4 bg-warning-50 border-b border-warning-200">
               <div className="text-sm text-warning-800">
                 No bundles found that track the page &quot;{findInBundlesOptions.pageName}&quot;. 
                 <button 
-                  onClick={() => setIsFindInBundlesFilterActive(false)}
+                  onClick={() => setFindInBundlesOptions(null)}
                   className="ml-2 text-warning-600 underline hover:text-warning-800"
                 >
                   Remove filter
@@ -861,7 +827,7 @@ const BundleList: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-neutral-200">
                 {displayBundles.map((bundle) => {
-                  const isExactMatch = isFindInBundlesFilterActive && findInBundlesOptions && bundle.entryBundleNodeName === findInBundlesOptions.pageName;
+                  const isExactMatch = Boolean(findInBundlesOptions && bundle.entryBundleNodeName === findInBundlesOptions.pageName);
                   const publishedDate = formatBundleDate(bundle.mostRecentPublicationAt);
                   const updatedDate = formatBundleDate(bundle.bundleUpdatedAt);
                   const createdDate = formatBundleDate(bundle.bundleCreatedAt);

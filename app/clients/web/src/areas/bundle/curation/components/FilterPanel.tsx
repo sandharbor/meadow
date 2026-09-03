@@ -497,7 +497,10 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                       <span className={`w-3.5 h-3.5 inline-flex items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] -translate-y-0.5 transition-opacity duration-[125ms] ${isPanelHovered ? (filter.enabled ? 'opacity-100' : 'opacity-50') : 'opacity-0'}`}>
                         ?
                       </span>
-                      <span className="fixed ml-2 w-64 p-2 bg-white text-gray-700 text-xs rounded border border-gray-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-[9999]">
+                      <span
+                        role="tooltip"
+                        className="pointer-events-none fixed ml-2 w-64 p-2 bg-white text-gray-700 text-xs rounded border border-gray-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity z-[9999]"
+                      >
                         {tooltipDescription}
                       </span>
                     </span>

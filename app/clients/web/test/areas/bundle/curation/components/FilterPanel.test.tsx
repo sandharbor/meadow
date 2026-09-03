@@ -176,6 +176,19 @@ describe('FilterPanel', () => {
     expect(screen.getByPlaceholderText('Search')).toBeInTheDocument();
   });
 
+  it('lets the pointer pass through filter description tooltips', () => {
+    render(
+      <FilterPanel
+        filters={[{ ...mockFilters[0], description: 'Helpful filter details' }]}
+        onFilterChange={vi.fn()}
+        {...defaultPanelProps}
+      />
+    );
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Helpful filter details');
+    expect(screen.getByRole('tooltip')).toHaveClass('pointer-events-none');
+  });
+
   it('shows correct initial checkbox states', () => {
     const mockOnFilterChange = vi.fn();
     render(<FilterPanel filters={mockFilters} onFilterChange={mockOnFilterChange} {...defaultPanelProps} />);

@@ -79,6 +79,7 @@ const DeleteBundleModal: React.FC<DeleteBundleModalProps> = ({
     }
 
     setIsDeleting(true);
+    setDeleteProgress(null);
     setDeleteError(null);
 
     try {
@@ -118,13 +119,23 @@ const DeleteBundleModal: React.FC<DeleteBundleModalProps> = ({
       isOpen={isOpen}
       onClose={isDeleting ? () => {} : onClose}
       title="Delete Bundle"
-      className="w-1/3 max-w-md h-auto"
+      className="w-full max-w-md h-auto"
+      allowContentScroll={!isDeleting}
     >
       <div className="space-y-4">
-        {isDeleting && deleteProgress ? (
-          <div className="flex items-center space-x-3">
-            <div className="animate-spin h-5 w-5 border-2 border-red-300 border-t-red-600 rounded-full"></div>
-            <p className="text-gray-700">{deleteProgress.message}</p>
+        {isDeleting ? (
+          <div
+            className="flex min-h-12 items-center space-x-3"
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-red-300 border-t-red-600"
+              aria-hidden="true"
+            />
+            <p className="min-w-0 text-gray-700">
+              {deleteProgress?.message ?? 'Preparing to delete bundle...'}
+            </p>
           </div>
         ) : (
           <>

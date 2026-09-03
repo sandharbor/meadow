@@ -151,4 +151,20 @@ export class BundleListPage {
       this.page.getByText(`Find in bundles filter: "${pageName}"`),
     ).toBeVisible();
   }
+
+  async clearFindInBundlesFilter(pageName: string) {
+    await this.page.getByRole("button", { name: "Remove find in bundles filter" }).click();
+    await this.expect(
+      this.page.getByText(`Find in bundles filter: "${pageName}"`),
+    ).not.toBeVisible();
+  }
+
+  async expectFindInBundlesFilterCleared(pageName: string) {
+    await this.expect(
+      this.page.getByText(`Show only bundles that contain "${pageName}"?`),
+    ).not.toBeVisible();
+    await this.expect(
+      this.page.getByRole("button", { name: "Create New Bundle" }),
+    ).toBeVisible();
+  }
 }

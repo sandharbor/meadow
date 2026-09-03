@@ -83,6 +83,12 @@ test("find in bundles shows archived match indicator and archived tab", async ({
   await bundleList.expectBundleVisible(Bundle.Big);
   await addKeyFrame(archived);
   await snapshot("archived tab shows big bundle match");
+
+  // Clearing Find in Bundles ends the mode instead of offering to apply the
+  // same filter a second time.
+  await bundleList.clearFindInBundlesFilter("t001 - deeply nested");
+  await bundleList.expectFindInBundlesFilterCleared("t001 - deeply nested");
+  await snapshot("find in bundles cleared");
   void bigBundle;
   void smallBundle;
   void exampleBundle;
