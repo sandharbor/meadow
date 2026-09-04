@@ -38,6 +38,7 @@ import { createBrowserLaunchUrl } from "../../../../runtime/supervisor/src/runti
 import {
   DevRuntimeManager,
 } from "./devRuntimeManager.js";
+import { stopOwnedDevAppProcesses } from "./devAppProcessManager.js";
 import { activateNormalConfig } from "./normalConfig.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -482,26 +483,11 @@ app.post("/api/app/launch-dev", async (_req, res) => {
     const projectRoot = getProjectRoot();
     const electronAppDir = join(projectRoot, "app", "hosts", "desktop");
 
-    console.log(`[dev] Killing any existing dev processes before launch...`);
-
-    await new Promise<void>((resolve) => {
-      const killScript = `
-        pkill -f "electron.*hosts/desktop" || true
-        pkill -f "meadow-electron" || true
-        pkill -f "node.*electron-dev" || true
-      `;
-
-      const killChild = spawn("bash", ["-c", killScript], {
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      killChild.on("close", () => {
-        resolve();
-      });
-    });
-
-    // Small delay to ensure processes are fully terminated
-    await new Promise(r => globalThis.setTimeout(r, 300));
+    console.log(`[dev] Stopping dev app process groups owned by ${electronAppDir}...`);
+    const stoppedProcessGroups = await stopOwnedDevAppProcesses(electronAppDir);
+    if (stoppedProcessGroups.length > 0) {
+      console.log(`[dev] Stopped process groups: ${stoppedProcessGroups.join(", ")}`);
+    }
 
     // Start or attach before Electron launches; Electron negotiates its own
     // client lease against the same supervisor-owned Runtime.

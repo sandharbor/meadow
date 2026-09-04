@@ -9,7 +9,7 @@
   "homepage": "./",
   "scripts": {
     "electron": "electron .",
-    "electron-dev": "concurrently \"npm run build:dev\" \"wait-on dist/hosts/desktop/src/main.js && electron .\"",
+    "electron-dev": "concurrently --kill-others \"npm run build:dev\" \"wait-on dist/hosts/desktop/src/main.js && electron .\"",
     "electron-dev-args": "./electron-dev.sh",
     "build": "npm run build:all && npm run build:electron",
     "build:dev": "npm run build:main -- --watch",

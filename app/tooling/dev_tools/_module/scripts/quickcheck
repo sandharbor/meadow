@@ -1,10 +1,11 @@
 #!/bin/bash
 
-echo "🧪 Running dev_tools_app type checking and linting in parallel..."
+echo "🧪 Running dev_tools_app type checking, linting, and tests in parallel..."
 
 # Create temporary files for results
 tsc_result=$(mktemp)
 eslint_result=$(mktemp)
+test_result=$(mktemp)
 
 # Run TypeScript check in background
 (
@@ -30,9 +31,22 @@ tsc_pid=$!
 ) &
 eslint_pid=$!
 
+# Run tests in background
+(
+    echo "Running tests..."
+    npm test
+    if [ $? -ne 0 ]; then
+        echo "❌ Tests failed." > "$test_result"
+    else
+        echo "✅ Tests passed." > "$test_result"
+    fi
+) &
+test_pid=$!
+
 # Wait for both to complete
 wait $tsc_pid
 wait $eslint_pid
+wait $test_pid
 
 # Check results
 CHECKS_PASSED=true
@@ -44,9 +58,13 @@ cat "$eslint_result"
 if grep -q "❌" "$eslint_result"; then
     CHECKS_PASSED=false
 fi
+cat "$test_result"
+if grep -q "❌" "$test_result"; then
+    CHECKS_PASSED=false
+fi
 
 # Clean up
-rm -f "$tsc_result" "$eslint_result"
+rm -f "$tsc_result" "$eslint_result" "$test_result"
 
 if [ "$CHECKS_PASSED" = false ]; then
     echo "🚫 Checks failed. Please fix the issues above."
