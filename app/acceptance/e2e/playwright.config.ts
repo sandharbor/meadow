@@ -36,7 +36,7 @@ export default defineConfig({
   fullyParallel: true,
   retries: 0,
   workers: WORKERS,
-  reporter: "list",
+  reporter: [["list"], ["./src/run/artifactReporter.ts"]],
 
   globalSetup: "./globalSetup.ts",
   globalTeardown: "./globalTeardown.ts",

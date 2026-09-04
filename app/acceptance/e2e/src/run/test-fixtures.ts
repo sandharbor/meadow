@@ -42,6 +42,8 @@ import { MeadowCli } from "./utils/MeadowCli.js";
 import { MinioS3 } from "./utils/MinioS3.js";
 import type { BundleMode } from "./bundleMode.js";
 import type { ExecutionSurface } from "./executionSurface.js";
+import { getTestArtifactDirectory } from "./artifactReporter.js";
+import { appendTickEntrySync } from "./writeTickEntry.js";
 import { isPrivateMeadowHomePath } from "../../../../shared_code/utils/privateMeadowHomePaths.js";
 import { RuntimeSupervisor } from "../../../../runtime/supervisor/src/runtimeSupervisor.js";
 import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
@@ -916,18 +918,7 @@ export const test = base.extend<{
       const { configDir } = testServer;
 
       // Create artifact directory
-      const testSlug = testInfo.title
-        .replace(/[^a-zA-Z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
-        .toLowerCase();
-      const runId = process.env.E2E_RUN_ID || "default";
-      const artifactDir = path.join(
-        os.homedir(),
-        "meadow-e2e-artifacts",
-        "current",
-        runId,
-        testSlug
-      );
+      const artifactDir = getTestArtifactDirectory(testInfo.title);
       mkdirSync(artifactDir, { recursive: true });
 
       // Record start time
@@ -1189,7 +1180,7 @@ export const test = base.extend<{
             s3Keys: latestS3Keys,
             ...(shouldCaptureAdditionalTickData && additionalTickData),
           };
-          appendFileSync(tickLogPath, JSON.stringify(entry) + "\n");
+          appendTickEntrySync(tickLogPath, entry);
         } catch (err) {
           console.error("tick capture error:", err);
         }
