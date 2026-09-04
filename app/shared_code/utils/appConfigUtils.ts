@@ -256,6 +256,7 @@ export function updateGenerationOptions(
     generationSearchEnabled?: boolean | null;
     generationHoverPreviewEnabled?: boolean | null;
     generationFolderNavigationEnabled?: boolean | null;
+    generationFolderNavigationDefaultOpen?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
     generationOpenKnowledgeFormatEnabled?: boolean | null;
     generationSpacedRepetitionEnabled?: boolean | null;
@@ -281,6 +282,7 @@ export function updateGenerationOptions(
   setOrDelete('generationSearchEnabled', updates.generationSearchEnabled);
   setOrDelete('generationHoverPreviewEnabled', updates.generationHoverPreviewEnabled);
   setOrDelete('generationFolderNavigationEnabled', updates.generationFolderNavigationEnabled);
+  setOrDelete('generationFolderNavigationDefaultOpen', updates.generationFolderNavigationDefaultOpen);
   setOrDelete('generationMarkdownZipEnabled', updates.generationMarkdownZipEnabled);
   setOrDelete('generationOpenKnowledgeFormatEnabled', updates.generationOpenKnowledgeFormatEnabled);
   setOrDelete('generationSpacedRepetitionEnabled', updates.generationSpacedRepetitionEnabled);

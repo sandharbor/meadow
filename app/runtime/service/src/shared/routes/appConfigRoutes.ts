@@ -103,6 +103,7 @@ router.post('/generation/options', asyncHandler((req, res) => {
     generationSearchEnabled,
     generationHoverPreviewEnabled,
     generationFolderNavigationEnabled,
+    generationFolderNavigationDefaultOpen,
     generationMarkdownZipEnabled,
     generationOpenKnowledgeFormatEnabled,
     generationSpacedRepetitionEnabled,
@@ -114,6 +115,7 @@ router.post('/generation/options', asyncHandler((req, res) => {
     generationSearchEnabled?: boolean | null;
     generationHoverPreviewEnabled?: boolean | null;
     generationFolderNavigationEnabled?: boolean | null;
+    generationFolderNavigationDefaultOpen?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
     generationOpenKnowledgeFormatEnabled?: boolean | null;
     generationSpacedRepetitionEnabled?: boolean | null;
@@ -132,6 +134,7 @@ router.post('/generation/options', asyncHandler((req, res) => {
     !validateBoolOrNullOrUndef(generationSearchEnabled) ||
     !validateBoolOrNullOrUndef(generationHoverPreviewEnabled) ||
     !validateBoolOrNullOrUndef(generationFolderNavigationEnabled) ||
+    !validateBoolOrNullOrUndef(generationFolderNavigationDefaultOpen) ||
     !validateBoolOrNullOrUndef(generationMarkdownZipEnabled) ||
     !validateBoolOrNullOrUndef(generationOpenKnowledgeFormatEnabled) ||
     !validateBoolOrNullOrUndef(generationSpacedRepetitionEnabled) ||
@@ -149,6 +152,7 @@ router.post('/generation/options', asyncHandler((req, res) => {
       generationSearchEnabled,
       generationHoverPreviewEnabled,
       generationFolderNavigationEnabled,
+      generationFolderNavigationDefaultOpen,
       generationMarkdownZipEnabled,
       generationOpenKnowledgeFormatEnabled,
       generationSpacedRepetitionEnabled,

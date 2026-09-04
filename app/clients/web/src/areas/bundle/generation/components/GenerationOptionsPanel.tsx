@@ -16,6 +16,7 @@ limitations under the License.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '../../../../shared/components/Modal';
+import FolderNavigationSettingsModal from './FolderNavigationSettingsModal';
 import OpenKnowledgeFormatSettingsModal, {
   type OpenKnowledgeFormatSettings
 } from './open-knowledge-format/OpenKnowledgeFormatSettingsModal';
@@ -56,6 +57,7 @@ interface GenerationOptionsPanelProps {
   onBundleSrsEnable: (setting: OverrideSetting, tags: string[]) => Promise<void>;
   onBundleOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
   onBundleOkfEnable: (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  onFolderNavigationSettingsChanged: () => Promise<void>;
   openKnowledgeFormatRenameCount?: number;
   onOpenKnowledgeFormatRenameDetails?: () => void;
   disabled?: boolean;
@@ -185,6 +187,7 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
   onBundleSrsEnable,
   onBundleOkfLogSettingsChange,
   onBundleOkfEnable,
+  onFolderNavigationSettingsChanged,
   openKnowledgeFormatRenameCount = 0,
   onOpenKnowledgeFormatRenameDetails,
   disabled,
@@ -203,6 +206,10 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
   const [isSubmittingSrsEnable, setIsSubmittingSrsEnable] = useState(false);
   const [isOkfSettingsModalOpen, setIsOkfSettingsModalOpen] = useState(false);
   const [pendingOkfEnable, setPendingOkfEnable] = useState<PendingOkfEnable | null>(null);
+  const [isFolderNavigationSettingsOpen, setIsFolderNavigationSettingsOpen] = useState(false);
+  const effectiveFolderNavigationEnabled = bundleOptions.folderNavigationSetting === 'inherit'
+    ? globalOptions.folderNavigationEnabled
+    : bundleOptions.folderNavigationSetting === 'enabled';
 
   useEffect(() => {
     setGlobalTagInput(tagsToInput(globalSrsTags));
@@ -550,6 +557,12 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
             bundleOptions.folderNavigationSetting,
             (enabled) => onGlobalOptionChange('folderNavigation', enabled),
             (setting) => onBundleOptionChange('folderNavigation', setting),
+            { action: effectiveFolderNavigationEnabled ? (
+              <button type="button" onClick={() => setIsFolderNavigationSettingsOpen(true)} disabled={disabled}
+                className="flex-shrink-0 rounded border border-neutral-300 px-2 py-0.5 text-xs text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50">
+                Edit
+              </button>
+            ) : undefined },
           )}
           {renderRow(
             'Sources ZIP',
@@ -775,6 +788,10 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
         }}
         onConfirm={handleConfirmOkfSettings}
       />
+      {isFolderNavigationSettingsOpen && (
+        <FolderNavigationSettingsModal bundleSlug={bundleSlug}
+          onClose={() => setIsFolderNavigationSettingsOpen(false)} onSaved={onFolderNavigationSettingsChanged} />
+      )}
     </>
   );
 };

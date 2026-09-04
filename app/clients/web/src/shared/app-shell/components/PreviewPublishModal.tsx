@@ -268,6 +268,30 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
 
   // Refresh key for preview changes tab (increment to force tree refresh)
   const [changesTabRefreshKey, setChangesTabRefreshKey] = useState(0);
+  const [previewPageRefreshKey, setPreviewPageRefreshKey] = useState(0);
+  const selectedChangeFileRef = useRef<string | null>(null);
+  const handleSelectedChangeFile = useCallback((filePath: string) => {
+    selectedChangeFileRef.current = filePath;
+  }, []);
+  const [hasOpenedChanges, setHasOpenedChanges] = useState(false);
+  useEffect(() => {
+    if (previewSubTab === 'changes') setHasOpenedChanges(true);
+  }, [previewSubTab]);
+
+  const resetVersionChanges = useCallback(() => {
+    // Cached file selections belong to the previous version's directory.
+    // Reopen Changes from a fresh tree after creating, restoring, or canceling a version.
+    setHasOpenedChanges(false);
+    setChangesInitialFile(undefined);
+    selectedChangeFileRef.current = null;
+    setChangesTabRefreshKey(previous => previous + 1);
+    setCurrentPreviewUrl(current => {
+      if (!current) return current;
+      const url = new URL(current);
+      url.searchParams.set('_t', Date.now().toString());
+      return url.toString();
+    });
+  }, []);
 
   // Notify parent of busy state changes
   useEffect(() => {
@@ -447,12 +471,6 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     };
   }, [slug, previewResult?.success, previewResult?.traversalPageUrl, isRegeneratingPreview]);
 
-  // Reset the preview URL and history when a new preview is generated
-  useEffect(() => {
-    setCurrentPreviewUrl(null);
-    setPreviewHistory([]);
-  }, [previewResult?.traversalPageUrl]);
-
   // Cleanup "done!" fade timeouts on unmount
   useEffect(() => {
     const timeouts = previewDoneTimeoutsRef.current;
@@ -485,6 +503,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
           : `bundles/${slug}/generation/preview-stream`;
 
         const eventSource = new AuthenticatedEventSource(url);
+        let pageShown = false;
 
         eventSource.onmessage = (event) => {
           try {
@@ -498,7 +517,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             setPreviewProgress(data);
 
             // As soon as the server tells us the start page URL, show it.
-            if (data.result?.traversalPageUrl) {
+            if (data.result?.traversalPageUrl && !pageShown) {
+              pageShown = true;
               setPreviewResult({ success: true, traversalPageUrl: data.result.traversalPageUrl });
               setCurrentPreviewUrl(data.result.traversalPageUrl);
             }
@@ -582,9 +602,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     setIsIframeLoading(true);
     setPreviewProgress({ stage: 'preparing', message: 'Preparing to render preview...' });
 
+    let startPageShown = false;
     const completion = await new Promise<{ stage: 'complete' | 'error'; traversalPageUrl?: string }>((resolve) => {
       // Pass the current page path so the backend renders it first
-      const currentFilePath = getCurrentPreviewFilePath();
+      const currentFilePath = previewSubTab === 'changes'
+        ? selectedChangeFileRef.current || getCurrentPreviewFilePath()
+        : getCurrentPreviewFilePath();
       let streamUrl = `bundles/${slug}/generation/preview-stream`;
       if (currentFilePath && previewRootPath) {
         const relativePath = currentFilePath.startsWith(previewRootPath)
@@ -606,6 +629,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
           };
 
           setPreviewProgress(data);
+
+          if (data.stage === 'generating' && data.result?.traversalPageUrl) {
+            startPageShown = true;
+            setCurrentPreviewUrl(data.result.traversalPageUrl);
+            setPreviewPageRefreshKey(previous => previous + 1);
+          }
 
           if (data.stage === 'complete' || data.stage === 'error') {
             eventSource.close();
@@ -638,9 +667,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       }
 
       // Stay on the current page if possible; only fall back to the new traversal URL
-      const stayUrl = currentPreviewUrl || newTraversalUrl || previewResult?.traversalPageUrl;
-      if (stayUrl) {
-        const url = new URL(stayUrl);
+      if (!startPageShown && newTraversalUrl) {
+        const url = new URL(newTraversalUrl);
         url.searchParams.set('_t', Date.now().toString());
         setCurrentPreviewUrl(url.toString());
       }
@@ -668,12 +696,22 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
           changedFilesSnapshotRef.current = null;
         })
         .catch((err) => logger.error('Failed to refresh changed files:', err));
+    } else if (startPageShown) {
+      // The failed staging tree was discarded. Reload the installed page so
+      // the visible preview and Changes also return to the last complete output.
+      setCurrentPreviewUrl(current => {
+        if (!current) return current;
+        const url = new URL(current);
+        url.searchParams.set('_t', Date.now().toString());
+        return url.toString();
+      });
+      setPreviewPageRefreshKey(previous => previous + 1);
     }
 
     isRegeneratingPreviewRef.current = false;
     setIsRegeneratingPreview(false);
     setIsIframeLoading(false);
-  }, [slug, currentPreviewUrl, previewResult?.traversalPageUrl, previewFileExplorerApi, getCurrentPreviewFilePath, previewRootPath, changedFiles, collectChangedFiles]);
+  }, [slug, previewSubTab, previewFileExplorerApi, getCurrentPreviewFilePath, previewRootPath, changedFiles, collectChangedFiles]);
 
   // Drain pending regeneration: if something requested a regeneration while
   // one was in progress, run it now that the previous one has finished.
@@ -687,7 +725,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   // Handle save changes (commit to git without publishing)
   const handleSaveChanges = useCallback(async () => {
     if (!slug) return;
-    if (isSavingChanges) return;
+    if (isSavingChanges || isRegeneratingPreviewRef.current) return;
 
     setIsSavingChanges(true);
     setSaveChangesMessage(null);
@@ -740,7 +778,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       setIsCreateVersionOpen(false);
       setCreateVersionNote('');
       setConfirmNoGeneratedChanges(false);
-      setChangesTabRefreshKey(previous => previous + 1);
+      resetVersionChanges();
       setVersionsRefreshKey(previous => previous + 1);
       await previewFileExplorerApi.fetchTree({ changedOnly: true });
       setPreviewSubTab('versions');
@@ -749,7 +787,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     } finally {
       setIsCreatingVersion(false);
     }
-  }, [slug, isCreatingVersion, createVersionNote, changedFiles.size, confirmNoGeneratedChanges, previewFileExplorerApi]);
+  }, [slug, isCreatingVersion, createVersionNote, changedFiles.size, confirmNoGeneratedChanges, previewFileExplorerApi, resetVersionChanges]);
 
   // Handle closing the modal — unmount resets all state automatically
   const handleClose = useCallback(() => {
@@ -1120,10 +1158,10 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                     {saveChangesMessage.text}
                   </span>
                 )}
-                <DisabledTooltip disabled={changedFiles.size === 0} tooltip="No changes to save">
+                <DisabledTooltip disabled={isRegeneratingPreview || changedFiles.size === 0} tooltip={isRegeneratingPreview ? 'Wait for preview to finish generating' : 'No changes to save'}>
                   <button
                     onClick={handleSaveChanges}
-                    disabled={isSavingChanges || changedFiles.size === 0}
+                    disabled={isSavingChanges || isRegeneratingPreview || changedFiles.size === 0}
                     className="px-3 py-1 bg-btn-standard-normal text-btn-standard-text text-sm rounded font-medium hover:bg-btn-standard-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSavingChanges ? 'Saving...' : 'Save Changes'}
@@ -1273,7 +1311,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
               <div className="h-full flex flex-row">
                 {/* Main content area */}
                 <div className="flex-1 min-w-0 h-full">
-                  {previewSubTab === 'bundlePreview' ? (
+                  <div className={previewSubTab === 'bundlePreview' ? 'h-full' : 'hidden'}>
                     <iframe
                       ref={iframeRef}
                       src={currentPreviewUrl || previewResult.traversalPageUrl}
@@ -1281,7 +1319,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                       title="Preview"
                       onLoad={handleIframeLoad}
                     />
-                  ) : previewSubTab === 'changes' ? (
+                  </div>
+                  {(hasOpenedChanges || previewSubTab === 'changes') && <div className={previewSubTab === 'changes' ? 'h-full' : 'hidden'}>
                     <PreviewChangesTab
                       slug={slug}
                       isActive={topLevelTab === 'review' && previewSubTab === 'changes'}
@@ -1291,8 +1330,11 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                       initialFile={changesInitialFile}
                       onPreviewFile={handlePreviewFromChanges}
                       refreshKey={changesTabRefreshKey}
+                      contentRefreshKey={previewPageRefreshKey}
+                      onSelectedFileChange={handleSelectedChangeFile}
                     />
-                  ) : previewSubTab === 'versions' ? (
+                  </div>}
+                  {previewSubTab === 'versions' ? (
                     <VersionsTab
                       bundleSlug={slug}
                       refreshKey={versionsRefreshKey}
@@ -1300,7 +1342,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                       createNewVersionDisabled={isCreatingVersion || isRegeneratingPreview || isSavingChanges}
                       onVersionChanged={() => {
                         setVersionsRefreshKey(previous => previous + 1);
-                        setChangesTabRefreshKey(previous => previous + 1);
+                        resetVersionChanges();
                         void previewFileExplorerApi.fetchTree({ changedOnly: true });
                       }}
                     />
@@ -1340,6 +1382,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                   onBundleSrsEnable={handleBundleSrsEnable}
                   onBundleOkfLogSettingsChange={handleBundleOkfLogSettingsChange}
                   onBundleOkfEnable={handleBundleOkfEnable}
+                  onFolderNavigationSettingsChanged={regeneratePreviewAndReload}
                   openKnowledgeFormatRenameCount={openKnowledgeFormatRenames.length}
                   onOpenKnowledgeFormatRenameDetails={() => setIsOkfRenameModalOpen(true)}
                   disabled={providerBusy || isRegeneratingPreview}

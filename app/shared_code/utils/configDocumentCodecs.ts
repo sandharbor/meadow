@@ -53,6 +53,7 @@ const APP_BOOLEAN_FIELDS = [
   'generationSearchEnabled',
   'generationHoverPreviewEnabled',
   'generationFolderNavigationEnabled',
+  'generationFolderNavigationDefaultOpen',
   'generationMarkdownZipEnabled',
   'generationOpenKnowledgeFormatEnabled',
   'generationSpacedRepetitionEnabled',

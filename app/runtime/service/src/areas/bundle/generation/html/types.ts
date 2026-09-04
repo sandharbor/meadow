@@ -80,6 +80,7 @@ export interface FolderNavigationPage {
 
 export interface FolderNavigationRenderOptions {
   storageKey: string;
+  defaultOpen?: boolean;
 }
 
 export interface StaticAssetNames {

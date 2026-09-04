@@ -16,7 +16,7 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { spawnSync } from 'child_process';
+import { execFile, spawnSync } from 'child_process';
 import type { GeneratedBundleVersionId } from '../../../../../contracts/types/generatedBundleVersioning.js';
 import { findGitRoot } from '../utils/configFileExplorerUtils.js';
 import { generatedBundleVersionDirectory } from './generatedBundleVersionManifestService.js';
@@ -209,21 +209,31 @@ function treeFileObjectIds(gitRoot: string, treeId: string): Map<string, string>
   return files;
 }
 
-function workingFileObjectIds(gitRoot: string, directory: string): Map<string, string> {
-  const files = new Map<string, string>();
-  for (const relativePath of workingFiles(directory)) {
-    const absolutePath = path.join(directory, ...relativePath.split('/'));
-    const objectId = (runGit(gitRoot, ['hash-object', '--', absolutePath]) as string).trim();
-    files.set(relativePath, objectId);
-  }
-  return files;
+async function workingFileObjectIds(gitRoot: string, directory: string): Promise<Map<string, string>> {
+  const paths = [...workingFiles(directory)];
+  if (paths.length === 0) return new Map();
+  // One asynchronous Git process keeps preview requests responsive even for
+  // thousands of files. Git accepts C-quoted paths, including embedded newlines.
+  const input = paths.map(relativePath => JSON.stringify(path.join(directory, relativePath))).join('\n') + '\n';
+  const output = await new Promise<string>((resolve, reject) => {
+    const child = execFile('git', ['hash-object', '--stdin-paths'], {
+      cwd: gitRoot,
+      encoding: 'utf8',
+      maxBuffer: 50 * 1024 * 1024,
+    }, (error, stdout) => error ? reject(new Error(error.message)) : resolve(stdout));
+    child.stdin?.on('error', reject);
+    child.stdin?.end(input);
+  });
+  const objectIds = output.trim().split('\n');
+  if (objectIds.length !== paths.length) throw new Error('Git returned an incomplete generated file comparison');
+  return new Map(paths.map((relativePath, index) => [relativePath, objectIds[index]]));
 }
 
-export function compareGeneratedBundleVersionTrees(
+export async function compareGeneratedBundleVersionTrees(
   bundleDirectory: string,
   leftVersionId: GeneratedBundleVersionId,
   right: { versionId: GeneratedBundleVersionId } | { workingCurrentVersionId: GeneratedBundleVersionId },
-): GeneratedVersionComparisonChange[] {
+): Promise<GeneratedVersionComparisonChange[]> {
   const gitRoot = requireGitRoot(bundleDirectory);
   const leftTreeId = deriveSavedGenerationId(bundleDirectory, leftVersionId);
   if (!leftTreeId) throw new Error(`Version ${leftVersionId} has no saved generation to compare`);
@@ -234,7 +244,7 @@ export function compareGeneratedBundleVersionTrees(
       if (!rightTreeId) throw new Error(`Version ${right.versionId} has no saved generation to compare`);
       return treeFileObjectIds(gitRoot, rightTreeId);
     })()
-    : workingFileObjectIds(
+    : await workingFileObjectIds(
       gitRoot,
       generatedBundleVersionDirectory(bundleDirectory, right.workingCurrentVersionId),
     );

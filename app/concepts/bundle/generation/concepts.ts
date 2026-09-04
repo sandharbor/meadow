@@ -22,7 +22,10 @@ const area = [id.bundleGeneration] as const;
 export const customize = define({
   id: id.customize, name: "Bundle Customization", aliases: ["Customize"], kind: "capability", appAreaIds: area,
   definition: text`Settings that change the presentation and navigation of generated bundle output.`,
-  mechanics: [text`Options such as breadcrumbs and backlinks are applied while ${link(id.htmlGeneration, "HTML Generation")} renders pages.`],
+  mechanics: [
+    text`Options such as breadcrumbs and backlinks are applied while ${link(id.htmlGeneration, "HTML Generation")} renders pages.`,
+    text`Folder navigation has a global default-open or default-closed state, with a per-bundle override. This initial state applies until a reader opens or closes the navigation; the reader's choice is remembered separately for each bundle, including bundles on the same host.`,
+  ],
   interplay: text`Customization changes generated presentation without changing the source graph selected by ${link(id.bundleCuration, "Bundle Curation")}.`,
 });
 
@@ -50,7 +53,10 @@ export const hooks = define({
 export const htmlGeneration = define({
   id: id.htmlGeneration, name: "HTML Generation", kind: "process", appAreaIds: [id.bundleGeneration, id.bundleReview],
   definition: text`The process that turns a curated source graph into browsable HTML bundle output.`,
-  mechanics: [text`It renders pages and assets, applies ${link(id.hooks, "Generation Hooks")}, and prepares output for preview or export.`],
+  mechanics: [
+    text`It renders pages and assets, applies ${link(id.hooks, "Generation Hooks")}, and prepares output for preview or export.`,
+    text`The selected preview page becomes readable as soon as it renders, including after customization, while remaining pages continue rendering. Live preview reads do not install or save a partial version; the complete generated output is installed atomically.`,
+  ],
   interplay: text`It consumes ${link(id.bundleCuration, "Bundle Curation")} results and exposes them to ${link(id.bundleReview, "Bundle Review")} and ${link(id.bundleSharing, "Bundle Sharing")}.`,
 });
 

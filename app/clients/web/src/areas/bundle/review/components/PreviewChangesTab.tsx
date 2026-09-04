@@ -51,6 +51,8 @@ interface PreviewChangesTabProps {
   onPreviewFile?: (path: string) => void;
   /** Increment to force tree refresh (e.g. after save) */
   refreshKey: number;
+  contentRefreshKey?: number;
+  onSelectedFileChange?: (path: string) => void;
 }
 
 export const shouldAutoExpandPreviewFolder = (node: FileNode): boolean => {
@@ -107,6 +109,8 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
   initialFile,
   onPreviewFile,
   refreshKey,
+  contentRefreshKey,
+  onSelectedFileChange,
 }) => {
   // HTML section filtering state
   const [htmlSectionFilters, setHtmlSectionFilters] = useState<HtmlSectionFilters>({
@@ -344,15 +348,6 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
     },
   }), [baseApi, htmlSectionChangesMap, htmlSectionFilters, filterTree, countFilesByChangeType, countAllChangedFiles, passesChangeTypeFilter]);
 
-  if (isRegeneratingPreview) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-neutral-500">
-        <span className="animate-spin h-6 w-6 border-2 border-neutral-300 border-t-main-500 rounded-full inline-block mb-3" />
-        <span>Changes will appear once HTML generation completes</span>
-      </div>
-    );
-  }
-
   return (
     <ChangesTabErrorBoundary>
       <div className="h-full">
@@ -452,6 +447,8 @@ const PreviewChangesTab: React.FC<PreviewChangesTabProps> = ({
           height="100%"
           readOnly={true}
           initialSelectedFile={initialFile}
+          contentRefreshKey={contentRefreshKey}
+          onFileSelect={onSelectedFileChange}
           onPreviewFile={onPreviewFile}
         />
       </div>

@@ -691,6 +691,9 @@ export class GeneratedBundleFolderNavigation {
 
 /** A generated bundle, either in Meadow's preview iframe or a standalone page. */
 export class GeneratedBundle {
+  async getUrl() {
+    return this.root.locator('html').evaluate(() => window.location.href);
+  }
   readonly hoverPreview: GeneratedBundleHoverPreview;
   readonly search: GeneratedBundleSearch;
   readonly sources: GeneratedBundleSources;

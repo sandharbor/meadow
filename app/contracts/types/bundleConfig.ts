@@ -48,6 +48,7 @@ export interface BundleConfig {
   generationSearchEnabled?: boolean; // Whether to generate bundle search UI + index (default: true)
   generationHoverPreviewEnabled?: boolean; // Whether to render hover previews on links (overrides app setting)
   generationFolderNavigationEnabled?: boolean; // Whether to render the generated-bundle folder navigation sidebar (default: false)
+  generationFolderNavigationDefaultOpen?: boolean; // Initial sidebar state for new visitors (default: open; bundle value overrides global)
   allowImagesToExtendToFrontier?: boolean; // Whether images linked from frontier-edge pages should be included (overrides app setting)
   generationMarkdownZipEnabled?: boolean; // Whether to generate a downloadable sources ZIP (default: false)
   generationOpenKnowledgeFormatEnabled?: boolean; // Whether to generate an Open Knowledge Format bundle (default: false)

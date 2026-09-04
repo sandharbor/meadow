@@ -138,14 +138,14 @@ describe('generated bundle version Git identity and integrity', () => {
     expect(fs.existsSync(path.join(versionDirectory, 'secret.ignored'))).toBe(false);
   });
 
-  it('compares saved version trees and the current working generation by relative path', () => {
+  it('compares saved version trees and the current working generation by relative path', async () => {
     const secondDirectory = path.join(bundleDirectory, 'html', 'generated_bundle_versions', SECOND_VERSION_ID);
     fs.mkdirSync(secondDirectory, { recursive: true });
     fs.writeFileSync(path.join(secondDirectory, 'index.html'), '<h1>Second</h1>\n');
     fs.writeFileSync(path.join(secondDirectory, 'added.html'), '<p>Added</p>\n');
     commitAll('save second generated version');
 
-    expect(compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, { versionId: SECOND_VERSION_ID }))
+    expect(await compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, { versionId: SECOND_VERSION_ID }))
       .toEqual([
         { status: 'added', relativePath: 'added.html' },
         { status: 'modified', relativePath: 'index.html' },
@@ -154,11 +154,29 @@ describe('generated bundle version Git identity and integrity', () => {
       ]);
     fs.writeFileSync(path.join(secondDirectory, 'index.html'), '<h1>Working</h1>\n');
     fs.rmSync(path.join(secondDirectory, 'added.html'));
-    expect(compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, { workingCurrentVersionId: SECOND_VERSION_ID }))
+    expect(await compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, { workingCurrentVersionId: SECOND_VERSION_ID }))
       .toEqual([
         { status: 'modified', relativePath: 'index.html' },
         { status: 'deleted', relativePath: 'nested/naïve page.html' },
         { status: 'deleted', relativePath: 'worker.sh' },
       ]);
+  });
+
+  it('compares a thousand files without blocking the event loop and preserves unusual filenames', async () => {
+    for (let index = 0; index < 1000; index++) {
+      fs.writeFileSync(path.join(versionDirectory, `page-${index}.html`), `<h1>${index}</h1>`);
+    }
+    const unusualPath = 'nested/quoted "page" with\nnewline and naïve.html';
+    fs.writeFileSync(path.join(versionDirectory, unusualPath), 'before');
+    commitAll('save large generation');
+    fs.writeFileSync(path.join(versionDirectory, unusualPath), 'after');
+
+    let eventLoopServiced = false;
+    setTimeout(() => { eventLoopServiced = true; }, 0);
+    const changes = await compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, {
+      workingCurrentVersionId: VERSION_ID,
+    });
+    expect(eventLoopServiced).toBe(true);
+    expect(changes).toEqual([{ status: 'modified', relativePath: unusualPath }]);
   });
 });

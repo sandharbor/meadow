@@ -136,6 +136,27 @@ describe('html preview', () => {
     expect(shardContents).toContain('This is the main page for the minimal test bundle.');
   });
 
+  it('renders the requested page before other pages and exposes its contents before completion', async () => {
+    const directory = getGeneratedBundleTestOutputDirectory(bundlePath);
+    let sawReadyPage = false;
+    let completed = false;
+    await generateHtmlForBundle(bundlePath, {
+      outputDirectory: directory,
+      preview: true,
+      startPagePath: 'child page.html',
+      onStartPageRendered: ({ relativeHtmlPath }) => {
+        expect(relativeHtmlPath).toBe('child page.html');
+        expect(fs.readFileSync(path.join(directory, relativeHtmlPath), 'utf8')).toContain('<main');
+        expect(fs.existsSync(path.join(directory, 'main page.html'))).toBe(false);
+        expect(completed).toBe(false);
+        sawReadyPage = true;
+      },
+      onProgress: info => { if (info.stage === 'complete') completed = true; },
+    });
+    expect(sawReadyPage).toBe(true);
+    expect(completed).toBe(true);
+  });
+
   it('omits all search UI and index assets when search is disabled for the bundle', async () => {
     fs.appendFileSync(
       path.join(bundlePath, 'config', 'bundle_config.yaml'),
@@ -203,10 +224,10 @@ describe('html preview', () => {
     expect(mainPageHtml).not.toMatch(/hover_preview\/hover-preview(?:\.[a-f0-9]{8})?\.(?:css|js)/);
   });
 
-  it('generates the folder navigation shell with stable data and hashed runtime assets', async () => {
+  it.each([true, false])('generates the folder navigation shell with default-open=%s and hashed runtime assets', async (defaultOpen) => {
     fs.appendFileSync(
       path.join(bundlePath, 'config', 'bundle_config.yaml'),
-      '\ngenerationFolderNavigationEnabled: true\n',
+      `\ngenerationFolderNavigationEnabled: true\ngenerationFolderNavigationDefaultOpen: ${defaultOpen}\n`,
       'utf8'
     );
 
@@ -249,6 +270,7 @@ describe('html preview', () => {
     expect(mainPageHtml).not.toContain('window.MeadowFolderNavData=');
     expect(mainPageHtml).not.toContain('folder-navigation');
     expect(mainPageHtml).toContain(`_mw_assets/cust/folder_nav/${folderNavigationCss}`);
+    expect(mainPageHtml).toContain(`data-meadow-folder-nav-default-open="${defaultOpen}"`);
     expect(mainPageHtml).toContain(`_mw_assets/cust/folder_nav/${folderNavigationDataJs}`);
     expect(mainPageHtml).toContain(`_mw_assets/cust/folder_nav/${folderNavigationJs}`);
 

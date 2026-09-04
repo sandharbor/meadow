@@ -111,17 +111,19 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
   await customizeTab.generationOptions.enableFolderNavigation();
   await navigationPreviewDone;
 
-  // The narrow embedded preview uses the mobile default until the outer
-  // Customize panel closes and gives the generated page desktop width.
-  await folderNavigation.expectClosed();
+  // The initial default is open at every width. Close it to inspect the
+  // compact header controls in the narrow embedded preview.
+  await folderNavigation.expectOpen();
+  await folderNavigation.close();
   await folderNavigation.expectMobileHeaderControlsAligned();
   await folderNavigation.expectNoBreadcrumbs();
   await addKeyFrame(customize);
   await snapshot("mobile generated bundle header without breadcrumbs");
   await modal.closeCustomizeSidebar();
 
-  // Desktop defaults open. Direct files in each folder are sorted by their
+  // Direct files in each folder are sorted by their
   // normalized filenames, and clicking one navigates to that generated file.
+  await folderNavigation.open();
   await folderNavigation.expectOpen();
   await folderNavigation.expectResizable();
   await folderNavigation.openFolder("t001");

@@ -112,6 +112,7 @@ describe('VersionsTab', () => {
     expect(screen.getByText(/Publishing destinations decide separately/)).toBeInTheDocument();
     expect(screen.queryByText('vAb3XyZ')).not.toBeInTheDocument();
     expect(screen.queryByTestId('version-card')).not.toBeInTheDocument();
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('version-comparison'))).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Create New Version' }));
     expect(onCreateNewVersion).toHaveBeenCalledOnce();
   });

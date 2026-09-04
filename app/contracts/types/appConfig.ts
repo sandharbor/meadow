@@ -36,6 +36,7 @@ export interface AppConfig {
   generationSearchEnabled?: boolean; // Default for whether to generate bundle search UI + index (default: true)
   generationHoverPreviewEnabled?: boolean; // Default for whether to render hover previews on links (default: false)
   generationFolderNavigationEnabled?: boolean; // Default for whether to render the generated-bundle folder navigation sidebar (default: false)
+  generationFolderNavigationDefaultOpen?: boolean; // Initial sidebar state for new visitors (default: open; bundle value overrides global)
   generationMarkdownZipEnabled?: boolean; // Default for whether to generate a downloadable sources ZIP (default: false)
   generationOpenKnowledgeFormatEnabled?: boolean; // Default for whether to generate an Open Knowledge Format bundle (default: false)
   generationSpacedRepetitionEnabled?: boolean; // Default for whether to render client-side spaced repetition widgets (default: false)

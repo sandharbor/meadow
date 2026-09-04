@@ -34,6 +34,7 @@ const bundleConfigCodec = yamlDocumentCodec<BundleConfig>(value =>
       'generationSearchEnabled',
       'generationHoverPreviewEnabled',
       'generationFolderNavigationEnabled',
+      'generationFolderNavigationDefaultOpen',
       'allowImagesToExtendToFrontier',
       'generationMarkdownZipEnabled',
       'generationOpenKnowledgeFormatEnabled',

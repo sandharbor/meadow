@@ -22,6 +22,7 @@ import { loadAppConfig as loadAppConfigFromDisk } from '../../../../../../../sha
 import { getConfigDirectory, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { commitBundleChanges, getGeneratedHtmlChanges } from '../../../../shared/utils/configDirectory/gitUtils/generatedHtmlGitService.js';
 import { getConfigFileTree, getGeneratedHtmlFileTree, getOriginalContent, readFileContent, findGitRoot, detectFileType, getMimeType } from '../../../../shared/utils/configFileExplorerUtils.js';
+import { livePreviewFilePath } from '../../../../shared/generated-bundle-versioning/livePreview.js';
 import { commitChangesNative, runGitDirLogNative, runGitCommitFilesNative, runGitCatFileNative, runGitFileLogNative, runGitHtmlSectionDiffNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { logBundleError, logBundleInfo } from '../../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -345,7 +346,7 @@ router.get('/bundles/:bundleSlug/review/file-content', (req, res, next) => {
       return res.status(400).json({ error: 'Cannot read directory content' });
     }
 
-    const { content, fileType, mimeType } = readFileContent(filePath);
+    const { content, fileType, mimeType } = readFileContent(livePreviewFilePath(bundleDirectory, filePath));
     res.json({ content, path: filePath, fileType, mimeType });
     
   } catch (error) {
@@ -762,7 +763,7 @@ router.delete('/bundles/:bundleSlug/review/versions/:versionId', (req, res, next
 });
 
 router.get('/bundles/:bundleSlug/review/version-comparison', (req, res, next) => {
-  try {
+  void (async () => {
     const { bundleSlug } = req.params;
     if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
     const bundleDirectory = getBundleDirectory(bundleSlug);
@@ -780,7 +781,7 @@ router.get('/bundles/:bundleSlug/review/version-comparison', (req, res, next) =>
     let changes;
     if (rightValue === 'working') {
       if (current.localFilesState === 'deleted') return res.status(400).json({ error: 'current version is not locally present' });
-      changes = compareGeneratedBundleVersionTrees(bundleDirectory, left, {
+      changes = await compareGeneratedBundleVersionTrees(bundleDirectory, left, {
         workingCurrentVersionId: current.versionId,
       });
     } else {
@@ -789,12 +790,10 @@ router.get('/bundles/:bundleSlug/review/version-comparison', (req, res, next) =>
       if (!rightEntry || rightEntry.localFilesState === 'deleted') {
         return res.status(400).json({ error: 'right version must be locally present' });
       }
-      changes = compareGeneratedBundleVersionTrees(bundleDirectory, left, { versionId: right });
+      changes = await compareGeneratedBundleVersionTrees(bundleDirectory, left, { versionId: right });
     }
     res.json({ left, right: rightValue, changes });
-  } catch (error) {
-    next(error);
-  }
+  })().catch(next);
 });
 
 router.post('/bundles/:bundleSlug/review/versions/:versionId/restore-frozen', (req, res, next) => {

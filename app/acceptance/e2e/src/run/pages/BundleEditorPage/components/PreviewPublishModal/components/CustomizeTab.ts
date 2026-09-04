@@ -173,7 +173,18 @@ class GenerationOptionsSection {
 
   /** Set the generated-bundle Search setting to "Off" for this bundle. */
   async disableSearch() {
+    // The selected page becomes usable before the full render is installed.
+    // Register before clicking so an existing Changes badge cannot finish this wait early.
+    const previewStarted = this.page.waitForResponse(response => (
+      response.url().includes("/preview-stream")
+    ));
     await this.selectHoverOption("Search", "Off");
+    await previewStarted;
+    const changesSpinner = this.page
+      .locator("nav button", { hasText: "Changes" })
+      .first()
+      .locator("span.animate-spin");
+    await this.expect(changesSpinner).not.toBeVisible({ timeout: 60_000 });
   }
 
   /** Set generated-bundle Hover Preview to "On" for this bundle. */
@@ -213,7 +224,38 @@ class GenerationOptionsSection {
 
   /** Set generated-bundle Folder Navigation to "On" for this bundle. */
   async enableFolderNavigation() {
+    const previewStarted = this.page.waitForResponse(response => response.url().includes('/preview-stream'));
     await this.selectHoverOption("Folder Navigation", "On");
+    await previewStarted;
+    await this.expect(this.settingBundleCombobox('Folder Navigation')).toBeEnabled({ timeout: 60_000 });
+  }
+
+  async openFolderNavigationSettings() {
+    await this.settingRow('Folder Navigation').getByRole('button', { name: 'Edit', exact: true }).click();
+    const dialog = this.page.getByRole('dialog', { name: 'Folder Navigation Settings' });
+    await this.expect(dialog.getByRole('button', { name: 'Save Settings' })).toBeEnabled();
+  }
+
+  async setFolderNavigationDefaults(globalDefault: 'open' | 'closed', bundleDefault: 'inherit' | 'open' | 'closed') {
+    const dialog = this.page.getByRole('dialog', { name: 'Folder Navigation Settings' });
+    await dialog.getByLabel('Global folder navigation default').selectOption(globalDefault);
+    await dialog.getByLabel('Bundle folder navigation default').selectOption(bundleDefault);
+  }
+
+  async expectFolderNavigationDefaults(globalDefault: 'open' | 'closed', bundleDefault: 'inherit' | 'open' | 'closed') {
+    const dialog = this.page.getByRole('dialog', { name: 'Folder Navigation Settings' });
+    await this.expect(dialog.getByLabel('Global folder navigation default')).toHaveValue(globalDefault);
+    await this.expect(dialog.getByLabel('Bundle folder navigation default')).toHaveValue(bundleDefault);
+  }
+
+  async saveFolderNavigationSettings() {
+    const dialog = this.page.getByRole('dialog', { name: 'Folder Navigation Settings' });
+    await dialog.getByRole('button', { name: 'Save Settings' }).click();
+    await this.expect(dialog).not.toBeVisible({ timeout: 60_000 });
+  }
+
+  async cancelFolderNavigationSettings() {
+    await this.page.getByRole('dialog', { name: 'Folder Navigation Settings' }).getByRole('button', { name: 'Cancel', exact: true }).click();
   }
 
   /** Set the OKF bundle-level setting to "On" (enabled). */

@@ -24,6 +24,7 @@ export interface EffectiveGenerationOptions {
   searchEnabled: boolean;
   hoverPreviewEnabled: boolean;
   folderNavigationEnabled: boolean;
+  folderNavigationDefaultOpen: boolean;
   sourcesExportEnabled: boolean;
   openKnowledgeFormatEnabled: boolean;
   spacedRepetitionEnabled: boolean;
@@ -52,6 +53,7 @@ export function resolveEffectiveGenerationOptions(
   const searchEnabled = (bundleConfig?.generationSearchEnabled ?? appConfig?.generationSearchEnabled) !== false;
   const hoverPreviewEnabled = (bundleConfig?.generationHoverPreviewEnabled ?? appConfig?.generationHoverPreviewEnabled) === true;
   const folderNavigationEnabled = (bundleConfig?.generationFolderNavigationEnabled ?? appConfig?.generationFolderNavigationEnabled) === true;
+  const folderNavigationDefaultOpen = (bundleConfig?.generationFolderNavigationDefaultOpen ?? appConfig?.generationFolderNavigationDefaultOpen) !== false;
   const sourcesExportEnabled = (bundleConfig?.generationMarkdownZipEnabled ?? appConfig?.generationMarkdownZipEnabled) === true;
   const openKnowledgeFormatEnabled = bundleConfig?.generationOpenKnowledgeFormatEnabled === true;
   const spacedRepetitionEnabled = (bundleConfig?.generationSpacedRepetitionEnabled ?? appConfig?.generationSpacedRepetitionEnabled) === true;
@@ -62,5 +64,5 @@ export function resolveEffectiveGenerationOptions(
   const baseStyleCssDisabled = (bundleConfig?.disableBaseStyleCss ?? appConfig?.disableBaseStyleCss) === true;
   const baseJavascriptJsDisabled = (bundleConfig?.disableBaseJavascriptJs ?? appConfig?.disableBaseJavascriptJs) === true;
 
-  return { breadcrumbsEnabled, backlinksEnabled, tagsEnabled, searchEnabled, hoverPreviewEnabled, folderNavigationEnabled, sourcesExportEnabled, openKnowledgeFormatEnabled, spacedRepetitionEnabled, spacedRepetitionTags, baseStyleCssDisabled, baseJavascriptJsDisabled };
+  return { breadcrumbsEnabled, backlinksEnabled, tagsEnabled, searchEnabled, hoverPreviewEnabled, folderNavigationEnabled, folderNavigationDefaultOpen, sourcesExportEnabled, openKnowledgeFormatEnabled, spacedRepetitionEnabled, spacedRepetitionTags, baseStyleCssDisabled, baseJavascriptJsDisabled };
 }

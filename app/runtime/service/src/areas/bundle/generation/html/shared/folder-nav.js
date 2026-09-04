@@ -6,23 +6,33 @@
     ? new URL('../../../', runtimeScript.src)
     : new URL('.', window.location.href);
 
+  function storageKey() {
+    // Stable bundle identity separates readers' preferences on a shared host.
+    // Older exports without an identity remain isolated by their bundle root URL.
+    return document.documentElement.getAttribute('data-meadow-folder-nav-storage-key')
+      || 'meadow-folder-nav:' + bundleRoot.href;
+  }
+
+  function defaultOpen() {
+    return document.documentElement.getAttribute('data-meadow-folder-nav-default-open') !== 'false';
+  }
+
   // Apply persisted layout state before stylesheets load so cross-page
-  // navigation never paints the responsive defaults first.
+  // navigation never paints the publisher's default first.
   function applyInitialLayout() {
     var root = document.documentElement;
-    var storageKey = root.getAttribute('data-meadow-folder-nav-storage-key') || 'meadow-folder-nav';
     var state = {};
 
     try {
-      var parsed = JSON.parse(window.localStorage.getItem(storageKey) || '{}');
+      var parsed = JSON.parse(window.localStorage.getItem(storageKey()) || '{}');
       if (parsed && typeof parsed === 'object') state = parsed;
     } catch (_error) {
-      // Use responsive defaults when bundle storage is unavailable.
+      // Use the publisher's default when bundle storage is unavailable.
     }
 
     var isOpen = typeof state.open === 'boolean'
       ? state.open
-      : !window.matchMedia('(max-width: 767px)').matches;
+      : defaultOpen();
     root.setAttribute('data-meadow-folder-nav-open', isOpen ? 'true' : 'false');
 
     var width = Number(state.width);
@@ -132,7 +142,6 @@
 
     renderNavigationTree(sidebar);
 
-    var storageKey = sidebar.getAttribute('data-storage-key') || 'meadow-folder-nav';
     var closeButton = sidebar.querySelector('[data-meadow-folder-nav-close]');
     var openButton = document.querySelector('button[data-meadow-folder-nav-open]');
     var resizeHandle = sidebar.querySelector('[data-meadow-folder-nav-resize]');
@@ -141,7 +150,7 @@
     var state = { folders: {} };
 
     try {
-      var parsed = JSON.parse(window.localStorage.getItem(storageKey) || '{}');
+      var parsed = JSON.parse(window.localStorage.getItem(storageKey()) || '{}');
       if (parsed && typeof parsed === 'object') {
         state = parsed;
       }
@@ -155,15 +164,11 @@
 
     function saveState() {
       try {
-        window.localStorage.setItem(storageKey, JSON.stringify(state));
+        window.localStorage.setItem(storageKey(), JSON.stringify(state));
       } catch (_error) {
         // Navigation still works when storage is unavailable (for example in
         // a browser with blocked bundle storage); only persistence is skipped.
       }
-    }
-
-    function defaultOpen() {
-      return !mobileMedia.matches;
     }
 
     function setSidebarOpen(isOpen, persist) {
@@ -199,12 +204,6 @@
     var hasExplicitOpenState = typeof state.open === 'boolean';
     setSidebarOpen(hasExplicitOpenState ? state.open : defaultOpen(), false);
     applyWidth(state.width, false);
-
-    if (!hasExplicitOpenState) {
-      mobileMedia.addEventListener('change', function(event) {
-        setSidebarOpen(!event.matches, false);
-      });
-    }
 
     if (closeButton) {
       closeButton.addEventListener('click', function() { setSidebarOpen(false, true); });

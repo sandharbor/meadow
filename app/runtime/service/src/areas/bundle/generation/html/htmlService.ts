@@ -1146,7 +1146,7 @@ export async function generateHtmlForBundle(
         }] as const;
       })).values()]
     : [];
-  const folderNavigationStorageKey = `meadow-folder-nav:${bundleConfig.bundleGuid || bundleSlug || 'bundle'}`;
+  const folderNavigationStorageKey = bundleConfig.bundleGuid ? `meadow-folder-nav:${bundleConfig.bundleGuid}` : '';
 
   if (generationOptions.folderNavigationEnabled) {
     const folderNavigationDataPath = path.join(
@@ -1358,7 +1358,7 @@ export async function generateHtmlForBundle(
       openKnowledgeFormatEnabled,
       searchEnabled: generationOptions.searchEnabled,
       hoverPreviewEnabled: generationOptions.hoverPreviewEnabled,
-      folderNavigation: generationOptions.folderNavigationEnabled ? { storageKey: folderNavigationStorageKey } : undefined,
+      folderNavigation: generationOptions.folderNavigationEnabled ? { storageKey: folderNavigationStorageKey, defaultOpen: generationOptions.folderNavigationDefaultOpen } : undefined,
     });
     if (!startPageRenderedEmitted) {
       const isStart = startPageKey ? pageKey === startPageKey : renderedOrSkipped === 0;
@@ -1595,6 +1595,7 @@ export async function generateHtmlForBundle(
       searchEnabled: generationOptions.searchEnabled,
       folderNavigation: generationOptions.folderNavigationEnabled ? {
         storageKey: folderNavigationStorageKey,
+        defaultOpen: generationOptions.folderNavigationDefaultOpen,
       } : undefined,
     });
 
@@ -1720,6 +1721,7 @@ export async function generateHtmlForBundle(
         searchEnabled: generationOptions.searchEnabled,
         folderNavigation: generationOptions.folderNavigationEnabled ? {
           storageKey: folderNavigationStorageKey,
+          defaultOpen: generationOptions.folderNavigationDefaultOpen,
         } : undefined,
       },
       bundleSlug || undefined,

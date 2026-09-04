@@ -65,6 +65,7 @@ interface CustomizeSidebarProps {
   onBundleSrsEnable: (setting: OverrideSetting, tags: string[]) => Promise<void>;
   onBundleOkfLogSettingsChange: (settings: OpenKnowledgeFormatSettings) => Promise<void>;
   onBundleOkfEnable: (setting: OverrideSetting, settings: OpenKnowledgeFormatSettings) => Promise<void>;
+  onFolderNavigationSettingsChanged: () => Promise<void>;
   openKnowledgeFormatRenameCount: number;
   onOpenKnowledgeFormatRenameDetails: () => void;
   disabled: boolean;
@@ -107,6 +108,7 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
   onBundleSrsEnable,
   onBundleOkfLogSettingsChange,
   onBundleOkfEnable,
+  onFolderNavigationSettingsChanged,
   openKnowledgeFormatRenameCount,
   onOpenKnowledgeFormatRenameDetails,
   disabled,
@@ -264,6 +266,7 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
               onBundleSrsEnable={onBundleSrsEnable}
               onBundleOkfLogSettingsChange={onBundleOkfLogSettingsChange}
               onBundleOkfEnable={onBundleOkfEnable}
+              onFolderNavigationSettingsChanged={onFolderNavigationSettingsChanged}
               openKnowledgeFormatRenameCount={openKnowledgeFormatRenameCount}
               onOpenKnowledgeFormatRenameDetails={onOpenKnowledgeFormatRenameDetails}
               disabled={disabled}

@@ -53,6 +53,7 @@ describe('GenerationOptionsPanel', () => {
     onBundleSrsEnable: vi.fn().mockResolvedValue(undefined),
     onBundleOkfLogSettingsChange: vi.fn().mockResolvedValue(undefined),
     onBundleOkfEnable: vi.fn().mockResolvedValue(undefined),
+    onFolderNavigationSettingsChanged: vi.fn().mockResolvedValue(undefined),
     disabled: false,
   });
 
@@ -92,6 +93,19 @@ describe('GenerationOptionsPanel', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('offers folder navigation settings only while navigation is enabled for this bundle', () => {
+    const props = buildProps();
+    const { rerender } = render(<GenerationOptionsPanel {...props} />);
+    const row = () => screen.getByText('Folder Navigation').closest('div')!;
+    expect(within(row()).queryByRole('button', { name: 'Edit' })).toBeNull();
+    rerender(<GenerationOptionsPanel {...props} globalOptions={{ ...props.globalOptions, folderNavigationEnabled: true }} />);
+    expect(within(row()).getByRole('button', { name: 'Edit' })).toBeEnabled();
+    rerender(<GenerationOptionsPanel {...props} bundleOptions={{ ...props.bundleOptions, folderNavigationSetting: 'enabled' }} />);
+    expect(within(row()).getByRole('button', { name: 'Edit' })).toBeEnabled();
+    rerender(<GenerationOptionsPanel {...props} globalOptions={{ ...props.globalOptions, folderNavigationEnabled: true }} bundleOptions={{ ...props.bundleOptions, folderNavigationSetting: 'disabled' }} />);
+    expect(within(row()).queryByRole('button', { name: 'Edit' })).toBeNull();
   });
 
   it('shows a confirmation modal before enabling bundle SRS and saves the chosen tags', async () => {

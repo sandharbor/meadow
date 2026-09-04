@@ -123,7 +123,7 @@ export function VersionsTab({
   const createVersionIsDisabled = createNewVersionDisabled || hasNeverSavedCurrentVersion;
 
   useEffect(() => {
-    if (!leftComparison) {
+    if (versions.length < 2 || !leftComparison) {
       setComparison([]);
       return;
     }
@@ -139,7 +139,7 @@ export function VersionsTab({
         if ((caught as Error).name !== 'AbortError') setError(caught instanceof Error ? caught.message : 'Failed to compare versions');
       });
     return () => controller.abort();
-  }, [bundleSlug, leftComparison, rightComparison, refreshKey]);
+  }, [bundleSlug, leftComparison, rightComparison, refreshKey, versions.length]);
 
   const runAction = async (versionId: string, path: string, method: 'POST' | 'DELETE' = 'POST') => {
     setBusyVersionId(versionId);

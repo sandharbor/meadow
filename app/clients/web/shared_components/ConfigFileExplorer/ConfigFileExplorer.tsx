@@ -135,6 +135,8 @@ export interface ConfigFileExplorerProps {
   onPreviewFile?: (path: string) => void;
   /** Optional initial file to select on mount (overrides autoSelectFirstChangedFile) */
   initialSelectedFile?: string;
+  /** Refresh the selected working file without clearing its view or selection. */
+  contentRefreshKey?: number;
 }
 
 interface TreeNodeProps {
@@ -383,6 +385,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   onFileSelect,
   onPreviewFile,
   initialSelectedFile,
+  contentRefreshKey = 0,
 }) => {
   console.log('[ConfigFileExplorer] Component mounting/rendering', {
     title,
@@ -544,12 +547,14 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
   }, []);
 
   // Select a file and load its content - takes tree as parameter to avoid stale closure
-  const selectFile = useCallback(async (path: string, currentTree: FileNode[]) => {
+  const selectFile = useCallback(async (path: string, currentTree: FileNode[], preserveDisplay = false) => {
     const requestId = ++fileLoadRequestIdRef.current;
     setSelectedPath(path);
     setSaveStatus('idle');
-    setSelectedFileLoading(true);
-    resetSelectedFileState();
+    if (!preserveDisplay) {
+      setSelectedFileLoading(true);
+      resetSelectedFileState();
+    }
     onFileSelect?.(path);
 
     // Find git status for this file
@@ -589,7 +594,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
       // Default to diff tab if file has git changes (for non-binary files), otherwise whole file
       const hasGitChanges = gitStatus && ['modified', 'staged-modified', 'new', 'staged-new'].includes(gitStatus);
       const isBinaryOrImage = currentFileType === 'binary' || currentFileType === 'image';
-      setActiveTab(hasGitChanges && !isBinaryOrImage ? 'diff' : 'whole');
+      if (!preserveDisplay) setActiveTab(hasGitChanges && !isBinaryOrImage ? 'diff' : 'whole');
     } catch (err) {
       if (requestId !== fileLoadRequestIdRef.current) return;
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -599,6 +604,13 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
       }
     }
   }, [api, onFileSelect, findFileGitStatus, applyDeletedFileState, resetSelectedFileState]);
+
+  const lastContentRefreshKey = useRef(contentRefreshKey);
+  useEffect(() => {
+    if (lastContentRefreshKey.current === contentRefreshKey) return;
+    lastContentRefreshKey.current = contentRefreshKey;
+    if (mode === 'normal' && selectedPath) void selectFile(selectedPath, tree, true);
+  }, [contentRefreshKey, mode, selectedPath, selectFile, tree]);
 
   const selectCommitFile = useCallback(async (path: string, currentTree: FileNode[]) => {
     if (!commitSha || !api.fetchCommitFileContent || !api.fetchCommitFileOriginal) return;
@@ -704,8 +716,10 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
 
   useEffect(() => {
     if (mode !== 'normal') return;
+    let cancelled = false;
     // Pass showChangedOnly to optimize backend fetch when in "changed only" mode
     fetchTree(showChangedOnly).then((loadedTree) => {
+      if (cancelled) return;
       // Auto-expand folders if requested
       if (autoExpandFolders && loadedTree.length > 0) {
         const allPaths = collectDirectoryPaths(loadedTree, shouldAutoExpandFolder);
@@ -729,6 +743,7 @@ const ConfigFileExplorer: React.FC<ConfigFileExplorerProps> = ({
         }
       }
     });
+    return () => { cancelled = true; };
   }, [fetchTree, autoExpandFolders, shouldAutoExpandFolder, autoSelectFirstChangedFile, shouldPreferAutoSelectedFile, hasAutoSelected, selectFile, initialSelectedFile, showChangedOnly, mode]);
 
   const handleSave = async () => {

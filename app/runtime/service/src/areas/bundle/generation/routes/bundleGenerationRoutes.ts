@@ -26,11 +26,11 @@ import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { getConfigDirectory, getBundleDirectory, getBundleConfigPath } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { generateHtmlForBundle } from '../html/htmlService.js';
+import { clearLivePreview, previewFileDirectory, showLivePreview } from '../../../../shared/generated-bundle-versioning/livePreview.js';
 import {
   createNewGeneratedBundleVersion,
   generateCurrentBundleVersion,
 } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
-import { currentGeneratedBundleVersionDirectory } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { normalizePageTitle } from '../html/shared.js';
 import { loadBundleConfig, saveBundleConfigToPath } from '../../../../shared/utils/bundleConfigUtils.js';
 import { getHtmlPathForPage } from '../../../../shared/utils/htmlPathLookup.js';
@@ -55,13 +55,6 @@ import { assessBundleBoundary } from '../../../../shared/bundle-boundary-review/
 import type { BundleBoundaryReviewRequest } from '../../../../../../../contracts/types/bundleBoundaryReview.js';
 
 const router = express.Router();
-
-function previewDirectory(bundleDirectory: string): string | null {
-  // Operation-specific staging directories are never reader-visible. Until
-  // the lifecycle commit point installs a version, preview requests either
-  // keep serving the prior installed version or show the generating page.
-  return currentGeneratedBundleVersionDirectory(bundleDirectory);
-}
 
 function isPreviewGenerationActive(bundleSlug: string): boolean {
   const g = globalThis as unknown as { __meadowActivePreviewGenerations?: Set<string> };
@@ -88,13 +81,25 @@ async function generateCurrentVersionHtml(
   options: Omit<NonNullable<Parameters<typeof generateHtmlForBundle>[1]>, 'outputDirectory'>,
 ) {
   const operation = createBundleOperationLogger(bundleSlug, 'version-generate');
+  let liveDirectory: string | undefined;
   operation.info('Started staging the current generated version');
   try {
     const result = await generateCurrentBundleVersion(bundleDirectory, {
       operationId: () => operation.operationId,
       onPhase: phase => operation.debug(`Reached ${phase}`),
       generate: async (stagingDirectory) => {
-        await generateHtmlForBundle(bundleDirectory, { ...options, outputDirectory: stagingDirectory });
+        await generateHtmlForBundle(bundleDirectory, {
+          ...options,
+          outputDirectory: stagingDirectory,
+          onStartPageRendered: info => {
+            if (options.shouldCancel?.()) return;
+            if (options.preview) {
+              liveDirectory = stagingDirectory;
+              showLivePreview(bundleDirectory, stagingDirectory);
+            }
+            options.onStartPageRendered?.(info);
+          },
+        });
       },
       validate: () => {
         if (options.shouldCancel?.()) throw new Error('Preview generation was superseded by a newer request');
@@ -110,6 +115,8 @@ async function generateCurrentVersionHtml(
       operation.error(`Failed and rolled back local staging; retry is safe: ${message}`);
     }
     throw error;
+  } finally {
+    if (liveDirectory) clearLivePreview(bundleDirectory, liveDirectory);
   }
 }
 
@@ -575,12 +582,14 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
           onStartPageRendered: ({ relativeHtmlPath }) => {
             if (startUrlSent) return;
             startUrlSent = true;
-            const traversalPageUrl = previewFileUrl(req, bundleSlug, relativeHtmlPath);
+            const url = new URL(previewFileUrl(req, bundleSlug, relativeHtmlPath));
+            url.searchParams.set('_t', String(token));
+            const traversalPageUrl = url.toString();
             firstPageUrl = traversalPageUrl;
             sendProgress({
               stage: 'generating',
               message: 'Start page ready',
-              progress: { current: 0, total: 0, percent: 0 }
+              result: { success: true, traversalPageUrl }
             });
           },
           onProgress: (info) => {
@@ -653,7 +662,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
       }
 
       // If the caller requested a specific start page, prefer that for the completion URL.
-      if (startPageTitle && firstPageUrl) {
+      if (firstPageUrl) {
         traversalPageUrl = firstPageUrl;
       }
 
@@ -804,7 +813,8 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
     }
 
     const bundleDirectory = getBundleDirectory(bundleSlug);
-    const generatedHtmlDir = previewDirectory(bundleDirectory);
+    const generatedHtmlDir = previewFileDirectory(bundleDirectory, filename);
+    res.setHeader('Cache-Control', 'no-store');
     if (!generatedHtmlDir) {
       if (isPreviewGenerationActive(bundleSlug) && filename.endsWith('.html')) {
         sendGeneratingPreviewPage(res);
@@ -874,7 +884,7 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
       const fileError = error as NodeJS.ErrnoException & { status?: number };
       if (fileError.code === 'ENOENT' || fileError.status === 404) {
         if (!retried && !res.headersSent) {
-          const latestDirectory = previewDirectory(bundleDirectory);
+          const latestDirectory = previewFileDirectory(bundleDirectory, filename);
           const latestPath = latestDirectory ? join(latestDirectory, filename) : null;
           if (latestPath && fs.existsSync(latestPath)) {
             sendInstalledFile(latestPath, true);
@@ -909,6 +919,7 @@ router.patch('/bundles/:slug/generation/options', (req, res, next) => {
     generationSearchEnabled,
     generationHoverPreviewEnabled,
     generationFolderNavigationEnabled,
+    generationFolderNavigationDefaultOpen,
     generationMarkdownZipEnabled,
     generationOpenKnowledgeFormatEnabled,
     generationOpenKnowledgeFormatIndexMode,
@@ -924,6 +935,7 @@ router.patch('/bundles/:slug/generation/options', (req, res, next) => {
     generationSearchEnabled?: boolean | null;
     generationHoverPreviewEnabled?: boolean | null;
     generationFolderNavigationEnabled?: boolean | null;
+    generationFolderNavigationDefaultOpen?: boolean | null;
     generationMarkdownZipEnabled?: boolean | null;
     generationOpenKnowledgeFormatEnabled?: boolean | null;
     generationOpenKnowledgeFormatIndexMode?: 'generated' | 'trackedPage' | null;
@@ -961,6 +973,7 @@ router.patch('/bundles/:slug/generation/options', (req, res, next) => {
       !validateBoolOrNullOrUndef(generationSearchEnabled) ||
       !validateBoolOrNullOrUndef(generationHoverPreviewEnabled) ||
       !validateBoolOrNullOrUndef(generationFolderNavigationEnabled) ||
+      !validateBoolOrNullOrUndef(generationFolderNavigationDefaultOpen) ||
       !validateBoolOrNullOrUndef(generationMarkdownZipEnabled) ||
       !validateBoolOrNullOrUndef(generationOpenKnowledgeFormatEnabled) ||
       !validateOkfIndexModeOrNullOrUndef(generationOpenKnowledgeFormatIndexMode) ||
@@ -993,7 +1006,7 @@ router.patch('/bundles/:slug/generation/options', (req, res, next) => {
     const existingConfig = YAML.parse(yamlContent) as BundleConfig;
     const updatedConfig: BundleConfig = { ...existingConfig, bundleUpdatedAt: new Date().toISOString() };
 
-    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationSearchEnabled' | 'generationHoverPreviewEnabled' | 'generationFolderNavigationEnabled' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationOpenKnowledgeFormatIndexMode' | 'generationOpenKnowledgeFormatIndexSourcePath' | 'generationOpenKnowledgeFormatLogMode' | 'generationOpenKnowledgeFormatLogSourcePath' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
+    const setOrDelete = <K extends 'generationBreadcrumbsEnabled' | 'generationBacklinksEnabled' | 'generationTagsEnabled' | 'generationSearchEnabled' | 'generationHoverPreviewEnabled' | 'generationFolderNavigationEnabled' | 'generationFolderNavigationDefaultOpen' | 'generationMarkdownZipEnabled' | 'generationOpenKnowledgeFormatEnabled' | 'generationOpenKnowledgeFormatIndexMode' | 'generationOpenKnowledgeFormatIndexSourcePath' | 'generationOpenKnowledgeFormatLogMode' | 'generationOpenKnowledgeFormatLogSourcePath' | 'generationSpacedRepetitionEnabled' | 'generationSpacedRepetitionTags'>(
       key: K,
       value: BundleConfig[K] | null | undefined
     ) => {
@@ -1011,6 +1024,7 @@ router.patch('/bundles/:slug/generation/options', (req, res, next) => {
     setOrDelete('generationSearchEnabled', generationSearchEnabled);
     setOrDelete('generationHoverPreviewEnabled', generationHoverPreviewEnabled);
     setOrDelete('generationFolderNavigationEnabled', generationFolderNavigationEnabled);
+    setOrDelete('generationFolderNavigationDefaultOpen', generationFolderNavigationDefaultOpen);
     setOrDelete('generationMarkdownZipEnabled', generationMarkdownZipEnabled);
     setOrDelete('generationOpenKnowledgeFormatEnabled', generationOpenKnowledgeFormatEnabled);
     setOrDelete('generationOpenKnowledgeFormatIndexMode', generationOpenKnowledgeFormatIndexMode);
