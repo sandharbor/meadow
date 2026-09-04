@@ -18,6 +18,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { setImmediate } from 'node:timers';
 import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generation/html/htmlService.js';
 import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
@@ -155,6 +156,22 @@ describe('html preview', () => {
     });
     expect(sawReadyPage).toBe(true);
     expect(completed).toBe(true);
+  });
+
+  it('yields to the event loop and observes cancellation between pages', async () => {
+    const directory = getGeneratedBundleTestOutputDirectory(bundlePath);
+    let cancelled = false;
+    await generateHtmlForBundle(bundlePath, {
+      outputDirectory: directory,
+      preview: true,
+      onStartPageRendered: () => {
+        setImmediate(() => { cancelled = true; });
+      },
+      shouldCancel: () => cancelled,
+    });
+    expect(cancelled).toBe(true);
+    expect(fs.existsSync(path.join(directory, 'main page.html'))).toBe(true);
+    expect(fs.existsSync(path.join(directory, 'child page.html'))).toBe(false);
   });
 
   it('omits all search UI and index assets when search is disabled for the bundle', async () => {

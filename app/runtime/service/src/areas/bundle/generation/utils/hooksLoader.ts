@@ -23,12 +23,16 @@ import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundle
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { logBundleWarn } from '../../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 
 interface HookCacheEntry {
   hook: PageTitleNormalizationHook | MarkdownProcessingHook | HtmlPostProcessingHook | null;
   error?: string;
 }
 
+// Render callers supply their loaded configuration to avoid rereading YAML for
+// every link and page. Other callers can omit it to read current settings.
+// Hook functions still execute on every call; their results are never cached.
 export class HooksLoader {
   // Cache structure: Map<scope:bundleSlug:hookType, HookCacheEntry>
   private static hooksCache = new Map<string, HookCacheEntry>();
@@ -60,10 +64,9 @@ export class HooksLoader {
   /**
    * Check if a hook is disabled for a specific bundle
    */
-  private static isHookDisabledForBundle(bundleSlug: string, hookType: HookType): boolean {
+  private static isHookDisabledForBundle(bundleSlug: string, hookType: HookType, config?: BundleConfig): boolean {
     try {
-      const bundleDirectory = getBundleDirectory(bundleSlug);
-      const bundleConfig = loadBundleConfig(bundleDirectory);
+      const bundleConfig = config ?? loadBundleConfig(getBundleDirectory(bundleSlug));
       const disabledGlobalHooks = bundleConfig.disabledGlobalHooks || [];
       return disabledGlobalHooks.includes(hookType);
     } catch (error) {
@@ -76,10 +79,9 @@ export class HooksLoader {
    * Check if a hook is in append mode for a specific bundle
    * Append mode: run global first, then bundle on global's result
    */
-  private static isHookInAppendMode(bundleSlug: string, hookType: HookType): boolean {
+  private static isHookInAppendMode(bundleSlug: string, hookType: HookType, config?: BundleConfig): boolean {
     try {
-      const bundleDirectory = getBundleDirectory(bundleSlug);
-      const bundleConfig = loadBundleConfig(bundleDirectory);
+      const bundleConfig = config ?? loadBundleConfig(getBundleDirectory(bundleSlug));
       const hookAppendMode = bundleConfig.hookAppendMode || {};
       return !!hookAppendMode[hookType];
     } catch (error) {
@@ -98,14 +100,14 @@ export class HooksLoader {
   /**
    * Try to execute page title normalization hook with bundle/global precedence
    */
-  public static tryExecutePageTitleNormalization(bundleSlug: string, pageTitle: string): string {
+  public static tryExecutePageTitleNormalization(bundleSlug: string, pageTitle: string, config?: BundleConfig): string {
     const hookType: HookType = 'pageTitleNormalization';
 
     // First, try to get bundle-level hook
     const bundleHook = this.loadHook('bundle', hookType, bundleSlug) as PageTitleNormalizationHook | null;
     if (bundleHook) {
       // Check if append mode: run global first, then bundle on global's result
-      if (this.isHookInAppendMode(bundleSlug, hookType)) {
+      if (this.isHookInAppendMode(bundleSlug, hookType, config)) {
         let result = pageTitle;
         const globalHook = this.loadHook('global', hookType) as PageTitleNormalizationHook | null;
         if (globalHook) {
@@ -135,7 +137,7 @@ export class HooksLoader {
     }
 
     // Check if global hook is disabled for this bundle
-    if (this.isHookDisabledForBundle(bundleSlug, hookType)) {
+    if (this.isHookDisabledForBundle(bundleSlug, hookType, config)) {
       return pageTitle;
     }
 
@@ -157,13 +159,13 @@ export class HooksLoader {
   /**
    * Try to execute markdown processing page hook with bundle/global precedence
    */
-  public static tryExecuteMarkdownProcessingPage(bundleSlug: string, mdContent: string): string {
+  public static tryExecuteMarkdownProcessingPage(bundleSlug: string, mdContent: string, config?: BundleConfig): string {
     const hookType: HookType = 'markdownProcessing';
 
     // First, try to get bundle-level hook
     const bundleHook = this.loadHook('bundle', hookType, bundleSlug) as MarkdownProcessingHook | null;
     if (bundleHook) {
-      if (this.isHookInAppendMode(bundleSlug, hookType)) {
+      if (this.isHookInAppendMode(bundleSlug, hookType, config)) {
         let result = mdContent;
         const globalHook = this.loadHook('global', hookType) as MarkdownProcessingHook | null;
         if (globalHook) {
@@ -192,7 +194,7 @@ export class HooksLoader {
     }
 
     // Check if global hook is disabled for this bundle
-    if (this.isHookDisabledForBundle(bundleSlug, hookType)) {
+    if (this.isHookDisabledForBundle(bundleSlug, hookType, config)) {
       return mdContent;
     }
 
@@ -214,13 +216,13 @@ export class HooksLoader {
   /**
    * Try to execute markdown processing backlinks hook with bundle/global precedence
    */
-  public static tryExecuteMarkdownProcessingBacklinks(bundleSlug: string, mdContent: string): string {
+  public static tryExecuteMarkdownProcessingBacklinks(bundleSlug: string, mdContent: string, config?: BundleConfig): string {
     const hookType: HookType = 'markdownProcessing';
 
     // First, try to get bundle-level hook
     const bundleHook = this.loadHook('bundle', hookType, bundleSlug) as MarkdownProcessingHook | null;
     if (bundleHook) {
-      if (this.isHookInAppendMode(bundleSlug, hookType)) {
+      if (this.isHookInAppendMode(bundleSlug, hookType, config)) {
         let result = mdContent;
         const globalHook = this.loadHook('global', hookType) as MarkdownProcessingHook | null;
         if (globalHook) {
@@ -249,7 +251,7 @@ export class HooksLoader {
     }
 
     // Check if global hook is disabled for this bundle
-    if (this.isHookDisabledForBundle(bundleSlug, hookType)) {
+    if (this.isHookDisabledForBundle(bundleSlug, hookType, config)) {
       return mdContent;
     }
 
@@ -271,13 +273,13 @@ export class HooksLoader {
   /**
    * Try to execute HTML post-processing hook with bundle/global precedence
    */
-  public static tryExecuteHtmlPostProcessing(bundleSlug: string, htmlContent: string, pageName: string): string {
+  public static tryExecuteHtmlPostProcessing(bundleSlug: string, htmlContent: string, pageName: string, config?: BundleConfig): string {
     const hookType: HookType = 'htmlPostProcessing';
 
     // First, try to get bundle-level hook
     const bundleHook = this.loadHook('bundle', hookType, bundleSlug) as HtmlPostProcessingHook | null;
     if (bundleHook) {
-      if (this.isHookInAppendMode(bundleSlug, hookType)) {
+      if (this.isHookInAppendMode(bundleSlug, hookType, config)) {
         // Append mode: run global first, then bundle on global's result
         let result = htmlContent;
         const globalHook = this.loadHook('global', hookType) as HtmlPostProcessingHook | null;
@@ -317,7 +319,7 @@ export class HooksLoader {
     }
 
     // Check if global hook is disabled for this bundle
-    if (this.isHookDisabledForBundle(bundleSlug, hookType)) {
+    if (this.isHookDisabledForBundle(bundleSlug, hookType, config)) {
       return htmlContent;
     }
 

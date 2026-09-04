@@ -22,6 +22,7 @@ import { TestBundleSetup } from '../../../../shared/support/testBundleSetup.js';
 import { HooksLoader } from '../../../../../src/areas/bundle/generation/utils/hooksLoader.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { getGeneratedBundleTestOutputDirectory } from '../../../../shared/support/generatedBundleTestOutput.js';
+import { updateBundleConfig } from '../../../../../src/shared/utils/bundleConfigUtils.js';
 
 describe('html preview', () => {
   const testSetup = new TestBundleSetup('areas/bundle/generation/fixtures/with-hooks-bundle', 'preview-test-bundle', 'areas/bundle/generation/fixtures/with-hooks-hooks');
@@ -113,6 +114,20 @@ describe('html preview', () => {
     // Check that the htmlPostProcessing hook added attributes to the body
     expect(htmlContent).toContain('data-hook-processed="true"');
     expect(htmlContent).toContain('data-bundle="preview-test-bundle"');
+  });
+
+  it('uses updated hook settings on the next generation without clearing loaded hooks', async () => {
+    const outputDirectory = getGeneratedBundleTestOutputDirectory(bundlePath);
+    const mainPage = path.join(outputDirectory, 'main page.html');
+    for (const disabled of [false, true, false]) {
+      updateBundleConfig(bundlePath, {
+        disabledGlobalHooks: disabled ? ['pageTitleNormalization', 'htmlPostProcessing'] : [],
+      });
+      await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory });
+      expect(fs.readFileSync(mainPage, 'utf8').includes('data-hook-processed="true"')).toBe(!disabled);
+      expect(fs.existsSync(path.join(outputDirectory, 'test blacklisted.html'))).toBe(disabled);
+      expect(fs.existsSync(path.join(outputDirectory, 'superduper - blacklisted.html'))).toBe(!disabled);
+    }
   });
 
   it('should process markdown with video timestamps', async () => {

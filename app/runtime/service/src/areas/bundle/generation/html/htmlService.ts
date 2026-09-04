@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { performance } from 'perf_hooks';
-import { setTimeout as delay } from 'timers/promises';
+import { setTimeout as delay, setImmediate as yieldToEventLoop } from 'timers/promises';
 import { Page } from './page.js';
 import { renderPageToHtml, renderExcalidrawPageToHtml, renderGeneratedBundleNodeToHtml, renderSimpleBacklinksHtml, CollectedSrsCard } from './htmlGenerator.js';
 import { buildExcalidrawClientEmbeddedFileData, buildExcalidrawClientLinkData, copyExcalidrawEmbeddedFiles } from './linkModificationService.js';
@@ -103,6 +103,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Dev constant: pause after each HTML file is generated to make progress more visible on small datasets.
 // Should always be 0 in production.
 const AFTER_HTML_GENERATION_PAUSE_MS = 0;
+
+function yieldAfterPage(): Promise<void> {
+  // A zero-delay timer still waits at least 1 ms per page. An immediate lets
+  // preview requests and cancellation run without imposing that timer delay.
+  return AFTER_HTML_GENERATION_PAUSE_MS > 0
+    ? delay(AFTER_HTML_GENERATION_PAUSE_MS)
+    : yieldToEventLoop();
+}
 
 const SHA256_HEX_RE = /^[a-f0-9]{64}$/i;
 
@@ -1373,7 +1381,7 @@ export async function generateHtmlForBundle(
     }
     renderedOrSkipped += 1;
     emitRenderProgressIfChanged();
-    await delay(AFTER_HTML_GENERATION_PAUSE_MS);
+    await yieldAfterPage();
   }
 
   // Copy traversable native assets before signaling that any native HTML page
@@ -1453,7 +1461,7 @@ export async function generateHtmlForBundle(
     }
     renderedOrSkipped += 1;
     emitRenderProgressIfChanged();
-    await delay(AFTER_HTML_GENERATION_PAUSE_MS);
+    await yieldAfterPage();
   };
 
   const renderNativeHtmlStart = performance.now();
@@ -1620,7 +1628,7 @@ export async function generateHtmlForBundle(
     renderedOrSkipped += 1;
     emitRenderProgressIfChanged();
 
-    await delay(AFTER_HTML_GENERATION_PAUSE_MS);
+    await yieldAfterPage();
   };
 
   if (startPageKey && traversableExcalidrawPageKeys.includes(startPageKey)) {
@@ -1773,7 +1781,7 @@ export async function generateHtmlForBundle(
 
     // Yield between pages so the server can still respond to preview file requests while rendering continues.
     // Use AFTER_HTML_GENERATION_PAUSE_MS to add an artificial delay for debugging progress visualization.
-    await delay(AFTER_HTML_GENERATION_PAUSE_MS);
+    await yieldAfterPage();
   }
   recordStageTiming('render_markdown_pages', renderMarkdownStart, { page_count: mdRenderOrder.length });
 

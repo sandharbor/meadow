@@ -841,6 +841,12 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
     // Set appropriate content type based on file extension
     if (filename.endsWith('.html')) {
       res.setHeader('Content-Type', 'text/html');
+      if (isPreviewGenerationActive(bundleSlug)) {
+        // Rendering can append version metadata while this page is served.
+        // Snapshot live HTML: sendFile's separate stat/read can otherwise send
+        // a new document using its old Content-Length and truncate the preview.
+        return res.send(fs.readFileSync(filePath));
+      }
     } else if (filename.endsWith('.css')) {
       res.setHeader('Content-Type', 'text/css');
     } else if (filename.endsWith('.js')) {

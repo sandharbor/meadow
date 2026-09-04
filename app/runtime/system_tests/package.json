@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "benchmark:html": "../service/node_modules/.bin/tsx scripts/benchmark-html-rendering.ts",
     "test": "vitest run --no-file-parallelism",
     "lint": "eslint . --ext .ts --config eslint.config.js"
   },

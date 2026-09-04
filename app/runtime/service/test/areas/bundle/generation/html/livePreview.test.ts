@@ -99,6 +99,7 @@ describe('live preview during atomic version generation', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     finish.resolve();
     server.closeAllConnections();
     await new Promise<void>(resolve => server.close(() => resolve()));
@@ -134,6 +135,30 @@ describe('live preview during atomic version generation', () => {
     expect(remaining.at(-1)).toMatchObject({ stage: 'complete', result: { traversalPageUrl: url } });
     expect(currentGeneratedBundleVersionDirectory(bundleDirectory)).not.toBeNull();
     expect(await (await fetch(url)).text()).toContain('New selected page');
+  });
+
+  it('serves complete HTML when generation grows a page before streaming starts', async () => {
+    const { events, url } = await openPreview();
+    const options = vi.mocked(generateHtmlForBundle).mock.calls.at(-1)![1];
+    const livePagePath = path.join(options.outputDirectory, selectedPage);
+    const before = '<html><head></head><body><h1>Selected page</h1></body></html>';
+    const after = before.replace('</head>', '<meta name="generation-metadata" content="added after the first page is ready"></head>');
+    fs.writeFileSync(livePagePath, before);
+
+    // sendFile stats the path before opening its stream. Reproduce the renderer
+    // adding version metadata in that gap, so the old byte count is too small.
+    const createReadStream = fs.createReadStream;
+    vi.spyOn(fs, 'createReadStream').mockImplementation((file, streamOptions) => {
+      if (file === livePagePath) fs.writeFileSync(livePagePath, after);
+      return createReadStream(file, streamOptions);
+    });
+    const html = await (await fetch(url)).text();
+    expect([before, after]).toContain(html);
+    expect(html).toContain('<h1>Selected page</h1></body></html>');
+    finish.resolve();
+    for await (const event of events) {
+      expect(event.stage).not.toBe('error');
+    }
   });
 
   it.each([false, true])('refreshes Changes before completion and restores installed reads after failure=%s', async failure => {

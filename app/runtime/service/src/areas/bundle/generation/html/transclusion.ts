@@ -99,9 +99,9 @@ function unwrapSingleParagraph(html: string): string {
   return match[1].trim();
 }
 
-function customProcessEmbeddedMarkdown(mdContent: string, bundleSlug?: string): string {
+function customProcessEmbeddedMarkdown(mdContent: string, bundleSlug?: string, bundleConfig?: BundleConfig): string {
   if (bundleSlug) {
-    return HooksLoader.tryExecuteMarkdownProcessingPage(bundleSlug, mdContent);
+    return HooksLoader.tryExecuteMarkdownProcessingPage(bundleSlug, mdContent, bundleConfig);
   }
   return mdContent;
 }
@@ -373,7 +373,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
 
   configureMarkedExternalLinksOnce();
   const finalMd = replaceSrsCardsWithCustomElements(
-    customProcessEmbeddedMarkdown(processedMdForLinks, bundleSlug),
+    customProcessEmbeddedMarkdown(processedMdForLinks, bundleSlug, bundleConfig),
     (fragment: string) => unwrapSingleParagraph(marked(fragment) as string)
   );
   const innerHtml = marked(finalMd) as string;

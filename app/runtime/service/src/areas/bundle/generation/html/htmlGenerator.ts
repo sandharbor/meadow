@@ -130,17 +130,17 @@ marked.use(
   ...extendedSyntaxExtensions
 );
 
-export function customProcessBacklinksMarkdown(mdContent: string, bundleSlug?: string): string {
+export function customProcessBacklinksMarkdown(mdContent: string, bundleSlug?: string, bundleConfig?: BundleConfig): string {
   if (bundleSlug) {
-    return HooksLoader.tryExecuteMarkdownProcessingBacklinks(bundleSlug, mdContent);
+    return HooksLoader.tryExecuteMarkdownProcessingBacklinks(bundleSlug, mdContent, bundleConfig);
   }
   // No processing if no bundleSlug - hooks system handles all custom logic
   return mdContent;
 }
 
-export function customProcessPageMarkdown(mdContent: string, bundleSlug?: string): string {
+export function customProcessPageMarkdown(mdContent: string, bundleSlug?: string, bundleConfig?: BundleConfig): string {
   if (bundleSlug) {
-    return HooksLoader.tryExecuteMarkdownProcessingPage(bundleSlug, mdContent);
+    return HooksLoader.tryExecuteMarkdownProcessingPage(bundleSlug, mdContent, bundleConfig);
   }
   // No processing if no bundleSlug - hooks system handles all custom logic
   return mdContent;
@@ -209,7 +209,7 @@ export function renderPageToHtml(
     return { htmlPath: null, htmlContent: null, srsCards: [] };
   }
 
-  let mdContent = customProcessPageMarkdown(initialMdContent, bundleSlug);
+  let mdContent = customProcessPageMarkdown(initialMdContent, bundleSlug, bundleConfig);
   const markdownForAnchors = mdContent;
 
   interface WikiLinkOverrides {
@@ -631,7 +631,7 @@ export function renderPageToHtml(
                   linkResolutionMapOverride: backlinkResolutionMap,
                   currentPageDirectoryOverride: currentPageDirectory,
                 });
-                const withFixedLinksAndBreaks = customProcessBacklinksMarkdown(withFixedLinks, bundleSlug);
+                const withFixedLinksAndBreaks = customProcessBacklinksMarkdown(withFixedLinks, bundleSlug, bundleConfig);
                 const html = marked(withFixedLinksAndBreaks) as string;
                 
                 // Calculate relative path for "see in context" link
@@ -842,7 +842,7 @@ export function renderPageToHtml(
     htmlPath = path.join(outputFolder, htmlFilename);
     let finalContent = fullPageContent;
     if (bundleSlug) {
-      finalContent = HooksLoader.tryExecuteHtmlPostProcessing(bundleSlug, fullPageContent, pageName);
+      finalContent = HooksLoader.tryExecuteHtmlPostProcessing(bundleSlug, fullPageContent, pageName, bundleConfig);
     }
     fs.writeFileSync(htmlPath, finalContent);
 
@@ -924,10 +924,9 @@ export function renderGeneratedBundleNodeToHtml(args: {
   const outputPath = path.join(args.outputRoot, ...args.outputRoute.split('/'));
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   const finalContent = args.bundleSlug
-    ? HooksLoader.tryExecuteHtmlPostProcessing(args.bundleSlug, fullPageContent, args.pageTitle)
+    ? HooksLoader.tryExecuteHtmlPostProcessing(args.bundleSlug, fullPageContent, args.pageTitle, args.bundleConfig)
     : fullPageContent;
   fs.writeFileSync(outputPath, finalContent);
-  void args.bundleConfig;
   return outputPath;
 }
 
@@ -1097,14 +1096,10 @@ export function renderExcalidrawPageToHtml(args: {
   const htmlPath = path.join(outputFolder, `${outputFilename}.html`);
   let finalContent = fullPageContent;
   if (bundleSlug) {
-    finalContent = HooksLoader.tryExecuteHtmlPostProcessing(bundleSlug, fullPageContent, pageTitle);
+    finalContent = HooksLoader.tryExecuteHtmlPostProcessing(bundleSlug, fullPageContent, pageTitle, bundleConfig);
   }
   fs.writeFileSync(htmlPath, finalContent);
   logger.debug(`Rendered standalone Excalidraw page to HTML: ${pageTitle}`);
-
-  // Suppress unused-import warnings for bundleConfig — kept in signature for
-  // consistency with renderPageToHtml and future hook integrations.
-  void bundleConfig;
 
   return htmlPath;
 }

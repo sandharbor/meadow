@@ -14,13 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { HooksLoader } from '../../../../../src/areas/bundle/generation/utils/hooksLoader.js';
 import { AppConfigPaths } from '../../../../../../../shared_code/paths/appConfigPaths.js';
 import { HookType } from '../../../../../../../contracts/types/hooks.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
+import { saveBundleConfig } from '../../../../../src/shared/utils/bundleConfigUtils.js';
 
 describe('HooksLoader', () => {
   const testConfigDir = path.join(os.tmpdir(), 'meadow-test-config');
@@ -44,6 +47,7 @@ describe('HooksLoader', () => {
   });
   
   afterEach(() => {
+    vi.restoreAllMocks();
     // Clean up
     if (fs.existsSync(testConfigDir)) {
       fs.rmSync(testConfigDir, { recursive: true, force: true });
@@ -54,6 +58,82 @@ describe('HooksLoader', () => {
     
     // Clear hooks cache
     HooksLoader.clearCache();
+  });
+
+  describe.each([
+    {
+      name: 'page titles', hookType: 'pageTitleNormalization' as const,
+      functions: ['pageTitleNormalization'],
+      execute: (config?: BundleConfig) => HooksLoader.tryExecutePageTitleNormalization('test-bundle', 'page', config),
+    },
+    {
+      name: 'page markdown', hookType: 'markdownProcessing' as const,
+      functions: ['markdownProcessingPage', 'markdownProcessingBacklinks'],
+      execute: (config?: BundleConfig) => HooksLoader.tryExecuteMarkdownProcessingPage('test-bundle', 'page', config),
+    },
+    {
+      name: 'backlink markdown', hookType: 'markdownProcessing' as const,
+      functions: ['markdownProcessingPage', 'markdownProcessingBacklinks'],
+      execute: (config?: BundleConfig) => HooksLoader.tryExecuteMarkdownProcessingBacklinks('test-bundle', 'page', config),
+    },
+    {
+      name: 'HTML', hookType: 'htmlPostProcessing' as const,
+      functions: ['htmlPostProcessing'],
+      execute: (config?: BundleConfig) => HooksLoader.tryExecuteHtmlPostProcessing(
+        'test-bundle', '<html><body><p>page</p></body></html>', 'page', config,
+      ),
+    },
+  ])('loaded configuration for $name', ({ hookType, functions, execute }) => {
+    const bundleDirectory = path.join(testConfigDir, 'bundles', 'test-bundle');
+
+    function writeHook(scope: 'global' | 'bundle'): void {
+      const hookPath = scope === 'global'
+        ? AppConfigPaths.getGlobalHookFile(testConfigDir, hookType)
+        : BundleConfigPaths.getBundleHookFile(bundleDirectory, hookType);
+      fs.mkdirSync(path.dirname(hookPath), { recursive: true });
+      const body = hookType === 'htmlPostProcessing'
+        ? `content.querySelector('p').textContent += ' ${scope}' + ++calls;`
+        : `return content + ' ${scope}' + ++calls;`;
+      fs.writeFileSync(hookPath, `let calls = 0;\n${functions.map(name =>
+        `function ${name}(bundleSlug, content) { ${body} }`).join('\n')}`);
+      HooksLoader.clearCache();
+    }
+
+    it('honors disabled settings without caching execution results or rereading configuration', () => {
+      writeHook('global');
+      saveBundleConfig(bundleDirectory, { disabledGlobalHooks: [hookType] });
+      HooksLoader.loadHook('global', hookType);
+      const reads = vi.spyOn(fs, 'readFileSync');
+
+      expect(execute({})).toContain('page global1');
+      expect(execute({})).toContain('page global2');
+      expect(execute({ disabledGlobalHooks: [hookType] })).not.toContain('global');
+      expect(reads.mock.calls.filter(([file]) => file === BundleConfigPaths.getBundleConfigFile(bundleDirectory))).toHaveLength(0);
+    });
+
+    it('preserves bundle override and global-then-bundle append order', () => {
+      writeHook('global');
+      writeHook('bundle');
+
+      expect(execute({ hookAppendMode: { [hookType]: true } })).toContain('page global1 bundle1');
+      expect(execute({})).toContain('page bundle2');
+      expect(execute({ disabledGlobalHooks: [hookType] })).toContain('page bundle3');
+      expect(execute({ hookAppendMode: { [hookType]: true } })).toContain('page global2 bundle4');
+    });
+
+    it('reads updated settings when no configuration is supplied', () => {
+      writeHook('global');
+      saveBundleConfig(bundleDirectory, { disabledGlobalHooks: [hookType] });
+      expect(execute()).not.toContain('global');
+      saveBundleConfig(bundleDirectory, {});
+      expect(execute()).toContain('page global1');
+
+      writeHook('bundle');
+      saveBundleConfig(bundleDirectory, { hookAppendMode: { [hookType]: true } });
+      expect(execute()).toContain('page global1 bundle1');
+      saveBundleConfig(bundleDirectory, {});
+      expect(execute()).toContain('page bundle2');
+    });
   });
   
   describe('Page Title Normalization', () => {
@@ -296,4 +376,4 @@ function htmlPostProcessing(bundleSlug, document, pageName) {
       expect(result.success).toBe(true);
     });
   });
-}); 
+});

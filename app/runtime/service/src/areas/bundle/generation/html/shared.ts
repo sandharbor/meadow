@@ -37,7 +37,7 @@ export function normalizePageTitle(pageTitle: string, bundleConfig: BundleConfig
   if (bundleSlug) {
     logBundleDebug(bundleSlug, `[normalizeBundlePageTitle] Attempting to execute hook`);
     try {
-      const hookResult = HooksLoader.tryExecutePageTitleNormalization(bundleSlug, pageTitle);
+      const hookResult = HooksLoader.tryExecutePageTitleNormalization(bundleSlug, pageTitle, bundleConfig);
       logBundleDebug(bundleSlug, `[normalizeBundlePageTitle] Hook result: "${hookResult}"`);
       // If hook returned a different result, use it
       if (hookResult !== pageTitle) {
