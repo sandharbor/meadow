@@ -20,13 +20,11 @@ import { createS3Client } from './s3Client.js';
 import { deleteObjectKeys, deletePrefix, putJsonObject } from './s3Operations.js';
 import { loadS3Resources, loadS3Secrets } from './s3Config.js';
 import {
-  appendS3PublicationEvent,
   loadS3PublicationState,
-  remotelyPresentS3VersionIds,
   s3SuccessorManifestKey,
-  s3VersionNamespace,
   saveS3PublicationState,
 } from './versioning/publicationStore.js';
+import { recordPublicationDeletion, remotelyPresentPublicationRevisions } from '../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
 
 export async function cleanupS3PublishedFiles(
   options: CleanupPublishedBundleOptions,
@@ -34,7 +32,7 @@ export async function cleanupS3PublishedFiles(
   const { bundleSlug, operationId, onProgress } = options;
   const operation = `[operation ${operationId}] [s3-cleanup-bundle]`;
   let state = loadS3PublicationState(bundleSlug);
-  if (!state || remotelyPresentS3VersionIds(state).size === 0) return { confirmed: true };
+  if (!state || remotelyPresentPublicationRevisions(state).length === 0) return { confirmed: true };
 
   const resources = loadS3Resources();
   const secrets = loadS3Secrets();
@@ -42,33 +40,24 @@ export async function cleanupS3PublishedFiles(
     throw new Error('S3 credentials are required to confirm remote cleanup');
   }
   const client = createS3Client(resources, secrets);
-  const versions = [...remotelyPresentS3VersionIds(state)];
-  logBundleInfo(bundleSlug, `${operation} Started cleanup of ${versions.length} remote version${versions.length === 1 ? '' : 's'} for provider instance ${state.providerInstanceId}, destination ${state.destination.publishSlug}`);
-  onProgress({ stage: 'deleting-s3', message: `Preparing to remove ${versions.length} remote version${versions.length === 1 ? '' : 's'}...` });
+  const revisions = remotelyPresentPublicationRevisions(state);
+  logBundleInfo(bundleSlug, `${operation} Started cleanup of ${revisions.length} remote publication revision${revisions.length === 1 ? '' : 's'} for provider instance ${state.providerInstanceId}`);
+  onProgress({ stage: 'deleting-s3', message: `Preparing to remove ${revisions.length} remote publication revision${revisions.length === 1 ? '' : 's'}...` });
 
   try {
-    await putJsonObject(
-      client,
-      state.destination.bucketName,
-      s3SuccessorManifestKey(state.destination.publishSlug),
-      { schemaVersion: 1, successors: {} },
-    );
+    for (const publishSlug of new Set(revisions.map(revision => revision.publishSlug))) {
+      await putJsonObject(client, state.destinationIdentity.bucketName, s3SuccessorManifestKey(publishSlug), { schemaVersion: 1, successors: {} });
+    }
     let totalDeleted = 0;
-    for (const versionId of versions) {
+    for (const revision of revisions) {
+      const versionId = revision.generatedVersionId;
       const result = await deletePrefix(
         client,
-        state.destination.bucketName,
-        s3VersionNamespace(state.destination.publishSlug, versionId),
+        state.destinationIdentity.bucketName,
+        revision.remoteNamespace ?? `${revision.publishSlug}-${versionId}`,
       );
       totalDeleted += result.filesDeleted;
-      const prior = [...state.events].reverse().find(event => event.versionId === versionId);
-      state = appendS3PublicationEvent(state, {
-        eventType: 'remote-deletion-success',
-        versionId,
-        savedGenerationId: prior?.savedGenerationId ?? 'unknown',
-        timestamp: new Date().toISOString(),
-        remoteNamespace: s3VersionNamespace(state.destination.publishSlug, versionId),
-      });
+      state = recordPublicationDeletion(state, revision.publicationRevisionId);
       saveS3PublicationState(bundleSlug, state);
       onProgress({
         stage: 'deleting-s3',
@@ -77,11 +66,7 @@ export async function cleanupS3PublishedFiles(
         version: versionId,
       });
     }
-    await deleteObjectKeys(
-      client,
-      state.destination.bucketName,
-      [s3SuccessorManifestKey(state.destination.publishSlug)],
-    );
+    await deleteObjectKeys(client, state.destinationIdentity.bucketName, [...new Set(revisions.map(revision => s3SuccessorManifestKey(revision.publishSlug)))]);
     logBundleInfo(bundleSlug, `${operation} Confirmed all remote versions and the successor manifest removed; local bundle may now be deleted`);
     return { confirmed: true };
   } catch (error) {

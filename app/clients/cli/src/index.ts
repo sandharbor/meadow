@@ -32,6 +32,16 @@ import { createRuntimePayloadLaunchSpec } from "../../../runtime/supervisor/src/
 import { createSourceRuntimeLaunchSpec } from "../../../runtime/supervisor/src/sourceLaunchSpec.js";
 import { runBundleNodeCommand, showBundleNodeHelp } from "./nodeCommands.js";
 import { parseTrackBundleOptions, type TrackBundleOptions } from "./trackCommands.js";
+import {
+  type ApiMethod,
+  listPublishingProviders,
+  runBundlePublicationsCommand,
+  runBundlesRenameCommand,
+  runBundleVersionsCommand,
+  showBundlePublicationsHelp,
+  showBundlesRenameHelp,
+  showBundleVersionsHelp,
+} from "./managementCommands.js";
 
 interface BundleSummary {
   slug?: unknown;
@@ -55,6 +65,10 @@ interface CreateBundleOptions {
 interface BundleVersionOptions {
   slug: string;
   versionId: string;
+}
+
+interface BundlePublishOptions extends BundleVersionOptions {
+  providerId?: string;
 }
 
 class CliApiError extends Error {
@@ -91,13 +105,19 @@ Usage:
   meadow bundles create --source <directory> --entry <relative-page>
   meadow bundles archive <bundle-slug>
   meadow bundles unarchive <bundle-slug>
+  meadow bundles rename-plan <bundle-slug>
+  meadow bundles rename <bundle-slug> --to <new-slug>
+  meadow bundles undo-rename <renamed-bundle-slug>
+  meadow providers list
   meadow bundle track <bundle-slug> --all-safe
   meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
   meadow bundle open <bundle-slug>
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
-  meadow bundle publish <bundle-slug> --version <version-id>
+  meadow bundle versions <list|get|create|update|delete|restore|cancel-current> ...
+  meadow bundle publications <list|get|configure|plan|cancel|delete> ...
+  meadow bundle publish <bundle-slug> --version <version-id> [--provider <provider-id>]
   meadow bundle nodes <bundle-slug> --scope <all|final>
   meadow bundle filters <bundle-slug>
   meadow review open <review-request-id>
@@ -111,13 +131,17 @@ Commands:
   bundles create                   Create a page-derived bundle using normal defaults.
   bundles archive <bundle-slug>    Archive a bundle and return JSON.
   bundles unarchive <bundle-slug>  Unarchive a bundle and return JSON.
+  bundles rename                   Rename a bundle with explicit publication decisions.
+  providers list                   List installed providers and activation state as JSON.
   bundle track                     Atomically track a selected set or all safe nodes.
   bundle node                      Inspect or mutate one node by stable ID or source path;
                                    use 'bundle node track' for one-at-a-time curation.
   bundle open                      Open the full Web Client at a bundle explicitly.
   bundle generate                  Generate a read-only local preview version.
   bundle save-generation           Save a generated version in Meadow Home.
-  bundle publish                   Publish a saved version with the active provider.
+  bundle versions                  Manage generated-version records and local files.
+  bundle publications              Manage one provider's publication-revision records.
+  bundle publish                   Publish a saved version with the active or named provider.
   bundle nodes                     Describe a bundle's working graph as JSON.
   bundle filters                   List filters available to a bundle as JSON.
   review open                      Open the full Web Client in a browser at a
@@ -173,6 +197,9 @@ function showBundlesHelp(): void {
   meadow bundles create --source <directory> --entry <relative-page> [--slug <slug>]
   meadow bundles archive <bundle-slug>
   meadow bundles unarchive <bundle-slug>
+  meadow bundles rename-plan <bundle-slug>
+  meadow bundles rename <bundle-slug> --to <new-slug> [--provider-decision <decision> ...]
+  meadow bundles undo-rename <renamed-bundle-slug>
 
 Commands:
   create     Create a bundle from a source directory and entry page. The entry
@@ -181,6 +208,11 @@ Commands:
   list       List current bundles; pass --archived for archived bundles.
   archive    Archive an existing bundle.
   unarchive  Restore an archived bundle.
+  rename-plan
+             Inspect generated and provider state before choosing rename behavior.
+  rename     Rename the local bundle and prepare provider publication revisions.
+  undo-rename
+             Undo a published-bundle rename before any provider publishes it.
 
 Implicit creation is safe to retry: the same canonical source directory, entry
 page, and defaults return the existing bundle. Pass a distinct --slug only when
@@ -224,7 +256,9 @@ function showBundleHelp(): void {
   meadow bundle open <bundle-slug>
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
-  meadow bundle publish <bundle-slug> --version <version-id>
+  meadow bundle versions <operation> ...
+  meadow bundle publications <operation> ...
+  meadow bundle publish <bundle-slug> --version <version-id> [--provider <provider-id>]
   meadow bundle nodes <bundle-slug> --scope <all|final> [options]
   meadow bundle filters <bundle-slug>
 
@@ -237,7 +271,10 @@ Commands:
             plus a bundle-scoped, read-only preview URL.
   save-generation
             Save the specified current version using Meadow's normal versioning.
-  publish   Publish a saved version using the single active publishing provider
+  versions  Create, read, update, and locally delete generated versions.
+  publications
+            Inspect and manage one provider's publication revisions and address.
+  publish   Publish a saved version using the active or explicitly named provider
             and return its public URL and provider identity.
   nodes     Return deterministic nodes and edges from the working graph.
   filters   List stable filter IDs, descriptions, selectors, actions, and scope.
@@ -281,19 +318,20 @@ After saving, use the returned nextActions or run
 
 function showBundlePublishHelp(): void {
   console.log(`Usage:
-  meadow bundle publish <bundle-slug> --version <version-id>
+  meadow bundle publish <bundle-slug> --version <version-id> [--provider <provider-id>]
 
 Required:
   --version <version-id>   The versionId returned by 'meadow bundle generate'.
 
 Publishes the explicitly selected saved version using the single active
-publishing provider and its default settings. The provider may initialize an
+publishing provider and its default settings. Pass --provider to publish through
+one installed provider even when several are active. The provider may initialize an
 identity as part of this explicit request. The JSON result includes the public
 URL, provider and provider-instance IDs, whether an identity was created, and
 any remaining provider allowance.
 
 Publish refuses an unsaved version. It never chooses between multiple active
-providers; leave exactly one active and retry. When publishing requires an
+providers; leave exactly one active, or pass --provider. When publishing requires an
 explicit user step, the JSON error includes a structured userAction.`);
 }
 
@@ -458,7 +496,7 @@ function resolveSession(): RuntimeSessionDescriptor {
 async function requestJson(
   session: RuntimeSessionDescriptor,
   pathname: string,
-  method: "GET" | "POST" = "GET",
+  method: ApiMethod = "GET",
   body?: unknown,
 ): Promise<unknown> {
   const healthResponse = await fetch(`${session.backendUrl}/health`);
@@ -579,6 +617,33 @@ function parseBundleVersionOptions(args: string[], command: string): BundleVersi
   return { slug, versionId: args[2] };
 }
 
+function parseBundlePublishOptions(args: string[]): BundlePublishOptions {
+  const slug = args[0];
+  if (!slug || slug.startsWith("--")) {
+    throw new Error("Usage: meadow bundle publish <bundle-slug> --version <version-id> [--provider <provider-id>]");
+  }
+  let versionId: string | undefined;
+  let providerId: string | undefined;
+  for (let index = 1; index < args.length; index += 1) {
+    const option = args[index];
+    const value = args[index + 1];
+    if (option !== "--version" && option !== "--provider") {
+      throw new Error(`Unknown option: ${option}. Run 'meadow bundle publish --help'.`);
+    }
+    if (!value || value.startsWith("--")) throw new Error(`${option} requires a value`);
+    if (option === "--version") {
+      if (versionId) throw new Error("--version may only be provided once");
+      versionId = value;
+    } else {
+      if (providerId) throw new Error("--provider may only be provided once");
+      providerId = value;
+    }
+    index += 1;
+  }
+  if (!versionId) throw new Error("--version is required. Run 'meadow bundle publish --help'.");
+  return { slug, versionId, ...(providerId ? { providerId } : {}) };
+}
+
 async function generateBundle(slug: string): Promise<void> {
   console.error(`meadow: generating bundle '${slug}'...`);
   const response = await requestJson(
@@ -650,8 +715,51 @@ async function saveBundleGeneration(options: BundleVersionOptions): Promise<void
   console.log(JSON.stringify(response, null, 2));
 }
 
-async function publishBundle(options: BundleVersionOptions): Promise<void> {
+async function publishBundle(options: BundlePublishOptions): Promise<void> {
   console.error(`meadow: publishing version '${options.versionId}' for bundle '${options.slug}'...`);
+  if (options.providerId) {
+    const providerRoot = `/sharing/publishing-providers/${encodeURIComponent(options.providerId)}/bundles/${encodeURIComponent(options.slug)}`;
+    await requestJson(resolveSession(), `${providerRoot}/provider-config`);
+    const response = await requestJson(
+      resolveSession(),
+      `${providerRoot}/publish`,
+      "POST",
+      { versionId: options.versionId },
+    );
+    if (typeof response !== "object" || response === null || (response as { success?: unknown }).success !== true) {
+      throw new Error("Meadow returned an invalid provider publication response.");
+    }
+    const published = response as Record<string, unknown>;
+    const url = typeof published.publishedUrl === "string"
+      ? published.publishedUrl
+      : typeof published.bundleUrl === "string" ? published.bundleUrl : null;
+    const savedGenerationId = typeof published.savedGenerationId === "string" ? published.savedGenerationId : null;
+    if (!url || !savedGenerationId || published.versionId !== options.versionId) {
+      throw new Error("Meadow returned an incomplete provider publication response.");
+    }
+    const state = await requestJson(
+      resolveSession(),
+      `/sharing/publishing-providers/${encodeURIComponent(options.providerId)}/bundles/${encodeURIComponent(options.slug)}/publication-state?versionId=${encodeURIComponent(options.versionId)}`,
+    ) as { providerInstanceId?: unknown };
+    if (typeof state.providerInstanceId !== "string") {
+      throw new Error("Meadow returned publication state without a provider instance.");
+    }
+    console.log(JSON.stringify({
+      schemaVersion: 1,
+      operation: "bundle.publish",
+      slug: options.slug,
+      versionId: options.versionId,
+      savedGenerationId,
+      changed: typeof published.changed === "boolean" ? published.changed : true,
+      provider: { id: options.providerId, instanceId: state.providerInstanceId },
+      url,
+      identityCreated: typeof published.identityCreated === "boolean" ? published.identityCreated : null,
+      remainingAllowance: typeof published.remainingAllowance === "number"
+        ? published.remainingAllowance
+        : null,
+    }, null, 2));
+    return;
+  }
   const response = await requestJson(
     resolveSession(),
     `/bundles/${encodeURIComponent(options.slug)}/sharing/publish`,
@@ -799,10 +907,12 @@ async function main(): Promise<void> {
     args[0] === "open"
   ) || (
     args[0] === "bundles"
-    && ["list", "create", "archive", "unarchive"].includes(args[1] ?? "")
+    && ["list", "create", "archive", "unarchive", "rename-plan", "rename", "undo-rename"].includes(args[1] ?? "")
   ) || (
     args[0] === "bundle"
-    && ["track", "node", "open", "generate", "save-generation", "publish", "nodes", "filters"].includes(args[1] ?? "")
+    && ["track", "node", "open", "generate", "save-generation", "publish", "nodes", "filters", "versions", "publications"].includes(args[1] ?? "")
+  ) || (
+    args[0] === "providers" && args[1] === "list"
   ) || (
     args[0] === "review" && args[1] === "open"
   );
@@ -841,6 +951,26 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (args[0] === "bundles" && ["rename-plan", "rename", "undo-rename"].includes(args[1] ?? "")) {
+    if (args[2] === "--help" || args[2] === "-h") {
+      showBundlesRenameHelp();
+      return;
+    }
+    await runBundlesRenameCommand(args.slice(1), (pathname, method, body) => requestJson(resolveSession(), pathname, method, body));
+    return;
+  }
+
+  if (args[0] === "providers" && (args.length === 1 || args[1] === "--help" || args[1] === "-h")) {
+    console.log("Usage: meadow providers list\n\nLists installed publishing providers and their activation state as JSON.");
+    return;
+  }
+
+  if (args[0] === "providers" && args[1] === "list") {
+    if (args.length !== 2) throw new Error("Usage: meadow providers list");
+    await listPublishingProviders((pathname, method, body) => requestJson(resolveSession(), pathname, method, body));
+    return;
+  }
+
   if (args[0] === "bundle" && (args.length === 1 || args[1] === "--help" || args[1] === "-h")) {
     showBundleHelp();
     return;
@@ -852,6 +982,24 @@ async function main(): Promise<void> {
       return;
     }
     await describeBundleNodes(parseBundleNodesOptions(args.slice(2)));
+    return;
+  }
+
+  if (args[0] === "bundle" && args[1] === "versions") {
+    if (args[2] === "--help" || args[2] === "-h") {
+      showBundleVersionsHelp();
+      return;
+    }
+    await runBundleVersionsCommand(args.slice(2), (pathname, method, body) => requestJson(resolveSession(), pathname, method, body));
+    return;
+  }
+
+  if (args[0] === "bundle" && args[1] === "publications") {
+    if (args[2] === "--help" || args[2] === "-h") {
+      showBundlePublicationsHelp();
+      return;
+    }
+    await runBundlePublicationsCommand(args.slice(2), (pathname, method, body) => requestJson(resolveSession(), pathname, method, body));
     return;
   }
 
@@ -932,7 +1080,7 @@ responses declare whether their returned command actions can resolve headlessly.
       showBundlePublishHelp();
       return;
     }
-    await publishBundle(parseBundleVersionOptions(args.slice(2), "publish"));
+    await publishBundle(parseBundlePublishOptions(args.slice(2)));
     return;
   }
 

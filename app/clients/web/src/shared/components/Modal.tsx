@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -39,6 +39,7 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (isOpen) setOffset({ x: 0, y: 0 });
@@ -86,6 +87,9 @@ const Modal: React.FC<ModalProps> = ({
     >
       <div 
         ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className={`bg-white rounded-lg p-6 flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -104,7 +108,7 @@ const Modal: React.FC<ModalProps> = ({
           data-testid={movable ? 'movable-modal-title-bar' : undefined}
           title={movable ? 'Drag to move' : undefined}
         >
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
           {showCloseButton && (
             <button
               onClick={onClose}

@@ -54,6 +54,63 @@ interface ShareVersionOption {
   savedGenerationId: string | null;
 }
 
+interface ShareVersionSelectorProps {
+  intent: 'publish' | 'export';
+  versions: ShareVersionOption[];
+  selectedVersionId: string | null;
+  onChange: (versionId: string | null) => void;
+}
+
+const ShareVersionSelector: React.FC<ShareVersionSelectorProps> = ({
+  intent,
+  versions,
+  selectedVersionId,
+  onChange,
+}) => {
+  if (versions.length <= 1) return null;
+
+  const selectedIndex = versions.findIndex(version => version.versionId === selectedVersionId);
+  const selected = selectedIndex >= 0 ? versions[selectedIndex] : null;
+  const currentIndex = versions.length - 1;
+  const currentName = casualVersionName(currentIndex);
+  const selectedName = selectedIndex >= 0 ? casualVersionName(selectedIndex) : null;
+  const actionLabel = intent === 'publish' ? 'publish' : 'export';
+  const actionPresentParticiple = intent === 'publish' ? 'Publishing' : 'Exporting';
+
+  return (
+    <div className="mb-3 rounded border border-neutral-200 bg-neutral-50 px-3 py-2">
+      <div className="flex items-center gap-3">
+        <label htmlFor="share-version-selector" className="text-sm font-medium text-neutral-700">
+          Version to {actionLabel}
+        </label>
+        <select
+          id="share-version-selector"
+          value={selectedVersionId ?? ''}
+          onChange={event => onChange(event.target.value || null)}
+          className="rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
+        >
+          {versions
+            .map((version, manifestIndex) => ({ version, manifestIndex }))
+            .reverse()
+            .map(({ version, manifestIndex }) => (
+              <option key={version.versionId} value={version.versionId} disabled={version.localFilesState === 'deleted'}>
+                {casualVersionName(manifestIndex)} — {versionCreatedDate(version.createdAt)}{version === versions.at(-1) ? ' — current' : ''}{version.localFilesState === 'deleted' ? ' — locally deleted' : ''}
+              </option>
+            ))}
+        </select>
+        {!selected && <span className="text-xs text-danger-700">Generate and save a version before sharing.</span>}
+        {selected?.localFilesState === 'deleted' && <span className="text-xs text-danger-700">This version is no longer available locally.</span>}
+        {selected && selected.localFilesState !== 'deleted' && !selected.savedGenerationId && <span className="text-xs text-danger-700">Save this generated version before sharing it.</span>}
+      </div>
+      {selected?.localFilesState === 'present' && selected.savedGenerationId && selectedIndex < currentIndex && (
+        <p className="mt-2 text-xs font-medium text-warning-800" role="status">
+          {actionPresentParticiple} will use {selectedName}, an older generated version. The current generated version is {currentName}.
+        </p>
+      )}
+    </div>
+  );
+};
+
 interface PreviewPublishModalProps {
   onClose: () => void;
   slug: string;
@@ -195,11 +252,14 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   const [isCreateVersionOpen, setIsCreateVersionOpen] = useState(false);
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const [createVersionNote, setCreateVersionNote] = useState('');
-  const [connectReaders, setConnectReaders] = useState(true);
   const [confirmNoGeneratedChanges, setConfirmNoGeneratedChanges] = useState(false);
   const [versionsRefreshKey, setVersionsRefreshKey] = useState(0);
   const [shareVersions, setShareVersions] = useState<ShareVersionOption[]>([]);
   const [selectedShareVersionId, setSelectedShareVersionId] = useState<string | null>(null);
+  const generatedVersionLabels = useMemo(
+    () => Object.fromEntries(shareVersions.map((version, index) => [version.versionId, casualVersionName(index)])),
+    [shareVersions],
+  );
 
   // "Done" animation state
   const [showPreviewDone, setShowPreviewDone] = useState(false);
@@ -672,7 +732,6 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           notes: createVersionNote,
-          readerConnectionToPredecessor: connectReaders ? 'connected' : 'disconnected',
           confirmedNoGeneratedChanges: changedFiles.size > 0 || confirmNoGeneratedChanges,
         }),
       });
@@ -680,7 +739,6 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       if (!response.ok) throw new Error(data.error || 'Failed to create version');
       setIsCreateVersionOpen(false);
       setCreateVersionNote('');
-      setConnectReaders(true);
       setConfirmNoGeneratedChanges(false);
       setChangesTabRefreshKey(previous => previous + 1);
       setVersionsRefreshKey(previous => previous + 1);
@@ -691,7 +749,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     } finally {
       setIsCreatingVersion(false);
     }
-  }, [slug, isCreatingVersion, createVersionNote, connectReaders, changedFiles.size, confirmNoGeneratedChanges, previewFileExplorerApi]);
+  }, [slug, isCreatingVersion, createVersionNote, changedFiles.size, confirmNoGeneratedChanges, previewFileExplorerApi]);
 
   // Handle closing the modal — unmount resets all state automatically
   const handleClose = useCallback(() => {
@@ -1132,31 +1190,6 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             topLevelTab === 'share' ? (
               // Share tab content with subtabs
               <div className="h-full flex flex-col">
-                {shareVersions.length > 1 && <div className="mb-3 flex items-center gap-3 rounded border border-neutral-200 bg-neutral-50 px-3 py-2">
-                  <label htmlFor="share-version-selector" className="text-sm font-medium text-neutral-700">Version</label>
-                  <select
-                    id="share-version-selector"
-                    value={selectedShareVersionId ?? ''}
-                    onChange={event => setSelectedShareVersionId(event.target.value || null)}
-                    className="rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
-                  >
-                    {shareVersions
-                      .map((version, manifestIndex) => ({ version, manifestIndex }))
-                      .reverse()
-                      .map(({ version, manifestIndex }) => (
-                        <option key={version.versionId} value={version.versionId} disabled={version.localFilesState === 'deleted'}>
-                          {casualVersionName(manifestIndex)} — {versionCreatedDate(version.createdAt)}{version === shareVersions.at(-1) ? ' — current' : ''}{version.localFilesState === 'deleted' ? ' — locally deleted' : ''}
-                        </option>
-                      ))}
-                  </select>
-                  {(() => {
-                    const selected = shareVersions.find(version => version.versionId === selectedShareVersionId);
-                    if (!selected) return <span className="text-xs text-danger-700">Generate and save a version before sharing.</span>;
-                    if (selected.localFilesState === 'deleted') return <span className="text-xs text-danger-700">This version is no longer available locally.</span>;
-                    if (!selected.savedGenerationId) return <span className="text-xs text-danger-700">Save this generated version before sharing it.</span>;
-                    return null;
-                  })()}
-                </div>}
                 {/* Share subtab navigation */}
                 <div className="border-b mb-4">
                   <nav className="flex space-x-4 items-center">
@@ -1200,18 +1233,39 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                   {shareSubTab === 'advanced' ? (
                     <AdvancedTab bundleSlug={slug || ''} />
                   ) : shareSubTab === 'localExport' ? (
-                    <SaveLocallyTab bundleSlug={slug || ''} selectedVersionId={selectedShareVersionId} />
+                    <div className="flex h-full flex-col">
+                      <ShareVersionSelector
+                        intent="export"
+                        versions={shareVersions}
+                        selectedVersionId={selectedShareVersionId}
+                        onChange={setSelectedShareVersionId}
+                      />
+                      <div className="min-h-0 flex-1">
+                        <SaveLocallyTab bundleSlug={slug || ''} selectedVersionId={selectedShareVersionId} />
+                      </div>
+                    </div>
                   ) : shareSubTab === 'publish' && PublishTabComponent ? (
-                    <PublishTabComponent
-                      bundleSlug={slug || ''}
-                      selectedVersionId={selectedShareVersionId}
-                      changedFilesCount={changedFiles.size}
-                      onBusyChange={setProviderBusy}
-                      onAuthError={onAuthError}
-                      onPublishSuccess={onPublishSuccess}
-                      onViewChanges={handleViewChanges}
-                      retryPublishTrigger={retryPublishTrigger}
-                    />
+                    <div className="flex h-full flex-col">
+                      <ShareVersionSelector
+                        intent="publish"
+                        versions={shareVersions}
+                        selectedVersionId={selectedShareVersionId}
+                        onChange={setSelectedShareVersionId}
+                      />
+                      <div className="min-h-0 flex-1 overflow-auto">
+                        <PublishTabComponent
+                          bundleSlug={slug || ''}
+                          selectedVersionId={selectedShareVersionId}
+                          generatedVersionLabels={generatedVersionLabels}
+                          changedFilesCount={changedFiles.size}
+                          onBusyChange={setProviderBusy}
+                          onAuthError={onAuthError}
+                          onPublishSuccess={onPublishSuccess}
+                          onViewChanges={handleViewChanges}
+                          retryPublishTrigger={retryPublishTrigger}
+                        />
+                      </div>
+                    </div>
                   ) : null}
                 </div>
               </div>
@@ -1335,19 +1389,6 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                 disabled={isCreatingVersion}
               />
             </div>
-            <label className="flex items-start gap-3 text-sm text-neutral-700">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={connectReaders}
-                onChange={event => setConnectReaders(event.target.checked)}
-                disabled={isCreatingVersion}
-              />
-              <span>
-                Let readers of earlier versions know about this version
-                <span className="mt-1 block text-xs text-neutral-500">Readers can be notified after you publish this version to the same place as the earlier versions.</span>
-              </span>
-            </label>
             {changedFiles.size === 0 && (
               <label className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 <input

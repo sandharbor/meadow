@@ -20,7 +20,6 @@ import { getBundleDirectory } from '../../../../../runtime/service/src/shared/bu
 import { requireGeneratedBundleVersionId } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionDomain.js';
 import { loadGeneratedBundleVersionManifest } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionManifestService.js';
 import { inspectGeneratedVersionGitState } from '../../../../../runtime/service/src/shared/generated-bundle-versioning/generatedBundleVersionGitService.js';
-import { deriveSelectedVersionPublicationStatus } from '../../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationStatus.js';
 import {
   loadS3PublicationState,
   remotelyPresentS3VersionIds,
@@ -34,19 +33,32 @@ export function registerS3PublishedReadRoutes(router: Router): void {
       const bundleDirectory = getBundleDirectory(bundleSlug);
       if (!fs.existsSync(bundleDirectory)) return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       const state = loadS3PublicationState(bundleSlug);
-      if (!state) return res.json({ providerInstanceId: null, status: { kind: 'not-published' }, events: [], remotelyPresentVersionIds: [] });
+      if (!state) return res.json({ providerInstanceId: null, status: { kind: 'not-published' }, revisions: [], remotelyPresentVersionIds: [] });
       const localManifest = loadGeneratedBundleVersionManifest(bundleDirectory);
       const requested = typeof req.query.versionId === 'string' ? req.query.versionId : localManifest.versions.at(-1)?.versionId;
-      if (!requested) return res.json({ providerInstanceId: state.providerInstanceId, status: { kind: 'not-published' }, events: state.events, remotelyPresentVersionIds: [] });
+      if (!requested) return res.json({ providerInstanceId: state.providerInstanceId, destinationIdentity: state.destinationIdentity, status: { kind: 'not-published' }, revisions: state.revisions, remotelyPresentVersionIds: [] });
       const versionId = requireGeneratedBundleVersionId(requested);
       const localEntry = localManifest.versions.find(entry => entry.versionId === versionId);
       const savedGenerationId = localEntry?.localFilesState === 'present'
         ? inspectGeneratedVersionGitState(bundleDirectory, versionId).savedGenerationId
         : localEntry?.lastSavedGenerationId ?? null;
+      const revision = [...state.revisions].reverse().find(item => item.generatedVersionId === versionId);
+      const status = !revision || revision.remoteState === 'pending'
+        ? { kind: 'not-published' as const }
+        : revision.remoteState === 'deleted'
+          ? { kind: 'removed' as const, revision }
+          : revision.latestSuccessfulSavedGenerationId === 'unknown'
+            ? { kind: 'imported-unknown' as const, revision }
+            : savedGenerationId !== null && revision.latestSuccessfulSavedGenerationId === savedGenerationId
+              ? { kind: 'published-current' as const, revision }
+              : { kind: 'update-available' as const, revision };
       res.json({
         providerInstanceId: state.providerInstanceId,
-        status: deriveSelectedVersionPublicationStatus(state, versionId, savedGenerationId),
-        events: state.events,
+        destinationIdentity: state.destinationIdentity,
+        status,
+        revisions: state.revisions,
+        currentRevisionId: state.currentRevisionId,
+        pendingRevisionId: state.pendingRevisionId,
         remotelyPresentVersionIds: [...remotelyPresentS3VersionIds(state)],
       });
     } catch (error) {
@@ -61,14 +73,13 @@ export function registerS3PublishedReadRoutes(router: Router): void {
       const state = loadS3PublicationState(bundleSlug);
       if (!state) return res.status(404).json({ error: 'Bundle has not been published yet' });
       const requested = typeof req.query.versionId === 'string' ? req.query.versionId : null;
-      const events = requested ? state.events.filter(event => event.versionId === requested) : state.events;
-      const latest = [...events].reverse().find(event =>
-        event.eventType === 'remote-deletion-success' || event.publicUrl
-      );
-      if (!latest || latest.eventType === 'remote-deletion-success' || !latest.publicUrl) {
+      const latest = requested
+        ? [...state.revisions].reverse().find(revision => revision.generatedVersionId === requested)
+        : state.revisions.find(revision => revision.publicationRevisionId === state.currentRevisionId);
+      if (!latest || latest.remoteState !== 'present' || !latest.publicUrl) {
         return res.status(404).json({ error: 'Selected version is not remotely present' });
       }
-      res.json({ url: latest.publicUrl, versionId: latest.versionId });
+      res.json({ url: latest.publicUrl, versionId: latest.generatedVersionId, publicationRevisionId: latest.publicationRevisionId });
     } catch (error) {
       next(error);
     }

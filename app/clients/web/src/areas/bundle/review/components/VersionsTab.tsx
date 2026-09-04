@@ -18,6 +18,7 @@ limitations under the License.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../../../../shared/utils/apiClient';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
+import { useAppNavigation } from '../../../../shared/utils/appNavigation';
 import { casualVersionName, versionCreatedDate } from '../utils/versionLabels';
 
 interface VersionChange {
@@ -30,7 +31,6 @@ interface VersionView {
   createdAt: string;
   notes: string;
   predecessorVersionId: string | null;
-  readerConnectionToPredecessor: 'connected' | 'disconnected';
   localFilesState: 'present' | 'deleted';
   localFilesDeletedAt?: string;
   displayState: 'current' | 'frozen' | 'unsaved' | 'locally-deleted' | 'integrity-problem';
@@ -82,6 +82,8 @@ export function VersionsTab({
   const [leftComparison, setLeftComparison] = useState('');
   const [rightComparison, setRightComparison] = useState('working');
   const [comparison, setComparison] = useState<ComparisonChange[]>([]);
+  const [pendingBundleRename, setPendingBundleRename] = useState(false);
+  const navigateInApp = useAppNavigation('versionsTab');
 
   const loadVersions = useCallback(async () => {
     setLoading(true);
@@ -92,6 +94,7 @@ export function VersionsTab({
       if (!response.ok) throw new Error(data.error || 'Failed to load versions');
       const nextVersions = (data.versions ?? []) as VersionView[];
       setVersions(nextVersions);
+      setPendingBundleRename(data.pendingBundleRename === true);
       const presentSaved = nextVersions.filter(version => version.localFilesState === 'present' && version.savedGenerationId);
       setLeftComparison(current => current || presentSaved.at(-2)?.versionId || presentSaved[0]?.versionId || '');
     } catch (caught) {
@@ -145,6 +148,10 @@ export function VersionsTab({
       const response = await apiRequest(path, { method });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Version action failed');
+      if (typeof data.slug === 'string' && data.slug !== bundleSlug) {
+        navigateInApp({ page: 'bundle', slug: data.slug });
+        return;
+      }
       await loadVersions();
       onVersionChanged?.();
     } catch (caught) {
@@ -203,7 +210,7 @@ export function VersionsTab({
             You already published a bundle to the web, and you just renamed several pages, or moved a bunch of pages into a directory.
           </p>
           <p className="mt-3 text-sm leading-6 text-neutral-700">
-            A new version will freeze the existing bundle and make a new bundle with a slightly different name that includes the new version ID. If you choose, it can also add links from the earlier bundle&apos;s pages to the new bundle.
+            A new version freezes the existing generated files and creates a new current version. Publishing destinations decide separately whether readers of earlier publications should be connected to it.
           </p>
           <div className="mt-5 flex items-center gap-3">
             <button
@@ -241,9 +248,6 @@ export function VersionsTab({
                     <span className={`text-base font-semibold ${isLatest ? 'text-neutral-900' : 'text-neutral-600'}`}>{casualVersionName(manifestIndex)}</span>
                     <span className="font-mono text-xs text-neutral-400">{version.versionId}</span>
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${stateClassName[version.displayState]}`}>{stateLabel[version.displayState]}</span>
-                    {manifestIndex > 0 && version.readerConnectionToPredecessor === 'disconnected' && (
-                      <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-800">Reader history disconnected</span>
-                    )}
                   </div>
                   <div className="mt-1 text-xs text-neutral-500">Created {new Date(version.createdAt).toLocaleString()}</div>
                 </div>
@@ -266,16 +270,18 @@ export function VersionsTab({
                       }}
                     >Delete Local Files</button>
                   )}
-                  {version.displayState === 'unsaved' && !version.savedGenerationId && (
+                  {isLatest && (pendingBundleRename || (version.displayState === 'unsaved' && !version.savedGenerationId)) && (
                     <button
                       className="rounded border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
                       disabled={busyVersionId === version.versionId}
                       onClick={() => {
-                        if (confirm('Cancel this never-saved version and return to its predecessor?')) {
+                        if (confirm(pendingBundleRename
+                          ? 'Undo this rename, restore the old bundle folder, and discard the rename-created version?'
+                          : 'Cancel this never-saved version and return to its predecessor?')) {
                           void runAction(version.versionId, `/bundles/${bundleSlug}/review/versions/current/cancel`);
                         }
                       }}
-                    >Cancel New Version</button>
+                    >{pendingBundleRename ? 'Undo Rename' : 'Cancel New Version'}</button>
                   )}
                 </div>
               </div>

@@ -56,6 +56,7 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   const modal = new PreviewPublishModal(page, expect);
   await page.getByRole("button", { name: "Local Export" }).click();
   await expect(page.getByText("All Versions (Rendered Bundle only)", { exact: true })).toBeVisible();
+  await modal.expectShareVersionPurpose("export");
   await modal.expectShareVersionSelected(secondVersionId);
   await snapshot("local export offers the selected saved version and All Versions");
 

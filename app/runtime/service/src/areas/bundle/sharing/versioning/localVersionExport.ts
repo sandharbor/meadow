@@ -74,6 +74,7 @@ export function selectedVersionExportSource(
 export function stageAllVersionsExport(
   bundleDirectory: string,
   bundleSlug: string,
+  readerConnectionToPredecessor: 'connected' | 'disconnected' = 'connected',
 ): { sourceDirectory: string; cleanup: () => void } {
   const manifest = loadGeneratedBundleVersionManifest(bundleDirectory);
   if (manifest.versions.length < 2) throw new Error('All Versions export requires at least two versions');
@@ -95,7 +96,14 @@ export function stageAllVersionsExport(
         { recursive: true },
       );
     }
-    const successors = computePublishedSuccessors(manifest, presentIds);
+    const exportManifest = {
+      ...manifest,
+      versions: manifest.versions.map((entry, index) => ({
+        ...entry,
+        readerConnectionToPredecessor: index === 0 ? 'disconnected' as const : readerConnectionToPredecessor,
+      })),
+    };
+    const successors = computePublishedSuccessors(exportManifest, presentIds);
     const successorEntries = Object.fromEntries([...successors.entries()].map(([sourceId, successorId]) => {
       const route = readerRoute(bundleDirectory, successorId);
       return [sourceId, {

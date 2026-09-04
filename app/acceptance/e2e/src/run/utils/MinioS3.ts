@@ -80,18 +80,6 @@ export class MinioS3 {
     ).toBe(0);
   }
 
-  /** Assert per-version cleanup retained only empty no-cache reader manifests. */
-  async expectOnlyEmptySuccessorManifests(prefix = "bundles/") {
-    const keys = await this.listKeys(prefix);
-    this.expect(keys.length, "Expected one retained reader successor manifest").toBe(1);
-    this.expect(keys[0]).toMatch(/-versions\.json$/);
-    const manifest = JSON.parse(await this.getObjectContent(keys[0])) as {
-      schemaVersion?: number;
-      successors?: Record<string, unknown>;
-    };
-    this.expect(manifest).toEqual({ schemaVersion: 1, successors: {} });
-  }
-
   /** Assert that objects exist under the given prefix (or entire bucket). */
   async expectHasFiles(prefix?: string) {
     const keys = await this.listKeys(prefix);

@@ -106,6 +106,10 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
   expect(help).toContain("meadow bundles unarchive <bundle-slug>");
   expect(help).toContain("meadow bundle nodes <bundle-slug> --scope <all|final>");
   expect(help).toContain("meadow bundle filters <bundle-slug>");
+  expect(help).toContain("meadow bundle versions <list|get|create|update|delete|restore|cancel-current>");
+  expect(help).toContain("meadow bundle publications <list|get|configure|plan|cancel|delete>");
+  expect(help).toContain("meadow bundles rename-plan <bundle-slug>");
+  expect(help).toContain("meadow providers list");
   void cli;
   void bundles;
 

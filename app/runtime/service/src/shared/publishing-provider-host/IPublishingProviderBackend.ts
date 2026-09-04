@@ -19,6 +19,8 @@ import type { PublishingProviderManifest } from '../../../../../contracts/interf
 import type {
   BundlePublicationSummary,
   GeneratedBundleVersionId,
+  PredecessorCleanupPolicy,
+  ReaderConnectionToPredecessor,
 } from '../../../../../contracts/types/generatedBundleVersioning.js';
 import type { CliUserAction } from '../../../../../contracts/types/cliOperations.js';
 
@@ -64,6 +66,22 @@ export interface PublishGeneratedBundleResult {
     kind: string;
     remaining: number;
   } | null;
+}
+
+export interface BundleRenamePublicationPlan {
+  providerId: string;
+  providerDisplayName: string;
+  currentPublishSlug: string;
+  currentPublicUrl: string | null;
+  predecessorCleanupRevisionCount: number;
+}
+
+export interface PrepareBundleRenamePublicationOptions {
+  bundleSlug: string;
+  generatedVersionId: GeneratedBundleVersionId;
+  publishSlug: string;
+  readerConnectionToPredecessor: ReaderConnectionToPredecessor;
+  predecessorCleanupPolicy: PredecessorCleanupPolicy;
 }
 
 /**
@@ -146,4 +164,13 @@ export interface IPublishingProviderBackend {
 
   /** Publish one explicitly selected, saved generation. */
   publishGeneratedBundle?(options: PublishGeneratedBundleOptions): Promise<PublishGeneratedBundleResult>;
+
+  /** Provider-owned facts used by the dedicated local bundle rename workflow. */
+  getBundleRenamePublicationPlan?(bundleSlug: string): BundleRenamePublicationPlan | null;
+
+  /** Persist or replace this provider's single pending revision after a local rename. */
+  prepareBundleRenamePublication?(options: PrepareBundleRenamePublicationOptions): void | Promise<void>;
+
+  /** Remove a never-published pending revision while undoing a local rename. */
+  cancelPendingBundleRenamePublication?(bundleSlug: string, restorePublishSlug: string): void | Promise<void>;
 }

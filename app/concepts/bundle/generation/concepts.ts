@@ -92,8 +92,8 @@ export const svg = define({
 export const versioning = define({
   id: id.versioning, name: "Generated Bundle Version", aliases: ["Versioning"], kind: "entity", appAreaIds: [id.bundleGeneration, id.bundleReview],
   definition: text`An immutable, named snapshot in the lifecycle of generated bundle output.`,
-  mechanics: [text`Versions move from initial unsaved output to saved current versions with connected successors, comparisons, recovery, and cancellation.`],
-  interplay: text`${link(id.bundleGeneration, "Bundle Generation")} creates versions and ${link(id.bundleReview, "Bundle Review")} explains their currentness and differences.`,
+  mechanics: [text`Versions move from initial unsaved output to saved current versions with comparisons, recovery, and cancellation.`],
+  interplay: text`${link(id.bundleGeneration, "Bundle Generation")} creates versions and ${link(id.bundleReview, "Bundle Review")} explains their currentness and differences. Reader connections and remote addresses belong to ${link(id.publicationRevision, "Publication Revisions")}, not generated versions.`,
 });
 
 export const generationConcepts = [

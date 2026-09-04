@@ -165,6 +165,16 @@ export class PreviewPublishModal {
     await this.expect(this.shareVersionSelector).toHaveValue(versionId);
   }
 
+  async expectShareVersionPurpose(action: "publish" | "export") {
+    await this.expect(this.page.getByLabel(`Version to ${action}`)).toBeVisible();
+  }
+
+  async expectOlderShareVersionWarning(selectedCasualName: string, currentCasualName: string) {
+    await this.expect(this.page.getByRole("status")).toHaveText(
+      new RegExp(`will use ${selectedCasualName}, an older generated version\\. The current generated version is ${currentCasualName}\\.`),
+    );
+  }
+
   async clickBundlePreviewTab() {
     await this.expect(this.bundlePreviewTab).toBeVisible();
     await this.bundlePreviewTab.click();
@@ -173,7 +183,8 @@ export class PreviewPublishModal {
   async expectSingleVersionExplanation() {
     await this.expect(this.page.getByRole("heading", { name: "Why create a new version?" })).toBeVisible();
     await this.expect(this.page.getByText(/big changes/)).toBeVisible();
-    await this.expect(this.page.getByText(/freeze the existing bundle and make a new bundle/)).toBeVisible();
+    await this.expect(this.page.getByText(/freezes the existing generated files and creates a new current version/)).toBeVisible();
+    await this.expect(this.page.getByText(/Publishing destinations decide separately/)).toBeVisible();
   }
 
   async expectVersionCardsNewestFirst(newestVersionId: string, oldestVersionId: string) {
@@ -351,7 +362,7 @@ export class PreviewPublishModal {
 
   async createConnectedVersion(note: string) {
     await this.createVersionDialog.getByPlaceholder("What changes in this version?").fill(note);
-    await this.expect(this.createVersionDialog.getByRole("checkbox").first()).toBeChecked();
+    await this.expect(this.createVersionDialog.getByRole("checkbox")).toHaveCount(0);
     await this.createVersionDialog.getByRole("button", { name: "Create New Version", exact: true }).click();
     await this.expect(this.createVersionDialog).not.toBeVisible({ timeout: 60_000 });
   }
@@ -368,7 +379,7 @@ export class PreviewPublishModal {
   async expectReaderConnectionCopy() {
     await this.expect(
       this.createVersionDialog.getByText(
-        "Readers can be notified after you publish this version to the same place as the earlier versions.",
+        "This creates a new local version from the current source and configuration. It does not publish or perform network operations.",
       ),
     ).toBeVisible();
     await this.expect(this.createVersionDialog.getByText(/provider/i)).toHaveCount(0);

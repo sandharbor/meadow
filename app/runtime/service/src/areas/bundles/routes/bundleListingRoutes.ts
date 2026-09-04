@@ -62,6 +62,12 @@ import {
   PageBundleOperationError,
 } from '../services/pageBundleOperations.js';
 import { bundleListConfigurationCache } from '../services/bundleListConfigurationCache.js';
+import {
+  inspectBundleRename,
+  renameBundle,
+  undoPendingBundleRename,
+  type BundleRenameProviderDecision,
+} from '../services/bundleRename.js';
 
 const router = express.Router();
 router.use(selectedFolderRepairRoutes);
@@ -119,6 +125,48 @@ router.get('/bundles/:slug/config', (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+router.get('/bundles/:slug/rename-plan', (req, res) => {
+  try {
+    res.json(inspectBundleRename(req.params.slug));
+  } catch (error) {
+    const status = error instanceof Error && error.message.includes('not found') ? 404 : 400;
+    res.status(status).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+router.post('/bundles/:slug/rename', (req, res, next) => {
+  void (async () => {
+    const { newSlug, providers } = (req.body ?? {}) as {
+      newSlug?: unknown;
+      providers?: unknown;
+    };
+    if (typeof newSlug !== 'string') return res.status(400).json({ error: 'newSlug is required' });
+    if (providers !== undefined && !Array.isArray(providers)) {
+      return res.status(400).json({ error: 'providers must be an array' });
+    }
+    if (Array.isArray(providers) && providers.some(provider => typeof provider !== 'object' || provider === null || Array.isArray(provider))) {
+      return res.status(400).json({ error: 'Each provider decision must be an object' });
+    }
+    try {
+      res.json({ success: true, ...(await renameBundle(
+        req.params.slug,
+        newSlug,
+        (providers ?? []) as BundleRenameProviderDecision[],
+      )) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const status = /already exists|Save or undo|Save or discard|Choose|invalid|required/.test(message) ? 409 : 500;
+      res.status(status).json({ error: message });
+    }
+  })().catch(next);
+});
+
+router.post('/bundles/:slug/rename/undo', (req, res) => {
+  void undoPendingBundleRename(req.params.slug)
+    .then(result => res.json({ success: true, ...result }))
+    .catch(error => res.status(409).json({ error: error instanceof Error ? error.message : String(error) }));
 });
 
 // Obsidian integration helpers

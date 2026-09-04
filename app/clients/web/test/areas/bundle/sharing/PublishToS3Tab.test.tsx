@@ -50,7 +50,7 @@ describe('PublishToS3Tab', () => {
       if (url.includes('/publication-state')) {
         return jsonResponse({
           status: { kind: 'not-published' },
-          events: [],
+          revisions: [],
           remotelyPresentVersionIds: [],
         });
       }
@@ -99,7 +99,7 @@ describe('PublishToS3Tab', () => {
       if (url.includes('/publication-state')) {
         return jsonResponse({
           status: { kind: 'not-published' },
-          events: [],
+          revisions: [],
           remotelyPresentVersionIds: [],
         });
       }
@@ -140,5 +140,126 @@ describe('PublishToS3Tab', () => {
       String(input).endsWith('/provider-config')
       && (init?.method ?? 'GET') === 'GET')).toHaveLength(1);
     expect(input).toHaveValue('meadow-test-bundle-big-delete-gate');
+  });
+
+  it('shows friendly generated version names in publication history when the bundle has multiple versions', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/provider-config')) {
+        return jsonResponse({ publishSlug: 'meadow-test-bundle-big' });
+      }
+      if (url.includes('/published-file-counts')) {
+        return jsonResponse({ htmlCount: 2, otherCount: 1 });
+      }
+      if (url.includes('/publication-state')) {
+        return jsonResponse({
+          status: { kind: 'published-current' },
+          currentRevisionId: 'rMNOPQRSTUVWX',
+          revisions: [
+            {
+              publicationRevisionId: 'rABCDEFGHIJKL',
+              generatedVersionId: 'v1yYjwh',
+              publishSlug: 'meadow-test-bundle-big',
+              predecessorPublicationRevisionId: null,
+              remoteState: 'present',
+              publishedAt: '2026-08-17T15:42:33.000Z',
+              publicUrl: 'http://localhost/old',
+              readerConnectionToPredecessor: 'disconnected',
+              cleanupState: 'not-requested',
+            },
+            {
+              publicationRevisionId: 'rMNOPQRSTUVWX',
+              generatedVersionId: 'v2zZkxg',
+              publishSlug: 'meadow-test-bundle-big',
+              predecessorPublicationRevisionId: 'rABCDEFGHIJKL',
+              remoteState: 'present',
+              publishedAt: '2026-08-18T15:42:33.000Z',
+              publicUrl: 'http://localhost/current',
+              readerConnectionToPredecessor: 'connected',
+              cleanupState: 'not-requested',
+            },
+          ],
+          remotelyPresentVersionIds: ['v1yYjwh', 'v2zZkxg'],
+        });
+      }
+      return jsonResponse({});
+    });
+
+    render(
+      <PublishToS3Tab
+        bundleSlug="meadow-test-bundle-big"
+        selectedVersionId="v2zZkxg"
+        generatedVersionLabels={{ v1yYjwh: 'v1', v2zZkxg: 'v2' }}
+        changedFilesCount={0}
+        onBusyChange={() => {}}
+        onAuthError={() => {}}
+        onViewChanges={() => {}}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTitle('Settings'));
+    fireEvent.click(screen.getByRole('button', { name: 'Publication history' }));
+
+    expect(screen.getByText('Generated version: v1')).toBeInTheDocument();
+    expect(screen.getByText('Generated version: v2')).toBeInTheDocument();
+    const revisionLabels = screen.getAllByText(/^r\d+$/);
+    expect(revisionLabels.map(label => label.textContent)).toEqual(['r2', 'r1']);
+  });
+
+  it('shows deletion feedback on the affected publication-history revision', async () => {
+    let resolveDelete!: (response: ReturnType<typeof jsonResponse>) => void;
+    const deleteRequest = new Promise<ReturnType<typeof jsonResponse>>((resolve) => {
+      resolveDelete = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (init?.method === 'DELETE') return deleteRequest;
+      if (url.endsWith('/provider-config')) {
+        return jsonResponse({ publishSlug: 'meadow-test-bundle-big' });
+      }
+      if (url.includes('/published-file-counts')) {
+        return jsonResponse({ htmlCount: 2, otherCount: 1 });
+      }
+      if (url.includes('/publication-state')) {
+        return jsonResponse({
+          status: { kind: 'published-current' },
+          currentRevisionId: 'rABCDEFGHIJKL',
+          revisions: [{
+            publicationRevisionId: 'rABCDEFGHIJKL',
+            generatedVersionId: 'v1yYjwh',
+            publishSlug: 'meadow-test-bundle-big',
+            predecessorPublicationRevisionId: null,
+            remoteState: 'present',
+            publishedAt: '2026-08-17T15:42:33.000Z',
+            publicUrl: 'http://localhost/current',
+            readerConnectionToPredecessor: 'disconnected',
+            cleanupState: 'not-requested',
+          }],
+          remotelyPresentVersionIds: ['v1yYjwh'],
+        });
+      }
+      return jsonResponse({});
+    });
+
+    render(
+      <PublishToS3Tab
+        bundleSlug="meadow-test-bundle-big"
+        selectedVersionId="v1yYjwh"
+        changedFilesCount={0}
+        onBusyChange={() => {}}
+        onAuthError={() => {}}
+        onViewChanges={() => {}}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTitle('Settings'));
+    fireEvent.click(screen.getByRole('button', { name: 'Publication history' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete files' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Published Files' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Deleting…');
+
+    resolveDelete(jsonResponse({ success: true, filesDeleted: 3 }));
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
   });
 });

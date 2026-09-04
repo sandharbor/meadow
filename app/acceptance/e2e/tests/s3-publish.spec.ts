@@ -88,7 +88,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
     successors: {},
   });
 
-  // The same saved generation is an explicit republish, with append-only history.
+  // The same saved generation at the same address remains one revision.
   await publishPage.expectPublishButtonLabel("Republish");
   await publishPage.clickPublish();
   expect(await publishPage.expectPublishSuccess()).toBe(publishedUrl);
@@ -97,18 +97,35 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   expect(publicationStateResponse.ok()).toBe(true);
   const publicationState = await publicationStateResponse.json() as {
     status: { kind: string };
-    events: Array<{ eventType: string; versionId: string }>;
+    revisions: Array<{ generatedVersionId: string; publishSlug: string; remoteState: string }>;
   };
   expect(publicationState.status.kind).toBe("published-current");
-  expect(publicationState.events.map(event => event.eventType)).toEqual([
-    "publication-success",
-    "republish-success",
+  expect(publicationState.revisions).toEqual([
+    expect.objectContaining({ generatedVersionId: versionId, publishSlug, remoteState: "present" }),
   ]);
 
-  const lockedDestinationResponse = await page.request.put(`${providerApi}/provider-config`, {
-    data: { publishSlug: `${publishSlug}-changed` },
+  const changedPublishSlug = `${publishSlug}-changed`;
+  const changedDestinationResponse = await page.request.put(`${providerApi}/provider-config`, {
+    data: {
+      publishSlug: changedPublishSlug,
+      readerConnectionToPredecessor: "connected",
+      predecessorCleanupPolicy: "keep",
+    },
   });
-  expect(lockedDestinationResponse.status()).toBe(409);
+  expect(changedDestinationResponse.ok()).toBe(true);
+  const plannedSlugState = await (await page.request.get(`${providerApi}/publication-state?versionId=${versionId}`)).json() as {
+    pendingRevisionId: string;
+    revisions: Array<{ publicationRevisionId: string; generatedVersionId: string; publishSlug: string; remoteState: string }>;
+  };
+  expect(plannedSlugState.revisions.find(revision => revision.publicationRevisionId === plannedSlugState.pendingRevisionId))
+    .toMatchObject({ generatedVersionId: versionId, publishSlug: changedPublishSlug, remoteState: "pending" });
+  expect((await page.request.put(`${providerApi}/provider-config`, {
+    data: {
+      publishSlug,
+      readerConnectionToPredecessor: "connected",
+      predecessorCleanupPolicy: "keep",
+    },
+  })).ok()).toBe(true);
 
   // Keep the Meadow page open while checking the published site. Navigating
   // the only app page away correctly closes its browser-session heartbeat,
@@ -205,16 +222,19 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   const createDisconnectedResponse = await page.request.post(
     `/api/bundles/${encodeURIComponent(Bundle.Big)}/generation/versions`,
     {
-      data: {
-        notes: "Disconnected reader release",
-        readerConnectionToPredecessor: "disconnected",
-        confirmedNoGeneratedChanges: true,
-      },
+      data: { notes: "Disconnected reader release", confirmedNoGeneratedChanges: true },
     },
   );
   expect(createDisconnectedResponse.ok()).toBe(true);
   const disconnectedVersionId = (await createDisconnectedResponse.json() as { versionId: string }).versionId;
   expect((await page.request.get(`/api/bundles/${encodeURIComponent(Bundle.Big)}/review/save-changes`)).ok()).toBe(true);
+  expect((await page.request.post(`${providerApi}/publication-revisions/plan`, {
+    data: {
+      versionId: disconnectedVersionId,
+      readerConnectionToPredecessor: "disconnected",
+      predecessorCleanupPolicy: "keep",
+    },
+  })).ok()).toBe(true);
   const publishDisconnectedResponse = await page.request.post(`${providerApi}/publish`, {
     data: { versionId: disconnectedVersionId },
   });
@@ -261,19 +281,10 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   const historyAfterDeletion = await page.request.get(`${providerApi}/publication-state?versionId=${successorVersionId}`);
   const deletedState = await historyAfterDeletion.json() as {
     status: { kind: string };
-    events: Array<{ eventType: string }>;
+    revisions: Array<{ remoteState: string }>;
   };
   expect(deletedState.status.kind).toBe("removed");
-  expect(deletedState.events.map(event => event.eventType)).toEqual([
-    "publication-success",
-    "republish-success",
-    "publication-success",
-    "publication-success",
-    "remote-deletion-success",
-    "remote-deletion-success",
-    "remote-deletion-success",
-    "remote-deletion-success",
-  ]);
+  expect(deletedState.revisions.map(revision => revision.remoteState)).toEqual(["deleted", "deleted", "deleted"]);
 
   await expect.poll(() => fs.readFileSync(path.join(testServer.configDir, "logs", "meadow.log"), "utf8"))
     .toMatch(/\[operation ([0-9a-f-]+)] \[s3-publish] Started[\s\S]*\[operation \1] \[s3-publish] Published version/);

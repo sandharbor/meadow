@@ -62,7 +62,8 @@ export class BundleEditorPage {
   }
 
   async waitForLoad(bundleName: string) {
-    await this.page.waitForURL(new RegExp(`/bundle/${bundleName}`));
+    const escapedBundleName = bundleName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    await this.page.waitForURL(new RegExp(`/bundle/${escapedBundleName}(?:[?#].*)?$`));
     await this.expect(this.graphViewBtn).toBeVisible();
   }
 

@@ -19,6 +19,7 @@ import type { PublishTabProps } from '../../../../clients/web/src/shared/publish
 import { logger } from '../../../../clients/web/src/shared/utils/logger';
 import { apiRequest } from '../../../../clients/web/src/shared/utils/apiClient';
 import { openExternal } from '../../../../clients/web/src/shared/utils/openExternal';
+import Modal from '../../../../clients/web/src/shared/components/Modal';
 import { s3Api } from './s3Api';
 import { S3ConfigurationSection } from './S3ConfigurationSection';
 
@@ -31,7 +32,19 @@ interface FileCounts {
 
 interface PublicationStateView {
   status: { kind: 'not-published' | 'published-current' | 'update-available' | 'imported-unknown' | 'removed' };
-  events: Array<{ eventType: string; versionId: string; timestamp: string; publicUrl?: string }>;
+  currentRevisionId?: string | null;
+  pendingRevisionId?: string | null;
+  revisions: Array<{
+    publicationRevisionId: string;
+    generatedVersionId: string;
+    publishedAt: string | null;
+    remoteState: 'pending' | 'present' | 'deleted';
+    publishSlug: string;
+    predecessorPublicationRevisionId: string | null;
+    publicUrl?: string;
+    cleanupState: string;
+    readerConnectionToPredecessor: 'connected' | 'disconnected';
+  }>;
   remotelyPresentVersionIds: string[];
 }
 
@@ -58,7 +71,14 @@ async function readError(res: Response, fallback: string): Promise<string> {
   return fallback;
 }
 
-export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selectedVersionId, onBusyChange, onPublishSuccess, onViewChanges }) => {
+export const PublishToS3Tab: React.FC<PublishTabProps> = ({
+  bundleSlug,
+  selectedVersionId,
+  generatedVersionLabels = {},
+  onBusyChange,
+  onPublishSuccess,
+  onViewChanges,
+}) => {
   const [publishSlug, setPublishSlug] = useState('');
   const [draftSlug, setDraftSlug] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -72,7 +92,14 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
   const [fileCounts, setFileCounts] = useState<FileCounts | null>(null);
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteRevisionId, setDeleteRevisionId] = useState<string | null>(null);
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
+  const [showRevisionPlan, setShowRevisionPlan] = useState(false);
+  const [isPlanningRevision, setIsPlanningRevision] = useState(false);
+  const [showPublicationHistory, setShowPublicationHistory] = useState(false);
+  const [showDeletedRevisions, setShowDeletedRevisions] = useState(false);
+  const [readerConnection, setReaderConnection] = useState<'connected' | 'disconnected'>('connected');
+  const [cleanupPolicy, setCleanupPolicy] = useState<'keep' | 'delete-after-success'>('keep');
   const [publicationState, setPublicationState] = useState<PublicationStateView | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const configRevisionRef = useRef(0);
@@ -159,7 +186,12 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
       const res = await apiRequest(s3Api(`bundles/${bundleSlug}/provider-config`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publishSlug: draftSlug }),
+        body: JSON.stringify({
+          publishSlug: draftSlug,
+          versionId: selectedVersionId,
+          readerConnectionToPredecessor: readerConnection,
+          predecessorCleanupPolicy: cleanupPolicy,
+        }),
       });
       if (!res.ok) {
         setError(await readError(res, 'Failed to save publishSlug'));
@@ -169,6 +201,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
       if (saveRevision !== configRevisionRef.current) return;
       setPublishSlug(body.publishSlug);
       setDraftSlug(body.publishSlug);
+      await loadPublicationState();
     } finally {
       setIsSaving(false);
     }
@@ -215,7 +248,9 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
       const res = await apiRequest(s3Api(`bundles/${bundleSlug}/published`), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ versionId: selectedVersionId }),
+        body: JSON.stringify(deleteRevisionId
+          ? { publicationRevisionId: deleteRevisionId }
+          : { versionId: selectedVersionId }),
       });
       if (!res.ok) {
         setError(await readError(res, `Delete failed (${res.status})`));
@@ -223,14 +258,53 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
       }
       setPublishedUrl(null);
       setFilesUploaded(null);
-      setHasPublishedFiles(false);
-      setFileCounts({ htmlCount: 0, otherCount: 0 });
+      await loadFileCounts();
       await loadPublicationState();
     } catch (err) {
       logger.error('[S3PublishingProvider] delete-published failed:', err);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      setDeleteRevisionId(null);
       setIsDeleting(false);
+    }
+  };
+
+  const cancelPublicationRevision = async (publicationRevisionId: string) => {
+    setError(null);
+    const res = await apiRequest(s3Api(`bundles/${bundleSlug}/publication-revisions/${encodeURIComponent(publicationRevisionId)}/cancel`), { method: 'POST' });
+    if (!res.ok) {
+      setError(await readError(res, 'Failed to cancel publication revision'));
+      return;
+    }
+    const body = await res.json() as { publishSlug?: string };
+    if (body.publishSlug) {
+      setPublishSlug(body.publishSlug);
+      setDraftSlug(body.publishSlug);
+    }
+    await loadPublicationState();
+  };
+
+  const planAndPublishRevision = async () => {
+    if (!selectedVersionId) return;
+    setIsPlanningRevision(true);
+    setError(null);
+    try {
+      const response = await apiRequest(s3Api(`bundles/${bundleSlug}/publication-revisions/plan`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          versionId: selectedVersionId,
+          readerConnectionToPredecessor: readerConnection,
+          predecessorCleanupPolicy: cleanupPolicy,
+        }),
+      });
+      if (!response.ok) throw new Error(await readError(response, 'Failed to prepare publication revision'));
+      setShowRevisionPlan(false);
+      await handlePublish();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setIsPlanningRevision(false);
     }
   };
 
@@ -239,6 +313,42 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
   const canOpenSettings = !!publishSlug;
   const statusKind = publicationState?.status.kind ?? 'not-published';
   const { label: publishButtonLabel, requiresConfirmation: requiresUpdateConfirmation } = s3PublishAction(statusKind);
+  const visibleRevisions = (publicationState?.revisions ?? [])
+    .map((revision, index) => ({ revision, revisionNumber: index + 1 }))
+    .filter(({ revision }) => showDeletedRevisions || revision.remoteState !== 'deleted')
+    .reverse();
+  const showGeneratedVersionsInHistory = Object.keys(generatedVersionLabels).length > 1
+    || new Set(publicationState?.revisions?.map(revision => revision.generatedVersionId) ?? []).size > 1;
+  const hasPriorPublication = publicationState?.revisions?.some(revision => revision.publishedAt !== null) ?? false;
+  const predecessorCleanupRevisionCount = (() => {
+    if (!publicationState?.currentRevisionId) return 0;
+    const byId = new Map((publicationState.revisions ?? []).map(revision => [revision.publicationRevisionId, revision]));
+    let revision = byId.get(publicationState.currentRevisionId);
+    let count = revision?.remoteState === 'present' ? 1 : 0;
+    while (revision?.readerConnectionToPredecessor === 'connected' && revision.predecessorPublicationRevisionId) {
+      revision = byId.get(revision.predecessorPublicationRevisionId);
+      if (revision?.remoteState === 'present') count += 1;
+    }
+    return count;
+  })();
+  const currentRevision = publicationState?.revisions?.find(revision => revision.publicationRevisionId === publicationState.currentRevisionId);
+  const pendingRevision = publicationState?.revisions?.find(revision => revision.publicationRevisionId === publicationState.pendingRevisionId);
+  const existingSelectedAddressRevision = publicationState?.revisions?.find(revision =>
+    revision.generatedVersionId === selectedVersionId && revision.publishSlug === publishSlug
+  );
+  const needsRevisionPlan = Boolean(
+    selectedVersionId
+    && currentRevision?.remoteState === 'present'
+    && !existingSelectedAddressRevision
+    && !(pendingRevision?.remoteState === 'pending'
+      && pendingRevision.generatedVersionId === selectedVersionId
+      && pendingRevision.publishSlug === publishSlug)
+  );
+  const beginPublish = () => {
+    if (requiresUpdateConfirmation) setShowUpdateConfirm(true);
+    else if (needsRevisionPlan) setShowRevisionPlan(true);
+    else void handlePublish();
+  };
 
   return (
     <div data-testid="s3-publish-tab" className="h-full overflow-y-auto p-4 space-y-4 relative">
@@ -259,15 +369,25 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
           {settingsDropdownOpen && (
             <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-neutral-200 rounded-lg shadow-lg py-1 min-w-[220px]">
               <button
+                onClick={() => {
+                  setSettingsDropdownOpen(false);
+                  setShowPublicationHistory(true);
+                }}
+                className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+              >
+                Publication history
+              </button>
+              <button
                 data-testid="s3-delete-published-option"
                 disabled={!hasPublishedFiles}
                 onClick={() => {
                   setSettingsDropdownOpen(false);
+                  setDeleteRevisionId(null);
                   setShowDeleteConfirm(true);
                 }}
                 className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 disabled:text-neutral-400 disabled:hover:bg-transparent disabled:cursor-not-allowed"
               >
-                Delete bundle&apos;s published files
+                Delete published files
               </button>
             </div>
           )}
@@ -309,11 +429,34 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
             {isSaving ? 'Saving…' : slugChanged ? 'Save' : 'Saved'}
           </button>
         </div>
+        {slugChanged && hasPriorPublication && (
+          <div className="mt-3 grid grid-cols-2 gap-3 rounded border border-neutral-200 bg-neutral-50 p-3 text-sm">
+            <label>
+              <span className="mb-1 block font-medium text-neutral-700">Old readers</span>
+              <select value={readerConnection} onChange={event => setReaderConnection(event.target.value as typeof readerConnection)} className="w-full rounded border border-neutral-300 bg-white px-2 py-2">
+                <option value="connected">Point to new address</option>
+                <option value="disconnected">Keep separate</option>
+              </select>
+            </label>
+            <label>
+              <span className="mb-1 block font-medium text-neutral-700">Existing files</span>
+              <select value={cleanupPolicy} onChange={event => setCleanupPolicy(event.target.value as typeof cleanupPolicy)} className="w-full rounded border border-neutral-300 bg-white px-2 py-2">
+                <option value="keep">Keep after publish</option>
+                <option value="delete-after-success">Delete after success</option>
+              </select>
+            </label>
+            {cleanupPolicy === 'delete-after-success' && (
+              <p className="col-span-2 text-xs text-danger-700">
+                After the new revision publishes successfully, {predecessorCleanupRevisionCount} retained publication revision{predecessorCleanupRevisionCount === 1 ? '' : 's'} will be deleted. Nothing is deleted when this slug is saved.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <button
         data-testid="s3-publish-button"
-        onClick={() => requiresUpdateConfirmation ? setShowUpdateConfirm(true) : void handlePublish()}
+        onClick={beginPublish}
         disabled={!canPublish}
         className="px-4 py-2 bg-main-600 text-white rounded disabled:bg-neutral-300"
       >
@@ -329,16 +472,84 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
                   : publicationState.status.kind === 'removed' ? 'Removed from this destination'
                     : 'Not published to this destination'}
           </div>
-          <details className="mt-2 text-xs text-neutral-600">
-            <summary className="cursor-pointer">Successful publication history ({publicationState.events.filter(event => event.eventType !== 'remote-deletion-success').length})</summary>
-            <ul className="mt-2 space-y-1">
-              {publicationState.events.map((event, index) => (
-                <li key={`${event.timestamp}-${index}`}>{new Date(event.timestamp).toLocaleString()} — {event.eventType} — {event.versionId}</li>
-              ))}
-            </ul>
-          </details>
         </div>
       )}
+
+      {publicationState && (
+        <Modal isOpen={showPublicationHistory} onClose={() => setShowPublicationHistory(false)} title="Publication history" className="w-full max-w-lg">
+          <div className="space-y-4 text-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-neutral-700">Managed revisions ({visibleRevisions.length})</h3>
+              <label className="flex items-center gap-2 text-xs text-neutral-600">
+                <input type="checkbox" checked={showDeletedRevisions} onChange={event => setShowDeletedRevisions(event.target.checked)} />
+                Show deleted
+              </label>
+            </div>
+            {visibleRevisions.length === 0 ? <p className="text-neutral-500">No publication revisions yet.</p> : (
+              <ul className="divide-y divide-neutral-200 rounded border border-neutral-200">
+                {visibleRevisions.map(({ revision, revisionNumber }) => (
+                  <li key={revision.publicationRevisionId} className="p-3">
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 flex-none text-base font-semibold text-neutral-700">r{revisionNumber}</div>
+                      <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                        <div>
+                          <div className="font-medium text-neutral-800">{revision.publishSlug}{publicationState.currentRevisionId === revision.publicationRevisionId ? ' · Current' : ''}</div>
+                          {showGeneratedVersionsInHistory && (
+                            <div className="text-xs font-medium text-neutral-700">
+                              Generated version: {generatedVersionLabels[revision.generatedVersionId] ?? revision.generatedVersionId}
+                            </div>
+                          )}
+                          <div className="text-xs text-neutral-500">{revision.remoteState}{revision.publishedAt ? ` · ${new Date(revision.publishedAt).toLocaleString()}` : ''}{revision.readerConnectionToPredecessor === 'connected' ? ' · connected' : ' · separate'}{revision.cleanupState === 'failed' ? ' · cleanup needs retry' : ''}</div>
+                        </div>
+                        {isDeleting && deleteRevisionId === revision.publicationRevisionId ? (
+                          <div className="flex flex-none items-center gap-2 text-xs font-medium text-danger-700" role="status" aria-live="polite">
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-danger-200 border-b-danger-600" />
+                            Deleting…
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            {revision.remoteState === 'present' && revision.publicUrl && <button className="text-main-600 hover:underline" onClick={() => void openExternal(revision.publicUrl!, 's3PublicationHistory')}>Open</button>}
+                            {revision.remoteState === 'present' && <button disabled={isDeleting} className="text-danger-600 hover:underline disabled:text-neutral-400 disabled:no-underline" onClick={() => { setDeleteRevisionId(revision.publicationRevisionId); setShowDeleteConfirm(true); }}>Delete files</button>}
+                            {revision.remoteState === 'pending' && <button disabled={isDeleting} className="text-neutral-600 hover:underline disabled:text-neutral-400 disabled:no-underline" onClick={() => void cancelPublicationRevision(revision.publicationRevisionId)}>Cancel</button>}
+                            {revision.cleanupState === 'failed' && publicationState.currentRevisionId === revision.publicationRevisionId && revision.generatedVersionId === selectedVersionId && <button disabled={isDeleting} className="text-main-600 hover:underline disabled:text-neutral-400 disabled:no-underline" onClick={() => { setShowPublicationHistory(false); void handlePublish(); }}>Retry cleanup</button>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex justify-end"><button onClick={() => setShowPublicationHistory(false)} className="rounded border border-neutral-300 px-4 py-2 text-neutral-700">Close</button></div>
+          </div>
+        </Modal>
+      )}
+      <Modal isOpen={showRevisionPlan} onClose={() => setShowRevisionPlan(false)} title="Publish a new revision" className="w-full max-w-md">
+        <div className="space-y-4 text-sm">
+          <p className="text-neutral-600">This generated version has not been published to this S3 address. Choose what should happen to earlier readers and files.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <label>
+              <span className="mb-1 block font-medium text-neutral-700">Earlier readers</span>
+              <select value={readerConnection} onChange={event => setReaderConnection(event.target.value as typeof readerConnection)} className="w-full rounded border border-neutral-300 px-2 py-2">
+                <option value="connected">Point to new revision</option>
+                <option value="disconnected">Keep separate</option>
+              </select>
+            </label>
+            <label>
+              <span className="mb-1 block font-medium text-neutral-700">Earlier files</span>
+              <select value={cleanupPolicy} onChange={event => setCleanupPolicy(event.target.value as typeof cleanupPolicy)} className="w-full rounded border border-neutral-300 px-2 py-2">
+                <option value="keep">Keep after publish</option>
+                <option value="delete-after-success">Delete after success</option>
+              </select>
+            </label>
+          </div>
+          {cleanupPolicy === 'delete-after-success' && <p className="text-xs text-danger-700">Only after the new revision publishes successfully, {predecessorCleanupRevisionCount} retained publication revision{predecessorCleanupRevisionCount === 1 ? '' : 's'} will be deleted.</p>}
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShowRevisionPlan(false)} disabled={isPlanningRevision} className="rounded border border-neutral-300 px-4 py-2">Cancel</button>
+            <button onClick={() => void planAndPublishRevision()} disabled={isPlanningRevision} className="rounded bg-main-600 px-4 py-2 text-white">{isPlanningRevision ? 'Preparing…' : 'Continue to publish'}</button>
+          </div>
+        </div>
+      </Modal>
 
       {error && (
         <p data-testid="s3-publish-error" className="text-sm text-red-600">
@@ -377,10 +588,10 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-2 text-neutral-800">
-              Delete selected remote version?
+              Delete published files?
             </h3>
             <p className="text-sm text-neutral-600 mb-4">
-              This removes remote files for <code>{selectedVersionId}</code> from this S3 destination.
+              This removes the published files for this version.
               {fileCounts && (fileCounts.htmlCount > 0 || fileCounts.otherCount > 0) && (
                 <> This includes <strong>{fileCounts.htmlCount} page{fileCounts.htmlCount !== 1 ? 's' : ''}</strong>
                 {' '}and <strong>{fileCounts.otherCount} other file{fileCounts.otherCount !== 1 ? 's' : ''}</strong>.</>
@@ -390,7 +601,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
             <div className="flex justify-end gap-3">
               <button
                 data-testid="s3-delete-cancel"
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => { setShowDeleteConfirm(false); setDeleteRevisionId(null); }}
                 className="px-4 py-2 text-sm text-neutral-600 hover:text-neutral-800 rounded border border-neutral-300 hover:border-neutral-400"
               >
                 Cancel
@@ -400,7 +611,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({ bundleSlug, selected
                 onClick={handleDelete}
                 className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded font-medium"
               >
-                Delete Remote Files
+                Delete Published Files
               </button>
             </div>
           </div>

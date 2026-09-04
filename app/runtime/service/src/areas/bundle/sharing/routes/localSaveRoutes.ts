@@ -112,6 +112,7 @@ interface CopyToDirectoryBody {
   destinationPath: string;
   versionId?: string;
   allVersions?: boolean;
+  readerConnectionToPredecessor?: 'connected' | 'disconnected';
 }
 
 interface CreateZipBody {
@@ -119,6 +120,7 @@ interface CreateZipBody {
   destinationPath: string;
   versionId?: string;
   allVersions?: boolean;
+  readerConnectionToPredecessor?: 'connected' | 'disconnected';
 }
 
 async function prepareExportSource(
@@ -135,7 +137,11 @@ async function prepareExportSource(
     };
   }
   if (body.allVersions) {
-    const staged = stageAllVersionsExport(bundleDir, bundleSlug);
+    const staged = stageAllVersionsExport(
+      bundleDir,
+      bundleSlug,
+      body.readerConnectionToPredecessor ?? 'connected',
+    );
     return {
       sourcePath: staged.sourceDirectory,
       suggestedName: `${bundleSlug}-all-versions`,

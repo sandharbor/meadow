@@ -24,6 +24,7 @@ import { FindInBundlesOptions } from '../../../../../../contracts/types/findInBu
 import Modal from '../../../shared/components/Modal';
 import CreateOrEditBundleModal from './CreateOrEditBundleModal';
 import DeleteBundleModal from '../../../shared/bundle-management/DeleteBundleModal';
+import RenameBundleModal from '../../../shared/bundle-management/RenameBundleModal';
 import { logger } from '../../../shared/utils/logger';
 import { openExternal } from '../../../shared/utils/openExternal';
 import { useAppNavigation } from '../../../shared/utils/appNavigation';
@@ -174,6 +175,7 @@ const BundleList: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [bundleToRepair, setBundleToRepair] = useState<BundleConfig | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<BundleConfig | null>(null);
+  const [bundleToRename, setBundleToRename] = useState<BundleConfig | null>(null);
   const [bundleToEdit, setBundleToEdit] = useState<{
     slug: string;
     sourceDirectory: string;
@@ -1027,11 +1029,21 @@ const BundleList: React.FC = () => {
             <button
               onClick={() => { setBundleActionMenu(null); handleEdit(actionMenuBundle); }}
               className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
-              title="Edit bundle"
+              title="Edit bundle details"
             >
-              Edit bundle
+              Edit bundle details
             </button>
           )}
+          <button
+            onClick={() => {
+              setBundleActionMenu(null);
+              setBundleToRename(actionMenuBundle);
+            }}
+            className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-50"
+            title="Rename bundle"
+          >
+            Rename bundle
+          </button>
           <button
             onClick={() => {
               setBundleActionMenu(null);
@@ -1114,6 +1126,16 @@ const BundleList: React.FC = () => {
         onDeleted={() => { loadBundles(); closeDeleteModal(); }}
         bundleSlug={bundleToDelete?.slug || ''}
         isPublished={bundleToDelete?.hasRemotePublications ?? false}
+      />
+
+      <RenameBundleModal
+        isOpen={bundleToRename !== null}
+        onClose={() => setBundleToRename(null)}
+        bundleSlug={bundleToRename?.slug ?? ''}
+        onRenamed={() => {
+          setBundleToRename(null);
+          void loadBundles();
+        }}
       />
 
       <SelectedFolderRepairModal

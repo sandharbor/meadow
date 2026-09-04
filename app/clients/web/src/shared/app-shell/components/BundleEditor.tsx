@@ -37,6 +37,7 @@ import { openExternal } from '../../utils/openExternal';
 import { useAppNavigation } from '../../utils/appNavigation';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import DeleteBundleModal from '../../bundle-management/DeleteBundleModal';
+import RenameBundleModal from '../../bundle-management/RenameBundleModal';
 
 const BundleEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -83,6 +84,7 @@ const BundleEditor: React.FC = () => {
 
   // Delete bundle modal state
   const [isDeleteBundleModalOpen, setIsDeleteBundleModalOpen] = useState(false);
+  const [isRenameBundleModalOpen, setIsRenameBundleModalOpen] = useState(false);
 
   // Edit bundle modal state
   const [isEditBundleModalOpen, setIsEditBundleModalOpen] = useState(false);
@@ -1098,12 +1100,21 @@ const BundleEditor: React.FC = () => {
                   </DisabledTooltip>
                   <button
                     onClick={() => {
+                      setIsRenameBundleModalOpen(true);
+                      setIsBundleMenuOpen(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
+                  >
+                    Rename bundle
+                  </button>
+                  <button
+                    onClick={() => {
                       handleEditBundle();
                       setIsBundleMenuOpen(false);
                     }}
                     className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
                   >
-                    Edit bundle
+                    Edit bundle details
                   </button>
                   <button
                     onClick={() => {
@@ -1209,6 +1220,16 @@ const BundleEditor: React.FC = () => {
         onDeleted={() => navigateInApp({ page: 'bundle-list' })}
         bundleSlug={slug || ''}
         isPublished={hasPublishedVersions}
+      />
+
+      <RenameBundleModal
+        isOpen={isRenameBundleModalOpen}
+        onClose={() => setIsRenameBundleModalOpen(false)}
+        bundleSlug={slug || ''}
+        onRenamed={renamedSlug => {
+          setIsRenameBundleModalOpen(false);
+          navigateInApp({ page: 'bundle', slug: renamedSlug });
+        }}
       />
 
       {/* Edit Bundle Modal */}

@@ -35,6 +35,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [versionCount, setVersionCount] = useState(0);
   const [allVersions, setAllVersions] = useState(false);
+  const [connectExportedVersions, setConnectExportedVersions] = useState(true);
 
   useEffect(() => {
     const fetchPaths = async () => {
@@ -88,6 +89,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
           destinationPath,
           versionId: selectedVersionId,
           allVersions: type === 'html' && allVersions,
+          readerConnectionToPredecessor: connectExportedVersions ? 'connected' : 'disconnected',
         })
       });
 
@@ -137,6 +139,7 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
           destinationPath: result.filePath,
           versionId: selectedVersionId,
           allVersions: type === 'html' && allVersions,
+          readerConnectionToPredecessor: connectExportedVersions ? 'connected' : 'disconnected',
         })
       });
 
@@ -167,7 +170,8 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
       </div>
 
       {versionCount > 1 && (
-        <label className="mb-4 flex items-start gap-2 rounded border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">
+        <div className="mb-4 rounded border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">
+        <label className="flex items-start gap-2">
           <input
             type="checkbox"
             checked={allVersions}
@@ -180,6 +184,20 @@ export const SaveLocallyTab: React.FC<SaveLocallyTabProps> = ({ bundleSlug, sele
             </span>
           </span>
         </label>
+        {allVersions && (
+          <label className="mt-3 block border-t border-neutral-200 pt-3">
+            <span className="block text-xs font-medium text-neutral-700">Reader connection</span>
+            <select
+              value={connectExportedVersions ? 'connected' : 'disconnected'}
+              onChange={event => setConnectExportedVersions(event.target.value === 'connected')}
+              className="mt-1 rounded border border-neutral-300 bg-white px-2 py-1"
+            >
+              <option value="connected">Connect consecutive versions</option>
+              <option value="disconnected">Keep versions separate</option>
+            </select>
+          </label>
+        )}
+        </div>
       )}
 
       {message && (

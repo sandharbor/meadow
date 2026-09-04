@@ -26,6 +26,7 @@ import type { PublishingProviderManifest } from '../../../../../contracts/interf
 export interface PublishTabProps {
   bundleSlug: string;
   selectedVersionId: string | null;
+  generatedVersionLabels?: Readonly<Record<string, string>>;
   changedFilesCount: number;
   onBusyChange: (busy: boolean) => void;
   onAuthError: () => void;

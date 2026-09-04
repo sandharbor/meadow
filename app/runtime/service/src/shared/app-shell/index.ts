@@ -30,6 +30,12 @@ import { buildFilteredSourcesExportForBundle } from '../../areas/bundle/generati
 import { buildFilteredOpenKnowledgeFormatForBundle } from '../../areas/bundle/generation/open-knowledge-format/filteredOpenKnowledgeFormat.js';
 import bundleListingRoutes from '../../areas/bundles/routes/bundleListingRoutes.js';
 import bundleGenerationRoutes from '../../areas/bundle/generation/routes/bundleGenerationRoutes.js';
+import { generateHtmlForBundle } from '../../areas/bundle/generation/html/htmlService.js';
+import { ensureTrackedPageContent } from '../../areas/bundle/generation/source-material/trackedPageContent.js';
+import {
+  hasPendingBundleRename,
+  undoPendingBundleRename,
+} from '../../areas/bundles/services/bundleRename.js';
 import stylePresetsRoutes from '../../areas/bundle/generation/routes/stylePresetsRoutes.js';
 import logRoutes from '../routes/logRoutes.js';
 import appConfigFileRoutes from '../routes/appConfigFileRoutes.js';
@@ -81,8 +87,24 @@ const loadResources = (): ResourcesConfig => loadResourcesConfig(getConfigDirect
 // Note: config directory helpers are imported from `shared/bundle-config/bundleConfigPaths.ts`
 
 import { runMigrationsOnStartup } from '../migrations/runner.js';
+import {
+  configureBundleRenameGenerationOperations,
+  configureBundleRenameWorkflowOperations,
+} from '../bundle-management/bundleRenameWorkflowHost.js';
 
 const app = express();
+
+configureBundleRenameGenerationOperations({
+  refreshTrackedContent: ensureTrackedPageContent,
+  generateHtml: (bundleDirectory, outputDirectory) => generateHtmlForBundle(bundleDirectory, {
+    preview: true,
+    outputDirectory,
+  }),
+});
+configureBundleRenameWorkflowOperations({
+  hasPendingRename: hasPendingBundleRename,
+  undoPendingRename: undoPendingBundleRename,
+});
 
 // Port is set from resources config in startServer() after config is loaded.
 let port: number = 0;

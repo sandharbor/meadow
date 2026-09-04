@@ -31,6 +31,17 @@ export const archived = defineMeadowConcept({
   interplay: conceptText`${conceptLink(coreConceptIds.findInBundles, "Find in Bundles")} distinguishes archived matches so navigation does not erase the bundle's lifecycle state.`,
 });
 
+export const bundleSlug = defineMeadowConcept({
+  id: coreConceptIds.bundleSlug,
+  name: "Bundle Slug",
+  aliases: ["Bundle Name"],
+  kind: "entity",
+  appAreaIds: [coreConceptIds.bundles],
+  definition: conceptText`The mutable, human-readable name used for a bundle's local folder, list label, editor route, and command argument.`,
+  mechanics: [conceptText`Renaming preserves the bundle's stable GUID. If the bundle was generated, its output is regenerated because generation hooks receive the slug.`],
+  interplay: conceptText`A bundle slug is independent of provider-specific addresses recorded by ${conceptLink(coreConceptIds.publicationRevision, "Publication Revisions")}.`,
+});
+
 export const findInBundles = defineMeadowConcept({
   id: coreConceptIds.findInBundles,
   name: "Find in Bundles",
@@ -78,11 +89,14 @@ export const cli = defineMeadowConcept({
   definition: conceptText`The stable machine-readable interface through which people, scripts, and agents invoke Meadow operations.`,
   mechanics: [
     conceptText`Commands authenticate to the local Runtime, return structured output, and report process or operation failures explicitly.`,
+    conceptText`Generated-version and provider-specific publication-revision records expose list, read, create or plan, update, cancel, restore, and deletion operations through the same Runtime APIs as the graphical client.`,
+    conceptText`Bundle renames begin with an inspectable plan and require explicit publication decisions for every provider that has published the bundle.`,
   ],
   interplay: conceptText`The interface is presented by the ${conceptLink(coreConceptIds.commandClient, "Command Client")}; it delegates all Meadow Home mutation to the ${conceptLink(coreConceptIds.runtimeService, "Runtime service")}.`,
 });
 
 export const bundleCollectionConcepts = [
+  bundleSlug,
   archived,
   findInBundles,
   folderBundles,

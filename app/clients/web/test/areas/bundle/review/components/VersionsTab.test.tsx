@@ -16,6 +16,7 @@ limitations under the License.
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { VersionsTab } from '../../../../../src/areas/bundle/review/components/VersionsTab';
 
 const versions = [
@@ -45,6 +46,14 @@ const versions = [
   },
 ];
 
+function renderVersionsTab(onCreateNewVersion = vi.fn()) {
+  return render(
+    <MemoryRouter>
+      <VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={onCreateNewVersion} />
+    </MemoryRouter>,
+  );
+}
+
 describe('VersionsTab', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -64,7 +73,7 @@ describe('VersionsTab', () => {
     }));
 
     const onCreateNewVersion = vi.fn();
-    render(<VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={onCreateNewVersion} />);
+    renderVersionsTab(onCreateNewVersion);
 
     const cards = await screen.findAllByTestId('version-card');
     expect(cards).toHaveLength(2);
@@ -94,13 +103,13 @@ describe('VersionsTab', () => {
     })));
     const onCreateNewVersion = vi.fn();
 
-    render(<VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={onCreateNewVersion} />);
+    renderVersionsTab(onCreateNewVersion);
 
     expect(await screen.findByRole('heading', { name: 'Why create a new version?' })).toBeInTheDocument();
     expect(screen.getByText(/big changes/).tagName).toBe('EM');
     expect(screen.getByText(/renamed several pages/)).toBeInTheDocument();
-    expect(screen.getByText(/make a new bundle with a slightly different name that includes the new version ID/)).toBeInTheDocument();
-    expect(screen.getByText(/add links from the earlier bundle's pages to the new bundle/)).toBeInTheDocument();
+    expect(screen.getByText(/freezes the existing generated files/)).toBeInTheDocument();
+    expect(screen.getByText(/Publishing destinations decide separately/)).toBeInTheDocument();
     expect(screen.queryByText('vAb3XyZ')).not.toBeInTheDocument();
     expect(screen.queryByTestId('version-card')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Create New Version' }));
@@ -113,7 +122,7 @@ describe('VersionsTab', () => {
       : { ok: true, json: async () => ({ versions }) }));
     const onCreateNewVersion = vi.fn();
 
-    render(<VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={onCreateNewVersion} />);
+    renderVersionsTab(onCreateNewVersion);
 
     expect(await screen.findByRole('button', { name: 'Create New Version' })).toBeDisabled();
     expect(screen.getByText('Save or cancel the unsaved version before creating another.')).toBeInTheDocument();
@@ -135,7 +144,7 @@ describe('VersionsTab', () => {
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('confirm', vi.fn(() => true));
 
-    render(<VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={vi.fn()} />);
+    renderVersionsTab();
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel New Version' }));
 
     await waitFor(() => {
@@ -159,7 +168,7 @@ describe('VersionsTab', () => {
       ? { ok: true, json: async () => ({ changes: [] }) }
       : { ok: true, json: async () => ({ versions: integrityVersions }) }));
 
-    render(<VersionsTab bundleSlug="garden" refreshKey={0} onCreateNewVersion={vi.fn()} />);
+    renderVersionsTab();
 
     expect(await screen.findByText('Frozen version modified locally')).toBeInTheDocument();
     expect(screen.getByText('M index.html')).toBeInTheDocument();

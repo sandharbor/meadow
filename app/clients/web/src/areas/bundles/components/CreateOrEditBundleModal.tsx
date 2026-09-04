@@ -735,7 +735,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={mode === 'edit' ? 'Edit Bundle' : 'Create New Bundle'}
+      title={mode === 'edit' ? 'Edit Bundle Details' : 'Create New Bundle'}
       className="w-2/3 max-w-2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">

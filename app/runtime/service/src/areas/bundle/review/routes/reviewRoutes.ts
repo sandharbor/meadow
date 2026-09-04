@@ -57,6 +57,7 @@ import {
   CLI_OPERATION_SCHEMA_VERSION,
 } from '../../../../../../../contracts/types/cliOperations.js';
 import { findBundleBoundaryReviewRequest } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
+import { requireBundleRenameWorkflowOperations } from '../../../../shared/bundle-management/bundleRenameWorkflowHost.js';
 
 const router = express.Router();
 
@@ -704,7 +705,8 @@ router.get('/bundles/:bundleSlug/review/versions', (req, res, next) => {
         integrityChanges,
       };
     });
-    res.json({ schemaVersion: manifest.schemaVersion, versions });
+    const renameWorkflow = requireBundleRenameWorkflowOperations();
+    res.json({ schemaVersion: manifest.schemaVersion, versions, pendingBundleRename: renameWorkflow.hasPendingRename(bundleSlug) });
   } catch (error) {
     next(error);
   }
@@ -814,6 +816,13 @@ router.post('/bundles/:bundleSlug/review/versions/current/cancel', (req, res, ne
   try {
     const { bundleSlug } = req.params;
     if (!bundleSlug) return res.status(400).json({ error: 'bundleSlug is required' });
+    const renameWorkflow = requireBundleRenameWorkflowOperations();
+    if (renameWorkflow.hasPendingRename(bundleSlug)) {
+      void renameWorkflow.undoPendingRename(bundleSlug)
+        .then(result => res.json({ success: true, currentVersionId: result.versionId, slug: result.slug, operationId }))
+        .catch(next);
+      return;
+    }
     const manifest = cancelCurrentGeneratedBundleVersion(getBundleDirectory(bundleSlug));
     const currentVersionId = manifest.versions.at(-1)?.versionId ?? null;
     logBundleInfo(bundleSlug, `[operation ${operationId}] [version-cancel] Canceled the never-saved current version; restored current version ${currentVersionId ?? 'none'}`);

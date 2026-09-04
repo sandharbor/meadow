@@ -61,6 +61,50 @@ export type GeneratedBundleVersionDerivedState =
 
 export type ProviderInstanceId = string;
 
+export const PUBLICATION_REVISION_ID_PATTERN = /^r[A-Za-z0-9]{12}$/;
+
+declare const publicationRevisionIdBrand: unique symbol;
+export type PublicationRevisionId = string & {
+  readonly [publicationRevisionIdBrand]: true;
+};
+
+export type PublicationRevisionRemoteState = 'pending' | 'present' | 'deleted';
+export type PredecessorCleanupPolicy = 'keep' | 'delete-after-success';
+export type PublicationCleanupState = 'not-requested' | 'scheduled' | 'complete' | 'failed';
+
+/**
+ * One provider-specific publication of a saved generated version at one
+ * provider address. Address and content changes both produce revisions;
+ * repeated publication of the same pair updates the existing revision.
+ */
+export interface PublicationRevision {
+  publicationRevisionId: PublicationRevisionId;
+  generatedVersionId: GeneratedBundleVersionId;
+  publishSlug: string;
+  predecessorPublicationRevisionId: PublicationRevisionId | null;
+  readerConnectionToPredecessor: ReaderConnectionToPredecessor;
+  predecessorCleanupPolicy: PredecessorCleanupPolicy;
+  cleanupState: PublicationCleanupState;
+  remoteState: PublicationRevisionRemoteState;
+  createdAt: string;
+  latestSuccessfulSavedGenerationId: string | 'unknown' | null;
+  publishedAt: string | null;
+  deletedAt: string | null;
+  remoteNamespace: string | null;
+  publicUrl?: string;
+  readerRouteIndex?: string;
+  entryPath?: string;
+  cleanupError?: string;
+}
+
+export interface ProviderPublicationRevisionState {
+  schemaVersion: 2;
+  providerInstanceId: ProviderInstanceId;
+  currentRevisionId: PublicationRevisionId | null;
+  pendingRevisionId: PublicationRevisionId | null;
+  revisions: PublicationRevision[];
+}
+
 export type PublicationEventType =
   | 'imported-publication'
   | 'publication-success'

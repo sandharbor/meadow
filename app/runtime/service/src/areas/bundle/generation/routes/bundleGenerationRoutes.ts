@@ -239,20 +239,11 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
       }
       const body = (req.body ?? {}) as {
         notes?: unknown;
-        readerConnectionToPredecessor?: unknown;
         confirmedNoGeneratedChanges?: unknown;
       };
       if (body.notes !== undefined && typeof body.notes !== 'string') {
         return res.status(400).json({ error: 'notes must be a string' });
       }
-      if (
-        body.readerConnectionToPredecessor !== undefined
-        && body.readerConnectionToPredecessor !== 'connected'
-        && body.readerConnectionToPredecessor !== 'disconnected'
-      ) {
-        return res.status(400).json({ error: 'readerConnectionToPredecessor must be connected or disconnected' });
-      }
-
       const bundleConfig = loadBundleConfig(bundleDirectory);
       if (bundleConfig.sourceDirectory) {
         await ensureTrackedPageContent(bundleDirectory, bundleConfig.sourceDirectory);
@@ -262,7 +253,6 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
         operationId: () => operation.operationId,
         onPhase: phase => operation.debug(`Reached ${phase}`),
         notes: body.notes ?? '',
-        readerConnectionToPredecessor: body.readerConnectionToPredecessor ?? 'connected',
         confirmedNoGeneratedChanges: body.confirmedNoGeneratedChanges === true,
         generate: async stagingDirectory => {
           await generateHtmlForBundle(bundleDirectory, { preview: true, outputDirectory: stagingDirectory });

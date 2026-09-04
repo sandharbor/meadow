@@ -89,10 +89,14 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await changesTab.expectOnlyNewFiles();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
+  await modal.expectShareVersionPurpose("publish");
   await modal.expectShareVersionSelected(successor.versionId, "v2");
   await modal.expectShareVersionOptionsNewestFirst(successor.versionId, predecessor.versionId);
+  await modal.selectShareVersion(predecessor.versionId);
+  await modal.expectOlderShareVersionWarning("v1", "v2");
   await addKeyFrame(versioning);
-  await snapshot("share defaults to the latest casual version name and creation date");
+  await snapshot("publish identifies the selected generated version and warns before using an older one");
+  await modal.selectShareVersion(successor.versionId);
 
   void bigBundle;
   await skipMeadowHomeStateCheck();

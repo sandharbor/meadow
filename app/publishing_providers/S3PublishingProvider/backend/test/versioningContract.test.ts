@@ -21,11 +21,17 @@ import YAML from 'yaml';
 import type { S3Client } from '@aws-sdk/client-s3';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { GeneratedBundleVersionId } from '../../../../contracts/types/generatedBundleVersioning.js';
+import {
+  pendingPublicationRevision,
+  recordPublicationDeletion,
+  recordPublicationSuccess,
+} from '../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
 import { uploadDirectory } from '../internal/s3Operations.js';
 import {
-  appendS3PublicationEvent,
   buildS3SuccessorManifest,
   emptyS3PublicationState,
+  ensureS3PublicationRevision,
+  migrateLegacyS3PublicationState,
   remotelyPresentS3VersionIds,
   s3DestinationFieldsLocked,
   s3SuccessorManifestKey,
@@ -57,6 +63,35 @@ afterEach(() => {
 });
 
 describe('minimal S3 provider versioning contract', () => {
+  it('migrates historical publish-slug changes into distinct same-generation revisions', () => {
+    const state = migrateLegacyS3PublicationState({
+      schemaVersion: 1,
+      providerInstanceId: 's3-default-destination',
+      destination: { publishSlug: 'orchard', bucketName: 'bucket' },
+      events: [
+        {
+          eventType: 'publication-success',
+          providerInstanceId: 's3-default-destination',
+          versionId: id('vAb3XyZ'),
+          savedGenerationId: 'tree-1',
+          timestamp: '2026-01-01T00:00:00.000Z',
+          remoteNamespace: 'garden-vAb3XyZ',
+        },
+        {
+          eventType: 'publication-success',
+          providerInstanceId: 's3-default-destination',
+          versionId: id('vAb3XyZ'),
+          savedGenerationId: 'tree-1',
+          timestamp: '2026-01-02T00:00:00.000Z',
+          remoteNamespace: 'orchard-vAb3XyZ',
+        },
+      ],
+    });
+    expect(state.revisions.map(revision => revision.publishSlug)).toEqual(['garden', 'orchard']);
+    expect(state.revisions.every(revision => /^r[A-Za-z0-9]{12}$/.test(revision.publicationRevisionId))).toBe(true);
+    expect(state.currentRevisionId).toBe(state.revisions[1].publicationRevisionId);
+  });
+
   it('P03 P04 D03 writes the manifest at the safe boundary and records no success after partial failure', async () => {
     const order: string[] = [];
     let state = emptyS3PublicationState('garden', 'bucket');
@@ -72,7 +107,7 @@ describe('minimal S3 provider versioning contract', () => {
       },
     })).rejects.toThrow('injected manifest failure');
     expect(order).toEqual(['version-files', 'successor-manifest']);
-    expect(state.events).toEqual([]);
+    expect(state.revisions).toEqual([]);
 
     order.length = 0;
     await deleteManifestThenVersionFiles({
@@ -81,14 +116,19 @@ describe('minimal S3 provider versioning contract', () => {
     });
     expect(order).toEqual(['successor-manifest', 'version-files']);
 
-    state = appendS3PublicationEvent(state, {
-      eventType: 'publication-success',
-      versionId: id('vAb3XyZ'),
-      savedGenerationId: 'tree',
-      timestamp: '2026-01-01T00:00:00.000Z',
-      remoteNamespace: 'garden-vAb3XyZ',
+    state = ensureS3PublicationRevision(state, {
+      generatedVersionId: id('vAb3XyZ'),
+      publishSlug: 'garden',
     });
-    expect(state.events).toHaveLength(1);
+    state = recordPublicationSuccess(state, {
+      publicationRevisionId: pendingPublicationRevision(state)!.publicationRevisionId,
+      savedGenerationId: 'tree',
+      now: new Date('2026-01-01T00:00:00.000Z'),
+      remoteNamespace: 'garden-vAb3XyZ',
+      readerRouteIndex: '_mw_assets/versioning/routes.1234abcd.json',
+      entryPath: 'index.html',
+    });
+    expect(state.revisions).toHaveLength(1);
   });
 
   it('P03 P05 uploads dependencies before HTML with immutable awareness caching and never mutates source', async () => {
@@ -145,11 +185,11 @@ describe('minimal S3 provider versioning contract', () => {
     }
     let state = emptyS3PublicationState('garden', 'bucket');
     for (const versionId of [ids[0], ids[2]]) {
-      state = appendS3PublicationEvent(state, {
-        eventType: 'publication-success',
-        versionId,
+      state = ensureS3PublicationRevision(state, { generatedVersionId: versionId, publishSlug: 'garden' });
+      state = recordPublicationSuccess(state, {
+        publicationRevisionId: pendingPublicationRevision(state)!.publicationRevisionId,
         savedGenerationId: 'tree',
-        timestamp: '2026-01-10T00:00:00.000Z',
+        now: new Date('2026-01-10T00:00:00.000Z'),
         remoteNamespace: s3VersionNamespace('garden', versionId),
         readerRouteIndex: '_mw_assets/versioning/routes.1234abcd.json',
         entryPath: 'index.html',
@@ -157,13 +197,7 @@ describe('minimal S3 provider versioning contract', () => {
     }
     expect(buildS3SuccessorManifest(bundle, 'garden', remotelyPresentS3VersionIds(state), state).successors[ids[0]])
       .toMatchObject({ versionId: ids[2], versionRoot: `garden-${ids[2]}` });
-    state = appendS3PublicationEvent(state, {
-      eventType: 'remote-deletion-success',
-      versionId: ids[2],
-      savedGenerationId: 'tree',
-      timestamp: '2026-01-11T00:00:00.000Z',
-      remoteNamespace: s3VersionNamespace('garden', ids[2]),
-    });
+    state = recordPublicationDeletion(state, state.currentRevisionId!, new Date('2026-01-11T00:00:00.000Z'));
     expect(buildS3SuccessorManifest(bundle, 'garden', remotelyPresentS3VersionIds(state), state).successors)
       .toEqual({});
     expect(state.providerInstanceId).toBe('s3-default-destination');
@@ -173,15 +207,20 @@ describe('minimal S3 provider versioning contract', () => {
   it('P06 locks URL-shaping destination fields only while remote versions remain', () => {
     let state = emptyS3PublicationState('garden', 'bucket');
     expect(s3DestinationFieldsLocked(state, { publishSlug: 'renamed', bucketName: 'other' })).toBe(false);
-    state = appendS3PublicationEvent(state, {
-      eventType: 'publication-success',
-      versionId: id('vAb3XyZ'),
+    state = ensureS3PublicationRevision(state, {
+      generatedVersionId: id('vAb3XyZ'),
+      publishSlug: 'garden',
+    });
+    state = recordPublicationSuccess(state, {
+      publicationRevisionId: pendingPublicationRevision(state)!.publicationRevisionId,
       savedGenerationId: 'tree',
-      timestamp: '2026-01-01T00:00:00.000Z',
+      now: new Date('2026-01-01T00:00:00.000Z'),
       remoteNamespace: 'garden-vAb3XyZ',
+      readerRouteIndex: '_mw_assets/versioning/routes.1234abcd.json',
+      entryPath: 'index.html',
     });
     expect(s3DestinationFieldsLocked(state, { publishSlug: 'garden', bucketName: 'bucket' })).toBe(false);
-    expect(s3DestinationFieldsLocked(state, { publishSlug: 'renamed', bucketName: 'bucket' })).toBe(true);
+    expect(s3DestinationFieldsLocked(state, { publishSlug: 'renamed', bucketName: 'bucket' })).toBe(false);
     expect(s3DestinationFieldsLocked(state, { publishSlug: 'garden', bucketName: 'other' })).toBe(true);
   });
 });

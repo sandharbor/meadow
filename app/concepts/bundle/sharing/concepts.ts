@@ -26,6 +26,13 @@ export const publishing = define({
   interplay: text`It consumes ${link(id.bundleGeneration, "Bundle Generation")} output after ${link(id.bundleReview, "Bundle Review")} and can use ${link(id.s3, "S3-Compatible Object Storage")}.`,
 });
 
+export const publicationRevision = define({
+  id: id.publicationRevision, name: "Publication Revision", kind: "entity", appAreaIds: area,
+  definition: text`A provider-specific record that publishes one saved generated bundle version at one provider address.`,
+  mechanics: [text`Changing either the generated version or the publish slug creates a revision. It records its predecessor, reader connection, retention choice, remote state, and immutable provider identity.`],
+  interplay: text`${link(id.publishing, "Publishing")} creates and manages revisions independently for each provider, while ${link(id.versioning, "Generated Bundle Version")} remains provider-neutral.`,
+});
+
 export const s3 = define({
   id: id.s3, name: "S3-Compatible Object Storage", aliases: ["S3", "Object Storage"], kind: "interface", appAreaIds: area,
   definition: text`The object-storage interface used to upload, list, and delete published bundle artifacts.`,
@@ -47,4 +54,4 @@ export const git = define({
   interplay: text`It records local effects of ${link(id.bundleGeneration, "Bundle Generation")} and ${link(id.bundleSharing, "Bundle Sharing")}.`,
 });
 
-export const sharingConcepts = [publishing, s3, deletion, git] as const;
+export const sharingConcepts = [publishing, publicationRevision, s3, deletion, git] as const;
