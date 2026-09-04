@@ -11,7 +11,6 @@ You may obtain a copy of the License at
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
-import YAML from 'yaml';
 import type {
   BundlePublicationSummary,
   GeneratedBundleReaderRouteIndex,
@@ -32,7 +31,7 @@ import {
   remotelyPresentPublicationRevisions,
 } from '../../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
 import { S3_PROVIDER_ID } from '../s3Config.js';
-import { isPlainObject, readDurableDocument, requireValidDocument, writeDurableDocument } from '../../../../../shared_code/utils/durableDocument.js';
+import { isPlainObject, readDurableDocument, requireValidDocument, writeDurableDocument, yamlDocumentCodec } from '../../../../../shared_code/utils/durableDocument.js';
 import { publicationRevisionStateCodec } from '../../../../../shared_code/utils/publicationRevisionDocument.js';
 
 export const S3_DEFAULT_PROVIDER_INSTANCE_ID = 's3-default-destination';
@@ -41,13 +40,34 @@ export interface S3PublicationState extends ProviderPublicationRevisionState {
   destinationIdentity: { bucketName: string };
 }
 
+type LegacyS3PublicationState = ProviderDestinationRecord & {
+  destination: { publishSlug: string; bucketName: string };
+};
+
+const legacyCodec = yamlDocumentCodec<LegacyS3PublicationState>(value => {
+  if (!isPlainObject(value)) return { valid: false, diagnostic: '$ must be an object' };
+  if (value.schemaVersion !== 1) return { valid: false, diagnostic: '$.schemaVersion must be 1' };
+  if (value.providerInstanceId !== S3_DEFAULT_PROVIDER_INSTANCE_ID) {
+    return { valid: false, diagnostic: `$.providerInstanceId must be ${S3_DEFAULT_PROVIDER_INSTANCE_ID}` };
+  }
+  if (!isPlainObject(value.destination)) return { valid: false, diagnostic: '$.destination must be an object' };
+  if (typeof value.destination.publishSlug !== 'string') {
+    return { valid: false, diagnostic: '$.destination.publishSlug must be a string' };
+  }
+  if (typeof value.destination.bucketName !== 'string') {
+    return { valid: false, diagnostic: '$.destination.bucketName must be a string' };
+  }
+  if (!Array.isArray(value.events)) return { valid: false, diagnostic: '$.events must be an array' };
+  return { valid: true, value: value as unknown as LegacyS3PublicationState };
+});
+
 const codec = publicationRevisionStateCodec<S3PublicationState>(S3_DEFAULT_PROVIDER_INSTANCE_ID, value => {
   if (!isPlainObject(value)) return '$.destinationIdentity must be an object';
   return typeof value.bucketName === 'string' ? null : '$.destinationIdentity.bucketName must be a string';
 });
 
-function statePath(bundleSlug: string): string {
-  return path.join(PublishingProviderPaths.getBundleProviderDir(getConfigDirectory(), bundleSlug, S3_PROVIDER_ID), 'versioning', 'publications.yaml');
+function statePath(bundleSlug: string, configDirectory = getConfigDirectory()): string {
+  return path.join(PublishingProviderPaths.getBundleProviderDir(configDirectory, bundleSlug, S3_PROVIDER_ID), 'versioning', 'publications.yaml');
 }
 
 export function emptyS3PublicationState(_publishSlug: string, bucketName: string): S3PublicationState {
@@ -93,20 +113,25 @@ export function migrateLegacyS3PublicationState(value: ProviderDestinationRecord
   return { schemaVersion: 2, providerInstanceId: value.providerInstanceId, destinationIdentity: { bucketName: value.destination.bucketName }, currentRevisionId: current?.publicationRevisionId ?? null, pendingRevisionId: null, revisions };
 }
 
-export function loadS3PublicationState(bundleSlug: string, destination?: { publishSlug: string; bucketName: string }): S3PublicationState | null {
-  const filePath = statePath(bundleSlug);
+export function loadS3PublicationState(bundleSlug: string, destination?: { publishSlug: string; bucketName: string }, configDirectory?: string): S3PublicationState | null {
+  const filePath = statePath(bundleSlug, configDirectory);
   if (!fs.existsSync(filePath)) return destination ? emptyS3PublicationState(destination.publishSlug, destination.bucketName) : null;
-  const raw = YAML.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
-  if (isPlainObject(raw) && raw.schemaVersion === 1) {
-    const migrated = migrateLegacyS3PublicationState(raw as unknown as ProviderDestinationRecord & { destination: { publishSlug: string; bucketName: string } });
-    saveS3PublicationState(bundleSlug, migrated);
+  const legacy = readDurableDocument(filePath, legacyCodec);
+  if (legacy.status === 'valid') {
+    const migrated = migrateLegacyS3PublicationState(legacy.value);
+    writeDurableDocument({
+      path: filePath,
+      value: migrated,
+      codec,
+      acceptedExistingCodecs: [legacyCodec],
+    });
     return migrated;
   }
   return requireValidDocument(readDurableDocument(filePath, codec), () => emptyS3PublicationState('', ''));
 }
 
-export function saveS3PublicationState(bundleSlug: string, state: S3PublicationState): void {
-  writeDurableDocument({ path: statePath(bundleSlug), value: state, codec });
+export function saveS3PublicationState(bundleSlug: string, state: S3PublicationState, configDirectory?: string): void {
+  writeDurableDocument({ path: statePath(bundleSlug, configDirectory), value: state, codec });
 }
 
 export function ensureS3PublicationRevision(state: S3PublicationState, input: {
@@ -168,4 +193,4 @@ export function getS3PublicationSummary(bundleSlug: string): BundlePublicationSu
   const present = remotelyPresentPublicationRevisions(state);
   return [{ providerInstanceId: state.providerInstanceId, mostRecentSuccessfulEventAt: state.revisions.flatMap(item => item.publishedAt ? [item.publishedAt] : []).sort().at(-1) ?? null, remotelyPresentVersionIds: [...new Set(present.map(item => item.generatedVersionId))] }];
 }
-export function s3PublicationStatePath(bundleSlug: string): string { return statePath(bundleSlug); }
+export function s3PublicationStatePath(bundleSlug: string, configDirectory?: string): string { return statePath(bundleSlug, configDirectory); }

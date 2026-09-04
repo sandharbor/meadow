@@ -89,6 +89,30 @@ describe('durable document persistence', () => {
     expect(fs.readFileSync(target)).toEqual(source);
   });
 
+  it('atomically replaces an explicitly recognized older schema', () => {
+    const legacyCodec = yamlDocumentCodec<{ legacyName: string }>(value =>
+      typeof value === 'object'
+        && value !== null
+        && 'legacyName' in value
+        && typeof value.legacyName === 'string'
+        ? { valid: true, value: value as { legacyName: string } }
+        : { valid: false, diagnostic: '$.legacyName must be a string' },
+    );
+    fs.writeFileSync(target, 'legacyName: original\n');
+
+    writeDurableDocument({
+      path: target,
+      value: { name: 'replacement' },
+      codec: yamlCodec,
+      acceptedExistingCodecs: [legacyCodec],
+    });
+
+    expect(readDurableDocument(target, yamlCodec)).toMatchObject({
+      status: 'valid',
+      value: { name: 'replacement' },
+    });
+  });
+
   it.each([
     ['write', { beforeWrite: () => { throw new Error('injected write failure'); } }],
     ['file flush', { beforeFileFlush: () => { throw new Error('injected flush failure'); } }],

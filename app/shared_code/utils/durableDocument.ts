@@ -30,6 +30,11 @@ export interface DurableDocumentCodec<T> {
   serialize(value: T): string;
 }
 
+export type DurableDocumentReadCodec<T = unknown> = Pick<
+  DurableDocumentCodec<T>,
+  'parse' | 'validate'
+>;
+
 export type DurableDocumentResult<T> =
   | { status: 'missing'; path: string }
   | { status: 'valid'; path: string; value: T }
@@ -53,6 +58,12 @@ export interface WriteDurableDocumentOptions<T> {
   path: string;
   value: T;
   codec: DurableDocumentCodec<T>;
+  /**
+   * Explicitly recognized older schemas that may be replaced atomically by
+   * this write. Malformed files still fail closed, and ordinary callers should
+   * leave this unset.
+   */
+  acceptedExistingCodecs?: readonly DurableDocumentReadCodec[];
   mode?: number;
   faults?: DurableDocumentFaults;
 }
@@ -89,7 +100,7 @@ function diagnostic(error: unknown): string {
 
 export function readDurableDocument<T>(
   path: string,
-  codec: DurableDocumentCodec<T>,
+  codec: DurableDocumentReadCodec<T>,
 ): DurableDocumentResult<T> {
   let source: Buffer;
   try {
@@ -233,7 +244,12 @@ export function writeDurableDocument<T>(options: WriteDurableDocumentOptions<T>)
   try {
     fs.fchmodSync(lockDescriptor, 0o600);
     const current = readDurableDocument(targetPath, options.codec);
-    if (current.status === 'invalid') throw new InvalidDurableDocumentError(current);
+    if (current.status === 'invalid') {
+      const recognizedOlderSchema = options.acceptedExistingCodecs?.some(codec =>
+        readDurableDocument(targetPath, codec).status === 'valid'
+      ) ?? false;
+      if (!recognizedOlderSchema) throw new InvalidDurableDocumentError(current);
+    }
 
     const intended = options.codec.validate(options.value);
     if (!intended.valid) {
@@ -248,7 +264,7 @@ export function writeDurableDocument<T>(options: WriteDurableDocumentOptions<T>)
 
     let previous: Buffer | null = null;
     let previousMode = mode;
-    if (current.status === 'valid') {
+    if (current.status !== 'missing') {
       previous = fs.readFileSync(targetPath);
       previousMode = fs.statSync(targetPath).mode & 0o777;
     }

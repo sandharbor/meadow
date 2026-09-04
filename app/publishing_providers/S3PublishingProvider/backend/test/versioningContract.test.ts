@@ -31,6 +31,7 @@ import {
   buildS3SuccessorManifest,
   emptyS3PublicationState,
   ensureS3PublicationRevision,
+  loadS3PublicationState,
   migrateLegacyS3PublicationState,
   remotelyPresentS3VersionIds,
   s3DestinationFieldsLocked,
@@ -63,6 +64,42 @@ afterEach(() => {
 });
 
 describe('minimal S3 provider versioning contract', () => {
+  it('atomically upgrades a legacy publication document when loading it', () => {
+    const configDirectory = temporaryDirectory();
+    const filePath = path.join(
+      configDirectory,
+      'bundles',
+      'garden',
+      'config',
+      'publishing_providers',
+      'S3PublishingProvider',
+      'versioning',
+      'publications.yaml',
+    );
+    write(filePath, YAML.stringify({
+      schemaVersion: 1,
+      providerInstanceId: 's3-default-destination',
+      destination: { publishSlug: 'garden', bucketName: 'bucket' },
+      events: [{
+        eventType: 'publication-success',
+        providerInstanceId: 's3-default-destination',
+        versionId: 'vAb3XyZ',
+        savedGenerationId: 'tree-1',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        remoteNamespace: 'garden-vAb3XyZ',
+      }],
+    }));
+
+    const state = loadS3PublicationState('garden', undefined, configDirectory);
+
+    expect(state?.schemaVersion).toBe(2);
+    expect(YAML.parse(fs.readFileSync(filePath, 'utf8'))).toMatchObject({
+      schemaVersion: 2,
+      destinationIdentity: { bucketName: 'bucket' },
+      revisions: [{ generatedVersionId: 'vAb3XyZ', publishSlug: 'garden' }],
+    });
+  });
+
   it('migrates historical publish-slug changes into distinct same-generation revisions', () => {
     const state = migrateLegacyS3PublicationState({
       schemaVersion: 1,
