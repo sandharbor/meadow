@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import { parseHTML } from 'linkedom';
 import {
   buildFolderNavigationData,
   renderFolderNavigationDataScript,
@@ -100,5 +103,53 @@ describe('folder navigation', () => {
         path: 'Vault/Projects/Alpha/Nested/Nested note.html',
       }],
     }]);
+  });
+});
+
+
+describe('folder navigation startup scrolling', () => {
+  const runtime = readFileSync(new URL(
+    '../../../../../src/areas/bundle/generation/html/shared/folder-nav.js',
+    import.meta.url,
+  ), 'utf8');
+
+  it.each([
+    { top: 60, bottom: 90, expected: 100 },
+    { top: 20, bottom: 50, expected: 70 },
+    { top: 240, bottom: 270, expected: 120 },
+  ])('reveals the current page only within the sidebar: $top–$bottom', ({ top, bottom, expected }) => {
+    const { document } = parseHTML(`<html><body>
+      <aside data-meadow-folder-nav>
+        <nav class="meadow-folder-nav-scroll"><a aria-current="page">Current</a></nav>
+      </aside>
+    </body></html>`);
+    const navigation = document.querySelector('nav')!;
+    const currentPage = document.querySelector('a')!;
+    const scrollIntoView = vi.fn();
+    currentPage.scrollIntoView = scrollIntoView;
+    currentPage.getBoundingClientRect = () => ({ top, bottom }) as DOMRect;
+    navigation.getBoundingClientRect = () => ({ top: 48 }) as DOMRect;
+    Object.defineProperties(navigation, {
+      clientTop: { value: 2 },
+      clientHeight: { value: 200 },
+    });
+    navigation.scrollTop = 100;
+    const scrollTo = vi.fn();
+    runInNewContext(runtime, {
+      document,
+      URL,
+      window: {
+        location: { href: 'https://example.test/bundle/Current.html' },
+        localStorage: { getItem: () => null },
+        innerWidth: 1000,
+        matchMedia: () => ({ matches: false }),
+        addEventListener: () => {},
+        requestAnimationFrame: (callback: () => void) => callback(),
+        scrollTo,
+      },
+    });
+    expect(navigation.scrollTop).toBe(expected);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });

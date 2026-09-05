@@ -279,8 +279,19 @@
     });
 
     var currentPage = sidebar.querySelector('[aria-current="page"]');
-    if (currentPage && typeof currentPage.scrollIntoView === 'function') {
-      currentPage.scrollIntoView({ block: 'nearest' });
+    var navigation = sidebar.querySelector('.meadow-folder-nav-scroll');
+    if (currentPage && navigation) {
+      // Scroll only the navigation pane. scrollIntoView also scrolls ancestor
+      // frames in Safari, pulling an embedding page down to the bundle on load.
+      var pageBounds = currentPage.getBoundingClientRect();
+      var navigationBounds = navigation.getBoundingClientRect();
+      var visibleTop = navigationBounds.top + navigation.clientTop;
+      var visibleBottom = visibleTop + navigation.clientHeight;
+      if (pageBounds.top < visibleTop) {
+        navigation.scrollTop += pageBounds.top - visibleTop;
+      } else if (pageBounds.bottom > visibleBottom) {
+        navigation.scrollTop += pageBounds.bottom - visibleBottom;
+      }
     }
 
     // Safari can leave the two transitioning layout layers unpainted when
