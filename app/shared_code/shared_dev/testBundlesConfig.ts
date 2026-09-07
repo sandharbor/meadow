@@ -21,6 +21,7 @@ limitations under the License.
 
 import { existsSync, mkdirSync, cpSync, readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
+import { materializeSourceGraph } from "./sourceChanges.js";
 
 export interface SetupTestBundlesOptions {
   /** The target meadow home directory (e.g., ~/Library/Application Support/Meadow) */
@@ -67,7 +68,6 @@ export function copyTestBundleFixture(
   options: SetupTestBundlesOptions
 ): void {
   const fixturesPath = getHomeFixturesPath(options.projectRoot);
-  const sourceGraphsPath = getSourceGraphsPath(options.projectRoot);
   
   // Source fixture path - the bundle folder inside the fixture (now uses the actual bundle slug)
   const fixtureDir = join(fixturesPath, fixtureName, "bundles", sourceBundleSlug);
@@ -107,7 +107,7 @@ export function copyTestBundleFixture(
     const sourceDirectoryMatch = yamlContent.match(/sourceDirectory:\s*\.\/source_graphs\/([^\s]+)/);
     if (sourceDirectoryMatch) {
       const sourceGraphName = sourceDirectoryMatch[1];
-      const sourceGraphDir = join(sourceGraphsPath, sourceGraphName);
+      const sourceGraphDir = materializeSourceGraph({ projectRoot: options.projectRoot, sourceGraphsDir: join(options.targetConfigDir, "source_graphs"), sourceGraph: sourceGraphName });
       yamlContent = yamlContent.replace(
         /sourceDirectory:.*$/m,
         `sourceDirectory: ${sourceGraphDir}`

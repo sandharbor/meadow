@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { acceptedSourceRoot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
@@ -47,6 +49,7 @@ import {
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import {
   getBundleConfigPath,
+  getBundleDirectory,
   getBundlesDirectory,
 } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { FrontmatterUtils } from '../../../../shared/utils/frontmatterUtils.js';
@@ -420,14 +423,12 @@ export async function mutateBundleNode(
 
   if (mutation.operation === 'mark-sensitive' || mutation.operation === 'mark-not-sensitive') {
     const sensitive = mutation.operation === 'mark-sensitive';
-    changed = context.node.sensitive !== sensitive;
+    changed = FrontmatterUtils.getSensitiveProperty(sourceMarkdownPath(context)) !== sensitive;
     if (changed) {
       FrontmatterUtils.updateSensitiveProperty(sourceMarkdownPath(context), sensitive);
       const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
       if (!sourceDirectory) throw new BundleNodeOperationError(`Bundle '${slug}' has no source directory`, 409);
       invalidateWorkingGraphCache(sourceDirectory);
-      context.node.data = { ...context.node.data, is_sensitive: sensitive };
-      context.node.sensitive = sensitive;
     }
   } else if (mutation.operation === 'track') {
     const effectivelySensitive = context.effectivelySensitive.has(context.node.bundleNodeKey);
@@ -444,7 +445,7 @@ export async function mutateBundleNode(
         evidenceDecisions.set(config.bundleNodeId, effectivelySensitive);
       }
     } else if (context.node.bundleNodeKind === 'file' && context.node.conf?.bundleNodeKind === 'file') {
-      const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
+      const sourceDirectory = acceptedSourceRoot(getBundleDirectory(slug));
       if (!sourceDirectory) throw new BundleNodeOperationError(`Bundle '${slug}' has no source directory`, 409);
       const digest = currentSourceContentDigest(sourceDirectory, context.node.conf);
       if (!trackingEvidenceMatches(context.node.conf.trackingEvidence, digest, effectivelySensitive)) {
@@ -539,6 +540,9 @@ export async function mutateBundleNode(
     changed,
     mutationBehavior: CLI_MUTATION_BEHAVIORS.mutateBundleNode,
     node: details(context.node),
+    ...((mutation.operation === 'mark-sensitive' || mutation.operation === 'mark-not-sensitive') && {
+      sourceUpdate: { sensitive: mutation.operation === 'mark-sensitive', requiresSnapshotAcceptance: true as const },
+    }),
     nextActions: [{
       operation: 'inspect-node',
       args: [

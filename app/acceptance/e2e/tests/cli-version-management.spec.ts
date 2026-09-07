@@ -55,6 +55,9 @@ test("CLI manages generated versions through create read update restore cancel a
   meadowCli,
   testServer,
 }) => {
+  await meadowCli.runJson(["bundle", "nodes", Bundle.Big, "--scope", "all"], {
+    artifactName: "capture-fixture-source-before-generation",
+  });
   const generated = await meadowCli.runJson<{ versionId: string }>([
     "bundle", "generate", Bundle.Big,
   ], { artifactName: "versions-generate-initial" });

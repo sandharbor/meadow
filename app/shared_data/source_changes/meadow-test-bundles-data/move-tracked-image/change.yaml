@@ -1,0 +1,13 @@
+id: move-tracked-image
+label: Move a tracked image
+description: Move the image used by the Markdown links page and update that
+  relative image link.
+sourceGraph: meadow-test-bundles-data
+operations:
+  - move:
+      from: t024/t024 ---- test image.png
+      to: t024/images/t024 ---- test image.png
+  - replaceText:
+      path: t024 - markdown links.md
+      before: ./t024/t024 ---- test image.png
+      after: ./t024/images/t024 ---- test image.png

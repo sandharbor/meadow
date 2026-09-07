@@ -27,6 +27,7 @@ export enum ConfigMode {
 export interface ConfigFixture {
   /** The full folder name (e.g., "home_fixture_big_and_small") */
   folderName: string;
+  hasSourceChanges?: boolean;
   /** The display name with prefix stripped (e.g., "big_and_small") */
   displayName: string;
 }

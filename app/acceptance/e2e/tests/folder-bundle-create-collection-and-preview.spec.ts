@@ -100,6 +100,11 @@ test("previews a configured multiple-folder collection bundle", async ({
       "bundles/ordered-folders/config/generated_bundle_versions.yaml",
     ],
     allowedUntracked: [
+      "bundles/ordered-folders/raw/folder_scope_snapshot.json",
+      "bundles/ordered-folders/raw/generation_inputs/",
+      "bundles/ordered-folders/raw/tracked_bundle_node_config.yaml",
+      "bundles/ordered-folders/raw/tracked_page_content/",
+
       "bundles/ordered-folders/build/",
       "bundles/ordered-folders/html/",
       "bundles/ordered-folders/raw/",

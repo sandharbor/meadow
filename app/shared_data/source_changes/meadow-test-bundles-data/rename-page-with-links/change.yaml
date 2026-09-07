@@ -1,0 +1,13 @@
+id: rename-page-with-links
+label: Rename a page and update its incoming link
+description: Rename the section page and update its incoming wiki link, as a
+  note editor would.
+sourceGraph: meadow-test-bundles-data
+operations:
+  - move:
+      from: t003 ---- page with section to link to.md
+      to: t003 ---- renamed section page.md
+  - replaceText:
+      path: t003 - link to section.md
+      before: "[[t003 ---- page with section to link to#Section 2]]"
+      after: "[[t003 ---- renamed section page#Section 2]]"

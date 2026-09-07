@@ -67,6 +67,20 @@ export class BundleEditorPage {
     await this.expect(this.graphViewBtn).toBeVisible();
   }
 
+  async expectSourceUpdateInToolbar() {
+    const status = this.page.getByTestId('sourcing-status');
+    await this.expect(status.getByRole('status')).toHaveText('Updating sources');
+    await this.expect(status.locator('.animate-spin')).toBeVisible();
+    const statusBox = await status.boundingBox();
+    const menuBox = await this.page.getByTitle('Bundle options', { exact: true }).boundingBox();
+    this.expect(statusBox).not.toBeNull();
+    this.expect(menuBox).not.toBeNull();
+    this.expect(statusBox!.x + statusBox!.width).toBeLessThanOrEqual(menuBox!.x);
+    this.expect(Math.abs(statusBox!.y + statusBox!.height / 2 - menuBox!.y - menuBox!.height / 2)).toBeLessThan(2);
+    await this.expect(this.page.getByText('Curation', { exact: true })).not.toBeVisible();
+    await this.expect(this.page.getByText('Sourcing', { exact: true })).not.toBeVisible();
+  }
+
   async clickPreview() {
     const previewButton = this.page.locator("button", { hasText: "Preview" });
     await this.expect(previewButton).toBeVisible();
@@ -401,33 +415,46 @@ export class BundleEditorPage {
   }
 
   // ---------------------------------------------------------------------------
-  // Orphaned pages callout
+  // Source updates and orphan review
   // ---------------------------------------------------------------------------
 
-  private get orphansBanner() {
-    return this.page.getByTestId("orphans-banner");
+  async waitForSourceCheck() {
+    await this.expect(this.page.getByTestId('sourcing-status').getByRole('button', { name: /^(Update sources|\d+ source changes? available.*Review)$/ })).toBeVisible();
   }
 
-  private get orphansBannerCount() {
-    return this.page.getByTestId("orphans-banner-count");
+  async checkSourceChanges() {
+    await this.waitForSourceCheck();
+    const update = this.page.getByRole('button', { name: 'Update sources', exact: true });
+    if (await update.isVisible()) {
+      await update.click();
+      await this.waitForSourceCheck();
+      return;
+    }
+    await this.page.getByTestId('sourcing-status').getByRole('button').click();
+    const dialog = this.page.getByRole('dialog', { name: 'Source review' });
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().includes('/sourcing/scan') && response.request().method() === 'POST' && response.ok()),
+      dialog.getByRole('button', { name: 'Check again', exact: true }).click(),
+    ]);
+    await this.expect(dialog.getByRole('button', { name: 'Check again', exact: true })).toBeEnabled();
+    await dialog.getByRole('button', { name: 'Later', exact: true }).click();
+    await this.waitForSourceCheck();
   }
 
-  private get reviewOrphanedPagesBtn() {
-    return this.page.getByTestId("review-orphans-button");
+  async expectSourceOrphanCount(count: number) {
+    await this.waitForSourceCheck();
+    await this.expect(this.page.getByTestId('sourcing-status')).toHaveAttribute('data-orphan-count', String(count));
+    await this.expect(this.page.getByTestId('orphans-banner')).not.toBeVisible();
   }
 
-  async expectOrphansBannerCount(count: number) {
-    await this.expect(this.orphansBanner).toBeVisible();
-    await this.expect(this.orphansBannerCount).toContainText(String(count));
-  }
-
-  async clickReviewOrphanedPages() {
-    await this.expect(this.reviewOrphanedPagesBtn).toBeVisible();
-    await this.reviewOrphanedPagesBtn.click();
-  }
-
-  async expectOrphansBannerNotVisible() {
-    await this.expect(this.orphansBanner).not.toBeVisible();
+  async reviewSourceOrphans() {
+    const dialog = this.page.getByRole('dialog', { name: 'Source review' });
+    if (!await dialog.isVisible()) {
+      await this.waitForSourceCheck();
+      await this.page.getByTestId('sourcing-status').getByRole('button').click();
+    }
+    const section = dialog.getByTestId('source-orphans');
+    if (!await section.getByTestId('orphans-view').isVisible()) await section.locator('summary').first().click();
   }
 
   // ---------------------------------------------------------------------------

@@ -74,6 +74,8 @@ test("tracks a depth-three frontier image in a folder-derived bundle", async ({
       "bundles/single-folder-bundle/config/generated_bundle_versions.yaml",
     ],
     allowedUntracked: [
+      "bundles/single-folder-bundle/raw/generation_inputs/",
+
       "bundles/single-folder-bundle/build/",
       "bundles/single-folder-bundle/html/",
       "bundles/single-folder-bundle/raw/",

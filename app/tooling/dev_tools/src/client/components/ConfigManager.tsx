@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { SourceChangesControl } from './SourceChangesControl.js';
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { ConfigMode, ConfigFixture, PublishingProviderConfProfile } from '../../shared/types';
 import { ConfigModeHelper } from '../../shared/helpers/ConfigModeHelper';
@@ -260,6 +262,7 @@ const ConfigManager: React.FC = () => {
     return (
       <div
         key={option.id}
+        data-testid={`fixture-card-${option.id}`}
         className={`rounded-lg border p-4 transition-all ${option.colorClass} ${
           isActive ? option.activeColorClass : ''
         }`}
@@ -394,6 +397,9 @@ const ConfigManager: React.FC = () => {
             )}
           </div>
         </div>
+        {isFixture && fixtures.find(fixture => fixture.folderName === option.id)?.hasSourceChanges && (
+          <SourceChangesControl key={`${option.id}:${actionLoading ?? "ready"}`} fixtureName={option.id} active={isActive} />
+        )}
       </div>
     );
   };

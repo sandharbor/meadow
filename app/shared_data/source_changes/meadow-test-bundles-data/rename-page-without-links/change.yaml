@@ -1,0 +1,9 @@
+id: rename-page-without-links
+label: Rename a page without updating links
+description: Leave the old link behind. The source identity may be preserved
+  even though the page becomes unreachable.
+sourceGraph: meadow-test-bundles-data
+operations:
+  - move:
+      from: t003 ---- page with section to link to.md
+      to: t003 ---- renamed section page.md

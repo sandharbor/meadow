@@ -15,18 +15,21 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { BundleEditorPage, OrphansModal } from "../src/run/pages/index.js";
+import { BundleEditorPage, SourceOrphansReview } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { orphan, callout } from "../../../concepts/index.js";
+import { orphan, sourceSnapshot } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const EXPECTED_ORPHAN_COUNT = 13;
+test.use({ isolateSourceGraphs: true });
+
 const CHILD_OF_BLACKLISTED = "t007 ---- child of blacklisted page";
 
 test.use({ bundleMode: "single-file" });
 
-test("Callout banner warns about orphaned pages in bundle config", async ({
+test("Sourcing reviews existing and candidate orphans with reversible individual and bulk removal", async ({
   page,
+  sourceChanges,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
@@ -36,22 +39,44 @@ test("Callout banner warns about orphaned pages in bundle config", async ({
   await snapshot("bundle editor loaded");
 
   const editor = new BundleEditorPage(page, expect);
-  await editor.expectOrphansBannerCount(EXPECTED_ORPHAN_COUNT);
-  await addKeyFrame(callout);
-  await snapshot("orphans callout banner visible");
+  await editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT);
+  await addKeyFrame(sourceSnapshot);
+  await snapshot("source toolbar counts existing orphans without a separate banner");
 
-  await editor.clickReviewOrphanedPages();
-  const orphansModal = new OrphansModal(page, expect);
+  await editor.reviewSourceOrphans();
+  const orphansModal = new SourceOrphansReview(page, expect);
   await orphansModal.waitForOpen();
   await orphansModal.expectOrphanCount(EXPECTED_ORPHAN_COUNT);
   await orphansModal.expectOrphanListed(CHILD_OF_BLACKLISTED);
   await addKeyFrame(orphan);
   await snapshot("orphans review modal lists unreachable config pages");
 
+  const existingRow = page.getByTestId(`orphan-row-${CHILD_OF_BLACKLISTED}`);
+  await existingRow.getByRole('button', { name: 'Remove from config', exact: true }).click();
+  await expect(existingRow).toContainText('Will be removed');
+  await existingRow.getByRole('button', { name: 'Undo removal', exact: true }).click();
   await orphansModal.clickRemoveAllFromConfig();
+  await page.getByRole('button', { name: 'Later', exact: true }).click();
+  await editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT);
+  await editor.reviewSourceOrphans();
+  await expect(page.getByTestId('remove-all-orphans')).toHaveText('Undo all removals');
+  await addKeyFrame(orphan);
+  await orphansModal.applyRemovals();
   await orphansModal.expectClosed();
-  await editor.expectOrphansBannerNotVisible();
-  await snapshot("orphans callout and modal gone after remove all");
+  await editor.expectSourceOrphanCount(0);
+  await snapshot("source review applies all configuration removals");
+  await sourceChanges.apply('remove-incoming-link');
+  await editor.checkSourceChanges();
+  await expect(page.getByTestId('sourcing-status').getByRole('button')).toHaveText('2 source changes available – Review');
+  await editor.reviewSourceOrphans();
+  const newOrphan = page.getByTestId('orphan-row-t001 ---- child 2');
+  await newOrphan.getByText('Why is this orphaned?', { exact: true }).click();
+  await expect(newOrphan).toContainText('no longer connects');
+  await newOrphan.getByRole('button', { name: 'Remove from config', exact: true }).click();
+  await addKeyFrame(orphan);
+  await snapshot('candidate orphan can be removed in the same review as its broken link');
+  await page.getByRole('button', { name: 'Accept source update', exact: true }).click();
+  await editor.expectSourceOrphanCount(0);
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

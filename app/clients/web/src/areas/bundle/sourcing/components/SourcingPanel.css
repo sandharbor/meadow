@@ -1,0 +1,6 @@
+/* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
+
+@keyframes source-update-sweep {
+  from { transform: translateX(0); }
+  to { transform: translateX(200%); }
+}

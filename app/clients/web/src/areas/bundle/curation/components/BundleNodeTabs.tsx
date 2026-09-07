@@ -22,8 +22,6 @@ import { IFilter, calculateOptimalGapThreshold, createOutlinkDiscrepancySelector
 import { DisplayGraph } from '../types/displayGraph';
 import GraphVis from './GraphVis';
 import ListView from './ListView';
-import OrphansView from './OrphansView';
-import { OrphansBanner } from './OrphansBanner';
 import FilterPanel from './FilterPanel';
 import BundleNodeSelectionSidebar from './BundleNodeSelectionSidebar';
 import BundleNodeTabsDropdown from './BundleNodeTabsDropdown';
@@ -32,7 +30,7 @@ import EmptySoloCallout from './EmptySoloCallout';
 import BundlePagesToggle from './BundlePagesToggle';
 import ResizableSidebar from './ResizableSidebar';
 import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig';
-import { buildNodeConfigs, getOrphanNodeConfigs } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils';
+import { buildNodeConfigs } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import Modal from '../../../../shared/components/Modal';
 import { AppConfig } from '../../../../../../../contracts/types/appConfig';
 import { logger } from '../../../../shared/utils/logger';
@@ -61,13 +59,12 @@ interface BundleNodeTabsProps {
   hasDraftChanges: boolean;
   bundleSlug: string;
   onRefresh: () => void;
+  onSourceChanged?: () => void;
   onRefreshNodeConfigs: () => void;
   untrackedNodeCount: number;
   graphUpdateTrigger: number;
   bundleNodeConfigs: BundleNodeConfig[] | null;
   protectedBundleNodeIds: Set<string>;
-  onRemoveOrphanConfig: (config: BundleNodeConfig) => Promise<void>;
-  onRemoveAllOrphanConfigs: () => Promise<void>;
 }
 
 type ViewType = 'graph' | 'list';
@@ -89,13 +86,12 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   hasDraftChanges,
   bundleSlug,
   onRefresh,
+  onSourceChanged,
   onRefreshNodeConfigs,
   untrackedNodeCount,
   graphUpdateTrigger,
   bundleNodeConfigs,
   protectedBundleNodeIds,
-  onRemoveOrphanConfig,
-  onRemoveAllOrphanConfigs,
 }) => {
   const [activeView, setActiveView] = useState<ViewType>(() => {
     const stored = sessionStorage.getItem('graphActiveView');
@@ -104,24 +100,11 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     }
     return 'graph';
   });
-  const [isOrphansModalOpen, setIsOrphansModalOpen] = useState(false);
   const isFolderBasedBundle = useIsFolderBasedBundle(graph, entryBundleNodeId, graphUpdateTrigger);
 
   useEffect(() => {
     sessionStorage.setItem('graphActiveView', activeView);
   }, [activeView]);
-
-  const orphanConfigs = useMemo(() => {
-    if (!bundleNodeConfigs) return [];
-    return getOrphanNodeConfigs(bundleNodeConfigs, graph.getAllNodes());
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- graphUpdateTrigger forces recompute when graph is mutated in-place
-  }, [bundleNodeConfigs, graph, graphUpdateTrigger]);
-
-  useEffect(() => {
-    if (orphanConfigs.length === 0) {
-      setIsOrphansModalOpen(false);
-    }
-  }, [orphanConfigs.length]);
 
   const untrackProtectedBundleNodeIds = useMemo(() => {
     const ids = new Set(protectedBundleNodeIds);
@@ -595,11 +578,8 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
         return;
       }
 
-      // Update the page in memory
-      page.sensitive = isSensitive;
-
-      // Force re-render to reflect changes
-      forceReRender();
+      // The source edit becomes effective in this bundle when its snapshot is accepted.
+      onSourceChanged?.();
 
     } catch (error) {
       logger.error('Error calling sensitive API:', error);
@@ -703,10 +683,6 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
         />
       </ResizableSidebar>
       <div className="flex min-w-0 flex-1 flex-col">
-        <OrphansBanner
-          orphanCount={orphanConfigs.length}
-          onReview={() => setIsOrphansModalOpen(true)}
-        />
         <div className="border-b bg-white">
           <nav className="flex items-center justify-between">
             <div className="flex">
@@ -932,20 +908,6 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
           />
         );
       })()}
-
-      {/* Orphaned pages modal */}
-      <Modal
-        isOpen={isOrphansModalOpen}
-        onClose={() => setIsOrphansModalOpen(false)}
-        title="Orphaned Pages"
-        className="max-w-4xl w-full"
-      >
-        <OrphansView
-          orphanConfigs={orphanConfigs}
-          onRemoveConfig={onRemoveOrphanConfig}
-          onRemoveAllConfigs={onRemoveAllOrphanConfigs}
-        />
-      </Modal>
 
       {/* Consent Modal for meadow-sensitive property */}
       <Modal

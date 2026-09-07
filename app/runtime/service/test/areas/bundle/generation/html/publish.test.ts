@@ -157,7 +157,7 @@ describe('html publish', () => {
     expect(zippedMarkdown).not.toContain('<!--SR:!2026-03-12,3,250-->');
   });
 
-  it('should backfill missing SRS GUIDs into tracked source files before syncing tracked markdown', async () => {
+  it('derives stable SRS GUIDs in generation material without modifying its source snapshot', async () => {
     const bundleConfigPath = path.join(bundlePath, 'config/bundle_config.yaml');
     fs.appendFileSync(
       bundleConfigPath,
@@ -204,13 +204,16 @@ describe('html publish', () => {
     const sourceMainPagePath = path.join(sourceDir, 'main page.md');
     const sourceMainMarkdown = fs.readFileSync(sourceMainPagePath, 'utf8');
     const sourceGuidMatch = sourceMainMarkdown.match(/<!--MEADOW_SR_GUID:([a-f0-9]{13})-->/);
-    expect(sourceGuidMatch).not.toBeNull();
-    expect(sourceMainMarkdown).toContain(`<!--SR:!2026-03-12,3,250-->\n\n<!--MEADOW_SR_GUID:${sourceGuidMatch![1]}-->`);
+    expect(sourceGuidMatch).toBeNull();
+    expect(sourceMainMarkdown).toContain('<!--SR:!2026-03-12,3,250-->');
     expect(fs.statSync(sourceMainPagePath).mode & 0o777).toBe(0o640);
 
     const trackedMainPagePath = path.join(bundlePath, 'raw', 'tracked_page_content', 'main page.md');
     const trackedMainMarkdown = fs.readFileSync(trackedMainPagePath, 'utf8');
-    expect(trackedMainMarkdown).toContain(`<!--MEADOW_SR_GUID:${sourceGuidMatch![1]}-->`);
+    const trackedGuidMatch = trackedMainMarkdown.match(/<!--MEADOW_SR_GUID:([a-f0-9]{13})-->/);
+    expect(trackedGuidMatch).not.toBeNull();
+    await ensureTrackedPageContent(bundlePath, sourceDir);
+    expect(fs.readFileSync(trackedMainPagePath, 'utf8')).toBe(trackedMainMarkdown);
 
     const sourceAnotherMarkdown = fs.readFileSync(path.join(sourceDir, 'another page.md'), 'utf8');
     expect(sourceAnotherMarkdown).not.toContain('<!--MEADOW_SR_GUID:');
@@ -224,7 +227,7 @@ describe('html publish', () => {
     await createPreviewFolder();
 
     const previewHtml = fs.readFileSync(path.join(getGeneratedBundleTestOutputDirectory(bundlePath), 'main page.html'), 'utf8');
-    expect(previewHtml).toContain(`<meadow-srs-card guid="${sourceGuidMatch![1]}" kind="basic">`);
+    expect(previewHtml).toContain(`<meadow-srs-card guid="${trackedGuidMatch![1]}" kind="basic">`);
     expect(previewHtml).toContain('<meadow-srs-prompt>What color is the sky?</meadow-srs-prompt>');
     expect(previewHtml).toContain('<meadow-srs-answer>Blue</meadow-srs-answer>');
     expect(previewHtml).not.toContain('<!--SR:!2026-03-12,3,250-->');

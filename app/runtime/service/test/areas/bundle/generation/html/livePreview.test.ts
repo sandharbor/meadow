@@ -21,6 +21,8 @@ import { execFileSync } from 'child_process';
 import type { Server } from 'http';
 import express from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { loadAppConfig, saveAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
+import { initializeSourcing } from '../../../../../src/shared/source-snapshot/sourceSnapshots.js';
 import generationRoutes, { type PreviewProgress } from '../../../../../src/areas/bundle/generation/routes/bundleGenerationRoutes.js';
 import reviewRoutes from '../../../../../src/areas/bundle/review/routes/reviewRoutes.js';
 import { generateHtmlForBundle } from '../../../../../src/areas/bundle/generation/html/htmlService.js';
@@ -72,10 +74,17 @@ describe('live preview during atomic version generation', () => {
     home = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-live-preview-'));
     bundleDirectory = path.join(home, 'bundles', 'example');
     fs.mkdirSync(path.join(bundleDirectory, 'config'), { recursive: true });
-    fs.writeFileSync(path.join(bundleDirectory, 'config', 'bundle_config.yaml'), 'bundleGuid: abc1234\n');
+    const source = path.join(home, 'source');
+    fs.mkdirSync(source);
+    fs.writeFileSync(path.join(source, 'Selected page.md'), '# Selected page');
+    fs.writeFileSync(path.join(bundleDirectory, 'config', 'bundle_config.yaml'),
+      `bundleGuid: abc1234\nsourceDirectory: ${source}\nentryBundleNodeId: abc123abc123\ndefaultTraversalBundleNodeId: abc123abc123\n`);
+    fs.writeFileSync(path.join(bundleDirectory, 'config', 'bundle_node_config.yaml'),
+      'nodes:\n  - bundleNodeName: Selected page\n    bundleNodeKind: file\n    bundleNodeId: abc123abc123\n    fileType: md\n    listType: whitelist\n');
     execFileSync('git', ['init', '-b', 'main'], { cwd: home });
     vi.stubEnv('MEADOW_HOME_DIRECTORY_OVERRIDE', home);
     vi.stubEnv('MEADOW_API_CAPABILITY', 'test-preview-capability');
+    await initializeSourcing(bundleDirectory);
     finish = deferred();
     failRender = false;
     vi.mocked(generateHtmlForBundle).mockImplementation(async (_directory, options) => {
@@ -135,6 +144,19 @@ describe('live preview during atomic version generation', () => {
     expect(remaining.at(-1)).toMatchObject({ stage: 'complete', result: { traversalPageUrl: url } });
     expect(currentGeneratedBundleVersionDirectory(bundleDirectory)).not.toBeNull();
     expect(await (await fetch(url)).text()).toContain('New selected page');
+  });
+
+  it.each([
+    { label: 'a UI callout dismissal', changes: { calloutDismissals: { customizeSidebarAutoShown: true } }, expected: 'complete' },
+    { label: 'a generation option', changes: { generationHoverPreviewEnabled: true }, expected: 'error' },
+  ])('validates generation inputs when $label changes during rendering', async ({ changes, expected }) => {
+    const { events } = await openPreview();
+    saveAppConfig({ ...loadAppConfig(home), ...changes }, home);
+    finish.resolve();
+    const remaining: PreviewProgress[] = [];
+    for await (const event of events) remaining.push(event);
+    expect(remaining.at(-1)?.stage).toBe(expected);
+    expect(currentGeneratedBundleVersionDirectory(bundleDirectory) !== null).toBe(expected === 'complete');
   });
 
   it('serves complete HTML when generation grows a page before streaming starts', async () => {

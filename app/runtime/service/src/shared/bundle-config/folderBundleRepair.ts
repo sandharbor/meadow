@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { acceptedSourceRoot, loadSourcingState } from '../source-snapshot/sourceSnapshots.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
@@ -99,12 +100,13 @@ export interface SelectedFolderRelinkPreflight {
 
 type RunWorkingGraph = typeof runWorkingGraphRaw;
 
-function loadFolderBundle(bundleDirectory: string): LoadedFolderBundle {
+function loadFolderBundle(bundleDirectory: string, useAcceptedSnapshot = false): LoadedFolderBundle {
   const nodeConfigPath = path.join(bundleDirectory, 'config', 'bundle_node_config.yaml');
   const bundleConfigPath = path.join(bundleDirectory, 'config', 'bundle_config.yaml');
   const originalNodeConfig = fs.readFileSync(nodeConfigPath, 'utf8');
   const nodes = parseBundleNodeConfig(originalNodeConfig, nodeConfigPath);
   const bundleConfig = YAML.parse(fs.readFileSync(bundleConfigPath, 'utf8')) as BundleConfig;
+  if (useAcceptedSnapshot && loadSourcingState(bundleDirectory)) bundleConfig.sourceDirectory = acceptedSourceRoot(bundleDirectory);
   return folderBundleFromConfiguration(
     bundleDirectory,
     bundleConfig,
@@ -181,7 +183,7 @@ function repairStatusForLoaded(loaded: LoadedFolderBundle): FolderBundleRepairSt
 }
 
 export function getFolderBundleRepairStatus(bundleDirectory: string): FolderBundleRepairStatus {
-  return repairStatusForLoaded(loadFolderBundle(bundleDirectory));
+  return repairStatusForLoaded(loadFolderBundle(bundleDirectory, true));
 }
 
 /** Avoid re-reading a bundle configuration that the caller has already validated. */
@@ -190,7 +192,9 @@ export function getFolderBundleRepairStatusFromConfiguration(
   bundleConfig: BundleConfig,
   nodes: BundleNodeConfig[],
 ): FolderBundleRepairStatus {
-  return repairStatusForLoaded(folderBundleFromConfiguration(bundleDirectory, bundleConfig, nodes));
+  const sourceConfig = loadSourcingState(bundleDirectory)
+    ? { ...bundleConfig, sourceDirectory: acceptedSourceRoot(bundleDirectory) } : bundleConfig;
+  return repairStatusForLoaded(folderBundleFromConfiguration(bundleDirectory, sourceConfig, nodes));
 }
 
 function candidateNodes(loaded: LoadedFolderBundle, bundleNodeId: BundleNodeId, selectedFolder: string): {

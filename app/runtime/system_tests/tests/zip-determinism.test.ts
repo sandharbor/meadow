@@ -94,7 +94,8 @@ describe('Generated archive determinism', () => {
     it('produces byte-identical ZIPs across two consecutive preview runs', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
       async function runPreviewAndReadZip(): Promise<{ filename: string; bytes: Buffer }> {
-        const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
+        await testSetup!.captureInitialSourceSnapshot();
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);
@@ -148,7 +149,8 @@ describe('Generated archive determinism', () => {
     it('produces byte-identical gzipped assets and stable URL hashes across two runs', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
       async function runPreviewAndReadGzipped(): Promise<Map<string, Buffer>> {
-        const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
+        await testSetup!.captureInitialSourceSnapshot();
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
           method: 'POST'
         });
         expect(response.ok).toBe(true);

@@ -55,7 +55,7 @@ export const callout = defineMeadowConcept({
   mechanics: [
     conceptText`A callout remains tied to the condition that produced it and offers only actions that can resolve or inspect that condition.`,
   ],
-  interplay: conceptText`Callouts surface conditions such as ${conceptLink(coreConceptIds.orphan, "Orphaned Bundle Pages")}, ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, untracked pages before generation, and failures handled by ${conceptLink(coreConceptIds.startupRecovery, "Safe Startup Recovery")}.`,
+  interplay: conceptText`Callouts surface conditions such as ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, untracked pages before generation, and failures handled by ${conceptLink(coreConceptIds.startupRecovery, "Safe Startup Recovery")}.`,
 });
 
 export const filters = defineMeadowConcept({
@@ -150,19 +150,6 @@ export const links = defineMeadowConcept({
   interplay: conceptText`Link inspection explains ${conceptLink(coreConceptIds.paths, "Curation Paths")} and can expose pages that lie at the ${conceptLink(coreConceptIds.frontier, "Frontier")}.`,
 });
 
-export const orphan = defineMeadowConcept({
-  id: coreConceptIds.orphan,
-  name: "Orphaned Bundle Page",
-  aliases: ["Orphan", "Orphaned Bundle Pages"],
-  kind: "state",
-  appAreaIds: curationArea,
-  definition: conceptText`A page with durable bundle configuration that is no longer reachable in the current working graph.`,
-  mechanics: [
-    conceptText`Orphan review identifies the stale configuration and offers explicit removal rather than silently discarding it.`,
-  ],
-  interplay: conceptText`A ${conceptLink(coreConceptIds.callout, "Curation Callout")} makes the inconsistency visible while preserving reviewability of the configured state.`,
-});
-
 export const overrides = defineMeadowConcept({
   id: coreConceptIds.overrides,
   name: "Page Configuration Override",
@@ -238,7 +225,6 @@ export const curationConcepts = [
   labels,
   linkGap,
   links,
-  orphan,
   overrides,
   paths,
   sensitive,

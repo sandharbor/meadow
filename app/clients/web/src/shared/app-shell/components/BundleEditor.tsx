@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { SourcingPanel } from '../../../areas/bundle/sourcing/components/SourcingPanel.js';
+
 /* global alert */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiRequest } from '../../utils/apiClient';
@@ -27,7 +29,7 @@ import PreviewPublishModal from './PreviewPublishModal';
 import type { OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
 import { useFilterState, createUntrackedNodeSelector } from '../../../areas/bundle/curation/types/filters';
 import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig';
-import { nodeConfigMatchesNode, bundleNodeLocatorKey, getOrphanNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
+import { nodeConfigMatchesNode } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { applySensitiveFromApiData, applyNodeConfigsToNodes, buildNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { getActiveFrontendProvider } from '../../publishing-provider-host/providerRegistry';
 import { fetchBundleEditData, BundleEditData } from '../../utils/bundleApi';
@@ -42,6 +44,8 @@ import RenameBundleModal from '../../bundle-management/RenameBundleModal';
 const BundleEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigateInApp = useAppNavigation('bundleEditor');
+  const [sourceChangeTrigger, setSourceChangeTrigger] = useState(0);
+  const [sourceReviewTrigger, setSourceReviewTrigger] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
   const [graph, setGraph] = useState<Graph | null>(null);
   const [filters, setFilters, reloadCustomFilters] = useFilterState(slug || '');
@@ -537,80 +541,6 @@ const BundleEditor: React.FC = () => {
     return [...currentConfigs, ...preservedConfigs].sort((a, b) => a.bundleNodeName.localeCompare(b.bundleNodeName));
   }, [graph, bundleNodeConfigs]);
 
-  const buildMergedNodeConfigsFrom = useCallback((configs: BundleNodeConfig[]): BundleNodeConfig[] => {
-    if (!graph) return configs;
-
-    const allNodes = graph.getAllNodes();
-    const currentConfigs = buildNodeConfigs(allNodes);
-    const preservedConfigs = configs.filter(cfg => {
-      const hasMatchingNodeInCurrentGraph = allNodes.some(node =>
-        nodeConfigMatchesNode(
-          cfg,
-          node.bundleNodeName,
-          node.sourceGraphSubdirectory,
-          node.fileType,
-          node.bundleNodeKind,
-          node.bundleNodeId,
-        )
-      );
-      return !hasMatchingNodeInCurrentGraph;
-    });
-
-    return [...currentConfigs, ...preservedConfigs].sort((a, b) => a.bundleNodeName.localeCompare(b.bundleNodeName));
-  }, [graph]);
-
-  const persistUpdatedBundleNodeConfigs = useCallback(async (updatedBundleNodeConfigs: BundleNodeConfig[]) => {
-    setBundleNodeConfigs(updatedBundleNodeConfigs);
-
-    const nodeConfigs = buildMergedNodeConfigsFrom(updatedBundleNodeConfigs);
-    try {
-      if (!hasDraftChanges) {
-        const response = await apiRequest(`bundles/${slug || ''}/curation/bundle-config`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ configs: nodeConfigs, isDraft: false })
-        });
-        if (!response.ok) throw new Error('Failed to save configuration');
-        checkDraftStatus();
-      } else {
-        await apiRequest(`bundles/${slug || ''}/curation/bundle-config`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ configs: nodeConfigs, isDraft: true })
-        });
-        checkDraftStatus();
-      }
-    } catch (error) {
-      logger.error('Error saving bundle page configuration:', error);
-    }
-  }, [buildMergedNodeConfigsFrom, hasDraftChanges, slug, checkDraftStatus]);
-
-  const handleRemoveOrphanConfig = useCallback(async (config: BundleNodeConfig) => {
-    if (!graph || !bundleNodeConfigs) return;
-
-    const keyToRemove = bundleNodeLocatorKey(config);
-    const updatedBundleNodeConfigs = bundleNodeConfigs.filter(cfg =>
-      bundleNodeLocatorKey(cfg) !== keyToRemove
-    );
-    await persistUpdatedBundleNodeConfigs(updatedBundleNodeConfigs);
-  }, [graph, bundleNodeConfigs, persistUpdatedBundleNodeConfigs]);
-
-  const handleRemoveAllOrphanConfigs = useCallback(async () => {
-    if (!graph || !bundleNodeConfigs) return;
-
-    const orphanKeys = new Set(
-      getOrphanNodeConfigs(bundleNodeConfigs, graph.getAllNodes()).map(cfg =>
-        bundleNodeLocatorKey(cfg)
-      )
-    );
-    if (orphanKeys.size === 0) return;
-
-    const updatedBundleNodeConfigs = bundleNodeConfigs.filter(cfg =>
-      !orphanKeys.has(bundleNodeLocatorKey(cfg))
-    );
-    await persistUpdatedBundleNodeConfigs(updatedBundleNodeConfigs);
-  }, [graph, bundleNodeConfigs, persistUpdatedBundleNodeConfigs]);
-
   // Save current configuration to draft
   const saveToDraft = useCallback(async () => {
     if (!graph) return;
@@ -1000,6 +930,9 @@ const BundleEditor: React.FC = () => {
     if (graphError) {
       return (
         <div className="w-full h-screen flex flex-col items-center justify-center p-8">
+          <SourcingPanel reviewTrigger={sourceReviewTrigger} onReviewOpened={() => setSourceReviewTrigger(0)} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+            setGraphError(null); setConfigChangeTrigger(previous => previous + 1);
+          }} />
           <div className="max-w-2xl w-full bg-danger-50 border border-danger-300 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-danger-700 mb-2">Failed to Load Bundle</h2>
             <pre className="text-sm text-danger-600 bg-danger-100 p-4 rounded overflow-auto whitespace-pre-wrap mb-4">
@@ -1070,6 +1003,10 @@ const BundleEditor: React.FC = () => {
               </button>
             </div>
           )}
+          <SourcingPanel reviewTrigger={sourceReviewTrigger} onReviewOpened={() => setSourceReviewTrigger(0)} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+            refreshBundleNodeConfigs();
+            reloadWorkingGraph();
+          }} />
           {/* Bundle menu dropdown */}
           <div className="relative" ref={bundleMenuRef}>
             <button
@@ -1082,6 +1019,15 @@ const BundleEditor: React.FC = () => {
             {isBundleMenuOpen && (
               <div className="absolute right-0 mt-1 w-48 bg-white border border-neutral-200 rounded-md shadow-lg z-50">
                 <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setSourceReviewTrigger(value => value + 1);
+                      setIsBundleMenuOpen(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
+                  >
+                    Source snapshots
+                  </button>
                   <DisabledTooltip disabled={!hasPublishedVersions} tooltip="Available after you publish" className="block">
                     <button
                       onClick={() => {
@@ -1249,7 +1195,7 @@ const BundleEditor: React.FC = () => {
         directories={directories}
       />
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <BundleNodeTabs
           graph={graph}
           entryBundleNodeId={entryBundleNodeId ?? undefined}
@@ -1268,12 +1214,11 @@ const BundleEditor: React.FC = () => {
           hasDraftChanges={hasDraftChanges}
           bundleSlug={slug || ''}
           onRefresh={reloadWorkingGraph}
+          onSourceChanged={() => setSourceChangeTrigger(value => value + 1)}
           onRefreshNodeConfigs={refreshBundleNodeConfigs}
           untrackedNodeCount={getUntrackedNodeCount()}
           bundleNodeConfigs={bundleNodeConfigs}
           protectedBundleNodeIds={new Set([entryBundleNodeId, defaultTraversalBundleNodeId].filter((id): id is string => id !== null))}
-          onRemoveOrphanConfig={handleRemoveOrphanConfig}
-          onRemoveAllOrphanConfigs={handleRemoveAllOrphanConfigs}
         />
       </div>
     </div>

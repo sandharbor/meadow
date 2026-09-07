@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { SourcingError, acceptedSourceRoot, loadSourceSnapshot, verifySourceSnapshot, loadSourcingState, sourceConfigFingerprint, withSourcingLock, writeSourcingJson } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+
 import express from 'express';
 import fs from 'fs';
 import path, { join } from 'path';
@@ -52,6 +54,7 @@ import {
   CLI_OPERATION_SCHEMA_VERSION,
 } from '../../../../../../../contracts/types/cliOperations.js';
 import { assessBundleBoundary } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
+import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import type { BundleBoundaryReviewRequest } from '../../../../../../../contracts/types/bundleBoundaryReview.js';
 
 const router = express.Router();
@@ -75,11 +78,51 @@ function sendGeneratingPreviewPage(res: express.Response): void {
 </head><body><div class="container"><div class="spinner"></div><h2>Generating Preview...</h2><p>This page is being rendered. It will load automatically when ready.</p></div></body></html>`);
 }
 
+function generationAppConfigFingerprint(config: ReturnType<typeof loadAppConfig>): string {
+  // UI preferences can be persisted while the first preview is still rendering.
+  // Only settings that affect generated material invalidate that render.
+  const otherInputs = new Set(['allowImagesToExtendToFrontier', 'globalStylePresetId', 'disableBaseStyleCss', 'disableBaseJavascriptJs']);
+  return JSON.stringify(Object.entries(config)
+    .filter(([key]) => key.startsWith('generation') || otherInputs.has(key))
+    .sort(([left], [right]) => left.localeCompare(right)));
+}
+
+async function withSnapshotGeneration<T>(bundleDirectory: string, action: (inputs: unknown, validate: () => void) => Promise<T>): Promise<T> {
+  return await withSourcingLock(bundleDirectory, async () => {
+    const sourceDirectory = acceptedSourceRoot(bundleDirectory);
+    verifySourceSnapshot(bundleDirectory, loadSourceSnapshot(bundleDirectory, loadSourcingState(bundleDirectory)!.acceptedId));
+    const fingerprint = sourceConfigFingerprint(bundleDirectory);
+    const appConfig = loadAppConfig(getConfigDirectory());
+    const inputs = {
+      sourceSnapshotId: loadSourcingState(bundleDirectory)!.acceptedId,
+      bundleConfig: loadBundleConfig(bundleDirectory),
+      nodeConfig: fs.readFileSync(BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory), 'utf8'),
+      appConfig,
+    };
+    const boundary = await assessBundleBoundary(path.basename(bundleDirectory));
+    if (boundary.reviewRequired) throw new Error('Source sensitivity requires review before generation.');
+    await ensureTrackedPageContent(bundleDirectory, sourceDirectory);
+    const validate = () => {
+      if (sourceConfigFingerprint(bundleDirectory) !== fingerprint
+        || generationAppConfigFingerprint(loadAppConfig(getConfigDirectory())) !== generationAppConfigFingerprint(appConfig)) {
+        throw new Error('Generation settings or curation changed during generation. Generate again with the saved settings.');
+      }
+    };
+    validate();
+    return await action(inputs, validate);
+  });
+}
+
+function saveGenerationInputs(bundleDirectory: string, versionId: string, inputs: unknown): void {
+  writeSourcingJson(path.join(bundleDirectory, 'raw/generation_inputs', `${versionId}.json`), inputs);
+}
+
 async function generateCurrentVersionHtml(
   bundleSlug: string,
   bundleDirectory: string,
   options: Omit<NonNullable<Parameters<typeof generateHtmlForBundle>[1]>, 'outputDirectory'>,
 ) {
+  return await withSnapshotGeneration(bundleDirectory, async (inputs, validateInputs) => {
   const operation = createBundleOperationLogger(bundleSlug, 'version-generate');
   let liveDirectory: string | undefined;
   operation.info('Started staging the current generated version');
@@ -102,9 +145,11 @@ async function generateCurrentVersionHtml(
         });
       },
       validate: () => {
+        validateInputs();
         if (options.shouldCancel?.()) throw new Error('Preview generation was superseded by a newer request');
       },
     });
+    saveGenerationInputs(bundleDirectory, result.versionId, inputs);
     operation.info(`${result.created ? 'Created first' : 'Regenerated current'} version ${result.versionId}; manifest and generated files installed atomically`);
     return result;
   } catch (error) {
@@ -118,6 +163,7 @@ async function generateCurrentVersionHtml(
   } finally {
     if (liveDirectory) clearLivePreview(bundleDirectory, liveDirectory);
   }
+  });
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -194,7 +240,7 @@ router.get('/bundles/:bundleSlug/generation/open-knowledge-format/log-page-optio
 
     const bundleConfig = loadBundleConfig(bundleDirectory);
     if (bundleConfig.sourceDirectory) {
-      await ensureTrackedPageContent(bundleDirectory, bundleConfig.sourceDirectory);
+      await withSourcingLock(bundleDirectory, () => ensureTrackedPageContent(bundleDirectory, acceptedSourceRoot(bundleDirectory)));
     }
 
     const rawQuery = typeof req.query.query === 'string' ? req.query.query : '';
@@ -215,6 +261,7 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
         return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
 
+      acceptedSourceRoot(getBundleDirectory(bundleSlug));
       const boundaryReview = await assessBundleBoundary(bundleSlug);
       if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
         const request = boundaryReview.reviewRequest;
@@ -251,23 +298,25 @@ router.post('/bundles/:bundleSlug/generation/versions', (req, res, next) => {
       if (body.notes !== undefined && typeof body.notes !== 'string') {
         return res.status(400).json({ error: 'notes must be a string' });
       }
-      const bundleConfig = loadBundleConfig(bundleDirectory);
-      if (bundleConfig.sourceDirectory) {
-        await ensureTrackedPageContent(bundleDirectory, bundleConfig.sourceDirectory);
-      }
       operation.info('Started creating a new local generated version');
-      const result = await createNewGeneratedBundleVersion(bundleDirectory, {
+      const result = await withSnapshotGeneration(bundleDirectory, async (inputs, validate) => {
+      const generated = await createNewGeneratedBundleVersion(bundleDirectory, {
+        validate,
         operationId: () => operation.operationId,
         onPhase: phase => operation.debug(`Reached ${phase}`),
-        notes: body.notes ?? '',
+        notes: typeof body.notes === 'string' ? body.notes : '',
         confirmedNoGeneratedChanges: body.confirmedNoGeneratedChanges === true,
         generate: async stagingDirectory => {
           await generateHtmlForBundle(bundleDirectory, { preview: true, outputDirectory: stagingDirectory });
         },
       });
+      saveGenerationInputs(bundleDirectory, generated.versionId, inputs);
+      return generated;
+      });
       operation.info(`Created version ${result.versionId}; predecessor ${result.manifest.versions.at(-2)?.versionId ?? 'none'} is frozen and the manifest is committed`);
       res.json({ success: true, versionId: result.versionId, operationId: operation.operationId });
     } catch (error) {
+      if (error instanceof SourcingError) return res.status(error.statusCode).json({ error: error.message });
       logger.error('Error creating generated bundle version:', error);
       const bundleSlug = req.params.bundleSlug;
       if (bundleSlug) {
@@ -299,6 +348,7 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
         return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
       }
 
+      acceptedSourceRoot(getBundleDirectory(bundleSlug));
       const boundaryReview = await assessBundleBoundary(bundleSlug);
       if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
         const request = boundaryReview.reviewRequest;
@@ -327,19 +377,6 @@ router.post('/bundles/:bundleSlug/generation/preview', (req, res, next) => {
               displayCommand: `meadow bundle node track ${bundleSlug} --id ${finding.bundleNodeId} --include-sensitive`,
             })),
         });
-      }
-
-      // Load bundle config to get source directory
-      const bundleConfig = loadBundleConfig(bundleDirectory);
-      
-      // Ensure tracked page content is populated from source directory
-      if (bundleConfig.sourceDirectory) {
-        const sourceDirectory = bundleConfig.sourceDirectory;
-        await timeAsync(
-          'bundle.preview.request.stage',
-          { stage: 'sync_tracked_page_content', bundle_slug: bundleSlug },
-          () => ensureTrackedPageContent(bundleDirectory, sourceDirectory)
-        );
       }
 
       // Generate HTML using TypeScript implementation
@@ -522,6 +559,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
         return;
       }
 
+      acceptedSourceRoot(getBundleDirectory(bundleSlug));
       const boundaryReview = await assessBundleBoundary(bundleSlug);
       if (boundaryReview.reviewRequired && boundaryReview.reviewRequest) {
         sendProgress({
@@ -545,19 +583,6 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
         sendProgress({ stage: 'error', message: `Bundle '${bundleSlug}' not found`, result: { success: false, error: `Bundle '${bundleSlug}' not found` } });
         res.end();
         return;
-      }
-
-      // Load bundle config to get source directory
-      const bundleConfig = loadBundleConfig(bundleDirectory);
-
-      // Ensure tracked page content is populated from source directory
-      if (bundleConfig.sourceDirectory) {
-        const sourceDirectory = bundleConfig.sourceDirectory;
-        await timeAsync(
-          'bundle.preview.request.stage',
-          { stage: 'sync_tracked_page_content', bundle_slug: bundleSlug },
-          () => ensureTrackedPageContent(bundleDirectory, sourceDirectory)
-        );
       }
 
       // Generate preview HTML ONLY (not published version)
@@ -755,7 +780,7 @@ router.get('/bundles/:bundleSlug/generation/source-file/*', (req, res, next) => 
       const yamlContent = fs.readFileSync(configPath, 'utf8');
       const config = YAML.parse(yamlContent) as { sourceDirectory?: string };
       if (config && typeof config.sourceDirectory === 'string') {
-        sourceDirectory = config.sourceDirectory;
+        sourceDirectory = acceptedSourceRoot(getBundleDirectory(bundleSlug));
       }
     } catch {
       return next(new Error(`Failed to load bundle configuration for ${bundleSlug}`));

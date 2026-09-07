@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
+import { Spinner } from '../../../../shared/components/Spinner.js';
 
 export type ProgressStatusProps = {
   message: string;
@@ -48,7 +49,7 @@ const ProgressStatus: React.FC<ProgressStatusProps> = ({
     <div className="text-sm text-neutral-500">
       <div className="flex items-center space-x-3">
         {showSpinner && (
-          <span className="animate-spin h-4 w-4 border-2 border-neutral-300 border-t-main-500 rounded-full inline-block" />
+          <Spinner />
         )}
         <span>{message}</span>
       </div>

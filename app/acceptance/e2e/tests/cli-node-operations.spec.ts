@@ -194,7 +194,7 @@ test("CLI supports every single-node inspection and curation operation by path o
     const sensitive = await meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "mark-sensitive", "notable-mental-models", "--id", nodeId,
     ], { artifactName: "mark-charlie-sensitive" });
-    expect(sensitive).toMatchObject({ changed: true, node: { sensitive: true } });
+    expect(sensitive).toMatchObject({ changed: true, node: { sensitive: false }, sourceUpdate: { sensitive: true, requiresSnapshotAcceptance: true } });
 
     const notSensitive = await meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "mark-not-sensitive", "notable-mental-models",

@@ -22,6 +22,7 @@ export * from "./acceptance.js";
 
 export * from "./bundle/appAreas.js";
 export * from "./bundle/bundles/concepts.js";
+export * from "./bundle/sourcing/concepts.js";
 export * from "./bundle/curation/concepts.js";
 export * from "./bundle/generation/concepts.js";
 export * from "./bundle/review/concepts.js";
@@ -32,6 +33,7 @@ export * from "./runtime/concepts.js";
 import { applicationConcepts } from "./application/concepts.js";
 import { appAreaConcepts } from "./bundle/appAreas.js";
 import { bundleCollectionConcepts } from "./bundle/bundles/concepts.js";
+import { sourcingConcepts } from "./bundle/sourcing/concepts.js";
 import { curationConcepts } from "./bundle/curation/concepts.js";
 import { generationConcepts } from "./bundle/generation/concepts.js";
 import { reviewConcepts } from "./bundle/review/concepts.js";
@@ -42,6 +44,7 @@ import type { AnyMeadowConcept } from "./types.js";
 
 export const acceptanceConcepts = [
   ...bundleCollectionConcepts,
+  ...sourcingConcepts,
   ...curationConcepts,
   ...generationConcepts,
   ...reviewConcepts,

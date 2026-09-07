@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import fs from 'fs';
+import { initializeSourcing } from '../../../shared/source-snapshot/sourceSnapshots.js';
 import path from 'path';
 import YAML from 'yaml';
 import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
@@ -47,6 +48,7 @@ export async function persistFolderBundleAtomically(input: FolderBundlePersisten
     });
     fs.writeFileSync(nodeConfigPath, stringifyBundleNodeConfig(input.nodes), 'utf8');
     fs.writeFileSync(bundleConfigPath, YAML.stringify(input.bundleConfig), 'utf8');
+    await initializeSourcing(input.stagingDirectory);
     fs.renameSync(input.stagingDirectory, input.bundleDirectory);
     exposed = true;
     await input.commit();

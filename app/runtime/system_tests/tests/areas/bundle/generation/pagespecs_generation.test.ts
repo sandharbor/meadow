@@ -223,6 +223,7 @@ describe('Runtime Pagespec Generation Validation', () => {
 
     await Promise.all(
       bundlesToCheck.map(async ({ setup }) => {
+        await setup.captureInitialSourceSnapshot();
         const bundleSlug = setup.getBundleSlug();
         const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
           method: 'POST',

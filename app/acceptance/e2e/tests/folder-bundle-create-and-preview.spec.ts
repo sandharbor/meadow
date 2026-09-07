@@ -130,6 +130,11 @@ test("previews a configured bundle from one recursively scanned folder", async (
       "bundles/single-folder-bundle/config/generated_bundle_versions.yaml",
     ],
     allowedUntracked: [
+      "bundles/single-folder-bundle/raw/folder_scope_snapshot.json",
+      "bundles/single-folder-bundle/raw/generation_inputs/",
+      "bundles/single-folder-bundle/raw/tracked_bundle_node_config.yaml",
+      "bundles/single-folder-bundle/raw/tracked_page_content/",
+
       "bundles/single-folder-bundle/build/",
       "bundles/single-folder-bundle/html/",
       "bundles/single-folder-bundle/raw/",

@@ -66,6 +66,11 @@ test("callout for marking source node sensitive the first time", async ({
   await editor.expectConsentModalNotVisible();
   await snapshot("second page marked sensitive without consent modal");
 
+  // Live source edits take effect in curation only after acceptance.
+  await page.getByRole('button', { name: /source changes? available.*Review/i }).click();
+  await page.getByRole('button', { name: 'Accept source update' }).click();
+  await expect(page.getByRole('dialog', { name: 'Source review' })).not.toBeVisible();
+
   // Solo the sensitive pages
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.clickSoloOnFilter("Sensitive");
@@ -95,6 +100,10 @@ test("callout for marking source node sensitive the first time", async ({
   await editor.clickMarkNotSensitive();
   await page.waitForTimeout(500);
   await snapshot("two pages unmarked as sensitive");
+
+  await page.getByRole('button', { name: /source changes? available.*Review/i }).click();
+  await page.getByRole('button', { name: 'Accept source update' }).click();
+  await expect(page.getByRole('dialog', { name: 'Source review' })).not.toBeVisible();
 
   // Solo sensitive pages again, select all - the source-sensitive page remains.
   await filterPanel.clickSoloOnFilter("Sensitive");

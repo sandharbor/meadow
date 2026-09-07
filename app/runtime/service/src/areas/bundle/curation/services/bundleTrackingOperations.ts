@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { separateTrackingEvidence, trackingRecordsPath } from '../../../../shared/bundle-node/trackingRecords.js';
+
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -55,6 +57,8 @@ import {
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { loadWorkingGraph } from '../../../../shared/bundle-graph/workingGraphService.js';
+
+import { acceptedSourceRoot, initializeSourcing, loadSourceSnapshot, loadSourcingState, rememberReachableProvenance, snapshotGraph } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 export type TrackBundleNodesOptions =
   | { mode: 'targeted'; nodeKeys: string[] }
@@ -135,6 +139,8 @@ export async function persistBundleNodeConfigsAtomically(options: {
   topologyChanged?: boolean;
 }): Promise<void> {
   const bundleDirectory = getBundleDirectory(options.slug);
+  await initializeSourcing(bundleDirectory);
+  options = { ...options, sourceDirectory: acceptedSourceRoot(bundleDirectory) };
   const configPath = getBundleConfigPath(options.slug, 'bundle_node_config.yaml');
   const rawDirectory = getBundleRawDirectory(options.slug);
   const snapshotDirectory = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
@@ -180,6 +186,8 @@ export async function persistBundleNodeConfigsAtomically(options: {
     // The graph rebuild below rewrites this snapshot, so include it in rollback.
     snapshotActions.set(folderScopeSnapshotPath, folderScopeSnapshotPath);
   }
+  const trackingPath = trackingRecordsPath(bundleDirectory);
+  snapshotActions.set(trackingPath, trackingPath);
   const rollbackFiles = new Map<string, string | null>();
   let rollbackFileIndex = 0;
   for (const targetPath of snapshotActions.keys()) {
@@ -209,7 +217,7 @@ export async function persistBundleNodeConfigsAtomically(options: {
       });
     }
     for (const [targetPath, sourcePath] of snapshotActions) {
-      if (targetPath === folderScopeSnapshotPath) continue;
+      if (targetPath === folderScopeSnapshotPath || targetPath === trackingPath) continue;
       if (sourcePath === null) {
         fs.rmSync(targetPath, { force: true });
         continue;
@@ -225,7 +233,9 @@ export async function persistBundleNodeConfigsAtomically(options: {
       effectivelySensitiveByNodeId: options.effectivelySensitiveByNodeId ?? new Map(),
       trackedAt: options.trackedAt ?? new Date().toISOString(),
     });
-    saveBundleNodeConfigDocument(configPath, options.configs);
+    saveBundleNodeConfigDocument(configPath, separateTrackingEvidence(bundleDirectory, options.configs));
+    const accepted = loadSourceSnapshot(bundleDirectory, loadSourcingState(bundleDirectory)!.acceptedId);
+    rememberReachableProvenance(bundleDirectory, accepted, await snapshotGraph(bundleDirectory, accepted, options.configs), options.configs);
     if (options.topologyChanged !== false && fs.existsSync(folderScopeSnapshotPath)) {
       await loadWorkingGraph({ bundleSlug: options.slug });
     }

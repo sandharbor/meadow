@@ -1,3 +1,5 @@
+import sourcingRoutes from '../../areas/bundle/sourcing/routes/sourcingRoutes.js';
+import { acceptedSourceRoot, SourcingError } from '../source-snapshot/sourceSnapshots.js';
 /*
 Copyright 2026 Sand Harbor Software, LLC
 
@@ -95,7 +97,7 @@ import {
 const app = express();
 
 configureBundleRenameGenerationOperations({
-  refreshTrackedContent: ensureTrackedPageContent,
+  refreshTrackedContent: (bundleDirectory) => ensureTrackedPageContent(bundleDirectory, acceptedSourceRoot(bundleDirectory)),
   generateHtml: (bundleDirectory, outputDirectory) => generateHtmlForBundle(bundleDirectory, {
     preview: true,
     outputDirectory,
@@ -140,6 +142,7 @@ app.use('/api', createRuntimeOperationLeaseMiddleware({
 // Use graph config routes
 app.use('/api', bundleConfigRoutes);
 app.use('/api', customFiltersRoutes);
+app.use('/api', sourcingRoutes);
 app.use('/api', bundleCurationRoutes);
 app.use('/api', bundleOperationRoutes);
 app.use('/api', hooksRoutes);
@@ -164,6 +167,7 @@ registerAllProviderRoutes(app);
 
 // Centralized error handler
 app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err instanceof SourcingError) { res.status(err.statusCode).json({ error: err.message }); return; }
   logger.error("Unhandled error:", err.stack || err.message);
   if (res.headersSent) {
     logger.error("Headers already sent, cannot send error response for:", req.path);

@@ -210,6 +210,8 @@ export type BundleNodeMutationOperation =
   | 'set-depths';
 
 export interface MutateBundleNodeCliResult extends CliOperationResultBase {
+  /** A live source edit remains pending until Sourcing accepts a new snapshot. */
+  sourceUpdate?: { sensitive: boolean; requiresSnapshotAcceptance: true };
   operation: `bundle.node.${BundleNodeMutationOperation}`;
   locator: BundleNodeLocator;
   node: BundleNodeDetails;

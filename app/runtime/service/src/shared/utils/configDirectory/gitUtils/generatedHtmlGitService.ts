@@ -73,7 +73,8 @@ export async function commitBundleChanges(
   const trackedPageContentExists = fs.existsSync(trackedPageContentDir);
   const buildExists = fs.existsSync(buildDir);
   const configExists = includeConfigDir && fs.existsSync(configDir);
-  const existingAdditionalDirs = additionalDirs.filter(d => fs.existsSync(d));
+  const generationInputsDirectory = path.join(bundleDirectory, 'raw/generation_inputs');
+  const existingAdditionalDirs = [...additionalDirs, generationInputsDirectory].filter(d => fs.existsSync(d));
 
   if (
     !publishedExists &&

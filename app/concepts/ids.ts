@@ -17,6 +17,10 @@ limitations under the License.
 export const coreConceptIds = {
   bundle: "bundle",
   bundles: "bundles",
+  bundleSourcing: "bundle/sourcing",
+  sourceSnapshot: "source-snapshot",
+  sourceMove: "source-move",
+  sourceChange: "source-change",
   bundleCuration: "bundle/curation",
   bundleGeneration: "bundle/generation",
   bundleReview: "bundle/review",

@@ -23,9 +23,9 @@ export const bundle = defineMeadowConcept({
   kind: "app-area",
   definition: conceptText`The application area concerned with selecting knowledge, generating durable outputs, reviewing changes, and sharing those outputs.`,
   mechanics: [
-    conceptText`Its child areas separate collection management, curation, generation, review, and sharing responsibilities.`,
+    conceptText`Its child areas separate collection management, sourcing, curation, generation, review, and sharing responsibilities.`,
   ],
-  interplay: conceptText`${conceptLink(coreConceptIds.bundles, "Bundles")} manages the collection surface; ${conceptLink(coreConceptIds.bundleCuration, "Curation")}, ${conceptLink(coreConceptIds.bundleGeneration, "Generation")}, ${conceptLink(coreConceptIds.bundleReview, "Review")}, and ${conceptLink(coreConceptIds.bundleSharing, "Sharing")} carry a bundle through its lifecycle.`,
+  interplay: conceptText`${conceptLink(coreConceptIds.bundles, "Bundles")} manages the collection surface; ${conceptLink(coreConceptIds.bundleSourcing, "Sourcing")}, ${conceptLink(coreConceptIds.bundleCuration, "Curation")}, ${conceptLink(coreConceptIds.bundleGeneration, "Generation")}, ${conceptLink(coreConceptIds.bundleReview, "Review")}, and ${conceptLink(coreConceptIds.bundleSharing, "Sharing")} carry a bundle through its lifecycle.`,
 });
 
 export const bundles = defineMeadowConcept({
@@ -40,6 +40,17 @@ export const bundles = defineMeadowConcept({
   interplay: conceptText`It chooses the bundle whose pages are managed in ${conceptLink(coreConceptIds.bundleCuration, "Curation")} and whose outputs move through ${conceptLink(coreConceptIds.bundleGeneration, "Generation")}, ${conceptLink(coreConceptIds.bundleReview, "Review")}, and ${conceptLink(coreConceptIds.bundleSharing, "Sharing")}.`,
 });
 
+export const bundleSourcing = defineMeadowConcept({
+  id: coreConceptIds.bundleSourcing,
+  name: "Bundle Sourcing",
+  aliases: ["Sourcing"],
+  kind: "app-area",
+  parentId: coreConceptIds.bundle,
+  definition: conceptText`The application area for discovering source material, resolving source identities, and accepting immutable source snapshots.`,
+  mechanics: [conceptText`It captures candidate updates without changing the accepted material and explains moves, source edits, and lost connections before acceptance.`],
+  interplay: conceptText`It supplies the accepted ${conceptLink(coreConceptIds.sourceSnapshot, "Source Snapshot")} used by ${conceptLink(coreConceptIds.bundleCuration, "Curation")} and ${conceptLink(coreConceptIds.bundleGeneration, "Generation")}.`,
+});
+
 export const bundleCuration = defineMeadowConcept({
   id: coreConceptIds.bundleCuration,
   name: "Bundle Curation",
@@ -48,7 +59,7 @@ export const bundleCuration = defineMeadowConcept({
   parentId: coreConceptIds.bundle,
   definition: conceptText`The application area for deciding which source pages belong in a bundle and how its graph is bounded.`,
   mechanics: [
-    conceptText`It applies filters, graph boundaries, page tracking, sensitivity, and page-level configuration.`,
+    conceptText`It applies filters, graph boundaries, page tracking, sensitivity, and page-level configuration to the accepted source snapshot.`,
   ],
   interplay: conceptText`Its selected and configured graph is the input to ${conceptLink(coreConceptIds.bundleGeneration, "Bundle Generation")}; pending consequences are inspected in ${conceptLink(coreConceptIds.bundleReview, "Bundle Review")}.`,
 });
@@ -95,6 +106,7 @@ export const bundleSharing = defineMeadowConcept({
 export const appAreaConcepts = [
   bundle,
   bundles,
+  bundleSourcing,
   bundleCuration,
   bundleGeneration,
   bundleReview,
@@ -104,6 +116,7 @@ export const appAreaConcepts = [
 /** App areas exposed as acceptance filters; `bundle` is their grouping root. */
 export const acceptanceAppAreaConcepts = [
   bundles,
+  bundleSourcing,
   bundleCuration,
   bundleGeneration,
   bundleReview,

@@ -61,6 +61,9 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
     isActive: true,
   }));
 
+  await meadowCli.runJson(["bundle", "nodes", Bundle.Big, "--scope", "all"], {
+    artifactName: "capture-fixture-source-before-generation",
+  });
   const generated = await meadowCli.runJson<{ versionId: string }>([
     "bundle", "generate", Bundle.Big,
   ], { artifactName: "publication-generate-initial" });

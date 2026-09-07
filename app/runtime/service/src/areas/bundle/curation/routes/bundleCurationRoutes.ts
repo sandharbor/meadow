@@ -21,25 +21,13 @@ import fs from 'fs';
 import {
   applyNodeConfigsToNodes,
   applySensitiveFromApiData,
-  parseBundleNodeConfig,
-  validateCanonicalBundleConfiguration,
 } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
-import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
-import { loadAppConfig as loadAppConfigFromDisk } from '../../../../../../../shared_code/utils/appConfigUtils.js';
 import { getConfigDirectory, getBundleDirectory, getBundleConfigPath, getBundleRawDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { runWorkingGraphJson } from '../../../../shared/utils/workingGraphUtils.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { FrontmatterUtils } from '../../../../shared/utils/frontmatterUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import { getFolderBundleRepairStatus } from '../../../../shared/bundle-config/folderBundleRepair.js';
-import {
-  explainFolderScopeChanges,
-  loadFolderScopeSnapshot,
-  writeFolderScopeSnapshot,
-} from '../../../../shared/bundle-config/folderScopeChanges.js';
-import type { FolderScopeGraphSnapshot } from '../../../../../../../contracts/types/folderScopeChanges.js';
+
 import type {
   GraphFilterApplication,
   GraphFilterCombination,
@@ -48,13 +36,13 @@ import type {
 import { describeWorkingGraph } from '../services/graphDescriptionService.js';
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
 import {
-  serializeWorkingGraphOutput,
-  type WorkingGraphRustOutput,
+  loadWorkingGraph,
 } from '../../../../shared/bundle-graph/workingGraphService.js';
+
+import { acceptedSourceRoot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 const router = express.Router();
 
-const loadAppConfig = () => loadAppConfigFromDisk(getConfigDirectory());
 
 interface GraphDescriptionRequest {
   scope: GraphInspectionScope;
@@ -132,7 +120,7 @@ router.post('/bundles/:bundleSlug/curation/copy-tracked-pages', (req, res, next)
       const yamlContent = fs.readFileSync(configPath, 'utf8');
       const config = YAML.parse(yamlContent) as { sourceDirectory?: string };
       if (config && typeof config.sourceDirectory === 'string') {
-        notesDir = config.sourceDirectory;
+        notesDir = acceptedSourceRoot(getBundleDirectory(bundleSlug));
       }
     } catch {
       return next(new Error(`Failed to load bundle configuration for ${bundleSlug}`));
@@ -216,147 +204,8 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
     const frontierDepthQuery = req.query.frontierDepth as string | undefined;
     const frontierDepth = frontierDepthQuery ? parseInt(frontierDepthQuery, 10) : 0;
 
-    // Load the bundle-level source, role, and traversal policy.
-    const configPath = getBundleConfigPath(bundleSlug);
-    let notesDir = '';
-    let bundleConfig: BundleConfig;
-    let bundleAllowImagesToExtendToFrontier: boolean | undefined = undefined;
-    try {
-      if (!fs.existsSync(configPath)) {
-        return res.status(500).json({ error: `bundle_config.yaml not found for slug ${bundleSlug}` });
-      }
-      const yamlContent = fs.readFileSync(configPath, 'utf8');
-      bundleConfig = YAML.parse(yamlContent) as BundleConfig;
-      if (typeof bundleConfig.sourceDirectory === 'string') {
-        notesDir = bundleConfig.sourceDirectory;
-      }
-      if (typeof bundleConfig.allowImagesToExtendToFrontier === 'boolean') {
-        bundleAllowImagesToExtendToFrontier = bundleConfig.allowImagesToExtendToFrontier;
-      }
-    } catch {
-      return next(new Error(`Failed to load bundle configuration for ${bundleSlug}`));
-    }
-    if (!notesDir) {
-      return res.status(500).json({ error: `Could not determine the notes directory for bundle ${bundleSlug}. Ensure bundle_config.yaml exists and contains a 'sourceDirectory' property.` });
-    }
-
-    const repairStatus = getFolderBundleRepairStatus(getBundleDirectory(bundleSlug));
-    if (repairStatus.repairRequired) {
-      return res.status(409).json({
-        error: 'Selected folder repair required',
-        repairRequired: true,
-        missingSelectedFolders: repairStatus.missingSelectedFolders,
-      });
-    }
-
-    // Load committed and optional draft configurations together so identity and
-    // strong role invariants are checked before graph construction.
-    let committedNodes: BundleNodeConfig[];
-    let draftNodes: BundleNodeConfig[] | undefined;
-    let bundleNodeConfigPath: string;
-    try {
-      const draftPath = getBundleConfigPath(bundleSlug, 'draft_bundle_node_config.yaml');
-      const mainPath = getBundleConfigPath(bundleSlug, 'bundle_node_config.yaml');
-      if (!fs.existsSync(mainPath)) {
-        return next(new Error(`bundle_node_config.yaml not found for ${bundleSlug}`));
-      }
-      committedNodes = parseBundleNodeConfig(fs.readFileSync(mainPath, 'utf8'), mainPath);
-      if (fs.existsSync(draftPath)) {
-        draftNodes = parseBundleNodeConfig(fs.readFileSync(draftPath, 'utf8'), draftPath);
-      }
-      validateCanonicalBundleConfiguration({
-        committedNodes,
-        committedPath: mainPath,
-        ...(draftNodes && { draftNodes, draftPath }),
-        bundleConfig,
-        bundleConfigPath: configPath,
-      });
-      bundleNodeConfigPath = draftNodes ? draftPath : mainPath;
-    } catch (error) {
-      return next(new Error(`Failed to load or validate bundle node configuration for ${bundleSlug}: ${error instanceof Error ? error.message : String(error)}`));
-    }
-    
-    // Resolve allowImagesToExtendToFrontier: bundle config overrides app config, default true
-    let allowImagesToExtendToFrontier = true;
-    if (bundleAllowImagesToExtendToFrontier !== undefined) {
-      allowImagesToExtendToFrontier = bundleAllowImagesToExtendToFrontier;
-    } else {
-      const appConfig = loadAppConfig();
-      if (appConfig.allowImagesToExtendToFrontier !== undefined) {
-        allowImagesToExtendToFrontier = appConfig.allowImagesToExtendToFrontier;
-      }
-    }
-
-    let rustOutput: WorkingGraphRustOutput;
-    const runGraph = async (configFile: string): Promise<WorkingGraphRustOutput> => {
-      return await runWorkingGraphJson<WorkingGraphRustOutput>({
-        graphRoot: notesDir,
-        bundleNodeConfigPath: configFile,
-        entryBundleNodeId: bundleConfig.entryBundleNodeId!,
-        defaultTraversalBundleNodeId: bundleConfig.defaultTraversalBundleNodeId!,
-        defaultOutlinksDepth: bundleConfig.defaultOutlinksDepth,
-        defaultInlinksDepth: bundleConfig.defaultInlinksDepth,
-        frontierDepth,
-        allowImagesToExtendToFrontier,
-        allowLowerDepths: false,
-      });
-    };
-    try {
-      rustOutput = await runGraph(bundleNodeConfigPath);
-    } catch (err) {
-      return next(new Error(`Failed to run working_graph for bundle ${bundleSlug}: ${err instanceof Error ? err.message : String(err)}`));
-    }
-
-    const snapshotFor = (output: WorkingGraphRustOutput): FolderScopeGraphSnapshot => ({
-      nodes: output.nodes.map(node => ({
-        bundleNodeKey: node.bundleNodeKey,
-        ...(node.bundleNodeId && { bundleNodeId: node.bundleNodeId }),
-        bundleNodeKind: node.bundleNodeKind,
-        bundleNodeName: node.bundleNodeName,
-        ...(node.sourceGraphSubdirectory !== undefined && { sourceGraphSubdirectory: node.sourceGraphSubdirectory }),
-        ...(node.fileType && { fileType: node.fileType }),
-        ...(node.effectiveBlacklistingBundleNodeId && { effectiveBlacklistingBundleNodeId: node.effectiveBlacklistingBundleNodeId }),
-        ...(node.effectiveFolderPolicyBundleNodeId && { effectiveFolderPolicyBundleNodeId: node.effectiveFolderPolicyBundleNodeId }),
-        remaining_depth: node.remaining_depth,
-        remaining_inlinks_depth: node.remaining_inlinks_depth,
-      })),
-      edges: output.edges.map(edge => ({ source: edge.source, target: edge.target, bundleEdgeKind: edge.bundleEdgeKind })),
-      ...(output.folderScope && { folderScope: output.folderScope }),
-    });
-    let changeExplanations;
-    if (rustOutput.folderScope) {
-      const currentSnapshot = snapshotFor(rustOutput);
-      const snapshotPath = join(getBundleRawDirectory(bundleSlug), 'folder_scope_snapshot.json');
-      if (draftNodes) {
-        const committedOutput = await runGraph(getBundleConfigPath(bundleSlug, 'bundle_node_config.yaml'));
-        const committedSnapshot = snapshotFor(committedOutput);
-        changeExplanations = explainFolderScopeChanges({
-          previous: committedSnapshot,
-          current: currentSnapshot,
-          previousConfigs: committedNodes,
-          currentConfigs: draftNodes,
-          basis: 'committedDraft',
-        });
-        writeFolderScopeSnapshot(snapshotPath, committedSnapshot);
-      } else {
-        const previous = loadFolderScopeSnapshot(snapshotPath);
-        changeExplanations = explainFolderScopeChanges({
-          previous,
-          current: currentSnapshot,
-          previousConfigs: committedNodes,
-          currentConfigs: committedNodes,
-          basis: previous ? 'priorRebuild' : 'initial',
-        });
-        writeFolderScopeSnapshot(snapshotPath, currentSnapshot);
-      }
-    }
-
-    const {
-      nodes,
-      edges: resultEdges,
-      allInlinkSources,
-      allOutlinkTargets,
-    } = serializeWorkingGraphOutput(rustOutput);
+    const loaded = await loadWorkingGraph({ bundleSlug, frontierDepth });
+    const { nodes, edges: resultEdges, allInlinkSources, allOutlinkTargets, committedNodes, draftNodes } = loaded;
 
     if (descriptionRequest) {
       applySensitiveFromApiData(nodes);
@@ -385,8 +234,8 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
       edges: resultEdges,
       allInlinkSources,
       allOutlinkTargets,
-      folderScope: rustOutput.folderScope,
-      changeExplanations,
+      folderScope: loaded.folderScope,
+      changeExplanations: loaded.changeExplanations,
     });
   })().catch(next);
 };

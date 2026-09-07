@@ -65,6 +65,8 @@ test("folder context selections include structural children and deeper paths", a
   await addKeyFrame(paths);
   await snapshot("Select Deeper Paths highlights structural and linked descendants in the graph");
   await assertMeadowHomeState({
-    allowedUntracked: ["bundles/ordered-folders/raw/"],
+    allowedUntracked: [
+      "bundles/ordered-folders/raw/folder_scope_snapshot.json",
+"bundles/ordered-folders/raw/"],
   });
 });

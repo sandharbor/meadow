@@ -190,7 +190,7 @@ async function materializeFolderGenerationConfigs(options: {
  * the bundle's raw/tracked_page_content folder, preserving the directory structure.
  *
  * @param bundleDirectory - The bundle's directory (e.g., /path/to/bundles/my-bundle)
- * @param sourceDirectory - The source graph directory (from bundle_config.yaml sourceDirectory)
+ * @param sourceDirectory - The accepted source snapshot directory supplied by Sourcing
  */
 export async function ensureTrackedPageContent(
   bundleDirectory: string,
@@ -255,51 +255,6 @@ export async function ensureTrackedPageContent(
     expectedFilePaths.set(relativePath, bundleNodeConfig);
   }
 
-  if (generationOptions.spacedRepetitionEnabled && generationOptions.spacedRepetitionTags.length > 0) {
-    let updatedSourceFileCount = 0;
-
-    for (const [relativePath, conf] of expectedFilePaths) {
-      const fileType = conf.fileType || 'md';
-      if (fileType !== 'md') {
-        continue;
-      }
-
-      const sourcePath = path.join(sourceDirectory, relativePath);
-      if (!fs.existsSync(sourcePath)) {
-        continue;
-      }
-
-      try {
-        const originalMarkdown = fs.readFileSync(sourcePath, 'utf8');
-        if (!pageMatchesConfiguredSrsTags(originalMarkdown, generationOptions.spacedRepetitionTags)) {
-          continue;
-        }
-
-        const normalizedRelativePath = relativePath.split(path.sep).join('/');
-        const withGuids = ensureSrsCardGuidsInMarkdown(originalMarkdown, normalizedRelativePath);
-        if (!withGuids.changed) {
-          continue;
-        }
-
-        writeDurableDocument({
-          path: sourcePath,
-          value: withGuids.markdown,
-          codec: textDocumentCodec,
-          mode: fs.statSync(sourcePath).mode & 0o777,
-        });
-        updatedSourceFileCount += 1;
-      } catch (err) {
-        logger.error(
-          `Failed to backfill SRS GUIDs into source file "${sourcePath}": ${err instanceof Error ? err.message : String(err)}`
-        );
-      }
-    }
-
-    if (updatedSourceFileCount > 0) {
-      logger.info(`Backfilled SRS GUIDs into ${updatedSourceFileCount} source graph file(s) before syncing tracked content`);
-    }
-  }
-
   // Clear the target directory completely to ensure clean state
   // (handles renamed/moved pages that would otherwise leave stale copies)
   if (fs.existsSync(targetDir)) {
@@ -349,6 +304,13 @@ export async function ensureTrackedPageContent(
     if (sourcePath) {
       try {
         copySourceFileToTrackedSnapshot(sourcePath, targetPath);
+        if (fileType === 'md' && generationOptions.spacedRepetitionEnabled && generationOptions.spacedRepetitionTags.length > 0) {
+          const markdown = fs.readFileSync(targetPath, 'utf8');
+          if (pageMatchesConfiguredSrsTags(markdown, generationOptions.spacedRepetitionTags)) {
+            const withGuids = ensureSrsCardGuidsInMarkdown(markdown, relativePath.split(path.sep).join('/'));
+            if (withGuids.changed) writeDurableDocument({ path: targetPath, value: withGuids.markdown, codec: textDocumentCodec });
+          }
+        }
         copiedCount++;
       } catch (err) {
         logger.error(`Failed to copy "${conf.bundleNodeName}": ${err instanceof Error ? err.message : String(err)}`);

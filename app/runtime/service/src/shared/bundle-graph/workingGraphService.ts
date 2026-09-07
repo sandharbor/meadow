@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { hydrateTrackingEvidence } from '../bundle-node/trackingRecords.js';
+
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
@@ -34,7 +36,7 @@ import {
   getBundleRawDirectory,
   getConfigDirectory,
 } from '../bundle-config/bundleConfigPaths.js';
-import { getFolderBundleRepairStatus } from '../bundle-config/folderBundleRepair.js';
+import { acceptedSourceRoot, initializeSourcing } from '../source-snapshot/sourceSnapshots.js';
 import {
   explainFolderScopeChanges,
   loadFolderScopeSnapshot,
@@ -267,17 +269,10 @@ export async function loadWorkingGraph(options: {
   } catch (error) {
     throw new Error(`Failed to load bundle configuration for ${bundleSlug}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  const notesDir = typeof bundleConfig.sourceDirectory === 'string' ? bundleConfig.sourceDirectory : '';
+  await initializeSourcing(getBundleDirectory(bundleSlug));
+  const notesDir = acceptedSourceRoot(getBundleDirectory(bundleSlug));
   if (!notesDir) {
     throw new WorkingGraphOperationError(`Bundle '${bundleSlug}' has no source directory`, 409);
-  }
-
-  const repairStatus = getFolderBundleRepairStatus(getBundleDirectory(bundleSlug));
-  if (repairStatus.repairRequired) {
-    throw new WorkingGraphOperationError('Selected folder repair required', 409, {
-      repairRequired: true,
-      missingSelectedFolders: repairStatus.missingSelectedFolders,
-    });
   }
 
   const draftPath = getBundleConfigPath(bundleSlug, 'draft_bundle_node_config.yaml');
@@ -286,6 +281,7 @@ export async function loadWorkingGraph(options: {
     throw new WorkingGraphOperationError(`bundle_node_config.yaml not found for ${bundleSlug}`, 409);
   }
   const committedNodes = parseBundleNodeConfig(fs.readFileSync(mainPath, 'utf8'), mainPath);
+  hydrateTrackingEvidence(getBundleDirectory(bundleSlug), committedNodes);
   const draftNodes = fs.existsSync(draftPath)
     ? parseBundleNodeConfig(fs.readFileSync(draftPath, 'utf8'), draftPath)
     : undefined;

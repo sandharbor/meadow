@@ -69,6 +69,9 @@ test("SVG links work in a directed embed", async ({
   void bigBundle;
   await assertMeadowHomeState({
     allowedUntracked: [
+      "bundles/meadow-test-bundle-big/raw/generation_inputs/",
+      "bundles/meadow-test-bundle-big/raw/tracked_page_content/",
+
       "bundles/meadow-test-bundle-big/build/",
       "bundles/meadow-test-bundle-big/config/generated_bundle_versions.yaml",
       "bundles/meadow-test-bundle-big/html/",

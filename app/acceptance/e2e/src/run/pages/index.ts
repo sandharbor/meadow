@@ -25,7 +25,7 @@ export { FilterPanelComponent } from "./BundleEditorPage/components/FilterPanelC
 export { CreateAndEditBundleModal } from "./shared/CreateAndEditBundleModal.js";
 export { SelectedPageDetailComponent, Pill, ActionButton } from "./BundleEditorPage/components/SelectedPageDetailComponent.js";
 export { LinksModal } from "./BundleEditorPage/components/LinksModal.js";
-export { OrphansModal } from "./BundleEditorPage/components/OrphansModal.js";
+export { SourceOrphansReview } from "./BundleEditorPage/components/SourceOrphansReview.js";
 export { PublishedBundlePage } from "./shared/PublishedBundlePage.js";
 export { DeleteBundleModal } from "./shared/DeleteBundleModal.js";
 export {

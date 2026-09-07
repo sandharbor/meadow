@@ -28,6 +28,8 @@ const folderId = 'ffffff111111' as BundleNodeId;
 function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-folder-persistence-'));
   temporaryDirectories.push(root);
+  vi.stubEnv('MEADOW_HOME_DIRECTORY_OVERRIDE', root);
+  fs.mkdirSync(path.join(root, 'source/Docs'), { recursive: true });
   const bundleDirectory = path.join(root, 'bundles', 'folder-bundle');
   const stagingDirectory = path.join(root, 'bundles', '.folder-bundle.creating-test');
   const bundleConfig: BundleConfig = {
@@ -53,6 +55,7 @@ function fixture() {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const directory of temporaryDirectories.splice(0)) {
     fs.rmSync(directory, { recursive: true, force: true });
   }

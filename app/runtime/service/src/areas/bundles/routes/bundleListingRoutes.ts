@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { initializeSourcing } from '../../../shared/source-snapshot/sourceSnapshots.js';
+
 import express from 'express';
 import fs from 'fs';
 import path, { join } from 'path';
@@ -680,6 +682,7 @@ router.delete('/bundles/:slug', (req, res, next) => {
 
 // Add the example bundle
 router.post('/bundles/add-example', (req, res, next) => {
+  void (async () => {
   try {
     // Find a unique slug: example-bundle, example-bundle-1, example-bundle-2, ...
     const slug = findUniqueName('example-bundle', (name) => fs.existsSync(getBundleDirectory(name)));
@@ -731,21 +734,16 @@ router.post('/bundles/add-example', (req, res, next) => {
     // directory alongside the bundle config so MeadowHome has no untracked
     // files after the example bundle is created.
     const gitUtils = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, configDir);
-    void (async () => {
-      try {
-        await gitUtils.commitDirs([
-          `bundles/${slug}/config`,
-          sourceGraphDirName,
-        ], `initial bundle config for ${slug}`);
-      } catch (error) {
-        logger.error('[example bundle creation] Error committing bundle config:', error);
-      }
-    })();
+    await initializeSourcing(bundleDir);
+    await gitUtils.commitDirs([
+      `bundles/${slug}/config`, `bundles/${slug}/raw`, sourceGraphDirName,
+    ], `initial bundle config for ${slug}`);
 
     res.json({ success: true, slug });
   } catch (error) {
     next(error);
   }
+  })().catch(next);
 });
 
 router.post('/bundles/folders/preflight', (req, res, next) => {

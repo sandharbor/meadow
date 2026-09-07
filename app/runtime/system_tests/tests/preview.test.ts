@@ -95,6 +95,7 @@ describe('Preview System Tests', () => {
       const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -130,6 +131,7 @@ describe('Preview System Tests', () => {
       const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -163,6 +165,7 @@ describe('Preview System Tests', () => {
       const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -240,7 +243,7 @@ describe('Preview System Tests', () => {
       testSetup?.tearDown();
     });
 
-    it('should backfill GUIDs into the isolated source graph without mutating the shared fixture', async () => {
+    it('derives SRS GUIDs without changing the accepted or live source material', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
       const sharedBetaPath = path.join(
         getSourceGraphsPath(),
@@ -257,6 +260,7 @@ describe('Preview System Tests', () => {
 
       expect(isolatedBetaBefore).toBe(sharedBetaBefore);
 
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -269,21 +273,24 @@ describe('Preview System Tests', () => {
 
       expect(sharedBetaAfter).toBe(sharedBetaBefore);
       expect(isolatedAlphaAfter).toBe(isolatedAlphaBefore);
+      expect(isolatedBetaAfter).toBe(isolatedBetaBefore);
+      const generatedBeta = fs.readFileSync(testSetup!.getPathInBundle('raw/tracked_page_content/t022/t022 ---- beta cards.md'), 'utf8');
 
       const insertedGuidMatches = Array.from(
-        isolatedBetaAfter.matchAll(/<!--MEADOW_SR_GUID:([a-f0-9]{13})-->/g)
+        generatedBeta.matchAll(/<!--MEADOW_SR_GUID:([a-f0-9]{13})-->/g)
       );
       expect(insertedGuidMatches).toHaveLength(3);
       expect(new Set(insertedGuidMatches.map(match => match[1])).size).toBe(3);
 
-      expect(isolatedBetaAfter).toMatch(/<!--SR:!2026-03-12,3,250-->\n\n<!--MEADOW_SR_GUID:[a-f0-9]{13}-->/);
-      expect(isolatedBetaAfter).toMatch(/<!--SR:!2026-03-13,4,250-->\n\n<!--MEADOW_SR_GUID:[a-f0-9]{13}-->/);
-      expect(isolatedBetaAfter).toMatch(/<!--SR:!2026-03-14,4,250-->\n\n<!--MEADOW_SR_GUID:[a-f0-9]{13}-->/);
+      expect(generatedBeta).toMatch(/<!--SR:!2026-03-12,3,250-->\n\n<!--MEADOW_SR_GUID:[a-f0-9]{13}-->/);
+      expect(generatedBeta).toMatch(/<!--SR:!2026-03-13,4,250-->\n\n<!--MEADOW_SR_GUID:[a-f0-9]{13}-->/);
+      expect(generatedBeta).toMatch(/<!--SR:!2026-03-14,4,250-->\n\n<!--MEADOW_SR_GUID:[a-f0-9]{13}-->/);
     });
 
     it('should create content matching the expected preview bundle for srs', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
 
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -360,6 +367,7 @@ describe('Preview System Tests', () => {
     it('should create build/sources_export matching the expected golden set', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
 
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -446,6 +454,7 @@ describe('Preview System Tests', () => {
     it('should create the OKF preview bundle matching the expected golden set', async () => {
       const bundleSlug = testSetup!.getBundleSlug();
 
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -525,6 +534,7 @@ describe('Preview System Tests', () => {
       const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -610,6 +620,7 @@ describe('Preview System Tests', () => {
       const bundleSlug = testSetup!.getBundleSlug();
 
       // Call the preview API
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });
@@ -715,6 +726,7 @@ describe('Preview System Tests', () => {
       const bundleSlug = testSetup!.getBundleSlug();
       
       // Call the preview API
+      await testSetup!.captureInitialSourceSnapshot();
       const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
         method: 'POST'
       });

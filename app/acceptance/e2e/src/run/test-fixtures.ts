@@ -1,3 +1,5 @@
+import { materializeSourceGraph, applySourceChange } from '../../../../shared_code/shared_dev/sourceChanges.js';
+import type { SourceChangeResult } from '../../../../shared_code/shared_dev/sourceChangesTypes.js';
 /*
 Copyright 2026 Sand Harbor Software, LLC
 
@@ -277,13 +279,7 @@ function populateConfigDir(
       if (config.sourceDirectory && typeof config.sourceDirectory === "string") {
         const sourceFolder = path.basename(config.sourceDirectory);
         if (isolateSourceGraphs) {
-          const isolatedSourceDirectory = path.join(sourceGraphsDir, sourceFolder);
-          if (!existsSync(isolatedSourceDirectory)) {
-            mkdirSync(sourceGraphsDir, { recursive: true });
-            cpSync(path.join(sharedSourceGraphsDir, sourceFolder), isolatedSourceDirectory, {
-              recursive: true,
-            });
-          }
+          materializeSourceGraph({ projectRoot: REPO_ROOT, sourceGraphsDir, sourceGraph: sourceFolder });
         }
         config.sourceDirectory = path.join(sourceGraphsDir, sourceFolder);
       }
@@ -508,6 +504,7 @@ export const test = base.extend<{
   trackBigBundleExcalidrawPages: boolean;
   recordVideo: boolean;
   testServer: TestServer;
+  sourceChanges: { apply: (changeId: string, sourceGraph?: string) => Promise<SourceChangeResult> };
   artifactDir: string;
   snapshot: (message: string) => Promise<void>;
   /**
@@ -573,6 +570,16 @@ export const test = base.extend<{
   serialGroup: [null, { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   isolateSourceGraphs: [false, { option: true }],
+  sourceChanges: async ({ testServer, isolateSourceGraphs }, use, testInfo) => {
+    await use({ apply: async (changeId, sourceGraph = 'meadow-test-bundles-data') => {
+      if (!isolateSourceGraphs) throw new Error('Source changes require isolateSourceGraphs: true');
+      return await test.step(`Apply source change: ${changeId}`, async () => {
+        const result = applySourceChange({ projectRoot: REPO_ROOT, sourceGraphsDir: testServer.sourceGraphsDir, sourceGraph, changeId });
+        await testInfo.attach(`source-change-${changeId}`, { body: JSON.stringify(result, null, 2), contentType: 'application/json' });
+        return result;
+      });
+    } });
+  },
   trackBigBundleExcalidrawPages: [false, { option: true }],
   recordVideo: [true, { option: true }],
   // _backendExtraEnv and _preSpawnSeed are declared as fixtures (rather than

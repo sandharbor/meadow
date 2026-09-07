@@ -1,3 +1,5 @@
+import { createSourceChangeRoutes, fixtureSourceGraphs } from './sourceChangeRoutes.js';
+import { loadSourceChanges } from '../../../../shared_code/shared_dev/sourceChanges.js';
 /*
 Copyright 2026 Sand Harbor Software, LLC
 
@@ -101,6 +103,7 @@ function discoverFixtures(): ConfigFixture[] {
         fixtures.push({
           folderName: entry.name,
           displayName: entry.name.slice(FIXTURE_PREFIX.length),
+          hasSourceChanges: fixtureSourceGraphs(projectRoot, entry.name).some(graph => loadSourceChanges(projectRoot, graph).length > 0),
         });
       }
     }
@@ -132,6 +135,8 @@ function setActiveFixture(fixtureName: string | null): void {
     rmSync(activeFixtureFile);
   }
 }
+
+app.use('/api', createSourceChangeRoutes({ projectRoot, configDir, getActiveFixture }));
 
 // ============ Config Status ============
 
@@ -314,7 +319,7 @@ app.post("/api/config/copy-back-to-fixture", (_req, res) => {
     const copyWithFilter = (src: string, dest: string) => {
       const entries = readdirSync(src, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.name === ".DS_Store" || entry.name === ".git" || entry.name === ".gitignore") continue;
+        if ([".DS_Store", ".git", ".gitignore", "source_graphs"].includes(entry.name)) continue;
         const srcPath = join(src, entry.name);
         const destPath = join(dest, entry.name);
         if (entry.isDirectory()) {
@@ -327,6 +332,17 @@ app.post("/api/config/copy-back-to-fixture", (_req, res) => {
       }
     };
     copyWithFilter(configDir, fixturePath);
+    const copiedBundles = join(fixturePath, 'bundles');
+    for (const entry of readdirSync(copiedBundles, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const configPath = join(copiedBundles, entry.name, 'config/bundle_config.yaml');
+      const original = readFileSync(configPath, 'utf8');
+      const sourceMatch = original.match(/^sourceDirectory:\s*(.+)$/m);
+      if (sourceMatch) {
+        const graphName = sourceMatch[1].trim().replace(/^['"]|['"]$/g, '').split('/').pop();
+        writeFileSync(configPath, original.replace(/^sourceDirectory:.*$/m, `sourceDirectory: ./source_graphs/${graphName}`));
+      }
+    }
     console.log(`  ✓ Copied config back to fixture`);
 
     const fixture = discoverFixtures().find(f => f.folderName === activeFixture);

@@ -16,14 +16,14 @@ limitations under the License.
 
 import type { Page, Expect } from "@playwright/test";
 
-export class OrphansModal {
+export class SourceOrphansReview {
   constructor(
     private page: Page,
     private expect: Expect,
   ) {}
 
   private get modalTitle() {
-    return this.page.locator("h2", { hasText: "Orphaned Pages" });
+    return this.page.getByRole("dialog", { name: "Source review" });
   }
 
   private get orphansView() {
@@ -31,7 +31,7 @@ export class OrphansModal {
   }
 
   private get orphanRows() {
-    return this.orphansView.locator("tbody tr");
+    return this.orphansView.locator('[data-testid^="orphan-row-"]');
   }
 
   private orphanRow(title: string) {
@@ -53,16 +53,11 @@ export class OrphansModal {
 
   async clickRemoveAllFromConfig() {
     await this.expect(this.removeAllBtn).toBeVisible();
-    await Promise.all([
-      this.page.waitForResponse(
-        (r) =>
-          r.url().includes("/bundle-config") &&
-          r.request().method() === "POST" &&
-          r.ok(),
-        { timeout: 15_000 },
-      ),
-      this.removeAllBtn.click(),
-    ]);
+    await this.removeAllBtn.click();
+  }
+
+  async applyRemovals() {
+    await this.modalTitle.getByRole('button', { name: 'Apply removals', exact: true }).click();
   }
 
   async getOrphanCount(): Promise<number> {

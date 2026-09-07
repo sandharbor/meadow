@@ -19,6 +19,7 @@ import path from 'path';
 import YAML from 'yaml';
 import {
   TEST_CONFIG_DIR,
+  TEST_BASE_URL,
   getFixturesPath,
   getSourceGraphsPath
 } from './serverManager.js';
@@ -164,6 +165,12 @@ export class SystemTestBundleSetup {
       });
       this.hasHooks = true;
     }
+  }
+
+  /** Sourcing captures fixture material before tests invoke generation. This never refreshes an accepted snapshot. */
+  async captureInitialSourceSnapshot(): Promise<void> {
+    const response = await fetch(`${TEST_BASE_URL}/api/bundles/${this.testBundleSlug}/sourcing`);
+    if (!response.ok) throw new Error(`Source capture failed: ${await response.text()}`);
   }
 
   /**

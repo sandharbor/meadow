@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { initializeSourcing } from '../../../shared/source-snapshot/sourceSnapshots.js';
+
 import fs from 'fs';
 import path from 'path';
 import type { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
@@ -331,6 +333,7 @@ export async function createPageBundle(
       path.join(stagingDirectory, 'config', 'bundle_node_config.yaml'),
       initialNodes,
     );
+    await initializeSourcing(stagingDirectory);
     fs.renameSync(stagingDirectory, bundleDirectory);
     const git = new AppConfigGitUtils(GIT_AUTHORS.MEADOW_APP, getConfigDirectory());
     await git.commitDirs([

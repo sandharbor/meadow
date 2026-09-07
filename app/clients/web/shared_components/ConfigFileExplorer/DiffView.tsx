@@ -21,6 +21,12 @@ interface DiffViewProps {
   originalContent: string | null;
   currentContent: string;
   isNewFile: boolean;
+  isDeletedFile?: boolean;
+  /** Source review always shows literal content, including HTML files. */
+  codeOnly?: boolean;
+  wrapLines?: boolean;
+  lineLabels?: { before: string; after: string };
+  unchangedLabel?: string;
   /** Optional file path - used to resolve relative URLs in styled HTML diff */
   filePath?: string;
 }
@@ -44,10 +50,12 @@ const CONTEXT_LINES = 3;
 // Minimum hidden lines to show collapse (if fewer, just show all)
 const MIN_COLLAPSE_LINES = 4;
 
+function contentLines(content: string): string[] { return content === '' ? [] : content.split('\n'); }
+
 // Simple diff algorithm - computes line-by-line differences
 function computeDiff(original: string, current: string): DiffLine[] {
-  const originalLines = original.split('\n');
-  const currentLines = current.split('\n');
+  const originalLines = contentLines(original);
+  const currentLines = contentLines(current);
   const diffLines: DiffLine[] = [];
 
   // Use LCS-based diff algorithm for better results
@@ -120,6 +128,19 @@ interface LCSMatch {
 
 // Compute longest common subsequence
 function computeLCS(oldLines: string[], newLines: string[]): LCSMatch[] {
+  let prefix = 0;
+  while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) prefix += 1;
+  let suffix = 0;
+  while (suffix < oldLines.length - prefix && suffix < newLines.length - prefix && oldLines[oldLines.length - suffix - 1] === newLines[newLines.length - suffix - 1]) suffix += 1;
+  if (prefix || suffix) {
+    return [
+      ...Array.from({ length: prefix }, (_, index) => ({ oldIndex: index, newIndex: index })),
+      ...computeLCS(oldLines.slice(prefix, oldLines.length - suffix), newLines.slice(prefix, newLines.length - suffix)).map(match => ({ oldIndex: match.oldIndex + prefix, newIndex: match.newIndex + prefix })),
+      ...Array.from({ length: suffix }, (_, index) => ({ oldIndex: oldLines.length - suffix + index, newIndex: newLines.length - suffix + index })),
+    ];
+  }
+  // A large replacement remains an accurate deletion/addition without allocating an unbounded table.
+  if (oldLines.length * newLines.length > 4_000_000) return [];
   const m = oldLines.length;
   const n = newLines.length;
 
@@ -191,10 +212,12 @@ function groupIntoChunks(diffLines: DiffLine[]): DiffChunk[] {
 
 interface DiffLineRowProps {
   line: DiffLine;
+  wrapLines?: boolean;
 }
 
-const DiffLineRow: React.FC<DiffLineRowProps> = ({ line }) => (
+const DiffLineRow: React.FC<DiffLineRowProps> = ({ line, wrapLines }) => (
   <tr
+    data-change={line.type}
     className={
       line.type === 'added'
         ? 'bg-success-50'
@@ -224,7 +247,7 @@ const DiffLineRow: React.FC<DiffLineRowProps> = ({ line }) => (
       {line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}
     </td>
     {/* Content */}
-    <td className="px-2 py-0.5 whitespace-pre">
+    <td className={`px-2 py-0.5 ${wrapLines ? 'whitespace-pre-wrap [overflow-wrap:anywhere]' : 'whitespace-pre'}`}>
       {line.content || ' '}
     </td>
   </tr>
@@ -283,6 +306,7 @@ interface UnchangedChunkProps {
   isLast: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  wrapLines?: boolean;
 }
 
 const UnchangedChunk: React.FC<UnchangedChunkProps> = ({
@@ -291,6 +315,7 @@ const UnchangedChunk: React.FC<UnchangedChunkProps> = ({
   isLast,
   isExpanded,
   onToggleExpand,
+  wrapLines,
 }) => {
   const lines = chunk.lines;
   const totalLines = lines.length;
@@ -309,7 +334,7 @@ const UnchangedChunk: React.FC<UnchangedChunkProps> = ({
     return (
       <>
         {lines.map((line, idx) => (
-          <DiffLineRow key={`${chunk.id}-${idx}`} line={line} />
+          <DiffLineRow key={`${chunk.id}-${idx}`} line={line} wrapLines={wrapLines} />
         ))}
       </>
     );
@@ -323,7 +348,7 @@ const UnchangedChunk: React.FC<UnchangedChunkProps> = ({
   return (
     <>
       {startLines.map((line, idx) => (
-        <DiffLineRow key={`${chunk.id}-start-${idx}`} line={line} />
+        <DiffLineRow key={`${chunk.id}-start-${idx}`} line={line} wrapLines={wrapLines} />
       ))}
       <CollapsedSection
         hiddenCount={hiddenLines.length}
@@ -334,13 +359,13 @@ const UnchangedChunk: React.FC<UnchangedChunkProps> = ({
         endNewLine={hiddenLines[hiddenLines.length - 1]?.newLineNum}
       />
       {endLines.map((line, idx) => (
-        <DiffLineRow key={`${chunk.id}-end-${idx}`} line={line} />
+        <DiffLineRow key={`${chunk.id}-end-${idx}`} line={line} wrapLines={wrapLines} />
       ))}
     </>
   );
 };
 
-const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, isNewFile, filePath }) => {
+const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, isNewFile, isDeletedFile = false, filePath, codeOnly = false, wrapLines = false, lineLabels, unchangedLabel = 'No changes' }) => {
   console.log('[DiffView] Component rendering', { 
     isNewFile, 
     originalContentLength: originalContent?.length,
@@ -352,13 +377,14 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
   const [htmlMode, setHtmlMode] = useState<'visual' | 'code'>('visual');
 
   const isProbablyHtml = useMemo(() => {
+    if (codeOnly) return false;
     const s = (currentContent || '').trimStart().toLowerCase();
     if (s.startsWith('<!doctype html')) return true;
     if (s.startsWith('<html')) return true;
     // Heuristic: if it contains an <html> tag near the top, treat as HTML
     if (s.slice(0, 5000).includes('<html')) return true;
     return false;
-  }, [currentContent]);
+  }, [currentContent, codeOnly]);
 
   const visualHtmlDiff = useMemo(() => {
     if (!isProbablyHtml) return null;
@@ -374,7 +400,7 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
     try {
       if (isNewFile || originalContent === null) {
         // All lines are new
-        const lines = currentContent.split('\n').map((line, idx): DiffLine => ({
+        const lines = contentLines(currentContent).map((line, idx): DiffLine => ({
           type: 'added',
           content: line,
           newLineNum: idx + 1,
@@ -385,7 +411,7 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
 
       if (originalContent === currentContent) {
         // No changes
-        const lines = currentContent.split('\n').map((line, idx): DiffLine => ({
+        const lines = contentLines(currentContent).map((line, idx): DiffLine => ({
           type: 'unchanged',
           content: line,
           oldLineNum: idx + 1,
@@ -532,7 +558,7 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
                 {hasChanges ? (
                   <>
                     <span className="text-sm text-neutral-600">
-                      {isNewFile ? 'New file' : 'Changes'}:
+                      {isNewFile ? 'New file' : isDeletedFile ? 'Deleted file' : 'Changes'}:
                     </span>
                     {stats.added > 0 && (
                       <span className="text-sm text-success-600 font-medium">+{stats.added}</span>
@@ -542,7 +568,7 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
                     )}
                   </>
                 ) : (
-                  <span className="text-sm text-neutral-500">No changes</span>
+                  <span className="text-sm text-neutral-500">{isNewFile ? 'New empty file' : isDeletedFile ? 'Deleted empty file' : unchangedLabel}</span>
                 )}
               </div>
               {hasCollapsibleSections && (
@@ -557,12 +583,14 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
 
             {/* Diff content */}
             <div className="flex-1 min-h-0 overflow-auto font-mono text-sm">
-              <table className="w-full border-collapse">
+              <table aria-label={lineLabels ? `${lineLabels.before} to ${lineLabels.after}` : 'File differences'} className={`w-full border-collapse ${wrapLines ? 'table-fixed' : ''}`}>
+                <colgroup><col className="w-12" /><col className="w-12" /><col className="w-6" /><col /></colgroup>
+                <thead className="sr-only"><tr><th scope="col">{lineLabels?.before ?? 'Before'} line</th><th scope="col">{lineLabels?.after ?? 'After'} line</th><th scope="col">Change</th><th scope="col">Content</th></tr></thead>
                 <tbody>
                   {chunks.map((chunk, idx) => {
                     if (chunk.type === 'changes') {
                       return chunk.lines.map((line, lineIdx) => (
-                        <DiffLineRow key={`${chunk.id}-${lineIdx}`} line={line} />
+                        <DiffLineRow key={`${chunk.id}-${lineIdx}`} line={line} wrapLines={wrapLines} />
                       ));
                     }
 
@@ -574,6 +602,7 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
                         isLast={idx === chunks.length - 1}
                         isExpanded={expandedChunks.has(chunk.id)}
                         onToggleExpand={() => toggleChunk(chunk.id)}
+                        wrapLines={wrapLines}
                       />
                     );
                   })}
@@ -594,7 +623,7 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
           {hasChanges ? (
             <>
               <span className="text-sm text-neutral-600">
-                {isNewFile ? 'New file' : 'Changes'}:
+                {isNewFile ? 'New file' : isDeletedFile ? 'Deleted file' : 'Changes'}:
               </span>
               {stats.added > 0 && (
                 <span className="text-sm text-success-600 font-medium">+{stats.added}</span>
@@ -604,7 +633,7 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
               )}
             </>
           ) : (
-            <span className="text-sm text-neutral-500">No changes</span>
+            <span className="text-sm text-neutral-500">{isNewFile ? 'New empty file' : isDeletedFile ? 'Deleted empty file' : unchangedLabel}</span>
           )}
         </div>
         {hasCollapsibleSections && (
@@ -619,12 +648,14 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
 
       {/* Diff content */}
       <div className="flex-1 min-h-0 overflow-auto font-mono text-sm">
-        <table className="w-full border-collapse">
+        <table aria-label={lineLabels ? `${lineLabels.before} to ${lineLabels.after}` : 'File differences'} className={`w-full border-collapse ${wrapLines ? 'table-fixed' : ''}`}>
+          <colgroup><col className="w-12" /><col className="w-12" /><col className="w-6" /><col /></colgroup>
+          <thead className="sr-only"><tr><th scope="col">{lineLabels?.before ?? 'Before'} line</th><th scope="col">{lineLabels?.after ?? 'After'} line</th><th scope="col">Change</th><th scope="col">Content</th></tr></thead>
           <tbody>
             {chunks.map((chunk, idx) => {
               if (chunk.type === 'changes') {
                 return chunk.lines.map((line, lineIdx) => (
-                  <DiffLineRow key={`${chunk.id}-${lineIdx}`} line={line} />
+                  <DiffLineRow key={`${chunk.id}-${lineIdx}`} line={line} wrapLines={wrapLines} />
                 ));
               }
 
@@ -636,6 +667,7 @@ const DiffView: React.FC<DiffViewProps> = ({ originalContent, currentContent, is
                   isLast={idx === chunks.length - 1}
                   isExpanded={expandedChunks.has(chunk.id)}
                   onToggleExpand={() => toggleChunk(chunk.id)}
+                  wrapLines={wrapLines}
                 />
               );
             })}

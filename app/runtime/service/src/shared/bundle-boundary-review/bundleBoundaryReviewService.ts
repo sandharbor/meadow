@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { acceptedSourceRoot } from '../source-snapshot/sourceSnapshots.js';
+
 import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -159,7 +161,7 @@ export async function assessBundleBoundary(slug: string): Promise<{
     graph,
     loadCustomFiltersForBundle(slug),
   );
-  const sourceDirectory = loaded.bundleConfig.sourceDirectory;
+  const sourceDirectory = acceptedSourceRoot(getBundleDirectory(slug));
   if (!sourceDirectory) throw new Error(`Bundle '${slug}' has no source directory`);
 
   const findings: BundleBoundaryFinding[] = [];

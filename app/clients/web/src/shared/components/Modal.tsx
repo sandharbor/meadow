@@ -25,6 +25,10 @@ interface ModalProps {
   showCloseButton?: boolean;
   movable?: boolean;
   allowContentScroll?: boolean;
+  footer?: React.ReactNode;
+  ariaLabel?: string;
+  closeLabel?: string;
+  manageFocus?: boolean;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -36,6 +40,10 @@ const Modal: React.FC<ModalProps> = ({
   showCloseButton = true,
   movable = false,
   allowContentScroll = true,
+  footer,
+  ariaLabel,
+  closeLabel = 'Close',
+  manageFocus = false,
 }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
@@ -44,6 +52,24 @@ const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (isOpen) setOffset({ x: 0, y: 0 });
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !manageFocus) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    panel?.querySelector<HTMLElement>('button')?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
+      if (event.key !== 'Tab' || !panel) return;
+      const controls = [...panel.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), summary, a[href], [tabindex="0"]')]
+        .filter(element => element.getClientRects().length > 0);
+      const first = controls[0]; const last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', keydown);
+    return () => { document.removeEventListener('keydown', keydown); previousFocus?.focus(); };
+  }, [isOpen, manageFocus, onClose]);
 
   const handleMoveStart = useCallback((event: React.MouseEvent) => {
     if (!movable || !panelRef.current) return;
@@ -89,7 +115,8 @@ const Modal: React.FC<ModalProps> = ({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={ariaLabel ? undefined : titleId}
+        aria-label={ariaLabel}
         className={`bg-white rounded-lg p-6 flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -111,6 +138,8 @@ const Modal: React.FC<ModalProps> = ({
           <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
           {showCloseButton && (
             <button
+              type="button"
+              aria-label={closeLabel}
               onClick={onClose}
               onMouseDown={(event) => event.stopPropagation()}
               className="text-gray-500 hover:text-gray-700 text-xl"
@@ -125,6 +154,7 @@ const Modal: React.FC<ModalProps> = ({
         }`}>
           {children}
         </div>
+        {footer && <div className="mt-4 shrink-0 border-t border-neutral-200 pt-4">{footer}</div>}
       </div>
     </div>
   );

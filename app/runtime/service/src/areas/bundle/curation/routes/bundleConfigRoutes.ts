@@ -150,7 +150,11 @@ router.post('/bundles/:bundleSlug/curation/bundle-config', validateBundleSlug, a
   }
   if (isDraft) {
     // Save to draft file
-    saveBundleNodeConfigDocument(draftPath, candidate);
+    saveBundleNodeConfigDocument(draftPath, candidate.map(node => {
+      const configuration = { ...node };
+      if (configuration.bundleNodeKind === 'file') delete configuration.trackingEvidence;
+      return configuration;
+    }));
   } else {
     const sourceDirectory = bundleConfig.sourceDirectory;
     if (!sourceDirectory) {
