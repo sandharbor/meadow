@@ -21,7 +21,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   });
   await new Workflows(page, expect).navigateToBigBundle();
   const status = page.getByTestId('sourcing-status');
-  const update = status.getByRole('button', { name: 'Update sources', exact: true });
+  const update = status.getByRole('button', { name: 'Refresh sources', exact: true });
   await new BundleEditorPage(page, expect).expectSourceUpdateInToolbar();
   await addKeyFrame(sourceSnapshot);
   await snapshot('source check occupies the bundle toolbar without an extra heading row');
@@ -44,7 +44,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
 
   gate = new Promise<void>(resolve => { release = resolve; });
   await update.click();
-  await expect(status.getByRole('status')).toHaveText('Updating sources');
+  await expect(status.getByRole('status')).toHaveText('Refreshing sources');
   release();
   await expect(status.getByRole('status')).toHaveText('No changes');
   await page.clock.runFor(2000);
@@ -69,7 +69,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await snapshot('available changes keep an explicit review action in the toolbar');
   await page.clock.resume();
   await new Workflows(page, expect).navigateToSmallBundle();
-  await expect(page.getByRole('button', { name: 'Update sources', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Refresh sources', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Source review' })).not.toBeVisible();
   await skipMeadowHomeStateCheck();
 });

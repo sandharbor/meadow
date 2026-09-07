@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { materializeSourceGraph, applySourceChange } from '../../../../../../shared_code/shared_dev/sourceChanges.js';
-import { acceptSourceSnapshot, scanSourceChanges, sourcingReview, sourceComparison } from '../../../../src/areas/bundle/sourcing/services/sourceReview.js';
+import { acceptSourceSnapshot, findSourceMoves, scanSourceChanges, sourcingReview, sourceComparison } from '../../../../src/areas/bundle/sourcing/services/sourceReview.js';
 import { acceptedSourceRoot, initializeSourcing, loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, nodeSourcePath, snapshotDirectory, sourcingRoot, writeSourcingJson, sourceConfigFingerprint, withSourcingLock } from '../../../../src/shared/source-snapshot/sourceSnapshots.js';
 import { getFolderBundleRepairStatus } from '../../../../src/shared/bundle-config/folderBundleRepair.js';
 import { loadTrackingRecords } from '../../../../src/shared/bundle-node/trackingRecords.js';
@@ -50,6 +50,61 @@ async function acceptAllMoves() {
 }
 
 describe('source snapshots with the shared big graph', () => {
+  it('classifies a linked group move together instead of orphaning the page with rewritten links', async () => {
+    const before = await sourcingReview(bundle);
+    change('rename-linked-group');
+    const pending = await scanSourceChanges(bundle);
+    const movedPaths = [
+      't001/t001 ---- child 1.md',
+      't001/deeper/t001 ---- child 2.md',
+      't001/t001 ---- child 3 in same dir as child 1.md',
+    ];
+    expect(pending.moves.map(move => move.oldPath)).toEqual(expect.arrayContaining(movedPaths));
+    expect(pending.moves.find(move => move.oldPath === movedPaths[2])?.evidence.join(' ')).toContain('folder move');
+    expect(pending.orphans.map(orphan => orphan.bundleNodeId)).toEqual(before.orphans.map(orphan => orphan.bundleNodeId));
+    for (const move of pending.moves) {
+      expect(pending.orphans.some(orphan => orphan.bundleNodeId === move.bundleNodeId || [move.oldPath, move.newPath].includes(orphan.path))).toBe(false);
+      expect(pending.changes.some(item => [move.oldPath, move.newPath].includes(item.path))).toBe(false);
+    }
+    const inferred = pending.moves.find(move => move.oldPath === movedPaths[2])!;
+    await expect(acceptSourceSnapshot(bundle, { candidateId: pending.candidate!.id, reviewToken: pending.reviewToken, resolutions: {}, orphanRemovals: [inferred.bundleNodeId] })).rejects.toThrow('Only removable');
+    const accepted = await acceptSourceSnapshot(bundle, { candidateId: pending.candidate!.id, reviewToken: pending.reviewToken, resolutions: {} });
+    expect(accepted.orphans.map(orphan => orphan.bundleNodeId)).toEqual(before.orphans.map(orphan => orphan.bundleNodeId));
+  });
+
+  it.each(['unrelated replacement', 'only one matching sibling'])('does not invent a group move for %s', async reason => {
+    await initializeSourcing(bundle);
+    change('rename-linked-group');
+    const unmatched = 't001/t001 ---- child 3 in same dir as child 1.md';
+    const changed = reason === 'unrelated replacement' ? 't101/t101 ---- child 3 in same dir as child 1.md' : 't101/deeper/t101 ---- child 2.md';
+    fs.writeFileSync(path.join(source, changed), 'An entirely unrelated document about weather observations and ocean currents.');
+    const pending = await scanSourceChanges(bundle);
+    expect(pending.moves.some(move => move.oldPath === unmatched)).toBe(false);
+    expect(pending.orphans.some(orphan => orphan.path === unmatched)).toBe(true);
+  });
+
+  it('reads each source file at most once when matching several missing pages', async () => {
+    await initializeSourcing(bundle);
+    change('move-nested-group');
+    const review = await scanSourceChanges(bundle);
+    const previous = loadSourceSnapshot(bundle, review.accepted.id);
+    const current = loadSourceSnapshot(bundle, review.candidate!.id);
+    const configs = loadSourceNodeConfigs(bundle);
+    const reads = vi.spyOn(fs, 'readFileSync');
+    let matches;
+    let filenames: unknown[];
+    try {
+      matches = findSourceMoves(bundle, previous, current, configs);
+      filenames = reads.mock.calls.map(([filename]) => filename);
+    } finally { reads.mockRestore(); }
+    expect(matches).toEqual(expect.arrayContaining([
+      expect.objectContaining({ oldPath: 't001/t001 ---- child 1.md', newPath: 'source-changes/nested/t001 ---- child 1.md' }),
+      expect.objectContaining({ oldPath: 't001/deeper/t001 ---- child 2.md', newPath: 'source-changes/nested/deeper/t001 ---- child 2.md' }),
+    ]));
+    expect(filenames.length).toBeGreaterThan(0);
+    expect(new Set(filenames).size).toBe(filenames.length);
+  });
+
   it('reviews and removes existing orphans without creating another source snapshot', async () => {
     const review = await sourcingReview(bundle);
     expect(review.orphans).toHaveLength(13);

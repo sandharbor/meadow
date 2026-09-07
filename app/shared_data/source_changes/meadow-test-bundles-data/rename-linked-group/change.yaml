@@ -1,0 +1,30 @@
+id: rename-linked-group
+label: Rename a linked group together
+description: Move the t001 child pages into t101, rename their shared prefix, and update the links between them and their parent.
+sourceGraph: meadow-test-bundles-data
+operations:
+  - move:
+      from: t001/t001 ---- child 1.md
+      to: t101/t101 ---- child 1.md
+  - move:
+      from: t001/deeper/t001 ---- child 2.md
+      to: t101/deeper/t101 ---- child 2.md
+  - move:
+      from: t001/t001 ---- child 3 in same dir as child 1.md
+      to: t101/t101 ---- child 3 in same dir as child 1.md
+  - replaceText:
+      path: t101/t101 ---- child 3 in same dir as child 1.md
+      before: "[[t001 ---- child 1]]"
+      after: "[[t101 ---- child 1]]"
+  - replaceText:
+      path: t001 - deeply nested.md
+      before: "[[t001 ---- child 1]]"
+      after: "[[t101 ---- child 1]]"
+  - replaceText:
+      path: t001 - deeply nested.md
+      before: "[[t001 ---- child 2]]"
+      after: "[[t101 ---- child 2]]"
+  - replaceText:
+      path: t001 - deeply nested.md
+      before: "[[t001 ---- child 3 in same dir as child 1]]"
+      after: "[[t101 ---- child 3 in same dir as child 1]]"

@@ -5,6 +5,7 @@ import { getBundleDirectory } from '../../../../shared/bundle-config/bundleConfi
 import { acceptSourceSnapshot, scanSourceChanges, sourceComparison, sourcingReview } from '../services/sourceReview.js';
 import { SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import type { SourceSnapshotAcceptance } from '../../../../../../../contracts/types/sourcing.js';
+import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 const router = express.Router();
 
@@ -15,8 +16,12 @@ function directory(req: express.Request): string {
 
 function handle(action: (req: express.Request) => unknown): express.RequestHandler {
   return (req, res, next) => {
+    const startedAt = Date.now();
     void Promise.resolve().then(() => action(req)).then(result => res.json(result)).catch(error => {
-      if (error instanceof SourcingError) res.status(error.statusCode).json({ error: error.message });
+      if (error instanceof SourcingError) {
+        logger.warn(`[sourcing] ${req.method} ${req.path} failed after ${Date.now() - startedAt}ms (${error.statusCode})`, error);
+        res.status(error.statusCode).json({ error: error.message });
+      }
       else next(error);
     });
   };

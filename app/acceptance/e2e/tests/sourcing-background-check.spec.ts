@@ -14,7 +14,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await status.getByRole('button', { name: '13 source changes available – Review', exact: true }).click();
   await page.getByTestId('remove-all-orphans').click();
   await page.getByRole('button', { name: 'Apply removals', exact: true }).click();
-  const update = status.getByRole('button', { name: 'Update sources', exact: true });
+  const update = status.getByRole('button', { name: 'Refresh sources', exact: true });
   await expect(update).toBeVisible();
   await page.clock.pauseAt(Date.now() + 1000);
   let release!: () => void;
@@ -30,8 +30,8 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
 
   await page.clock.fastForward(30000);
   await expect(update.getByTestId('source-background-progress')).toBeVisible();
-  await expect(update).toHaveText('Update sources');
-  await expect(status.getByText('Updating sources', { exact: true })).not.toBeVisible();
+  await expect(update).toHaveText('Refresh sources');
+  await expect(status.getByText('Refreshing sources', { exact: true })).not.toBeVisible();
   await addKeyFrame(sourceSnapshot);
   release();
   await expect(status.getByTestId('source-background-progress')).not.toBeVisible();
@@ -54,7 +54,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await page.clock.fastForward(30000);
   await expect(review.getByTestId('source-background-progress')).toBeVisible();
   await expect(review).toHaveText('2 source changes available – Review');
-  await expect(status.getByText('Updating sources', { exact: true })).not.toBeVisible();
+  await expect(status.getByText('Refreshing sources', { exact: true })).not.toBeVisible();
   await addKeyFrame(sourceSnapshot);
   release();
   await expect(review).toHaveText('3 source changes available – Review');

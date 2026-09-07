@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '../../../../shared/components/Modal.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
@@ -32,6 +32,32 @@ function SourcePath({ value }: { value: string }) {
   return <span className="min-w-0 [overflow-wrap:anywhere]" title={value}>{separator >= 0 && <span className="text-neutral-500">{value.slice(0, separator + 1)}</span>}<span>{value.slice(separator + 1)}</span></span>;
 }
 
+function SourceChangeRow({ change, loadComparison }: { change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
+  const contentId = useId();
+  const [expanded, setExpanded] = useState(false);
+  const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const toggle = async () => {
+    setExpanded(!expanded);
+    if (expanded || comparison || loading) return;
+    setLoading(true); setError(null);
+    try { setComparison(await loadComparison()); }
+    catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+    finally { setLoading(false); }
+  };
+  return <div className="py-2.5 text-sm">
+    <div className="flex items-start gap-3"><span className="w-16 shrink-0 pt-0.5 text-xs text-neutral-500">{change.kind === 'missing' ? 'Missing' : change.kind === 'added' ? 'Added' : 'Modified'}</span><div className="min-w-0 flex-1"><SourcePath value={change.path} /></div>
+      <button className="flex shrink-0 items-center gap-1 text-xs text-neutral-500 hover:text-neutral-800" aria-label={`Details ${change.path}`} aria-expanded={expanded} aria-controls={contentId} onClick={() => void toggle()}><span aria-hidden="true" className={expanded ? 'rotate-90' : ''}>▸</span>Details</button>
+    </div>
+    <div id={contentId} hidden={!expanded}>
+      {loading && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-neutral-500"><Spinner />Loading comparison</p>}
+      {error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}
+      {comparison && <ContentComparison comparison={comparison} />}
+    </div>
+  </div>;
+}
+
 export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, reviewTrigger = 0, onReviewOpened }: {
   sourceChangeTrigger?: number;
   reviewTrigger?: number;
@@ -52,6 +78,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const requestGeneration = useRef(0);
   const inFlight = useRef(false);
+  const sourceCheck = useRef<{ endpoint: string; promise: Promise<SourcingReview> }>();
   const reviewToken = useRef<string>();
   const [showAllChanges, setShowAllChanges] = useState(false);
   const closeReview = useCallback(() => setOpen(false), []);
@@ -85,14 +112,20 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     if (background) setBackgroundBusy(true);
     else { setBusy(true); setNoChanges(false); }
     setError(null);
+    // React can replay an effect during development while its first request is
+    // still running. Reuse that request, but let the current effect receive it.
+    const operation = sourceCheck.current?.endpoint === endpoint ? sourceCheck.current
+      : { endpoint, promise: request('/scan', { replaceCandidate }) as Promise<SourcingReview> };
+    sourceCheck.current = operation;
     try {
-      const result = await request('/scan', { replaceCandidate }) as SourcingReview;
+      const result = await operation.promise;
       if (generation === requestGeneration.current) receive(result, foregroundScan.current);
     } catch (err) { if (generation === requestGeneration.current) setError(err instanceof Error ? err.message : String(err)); }
     finally {
+      if (sourceCheck.current === operation) sourceCheck.current = undefined;
       if (generation === requestGeneration.current) { inFlight.current = false; setBusy(false); setBackgroundBusy(false); }
     }
-  }, [request, receive]);
+  }, [endpoint, request, receive]);
 
   useEffect(() => {
     requestGeneration.current += 1;
@@ -151,10 +184,10 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
 
   return <>
     <div className="flex items-center gap-2 whitespace-nowrap text-sm" data-testid="sourcing-status" data-orphan-count={review?.orphans.length ?? 0} aria-live="polite">
-      {busy ? <span role="status" className="flex items-center gap-2 text-neutral-500"><Spinner />Updating sources</span>
+      {busy ? <span role="status" className="flex items-center gap-2 text-neutral-500"><Spinner />Refreshing sources</span>
         : review && (review.candidate || review.orphans.length > 0) ? <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded bg-blue-100 px-3 py-1 font-medium text-blue-900" onClick={() => setOpen(true)}>{reviewLabel}{backgroundProgress}</button>
         : noChanges ? <span role="status" className="text-neutral-500">No changes</span>
-        : <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded px-2 py-1 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-800" onClick={() => void scan(true)}>Update sources{backgroundProgress}</button>}
+        : <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded border border-neutral-300 bg-neutral-50 px-3 py-1 font-medium text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 hover:text-neutral-800" onClick={() => void scan(true)}>Refresh sources{backgroundProgress}</button>}
       {error && !open && <span role="alert" title={error} className="text-red-700">Source update failed<span className="sr-only">: {error}</span></span>}
     </div>
     {open && createPortal(<Modal isOpen={open} onClose={closeReview} title="Source update" ariaLabel="Source review" closeLabel="Close source review" manageFocus className="w-full max-w-3xl" footer={
@@ -205,12 +238,10 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
         </section>}
         {review && review.orphans.length > 0 && <OrphanReview orphans={review.orphans} removals={orphanRemovals} onRemovalsChange={setOrphanRemovals} disabled={busy || backgroundBusy || hasDraftChanges} hasCandidate={Boolean(review.candidate)} />}
         {Boolean(review?.changes.length) && <section><h3 className="mb-2 text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'} <span className="font-normal text-neutral-500">({review?.changes.length})</span></h3>
-          <div className="divide-y divide-neutral-100">{review?.changes.slice(0, showAllChanges ? undefined : 8).map(change => <div className="py-2.5 text-sm" key={`${change.kind}:${change.path}`}>
-            <div className="flex items-start gap-3"><span className="w-16 shrink-0 pt-0.5 text-xs text-neutral-500">{change.kind === 'missing' ? 'Missing' : change.kind === 'added' ? 'Added' : 'Modified'}</span><div className="min-w-0 flex-1"><SourcePath value={change.path} /></div>
-              <button className="shrink-0 text-xs text-main-700 hover:underline" aria-label={`Inspect ${change.path}`} onClick={() => void inspect(change.path, change.path)}>Inspect</button>
-            </div>
-            {comparison?.beforePath === change.path && comparison.afterPath === change.path && <ContentComparison comparison={comparison} />}
-          </div>)}</div>
+          <div className="divide-y divide-neutral-100">{review?.changes.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow key={`${review.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
+            const query = new URLSearchParams({ beforeId: review.accepted.id, afterId: review.candidate!.id, beforePath: change.path, afterPath: change.path });
+            return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
+          }} />)}</div>
           {(review?.changes.length ?? 0) > 8 && <button className="mt-2 text-xs text-main-700 hover:underline" onClick={() => setShowAllChanges(previous => !previous)}>{showAllChanges ? 'Show fewer' : `Show all ${review?.changes.length} changes`}</button>}
         </section>}
         <div className="space-y-3 border-t border-neutral-100 pt-3 text-xs text-neutral-500">

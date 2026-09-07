@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { loadTrackingRecords } from '../../../../shared/bundle-node/trackingRecords.js';
+import { findGroupedSourceMoves } from './sourceMoveGroups.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 
 import fs from 'node:fs';
@@ -28,9 +29,7 @@ function blocks(contents: string): Map<string, number> {
   return result;
 }
 
-function contentSimilarity(left: string, right: string): { similarity: number; unchanged: number; total: number } {
-  const a = blocks(left);
-  const b = blocks(right);
+function contentSimilarity(a: Map<string, number>, b: Map<string, number>): { similarity: number; unchanged: number; total: number } {
   const shared = [...a].filter(([hash]) => b.has(hash));
   const weight = (values: Map<string, number>) => [...values.values()].reduce((sum, size) => sum + size, 0);
   const denominator = Math.max(weight(a), weight(b));
@@ -54,6 +53,8 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
   // Existing unconfigured files also matter when importing a legacy tracked copy after a move.
   const newPaths = Object.keys(current.files).filter(filename => !configuredPaths.has(filename));
   const candidates: SourceMoveCandidate[] = [];
+  const missingFiles: Array<{ node: FileBundleNodeConfig; oldPath: string; prior: SourceSnapshot['files'][string]; blocks?: Map<string, number> }> = [];
+  const resultsByNode = new Map<string, Array<SourceMoveCandidate & { score: number }>>();
   for (const node of configs) {
     if (node.bundleNodeKind === 'folder') {
       const oldPath = node.sourceGraphSubdirectory;
@@ -77,18 +78,23 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
     const oldPath = snapshotFilePath(previous, node);
     const prior = previous.files[oldPath];
     if (!prior || current.files[snapshotFilePath(current, node)]) continue;
-    const results: Array<SourceMoveCandidate & { score: number }> = [];
-    for (const newPath of newPaths) {
+    missingFiles.push({ node, oldPath, prior });
+  }
+  // Parse each candidate once, then compare it with the missing pages. Keeping only
+  // the current candidate's blocks avoids retaining the entire source library.
+  for (const newPath of newPaths) {
+    let candidateBlocks: Map<string, number> | undefined;
+    for (const missing of missingFiles) {
+      const { node, oldPath, prior } = missing;
       if (path.extname(oldPath).toLowerCase() !== path.extname(newPath).toLowerCase()) continue;
       const exact = prior.digest === current.files[newPath].digest;
       const evidence: string[] = [];
       let overlap = 0;
       if (exact) { overlap = 1; evidence.push('Identical file contents'); }
       else if (/\.(md|html|txt)$/i.test(oldPath)) {
-        const similarity = contentSimilarity(
-          fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id), oldPath), 'utf8'),
-          fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id), newPath), 'utf8'),
-        );
+        missing.blocks ??= blocks(fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id), oldPath), 'utf8'));
+        candidateBlocks ??= blocks(fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id), newPath), 'utf8'));
+        const similarity = contentSimilarity(missing.blocks, candidateBlocks);
         overlap = similarity.similarity;
         if (similarity.unchanged) evidence.push(`${similarity.unchanged} of ${similarity.total} substantial blocks unchanged`);
       }
@@ -105,11 +111,16 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
       }
       const score = overlap * 0.75 + name * 0.15 + context * 0.1;
       if (score < 0.5) continue;
+      const results = resultsByNode.get(node.bundleNodeId) ?? [];
       results.push({ bundleNodeId: node.bundleNodeId, oldPath, newPath, evidence,
         confidence: exact ? 'strong' : 'possible', competing: false, score,
         previousRoute: previous.graph?.nodes.find(item => item.bundleNodeKey === oldPath)?.path ?? [],
         currentRoute: current.graph?.nodes.find(item => item.bundleNodeKey === newPath)?.path ?? [] });
+      resultsByNode.set(node.bundleNodeId, results);
     }
+  }
+  for (const { node } of missingFiles) {
+    const results = resultsByNode.get(node.bundleNodeId) ?? [];
     results.sort((a, b) => b.score - a.score || a.newPath.localeCompare(b.newPath));
     for (const match of results.slice(0, 3)) {
       candidates.push({ bundleNodeId: match.bundleNodeId, oldPath: match.oldPath, newPath: match.newPath,
@@ -117,6 +128,10 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
         previousRoute: match.previousRoute, currentRoute: match.currentRoute });
     }
   }
+  for (const candidate of candidates) {
+    if (candidates.some(other => other.bundleNodeId !== candidate.bundleNodeId && other.newPath === candidate.newPath)) candidate.competing = true;
+  }
+  candidates.push(...findGroupedSourceMoves(bundleDirectory, previous, current, configs, candidates));
   for (const candidate of candidates) {
     if (candidates.some(other => other.bundleNodeId !== candidate.bundleNodeId && other.newPath === candidate.newPath)) candidate.competing = true;
   }
@@ -184,6 +199,7 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
   const moves = candidate ? findSourceMoves(bundleDirectory, { ...accepted, graph }, { ...candidate, graph: candidateGraph }, configs) : [];
   const pairedOld = new Set(moves.map(move => move.oldPath));
   const pairedNew = new Set(moves.map(move => move.newPath));
+  const pairedIds = new Set(moves.map(move => move.bundleNodeId));
   const byPath = new Map(configs.map(node => [snapshotFilePath(accepted, node), node.bundleNodeId]));
   const changes: SourcingReview['changes'] = [];
   if (candidate) {
@@ -197,10 +213,14 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
     }
   }
   if (sourceConfigFingerprint(bundleDirectory) !== fingerprint && attempt < 2) return await buildSourceReview(bundleDirectory, attempt + 1);
+  // Classify identities only after individual and grouped moves are assembled.
+  // Both locators belong to that review item, including aliases in legacy config.
+  const orphans = explainSourceOrphans(bundleDirectory, candidate ?? accepted, candidateGraph, configs)
+    .filter(orphan => !pairedIds.has(orphan.bundleNodeId) && !pairedOld.has(orphan.path) && !pairedNew.has(orphan.path));
   return {
     accepted: state.history.find(item => item.id === accepted.id) ?? snapshotSummary(accepted),
     ...(candidate && { candidate: snapshotSummary(candidate) }), moves, changes,
-    orphans: explainSourceOrphans(bundleDirectory, candidate ?? accepted, candidateGraph, configs).filter(orphan => !moves.some(move => move.bundleNodeId === orphan.bundleNodeId)), history: state.history,
+    orphans, history: state.history,
     reviewToken: sha256(`${state.acceptedId}\0${state.candidateId ?? ''}\0${fingerprint}`),
   };
 }

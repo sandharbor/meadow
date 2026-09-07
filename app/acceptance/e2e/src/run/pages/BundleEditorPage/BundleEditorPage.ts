@@ -69,7 +69,7 @@ export class BundleEditorPage {
 
   async expectSourceUpdateInToolbar() {
     const status = this.page.getByTestId('sourcing-status');
-    await this.expect(status.getByRole('status')).toHaveText('Updating sources');
+    await this.expect(status.getByRole('status')).toHaveText('Refreshing sources');
     await this.expect(status.locator('.animate-spin')).toBeVisible();
     const statusBox = await status.boundingBox();
     const menuBox = await this.page.getByTitle('Bundle options', { exact: true }).boundingBox();
@@ -419,12 +419,12 @@ export class BundleEditorPage {
   // ---------------------------------------------------------------------------
 
   async waitForSourceCheck() {
-    await this.expect(this.page.getByTestId('sourcing-status').getByRole('button', { name: /^(Update sources|\d+ source changes? available.*Review)$/ })).toBeVisible();
+    await this.expect(this.page.getByTestId('sourcing-status').getByRole('button', { name: /^(Refresh sources|\d+ source changes? available.*Review)$/ })).toBeVisible();
   }
 
   async checkSourceChanges() {
     await this.waitForSourceCheck();
-    const update = this.page.getByRole('button', { name: 'Update sources', exact: true });
+    const update = this.page.getByRole('button', { name: 'Refresh sources', exact: true });
     if (await update.isVisible()) {
       await update.click();
       await this.waitForSourceCheck();

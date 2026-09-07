@@ -14,7 +14,7 @@ export const sourceSnapshot = define({
 export const sourceMove = define({
   id: id.sourceMove, name: 'Source Move', kind: 'mechanism', appAreaIds: [id.bundleSourcing],
   definition: text`A proposed correspondence between a configured page whose source location disappeared and a source file at another location.`,
-  mechanics: [text`Content fingerprints and graph context provide inspectable evidence. The highest-ranked available match is proposed as a rename. Accepting the source update applies the proposal and preserves identity; Details exposes evidence and an optional correction to keep pages separate. Proposed matches never assign two configured identities to one destination.`],
+  mechanics: [text`Content fingerprints and graph context provide inspectable evidence. Two independent, unambiguous content matches can establish a shared folder move for related pages whose contents remain highly similar after consistent filename and link rewrites. The highest-ranked available match is proposed as a rename. Accepting the source update applies the proposal and preserves identity; Details exposes evidence and an optional correction to keep pages separate. Proposed matches never assign two configured identities to one destination. Pages in move review are excluded from orphan cleanup and separate added or missing entries.`],
   interplay: text`Identity proposals are applied when accepting a ${link(id.sourceSnapshot, 'Source Snapshot')}. A confirmed move can still leave an ${link(id.orphan, 'Orphaned Bundle Page')} when its incoming route has disappeared.`,
 });
 
