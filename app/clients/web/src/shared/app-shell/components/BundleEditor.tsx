@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { SourceSnapshotsModal } from '../../../areas/bundle/sourcing/components/SourceSnapshotsModal.js';
 import { SourcingPanel } from '../../../areas/bundle/sourcing/components/SourcingPanel.js';
 
 /* global alert */
@@ -50,7 +51,7 @@ const BundleEditor: React.FC = () => {
   useEffect(() => { setSourceCheckCompleted(false); setPendingSourceChanges(false); }, [slug]);
   const [frontierUnavailable, setFrontierUnavailable] = useState<string | null>(null);
   const [sourceChangeTrigger, setSourceChangeTrigger] = useState(0);
-  const [sourceReviewTrigger, setSourceReviewTrigger] = useState(0);
+  const [isSourceSnapshotsOpen, setIsSourceSnapshotsOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [graph, setGraph] = useState<Graph | null>(null);
   const [filters, setFilters, reloadCustomFilters] = useFilterState(slug || '');
@@ -950,7 +951,8 @@ const BundleEditor: React.FC = () => {
     if (graphError) {
       return (
         <div className="w-full h-screen flex flex-col items-center justify-center p-8">
-          <SourcingPanel initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} reviewTrigger={sourceReviewTrigger} onReviewOpened={() => setSourceReviewTrigger(0)} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+          <SourceSnapshotsModal isOpen={isSourceSnapshotsOpen} bundleSlug={slug || ''} onClose={() => setIsSourceSnapshotsOpen(false)} />
+          <SourcingPanel initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
             setGraphError(null); setConfigChangeTrigger(previous => previous + 1);
           }} />
           <div className="max-w-2xl w-full bg-danger-50 border border-danger-300 rounded-lg p-6">
@@ -1023,7 +1025,8 @@ const BundleEditor: React.FC = () => {
               </button>
             </div>
           )}
-          <SourcingPanel initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} reviewTrigger={sourceReviewTrigger} onReviewOpened={() => setSourceReviewTrigger(0)} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+          <SourceSnapshotsModal isOpen={isSourceSnapshotsOpen} bundleSlug={slug || ''} onClose={() => setIsSourceSnapshotsOpen(false)} />
+          <SourcingPanel initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
             refreshBundleNodeConfigs();
             reloadWorkingGraph();
           }} />
@@ -1041,7 +1044,7 @@ const BundleEditor: React.FC = () => {
                 <div className="py-1">
                   <button
                     onClick={() => {
-                      setSourceReviewTrigger(value => value + 1);
+                      setIsSourceSnapshotsOpen(true);
                       setIsBundleMenuOpen(false);
                     }}
                     className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"

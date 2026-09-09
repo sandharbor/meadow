@@ -34,6 +34,7 @@ export class SourceReviewModal {
         .getByRole('button', { name: /source changes? available.*Review/i }).click();
     }
     await this.expect(this.dialog).toBeVisible();
+    await this.expect(this.dialog.getByText(/Snapshot details and history/)).not.toBeVisible();
   }
 
   async expectClosed() {
@@ -171,10 +172,6 @@ export class SourceReviewModal {
     await this.page.keyboard.press('Escape');
     await this.expectClosed();
     await this.expect(this.page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).toBeFocused();
-  }
-
-  async expectHistoryAvailable() {
-    await this.expect(this.dialog).toContainText('Snapshot details and history');
   }
 
   async applyOrphanRemovals() {

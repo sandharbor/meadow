@@ -65,3 +65,9 @@ export interface SourceSnapshotAcceptance {
   /** Legacy explicit removal selection. Omission removes all eligible orphans except orphanKeeps. */
   orphanRemovals?: string[];
 }
+
+/** Accepted source history; pending captures are intentionally excluded. */
+export interface SourceSnapshotHistory {
+  acceptedId: string | null;
+  snapshots: SourceSnapshotSummary[];
+}

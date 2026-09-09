@@ -2,7 +2,7 @@
 
 import express from 'express';
 import { getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { acceptSourceSnapshot, scanSourceChanges, sourceComparison, sourceSnapshotImage, sourcingReview } from '../services/sourceReview.js';
+import { acceptSourceSnapshot, scanSourceChanges, sourceComparison, sourceSnapshotImage, sourceSnapshotHistory, sourcingReview } from '../services/sourceReview.js';
 import { SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import type { SourceSnapshotAcceptance } from '../../../../../../../contracts/types/sourcing.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -28,6 +28,7 @@ function handle(action: (req: express.Request) => unknown): express.RequestHandl
 }
 
 router.get('/bundles/:bundleSlug/sourcing', handle(req => sourcingReview(directory(req))));
+router.get('/bundles/:bundleSlug/sourcing/history', handle(req => sourceSnapshotHistory(directory(req))));
 router.post('/bundles/:bundleSlug/sourcing/scan', handle(req => {
   const body = req.body as { replaceCandidate?: unknown } | undefined;
   return scanSourceChanges(directory(req), body?.replaceCandidate === true);

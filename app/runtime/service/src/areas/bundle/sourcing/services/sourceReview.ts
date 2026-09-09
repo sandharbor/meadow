@@ -10,7 +10,7 @@ import { readSourceBlob, retainCandidateSourceTree, SourceCaptureChangedError } 
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { BundleNodeConfig, FileBundleNodeConfig, FolderBundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { SourceMoveCandidate, SourceOrphanExplanation, SourceSnapshotAcceptance, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceMoveCandidate, SourceOrphanExplanation, SourceSnapshotAcceptance, SourceSnapshotHistory, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import {
@@ -368,4 +368,9 @@ export function sourceSnapshotImage(bundleDirectory: string, id: string, relativ
   if (!type || !Object.prototype.hasOwnProperty.call(snapshot.files, relative)) throw new SourcingError('Image is not available in this snapshot', 404);
   const bytes = snapshot.git ? readSourceBlob(snapshot.git, relative) : fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, id), relative));
   return { type, bytes };
+}
+
+export function sourceSnapshotHistory(bundleDirectory: string): SourceSnapshotHistory {
+  const state = loadSourcingState(bundleDirectory);
+  return { acceptedId: state?.acceptedId ?? null, snapshots: state?.history ?? [] };
 }

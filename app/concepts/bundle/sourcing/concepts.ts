@@ -8,7 +8,7 @@ export const sourceSnapshot = define({
   definition: text`An immutable capture of source files, assets, and graph context that a bundle can accept as its source material.`,
   mechanics: [
     text`Untracked files that leave the candidate snapshot are shown as No longer included. Absence from a snapshot does not establish filesystem deletion. Tracked entries that leave the working graph are reviewed as orphaned configuration.`,
-    text`Capture and acceptance are distinct events. Background discovery retains a candidate while curation and generation continue using the accepted snapshot.`,
+    text`Capture and acceptance are distinct events. Background discovery retains a candidate while curation and generation continue using the accepted snapshot. Source changes reviews the proposed update; Source snapshots separately lists accepted history and marks the current snapshot. Opening history does not refresh or accept sources.`,
     text`Included source files and required embedded assets are stored in Git trees on source-history branches in Meadow Home. Unchanged content shares blobs. All accepted snapshots remain retained; only the current unaccepted candidate is retained. Normal checkout and staging are unchanged.`,
     text`Library-wide discovery is temporary. Durable metadata and content are scoped to the included graph. Expanded trees are disposable caches; historical text comparisons read immutable Git blobs. Backups preserve the repository and its source-history references.`,
   ],

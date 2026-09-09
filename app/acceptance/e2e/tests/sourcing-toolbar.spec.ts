@@ -54,8 +54,11 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await addKeyFrame(sourceSnapshot);
   await snapshot('no changes becomes an update button after two seconds');
 
-  await editor.reviewSourceHistory();
-  await sourceReview.close();
+  const initialHistory = await editor.reviewSourceHistory();
+  await initialHistory.expectSnapshotCount(1);
+  expect(scans).toBe(2);
+  await addKeyFrame(sourceSnapshot);
+  await initialHistory.close();
 
   await sourceChanges.apply('rename-page-with-links');
   await update.click();
@@ -66,6 +69,17 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await sourceReview.expectClosed();
   await addKeyFrame(sourceSnapshot);
   await snapshot('available changes keep an explicit review action in the toolbar');
+  const pendingHistory = await editor.reviewSourceHistory();
+  await pendingHistory.expectSnapshotCount(1);
+  expect(scans).toBe(3);
+  await pendingHistory.close();
+  await sourceReview.open();
+  await sourceReview.accept();
+  const acceptedHistory = await editor.reviewSourceHistory();
+  await acceptedHistory.expectSnapshotCount(2);
+  await addKeyFrame(sourceSnapshot);
+  await snapshot('accepted history lists the current snapshot and excludes pending source changes');
+  await acceptedHistory.close();
   await page.clock.resume();
   await new Workflows(page, expect).navigateToSmallBundle();
   await expect(page.getByRole('button', { name: 'Refresh sources', exact: true })).toBeVisible();

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { materializeSourceGraph, applySourceChange } from '../../../../../../shared_code/shared_dev/sourceChanges.js';
-import { acceptSourceSnapshot, findSourceMoves, scanSourceChanges, sourcingReview, sourceComparison, sourceSnapshotImage } from '../../../../src/areas/bundle/sourcing/services/sourceReview.js';
+import { acceptSourceSnapshot, findSourceMoves, scanSourceChanges, sourcingReview, sourceComparison, sourceSnapshotImage, sourceSnapshotHistory } from '../../../../src/areas/bundle/sourcing/services/sourceReview.js';
 import { acceptedSourceRoot, initializeSourcing, loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, nodeSourcePath, snapshotSourceRoot, sourcingRoot, writeSourcingJson, sourceConfigFingerprint, withSourcingLock } from '../../../../src/shared/source-snapshot/sourceSnapshots.js';
 import { getFolderBundleRepairStatus } from '../../../../src/shared/bundle-config/folderBundleRepair.js';
 import { loadTrackingRecords } from '../../../../src/shared/bundle-node/trackingRecords.js';
@@ -52,6 +52,20 @@ async function acceptAllMoves() {
 }
 
 describe('source snapshots with the shared big graph', () => {
+  it('reads only accepted history without capturing sources or including a pending candidate', async () => {
+    expect(sourceSnapshotHistory(bundle)).toEqual({ acceptedId: null, snapshots: [] });
+    expect(loadSourcingState(bundle)).toBeNull();
+    const initial = await initializeSourcing(bundle);
+    change('rename-page-with-links');
+    const pending = await scanSourceChanges(bundle);
+    expect(sourceSnapshotHistory(bundle)).toEqual({ acceptedId: initial.acceptedId, snapshots: initial.history });
+    expect(sourceSnapshotHistory(bundle).snapshots.some(item => item.id === pending.candidate!.id)).toBe(false);
+    await acceptAllMoves();
+    const history = sourceSnapshotHistory(bundle);
+    expect(history.acceptedId).toBe(pending.candidate!.id);
+    expect(history.snapshots.map(item => item.id)).toEqual([initial.acceptedId, pending.candidate!.id]);
+  }, 20000);
+
   it('explains added Markdown and image routes and serves images from their captured snapshots', async () => {
     const state = await initializeSourcing(bundle);
     const imagePath = 't006/t006 --- meadow.png';

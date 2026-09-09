@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import type { Page, Expect, Response } from "@playwright/test";
+import { SourceSnapshotsModal } from "./components/SourceSnapshotsModal.js";
 import { SourceReviewModal } from "./components/SourceReviewModal.js";
 
 function isCommittedCurationResponse(response: Response): boolean {
@@ -450,8 +451,9 @@ export class BundleEditorPage {
   async reviewSourceHistory() {
     await this.page.getByTitle('Bundle options', { exact: true }).click();
     await this.page.getByRole('button', { name: 'Source snapshots', exact: true }).click();
-    await this.sourceReview.expectHistoryAvailable();
-    return this.sourceReview;
+    const snapshots = new SourceSnapshotsModal(this.page, this.expect);
+    await snapshots.expectOpen();
+    return snapshots;
   }
 
   async reviewSourceOrphans() {

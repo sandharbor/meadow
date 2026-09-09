@@ -16,8 +16,6 @@ import type { SourcingReview } from '../../../../../../../contracts/types/sourci
 import './SourcingPanel.css';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
 
-function date(value: string): string { return new Date(value).toLocaleString(); }
-
 interface Comparison { beforePath: string; afterPath: string; before: string | null; after: string | null; binary: boolean; beforeImage?: boolean; afterImage?: boolean; }
 function ContentComparison({ comparison, imageUrl }: { comparison: Comparison; imageUrl: SourceImageUrl }) {
   return <section aria-label="Source content comparison" className="mt-3 overflow-hidden rounded border border-neutral-200">
@@ -66,12 +64,10 @@ function SourceChangeRow({ change, loadComparison, imageUrl }: { imageUrl: Sourc
   </details>;
 }
 
-export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, reviewTrigger = 0, initialReview = false, onReviewOpened, onPendingChanges }: {
+export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, initialReview = false, onPendingChanges }: {
   onPendingChanges?: (pending: boolean) => void;
   sourceChangeTrigger?: number;
-  reviewTrigger?: number;
   initialReview?: boolean;
-  onReviewOpened?: () => void;
   bundleSlug: string; hasDraftChanges: boolean; onAccepted: () => void;
 }) {
   const [review, setReview] = useState<SourcingReview | null>(null);
@@ -168,10 +164,6 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     if (sourceChangeTrigger) void scan(true);
   }, [sourceChangeTrigger, scan]);
 
-  useEffect(() => {
-    if (reviewTrigger) { setOpen(true); onReviewOpened?.(); }
-  }, [reviewTrigger, onReviewOpened]);
-
   const inspect = async (oldPath: string, newPath: string) => {
     if (!review?.candidate) return;
     try {
@@ -257,13 +249,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
           {(review?.changes.length ?? 0) > 8 && <button className="mt-2 text-xs text-main-700 hover:underline" onClick={() => setShowAllChanges(previous => !previous)}>{showAllChanges ? 'Show fewer' : `Show all ${review?.changes.length} changes`}</button>}
         </section>}
         {review && review.orphans.length > 0 && <OrphanReview orphans={review.orphans} hasCandidate={Boolean(review.candidate)} />}
-        <div className="space-y-3 border-t border-neutral-100 pt-3 text-xs text-neutral-500">
-          <details><summary className="cursor-pointer hover:text-neutral-800">Snapshot details and history ({review?.history.length ?? 0})</summary>
-            <p className="mt-3">The accepted snapshot supplies curation and generation until you accept an update.</p>
-            {review?.candidate && <p className="mt-2">Candidate: {date(review.candidate.capturedAt)} · {review.candidate.fileCount} source files</p>}
-            <ul className="mt-2 space-y-2">{review?.history.slice().reverse().map(item => <li key={item.id}>{date(item.capturedAt)} · {item.fileCount} files{item.id === review.accepted.id ? ' · Accepted' : ''}</li>)}</ul>
-          </details>
-        </div>
+
       </div>
     </Modal>, document.body)}
   </>;
