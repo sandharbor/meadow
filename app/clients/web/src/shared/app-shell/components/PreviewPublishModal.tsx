@@ -990,6 +990,9 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       onClick={handleClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Preview and publish"
         className="bg-white rounded-lg px-6 pt-8 pb-6 w-4/5 h-4/5 flex flex-col relative"
         onClick={(e) => e.stopPropagation()}
       >

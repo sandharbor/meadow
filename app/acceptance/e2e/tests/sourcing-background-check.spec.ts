@@ -2,6 +2,7 @@
 
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
+import { PreviewPublishModal } from '../src/run/pages/BundleEditorPage/components/PreviewPublishModal/PreviewPublishModal.js';
 import { Workflows } from '../src/run/workflows.js';
 import { sourceSnapshot } from '../../../concepts/index.js';
 
@@ -13,7 +14,8 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await new Workflows(page, expect).navigateToBigBundle();
   const status = page.getByTestId('sourcing-status');
   await expect(status.getByRole('button', { name: '13 source changes available – Review', exact: true })).toBeVisible();
-  const sourceReview = new BundleEditorPage(page, expect).sourceReview;
+  const editor = new BundleEditorPage(page, expect);
+  const sourceReview = editor.sourceReview;
   await sourceReview.open();
   await sourceReview.applyOrphanRemovals();
   const update = status.getByRole('button', { name: 'Refresh sources', exact: true });
@@ -29,6 +31,20 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
     await waiting;
     await route.fulfill({ response });
   });
+
+  await editor.clickPreview();
+  const preview = new PreviewPublishModal(page, expect);
+  await preview.waitForPreviewComplete();
+  await page.clock.fastForward(60000);
+  expect(scans).toBe(0);
+  await addKeyFrame(sourceSnapshot);
+  await snapshot('automatic source checks pause while preview is open');
+  await preview.closeModal();
+
+  const history = await editor.reviewSourceHistory();
+  await page.clock.fastForward(60000);
+  expect(scans).toBe(0);
+  await history.close();
 
   await page.clock.fastForward(30000);
   await expect(update.getByTestId('source-background-progress')).toBeVisible();
@@ -69,14 +85,19 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await rename.keepSeparate();
   await sourceChanges.apply('remove-incoming-link');
   gate = new Promise<void>(resolve => { release = resolve; });
-  await page.clock.fastForward(30000);
-  await expect(review.getByTestId('source-background-progress')).toBeVisible();
-  release();
+  await page.clock.fastForward(60000);
+  expect(scans).toBe(3);
   await expect(status.getByTestId('source-background-progress')).not.toBeVisible();
   await rename.expectSeparateSelected();
   await expect(review).toHaveText('3 source changes available – Review');
+  await snapshot('source review pauses automatic checks and preserves its decisions');
+  release();
+  await sourceReview.checkAgain();
   expect(scans).toBe(4);
-  await snapshot('automatic checks preserve a candidate and its decisions while review is open');
+  await sourceReview.close();
+  await page.clock.fastForward(30000);
+  await expect.poll(() => scans).toBe(5);
+  await expect(status.getByTestId('source-background-progress')).not.toBeVisible();
   await page.clock.resume();
   await skipMeadowHomeStateCheck();
 });

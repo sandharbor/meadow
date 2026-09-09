@@ -16,6 +16,11 @@ import type { SourcingReview } from '../../../../../../../contracts/types/sourci
 import './SourcingPanel.css';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
 
+// Check the rendered modal state at each tick, including dialogs opened in portals.
+function canAutomaticallyRefreshSources(): boolean {
+  return !document.hidden && !document.querySelector('[aria-modal="true"], dialog[open]');
+}
+
 interface Comparison { beforePath: string; afterPath: string; before: string | null; after: string | null; binary: boolean; beforeImage?: boolean; afterImage?: boolean; }
 function ContentComparison({ comparison, imageUrl }: { comparison: Comparison; imageUrl: SourceImageUrl }) {
   return <section aria-label="Source content comparison" className="mt-3 overflow-hidden rounded border border-neutral-200">
@@ -76,8 +81,6 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const [busy, setBusy] = useState(true);
   const [backgroundBusy, setBackgroundBusy] = useState(false);
   const foregroundScan = useRef(false);
-  const reviewOpen = useRef(false);
-  reviewOpen.current = open;
   const [noChanges, setNoChanges] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resolutions, setResolutions] = useState<Record<string, string | null>>({});
@@ -147,9 +150,9 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
       }).catch(err => {
         if (generation === requestGeneration.current) setError(err instanceof Error ? err.message : String(err));
       }).finally(() => { if (generation === requestGeneration.current) setBusy(false); });
-    } else void scan(true);
+    } else if (canAutomaticallyRefreshSources()) void scan(true);
     const timer = window.setInterval(() => {
-      if (!document.hidden) void scan(!reviewOpen.current, true);
+      if (canAutomaticallyRefreshSources()) void scan(true, true);
     }, 30000);
     return () => { requestGeneration.current += 1; window.clearInterval(timer); };
   }, [scan, initialReview, request, receive]);
