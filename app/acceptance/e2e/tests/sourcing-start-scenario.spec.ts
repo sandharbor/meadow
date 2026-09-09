@@ -78,7 +78,7 @@ test('Sourcing Start scenario resets the fixture and hands over directly in sour
     const launchUrl = await createBrowserLaunchUrl(descriptor, destination);
     await page.goto(launchUrl);
     const editor = new BundleEditorPage(page, expect);
-    await expect(page.getByRole('dialog', { name: 'Source review', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Source changes', exact: true })).toBeVisible();
     await editor.expectSourceOrphanCount(1);
     const orphans = await editor.sourceReview.reviewOrphans();
     await orphans.showExplanation('t003 ---- page with section to link to');

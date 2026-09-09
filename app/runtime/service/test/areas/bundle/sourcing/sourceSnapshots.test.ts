@@ -361,6 +361,7 @@ describe('source snapshots with the shared big graph', () => {
     const pending = await scanSourceChanges(bundle);
     const move = pending.moves.find(item => item.oldPath === oldPath);
     expect(move?.confidence).toBe(confidence);
+    expect(move?.contentChanged).toBe(changeId === 'move-and-edit-page');
     expect(move?.evidence.some(item => item.includes(evidence))).toBe(true);
     await acceptAllMoves();
     expect(loadSourceNodeConfigs(bundle).some(node => nodeSourcePath(node) === move!.newPath)).toBe(true);

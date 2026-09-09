@@ -56,6 +56,24 @@ describe('shared code diff for captured source content', () => {
     expect(screen.getByRole('button', { name: 'Text' })).toBeInTheDocument();
   });
 
+  it.each([true, false])('shows precise highlights in source review and HTML Code view (codeOnly=%s)', codeOnly => {
+    const before = '<html><body>Page 001</body></html>';
+    const after = '<html><body>Page 101</body></html>';
+    const { container } = render(<DiffView originalContent={before} currentContent={after} isNewFile={false} codeOnly={codeOnly} />);
+    if (!codeOnly) fireEvent.click(screen.getByRole('button', { name: 'Code' }));
+    expect(container.querySelector('[data-inline-change="removed"]')).toHaveTextContent('0');
+    expect(container.querySelector('[data-inline-change="added"]')).toHaveTextContent('1');
+    expect(container.querySelector('[data-change="removed"] td:last-child')).toHaveTextContent(before);
+    expect(container.querySelector('[data-change="added"] td:last-child')).toHaveTextContent(after);
+    expect(container.querySelector('iframe, body body')).toBeNull();
+  });
+
+  it('keeps whole-line shading for substantial rewrites', () => {
+    const { container } = render(<DiffView originalContent="abcdefghij" currentContent="abcXYZghij" isNewFile={false} codeOnly />);
+    expect(container.querySelectorAll('[data-inline-change]')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-change="added"], [data-change="removed"]')).toHaveLength(2);
+  });
+
   it('handles a large replacement without allocating a quadratic comparison table', () => {
     const before = Array.from({ length: 2100 }, (_, i) => `Old ${i}`).join('\n');
     const after = Array.from({ length: 2100 }, (_, i) => `New ${i}`).join('\n');

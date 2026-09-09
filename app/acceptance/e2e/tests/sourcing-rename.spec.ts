@@ -41,11 +41,13 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   await addKeyFrame(sourceMove);
   await snapshot('proposed rename is ready to accept with choices and evidence collapsed');
   await rename.expandDetails();
+  await rename.collapseDetails();
+  await rename.expandDetails('keyboard');
   await rename.expectSamePageSelected();
-  await rename.compareContent();
-  await rename.expectNoContentChanges();
+  await rename.expectNoContentComparison();
+  await rename.expectSingleRoute(['main page.md', 't003 - link to section.md']);
   await addKeyFrame(sourceMove);
-  await snapshot('rename evidence includes old and new location and source contents');
+  await snapshot('an unchanged traversal route uses file pills without repeating the renamed endpoint');
   await review.closeWithEscape();
   await review.open();
   await rename.expectDetailsCollapsed();

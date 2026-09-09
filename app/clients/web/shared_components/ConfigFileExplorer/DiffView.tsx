@@ -16,6 +16,7 @@ limitations under the License.
 
 import React, { useMemo, useState } from 'react';
 import { HtmlVisualDiffer } from './HtmlVisualDiffer';
+import { matchInlineChanges, type InlineDiffPart } from './inlineChanges.js';
 
 interface DiffViewProps {
   originalContent: string | null;
@@ -34,6 +35,7 @@ interface DiffViewProps {
 interface DiffLine {
   type: 'unchanged' | 'added' | 'removed' | 'header';
   content: string;
+  inlineParts?: InlineDiffPart[];
   oldLineNum?: number;
   newLineNum?: number;
 }
@@ -118,6 +120,16 @@ function computeDiff(original: string, current: string): DiffLine[] {
     newIdx++;
   }
 
+  const budget = { remaining: 1_000_000 };
+  for (const chunk of groupIntoChunks(diffLines)) {
+    if (chunk.type !== 'changes') continue;
+    const removed = chunk.lines.filter(line => line.type === 'removed');
+    const added = chunk.lines.filter(line => line.type === 'added');
+    for (const pair of matchInlineChanges(removed.map(line => line.content), added.map(line => line.content), budget)) {
+      removed[pair.beforeIndex].inlineParts = pair.before;
+      added[pair.afterIndex].inlineParts = pair.after;
+    }
+  }
   return diffLines;
 }
 
@@ -248,7 +260,9 @@ const DiffLineRow: React.FC<DiffLineRowProps> = ({ line, wrapLines }) => (
     </td>
     {/* Content */}
     <td className={`px-2 py-0.5 ${wrapLines ? 'whitespace-pre-wrap [overflow-wrap:anywhere]' : 'whitespace-pre'}`}>
-      {line.content || ' '}
+      {line.inlineParts ? line.inlineParts.map((part, index) => part.changed
+        ? <span key={index} data-inline-change={line.type} className={line.type === 'added' ? 'bg-success-200' : 'bg-danger-200'}>{part.text}</span>
+        : part.text) : line.content || ' '}
     </td>
   </tr>
 );

@@ -31,7 +31,7 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
   await page.goto(opened.url);
   const editor = new BundleEditorPage(page, expect);
   const review = editor.sourceReview;
-  await expect(page.getByRole('dialog', { name: 'Source review' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Source changes' })).toBeVisible();
   await editor.expectSourceOrphanCount(1);
   const orphans = await review.reviewOrphans();
   const title = 't003 ---- page with section to link to';

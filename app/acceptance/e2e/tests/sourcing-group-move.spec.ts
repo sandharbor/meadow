@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourceMove, sourceSnapshot } from '../../../concepts/index.js';
+import { sourceMove, sourceSnapshot, sourceChange } from '../../../concepts/index.js';
 import { parseBundleNodeConfig } from '../../../shared_code/utils/bundleNodeConfigUtils.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -32,6 +32,10 @@ test('Sourcing classifies a renamed linked group once and keeps its pages out of
   await review.orphans.expectSummaryCount(13);
   await addKeyFrame(sourceMove);
   await snapshot('three linked moves form review items while existing unrelated orphans remain separate');
+  await review.expandDetails('t001 - deeply nested.md');
+  await review.expectInlineChanges('t001 - deeply nested.md', ['0', '0', '0'], ['1', '1', '1']);
+  await addKeyFrame(sourceChange);
+  await snapshot('minor link edits highlight only the changed digits');
   await review.accept();
   await editor.expectSourceOrphanCount(0);
   const updated = parseBundleNodeConfig(fs.readFileSync(configPath, 'utf8'));

@@ -16,13 +16,12 @@ export function splitPathChange(before: string, after: string) {
   };
 }
 
-function Difference({ before, after }: { before: string; after: string }) {
+function Highlight({ before, after, side }: { before: string; after: string; side: 'before' | 'after' }) {
   const delta = splitPathChange(before, after);
-  return <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm [overflow-wrap:anywhere]">
-    <span><span className="text-neutral-500">{delta.prefix}</span><del className="rounded bg-red-50 px-0.5 text-red-800 decoration-red-400">{delta.before}</del><span className="text-neutral-500">{delta.suffix}</span></span>
-    <span className="text-neutral-400">→</span>
-    <span><span className="text-neutral-500">{delta.prefix}</span><ins className="rounded bg-main-50 px-0.5 font-medium text-main-900 no-underline">{delta.after}</ins><span className="text-neutral-500">{delta.suffix}</span></span>
-  </div>;
+  const changed = delta[side];
+  return <>{delta.prefix}{changed && (side === 'before'
+    ? <del className="rounded bg-red-50 px-0.5 text-red-800 decoration-red-400">{changed}</del>
+    : <ins className="rounded bg-main-50 px-0.5 text-main-900 no-underline">{changed}</ins>)}{delta.suffix}</>;
 }
 
 function parts(value: string) {
@@ -35,12 +34,17 @@ export function PathChange({ before, after }: { before: string; after: string })
   const moved = old.directory !== next.directory;
   const renamed = old.filename !== next.filename;
   const kind = moved && renamed ? 'Moved and renamed' : moved ? 'Moved' : renamed ? 'Renamed' : 'Unchanged';
-  return <div role="group" aria-label={`${kind}: ${before} → ${after}`} title={`${before} → ${after}`} className="min-w-0 space-y-1.5" data-testid="source-path-change">
-    <div aria-hidden="true" className="space-y-1.5">
-      <span className="text-xs font-medium text-main-700">{kind}</span>
-      {renamed ? <Difference before={old.filename} after={next.filename} /> : <div className="text-sm font-medium [overflow-wrap:anywhere]">{next.filename}</div>}
-      {moved ? <Difference before={old.directory || '(root)'} after={next.directory || '(root)'} />
-        : old.directory && <div className="truncate text-xs text-neutral-500" title={old.directory}>{old.directory}/</div>}
-    </div>
-  </div>;
+  return <span role="group" aria-label={`${kind}: ${before} → ${after}`} title={`${before} → ${after}`} className="block min-w-0" data-testid="source-path-change">
+    <span aria-hidden="true" className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+      {(['before', 'after'] as const).map(side => {
+        const value = side === 'before' ? old : next;
+        return <span key={side} className="contents">
+          {side === 'after' && <span className="text-amber-500">→</span>}
+          <span data-testid={`source-path-${side}`} className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+            <span className="text-neutral-500"><Highlight before={old.directory} after={next.directory} side={side} />{value.directory && <span className="mx-1 text-neutral-400">/</span>}</span><span className="font-medium text-neutral-700"><Highlight before={old.filename} after={next.filename} side={side} /></span>
+          </span>
+        </span>;
+      })}
+    </span>
+  </span>;
 }

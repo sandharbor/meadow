@@ -12,6 +12,8 @@ export interface SourceMoveCandidate {
   oldPath: string;
   newPath: string;
   evidence: string[];
+  /** True only when the two captured files have different content digests. */
+  contentChanged?: boolean;
   confidence: 'strong' | 'possible';
   competing: boolean;
   previousRoute: string[];
@@ -19,6 +21,7 @@ export interface SourceMoveCandidate {
 }
 
 export interface SourceFileChange {
+  /** Missing means absent from the candidate snapshot, not necessarily from the filesystem. */
   kind: 'added' | 'modified' | 'missing';
   path: string;
   bundleNodeId?: string;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '../../../../shared/components/Modal.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
+import { MoveTraversal } from './MoveTraversal.js';
 import { OrphanReview } from './OrphanReview.js';
 import DiffView from '../../../../../shared_components/ConfigFileExplorer/DiffView.js';
 import { PathChange } from '../../../../shared/components/PathChange.js';
@@ -13,7 +14,6 @@ import './SourcingPanel.css';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
 
 function date(value: string): string { return new Date(value).toLocaleString(); }
-function time(value: string): string { return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
 
 interface Comparison { beforePath: string; afterPath: string; before: string | null; after: string | null; binary: boolean; }
 function ContentComparison({ comparison }: { comparison: Comparison }) {
@@ -29,7 +29,7 @@ function ContentComparison({ comparison }: { comparison: Comparison }) {
 
 function SourcePath({ value }: { value: string }) {
   const separator = value.lastIndexOf('/');
-  return <span className="min-w-0 [overflow-wrap:anywhere]" title={value}>{separator >= 0 && <span className="text-neutral-500">{value.slice(0, separator + 1)}</span>}<span>{value.slice(separator + 1)}</span></span>;
+  return <span className="min-w-0 text-sm [overflow-wrap:anywhere]" title={value}>{separator >= 0 && <span className="text-neutral-500">{value.slice(0, separator)}<span className="mx-1 text-neutral-400">/</span></span>}<span className="font-medium text-neutral-700">{value.slice(separator + 1)}</span></span>;
 }
 
 function SourceChangeRow({ change, loadComparison }: { change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
@@ -38,24 +38,27 @@ function SourceChangeRow({ change, loadComparison }: { change: SourcingReview['c
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const toggle = async () => {
-    setExpanded(!expanded);
-    if (expanded || comparison || loading) return;
+  const toggle = async (open: boolean) => {
+    setExpanded(open);
+    if (!open || comparison || loading) return;
     setLoading(true); setError(null);
     try { setComparison(await loadComparison()); }
     catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { setLoading(false); }
   };
-  return <div className="py-2.5 text-sm">
-    <div className="flex items-start gap-3"><span className="w-16 shrink-0 pt-0.5 text-xs text-neutral-500">{change.kind === 'missing' ? 'Missing' : change.kind === 'added' ? 'Added' : 'Modified'}</span><div className="min-w-0 flex-1"><SourcePath value={change.path} /></div>
-      <button className="flex shrink-0 items-center gap-1 text-xs text-neutral-500 hover:text-neutral-800" aria-label={`Details ${change.path}`} aria-expanded={expanded} aria-controls={contentId} onClick={() => void toggle()}><span aria-hidden="true" className={expanded ? 'rotate-90' : ''}>▸</span>Details</button>
-    </div>
+  return <details className="py-2.5 text-sm text-neutral-500" onToggle={event => void toggle(event.currentTarget.open)}>
+    <summary className="ml-3 cursor-pointer rounded text-xs hover:bg-neutral-50 [list-style-position:outside]" aria-label={`Details ${change.path}`} aria-expanded={expanded} aria-controls={contentId}>
+      <span className="flex items-baseline gap-2">
+        <span className="w-28 shrink-0 text-neutral-500">{change.kind === 'missing' ? 'No longer included' : change.kind === 'added' ? 'Added' : 'Modified'}</span>
+        <SourcePath value={change.path} />
+      </span>
+    </summary>
     <div id={contentId} hidden={!expanded}>
       {loading && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-neutral-500"><Spinner />Loading comparison</p>}
       {error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}
       {comparison && <ContentComparison comparison={comparison} />}
     </div>
-  </div>;
+  </details>;
 }
 
 export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, reviewTrigger = 0, initialReview = false, onReviewOpened, onPendingChanges }: {
@@ -203,29 +206,27 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
         : <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded border border-neutral-300 bg-neutral-50 px-3 py-1 font-medium text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 hover:text-neutral-800" onClick={() => void scan(true)}>Refresh sources{backgroundProgress}</button>}
       {error && !open && <span role="alert" title={error} className="text-red-700">Source update failed<span className="sr-only">: {error}</span></span>}
     </div>
-    {open && createPortal(<Modal isOpen={open} onClose={closeReview} title="Source update" ariaLabel="Source review" closeLabel="Close source review" manageFocus className="w-full max-w-3xl" footer={
+    {open && createPortal(<Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus className="w-full max-w-3xl" footer={
       <div className="flex flex-wrap items-center justify-end gap-3">
+        <button className="text-xs text-main-700 hover:underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void scan(true)}>{busy || backgroundBusy ? 'Checking…' : 'Check again'}</button>
         <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.'  : orphanRemovals.size ? `${orphanRemovals.size} entr${orphanRemovals.size === 1 ? 'y' : 'ies'} will be removed from config.` : ''}</p>
         <button className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50" onClick={closeReview}>Later</button>
-        {(review?.candidate || orphanRemovals.size > 0) && <button className="rounded bg-btn-confirm-normal px-4 py-2 text-sm text-btn-confirm-text hover:bg-btn-confirm-hover disabled:opacity-50" disabled={busy || backgroundBusy || hasDraftChanges} onClick={() => void accept()}>Accept source update</button>}
+        {(review?.candidate || orphanRemovals.size > 0) && <button className="rounded bg-btn-confirm-normal px-4 py-2 text-sm text-btn-confirm-text hover:bg-btn-confirm-hover disabled:opacity-50" disabled={busy || backgroundBusy || hasDraftChanges} onClick={() => void accept()}>Accept source changes</button>}
       </div>
     }>
       <div className="space-y-5 text-neutral-800">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
-          {review?.candidate ? <><span title={date(review.candidate.capturedAt)}>Captured {time(review.candidate.capturedAt)}</span><span>· {changeCount} change{changeCount === 1 ? '' : 's'}</span></>
-            : <span>{busy ? 'Checking sources…' : review?.orphans.length ? `${review.orphans.length} orphaned entries to review` : 'No source changes are waiting.'}</span>}
-          <button className="ml-auto text-main-700 hover:underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void scan(true)}>{busy || backgroundBusy ? 'Checking…' : 'Check again'}</button>
-        </div>
+        {!review?.candidate && !review?.orphans.length && <p className="text-xs text-neutral-500">{busy ? 'Checking sources…' : 'No source changes are waiting.'}</p>}
         {error && <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         {groups.size > 0 && <section className="space-y-3">
-          <h3 className="text-sm font-semibold">Renames and moves <span className="font-normal text-neutral-500">({groups.size})</span></h3>
+          <h3 className="text-sm font-semibold">Renames and moves{groups.size >= 10 && <span className="font-normal text-neutral-500"> ({groups.size})</span>}</h3>
           {[...groups].map(([id, moves]) => {
             const selected = proposedResolutions[id];
             const displayed = moves.find(move => move.newPath === selected) ?? moves[0];
             return <article key={id} className="min-w-0 border-b border-neutral-100 pb-3 last:border-0 last:pb-0" data-testid={`source-move-${id}`}>
-              {selected !== null ? <PathChange before={displayed.oldPath} after={displayed.newPath} /> : <div className="space-y-1 text-sm"><p className="font-medium text-neutral-600">Separate pages</p><p><SourcePath value={displayed.oldPath} /></p><p><SourcePath value={displayed.newPath} /></p></div>}
-              <details className="mt-2 text-xs text-neutral-500">
-                <summary className="cursor-pointer hover:text-neutral-800">Details</summary>
+              <details className="text-xs text-neutral-500">
+                <summary className="ml-3 cursor-pointer rounded hover:bg-neutral-50 [list-style-position:outside]" aria-label={`Details ${displayed.oldPath} → ${displayed.newPath}`}>
+                  {selected !== null ? <PathChange before={displayed.oldPath} after={displayed.newPath} /> : <span className="space-y-1 text-sm"><span className="block font-medium text-neutral-600">Separate pages</span><span className="block"><SourcePath value={displayed.oldPath} /></span><span className="block"><SourcePath value={displayed.newPath} /></span></span>}
+                </summary>
                 <fieldset className="mt-3 space-y-3 rounded border border-neutral-200 p-3" disabled={busy || backgroundBusy}>
                   <legend className="px-1">Page identity</legend>
                   {moves.map(move => <div key={move.newPath} className="space-y-2">
@@ -233,14 +234,8 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
                       <span>Same page <span className="text-neutral-500">— keep its identity and settings</span>{moves.length > 1 && <span className="mt-1 block text-xs [overflow-wrap:anywhere]">{move.newPath}</span>}</span>
                     </label>
                     <p className="pl-5">{move.evidence.join(' · ')}</p>
-                    <details className="pl-5"><summary className="cursor-pointer hover:text-neutral-800">Traversal details</summary>
-                      <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 [overflow-wrap:anywhere]">
-                        <dt>From</dt><dd>{move.oldPath}</dd><dt>To</dt><dd>{move.newPath}</dd>
-                        <dt>Before</dt><dd>{move.previousRoute.length ? move.previousRoute.join(' → ') : 'No previously reachable route recorded.'}</dd>
-                        <dt>After</dt><dd>{move.currentRoute.length ? move.currentRoute.join(' → ') : 'Not reached by the current traversal. Accepting its identity can still leave it orphaned.'}</dd>
-                      </dl>
-                    </details>
-                    <button className="ml-5 text-main-700 hover:underline" onClick={() => void inspect(move.oldPath, move.newPath)}>Compare content{moves.length > 1 && <span className="sr-only">: {move.newPath}</span>}</button>
+                    <MoveTraversal move={move} />
+                    {move.contentChanged && <button className="ml-5 text-main-700 hover:underline" onClick={() => void inspect(move.oldPath, move.newPath)}>Compare content{moves.length > 1 && <span className="sr-only">: {move.newPath}</span>}</button>}
                     {comparison?.beforePath === move.oldPath && comparison.afterPath === move.newPath && <ContentComparison comparison={comparison} />}
                   </div>)}
                   <label className="flex cursor-pointer items-start gap-2 border-t border-neutral-100 pt-3 text-sm"><input className="mt-1 accent-main-600" type="radio" name={`move-${id}`} checked={selected === null} onChange={() => setResolutions(previous => ({ ...previous, [id]: null }))} /><span>Different pages <span className="text-neutral-500">— remove the old configuration; the new page is untracked</span></span></label>
@@ -250,7 +245,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
           })}
         </section>}
         {review && review.orphans.length > 0 && <OrphanReview orphans={review.orphans} removals={orphanRemovals} onRemovalsChange={next => setOrphanKeeps(new Set(review.orphans.filter(orphan => !orphan.removalBlockedReason && !next.has(orphan.bundleNodeId)).map(orphan => orphan.bundleNodeId)))} disabled={busy || backgroundBusy || hasDraftChanges} hasCandidate={Boolean(review.candidate)} />}
-        {Boolean(review?.changes.length) && <section><h3 className="mb-2 text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'} <span className="font-normal text-neutral-500">({review?.changes.length})</span></h3>
+        {Boolean(review?.changes.length) && <section><h3 className="mb-2 text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}{(review?.changes.length ?? 0) >= 10 && <span className="font-normal text-neutral-500"> ({review?.changes.length})</span>}</h3>
           <div className="divide-y divide-neutral-100">{review?.changes.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow key={`${review.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
             const query = new URLSearchParams({ beforeId: review.accepted.id, afterId: review.candidate!.id, beforePath: change.path, afterPath: change.path });
             return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };

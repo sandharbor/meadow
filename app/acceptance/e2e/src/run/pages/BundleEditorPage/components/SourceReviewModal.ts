@@ -13,15 +13,15 @@ export class SourceReviewModal {
   }
 
   private get dialog() {
-    return this.page.getByRole('dialog', { name: 'Source review', exact: true });
+    return this.page.getByRole('dialog', { name: 'Source changes', exact: true });
   }
 
-  private detailsButton(path: string) {
-    return this.dialog.getByRole('button', { name: `Details ${path}`, exact: true });
+  private changeDisclosure(path: string) {
+    return this.dialog.locator(`summary[aria-label=${JSON.stringify(`Details ${path}`)}]`);
   }
 
   private async comparison(path: string) {
-    const contentId = await this.detailsButton(path).getAttribute('aria-controls');
+    const contentId = await this.changeDisclosure(path).getAttribute('aria-controls');
     this.expect(contentId, `Details for ${path} must identify its content panel`).toBeTruthy();
     return this.dialog.locator(`[id=${JSON.stringify(contentId)}]`)
       .getByRole('region', { name: 'Source content comparison' });
@@ -56,19 +56,25 @@ export class SourceReviewModal {
   async accept() {
     await Promise.all([
       this.page.waitForResponse(response => response.request().method() === 'GET' && response.url().includes('/curation/working-graph') && response.ok()),
-      this.dialog.getByRole('button', { name: 'Accept source update', exact: true }).click(),
+      this.dialog.getByRole('button', { name: 'Accept source changes', exact: true }).click(),
     ]);
     await this.expectClosed();
     await this.expect(this.page.getByRole('status').filter({ hasText: 'Recalculating graph…' })).not.toBeVisible();
   }
 
   async expectModified(path: string) {
-    const row = this.detailsButton(path).locator('..');
+    const row = this.changeDisclosure(path);
     await this.expect(row.getByText('Modified', { exact: true })).toBeVisible();
   }
 
+  async expectNoLongerIncluded(path: string) {
+    const row = this.changeDisclosure(path);
+    await this.expect(row.getByText('No longer included', { exact: true })).toBeVisible();
+    await this.expect(row.getByText('Missing', { exact: true })).toHaveCount(0);
+  }
+
   async expectNoMissingEntry(path: string) {
-    await this.expect(this.detailsButton(path)).toHaveCount(0);
+    await this.expect(this.changeDisclosure(path)).toHaveCount(0);
   }
 
   async expectNoRenames() {
@@ -76,13 +82,13 @@ export class SourceReviewModal {
   }
 
   async expectDetailsCollapsed(path: string) {
-    await this.expect(this.detailsButton(path)).toHaveAttribute('aria-expanded', 'false');
+    await this.expect(this.changeDisclosure(path)).toHaveAttribute('aria-expanded', 'false');
     await this.expect(await this.comparison(path)).not.toBeVisible();
   }
 
   async expandDetails(path: string, activation: 'click' | 'keyboard' = 'click') {
     await this.expectDetailsCollapsed(path);
-    const button = this.detailsButton(path);
+    const button = this.changeDisclosure(path);
     if (activation === 'keyboard') {
       await button.focus();
       await this.page.keyboard.press('Enter');
@@ -94,16 +100,22 @@ export class SourceReviewModal {
   }
 
   async collapseDetails(path: string) {
-    await this.expect(this.detailsButton(path)).toHaveAttribute('aria-expanded', 'true');
-    await this.detailsButton(path).click();
+    await this.expect(this.changeDisclosure(path)).toHaveAttribute('aria-expanded', 'true');
+    await this.changeDisclosure(path).click();
     await this.expectDetailsCollapsed(path);
   }
 
   async expectContentChanges(path: string, changes: { removed: RegExp; added: RegExp }) {
     const diff = await this.comparison(path);
     await this.expect(diff.getByRole('table', { name: 'Accepted source to Candidate source' })).toBeVisible();
-    await this.expect(diff.getByRole('row', { name: changes.removed })).toHaveAttribute('data-change', 'removed');
-    await this.expect(diff.getByRole('row', { name: changes.added })).toHaveAttribute('data-change', 'added');
+    await this.expect(diff.getByRole('row').filter({ hasText: changes.removed })).toHaveAttribute('data-change', 'removed');
+    await this.expect(diff.getByRole('row').filter({ hasText: changes.added })).toHaveAttribute('data-change', 'added');
+  }
+
+  async expectInlineChanges(path: string, removed: string[], added: string[]) {
+    const diff = await this.comparison(path);
+    await this.expect(diff.locator('[data-inline-change="removed"]')).toHaveText(removed);
+    await this.expect(diff.locator('[data-inline-change="added"]')).toHaveText(added);
   }
 
   async moveFrom(originalPath: string) {
@@ -126,7 +138,8 @@ export class SourceReviewModal {
   }
 
   async expectMoveCount(count: number) {
-    await this.expect(this.dialog.getByRole('heading', { name: `Renames and moves (${count})`, exact: true })).toBeVisible();
+    await this.expect(this.dialog.locator('article[data-testid^="source-move-"]')).toHaveCount(count);
+    await this.expect(this.dialog.getByRole('heading', { name: count >= 10 ? `Renames and moves (${count})` : 'Renames and moves', exact: true })).toBeVisible();
   }
 
   async expectMoveListed(nodeId: string) {
@@ -134,22 +147,22 @@ export class SourceReviewModal {
   }
 
   async expectReadyToAccept() {
-    await this.expect(this.dialog.getByRole('button', { name: 'Accept source update', exact: true })).toBeEnabled();
+    await this.expect(this.dialog.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled();
     await this.expect(this.dialog.getByText('Decide before accepting', { exact: false })).not.toBeVisible();
   }
 
   async expectFocusTrapped() {
-    const close = this.dialog.getByRole('button', { name: 'Close source review', exact: true });
+    const close = this.dialog.getByRole('button', { name: 'Close source changes', exact: true });
     await this.expect(close).toHaveText('×');
     await this.expect(close).toBeFocused();
     await this.page.keyboard.press('Shift+Tab');
-    await this.expect(this.dialog.getByRole('button', { name: 'Accept source update', exact: true })).toBeFocused();
+    await this.expect(this.dialog.getByRole('button', { name: 'Accept source changes', exact: true })).toBeFocused();
     await this.page.keyboard.press('Tab');
     await this.expect(close).toBeFocused();
   }
 
   async close() {
-    await this.dialog.getByRole('button', { name: 'Close source review', exact: true }).click();
+    await this.dialog.getByRole('button', { name: 'Close source changes', exact: true }).click();
     await this.expectClosed();
   }
 

@@ -26,7 +26,7 @@ limitations under the License.
  * Called from playwright.config.ts at top-level, before workers start.
  *
  * Staleness detection: the script hashes the mtimes of all tracked
- * source inputs (src/**, index.html, vite.config.ts, package.json,
+ * source inputs (src/**, shared_components/**, index.html, vite.config.ts, package.json,
  * postcss.config.js, tailwind.config.js, tsconfig.json) and stores the
  * hash next to dist/. Rebuilds only when that hash changes. Typical
  * re-run cost: ~50ms for the walk + zero build time.
@@ -51,7 +51,7 @@ const stampPath = path.join(distDir, ".e2e-build-stamp");
 const PROVIDER_E2E_BUILD_ENV_FILE = ".e2e-build-env.json";
 
 // Source inputs whose changes should invalidate dist/
-const WATCH_DIRS = ["src"];
+const WATCH_DIRS = ["src", "shared_components"];
 const WATCH_FILES = [
   "index.html",
   "vite.config.ts",
@@ -72,17 +72,17 @@ const PROVIDER_FRONTEND_SUBDIR = "frontend";
  * and merge them into a single env override map. Returns an empty object
  * if no provider declares any.
  */
-function loadProviderE2eEnv(): Record<string, string> {
+function loadProviderE2eEnv(providerRoot = providersDir): Record<string, string> {
   const merged: Record<string, string> = {};
   let entries: string[];
   try {
-    entries = fs.readdirSync(providersDir);
+    entries = fs.readdirSync(providerRoot);
   } catch {
     return merged;
   }
   for (const name of entries) {
     if (name === "_module" || name.startsWith(".") || name === "package.json") continue;
-    const providerPath = path.join(providersDir, name);
+    const providerPath = path.join(providerRoot, name);
     let isDir = false;
     try {
       isDir = fs.statSync(providerPath).isDirectory();
@@ -104,11 +104,11 @@ function loadProviderE2eEnv(): Record<string, string> {
   return merged;
 }
 
-function computeSourceHash(): string {
+export function computeSourceHash(webRoot = frontendDir, providerRoot = providersDir): string {
   const hash = crypto.createHash("sha256");
   // Include the merged provider e2e env so toggling any provider's
   // .e2e-build-env.json invalidates the cache.
-  hash.update(JSON.stringify(loadProviderE2eEnv()));
+  hash.update(JSON.stringify(loadProviderE2eEnv(providerRoot)));
 
   const addFile = (absPath: string, relPath: string) => {
     try {
@@ -141,10 +141,10 @@ function computeSourceHash(): string {
   };
 
   for (const dir of WATCH_DIRS) {
-    walk(path.join(frontendDir, dir), dir);
+    walk(path.join(webRoot, dir), dir);
   }
   for (const file of WATCH_FILES) {
-    addFile(path.join(frontendDir, file), file);
+    addFile(path.join(webRoot, file), file);
   }
 
   // Walk each provider's frontend/ so provider UI changes trigger a rebuild.
@@ -153,9 +153,9 @@ function computeSourceHash(): string {
   // symlinks rather than directories — skipping them would leave their
   // contents out of the cache hash and reuse a stale build.
   try {
-    const providerEntries = fs.readdirSync(providersDir);
+    const providerEntries = fs.readdirSync(providerRoot);
     for (const name of providerEntries) {
-      const providerPath = path.join(providersDir, name);
+      const providerPath = path.join(providerRoot, name);
       let isDir = false;
       try {
         isDir = fs.statSync(providerPath).isDirectory();

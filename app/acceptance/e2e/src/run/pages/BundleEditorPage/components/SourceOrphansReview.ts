@@ -23,7 +23,7 @@ export class SourceOrphansReview {
   ) {}
 
   private get modalTitle() {
-    return this.page.getByRole("dialog", { name: "Source review" });
+    return this.page.getByRole("dialog", { name: "Source changes" });
   }
 
   private get orphansView() {

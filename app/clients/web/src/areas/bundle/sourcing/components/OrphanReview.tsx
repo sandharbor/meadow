@@ -2,11 +2,7 @@
 
 import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/sourcing.js';
 
-function FilePill({ path }: { path: string }) {
-  return <span title={path} data-testid="source-file-pill" className="inline-flex max-w-full items-baseline gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 align-middle text-neutral-700">
-    <span aria-hidden="true" className="shrink-0 text-neutral-400">▤</span><span className="[overflow-wrap:anywhere]">{path.split('/').pop()}</span>
-  </span>;
-}
+import { FilePill, FileRoute } from './SourceFileRoute.js';
 
 function Explanation({ orphan }: { orphan: SourceOrphanExplanation }) {
   const diagnosis = orphan.diagnosis;
@@ -43,7 +39,7 @@ export function OrphanReview({ orphans, removals, onRemovalsChange, disabled, ha
               <p className="[overflow-wrap:anywhere]">{orphan.title}<span className="ml-2 text-xs text-neutral-400">{orphan.fileType}</span></p>
               <p className="mt-0.5 text-xs text-neutral-500 [overflow-wrap:anywhere]">{orphan.directory || '(root)'}</p>
               {!selected && !orphan.removalBlockedReason && <p className="mt-1 text-xs text-neutral-500">Will stay in configuration.</p>}
-              <details className="mt-1 text-xs text-neutral-500"><summary className="cursor-pointer hover:text-neutral-800">Why is this orphaned?</summary><p className="mt-2 leading-relaxed [overflow-wrap:anywhere]"><Explanation orphan={orphan} /></p>{orphan.previousPath.length > 0 && <details className="mt-2"><summary className="cursor-pointer hover:text-neutral-800">Previous route</summary><div className="mt-2 flex flex-wrap items-center gap-1">{orphan.previousPath.map((path, index) => <span key={`${index}:${path}`} className="contents">{index > 0 && <span aria-hidden="true">→</span>}<FilePill path={path} /></span>)}</div></details>}</details>
+              <details className="mt-1 text-xs text-neutral-500"><summary className="cursor-pointer hover:text-neutral-800">Why is this orphaned?</summary><p className="mt-2 leading-relaxed [overflow-wrap:anywhere]"><Explanation orphan={orphan} /></p>{orphan.previousPath.length > 0 && <details className="mt-2"><summary className="cursor-pointer hover:text-neutral-800">Previous route</summary><FileRoute paths={orphan.previousPath} /></details>}</details>
               {orphan.removalBlockedReason && <p className="mt-2 text-xs text-neutral-500">{orphan.removalBlockedReason}</p>}
             </div>
             <button disabled={disabled || Boolean(orphan.removalBlockedReason)} data-testid={`remove-orphan-${orphan.title}`} className="shrink-0 text-xs text-neutral-500 hover:underline disabled:opacity-50" onClick={() => {

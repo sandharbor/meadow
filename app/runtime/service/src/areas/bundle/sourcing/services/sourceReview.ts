@@ -205,7 +205,10 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
   if (graph) rememberReachableProvenance(bundleDirectory, accepted, graph, configs);
   const candidate = state.candidateId ? loadSourceSnapshot(bundleDirectory, state.candidateId) : undefined;
   const candidateGraph = candidate ? await availableSnapshotGraph(bundleDirectory, candidate, 0) : graph;
-  const moves = candidate ? findSourceMoves(bundleDirectory, { ...accepted, graph }, { ...candidate, graph: candidateGraph }, configs) : [];
+  const moves = candidate ? findSourceMoves(bundleDirectory, { ...accepted, graph }, { ...candidate, graph: candidateGraph }, configs).map(move => ({
+    ...move, contentChanged: Boolean(accepted.files[move.oldPath] && candidate.files[move.newPath]
+      && accepted.files[move.oldPath].digest !== candidate.files[move.newPath].digest),
+  })) : [];
   const pairedOld = new Set(moves.map(move => move.oldPath));
   const pairedNew = new Set(moves.map(move => move.newPath));
   const pairedIds = new Set(moves.map(move => move.bundleNodeId));

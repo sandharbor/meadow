@@ -13,6 +13,10 @@ test('a plain link to an image beyond the boundary stays untrackable in the live
   const editor = new BundleEditorPage(page, expect);
   await editor.sourceReview.open();
   await editor.sourceReview.checkAgain();
+  await editor.sourceReview.expectNoLongerIncluded('t016 ---- level 5 - frontier image.png');
+  await editor.sourceReview.orphans.expectNotListed('t016 ---- level 5 - frontier image');
+  await addKeyFrame(frontierEmbeddedAssets);
+  await snapshot('the formerly embedded image is no longer included, without orphaned configuration');
   await editor.sourceReview.accept();
   await new FilterPanelComponent(page, expect).enableFilter('Frontier');
   await editor.switchToListView();
