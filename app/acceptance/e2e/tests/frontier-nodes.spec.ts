@@ -45,19 +45,19 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
   await editor.switchToListView();
   await page.waitForTimeout(250);
   const countAtDepth1 = await editor.getListViewPageCount();
-  expect(countAtDepth1).toBe(8);
-  await snapshot("list view with 8 frontier pages at depth 1");
+  expect(countAtDepth1).toBe(7);
+  await snapshot("list view with 7 frontier pages at depth 1");
 
-  // Increase frontier depth to 2 and verify 11 bundle pages
+  // Increase frontier depth to 2 and verify 10 bundle pages
   // Wait longer than the 300ms debounce in FilterPanel + API fetch time
   await filterPanel.setFilterThresholdValue("Frontier", 2);
   await page.waitForTimeout(1000);
   const countAtDepth2 = await editor.getListViewPageCount();
-  expect(countAtDepth2).toBe(11);
-  await snapshot("list view with 11 frontier pages at depth 2");
+  expect(countAtDepth2).toBe(10);
+  await snapshot("list view with 10 frontier pages at depth 2");
 
   // Select an untracked frontier page (deeper pages are untracked)
-  await editor.clickListViewRow(10);
+  await editor.clickListViewRow(9);
   await page.waitForTimeout(250);
 
   // Get the selected page detail card from the sidebar

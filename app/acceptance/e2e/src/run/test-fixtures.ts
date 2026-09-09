@@ -17,7 +17,7 @@ limitations under the License.
 */
 
 import { test as base, expect } from "@playwright/test";
-import { execSync, type ChildProcess } from "child_process";
+import { execSync, execFileSync, type ChildProcess } from "child_process";
 import { createHash } from "crypto";
 import {
   mkdirSync,
@@ -988,12 +988,19 @@ export const test = base.extend<{
       let cachedIgnoredFiles: string[] = [];
       let cachedFilesKey = "";
       let cachedGitignoreKey = "";
+      const observedBranchCommits = new Set<string>();
       function captureTickSync(options: { forceContent?: boolean } = {}) {
         try {
           const files = listFilesRecursive(configDir, ["logs", ".git"]);
 
           let uncommittedFiles: { path: string; status: string }[] = [];
           let gitHeadSha: string | undefined;
+          let gitBranchHeads: Record<string, string> = {};
+          try {
+            const refs = execFileSync("git", ["for-each-ref", "--format=%(refname) %(objectname)", "refs/heads/"], { cwd: configDir, encoding: "utf8", timeout: 5000, stdio: ["pipe", "pipe", "pipe"] });
+            gitBranchHeads = Object.fromEntries(refs.trim().split("\n").filter(Boolean).map(line => line.split(" ")));
+            for (const sha of Object.values(gitBranchHeads)) observedBranchCommits.add(sha);
+          } catch { /* Git may not be initialized on the first tick. */ }
 
           // Which files in the working tree does git consider gitignored?
           // `git ls-files --others --ignored --exclude-standard` returns
@@ -1184,6 +1191,7 @@ export const test = base.extend<{
             ...(hasUncommittedFileContents && { uncommittedFileContents }),
             ...(hasIgnoredFileContents && { ignoredFileContents }),
             ...(gitHeadSha !== undefined && { gitHeadSha }),
+            gitBranchHeads,
             s3Keys: latestS3Keys,
             ...(shouldCaptureAdditionalTickData && additionalTickData),
           };
@@ -1272,6 +1280,11 @@ export const test = base.extend<{
           return !rel.startsWith("logs");
         },
       });
+
+      // Artifact-only references retain replaced candidate revisions for tick replay.
+      for (const sha of observedBranchCommits) {
+        execFileSync("git", ["update-ref", `refs/meadow-e2e/observed/${sha}`, sha], { cwd: meadowHomeStateRepo });
+      }
 
       // Write frontend log
       writeFileSync(
@@ -1625,7 +1638,9 @@ export const test = base.extend<{
   },
 
   addKeyFrame: async ({ page, artifactDir }, use) => {
-    const keyFrames: { docId: string; filename: string; timestamp: string }[] = [];
+    const keyFrames: { docId: string; filename: string; timestamp: string; codeRevision: string; uncommittedCode: boolean }[] = [];
+    const codeRevision = execSync("git rev-parse HEAD", { cwd: REPO_ROOT, encoding: "utf8" }).trim();
+    const uncommittedCode = Boolean(execSync("git status --porcelain", { cwd: REPO_ROOT, encoding: "utf8" }).trim());
 
     const docIdCounts = new Map<string, number>();
 
@@ -1640,7 +1655,7 @@ export const test = base.extend<{
       await page.screenshot({ path: path.join(artifactDir, filename) });
       const timestamp = new Date().toISOString();
       for (const concept of concepts) {
-        keyFrames.push({ docId: concept.id, filename, timestamp });
+        keyFrames.push({ docId: concept.id, filename, timestamp, codeRevision, uncommittedCode });
       }
     };
 

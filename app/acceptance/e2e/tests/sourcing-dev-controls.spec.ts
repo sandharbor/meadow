@@ -65,16 +65,17 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     const fixture = page.getByTestId('fixture-card-home_fixture_big_and_small');
     await fixture.getByRole('button', { name: /^Source changes/ }).click();
     const move = fixture.getByTestId('source-change-move-nested-page');
-    await expect(move.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
-    await move.getByRole('button', { name: 'Apply', exact: true }).click();
+    await expect(move.getByRole('button', { name: 'Apply change', exact: true })).toBeEnabled();
+    await move.getByRole('button', { name: 'Apply change', exact: true }).click();
     await expect(move.getByRole('button', { name: 'Applied', exact: true })).toBeVisible();
     expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data/t001/deeper/t001 ---- child 2.md'))).toBe(false);
     await addKeyFrame(sourceChange);
     await snapshot('dev controls apply a real source move to the isolated big graph');
     await expect(sourceChanges.apply('move-nested-page')).rejects.toThrow(/already applied/);
     await new Workflows(page, expect).navigateToBigBundle();
-    await page.getByRole('button', { name: /source changes? available.*Review/i }).click();
-    await expect(page.getByRole('dialog', { name: 'Source review' }).getByRole('group', { name: 'Moved: t001/deeper/t001 ---- child 2.md → source-changes/moved/t001 ---- child 2.md', exact: true })).toBeVisible();
+    const review = new BundleEditorPage(page, expect).sourceReview;
+    await review.open();
+    await review.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md');
     await addKeyFrame(sourceSnapshot);
     await snapshot('the running application discovers the move made through dev controls');
   } finally {

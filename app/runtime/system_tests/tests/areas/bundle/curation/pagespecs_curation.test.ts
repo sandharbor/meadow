@@ -495,17 +495,25 @@ async function validatePagespecLinksForBundle(
     nodes: { bundleNodeKey: string }[];
   };
 
+  // Link expectations describe the live fixture graph, including links outside
+  // the accepted capture. Frontier discovery supplies that temporary inventory;
+  // membership is still checked against the accepted graph below.
+  const discoveryResponse = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/curation/working-graph?frontierDepth=1`);
+  expect(discoveryResponse.ok).toBe(true);
+  const discovery = await discoveryResponse.json() as { allOutlinkTargets: Record<string, string[]>; allInlinkSources: Record<string, string[]>; frontierUnavailable?: string };
+  expect(discovery.frontierUnavailable).toBeUndefined();
+
   const workingGraphPageIds = new Set(graphData.nodes.map((node) => linkPathToPageId(node.bundleNodeKey)));
 
   const outlinkMap = new Map<string, string[]>();
-  for (const [pathKey, targets] of Object.entries(graphData.allOutlinkTargets)) {
+  for (const [pathKey, targets] of Object.entries(discovery.allOutlinkTargets)) {
     const pageTitle = linkPathToPageId(pathKey);
     const targetTitles = targets.map((t) => linkPathToPageId(t));
     outlinkMap.set(pageTitle, targetTitles);
   }
 
   const inlinkMap = new Map<string, string[]>();
-  for (const [pathKey, sources] of Object.entries(graphData.allInlinkSources)) {
+  for (const [pathKey, sources] of Object.entries(discovery.allInlinkSources)) {
     const pageTitle = linkPathToPageId(pathKey);
     const sourceTitles = sources.map((s) => linkPathToPageId(s));
     inlinkMap.set(pageTitle, sourceTitles);

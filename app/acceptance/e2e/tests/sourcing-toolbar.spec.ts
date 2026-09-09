@@ -22,7 +22,9 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await new Workflows(page, expect).navigateToBigBundle();
   const status = page.getByTestId('sourcing-status');
   const update = status.getByRole('button', { name: 'Refresh sources', exact: true });
-  await new BundleEditorPage(page, expect).expectSourceUpdateInToolbar();
+  const editor = new BundleEditorPage(page, expect);
+  const sourceReview = editor.sourceReview;
+  await editor.expectSourceUpdateInToolbar();
   await addKeyFrame(sourceSnapshot);
   await snapshot('source check occupies the bundle toolbar without an extra heading row');
 
@@ -31,9 +33,8 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   release();
   const orphanReview = status.getByRole('button', { name: '13 source changes available – Review', exact: true });
   await expect(orphanReview).toBeVisible();
-  await orphanReview.click();
-  await page.getByTestId('remove-all-orphans').click();
-  await page.getByRole('button', { name: 'Apply removals', exact: true }).click();
+  await sourceReview.open();
+  await sourceReview.applyOrphanRemovals();
   await expect(status.getByRole('status')).toHaveText('No changes');
   await page.clock.runFor(1999);
   await expect(status.getByRole('status')).toHaveText('No changes');
@@ -53,10 +54,8 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await addKeyFrame(sourceSnapshot);
   await snapshot('no changes becomes an update button after two seconds');
 
-  await page.getByTitle('Bundle options', { exact: true }).click();
-  await page.getByRole('button', { name: 'Source snapshots', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Source review' })).toContainText('Snapshot details and history');
-  await page.getByRole('button', { name: 'Close source review' }).click();
+  await editor.reviewSourceHistory();
+  await sourceReview.close();
 
   await sourceChanges.apply('rename-page-with-links');
   await update.click();
@@ -64,12 +63,12 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await expect(review).toBeVisible();
   await page.clock.runFor(2100);
   await expect(review).toBeVisible();
-  await expect(page.getByRole('dialog', { name: 'Source review' })).not.toBeVisible();
+  await sourceReview.expectClosed();
   await addKeyFrame(sourceSnapshot);
   await snapshot('available changes keep an explicit review action in the toolbar');
   await page.clock.resume();
   await new Workflows(page, expect).navigateToSmallBundle();
   await expect(page.getByRole('button', { name: 'Refresh sources', exact: true })).toBeVisible();
-  await expect(page.getByRole('dialog', { name: 'Source review' })).not.toBeVisible();
+  await sourceReview.expectClosed();
   await skipMeadowHomeStateCheck();
 });

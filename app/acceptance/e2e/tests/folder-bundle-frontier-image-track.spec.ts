@@ -50,7 +50,7 @@ test("tracks a depth-three frontier image in a folder-derived bundle", async ({
 
   const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
   await detail.expectPill(Pill.FrontierImage);
-  await detail.expectPill(Pill.Frontier);
+  await detail.expectNoPill(Pill.Frontier);
   await detail.expectNoPill(Pill.Tracked);
   await detail.expectButtonEnabled(ActionButton.Track);
   await addKeyFrame(frontier);

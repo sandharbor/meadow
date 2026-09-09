@@ -1,3 +1,4 @@
+import { readGitBranches } from './gitBranches.js';
 /*
 Copyright 2026 Sand Harbor Software, LLC
 
@@ -1183,6 +1184,15 @@ app.get("/api/:runId/:testSlug/video.webm", (req, res) => {
   } else {
     res.status(404).send("No video found");
   }
+});
+
+// Branch selection feeds the existing tick-linked Git file view.
+app.get("/api/:runId/:testSlug/git-branches", (req, res) => {
+  const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
+  if (!dir) return res.status(404).json({ error: "Scenario not found" });
+  try {
+    res.json(readGitBranches(dir, typeof req.query.branch === "string" ? req.query.branch : undefined));
+  } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : String(error) }); }
 });
 
 // API: list file snapshots

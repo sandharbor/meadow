@@ -21,19 +21,19 @@ test('Sourcing classifies a renamed linked group once and keeps its pages out of
   await sourceChanges.apply('rename-linked-group');
   await editor.checkSourceChanges();
   await editor.expectSourceOrphanCount(13);
-  await page.getByRole('button', { name: '17 source changes available – Review', exact: true }).click();
-  const review = page.getByRole('dialog', { name: 'Source review' });
-  await expect(review.getByRole('heading', { name: 'Renames and moves (3)', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '17 source changes available – Review', exact: true })).toBeVisible();
+  const review = editor.sourceReview;
+  await review.open();
+  await review.expectMoveCount(3);
   for (const node of original) {
-    await expect(review.getByTestId(`source-move-${node.bundleNodeId}`)).toBeVisible();
-    await expect(review.getByTestId(`orphan-row-${node.bundleNodeName}`)).toHaveCount(0);
+    await review.expectMoveListed(node.bundleNodeId);
+    await review.orphans.expectNotListed(node.bundleNodeName);
   }
-  await expect(review.getByTestId('source-orphans')).toContainText('Orphaned pages (13)');
+  await review.orphans.expectSummaryCount(13);
   await addKeyFrame(sourceMove);
   await snapshot('three linked moves form review items while existing unrelated orphans remain separate');
-  await review.getByRole('button', { name: 'Accept source update', exact: true }).click();
-  await expect(review).not.toBeVisible();
-  await editor.expectSourceOrphanCount(13);
+  await review.accept();
+  await editor.expectSourceOrphanCount(0);
   const updated = parseBundleNodeConfig(fs.readFileSync(configPath, 'utf8'));
   for (const node of original) {
     expect(updated.find(item => item.bundleNodeId === node.bundleNodeId)?.bundleNodeName).toBe(node.bundleNodeName.replace('t001', 't101'));

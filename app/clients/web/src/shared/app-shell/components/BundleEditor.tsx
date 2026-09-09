@@ -44,6 +44,11 @@ import RenameBundleModal from '../../bundle-management/RenameBundleModal';
 const BundleEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigateInApp = useAppNavigation('bundleEditor');
+  const [pendingSourceChanges, setPendingSourceChanges] = useState(false);
+  const [sourceCheckCompleted, setSourceCheckCompleted] = useState(false);
+  const handleSourceCheck = useCallback((pending: boolean) => { setPendingSourceChanges(pending); setSourceCheckCompleted(true); }, []);
+  useEffect(() => { setSourceCheckCompleted(false); setPendingSourceChanges(false); }, [slug]);
+  const [frontierUnavailable, setFrontierUnavailable] = useState<string | null>(null);
   const [sourceChangeTrigger, setSourceChangeTrigger] = useState(0);
   const [sourceReviewTrigger, setSourceReviewTrigger] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -99,6 +104,17 @@ const BundleEditor: React.FC = () => {
   const frontierFilter = filters.find(f => f.id === 'frontier-filter');
   const viewFrontierEnabled = frontierFilter?.enabled ?? false;
   const frontierDepth = frontierFilter?.thresholdValue ?? 1;
+  const curationGraph = useMemo(() => {
+    void updateTrigger; // Graph mutations publish a revision without replacing the Graph object.
+    if (!graph || !pendingSourceChanges) return graph;
+    const visible = new Graph();
+    const nodes = graph.getAllNodes().filter(node => !node.isFrontierNode);
+    nodes.forEach(node => visible.addNode(node));
+    graph.getAllEdges().filter(edge => visible.getNode(edge.source) && visible.getNode(edge.target)).forEach(edge => visible.addEdge(edge));
+    visible.setLinkSourceData(Object.fromEntries(nodes.map(node => [node.bundleNodeKey, graph.getAllInlinkSources(node.bundleNodeKey)])), Object.fromEntries(nodes.map(node => [node.bundleNodeKey, graph.getAllOutlinkTargets(node.bundleNodeKey)])));
+    return visible;
+  }, [graph, pendingSourceChanges, updateTrigger]);
+
 
   // Helper to update URL params for navigational components (nc prefix)
   const updateNcParams = useCallback((updates: Record<string, string | null>) => {
@@ -371,7 +387,8 @@ const BundleEditor: React.FC = () => {
     if (!configLoaded) return;
     // Clear previous error when starting a new fetch
     setGraphError(null);
-    const frontierParam = viewFrontierEnabled ? `?frontierDepth=${frontierDepth}` : '';
+    let cancelled = false;
+    const frontierParam = viewFrontierEnabled && !pendingSourceChanges ? `?frontierDepth=${frontierDepth}` : '';
     const url = `bundles/${slug || ''}/curation/working-graph${frontierParam}`;
     logger.debug('Fetching working graph from:', url);
     apiRequest(url)
@@ -399,6 +416,8 @@ const BundleEditor: React.FC = () => {
           // Potentially set an error state or throw an error to be caught
           throw new Error('Invalid data structure received from server.');
         }
+        if (cancelled) return;
+        setFrontierUnavailable(data.frontierUnavailable ?? null);
         const g = new Graph();
         const nodesWithSensitive = applySensitiveFromApiData(data.nodes as IBundleNode[]);
         nodesWithSensitive.forEach(node => g.addNode(node));
@@ -418,7 +437,8 @@ const BundleEditor: React.FC = () => {
       .finally(() => {
         setIsRecalculatingGraph(false);
       });
-  }, [slug, configLoaded, configChangeTrigger, viewFrontierEnabled, frontierDepth]);
+    return () => { cancelled = true; };
+  }, [slug, configLoaded, configChangeTrigger, viewFrontierEnabled, frontierDepth, pendingSourceChanges, sourceCheckCompleted]);
 
   useEffect(() => {
     if (!graph) return;
@@ -930,7 +950,7 @@ const BundleEditor: React.FC = () => {
     if (graphError) {
       return (
         <div className="w-full h-screen flex flex-col items-center justify-center p-8">
-          <SourcingPanel reviewTrigger={sourceReviewTrigger} onReviewOpened={() => setSourceReviewTrigger(0)} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+          <SourcingPanel initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} reviewTrigger={sourceReviewTrigger} onReviewOpened={() => setSourceReviewTrigger(0)} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
             setGraphError(null); setConfigChangeTrigger(previous => previous + 1);
           }} />
           <div className="max-w-2xl w-full bg-danger-50 border border-danger-300 rounded-lg p-6">
@@ -1003,7 +1023,7 @@ const BundleEditor: React.FC = () => {
               </button>
             </div>
           )}
-          <SourcingPanel reviewTrigger={sourceReviewTrigger} onReviewOpened={() => setSourceReviewTrigger(0)} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+          <SourcingPanel initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} reviewTrigger={sourceReviewTrigger} onReviewOpened={() => setSourceReviewTrigger(0)} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
             refreshBundleNodeConfigs();
             reloadWorkingGraph();
           }} />
@@ -1195,9 +1215,13 @@ const BundleEditor: React.FC = () => {
         directories={directories}
       />
 
+      {viewFrontierEnabled && (pendingSourceChanges || frontierUnavailable) && <div role="status" className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-2 text-sm text-neutral-600">
+        <span>{pendingSourceChanges ? 'The frontier can’t be shown while source changes are waiting for review.' : frontierUnavailable}</span>
+        <button className="rounded border border-neutral-300 bg-white px-3 py-1 hover:bg-neutral-100" onClick={() => { setFilters(filters.map(filter => filter.id === 'frontier-filter' ? { ...filter, enabled: false } : filter)); setFrontierUnavailable(null); }}>Okay</button>
+      </div>}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <BundleNodeTabs
-          graph={graph}
+          graph={curationGraph ?? graph}
           entryBundleNodeId={entryBundleNodeId ?? undefined}
           filters={filters}
           onFiltersChange={setFilters}

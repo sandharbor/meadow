@@ -1,3 +1,4 @@
+import { useGitBranches, type BranchRevision } from './useGitBranches'
 /*
 Copyright 2026 Sand Harbor Software, LLC
 
@@ -44,6 +45,8 @@ import { bundleModeLabel, type BundleMode } from '../../bundleModes.ts'
 // --- Types ---
 
 interface KeyFrame {
+  codeRevision?: string
+  uncommittedCode?: boolean
   docId: string
   filename: string
   timestamp?: string
@@ -135,6 +138,7 @@ interface ProcessedTick {
   removedFiles: string[]
   changedUncommitted: boolean
   changedGitHead: boolean
+  changedGitBranches?: boolean
   s3KeyCount: number
   s3AddedKeys: string[]
   s3ModifiedKeys: string[]
@@ -479,6 +483,7 @@ export default function ScenarioViewer() {
   const { runId, testSlug } = useParams<{ runId: string; testSlug: string }>()
   const [searchParams] = useSearchParams()
   const API = `/api/${runId}/${testSlug}`
+  const gitBranches = useGitBranches(API)
   const initialSpeed = normalizePlaybackSpeedPercent(
     searchParams.get('speed') ?? DEFAULT_PLAYBACK_SPEED_PERCENT,
   )
@@ -1175,7 +1180,7 @@ export default function ScenarioViewer() {
       const tickTime = new Date(tick.timestamp).getTime()
 
       // Files changed?
-      const filesChanged = tick.addedFiles.length > 0 || tick.removedFiles.length > 0 || tick.changedUncommitted || tick.changedGitHead
+      const filesChanged = tick.addedFiles.length > 0 || tick.removedFiles.length > 0 || tick.changedUncommitted || tick.changedGitHead || Boolean(tick.changedGitBranches)
 
       // State changed? Prefer tick-level record data when the artifact
       // captured it; older artifacts fall back to state-repo commits.
@@ -1422,6 +1427,10 @@ export default function ScenarioViewer() {
   const getGitSummaryItems = useCallback((tickArrayIndex: number): SummaryItem[] => {
     if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return []
     const tick = ticks[tickArrayIndex]
+    if (gitBranches.branch) {
+      const revision = gitBranches.revisionAt(tickArrayIndex)
+      return revision && gitBranches.changedAt(tickArrayIndex) ? [{ key: 'git-commit', text: `commit ${revision.commitHash.slice(0, 7)} — ${revision.commitMessage}`, tone: 'git', strong: true }] : []
+    }
     if (tick.changedGitHead) {
       const snapIndex = getSnapshotIndexForGitHead(tick.gitHeadSha)
       const snap = snapIndex >= 0 ? snapshots[snapIndex] : null
@@ -1447,7 +1456,7 @@ export default function ScenarioViewer() {
       ]
     }
     return []
-  }, [getGitUncommittedDelta, getSnapshotIndexForGitHead, snapshots, ticks])
+  }, [getGitUncommittedDelta, getSnapshotIndexForGitHead, snapshots, ticks, gitBranches])
 
   const getFileModeSummaryItems = useCallback((mode: FileChangeLens, tickArrayIndex: number, keyPrefix: string = mode): SummaryItem[] => {
     if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return []
@@ -1486,11 +1495,11 @@ export default function ScenarioViewer() {
         tickArrayIndex,
         items,
         meta: mode === 'git'
-          ? `${getTickWorkingFilesAtIndex(tickArrayIndex).length} files`
+          ? `${gitBranches.branch ? gitBranches.revisionAt(tickArrayIndex)?.files.length ?? 0 : getTickWorkingFilesAtIndex(tickArrayIndex).length} files`
           : new Date(tick.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       }]
     })
-  }, [getFileModeSummaryItems, getTickWorkingFilesAtIndex, ticks])
+  }, [getFileModeSummaryItems, getTickWorkingFilesAtIndex, ticks, gitBranches])
 
   const selectTickIndex = useCallback((tickArrayIndex: number) => {
     if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return
@@ -1912,6 +1921,7 @@ export default function ScenarioViewer() {
           {/* Keyframe hover popup — sized to match video player */}
           {hoveredKeyFrame && (() => {
             const doc = concepts.find(d => d.id === hoveredKeyFrame.docId)
+            const evidence = manifest?.keyFrames?.find(frame => frame.filename === hoveredKeyFrame.filename)
             const videoEl = videoRef.current
             const videoRect = videoEl?.getBoundingClientRect()
             const popupWidth = videoRect ? videoRect.width * 0.85 : 320
@@ -1932,6 +1942,7 @@ export default function ScenarioViewer() {
                   />
                   <div className="px-2 py-1 text-[11px] font-medium text-brand-700 bg-brand-50 border-t border-neutral-100">
                     {doc?.name || hoveredKeyFrame.docId}
+                    <div className="font-normal text-neutral-500">Run {runId} · {evidence?.codeRevision?.slice(0, 8) ?? 'Revision unavailable'}{evidence?.uncommittedCode ? ' + uncommitted changes' : ''}</div>
                   </div>
                 </div>
               </div>
@@ -2417,6 +2428,15 @@ export default function ScenarioViewer() {
                 }
 
                 const buildFileMode = (mode: FileChangeLens) => {
+                  if (mode === 'git' && gitBranches.branch) {
+                    const revision = gitBranches.revisionAt(currentTickIndex)
+                    const changed = new Set(revision?.changedFiles ?? [])
+                    const removed = new Set(revision?.removedFiles ?? [])
+                    const files = sortedUnion(revision?.files ?? [], [...removed])
+                    const statuses = new Map<string, FileStatus>(files.map(file => [file, removed.has(file) ? 'removed' : changed.has(file) ? 'just-committed' : 'committed']))
+                    return { files, changedFiles: [...changed], addedFiles: [], removedFiles: [...removed], fileStatuses: statuses,
+                      emptyText: gitBranches.loading ? 'Loading branch…' : 'No revision on this branch at this tick' }
+                  }
                   const trackedFiles = isTickMode ? getTickFilesAtIndex(currentTickIndex) : fileList
                   const allFiles = isTickMode ? getTickWorkingFilesAtIndex(currentTickIndex) : fileList
                   const removedSet = new Set<string>()
@@ -2513,7 +2533,19 @@ export default function ScenarioViewer() {
                       const tickDelta = currentTickIndex >= 0 ? getTickFileDelta(currentTickIndex) : { added: [], modified: [], removed: [] }
                       return (
                         <React.Fragment key={mode}>
+                          {mode === 'git' && <div className="border-b border-neutral-200 px-3 py-2 text-xs">
+                            <label className="flex items-center gap-2">Branch
+                              <select aria-label="Git branch" className="min-w-0 flex-1 rounded border border-neutral-300 bg-white px-2 py-1" value={gitBranches.branch || gitBranches.defaultBranch} onChange={event => { gitBranches.select(event.target.value); setFileStatusFilter(new Set(['added', 'removed', 'changed', 'unchanged', 'just-committed', 'uncommitted-new', 'uncommitted-modified', 'committed'])) }}>
+                                {gitBranches.loading && <option value={gitBranches.branch}>Loading branches…</option>}
+                                {gitBranches.branches.map(branch => <option key={branch} value={branch}>{branch.replace('refs/heads/', '')}</option>)}
+                              </select>
+                            </label>
+                            {gitBranches.error && <p role="alert" className="mt-1 text-red-700">{gitBranches.error}</p>}
+                            {gitBranches.branch && gitBranches.inferredTiming && <p className="mt-1 text-neutral-500">This older recording uses commit times to place branch revisions on the timeline.</p>}
+                          </div>}
                           <MeadowFileModePane
+                            key={mode === 'git' ? gitBranches.branch : mode}
+                            branchRevision={mode === 'git' && gitBranches.branch ? gitBranches.revisionAt(currentTickIndex) ?? null : undefined}
                             title={`${lensLabel(mode)} file view`}
                             mode={mode}
                             files={pane.files}
@@ -2521,7 +2553,7 @@ export default function ScenarioViewer() {
                             addedFiles={pane.addedFiles}
                             removedFiles={pane.removedFiles}
                             fileStatuses={pane.fileStatuses}
-                            ignoredSet={isTickMode ? ignoredSet : undefined}
+                            ignoredSet={isTickMode && !(mode === 'git' && gitBranches.branch) ? ignoredSet : undefined}
                             emptyText={pane.emptyText}
                             currentSummaryItems={currentTickIndex >= 0 ? getFileModeSummaryItems(mode, currentTickIndex, `${mode}-current`) : []}
                             timelineItems={getFileModeTimelineItems(mode)}
@@ -2530,8 +2562,8 @@ export default function ScenarioViewer() {
                             statusFilter={fileStatusFilter}
                             onStatusFilterChange={setFileStatusFilter}
                             selectedFileRequest={filePaneSelection}
-                            tickChangedFiles={mode === 'git' ? sortedUnion(tickDelta.added, tickDelta.modified, tickDelta.removed) : []}
-                            onTickChangedFileClick={mode === 'git' ? showFileInTickView : undefined}
+                            tickChangedFiles={mode === 'git' && !gitBranches.branch ? sortedUnion(tickDelta.added, tickDelta.modified, tickDelta.removed) : []}
+                            onTickChangedFileClick={mode === 'git' && !gitBranches.branch ? showFileInTickView : undefined}
                             API={API}
                             currentTickIndex={currentTickIndex}
                             ticks={ticks}
@@ -3638,6 +3670,7 @@ function ResourceChangePane({
 }
 
 interface MeadowFileModePaneProps {
+  branchRevision?: BranchRevision | null
   title: string
   mode: FileChangeLens
   files: string[]
@@ -3665,6 +3698,7 @@ interface MeadowFileModePaneProps {
 }
 
 function MeadowFileModePane({
+  branchRevision,
   title,
   mode,
   files,
@@ -3711,6 +3745,8 @@ function MeadowFileModePane({
   }, [currentSnapshotIndex, currentTickIndex, mode, selectedFile])
 
   useEffect(() => {
+    let current = true
+    const publishContent = (view: ResourceContentView) => { if (current) setContentView(view) }
     const findCapturedTickFileContent = (tickIndex: number, filePath: string): string | null => {
       if (tickIndex < 0 || tickIndex >= ticks.length) return null
       for (let i = tickIndex; i >= 0; i--) {
@@ -3751,7 +3787,7 @@ function MeadowFileModePane({
       if (mode === 'tick' && status === 'removed') {
         const prevContent = await loadTickFileContent(currentTickIndex - 1, filePath)
         if (prevContent === null) return false
-        setContentView(buildResourceContentView({
+        publishContent(buildResourceContentView({
           selectedPath: filePath,
           status,
           previousContent: prevContent,
@@ -3767,7 +3803,7 @@ function MeadowFileModePane({
 
       if (mode === 'tick' && status === 'uncommitted-modified') {
         const prevContent = await loadTickFileContent(currentTickIndex - 1, filePath)
-        setContentView(buildResourceContentView({
+        publishContent(buildResourceContentView({
           selectedPath: filePath,
           status,
           currentContent: tickContent,
@@ -3779,7 +3815,7 @@ function MeadowFileModePane({
         return true
       }
 
-      setContentView(buildResourceContentView({
+      publishContent(buildResourceContentView({
         selectedPath: filePath,
         status,
         currentContent: tickContent,
@@ -3819,7 +3855,7 @@ function MeadowFileModePane({
         }
       }
 
-      setContentView(buildResourceContentView({
+      publishContent(buildResourceContentView({
         selectedPath: filePath,
         status,
         currentContent: status === 'removed' ? undefined : content,
@@ -3835,7 +3871,7 @@ function MeadowFileModePane({
       if (currentTickIndex < 0 || currentTickIndex >= ticks.length) return false
       const content = findCapturedTickFileContent(currentTickIndex, filePath)
       if (content === null) return false
-      setContentView(buildResourceContentView({
+      publishContent(buildResourceContentView({
         selectedPath: filePath,
         status: 'committed',
         currentContent: content,
@@ -3851,7 +3887,7 @@ function MeadowFileModePane({
         const res = await fetch(`${API}/uncommitted-file/${encodeURIComponent(filePath)}`)
         if (!res.ok) return false
         const content = await res.text()
-        setContentView(buildResourceContentView({
+        publishContent(buildResourceContentView({
           selectedPath: filePath,
           status: 'committed',
           currentContent: content,
@@ -3867,13 +3903,27 @@ function MeadowFileModePane({
 
     async function load() {
       if (!selectedFile) {
-        setContentView(resourceMessage('Select a file to view its contents'))
+        publishContent(resourceMessage('Select a file to view its contents'))
         return
       }
 
+      if (branchRevision !== undefined) {
+        if (!branchRevision) { publishContent(resourceMessage('No revision on this branch at this tick')); return }
+        try {
+          const status = fileStatuses.get(selectedFile)
+          const content = status === 'removed' ? undefined : await fetchFileContent(branchRevision.commitHash, selectedFile)
+          let previousContent: string | undefined
+          if (branchRevision.parentHash && (status === 'just-committed' || status === 'removed')) {
+            try { previousContent = await fetchFileContent(branchRevision.parentHash, selectedFile) } catch { previousContent = '' }
+          }
+          publishContent(buildResourceContentView({ selectedPath: selectedFile, status, currentContent: content, previousContent,
+            noun: 'file', selectMessage: 'Select a file to view its contents', notFoundMessage: 'File not found in this revision' }))
+        } catch { publishContent(resourceMessage('File not found in this revision')) }
+        return
+      }
       if (mode === 'tick') {
         if (await loadTickContent(selectedFile)) return
-        setContentView(resourceMessage('File not found at this tick'))
+        publishContent(resourceMessage('File not found at this tick'))
         return
       }
 
@@ -3893,7 +3943,7 @@ function MeadowFileModePane({
             } catch {
               // New file in this snapshot.
             }
-            setContentView(buildResourceContentView({
+            publishContent(buildResourceContentView({
               selectedPath: selectedFile,
               status: 'just-committed',
               currentContent: content,
@@ -3903,7 +3953,7 @@ function MeadowFileModePane({
               notFoundMessage: 'File not found at this point',
             }))
           } else {
-            setContentView(buildResourceContentView({
+            publishContent(buildResourceContentView({
               selectedPath: selectedFile,
               status: 'committed',
               currentContent: content,
@@ -3921,11 +3971,12 @@ function MeadowFileModePane({
         return
       }
 
-      setContentView(resourceMessage('File not found at this point'))
+      publishContent(resourceMessage('File not found at this point'))
     }
 
     load()
-  }, [API, currentSnapshotIndex, currentTickIndex, fetchFileContent, fileStatuses, mode, selectedFile, snapshots, ticks])
+    return () => { current = false }
+  }, [branchRevision, API, currentSnapshotIndex, currentTickIndex, fetchFileContent, fileStatuses, mode, selectedFile, snapshots, ticks])
 
   return (
     <ResourceChangePane

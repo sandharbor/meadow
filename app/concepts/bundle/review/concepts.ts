@@ -21,6 +21,7 @@ export const changesTab = define({
   id: id.changesTab,
   name: "Changes Tab",
   kind: "interface",
+  searchFacet: true,
   appAreaIds: [id.bundleReview],
   definition: text`The review surface for files that a generated bundle will create, modify, or delete.`,
   mechanics: [text`It filters change types and HTML sections, displays diffs, and groups internal asset folders.`],

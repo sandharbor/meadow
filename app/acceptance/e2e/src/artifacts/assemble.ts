@@ -173,6 +173,7 @@ interface RawTickEntry {
   ignoredFiles?: string[];
   ignoredFileContents?: Record<string, string>;
   gitHeadSha?: string;
+  gitBranchHeads?: Record<string, string>;
   s3Keys?: string[];
   s3ObjectContents?: Record<string, string>;
   stateRecordContents?: Record<string, string>;
@@ -190,10 +191,12 @@ interface ProcessedTick {
   ignoredFiles: string[];
   ignoredFileContents?: Record<string, string>;
   gitHeadSha?: string;
+  gitBranchHeads?: Record<string, string>;
   addedFiles: string[];
   removedFiles: string[];
   changedUncommitted: boolean;
   changedGitHead: boolean;
+  changedGitBranches: boolean;
   s3KeyCount: number;
   s3AddedKeys: string[];
   s3ModifiedKeys: string[];
@@ -709,6 +712,7 @@ function processTickLog(testDir: string): TickData {
   let latestStateRecordContents: Record<string, string> | null = null;
   let prevUncommittedKey = "";
   let prevGitHead = "";
+  let prevGitBranches = "{}";
 
   for (const raw of rawTicks) {
     const currentFiles = new Set(raw.files);
@@ -844,10 +848,12 @@ function processTickLog(testDir: string): TickData {
       ignoredFiles: raw.ignoredFiles ?? [],
       ...(raw.ignoredFileContents !== undefined && { ignoredFileContents: raw.ignoredFileContents }),
       ...(raw.gitHeadSha !== undefined && { gitHeadSha: raw.gitHeadSha }),
+      ...(raw.gitBranchHeads !== undefined && { gitBranchHeads: raw.gitBranchHeads }),
       addedFiles,
       removedFiles,
       changedUncommitted,
       changedGitHead,
+      changedGitBranches: JSON.stringify(raw.gitBranchHeads ?? {}) !== prevGitBranches,
       s3KeyCount: currentS3Keys.size,
       s3AddedKeys,
       s3ModifiedKeys,
@@ -869,6 +875,7 @@ function processTickLog(testDir: string): TickData {
     prevStateRecordContents = currentStateRecordContents;
     prevUncommittedKey = currentUncommittedKey;
     prevGitHead = currentGitHead;
+    prevGitBranches = JSON.stringify(raw.gitBranchHeads ?? {});
   }
 
   // Build consolidated tick groups: merge consecutive no-change ticks
@@ -882,6 +889,7 @@ function processTickLog(testDir: string): TickData {
       t.removedFiles.length > 0 ||
       t.changedUncommitted ||
       t.changedGitHead ||
+      t.changedGitBranches ||
       t.s3Changed ||
       t.stateChanged ||
       t.isSnapshot;

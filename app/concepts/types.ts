@@ -16,6 +16,7 @@ limitations under the License.
 
 export const MEADOW_CONCEPT_KINDS = [
   "app-area",
+  "behavioral-rule",
   "entity",
   "service",
   "artifact",
@@ -52,6 +53,8 @@ export interface MeadowConcept<
   readonly id: Id;
   readonly name: string;
   readonly kind: MeadowConceptKind;
+  /** Opt in to category-level search filters in acceptance reports. */
+  readonly searchFacet?: boolean;
   readonly aliases?: readonly string[];
   readonly definition: ConceptText<KnownId>;
   readonly mechanics: readonly ConceptText<KnownId>[];

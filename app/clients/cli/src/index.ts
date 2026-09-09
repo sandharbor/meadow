@@ -43,6 +43,9 @@ import {
   showBundleVersionsHelp,
 } from "./managementCommands.js";
 
+import { runSourcingCommand } from './sourcingCommands.js';
+import { bundleDestinationPath } from '../../../contracts/types/appDestination.js';
+
 interface BundleSummary {
   slug?: unknown;
   archivedAt?: unknown;
@@ -112,7 +115,8 @@ Usage:
   meadow bundle track <bundle-slug> --all-safe
   meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
-  meadow bundle open <bundle-slug>
+  meadow bundle sources <review|refresh|accept> <bundle-slug> ...
+  meadow bundle open <bundle-slug> [--source-review]
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
   meadow bundle versions <list|get|create|update|delete|restore|cancel-current> ...
@@ -136,6 +140,7 @@ Commands:
   bundle track                     Atomically track a selected set or all safe nodes.
   bundle node                      Inspect or mutate one node by stable ID or source path;
                                    use 'bundle node track' for one-at-a-time curation.
+  bundle sources                   Review, refresh, or accept source snapshots.
   bundle open                      Open the full Web Client at a bundle explicitly.
   bundle generate                  Generate a read-only local preview version.
   bundle save-generation           Save a generated version in Meadow Home.
@@ -253,7 +258,8 @@ function showBundleHelp(): void {
   meadow bundle track <bundle-slug> --node-key <bundle-node-key> [--node-key <key> ...]
   meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
-  meadow bundle open <bundle-slug>
+  meadow bundle sources <review|refresh|accept> <bundle-slug> ...
+  meadow bundle open <bundle-slug> [--source-review]
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
   meadow bundle versions <operation> ...
@@ -910,7 +916,7 @@ async function main(): Promise<void> {
     && ["list", "create", "archive", "unarchive", "rename-plan", "rename", "undo-rename"].includes(args[1] ?? "")
   ) || (
     args[0] === "bundle"
-    && ["track", "node", "open", "generate", "save-generation", "publish", "nodes", "filters", "versions", "publications"].includes(args[1] ?? "")
+    && ["sources", "track", "node", "open", "generate", "save-generation", "publish", "nodes", "filters", "versions", "publications"].includes(args[1] ?? "")
   ) || (
     args[0] === "providers" && args[1] === "list"
   ) || (
@@ -1021,13 +1027,19 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (args[0] === "bundle" && args[1] === "sources") {
+    await runSourcingCommand(args.slice(2), (pathname, method, body) => requestJson(resolveSession(), pathname, method, body));
+    return;
+  }
+
   if (args[0] === "bundle" && args[1] === "open") {
     if (args[2] === "--help" || args[2] === "-h") {
-      console.log("Usage: meadow bundle open <bundle-slug>");
+      console.log("Usage: meadow bundle open <bundle-slug> [--source-review]");
       return;
     }
-    const slug = parseSlugOnly(args.slice(2), "meadow bundle open <bundle-slug>");
-    await openBrowser(`/bundle/${encodeURIComponent(slug)}`, "bundle.open");
+    const sourceReview = args[3] === '--source-review' && args.length === 4;
+    const slug = parseSlugOnly(sourceReview ? args.slice(2, 3) : args.slice(2), "meadow bundle open <bundle-slug> [--source-review]");
+    await openBrowser(bundleDestinationPath({ page: sourceReview ? 'source-review' : 'bundle', slug }), "bundle.open");
     return;
   }
 

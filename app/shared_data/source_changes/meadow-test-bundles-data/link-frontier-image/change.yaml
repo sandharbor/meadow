@@ -1,0 +1,9 @@
+id: link-frontier-image
+label: Change an embedded frontier image to an ordinary link
+description: The image remains in the live source graph but no longer qualifies as a required embedded asset.
+sourceGraph: meadow-test-bundles-data
+operations:
+  - replaceText:
+      path: t016 ---- level 4.md
+      before: "![[t016 ---- level 5 - frontier image.png]]"
+      after: "[[t016 ---- level 5 - frontier image.png]]"

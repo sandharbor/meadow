@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { BundleEditorPage, SourceOrphansReview } from "../src/run/pages/index.js";
+import { BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
 import { orphan, sourceSnapshot } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
@@ -43,39 +43,37 @@ test("Sourcing reviews existing and candidate orphans with reversible individual
   await addKeyFrame(sourceSnapshot);
   await snapshot("source toolbar counts existing orphans without a separate banner");
 
-  await editor.reviewSourceOrphans();
-  const orphansModal = new SourceOrphansReview(page, expect);
-  await orphansModal.waitForOpen();
+  const review = editor.sourceReview;
+  const orphansModal = await review.reviewOrphans();
   await orphansModal.expectOrphanCount(EXPECTED_ORPHAN_COUNT);
   await orphansModal.expectOrphanListed(CHILD_OF_BLACKLISTED);
   await addKeyFrame(orphan);
   await snapshot("orphans review modal lists unreachable config pages");
 
-  const existingRow = page.getByTestId(`orphan-row-${CHILD_OF_BLACKLISTED}`);
-  await existingRow.getByRole('button', { name: 'Remove from config', exact: true }).click();
-  await expect(existingRow).toContainText('Will be removed');
-  await existingRow.getByRole('button', { name: 'Undo removal', exact: true }).click();
+  await orphansModal.expectAllRemovalsPending();
+  await orphansModal.keepInConfig(CHILD_OF_BLACKLISTED);
+  await orphansModal.removeFromConfig(CHILD_OF_BLACKLISTED);
+  await orphansModal.keepAllInConfig();
   await orphansModal.clickRemoveAllFromConfig();
-  await page.getByRole('button', { name: 'Later', exact: true }).click();
+  await review.defer();
   await editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT);
-  await editor.reviewSourceOrphans();
-  await expect(page.getByTestId('remove-all-orphans')).toHaveText('Undo all removals');
+  await review.reviewOrphans();
+  await orphansModal.expectAllRemovalsPending();
   await addKeyFrame(orphan);
-  await orphansModal.applyRemovals();
-  await orphansModal.expectClosed();
+  await review.applyOrphanRemovals();
   await editor.expectSourceOrphanCount(0);
   await snapshot("source review applies all configuration removals");
   await sourceChanges.apply('remove-incoming-link');
   await editor.checkSourceChanges();
   await expect(page.getByTestId('sourcing-status').getByRole('button')).toHaveText('2 source changes available – Review');
-  await editor.reviewSourceOrphans();
-  const newOrphan = page.getByTestId('orphan-row-t001 ---- child 2');
-  await newOrphan.getByText('Why is this orphaned?', { exact: true }).click();
-  await expect(newOrphan).toContainText('no longer connects');
-  await newOrphan.getByRole('button', { name: 'Remove from config', exact: true }).click();
+  await review.reviewOrphans();
+  await orphansModal.showExplanation('t001 ---- child 2');
+  await orphansModal.expectExplanation('t001 ---- child 2', 'no longer links to');
+  await review.expectNoMissingEntry('t001/deeper/t001 ---- child 2.md');
+  await orphansModal.expectAllRemovalsPending();
   await addKeyFrame(orphan);
-  await snapshot('candidate orphan can be removed in the same review as its broken link');
-  await page.getByRole('button', { name: 'Accept source update', exact: true }).click();
+  await snapshot('candidate orphan is listed once and removed by default with its broken link');
+  await review.accept();
   await editor.expectSourceOrphanCount(0);
   void bigBundle;
 

@@ -37,6 +37,7 @@ router.post('/bundles/:bundleSlug/sourcing/accept', handle(req => {
   if (typeof body.candidateId !== 'string' || typeof body.reviewToken !== 'string'
     || !body.resolutions || typeof body.resolutions !== 'object' || Array.isArray(body.resolutions)
     || Object.values(body.resolutions).some(value => value !== null && typeof value !== 'string')
+    || (body.orphanKeeps !== undefined && (!Array.isArray(body.orphanKeeps) || body.orphanKeeps.some(id => typeof id !== 'string')))
     || (body.orphanRemovals !== undefined && (!Array.isArray(body.orphanRemovals) || body.orphanRemovals.some(id => typeof id !== 'string')))) {
     throw new SourcingError('Expected a candidate snapshot, review token, and move resolutions', 400);
   }

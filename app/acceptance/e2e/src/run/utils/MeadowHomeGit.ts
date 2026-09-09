@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 import { existsSync } from "fs";
 import path from "path";
 import type { Expect } from "@playwright/test";
@@ -23,8 +23,8 @@ import type { Expect } from "@playwright/test";
  * Utility for asserting git state of the MeadowHome config directory.
  *
  * The MeadowHome repo is managed by the backend via fast_git_ops (gitoxide),
- * which creates repos that appear bare to regular git. This utility uses the
- * same fast_git_ops binary to query status.
+ * as a normal repository. Status uses the native helper; branch assertions
+ * inspect ordinary Git refs and trees without changing the checkout.
  */
 export class MeadowHomeGit {
   private binaryPath: string;
@@ -34,6 +34,15 @@ export class MeadowHomeGit {
     private expect: Expect,
   ) {
     this.binaryPath = resolveFastGitOpsBinary();
+  }
+
+  branches(): string[] {
+    return execFileSync('git', ['for-each-ref', '--format=%(refname)', 'refs/heads/'], { cwd: this.configDir, encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+  }
+
+  filesAt(branch: string): string[] {
+    if (!this.branches().includes(branch)) throw new Error(`Unknown Meadow Home branch: ${branch}`);
+    return execFileSync('git', ['ls-tree', '-r', '--name-only', '-z', branch], { cwd: this.configDir, encoding: 'utf8' }).split('\0').filter(Boolean);
   }
 
   /** Run fast_git_ops status and return the list of uncommitted files. */

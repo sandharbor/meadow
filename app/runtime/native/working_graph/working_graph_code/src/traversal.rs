@@ -59,6 +59,7 @@ impl BundleNodeGraph {
 
     fn build_graph(&mut self, raw_edges: &[BasicEdge], start_file: &FileBundleNode) {
         let frontier_depth = self.opts.frontier_depth.max(0);
+        let embedded: HashSet<_> = raw_edges.iter().filter(|edge| edge.is_embedded).map(|edge| (edge.source.bundle_node_key(), edge.target.bundle_node_key())).collect();
 
         // Pre-build adjacency lists to avoid O(V*E) scanning.
         let mut out_map: HashMap<String, Vec<(String, bool)>> = HashMap::new();
@@ -205,9 +206,9 @@ impl BundleNodeGraph {
                     };
 
                     let is_excluded_by_depth = child_depth > max_allowed_child_outlinks_depth;
-                    let is_frontier_image_extension_case = is_excluded_by_depth
-                        && self.opts.allow_images_to_extend_to_frontier
+                    let is_frontier_image_extension_case = self.opts.allow_images_to_extend_to_frontier
                         && link_type == LinkType::Outlink
+                        && embedded.contains(&(current_key.clone(), target_key.to_string()))
                         && is_image_file_type(&target_file.file_type)
                         && cur.remaining_depth == 0;
 
@@ -459,6 +460,7 @@ pub fn get_multi_seed_working_nodes(
     frontier_depth: i32,
     allow_images_to_extend_to_frontier: bool,
 ) -> Vec<WorkingNode> {
+    let embedded: HashSet<_> = edges.iter().filter(|edge| edge.is_embedded).map(|edge| (edge.source.bundle_node_key(), edge.target.bundle_node_key())).collect();
     let mut file_map: HashMap<String, FileBundleNode> = HashMap::new();
     let mut outgoing: HashMap<String, Vec<(String, bool)>> = HashMap::new();
     let mut incoming: HashMap<String, Vec<(String, bool)>> = HashMap::new();
@@ -601,8 +603,9 @@ pub fn get_multi_seed_working_nodes(
                 current.remaining_inlinks_depth
             };
             let is_image_extension = !traversing_inlink
-                && next_outlinks < -frontier_depth
+                && next_outlinks < 0
                 && allow_images_to_extend_to_frontier
+                && embedded.contains(&(current.key.clone(), target_key.to_string()))
                 && matches!(link_type, LinkType::Outlink | LinkType::Bidirectional)
                 && is_image_file_type(&target_file.file_type)
                 && current.remaining_outlinks_depth == 0;
@@ -694,7 +697,7 @@ pub fn get_multi_seed_working_nodes(
                     inlinks_depth_overridden: None,
                     link_type: Some(display.link_type),
                 }),
-                is_frontier_node: Some(display.remaining_outlinks_depth < 0),
+                is_frontier_node: Some(display.remaining_outlinks_depth < 0 && !display.is_frontier_image_extension),
                 is_frontier_image_extension: Some(display.is_frontier_image_extension),
                 traversal_states: Some(summaries),
             })
@@ -949,9 +952,12 @@ mod tests {
         let d = file("D", "md");
         let e = file("E", "md");
         let edges = vec![
-            BasicEdge { source: a.clone(), target: b.clone(), is_bidirectional: false },
-            BasicEdge { source: b.clone(), target: d, is_bidirectional: false },
-            BasicEdge { source: e, target: b.clone(), is_bidirectional: false },
+            BasicEdge {
+                is_embedded: true, source: a.clone(), target: b.clone(), is_bidirectional: false },
+            BasicEdge {
+                is_embedded: true, source: b.clone(), target: d, is_bidirectional: false },
+            BasicEdge {
+                is_embedded: true, source: e, target: b.clone(), is_bidirectional: false },
         ];
         let nodes = get_multi_seed_working_nodes(
             &edges,
@@ -992,8 +998,10 @@ mod tests {
         let a = file("A", "md");
         let b = file("B", "md");
         let edges = vec![
-            BasicEdge { source: a.clone(), target: b.clone(), is_bidirectional: false },
-            BasicEdge { source: b.clone(), target: a, is_bidirectional: false },
+            BasicEdge {
+                is_embedded: true, source: a.clone(), target: b.clone(), is_bidirectional: false },
+            BasicEdge {
+                is_embedded: true, source: b.clone(), target: a, is_bidirectional: false },
         ];
         let nodes = get_multi_seed_working_nodes(
             &edges,
@@ -1036,6 +1044,7 @@ mod tests {
         let b = file("B", "md");
         let a_key = a.bundle_node_key();
         let edges = vec![BasicEdge {
+                is_embedded: true,
             source: a.clone(),
             target: b,
             is_bidirectional: false,
@@ -1137,56 +1146,67 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_h.clone(),
                 target: node_i.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_j.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1212,26 +1232,31 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1256,16 +1281,19 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
@@ -1294,56 +1322,67 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_h.clone(),
                 target: node_i.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_j.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1371,31 +1410,37 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1424,36 +1469,43 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1491,41 +1543,49 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1562,36 +1622,43 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1626,41 +1693,49 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_h.clone(),
                 target: node_i.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_j.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1695,51 +1770,61 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_h.clone(),
                 target: node_i.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_j.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1768,31 +1853,37 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1823,21 +1914,25 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1864,16 +1959,19 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
@@ -1904,31 +2002,37 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -1957,21 +2061,25 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
@@ -2001,31 +2109,37 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -2052,26 +2166,31 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -2104,26 +2223,31 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_h.clone(),
                 target: node_i.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_j.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
@@ -2151,56 +2275,67 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_d.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_h.clone(),
                 target: node_i.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_j.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -2226,26 +2361,31 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -2289,22 +2429,26 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             // Raw bidirectional edge (purposefully backwards)
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -2329,11 +2473,13 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
@@ -2360,16 +2506,19 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
@@ -2399,26 +2548,31 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -2473,31 +2627,37 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_f.clone(),
                 target: node_a.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,
@@ -2527,21 +2687,25 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_c.clone(),
                 target: img.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_c.clone(),
                 target: md_link.clone(),
                 is_bidirectional: false,
@@ -2562,6 +2726,22 @@ mod tests {
     }
 
     #[test]
+    fn linked_image_has_no_embedded_asset_exception() {
+        let page = file("A", "md");
+        let embedded = file("EMBEDDED", "png");
+        let linked = file("LINKED", "png");
+        let edges = vec![
+            BasicEdge { source: page.clone(), target: embedded, is_bidirectional: false, is_embedded: true },
+            BasicEdge { source: page.clone(), target: linked, is_bidirectional: false, is_embedded: false },
+        ];
+        let configs = vec![conf("A", "whitelist", Some(0), Some(0))];
+        let (included, _) = my_get_working_graph(&edges, &configs, &page, &page, false, 0, true);
+        assert_eq!(name_and_depth(&included), vec!["A:0", "EMBEDDED:1"]);
+        let (frontier, _) = my_get_working_graph(&edges, &configs, &page, &page, false, 1, true);
+        assert!(frontier.iter().find(|node| node.file.bundle_node_name == "LINKED").unwrap().is_frontier_node.unwrap());
+    }
+
+    #[test]
     fn frontier_image_extension_excludes_images_when_disabled() {
         let node_a = file("A", "md");
         let node_b = file("B", "md");
@@ -2570,16 +2750,19 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_c.clone(),
                 target: img.clone(),
                 is_bidirectional: false,
@@ -2601,16 +2784,19 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_c.clone(),
                 target: img.clone(),
                 is_bidirectional: false,
@@ -2633,21 +2819,25 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_c.clone(),
                 target: img1.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_c.clone(),
                 target: img2.clone(),
                 is_bidirectional: false,
@@ -2683,16 +2873,19 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_c.clone(),
                 target: img.clone(),
                 is_bidirectional: false,
@@ -2724,41 +2917,49 @@ mod tests {
 
         let edges: Vec<BasicEdge> = vec![
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_a.clone(),
                 target: node_d.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_b.clone(),
                 target: node_c.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_h.clone(),
                 target: node_i.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_g.clone(),
                 target: node_b.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_j.clone(),
                 target: node_h.clone(),
                 is_bidirectional: false,
             },
             BasicEdge {
+                is_embedded: true,
                 source: node_e.clone(),
                 target: node_b.clone(),
                 is_bidirectional: true,

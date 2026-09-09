@@ -207,9 +207,9 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
     const loaded = await loadWorkingGraph({ bundleSlug, frontierDepth });
     const { nodes, edges: resultEdges, allInlinkSources, allOutlinkTargets, committedNodes, draftNodes } = loaded;
 
+    applySensitiveFromApiData(nodes);
+    applyNodeConfigsToNodes(nodes, draftNodes ?? committedNodes);
     if (descriptionRequest) {
-      applySensitiveFromApiData(nodes);
-      applyNodeConfigsToNodes(nodes, draftNodes ?? committedNodes);
       try {
         return res.json(describeWorkingGraph({
           bundleSlug,
@@ -234,6 +234,7 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
       edges: resultEdges,
       allInlinkSources,
       allOutlinkTargets,
+      frontierUnavailable: loaded.frontierUnavailable,
       folderScope: loaded.folderScope,
       changeExplanations: loaded.changeExplanations,
     });

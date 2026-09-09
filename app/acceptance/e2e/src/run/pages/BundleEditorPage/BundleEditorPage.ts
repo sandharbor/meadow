@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import type { Page, Expect, Response } from "@playwright/test";
+import { SourceReviewModal } from "./components/SourceReviewModal.js";
 
 function isCommittedCurationResponse(response: Response): boolean {
   const url = response.url();
@@ -36,10 +37,14 @@ function isBundleConfigResponse(response: Response): boolean {
 }
 
 export class BundleEditorPage {
+  readonly sourceReview: SourceReviewModal;
+
   constructor(
     private page: Page,
     private expect: Expect,
-  ) {}
+  ) {
+    this.sourceReview = new SourceReviewModal(page, expect);
+  }
 
   // ---------------------------------------------------------------------------
   // Shared locators
@@ -430,14 +435,9 @@ export class BundleEditorPage {
       await this.waitForSourceCheck();
       return;
     }
-    await this.page.getByTestId('sourcing-status').getByRole('button').click();
-    const dialog = this.page.getByRole('dialog', { name: 'Source review' });
-    await Promise.all([
-      this.page.waitForResponse(response => response.url().includes('/sourcing/scan') && response.request().method() === 'POST' && response.ok()),
-      dialog.getByRole('button', { name: 'Check again', exact: true }).click(),
-    ]);
-    await this.expect(dialog.getByRole('button', { name: 'Check again', exact: true })).toBeEnabled();
-    await dialog.getByRole('button', { name: 'Later', exact: true }).click();
+    await this.sourceReview.open();
+    await this.sourceReview.checkAgain();
+    await this.sourceReview.defer();
     await this.waitForSourceCheck();
   }
 
@@ -447,14 +447,15 @@ export class BundleEditorPage {
     await this.expect(this.page.getByTestId('orphans-banner')).not.toBeVisible();
   }
 
+  async reviewSourceHistory() {
+    await this.page.getByTitle('Bundle options', { exact: true }).click();
+    await this.page.getByRole('button', { name: 'Source snapshots', exact: true }).click();
+    await this.sourceReview.expectHistoryAvailable();
+    return this.sourceReview;
+  }
+
   async reviewSourceOrphans() {
-    const dialog = this.page.getByRole('dialog', { name: 'Source review' });
-    if (!await dialog.isVisible()) {
-      await this.waitForSourceCheck();
-      await this.page.getByTestId('sourcing-status').getByRole('button').click();
-    }
-    const section = dialog.getByTestId('source-orphans');
-    if (!await section.getByTestId('orphans-view').isVisible()) await section.locator('summary').first().click();
+    return this.sourceReview.reviewOrphans();
   }
 
   // ---------------------------------------------------------------------------

@@ -22,7 +22,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { frontier, tracking } from "../../../concepts/index.js";
+import { frontier, frontierEmbeddedAssets, tracking } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -48,7 +48,7 @@ test("tracks a frontier image in a page-derived bundle", async ({
   await detail.expectNoPill(Pill.Frontier);
   await detail.expectNoPill(Pill.Tracked);
   await detail.expectButtonEnabled(ActionButton.Track);
-  await addKeyFrame(frontier);
+  await addKeyFrame(frontier, frontierEmbeddedAssets);
   await snapshot("page-derived frontier image is available to track");
 
   await detail.clickAction(ActionButton.Track, page);

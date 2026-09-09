@@ -36,7 +36,10 @@ import {
   getBundleRawDirectory,
   getConfigDirectory,
 } from '../bundle-config/bundleConfigPaths.js';
-import { acceptedSourceRoot, initializeSourcing } from '../source-snapshot/sourceSnapshots.js';
+import { snapshotSourceRoot, initializeSourcing, discoverSourceSnapshot, loadSourceSnapshot, loadSourcingState } from '../source-snapshot/sourceSnapshots.js';
+import { liveSourceLinks } from '../source-snapshot/sourceDiscovery.js';
+import { withPinnedSourceTree } from '../source-snapshot/sourceGit.js';
+import type { SourceSnapshot } from '../source-snapshot/sourceSnapshots.js';
 import {
   explainFolderScopeChanges,
   loadFolderScopeSnapshot,
@@ -89,6 +92,7 @@ export interface WorkingGraphRustOutput {
 }
 
 export interface LoadedWorkingGraph {
+  frontierUnavailable?: string;
   bundleConfig: BundleConfig;
   committedNodes: BundleNodeConfig[];
   draftNodes?: BundleNodeConfig[];
@@ -249,12 +253,20 @@ export function serializeWorkingGraphOutput(output: WorkingGraphRustOutput): Ser
   return serialized;
 }
 
-export async function loadWorkingGraph(options: {
+export async function loadWorkingGraph(options: { bundleSlug: string; frontierDepth?: number }): Promise<LoadedWorkingGraph> {
+  const directory = getBundleDirectory(options.bundleSlug);
+  await initializeSourcing(directory);
+  const snapshot = loadSourceSnapshot(directory, loadSourcingState(directory)!.acceptedId);
+  return await withPinnedSourceTree(snapshot.git, () => loadWorkingGraphUnlocked(options, snapshot));
+}
+
+async function loadWorkingGraphUnlocked(options: {
   bundleSlug: string;
   frontierDepth?: number;
-}): Promise<LoadedWorkingGraph> {
+}, snapshot: SourceSnapshot): Promise<LoadedWorkingGraph> {
   const { bundleSlug } = options;
-  const frontierDepth = options.frontierDepth ?? 0;
+  let frontierDepth = options.frontierDepth ?? 0;
+  let frontierUnavailable: string | undefined;
   if (!Number.isInteger(frontierDepth) || frontierDepth < 0) {
     throw new WorkingGraphOperationError('frontierDepth must be a non-negative integer', 400);
   }
@@ -269,8 +281,22 @@ export async function loadWorkingGraph(options: {
   } catch (error) {
     throw new Error(`Failed to load bundle configuration for ${bundleSlug}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  await initializeSourcing(getBundleDirectory(bundleSlug));
-  const notesDir = acceptedSourceRoot(getBundleDirectory(bundleSlug));
+  const bundleDirectory = getBundleDirectory(bundleSlug);
+  let notesDir = snapshotSourceRoot(bundleDirectory, snapshot.id, snapshot);
+  if (frontierDepth > 0) {
+    try {
+      const state = loadSourcingState(bundleDirectory)!;
+      const live = await discoverSourceSnapshot(bundleDirectory);
+      if (state.candidateId || live.digest !== loadSourceSnapshot(bundleDirectory, state.acceptedId).digest) {
+        frontierUnavailable = 'The frontier can’t be shown while source changes are waiting for review.';
+      } else {
+        notesDir = bundleConfig.sourceDirectory!;
+      }
+    } catch {
+      frontierUnavailable = 'The frontier can’t be shown while sources are unavailable.';
+    }
+    if (frontierUnavailable) frontierDepth = 0;
+  }
   if (!notesDir) {
     throw new WorkingGraphOperationError(`Bundle '${bundleSlug}' has no source directory`, 409);
   }
@@ -345,12 +371,20 @@ export async function loadWorkingGraph(options: {
     }
   }
 
+  const discovered = liveSourceLinks(bundleDirectory, snapshot.digest);
+  if (!frontierDepth && !frontierUnavailable && discovered) {
+    const included = new Set(output.nodes.map(node => node.bundleNodeKey.replace(/^\/+/, '')));
+    const nativeKey = (key: string) => { const relative = key.replace(/^\/+/, ''); return relative.includes('/') ? relative : `/${relative}`; };
+    const links = (map: Record<string, string[]>) => Object.fromEntries(Object.entries(map).filter(([key]) => included.has(key.replace(/^\/+/, ''))).map(([key, values]) => [nativeKey(key), values.map(nativeKey)]));
+    output = { ...output, allInlinkSources: links(discovered.allInlinkSources), allOutlinkTargets: links(discovered.allOutlinkTargets) };
+  }
   const serialized = serializeWorkingGraphOutput(output);
   return {
     bundleConfig,
     committedNodes,
     ...(draftNodes && { draftNodes }),
     ...serialized,
+    ...(frontierUnavailable && { frontierUnavailable }),
     ...(output.folderScope && { folderScope: output.folderScope }),
     ...(changeExplanations && { changeExplanations }),
   };

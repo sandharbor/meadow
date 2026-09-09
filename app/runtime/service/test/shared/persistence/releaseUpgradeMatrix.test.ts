@@ -178,6 +178,7 @@ async function startAndStopBackend(
     expect(result).toEqual({ code: 0, signal: null });
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    await closed;
     runningChildren.delete(child);
   }
 
@@ -306,7 +307,7 @@ function assertNoTransactionResidue(directory: string): void {
 afterEach(() => {
   for (const child of runningChildren) child.kill('SIGKILL');
   runningChildren.clear();
-  for (const root of cleanupRoots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+  for (const root of cleanupRoots.splice(0)) fs.rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 });
 
 describe('public-release startup upgrade matrix', () => {

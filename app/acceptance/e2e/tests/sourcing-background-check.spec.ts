@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { test, expect } from '../src/run/test-fixtures.js';
+import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
 import { sourceSnapshot } from '../../../concepts/index.js';
 
@@ -11,9 +12,10 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await page.clock.install();
   await new Workflows(page, expect).navigateToBigBundle();
   const status = page.getByTestId('sourcing-status');
-  await status.getByRole('button', { name: '13 source changes available – Review', exact: true }).click();
-  await page.getByTestId('remove-all-orphans').click();
-  await page.getByRole('button', { name: 'Apply removals', exact: true }).click();
+  await expect(status.getByRole('button', { name: '13 source changes available – Review', exact: true })).toBeVisible();
+  const sourceReview = new BundleEditorPage(page, expect).sourceReview;
+  await sourceReview.open();
+  await sourceReview.applyOrphanRemovals();
   const update = status.getByRole('button', { name: 'Refresh sources', exact: true });
   await expect(update).toBeVisible();
   await page.clock.pauseAt(Date.now() + 1000);
@@ -61,18 +63,17 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await addKeyFrame(sourceSnapshot);
   await snapshot('a later background check preserves the review button while updating its count');
 
-  await review.click();
-  const dialog = page.getByRole('dialog', { name: 'Source review' });
-  await dialog.getByText('Details', { exact: true }).click();
-  const differentPages = dialog.getByRole('radio', { name: /Different pages/ });
-  await differentPages.check();
+  await sourceReview.open();
+  const rename = await sourceReview.moveFrom('t003 ---- page with section to link to.md');
+  await rename.expandDetails();
+  await rename.keepSeparate();
   await sourceChanges.apply('remove-incoming-link');
   gate = new Promise<void>(resolve => { release = resolve; });
   await page.clock.fastForward(30000);
   await expect(review.getByTestId('source-background-progress')).toBeVisible();
   release();
   await expect(status.getByTestId('source-background-progress')).not.toBeVisible();
-  await expect(differentPages).toBeChecked();
+  await rename.expectSeparateSelected();
   await expect(review).toHaveText('3 source changes available – Review');
   expect(scans).toBe(4);
   await snapshot('automatic checks preserve a candidate and its decisions while review is open');

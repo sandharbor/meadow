@@ -76,11 +76,13 @@ struct LinkOut {
     /// True for standard markdown links `[text](href)` where paths are relative to the source file.
     /// False for wiki-links `[[inner]]` where paths are resolved by fuzzy search.
     is_relative_path_link: bool,
+    is_embedded: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 enum ExtractedLink {
     Wiki(String),
+    Embedded(Box<ExtractedLink>),
     Markdown { text: String, href: String },
 }
 
@@ -304,6 +306,18 @@ fn calculate_normalized_directory(
     path_str
 }
 
+fn parse_extracted_link(link: ExtractedLink, source: &FileIdentifier) -> LinkOut {
+    match link {
+        ExtractedLink::Wiki(inner) => parse_out_link(&inner, source),
+        ExtractedLink::Markdown { text, href } => parse_out_markdown_link(&text, &href, source),
+        ExtractedLink::Embedded(inner) => {
+            let mut link = parse_extracted_link(*inner, source);
+            link.is_embedded = true;
+            link
+        }
+    }
+}
+
 fn extract_links(content: &str) -> Vec<ExtractedLink> {
     let mut out = Vec::new();
     let mut i = 0;
@@ -336,7 +350,8 @@ fn extract_links(content: &str) -> Vec<ExtractedLink> {
                 let start_idx = i + 2;
                 if let Some(end_rel) = content[start_idx..].find("]]") {
                     let end_idx = start_idx + end_rel;
-                    out.push(ExtractedLink::Wiki(content[start_idx..end_idx].to_string()));
+                    let link = ExtractedLink::Wiki(content[start_idx..end_idx].to_string());
+                    out.push(if i > 0 && bytes[i - 1] == b'!' { ExtractedLink::Embedded(Box::new(link)) } else { link });
                     i = end_idx + 2;
                     continue;
                 }
@@ -352,8 +367,9 @@ fn extract_links(content: &str) -> Vec<ExtractedLink> {
                 }
 
                 if let Some(extracted) = try_extract_markdown_link(content, i) {
+                    let embedded = bytes[i] == b'!' || (i > 0 && bytes[i - 1] == b'!');
                     i = extracted.end_pos;
-                    out.push(extracted.link);
+                    out.push(if embedded { ExtractedLink::Embedded(Box::new(extracted.link)) } else { extracted.link });
                     continue;
                 }
             }
@@ -361,8 +377,9 @@ fn extract_links(content: &str) -> Vec<ExtractedLink> {
             // Also catch ![alt](href) where ! is at current position
             if bytes[i] == b'!' && i + 1 < len && bytes[i + 1] == b'[' {
                 if let Some(extracted) = try_extract_markdown_link(content, i + 1) {
+                    let embedded = bytes[i] == b'!' || (i > 0 && bytes[i - 1] == b'!');
                     i = extracted.end_pos;
-                    out.push(extracted.link);
+                    out.push(if embedded { ExtractedLink::Embedded(Box::new(extracted.link)) } else { extracted.link });
                     continue;
                 }
             }
@@ -455,10 +472,8 @@ fn extract_markup_links(content: &str) -> Vec<ExtractedLink> {
 
         let target = content[target_start..target_end].trim();
         if is_internal_html_target(target) {
-            links.push(ExtractedLink::Markdown {
-                text: target.to_string(),
-                href: target.to_string(),
-            });
+            let link = ExtractedLink::Markdown { text: target.to_string(), href: target.to_string() };
+            links.push(if attr_len == 3 { ExtractedLink::Embedded(Box::new(link)) } else { link });
         }
         cursor = target_end.saturating_add(1);
     }
@@ -575,6 +590,7 @@ fn parse_out_link(inner_link_text: &str, source_page: &FileIdentifier) -> LinkOu
         link_resolved_target_directory: String::new(),
         link_resolved_target_path: String::new(),
         is_relative_path_link: false,
+        is_embedded: false,
     }
 }
 
@@ -635,6 +651,7 @@ fn parse_out_markdown_link(
         link_resolved_target_directory: String::new(),
         link_resolved_target_path: String::new(),
         is_relative_path_link: true,
+        is_embedded: false,
     }
 }
 
@@ -803,18 +820,7 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
                 // pages. The Text Elements section of an Excalidraw file is plain markdown
                 // and may contain `[[wiki-links]]` to other pages.
                 for extracted in extract_links(&file_content) {
-                    match extracted {
-                        ExtractedLink::Wiki(inner) => {
-                            outgoing_links.push(parse_out_link(&inner, &source_page_identifier));
-                        }
-                        ExtractedLink::Markdown { text, href } => {
-                            outgoing_links.push(parse_out_markdown_link(
-                                &text,
-                                &href,
-                                &source_page_identifier,
-                            ));
-                        }
-                    }
+                    outgoing_links.push(parse_extracted_link(extracted, &source_page_identifier));
                 }
                 if file_content.contains("meadow-sensitive: true") {
                     found_sensitive = true;
@@ -825,13 +831,7 @@ fn scan_graph(graph_root: &std::path::Path) -> anyhow::Result<Vec<ScanResult>> {
         {
             if let Ok(file_content) = fs::read_to_string(path) {
                 for extracted in extract_markup_links(&file_content) {
-                    if let ExtractedLink::Markdown { text, href } = extracted {
-                        outgoing_links.push(parse_out_markdown_link(
-                            &text,
-                            &href,
-                            &source_page_identifier,
-                        ));
-                    }
+                    outgoing_links.push(parse_extracted_link(extracted, &source_page_identifier));
                 }
             }
         }
@@ -1212,6 +1212,7 @@ fn main() -> anyhow::Result<()> {
                 let target_tf = file_bundle_node_from_identifier(target_file, *target_sensitive);
 
                 basic_edges.push(BasicEdge {
+                    is_embedded: l.is_embedded,
                     source: source_tf.clone(),
                     target: target_tf.clone(),
                     is_bidirectional: false,
@@ -1566,14 +1567,14 @@ mod tests {
                     text: "../note.md".to_string(),
                     href: "../note.md".to_string(),
                 },
-                ExtractedLink::Markdown {
+                ExtractedLink::Embedded(Box::new(ExtractedLink::Markdown {
                     text: "./image.svg".to_string(),
                     href: "./image.svg".to_string(),
-                },
-                ExtractedLink::Markdown {
+                })),
+                ExtractedLink::Embedded(Box::new(ExtractedLink::Markdown {
                     text: "./behavior.js".to_string(),
                     href: "./behavior.js".to_string(),
-                },
+                })),
             ]
         );
     }
@@ -1631,15 +1632,23 @@ mod tests {
     }
 
     #[test]
+    fn wiki_embeds_are_distinct_from_links() {
+        assert_eq!(extract_links("![[image.png]] [[image.png]]"), vec![
+            ExtractedLink::Embedded(Box::new(ExtractedLink::Wiki("image.png".into()))),
+            ExtractedLink::Wiki("image.png".into()),
+        ]);
+    }
+
+    #[test]
     fn test_extract_links_markdown_image_embed() {
         let content = "An image: ![alt text](./images/photo.png)";
         let links = extract_links(content);
         assert_eq!(
             links,
-            vec![ExtractedLink::Markdown {
+            vec![ExtractedLink::Embedded(Box::new(ExtractedLink::Markdown {
                 text: "alt text".to_string(),
                 href: "./images/photo.png".to_string(),
-            }]
+            }))]
         );
     }
 
@@ -1795,6 +1804,7 @@ mod tests {
             link_resolved_target_directory: String::new(),
             link_resolved_target_path: String::new(),
             is_relative_path_link: false,
+        is_embedded: false,
         }
     }
 
@@ -1812,6 +1822,7 @@ mod tests {
             link_resolved_target_directory: String::new(),
             link_resolved_target_path: String::new(),
             is_relative_path_link: false,
+        is_embedded: false,
         }
     }
 

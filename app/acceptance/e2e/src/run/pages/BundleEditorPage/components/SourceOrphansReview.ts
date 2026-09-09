@@ -27,7 +27,7 @@ export class SourceOrphansReview {
   }
 
   private get orphansView() {
-    return this.page.getByTestId("orphans-view");
+    return this.modalTitle.getByTestId("orphans-view");
   }
 
   private get orphanRows() {
@@ -35,7 +35,7 @@ export class SourceOrphansReview {
   }
 
   private orphanRow(title: string) {
-    return this.page.getByTestId(`orphan-row-${title}`);
+    return this.orphansView.getByTestId(`orphan-row-${title}`);
   }
 
   private get removeAllBtn() {
@@ -52,12 +52,36 @@ export class SourceOrphansReview {
   }
 
   async clickRemoveAllFromConfig() {
-    await this.expect(this.removeAllBtn).toBeVisible();
+    await this.expect(this.removeAllBtn).toHaveText('Remove all from config');
     await this.removeAllBtn.click();
   }
 
-  async applyRemovals() {
-    await this.modalTitle.getByRole('button', { name: 'Apply removals', exact: true }).click();
+  async expectSummaryCount(count: number) {
+    await this.expect(this.modalTitle.getByTestId('source-orphans')).toContainText(`Orphaned configuration (${count})`);
+  }
+
+  async expectNotListed(title: string) {
+    await this.expect(this.orphanRow(title)).toHaveCount(0);
+  }
+
+  async removeFromConfig(title: string) {
+    await this.orphanRow(title).getByRole('button', { name: 'Remove from config', exact: true }).click();
+    await this.expect(this.orphanRow(title).getByRole('button', { name: 'Keep in config', exact: true })).toBeVisible();
+  }
+
+  async keepInConfig(title: string) {
+    await this.orphanRow(title).getByRole('button', { name: 'Keep in config', exact: true }).click();
+    await this.expect(this.orphanRow(title).getByRole('button', { name: 'Remove from config', exact: true })).toBeVisible();
+  }
+
+  async expectAllRemovalsPending() {
+    await this.expect(this.removeAllBtn).toHaveText('Keep all in config');
+  }
+
+  async keepAllInConfig() {
+    await this.expectAllRemovalsPending();
+    await this.removeAllBtn.click();
+    await this.expect(this.removeAllBtn).toHaveText('Remove all from config');
   }
 
   async getOrphanCount(): Promise<number> {
@@ -66,6 +90,28 @@ export class SourceOrphansReview {
 
   async expectOrphanCount(count: number) {
     await this.expect(this.orphanRows).toHaveCount(count);
+  }
+
+  async showExplanation(title: string) {
+    await this.orphanRow(title).getByText('Why is this orphaned?', { exact: true }).click();
+  }
+
+  async expectExplanation(title: string, text: string) {
+    await this.expect(this.orphanRow(title)).toContainText(text);
+  }
+
+  async expectMissingLinkedFile(title: string, from: string, to: string) {
+    const row = this.orphanRow(title);
+    await this.expect(row).toContainText('links to');
+    await this.expect(row).toContainText('but that file does not exist in the filesystem.');
+    for (const filename of [from, to]) {
+      await this.expect(row.getByTestId('source-file-pill').filter({ hasText: filename }).filter({ visible: true })).toHaveAttribute('title', filename);
+    }
+    await this.expect(row.getByText('Previous route', { exact: true }).locator('..')).not.toHaveAttribute('open', '');
+  }
+
+  async showPreviousRoute(title: string) {
+    await this.orphanRow(title).getByText('Previous route', { exact: true }).click();
   }
 
   async expectOrphanListed(title: string) {

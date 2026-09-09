@@ -36,6 +36,9 @@ import {
 type ViewTab = 'thumbs' | 'list' | 'videos' | 'timing'
 
 interface ConceptView {
+  searchFacet: boolean
+  parentId?: string
+  kind?: string
   id: string
   name: string
   description: string
@@ -117,7 +120,8 @@ export default function RunDetail() {
   const presentAreaIds = new Set(
     (data?.scenarios ?? []).flatMap((s) => s.appAreaDocIds)
   )
-  const isPartialRun = docs.length > 0 && presentDocIds.size < docs.length
+  const facetDocs = docs.filter(doc => doc.searchFacet)
+  const isPartialRun = facetDocs.some(doc => !presentDocIds.has(doc.id))
   const isPartialAreaRun = appAreas.length > 0 && presentAreaIds.size < appAreas.length
   const targetedDocIds = new Set(data?.targetedConceptIds ?? [])
   const targetedAreaIds = new Set(data?.targetedAppAreaIds ?? [])
@@ -453,8 +457,8 @@ export default function RunDetail() {
 
       {/* Concept filter chips — two rows: core, then contributions. */}
       {docs.length > 0 && (() => {
-        const baseDocs = docs.filter((d) => !d.isContribution)
-        const extensionDocs = docs.filter((d) => d.isContribution)
+        const baseDocs = facetDocs.filter((d) => !d.isContribution)
+        const extensionDocs = facetDocs.filter((d) => d.isContribution)
         const extensionDocIds = extensionDocs.map((d) => d.id)
         const allExtensionSelected = extensionDocIds.length > 0 && extensionDocIds.every((id) => selectedDocIds.includes(id))
 
@@ -493,7 +497,7 @@ export default function RunDetail() {
         return (
           <div className="mb-3">
             {/* Base row */}
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Concept filters">
               <button
                 className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
                   selectedDocIds.length === 0
@@ -509,7 +513,7 @@ export default function RunDetail() {
 
             {/* Contribution row — hidden when no scenario in this run uses one. */}
             {extensionDocs.length > 0 && extensionDocIds.some((id) => presentDocIds.has(id)) && (
-              <div className="flex flex-wrap gap-1.5 items-center mt-1.5">
+              <div className="flex flex-wrap gap-1.5 items-center mt-1.5" role="group" aria-label="Contributed concept filters">
                 <span className="text-xs text-neutral-400 font-medium mr-1">meadow-extension:</span>
                 <button
                   className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
@@ -527,7 +531,13 @@ export default function RunDetail() {
             )}
 
             {selectedDocs.length === 1 && (
-              <p className="mt-2 text-xs text-neutral-500">{selectedDocs[0].description}</p>
+              <div className="mt-2 space-y-2 text-xs text-neutral-500">
+                {!selectedDocs[0].searchFacet && <h2 className="font-semibold text-neutral-800">{selectedDocs[0].name}</h2>}
+                <p className="whitespace-pre-line">{selectedDocs[0].description}</p>
+                {selectedDocs[0].parentId && <button className="text-brand-600 underline" onClick={() => setFilters({ docIds: [selectedDocs[0].parentId!] })}>Back to {docs.find(doc => doc.id === selectedDocs[0].parentId)?.name ?? 'concept'}</button>}
+                {docs.filter(doc => doc.parentId === selectedDocs[0].id && doc.kind === 'behavioral-rule').map(rule => <button key={rule.id} className="block text-brand-600 underline" onClick={() => setFilters({ docIds: [rule.id] })}>{rule.name}</button>)}
+                {selectedDocs[0].kind === 'behavioral-rule' && <p>Screenshots below are evidence from this run; open the scenario to inspect its result, revision, and recording.</p>}
+              </div>
             )}
           </div>
         )

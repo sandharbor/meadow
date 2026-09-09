@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SourceChangeStatus } from '../../../../../shared_code/shared_dev/sourceChangesTypes.js';
 
-export function SourceChangesControl({ fixtureName, active }: { fixtureName: string; active: boolean }) {
+export function SourceChangesControl({ fixtureName, active, launchMode, onStarted }: { fixtureName: string; active: boolean; launchMode: 'app' | 'browser'; onStarted: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [changes, setChanges] = useState<SourceChangeStatus[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -35,16 +35,37 @@ export function SourceChangesControl({ fixtureName, active }: { fixtureName: str
     finally { setBusy(null); }
   };
 
+  const start = async (change: SourceChangeStatus) => {
+    setBusy(change.id); setError(null); setApplied(null);
+    try {
+      const response = await fetch(`/api/config/fixtures/${encodeURIComponent(fixtureName)}/source-scenarios/${encodeURIComponent(change.id)}/start`, { method: 'POST' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not start scenario');
+      const launched = await fetch(launchMode === 'app' ? '/api/app/launch-dev' : '/api/app/open-browser', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(launchMode === 'app' ? { targetPath: result.targetPath } : { url: `http://localhost${result.targetPath}` }),
+      });
+      const launchResult = await launched.json();
+      if (!launched.ok) throw new Error(launchResult.error || 'Scenario prepared, but the app could not open');
+      setApplied(`${change.label} is ready to review.`);
+      await onStarted();
+      await load();
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+    finally { setBusy(null); }
+  };
+
   return <div className="mt-3 border-t border-info-200 pt-3">
     <button className="w-full rounded border border-info-300 bg-white px-3 py-2 text-sm font-medium text-info-800 hover:bg-info-50" onClick={() => setOpen(value => !value)} aria-expanded={open}>Source changes {open ? '▴' : '▾'}</button>
     {open && <div className="mt-3 space-y-3" data-testid="source-changes-control">
-      <p className="text-xs text-neutral-600">Apply changes while Meadow is running. Restart this fixture to restore its source and bundle state.</p>
-      {!active && <p className="text-sm">Start this fixture to apply changes.</p>}
+      <p className="text-xs text-neutral-600">Start scenario resets this fixture and opens the selected change in source review. Apply change only modifies files in the running fixture.</p>
+      {!active && <p className="text-sm">Start a scenario, or start this fixture to apply changes.</p>}
+      {busy && <p role="status" className="text-sm">Preparing {changes.find(change => change.id === busy)?.label}…</p>}
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {applied && <p role="status" className="text-sm text-green-800">{applied}</p>}
       {changes.map(change => <article data-testid={`source-change-${change.id}`} key={`${change.sourceGraph}:${change.id}`} className="rounded border border-neutral-200 bg-white p-3">
         <div className="flex items-start gap-2"><h3 className="flex-1 text-sm font-semibold">{change.label}</h3>
-          <button className="rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:bg-neutral-200 disabled:text-neutral-600" disabled={!active || busy !== null || change.state !== 'available'} onClick={() => void apply(change)}>{busy === change.id ? 'Applying…' : change.state === 'applied' ? 'Applied' : 'Apply'}</button>
+          {fixtureName === 'home_fixture_big_and_small' && <button className="rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={busy !== null} onClick={() => void start(change)}>Start scenario</button>}
+          <button className="rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:bg-neutral-200 disabled:text-neutral-600" disabled={!active || busy !== null || change.state !== 'available'} onClick={() => void apply(change)}>{busy === change.id ? 'Applying…' : change.state === 'applied' ? 'Applied' : 'Apply change'}</button>
         </div>
         <p className="mt-1 text-xs text-neutral-600">{change.description}</p>
         {change.reason && <p className="mt-2 text-xs text-amber-800">{change.reason}</p>}

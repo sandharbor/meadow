@@ -32,10 +32,9 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   await addKeyFrame(sourceSnapshot);
   await snapshot('generation continues using the accepted snapshot while live source differs');
   await previewModal.closeModal();
-  await new BundleEditorPage(page, expect).checkSourceChanges();
-  await page.getByRole('button', { name: /source changes? available.*Review/i }).click();
-  await page.getByRole('button', { name: 'Accept source update' }).click();
-  await expect(page.getByRole('dialog', { name: 'Source review' })).not.toBeVisible();
+  await editor.checkSourceChanges();
+  await editor.sourceReview.open();
+  await editor.sourceReview.accept();
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
   expect(fs.readFileSync(retainedPath, 'utf8')).not.toBe(before);

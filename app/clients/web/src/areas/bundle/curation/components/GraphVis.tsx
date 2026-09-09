@@ -905,8 +905,8 @@ const GraphVis: React.FC<GraphVisProps> = ({
                       x: screenPt.x - containerRect.left,
                       y: screenPt.y - containerRect.top,
                       title: page.bundleNodeName,
-                      isImage,
-                      imagePath: isImage ? `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(filePath)}` : undefined,
+                      isImage: isImage && !page.isFrontierNode,
+                      imagePath: isImage && !page.isFrontierNode ? `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(filePath)}` : undefined,
                       highlights: page.highlights,
                     });
                   }

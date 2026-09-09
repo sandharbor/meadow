@@ -15,6 +15,10 @@ limitations under the License.
 */
 
 export const coreConceptIds = {
+  frontierPendingSources: "frontier-pending-sources",
+  frontierDismissal: "frontier-dismissal",
+  frontierEmbeddedAssets: "frontier-embedded-assets",
+  frontierLiveDiscovery: "frontier-live-discovery",
   bundle: "bundle",
   bundles: "bundles",
   bundleSourcing: "bundle/sourcing",

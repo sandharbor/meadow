@@ -20,6 +20,9 @@ import { renderConceptText, type AnyMeadowConcept } from "./types.js";
 export interface AcceptanceConceptView {
   readonly id: string;
   readonly name: string;
+  readonly searchFacet: boolean;
+  readonly parentId?: string;
+  readonly kind?: string;
   readonly description: string;
   readonly appAreaIds: readonly string[] | null;
 }
@@ -28,7 +31,10 @@ export function acceptanceConceptView(concept: AnyMeadowConcept): AcceptanceConc
   return {
     id: concept.id,
     name: concept.name,
-    description: renderConceptText(concept.definition),
+    searchFacet: concept.searchFacet === true,
+    parentId: concept.parentId,
+    kind: concept.kind,
+    description: [concept.definition, ...(concept.kind === "behavioral-rule" ? concept.mechanics : [])].map(text => renderConceptText(text)).join("\n\n"),
     appAreaIds: concept.appAreaIds ?? null,
   };
 }

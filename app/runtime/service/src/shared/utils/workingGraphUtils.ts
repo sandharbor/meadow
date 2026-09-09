@@ -66,6 +66,8 @@ export function getWorkingGraphPath(): string {
 export type WorkingGraphRunArgs = {
   graphRoot: string;
   bundleNodeConfigPath: string;
+  /** Stable identity for equivalent temporary configuration files. */
+  cacheConfigIdentity?: string;
   entryBundleNodeId: string;
   defaultTraversalBundleNodeId: string;
   defaultOutlinksDepth?: number;
@@ -166,7 +168,7 @@ function cacheKey(runArgs: WorkingGraphRunArgs, revision: number): string {
   return JSON.stringify({
     ...runArgs,
     graphRoot: path.resolve(runArgs.graphRoot),
-    bundleNodeConfigPath: path.resolve(runArgs.bundleNodeConfigPath),
+    bundleNodeConfigPath: runArgs.cacheConfigIdentity ?? path.resolve(runArgs.bundleNodeConfigPath),
     topologyFingerprint: workingGraphTopologyFingerprint(
       configContents,
       runArgs.entryBundleNodeId,

@@ -22,6 +22,7 @@ export const archived = defineMeadowConcept({
   name: "Bundle Archiving",
   aliases: ["Archived Bundles"],
   kind: "state",
+  searchFacet: true,
   appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleCuration],
   definition: conceptText`The reversible state that removes a bundle from the current collection without deleting its configuration.`,
   mechanics: [
@@ -36,6 +37,7 @@ export const bundleSlug = defineMeadowConcept({
   name: "Bundle Slug",
   aliases: ["Bundle Name"],
   kind: "entity",
+  searchFacet: true,
   appAreaIds: [coreConceptIds.bundles],
   definition: conceptText`The mutable, human-readable name used for a bundle's local folder, list label, editor route, and command argument.`,
   mechanics: [conceptText`Renaming preserves the bundle's stable GUID. If the bundle was generated, its output is regenerated because generation hooks receive the slug.`],
@@ -46,6 +48,7 @@ export const findInBundles = defineMeadowConcept({
   id: coreConceptIds.findInBundles,
   name: "Find in Bundles",
   kind: "capability",
+  searchFacet: true,
   appAreaIds: [coreConceptIds.bundles],
   definition: conceptText`The capability for locating a source page across every bundle that includes or references it.`,
   mechanics: [
@@ -59,6 +62,7 @@ export const folderBundles = defineMeadowConcept({
   name: "Folder-Derived Bundle",
   aliases: ["Folder-Derived Bundles"],
   kind: "entity",
+  searchFacet: true,
   appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleCuration],
   definition: conceptText`A bundle whose initial structure is derived from one selected folder or an ordered collection of folders.`,
   mechanics: [
@@ -72,6 +76,7 @@ export const multiBundle = defineMeadowConcept({
   name: "Multi-Bundle Management",
   aliases: ["Multi-Bundle"],
   kind: "capability",
+  searchFacet: true,
   appAreaIds: [coreConceptIds.bundles],
   definition: conceptText`The capability for understanding and acting across several independently configured bundles.`,
   mechanics: [
@@ -85,6 +90,7 @@ export const cli = defineMeadowConcept({
   name: "Meadow Command-Line Interface",
   aliases: ["Command Line Interface", "CLI"],
   kind: "interface",
+  searchFacet: true,
   appAreaIds: [coreConceptIds.bundles],
   definition: conceptText`The stable machine-readable interface through which people, scripts, and agents invoke Meadow operations.`,
   mechanics: [

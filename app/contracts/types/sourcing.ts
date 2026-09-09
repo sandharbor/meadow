@@ -34,6 +34,10 @@ export interface SourceOrphanExplanation {
   previousPath: string[];
   reason: string;
   brokenConnection?: { from: string; to: string };
+  /** Filesystem absence is confirmed against the available live source, not inferred from capture scope. */
+  diagnosis?: { kind: 'missing-file'; from?: string; to: string }
+    | { kind: 'removed-link'; from: string; to: string }
+    | { kind: 'outside-graph'; to: string };
 }
 
 export interface SourcingReview {
@@ -51,6 +55,8 @@ export interface SourceSnapshotAcceptance {
   reviewToken: string;
   /** Overrides to the proposed matches. Omitted nodes use their proposed rename; null keeps pages separate. */
   resolutions: Record<string, string | null>;
-  /** Config entries to remove alongside the reviewed source update; source files are retained. */
+  /** Explicit exceptions to default orphan cleanup. Source files are retained. */
+  orphanKeeps?: string[];
+  /** Legacy explicit removal selection. Omission removes all eligible orphans except orphanKeeps. */
   orphanRemovals?: string[];
 }

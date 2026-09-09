@@ -53,3 +53,26 @@ therefore derived from test references; no separate `ScenarioDoc` prose record i
 canonical. New tests should reuse an existing concept when they exercise the same
 language, and introduce or sharpen a concept only when the domain distinction is
 genuinely new.
+
+## Behavioral rules
+
+The Frontier pilot uses `kind: "behavioral-rule"` with a `parentId` naming its
+owning concept. Each rule states one promise in `definition` and explains its
+rationale and a concrete example in `mechanics`. It remains prose metadata;
+execution and conditions stay in TypeScript tests.
+
+Import a specific rule alongside its concept in an E2E scenario and pass the rule
+to `addKeyFrame(rule)` where the behavior is visible. The report derives scenario
+coverage from imports and connects each rule to its keyframes. Concept navigation
+links to child rules and back to the parent. Evidence always belongs to the
+selected run and scenario result. This pilot does not reclassify existing tests.
+
+## Search facets
+
+Set `searchFacet: true` on concepts that are useful category-level filters in
+acceptance reports, such as Publishing, HTML Generation, and Frontier Bundle
+Page. Facet eligibility is explicit and independent of concept kind or test
+coverage; omission defaults to false. Behavioral rules use `searchFacet: false`
+and remain accessible through their parent concept and direct evidence links.
+The report keeps every concept available for documentation and screenshot
+navigation, while only opted-in facets appear in the run filter pills.

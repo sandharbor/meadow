@@ -252,7 +252,11 @@ export async function ensureTrackedPageContent(
     const subdir = bundleNodeConfig.sourceGraphSubdirectory || '';
     const filename = canonicalPageFilename(bundleNodeConfig.bundleNodeName, bundleNodeConfig.fileType);
     const relativePath = subdir ? path.join(subdir, filename) : filename;
-    expectedFilePaths.set(relativePath, bundleNodeConfig);
+    // Orphan configuration is retained for source review, but its absent bytes
+    // are not generation inputs in a scoped snapshot.
+    if (sourceFileCandidateFilenames(bundleNodeConfig.bundleNodeName, bundleNodeConfig.fileType).some(candidate => fs.existsSync(path.join(sourceDirectory, subdir, candidate)))) {
+      expectedFilePaths.set(relativePath, bundleNodeConfig);
+    }
   }
 
   // Clear the target directory completely to ensure clean state

@@ -1,5 +1,7 @@
 #![deny(warnings)]
 
+mod source_snapshots;
+
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::io::Read;
 use std::path::PathBuf;
@@ -22,6 +24,26 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Store selected source files on a source-history branch without changing HEAD or the index.
+    SourceSnapshot {
+        directory: PathBuf,
+        source: PathBuf,
+        branch: String,
+        #[clap(long)]
+        parent: Option<String>,
+    },
+    /// Expand a source snapshot into a new disposable directory.
+    MaterializeSourceSnapshot {
+        directory: PathBuf,
+        commit: String,
+        destination: PathBuf,
+    },
+    /// Advance an accepted source-history branch to a captured snapshot.
+    AcceptSourceSnapshot {
+        directory: PathBuf,
+        branch: String,
+        commit: String,
+    },
     /// Check git status for files in a directory
     Status {
         /// The directory to check git status in (must be within a git repository)
@@ -232,6 +254,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::SourceSnapshot { directory, source, branch, parent } => source_snapshots::capture(directory, source, branch, parent)?,
+        Commands::MaterializeSourceSnapshot { directory, commit, destination } => source_snapshots::materialize(directory, commit, destination)?,
+        Commands::AcceptSourceSnapshot { directory, branch, commit } => source_snapshots::accept(directory, branch, commit)?,
         Commands::Status { directory } => run_status(directory)?,
         Commands::DirLog { directory, limit } => run_dir_log(directory, limit)?,
         Commands::CommitFiles { directory, sha } => run_commit_files(directory, sha)?,

@@ -78,8 +78,8 @@ export function findGroupedSourceMoves(bundleDirectory: string, previous: Source
       const exact = previous.files[oldPath].digest === current.files[newPath].digest;
       if (!exact && !/\.(md|html|txt)$/i.test(oldPath)) continue;
       const similarity = exact ? 1 : wordOverlap(
-        fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id), oldPath), 'utf8'),
-        fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id), newPath), 'utf8'), renames,
+        fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, previous.id, previous), oldPath), 'utf8'),
+        fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, current.id, current), newPath), 'utf8'), renames,
       );
       if (similarity < 0.9) continue;
       result.push({ bundleNodeId: config.bundleNodeId, oldPath, newPath, confidence: 'possible', competing: false,

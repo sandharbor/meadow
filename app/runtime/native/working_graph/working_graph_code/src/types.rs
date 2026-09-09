@@ -80,6 +80,7 @@ pub struct TraversalStateSummary {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BasicEdge {
+    pub is_embedded: bool,
     pub source: FileBundleNode,
     pub target: FileBundleNode,
     pub is_bidirectional: bool,

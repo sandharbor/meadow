@@ -143,7 +143,7 @@ describe('tracked page content for folder-derived bundles', () => {
     const outsideNotePath = path.join(isolatedSourceGraph, 'Outside', 'Outside note.md');
     fs.writeFileSync(
       outsideNotePath,
-      `[[Frontier visual.png]]\n\n${fs.readFileSync(outsideNotePath, 'utf8')}`,
+      `![[Frontier visual.png]]\n\n${fs.readFileSync(outsideNotePath, 'utf8')}`,
       'utf8',
     );
     fs.copyFileSync(

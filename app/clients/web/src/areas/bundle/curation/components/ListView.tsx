@@ -151,7 +151,8 @@ const ListView: React.FC<ListViewProps> = ({
   // drawings can't be `<img src>`'d (the on-disk file is a `.excalidraw.md` whose
   // scene has to be decompressed and rendered) — they go through the vendored
   // renderer instead. Both paths feed the same hover-preview popup.
-  const renderInlineThumbnail = (page: { bundleNodeName: string; fileType: string; sourceGraphSubdirectory: string }) => {
+  const renderInlineThumbnail = (page: { bundleNodeName: string; fileType: string; sourceGraphSubdirectory: string; isFrontierNode?: boolean }) => {
+    if (page.isFrontierNode) return null;
     if (page.fileType === 'excalidraw') {
       const mdPath = page.sourceGraphSubdirectory
         ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.excalidraw.md`

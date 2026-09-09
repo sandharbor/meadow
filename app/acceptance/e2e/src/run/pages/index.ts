@@ -35,3 +35,4 @@ export {
   GeneratedBundleExcalidraw,
   GeneratedBundleFolderNavigation,
 } from "./shared/GeneratedBundle.js";
+export { SourceReviewModal } from "./BundleEditorPage/components/SourceReviewModal.js";

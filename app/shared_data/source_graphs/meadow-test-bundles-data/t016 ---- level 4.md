@@ -6,7 +6,7 @@ By default this level 5 page will not show up.
 
 By default this image will show up if `allowImagesToExtendToFrontier` is enabled.
 
-[[t016 ---- level 5 - frontier image.png]]
+![[t016 ---- level 5 - frontier image.png]]
 
 ```yaml
 pagespecs:

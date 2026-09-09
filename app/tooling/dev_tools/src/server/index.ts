@@ -21,7 +21,10 @@ import cors from "cors";
 import { existsSync, renameSync, rmSync, readdirSync, readFileSync, writeFileSync, mkdirSync, cpSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath, URL } from "url";
-import { spawn } from "child_process";
+import { spawn, execFile } from "child_process";
+import { promisify } from "node:util";
+import { applySourceChange } from "../../../../shared_code/shared_dev/sourceChanges.js";
+import { prepareSourceScenario } from "../../../../shared_code/shared_dev/sourceScenario.js";
 import { homedir } from "os";
 import { getDefaultConfigDirectory } from "../../../../shared_code/utils/appConfigUtils.js";
 import { preflightMeadowHome } from "../../../../shared_code/utils/meadowHomeFormat.js";
@@ -72,10 +75,11 @@ const projectRoot = getProjectRoot();
 const electronPackage = JSON.parse(
   readFileSync(join(projectRoot, "app", "hosts", "desktop", "package.json"), "utf8"),
 ) as { version?: unknown };
-const appVersion = electronPackage.version;
-if (typeof appVersion !== "string" || appVersion.length === 0) {
+const appVersionValue = electronPackage.version;
+if (typeof appVersionValue !== "string" || appVersionValue.length === 0) {
   throw new Error("Electron app package does not declare a version");
 }
+const appVersion = appVersionValue;
 const devRuntimeManager = new DevRuntimeManager({
   projectRoot,
   configDirectory: configDir,
@@ -135,6 +139,15 @@ function setActiveFixture(fixtureName: string | null): void {
     rmSync(activeFixtureFile);
   }
 }
+
+let fixtureOperationRunning = false;
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET') { next(); return; }
+  if (fixtureOperationRunning) { res.status(409).json({ error: 'Wait for the current fixture operation to finish.' }); return; }
+  fixtureOperationRunning = true;
+  res.once('finish', () => { fixtureOperationRunning = false; });
+  next();
+});
 
 app.use('/api', createSourceChangeRoutes({ projectRoot, configDir, getActiveFixture }));
 
@@ -201,18 +214,10 @@ app.post("/api/config/test-mode/missing", async (_req, res) => {
   }
 });
 
-// Set test mode with a specific fixture
-app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
-  try {
-    const { fixtureName } = req.params;
-
-    const fixtures = discoverFixtures();
-    const fixture = fixtures.find(f => f.folderName === fixtureName);
-    if (!fixture) {
-      res.status(404).json({ error: `Fixture not found: ${fixtureName}` });
-      return;
-    }
-
+// Fixture reset is shared by ordinary launches and prepared source scenarios.
+async function resetFixture(fixtureName: string): Promise<void> {
+  const fixture = discoverFixtures().find(item => item.folderName === fixtureName);
+  if (!fixture) throw new Error(`Fixture not found: ${fixtureName}`);
     await devRuntimeManager.stopRuntime();
 
     const alreadyInTestMode = existsSync(normalConfBackup);
@@ -223,8 +228,7 @@ app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
       }
     } else {
       if (!existsSync(configDir)) {
-        res.status(400).json({ error: "Config directory does not exist. Nothing to move." });
-        return;
+        throw new Error("Config directory does not exist. Nothing to move.");
       }
       renameSync(configDir, normalConfBackup);
     }
@@ -271,10 +275,7 @@ app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
 
       setActiveFixture(fixtureName);
 
-      res.json({
-        success: true,
-        message: `Fixture "${fixture.displayName}" has been set up successfully with git initialized.`,
-      });
+
     } catch (error) {
       if (!alreadyInTestMode) {
         if (existsSync(configDir)) {
@@ -284,9 +285,38 @@ app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
       }
       throw error;
     }
+}
+
+app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
+  try {
+    await resetFixture(req.params.fixtureName);
+    res.json({ success: true });
   } catch (error) {
-    console.error("Error setting test mode with fixture:", error);
     res.status(500).json({ error: errorMessage(error, "Failed to set test mode with fixture") });
+  }
+});
+
+app.post('/api/config/fixtures/:fixtureName/source-scenarios/:changeId/start', async (req, res) => {
+  try {
+    const { fixtureName, changeId } = req.params;
+    const sourceGraph = 'meadow-test-bundles-data';
+    if (fixtureName !== 'home_fixture_big_and_small' || !loadSourceChanges(projectRoot, sourceGraph).some(change => change.id === changeId)) {
+      res.status(400).json({ error: 'Unknown source scenario for this fixture' }); return;
+    }
+    await resetFixture(fixtureName);
+    await devRuntimeManager.prepareForLaunch('started a source scenario in Meadow Dev Tools');
+    const run = async (args: string[]): Promise<string> => {
+      const result = await promisify(execFile)(process.execPath, [join(projectRoot, 'app/clients/cli/dist/meadow.cjs'), ...args], {
+        env: { ...process.env, MEADOW_HOME_DIRECTORY_OVERRIDE: configDir }, maxBuffer: 16 * 1024 * 1024, timeout: 120000,
+      });
+      return result.stdout;
+    };
+    const targetPath = await prepareSourceScenario(run, 'meadow-test-bundle-big', async () => applySourceChange({
+      projectRoot, sourceGraphsDir: join(configDir, 'source_graphs'), sourceGraph, changeId,
+    }));
+    res.json({ success: true, targetPath });
+  } catch (error) {
+    res.status(500).json({ error: errorMessage(error, 'Could not prepare the source scenario') });
   }
 });
 
@@ -494,10 +524,12 @@ app.post("/api/logs/clear", (_req, res) => {
 
 // Launch the dev app (electron-dev)
 // Always kills any existing dev instances first before launching
-app.post("/api/app/launch-dev", async (_req, res) => {
+app.post("/api/app/launch-dev", async (req, res) => {
   try {
     const projectRoot = getProjectRoot();
     const electronAppDir = join(projectRoot, "app", "hosts", "desktop");
+    const targetPath = req.body?.targetPath ?? '/';
+    if (typeof targetPath !== 'string' || !/^\/(?:bundle\/[a-zA-Z0-9_-]+(?:\?sourceReview=1)?)?$/.test(targetPath)) throw new Error('Invalid app destination');
 
     console.log(`[dev] Stopping dev app process groups owned by ${electronAppDir}...`);
     const stoppedProcessGroups = await stopOwnedDevAppProcesses(electronAppDir);
@@ -518,7 +550,7 @@ app.post("/api/app/launch-dev", async (_req, res) => {
       shell: true,
       detached: true,
       stdio: "ignore",
-      env: { ...process.env },
+      env: { ...process.env, MEADOW_INITIAL_APP_PATH: targetPath },
     });
     child.unref();
 

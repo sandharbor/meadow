@@ -398,7 +398,7 @@ const ConfigManager: React.FC = () => {
           </div>
         </div>
         {isFixture && fixtures.find(fixture => fixture.folderName === option.id)?.hasSourceChanges && (
-          <SourceChangesControl key={`${option.id}:${actionLoading ?? "ready"}`} fixtureName={option.id} active={isActive} />
+          <SourceChangesControl key={`${option.id}:${actionLoading ?? "ready"}`} fixtureName={option.id} active={isActive} launchMode={launchMode} onStarted={fetchStatus} />
         )}
       </div>
     );

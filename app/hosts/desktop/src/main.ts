@@ -737,7 +737,9 @@ class MeadowApp {
     if (this.isDev) {
       // In development, load from Vite dev server
       log('INFO', `Loading frontend from Vite dev server (http://127.0.0.1:${this.frontendPort})`);
-      this.mainWindow.loadURL(`http://127.0.0.1:${this.frontendPort}`);
+      const initialPath = process.env.MEADOW_INITIAL_APP_PATH ?? '/';
+      if (!/^\/(?:bundle\/[a-zA-Z0-9_-]+(?:\?sourceReview=1)?)?$/.test(initialPath)) throw new Error('Invalid initial app destination');
+      this.mainWindow.loadURL(`http://127.0.0.1:${this.frontendPort}${initialPath}`);
       // this.mainWindow.webContents.openDevTools();
     } else {
       // In production, load from the embedded frontend server

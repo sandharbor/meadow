@@ -18,10 +18,11 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { FindInBundlesOptions } from '../../../../../contracts/types/findInBundlesOptions';
 import { logger } from './logger';
+import { bundleDestinationPath, type BundleDestination } from '../../../../../contracts/types/appDestination.js';
 
 export type AppDestination =
   | { page: 'bundle-list'; findInBundlesOptions?: FindInBundlesOptions }
-  | { page: 'bundle'; slug: string };
+  | BundleDestination;
 
 const navigationLogger = logger.child('appNavigation');
 
@@ -30,7 +31,8 @@ export const appPathFor = (destination: AppDestination): string => {
     case 'bundle-list':
       return '/';
     case 'bundle':
-      return `/bundle/${encodeURIComponent(destination.slug)}`;
+    case 'source-review':
+      return bundleDestinationPath(destination);
   }
 };
 
