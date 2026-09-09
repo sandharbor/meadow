@@ -6,6 +6,7 @@ import Modal from '../../../../shared/components/Modal.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 import { MoveTraversal } from './MoveTraversal.js';
 import { OrphanReview } from './OrphanReview.js';
+import { SourceChangeCount, SourcePath } from './SourceReviewPresentation.js';
 import DiffView from '../../../../../shared_components/ConfigFileExplorer/DiffView.js';
 import { PathChange } from '../../../../shared/components/PathChange.js';
 import { Spinner } from '../../../../shared/components/Spinner.js';
@@ -19,7 +20,6 @@ interface Comparison { beforePath: string; afterPath: string; before: string | n
 function ContentComparison({ comparison }: { comparison: Comparison }) {
   return <section aria-label="Source content comparison" className="mt-3 overflow-hidden rounded border border-neutral-200">
     {comparison.binary ? <p className="p-3 text-sm text-neutral-600">Binary file. Use the matching evidence to compare its contents.</p> : <>
-      <div className="border-b border-neutral-200 px-3 py-2 text-xs text-neutral-500">Accepted source <span aria-hidden="true">→</span> Candidate source</div>
       <div className="max-h-80 overflow-auto [&>div]:h-auto">
         <DiffView key={`${comparison.beforePath}:${comparison.afterPath}`} originalContent={comparison.before} currentContent={comparison.after ?? ''} isNewFile={comparison.before === null} isDeletedFile={comparison.after === null} codeOnly wrapLines lineLabels={{ before: 'Accepted source', after: 'Candidate source' }} unchangedLabel="No content changes" />
       </div>
@@ -27,10 +27,6 @@ function ContentComparison({ comparison }: { comparison: Comparison }) {
   </section>;
 }
 
-function SourcePath({ value }: { value: string }) {
-  const separator = value.lastIndexOf('/');
-  return <span className="min-w-0 text-sm [overflow-wrap:anywhere]" title={value}>{separator >= 0 && <span className="text-neutral-500">{value.slice(0, separator)}<span className="mx-1 text-neutral-400">/</span></span>}<span className="font-medium text-neutral-700">{value.slice(separator + 1)}</span></span>;
-}
 
 function SourceChangeRow({ change, loadComparison }: { change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
   const contentId = useId();
@@ -79,7 +75,6 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   reviewOpen.current = open;
   const [noChanges, setNoChanges] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [orphanKeeps, setOrphanKeeps] = useState<Set<string>>(new Set());
   const [resolutions, setResolutions] = useState<Record<string, string | null>>({});
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const requestGeneration = useRef(0);
@@ -100,7 +95,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   }, [endpoint]);
 
   const receive = useCallback((result: SourcingReview, announceNoChanges = true) => {
-    if (reviewToken.current !== result.reviewToken) { setResolutions({}); setOrphanKeeps(new Set()); setComparison(null); setShowAllChanges(false); }
+    if (reviewToken.current !== result.reviewToken) { setResolutions({}); setComparison(null); setShowAllChanges(false); }
     reviewToken.current = result.reviewToken;
     setReview(result);
     setNoChanges(announceNoChanges && !result.candidate && result.orphans.length === 0);
@@ -177,13 +172,13 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   };
 
-  const orphanRemovals = new Set((review?.orphans ?? []).filter(orphan => !orphan.removalBlockedReason && !orphanKeeps.has(orphan.bundleNodeId)).map(orphan => orphan.bundleNodeId));
+  const orphanRemovals = new Set((review?.orphans ?? []).filter(orphan => !orphan.removalBlockedReason).map(orphan => orphan.bundleNodeId));
 
   const accept = async () => {
     if (!review || (!review.candidate && orphanRemovals.size === 0)) return;
     inFlight.current = true; setBusy(true); setError(null);
     try {
-      receive(await request('/accept', { candidateId: review.candidate?.id ?? review.accepted.id, reviewToken: review.reviewToken, resolutions, orphanKeeps: [...orphanKeeps] }) as SourcingReview);
+      receive(await request('/accept', { candidateId: review.candidate?.id ?? review.accepted.id, reviewToken: review.reviewToken, resolutions, orphanKeeps: [] }) as SourcingReview);
       setOpen(false); setComparison(null); setResolutions({}); onAccepted();
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { inFlight.current = false; setBusy(false); }
@@ -209,7 +204,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     {open && createPortal(<Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus className="w-full max-w-3xl" footer={
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button className="text-xs text-main-700 hover:underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void scan(true)}>{busy || backgroundBusy ? 'Checking…' : 'Check again'}</button>
-        <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.'  : orphanRemovals.size ? `${orphanRemovals.size} entr${orphanRemovals.size === 1 ? 'y' : 'ies'} will be removed from config.` : ''}</p>
+        <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.' : ''}</p>
         <button className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50" onClick={closeReview}>Later</button>
         {(review?.candidate || orphanRemovals.size > 0) && <button className="rounded bg-btn-confirm-normal px-4 py-2 text-sm text-btn-confirm-text hover:bg-btn-confirm-hover disabled:opacity-50" disabled={busy || backgroundBusy || hasDraftChanges} onClick={() => void accept()}>Accept source changes</button>}
       </div>
@@ -218,7 +213,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
         {!review?.candidate && !review?.orphans.length && <p className="text-xs text-neutral-500">{busy ? 'Checking sources…' : 'No source changes are waiting.'}</p>}
         {error && <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         {groups.size > 0 && <section className="space-y-3">
-          <h3 className="text-sm font-semibold">Renames and moves{groups.size >= 10 && <span className="font-normal text-neutral-500"> ({groups.size})</span>}</h3>
+          <h3 className="text-sm font-semibold">Renames and moves<SourceChangeCount count={groups.size} /></h3>
           {[...groups].map(([id, moves]) => {
             const selected = proposedResolutions[id];
             const displayed = moves.find(move => move.newPath === selected) ?? moves[0];
@@ -244,14 +239,14 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
             </article>;
           })}
         </section>}
-        {review && review.orphans.length > 0 && <OrphanReview orphans={review.orphans} removals={orphanRemovals} onRemovalsChange={next => setOrphanKeeps(new Set(review.orphans.filter(orphan => !orphan.removalBlockedReason && !next.has(orphan.bundleNodeId)).map(orphan => orphan.bundleNodeId)))} disabled={busy || backgroundBusy || hasDraftChanges} hasCandidate={Boolean(review.candidate)} />}
-        {Boolean(review?.changes.length) && <section><h3 className="mb-2 text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}{(review?.changes.length ?? 0) >= 10 && <span className="font-normal text-neutral-500"> ({review?.changes.length})</span>}</h3>
+        {Boolean(review?.changes.length) && <section aria-label="Source content changes"><h3 className="mb-2 text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}<SourceChangeCount count={review?.changes.length ?? 0} /></h3>
           <div className="divide-y divide-neutral-100">{review?.changes.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow key={`${review.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
             const query = new URLSearchParams({ beforeId: review.accepted.id, afterId: review.candidate!.id, beforePath: change.path, afterPath: change.path });
             return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
           }} />)}</div>
           {(review?.changes.length ?? 0) > 8 && <button className="mt-2 text-xs text-main-700 hover:underline" onClick={() => setShowAllChanges(previous => !previous)}>{showAllChanges ? 'Show fewer' : `Show all ${review?.changes.length} changes`}</button>}
         </section>}
+        {review && review.orphans.length > 0 && <OrphanReview orphans={review.orphans} hasCandidate={Boolean(review.candidate)} />}
         <div className="space-y-3 border-t border-neutral-100 pt-3 text-xs text-neutral-500">
           <details><summary className="cursor-pointer hover:text-neutral-800">Snapshot details and history ({review?.history.length ?? 0})</summary>
             <p className="mt-3">The accepted snapshot supplies curation and generation until you accept an update.</p>

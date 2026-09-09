@@ -1,13 +1,23 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { cleanupSemantic, type Diff } from '@sanity/diff-match-patch';
+
 export interface InlineDiffPart { text: string; changed: boolean; }
-interface LinePair { before: InlineDiffPart[]; after: InlineDiffPart[]; similarity: number; }
+interface LinePair { diffs: Diff[]; similarity: number; }
 export interface InlineDiffBudget { remaining: number; }
 
-function segments(characters: string[], unchanged: Set<number>): InlineDiffPart[] {
+function appendDiff(diffs: Diff[], type: Diff[0], text: string) {
+  if (!text) return;
+  const previous = diffs.at(-1);
+  if (previous?.[0] === type) previous[1] += text;
+  else diffs.push([type, text]);
+}
+
+function segments(diffs: Diff[], excluded: -1 | 1): InlineDiffPart[] {
   const result: InlineDiffPart[] = [];
-  for (const [index, text] of characters.entries()) {
-    const changed = !unchanged.has(index);
+  for (const [type, text] of diffs) {
+    if (type === excluded) continue;
+    const changed = type !== 0;
     const previous = result.at(-1);
     if (previous?.changed === changed) previous.text += text;
     else result.push({ text, changed });
@@ -46,23 +56,24 @@ function compareLine(before: string, after: string, budget: InlineDiffBudget): L
   const common = prefix + suffix + lcs[0];
   // A replacement counts once: highlight only when fewer than 30% of characters differ.
   if ((length - common) * 10 >= length * 3) return null;
-  const oldMatches = new Set<number>();
-  const newMatches = new Set<number>();
-  for (let i = 0; i < prefix; i++) { oldMatches.add(i); newMatches.add(i); }
-  for (let i = 1; i <= suffix; i++) { oldMatches.add(left.length - i); newMatches.add(right.length - i); }
+  const diffs: Diff[] = [];
+  appendDiff(diffs, 0, left.slice(0, prefix).join(''));
   let i = 0; let j = 0;
   while (i < m && j < n) {
     if (left[prefix + i] === right[prefix + j]) {
-      oldMatches.add(prefix + i++); newMatches.add(prefix + j++);
-    } else if (lcs[(i + 1) * width + j] >= lcs[i * width + j + 1]) i++;
-    else j++;
+      appendDiff(diffs, 0, left[prefix + i++]); j++;
+    } else if (lcs[(i + 1) * width + j] >= lcs[i * width + j + 1]) appendDiff(diffs, -1, left[prefix + i++]);
+    else appendDiff(diffs, 1, right[prefix + j++]);
   }
-  return { before: segments(left, oldMatches), after: segments(right, newMatches), similarity: common / length };
+  appendDiff(diffs, -1, left.slice(prefix + i, prefix + m).join(''));
+  appendDiff(diffs, 1, right.slice(prefix + j, prefix + n).join(''));
+  appendDiff(diffs, 0, left.slice(left.length - suffix).join(''));
+  return { diffs, similarity: common / length };
 }
 
 /** Match similar replacements in order, allowing unmatched inserted or deleted lines. */
 export function matchInlineChanges(before: string[], after: string[], budget: InlineDiffBudget) {
-  const matches: Array<LinePair & { beforeIndex: number; afterIndex: number }> = [];
+  const matches: Array<{ before: InlineDiffPart[]; after: InlineDiffPart[]; beforeIndex: number; afterIndex: number; similarity: number }> = [];
   if (!before.length || !after.length || before.length * after.length > 2_000 || budget.remaining <= 0) return matches;
   const pairs = before.map(left => after.map(right => compareLine(left, right, budget)));
   const width = after.length + 1;
@@ -79,7 +90,10 @@ export function matchInlineChanges(before: string[], after: string[], budget: In
   while (i < before.length && j < after.length) {
     const pair = pairs[i][j];
     if (pair && scores[i * width + j] === pair.similarity + scores[(i + 1) * width + j + 1]) {
-      matches.push({ ...pair, beforeIndex: i++, afterIndex: j++ });
+      // Clean up only selected pairs. The 30% rule uses actual edits; display
+      // spans may absorb incidental matches to make replacements readable.
+      const readable = cleanupSemantic(pair.diffs);
+      matches.push({ before: segments(readable, 1), after: segments(readable, -1), similarity: pair.similarity, beforeIndex: i++, afterIndex: j++ });
     } else if (scores[(i + 1) * width + j] >= scores[i * width + j + 1]) i++;
     else j++;
   }

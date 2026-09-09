@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourceSnapshot, sourceMove } from '../../../concepts/index.js';
+import { sourceSnapshot, sourceMove, sourceChange } from '../../../concepts/index.js';
 import { parseBundleNodeConfig } from '../../../shared_code/utils/bundleNodeConfigUtils.js';
 
 const slug = 'meadow-test-bundle-big';
@@ -51,6 +51,10 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   await review.closeWithEscape();
   await review.open();
   await rename.expectDetailsCollapsed();
+  await review.expandDetails('t003 - link to section.md');
+  await review.expectInlineChanges('t003 - link to section.md', ['page with section to link to'], ['renamed section page']);
+  await addKeyFrame(sourceChange);
+  await snapshot('renamed link text uses readable replacement phrases');
   await review.accept();
   await expect.poll(() => parseBundleNodeConfig(fs.readFileSync(configPath, 'utf8')).find(node => node.bundleNodeId === original.bundleNodeId)?.bundleNodeName).toBe(renamedTitle);
   await editor.expectSourceOrphanCount(0);

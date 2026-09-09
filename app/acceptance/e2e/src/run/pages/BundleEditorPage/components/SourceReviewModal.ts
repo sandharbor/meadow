@@ -17,7 +17,8 @@ export class SourceReviewModal {
   }
 
   private changeDisclosure(path: string) {
-    return this.dialog.locator(`summary[aria-label=${JSON.stringify(`Details ${path}`)}]`);
+    return this.dialog.getByRole('region', { name: 'Source content changes', exact: true })
+      .locator(`summary[aria-label=${JSON.stringify(`Details ${path}`)}]`);
   }
 
   private async comparison(path: string) {
@@ -182,8 +183,6 @@ export class SourceReviewModal {
 
   async reviewOrphans() {
     await this.open();
-    const section = this.dialog.getByTestId('source-orphans');
-    if (!await section.getByTestId('orphans-view').isVisible()) await section.locator('summary').first().click();
     await this.orphans.waitForOpen();
     return this.orphans;
   }

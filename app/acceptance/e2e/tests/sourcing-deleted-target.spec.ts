@@ -35,6 +35,14 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
   await editor.expectSourceOrphanCount(1);
   const orphans = await review.reviewOrphans();
   const title = 't003 ---- page with section to link to';
+  await orphans.expectSummaryCount(1);
+  await orphans.expectCollapsedFile(title);
+  await orphans.checkHelp();
+  await orphans.showHelp();
+  await addKeyFrame(orphan);
+  await orphans.toggleExplanationWithKeyboard(title);
+  await orphans.toggleExplanationWithKeyboard(title);
+  await orphans.expectCollapsedFile(title);
   await orphans.showExplanation(title);
   await orphans.expectMissingLinkedFile(title, 't003 - link to section.md', `${title}.md`);
   await review.expectNoMissingEntry(`${title}.md`);

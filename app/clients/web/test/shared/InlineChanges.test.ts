@@ -16,6 +16,22 @@ describe('minor edits within changed lines', () => {
     expect(pair.after.map(part => part.text).join('')).toBe(after);
   });
 
+  it('groups incidental matching letters into a readable renamed phrase', () => {
+    const before = 'Here we are with a link to a specific section: [[t003 ---- page with section to link to#Section 2]]';
+    const after = 'Here we are with a link to a specific section: [[t003 ---- renamed section page#Section 2]]';
+    const [pair] = match([before], [after]);
+    expect(pair.before.filter(part => part.changed).map(part => part.text)).toEqual(['page with section to link to']);
+    expect(pair.after.filter(part => part.changed).map(part => part.text)).toEqual(['renamed section page']);
+    expect(pair.before.map(part => part.text).join('')).toBe(before);
+    expect(pair.after.map(part => part.text).join('')).toBe(after);
+  });
+
+  it('keeps a meaningful unchanged phrase between separate replacements', () => {
+    const [pair] = match(['Start old, with a meaningful unchanged phrase, old end'], ['Start new, with a meaningful unchanged phrase, new end']);
+    expect(pair.before.filter(part => part.changed).map(part => part.text)).toEqual(['old', 'old']);
+    expect(pair.after.filter(part => part.changed).map(part => part.text)).toEqual(['new', 'new']);
+  });
+
   it.each([
     ['abcdefghij', 'abcXYfghij', true],
     ['abcdefghij', 'abcXYZghij', false],

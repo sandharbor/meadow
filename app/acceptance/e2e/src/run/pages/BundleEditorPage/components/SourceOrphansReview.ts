@@ -38,10 +38,6 @@ export class SourceOrphansReview {
     return this.orphansView.getByTestId(`orphan-row-${title}`);
   }
 
-  private get removeAllBtn() {
-    return this.page.getByTestId("remove-all-orphans");
-  }
-
   async waitForOpen() {
     await this.expect(this.modalTitle).toBeVisible();
     await this.expect(this.orphansView).toBeVisible();
@@ -51,37 +47,13 @@ export class SourceOrphansReview {
     await this.expect(this.modalTitle).not.toBeVisible();
   }
 
-  async clickRemoveAllFromConfig() {
-    await this.expect(this.removeAllBtn).toHaveText('Remove all from config');
-    await this.removeAllBtn.click();
-  }
-
   async expectSummaryCount(count: number) {
-    await this.expect(this.modalTitle.getByTestId('source-orphans')).toContainText(`Orphaned configuration (${count})`);
+    await this.expect(this.modalTitle.getByTestId('source-orphans').getByRole('heading')).toHaveText(`Orphaned configuration${count >= 10 ? ` (${count})` : ''}`);
+    await this.expectOrphanCount(count);
   }
 
   async expectNotListed(title: string) {
     await this.expect(this.orphanRow(title)).toHaveCount(0);
-  }
-
-  async removeFromConfig(title: string) {
-    await this.orphanRow(title).getByRole('button', { name: 'Remove from config', exact: true }).click();
-    await this.expect(this.orphanRow(title).getByRole('button', { name: 'Keep in config', exact: true })).toBeVisible();
-  }
-
-  async keepInConfig(title: string) {
-    await this.orphanRow(title).getByRole('button', { name: 'Keep in config', exact: true }).click();
-    await this.expect(this.orphanRow(title).getByRole('button', { name: 'Remove from config', exact: true })).toBeVisible();
-  }
-
-  async expectAllRemovalsPending() {
-    await this.expect(this.removeAllBtn).toHaveText('Keep all in config');
-  }
-
-  async keepAllInConfig() {
-    await this.expectAllRemovalsPending();
-    await this.removeAllBtn.click();
-    await this.expect(this.removeAllBtn).toHaveText('Remove all from config');
   }
 
   async getOrphanCount(): Promise<number> {
@@ -92,8 +64,46 @@ export class SourceOrphansReview {
     await this.expect(this.orphanRows).toHaveCount(count);
   }
 
+  async expectCollapsedFile(title: string) {
+    const row = this.orphanRow(title);
+    await this.expect(row.locator('summary').first()).toBeVisible();
+    await this.expect(row).not.toHaveAttribute('open', '');
+    await this.expect(row.getByText('Why is this orphaned?', { exact: true })).not.toBeVisible();
+  }
+
+  async showHelp() {
+    await this.modalTitle.getByRole('button', { name: 'About orphaned configuration' }).hover();
+    await this.expect(this.modalTitle.getByRole('tooltip')).toBeVisible();
+    await this.expect(this.modalTitle.getByRole('tooltip')).toHaveCSS('opacity', '1');
+  }
+
+  async checkHelp() {
+    const help = this.modalTitle.getByRole('button', { name: 'About orphaned configuration' });
+    const tooltip = this.modalTitle.getByRole('tooltip');
+    await this.expect(tooltip).not.toBeVisible();
+    await help.hover();
+    await this.expect(tooltip).toBeVisible();
+    await this.expect(tooltip).toContainText('The source files are untouched.');
+    await this.modalTitle.getByRole('heading', { name: 'Source changes', level: 2, exact: true }).hover();
+    await help.focus();
+    await this.expect(tooltip).toBeVisible();
+    await help.press('Tab');
+    await this.expect(tooltip).not.toBeVisible();
+  }
+
+  async toggleExplanationWithKeyboard(title: string) {
+    const row = this.orphanRow(title);
+    const wasOpen = await row.getAttribute('open') !== null;
+    const summary = row.locator('summary').first();
+    await summary.focus();
+    await summary.press('Enter');
+    await this.expect(row.getByText('Why is this orphaned?', { exact: true })).toBeVisible({ visible: !wasOpen });
+  }
+
   async showExplanation(title: string) {
-    await this.orphanRow(title).getByText('Why is this orphaned?', { exact: true }).click();
+    const row = this.orphanRow(title);
+    if (await row.getAttribute('open') === null) await row.locator('summary').first().click();
+    await this.expect(row.getByText('Why is this orphaned?', { exact: true })).toBeVisible();
   }
 
   async expectExplanation(title: string, text: string) {

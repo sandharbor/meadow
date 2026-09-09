@@ -27,7 +27,7 @@ const CHILD_OF_BLACKLISTED = "t007 ---- child of blacklisted page";
 
 test.use({ bundleMode: "single-file" });
 
-test("Sourcing reviews existing and candidate orphans with reversible individual and bulk removal", async ({
+test("Sourcing reviews existing and candidate orphans with removal on acceptance", async ({
   page,
   sourceChanges,
   snapshot,
@@ -50,15 +50,9 @@ test("Sourcing reviews existing and candidate orphans with reversible individual
   await addKeyFrame(orphan);
   await snapshot("orphans review modal lists unreachable config pages");
 
-  await orphansModal.expectAllRemovalsPending();
-  await orphansModal.keepInConfig(CHILD_OF_BLACKLISTED);
-  await orphansModal.removeFromConfig(CHILD_OF_BLACKLISTED);
-  await orphansModal.keepAllInConfig();
-  await orphansModal.clickRemoveAllFromConfig();
   await review.defer();
   await editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT);
   await review.reviewOrphans();
-  await orphansModal.expectAllRemovalsPending();
   await addKeyFrame(orphan);
   await review.applyOrphanRemovals();
   await editor.expectSourceOrphanCount(0);
@@ -70,7 +64,6 @@ test("Sourcing reviews existing and candidate orphans with reversible individual
   await orphansModal.showExplanation('t001 ---- child 2');
   await orphansModal.expectExplanation('t001 ---- child 2', 'no longer links to');
   await review.expectNoMissingEntry('t001/deeper/t001 ---- child 2.md');
-  await orphansModal.expectAllRemovalsPending();
   await addKeyFrame(orphan);
   await snapshot('candidate orphan is listed once and removed by default with its broken link');
   await review.accept();
