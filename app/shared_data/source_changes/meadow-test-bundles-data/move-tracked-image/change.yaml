@@ -2,6 +2,7 @@ id: move-tracked-image
 label: Move a tracked image
 description: Move the image used by the Markdown links page and update that
   relative image link.
+categories: [move]
 sourceGraph: meadow-test-bundles-data
 operations:
   - move:

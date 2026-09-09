@@ -25,6 +25,8 @@ export interface SourceFileChange {
   kind: 'added' | 'modified' | 'missing';
   path: string;
   bundleNodeId?: string;
+  /** Captured route explaining why a newly included source is reachable. */
+  route?: string[];
 }
 
 export interface SourceOrphanExplanation {

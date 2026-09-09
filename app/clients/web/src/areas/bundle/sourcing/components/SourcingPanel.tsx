@@ -6,6 +6,8 @@ import Modal from '../../../../shared/components/Modal.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 import { MoveTraversal } from './MoveTraversal.js';
 import { OrphanReview } from './OrphanReview.js';
+import { FileRoute } from './SourceFileRoute.js';
+import { isSourceImage, SourceImagePreview, SourceImageComparison, type SourceImageUrl } from './SourceImagePreview.js';
 import { SourceChangeCount, SourcePath } from './SourceReviewPresentation.js';
 import DiffView from '../../../../../shared_components/ConfigFileExplorer/DiffView.js';
 import { PathChange } from '../../../../shared/components/PathChange.js';
@@ -16,10 +18,10 @@ import { apiRequest } from '../../../../shared/utils/apiClient.js';
 
 function date(value: string): string { return new Date(value).toLocaleString(); }
 
-interface Comparison { beforePath: string; afterPath: string; before: string | null; after: string | null; binary: boolean; }
-function ContentComparison({ comparison }: { comparison: Comparison }) {
+interface Comparison { beforePath: string; afterPath: string; before: string | null; after: string | null; binary: boolean; beforeImage?: boolean; afterImage?: boolean; }
+function ContentComparison({ comparison, imageUrl }: { comparison: Comparison; imageUrl: SourceImageUrl }) {
   return <section aria-label="Source content comparison" className="mt-3 overflow-hidden rounded border border-neutral-200">
-    {comparison.binary ? <p className="p-3 text-sm text-neutral-600">Binary file. Use the matching evidence to compare its contents.</p> : <>
+    {isSourceImage(comparison.afterPath || comparison.beforePath) ? <SourceImageComparison {...comparison} imageUrl={imageUrl} /> : comparison.binary ? <p className="p-3 text-sm text-neutral-600">Binary file. Use the matching evidence to compare its contents.</p> : <>
       <div className="max-h-80 overflow-auto [&>div]:h-auto">
         <DiffView key={`${comparison.beforePath}:${comparison.afterPath}`} originalContent={comparison.before} currentContent={comparison.after ?? ''} isNewFile={comparison.before === null} isDeletedFile={comparison.after === null} codeOnly wrapLines lineLabels={{ before: 'Accepted source', after: 'Candidate source' }} unchangedLabel="No content changes" />
       </div>
@@ -28,7 +30,7 @@ function ContentComparison({ comparison }: { comparison: Comparison }) {
 }
 
 
-function SourceChangeRow({ change, loadComparison }: { change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
+function SourceChangeRow({ change, loadComparison, imageUrl }: { imageUrl: SourceImageUrl; change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
   const contentId = useId();
   const [expanded, setExpanded] = useState(false);
   const [comparison, setComparison] = useState<Comparison | null>(null);
@@ -42,6 +44,12 @@ function SourceChangeRow({ change, loadComparison }: { change: SourcingReview['c
     catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { setLoading(false); }
   };
+  const route = change.route?.length ? [...change.route] : [];
+  if (route.length && route.at(-1) !== change.path) route.push(change.path);
+  if (change.kind === 'added' && isSourceImage(change.path)) return <div className="ml-3 flex items-center gap-2 py-2.5 text-xs text-neutral-500">
+    <span className="w-28 shrink-0">Added</span><SourcePath value={change.path} />
+    <SourceImagePreview url={imageUrl(change.path, 'after')} filename={change.path} route={route} />
+  </div>;
   return <details className="py-2.5 text-sm text-neutral-500" onToggle={event => void toggle(event.currentTarget.open)}>
     <summary className="ml-3 cursor-pointer rounded text-xs hover:bg-neutral-50 [list-style-position:outside]" aria-label={`Details ${change.path}`} aria-expanded={expanded} aria-controls={contentId}>
       <span className="flex items-baseline gap-2">
@@ -50,9 +58,10 @@ function SourceChangeRow({ change, loadComparison }: { change: SourcingReview['c
       </span>
     </summary>
     <div id={contentId} hidden={!expanded}>
+      {change.kind === 'added' && route.length > 0 && <div className="mt-3 text-xs text-neutral-500">Reached through<FileRoute paths={route} /></div>}
       {loading && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-neutral-500"><Spinner />Loading comparison</p>}
       {error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}
-      {comparison && <ContentComparison comparison={comparison} />}
+      {comparison && <ContentComparison comparison={comparison} imageUrl={imageUrl} />}
     </div>
   </details>;
 }
@@ -191,6 +200,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     ? `${changeCount} source change${changeCount === 1 ? '' : 's'} available – Review`
     : 'Source changes available – Review';
   const backgroundProgress = backgroundBusy && <span aria-hidden="true" data-testid="source-background-progress" className="absolute bottom-0 left-0 h-0.5 w-1/3 bg-current motion-safe:animate-[source-update-sweep_1.2s_ease-in-out_infinite_alternate] motion-reduce:w-full" />;
+  const imageUrl: SourceImageUrl = (filename, side) => `bundles/${encodeURIComponent(bundleSlug)}/sourcing/image?${new URLSearchParams({ snapshotId: (side === 'before' ? review?.accepted.id : review?.candidate?.id) ?? '', path: filename })}`;
   const proposedResolutions = proposedSourceMoveResolutions(review?.moves ?? [], resolutions);
 
   return <>
@@ -231,7 +241,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
                     <p className="pl-5">{move.evidence.join(' · ')}</p>
                     <MoveTraversal move={move} />
                     {move.contentChanged && <button className="ml-5 text-main-700 hover:underline" onClick={() => void inspect(move.oldPath, move.newPath)}>Compare content{moves.length > 1 && <span className="sr-only">: {move.newPath}</span>}</button>}
-                    {comparison?.beforePath === move.oldPath && comparison.afterPath === move.newPath && <ContentComparison comparison={comparison} />}
+                    {comparison?.beforePath === move.oldPath && comparison.afterPath === move.newPath && <ContentComparison comparison={comparison} imageUrl={imageUrl} />}
                   </div>)}
                   <label className="flex cursor-pointer items-start gap-2 border-t border-neutral-100 pt-3 text-sm"><input className="mt-1 accent-main-600" type="radio" name={`move-${id}`} checked={selected === null} onChange={() => setResolutions(previous => ({ ...previous, [id]: null }))} /><span>Different pages <span className="text-neutral-500">— remove the old configuration; the new page is untracked</span></span></label>
                 </fieldset>
@@ -240,7 +250,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
           })}
         </section>}
         {Boolean(review?.changes.length) && <section aria-label="Source content changes"><h3 className="mb-2 text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}<SourceChangeCount count={review?.changes.length ?? 0} /></h3>
-          <div className="divide-y divide-neutral-100">{review?.changes.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow key={`${review.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
+          <div className="divide-y divide-neutral-100">{review?.changes.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
             const query = new URLSearchParams({ beforeId: review.accepted.id, afterId: review.candidate!.id, beforePath: change.path, afterPath: change.path });
             return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
           }} />)}</div>

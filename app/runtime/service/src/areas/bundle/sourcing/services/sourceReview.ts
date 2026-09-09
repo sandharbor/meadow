@@ -221,7 +221,7 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
       else if (file.digest !== candidate.files[filename].digest) changes.push({ kind: 'modified', path: filename, bundleNodeId: byPath.get(filename) });
     }
     for (const filename of Object.keys(candidate.files)) {
-      if (!accepted.files[filename] && !pairedNew.has(filename)) changes.push({ kind: 'added', path: filename });
+      if (!accepted.files[filename] && !pairedNew.has(filename)) changes.push({ kind: 'added', path: filename, route: candidateGraph?.nodes.find(node => node.bundleNodeKey === filename)?.path ?? [] });
     }
   }
   if (sourceConfigFingerprint(bundleDirectory) !== fingerprint && attempt < 2) return await buildSourceReview(bundleDirectory, attempt + 1);
@@ -331,7 +331,7 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
 }
 
 export function sourceComparison(bundleDirectory: string, beforeId: string, afterId: string, beforePath: string, afterPath: string): {
-  before: string | null; after: string | null; binary: boolean;
+  before: string | null; after: string | null; binary: boolean; beforeImage?: boolean; afterImage?: boolean;
 } {
   const state = loadSourcingState(bundleDirectory);
   const allowed = new Set([...(state?.history.map(item => item.id) ?? []), state?.candidateId]);
@@ -342,9 +342,30 @@ export function sourceComparison(bundleDirectory: string, beforeId: string, afte
     if (snapshot.files[relative].size > 1024 * 1024) return '[File is too large for the inline comparison]';
     return snapshot.git ? readSourceBlob(snapshot.git, relative).toString('utf8') : fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, id), relative), 'utf8');
   };
+  if (sourceImageType(afterPath || beforePath)) return {
+    before: null, after: null, binary: true,
+    beforeImage: Boolean(loadSourceSnapshot(bundleDirectory, beforeId).files[beforePath]),
+    afterImage: Boolean(loadSourceSnapshot(bundleDirectory, afterId).files[afterPath]),
+  };
   const binary = !/\.(md|txt|html|svg|css|js|json|yaml)$/i.test(afterPath || beforePath);
   return binary ? { before: null, after: null, binary } : { before: read(beforeId, beforePath), after: read(afterId, afterPath), binary };
 }
 
 import type { ParticipatesIn, sourceSnapshot } from '../../../../../../../concepts/index.js';
 export type SourceAcceptanceMeadowConceptParticipations = [ParticipatesIn<typeof sourceSnapshot, "accept", typeof acceptSourceSnapshot>];
+
+function sourceImageType(filename: string): string | undefined {
+  const types: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.avif': 'image/avif', '.bmp': 'image/bmp' };
+  return types[path.extname(filename).toLowerCase()];
+}
+
+/** Read only an admitted image from retained snapshot history, never the live source directory. */
+export function sourceSnapshotImage(bundleDirectory: string, id: string, relative: string) {
+  const state = loadSourcingState(bundleDirectory);
+  if (!state || (state.candidateId !== id && !state.history.some(item => item.id === id))) throw new SourcingError('Snapshot is not available in this bundle', 404);
+  const type = sourceImageType(relative);
+  const snapshot = loadSourceSnapshot(bundleDirectory, id);
+  if (!type || !Object.prototype.hasOwnProperty.call(snapshot.files, relative)) throw new SourcingError('Image is not available in this snapshot', 404);
+  const bytes = snapshot.git ? readSourceBlob(snapshot.git, relative) : fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, id), relative));
+  return { type, bytes };
+}

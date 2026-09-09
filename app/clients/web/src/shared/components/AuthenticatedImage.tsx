@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import React, { useEffect, useState } from 'react';
-import { apiRequest, requireApiSuccess } from '../../../../shared/utils/apiClient';
-import { logger } from '../../../../shared/utils/logger';
+import { apiRequest, requireApiSuccess } from '../utils/apiClient';
+import { logger } from '../utils/logger';
 
 export interface AuthenticatedImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
   sourcePath: string;

@@ -1,0 +1,9 @@
+id: modify-embedded-image
+label: Replace an embedded image
+description: Replace the meadow image with a sunflower to compare accepted and candidate image contents.
+categories: [modify]
+sourceGraph: meadow-test-bundles-data
+operations:
+  - write:
+      path: t006/t006 --- meadow.png
+      contentFile: sunflower.png

@@ -1,6 +1,7 @@
 id: remove-incoming-link
 label: Remove the link to a tracked page
 description: Remove the only incoming link to child 2. Its source file remains available.
+categories: [remove]
 sourceGraph: meadow-test-bundles-data
 operations:
   - replaceText:

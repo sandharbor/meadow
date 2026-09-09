@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { materializeSourceGraph, applySourceChange } from '../../../../../../shared_code/shared_dev/sourceChanges.js';
-import { acceptSourceSnapshot, findSourceMoves, scanSourceChanges, sourcingReview, sourceComparison } from '../../../../src/areas/bundle/sourcing/services/sourceReview.js';
+import { acceptSourceSnapshot, findSourceMoves, scanSourceChanges, sourcingReview, sourceComparison, sourceSnapshotImage } from '../../../../src/areas/bundle/sourcing/services/sourceReview.js';
 import { acceptedSourceRoot, initializeSourcing, loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, nodeSourcePath, snapshotSourceRoot, sourcingRoot, writeSourcingJson, sourceConfigFingerprint, withSourcingLock } from '../../../../src/shared/source-snapshot/sourceSnapshots.js';
 import { getFolderBundleRepairStatus } from '../../../../src/shared/bundle-config/folderBundleRepair.js';
 import { loadTrackingRecords } from '../../../../src/shared/bundle-node/trackingRecords.js';
@@ -52,6 +52,30 @@ async function acceptAllMoves() {
 }
 
 describe('source snapshots with the shared big graph', () => {
+  it('explains added Markdown and image routes and serves images from their captured snapshots', async () => {
+    const state = await initializeSourcing(bundle);
+    const imagePath = 't006/t006 --- meadow.png';
+    const original = sourceSnapshotImage(bundle, state.acceptedId, imagePath).bytes;
+    change('add-linked-page');
+    change('add-embedded-image');
+    change('modify-embedded-image');
+    const review = await scanSourceChanges(bundle);
+    const candidateId = review.candidate!.id;
+    expect(review.changes.find(item => item.path === 'source-changes/added field notes.md')).toMatchObject({ kind: 'added', route: expect.arrayContaining(['main page.md']) });
+    const addedImage = 'source-changes/added sunflower.png';
+    expect(review.changes.find(item => item.path === addedImage)).toMatchObject({ kind: 'added', route: expect.arrayContaining(['t006 - embedded media.md']) });
+    const replacement = fs.readFileSync(path.join(source, imagePath));
+    expect(original.equals(replacement)).toBe(false);
+    fs.writeFileSync(path.join(source, imagePath), 'changed after capture');
+    expect(sourceSnapshotImage(bundle, state.acceptedId, imagePath).bytes).toEqual(original);
+    expect(sourceSnapshotImage(bundle, candidateId, imagePath)).toEqual({ type: 'image/png', bytes: replacement });
+    expect(sourceComparison(bundle, state.acceptedId, candidateId, addedImage, addedImage)).toMatchObject({ beforeImage: false, afterImage: true });
+    expect(() => sourceSnapshotImage(bundle, state.acceptedId, addedImage)).toThrow(/not available/);
+    expect(() => sourceSnapshotImage(bundle, 'f'.repeat(32), imagePath)).toThrow(/not available/);
+    expect(() => sourceSnapshotImage(bundle, candidateId, '../private.png')).toThrow(/not available/);
+    expect(() => sourceSnapshotImage(bundle, candidateId, 'main page.md')).toThrow(/not available/);
+  }, 20000);
+
   it('stores scoped Git trees, shares blobs, and replaces candidates without changing HEAD or index', async () => {
     fs.writeFileSync(path.join(source, 'private-unreachable.md'), 'This must never be retained');
     const state = await initializeSourcing(bundle);

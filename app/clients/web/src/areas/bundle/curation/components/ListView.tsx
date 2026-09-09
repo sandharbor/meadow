@@ -18,7 +18,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { apiUrl } from '../../../../shared/utils/apiClient';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
-import { AuthenticatedImage } from './AuthenticatedImage';
+import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './ImageHoverPreview';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 import BundleNodeHoverCard from './BundleNodeHoverCard';

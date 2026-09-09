@@ -1,6 +1,7 @@
 id: move-nested-group
 label: Move several related pages
 description: Move all three t001 child pages together. Name-only links remain unchanged.
+categories: [move]
 sourceGraph: meadow-test-bundles-data
 operations:
   - move:

@@ -2,6 +2,7 @@ id: move-and-edit-page
 label: Move a page and edit one block
 description: Move the Markdown links page and change one paragraph while keeping
   its other blocks intact.
+categories: [move, modify]
 sourceGraph: meadow-test-bundles-data
 operations:
   - move:

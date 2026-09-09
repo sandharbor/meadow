@@ -1,6 +1,7 @@
 id: delete-linked-section
 label: Delete a page linked by section
 description: Delete the tracked section page while leaving its incoming section link intact.
+categories: [remove]
 sourceGraph: meadow-test-bundles-data
 operations:
   - delete: t003 ---- page with section to link to.md

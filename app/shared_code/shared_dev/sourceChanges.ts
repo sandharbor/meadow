@@ -7,6 +7,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import YAML from 'yaml';
 import { textDocumentCodec, writeDurableDocument } from '../utils/durableDocument.js';
 import { extractContentWithoutPagespecs } from '../utils/pagespecBlockUtils.js';
+import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory } from './sourceChangesTypes.js';
 import type { SourceChangeDefinition, SourceChangeOperation, SourceChangeResult, SourceChangeStatus } from './sourceChangesTypes.js';
 
 const SESSION_FILE = '.meadow-source-session.json';
@@ -165,12 +166,13 @@ function parseOperation(input: unknown): SourceChangeOperation {
 
 function loadDefinition(directory: string, sourceGraph: string): SourceChangeDefinition {
   const value = record(YAML.parse(fs.readFileSync(safePath(directory, 'change.yaml'), 'utf8')));
-  fields(value, ['id', 'label', 'description', 'sourceGraph', 'operations']);
+  fields(value, ['id', 'label', 'description', 'categories', 'sourceGraph', 'operations']);
   const id = text(value.id);
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || id !== path.basename(directory)) throw new Error('Source-change id must match its directory');
   if (value.sourceGraph !== sourceGraph) throw new Error('Source-change graph must match its directory');
   if (!Array.isArray(value.operations) || value.operations.length === 0) throw new Error('Source change needs operations');
-  return { id, label: text(value.label), description: text(value.description), sourceGraph, operations: value.operations.map(parseOperation) };
+  if (!Array.isArray(value.categories) || value.categories.length === 0 || value.categories.some(category => !SOURCE_CHANGE_CATEGORIES.includes(category as SourceChangeCategory))) throw new Error('Source change needs valid categories');
+  return { id, label: text(value.label), description: text(value.description), categories: [...new Set(value.categories as SourceChangeCategory[])], sourceGraph, operations: value.operations.map(parseOperation) };
 }
 
 export function loadSourceChanges(projectRoot: string, sourceGraph: string): SourceChangeDefinition[] {

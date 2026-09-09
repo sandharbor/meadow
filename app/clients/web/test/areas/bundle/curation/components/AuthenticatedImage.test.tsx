@@ -17,7 +17,7 @@ limitations under the License.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { apiRequest, requireApiSuccess } from '../../../../../src/shared/utils/apiClient';
-import { AuthenticatedImage } from '../../../../../src/areas/bundle/curation/components/AuthenticatedImage';
+import { AuthenticatedImage } from '../../../../../src/shared/components/AuthenticatedImage';
 
 vi.mock('../../../../../src/shared/utils/apiClient', () => ({
   apiRequest: vi.fn(),

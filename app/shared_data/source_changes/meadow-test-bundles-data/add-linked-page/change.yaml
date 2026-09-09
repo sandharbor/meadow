@@ -1,0 +1,13 @@
+id: add-linked-page
+label: Add a linked Markdown page
+description: A new note becomes reachable from the main page, with its inclusion route available in review.
+categories: [add]
+sourceGraph: meadow-test-bundles-data
+operations:
+  - replaceText:
+      path: main page.md
+      before: "[[t001 - deeply nested]]"
+      after: "[[t001 - deeply nested]]\n\n[[source-changes/added field notes]]"
+  - write:
+      path: source-changes/added field notes.md
+      contentFile: added.md

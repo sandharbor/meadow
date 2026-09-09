@@ -2,6 +2,7 @@ id: rename-page-with-links
 label: Rename a page and update its incoming link
 description: Rename the section page and update its incoming wiki link, as a
   note editor would.
+categories: [rename]
 sourceGraph: meadow-test-bundles-data
 operations:
   - move:

@@ -16,7 +16,7 @@ limitations under the License.
 
 import React from 'react';
 import { apiUrl } from '../../../../shared/utils/apiClient';
-import { AuthenticatedImage } from './AuthenticatedImage';
+import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 
 // Shared constants for hover image dimensions

@@ -2,6 +2,7 @@ id: delete-nested-page
 label: Delete a tracked leaf page
 description: Remove child 2 from the source while retaining its incoming link
   and bundle configuration.
+categories: [remove]
 sourceGraph: meadow-test-bundles-data
 operations:
   - delete: t001/deeper/t001 ---- child 2.md

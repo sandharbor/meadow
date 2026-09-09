@@ -1,0 +1,13 @@
+id: add-embedded-image
+label: Add an embedded image
+description: An included page embeds a new image so review can show its thumbnail and the route that includes it.
+categories: [add]
+sourceGraph: meadow-test-bundles-data
+operations:
+  - replaceText:
+      path: t006 - embedded media.md
+      before: "## PNG"
+      after: "## Added image\n\n![[source-changes/added sunflower.png]]\n\n## PNG"
+  - write:
+      path: source-changes/added sunflower.png
+      contentFile: sunflower.png

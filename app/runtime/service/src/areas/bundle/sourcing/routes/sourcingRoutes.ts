@@ -2,7 +2,7 @@
 
 import express from 'express';
 import { getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
-import { acceptSourceSnapshot, scanSourceChanges, sourceComparison, sourcingReview } from '../services/sourceReview.js';
+import { acceptSourceSnapshot, scanSourceChanges, sourceComparison, sourceSnapshotImage, sourcingReview } from '../services/sourceReview.js';
 import { SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import type { SourceSnapshotAcceptance } from '../../../../../../../contracts/types/sourcing.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
@@ -48,5 +48,17 @@ router.get('/bundles/:bundleSlug/sourcing/comparison', handle(req => {
   if (typeof beforeId !== 'string' || typeof afterId !== 'string' || typeof beforePath !== 'string' || typeof afterPath !== 'string') throw new SourcingError('Expected snapshot identities and file paths', 400);
   return sourceComparison(directory(req), beforeId, afterId, beforePath, afterPath);
 }));
+
+router.get('/bundles/:bundleSlug/sourcing/image', (req, res, next) => {
+  try {
+    const { snapshotId, path: filename } = req.query;
+    if (typeof snapshotId !== 'string' || typeof filename !== 'string') throw new SourcingError('Expected a snapshot and image path', 400);
+    const image = sourceSnapshotImage(directory(req), snapshotId, filename);
+    res.set({ 'Content-Type': image.type, 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox", 'Cache-Control': 'private, no-store' }).send(image.bytes);
+  } catch (error) {
+    if (error instanceof SourcingError) res.status(error.statusCode).json({ error: error.message });
+    else next(error);
+  }
+});
 
 export default router;

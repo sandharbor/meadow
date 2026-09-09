@@ -2,6 +2,7 @@ id: move-nested-page
 label: Move a tracked nested page
 description: Move child 2 to a new directory, preserving its filename and
   content. Existing name-only links still resolve.
+categories: [move]
 sourceGraph: meadow-test-bundles-data
 operations:
   - move:

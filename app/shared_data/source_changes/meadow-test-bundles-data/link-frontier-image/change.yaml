@@ -1,6 +1,7 @@
 id: link-frontier-image
 label: Change an embedded frontier image to an ordinary link
 description: The image remains in the live source graph but no longer qualifies as a required embedded asset.
+categories: [modify]
 sourceGraph: meadow-test-bundles-data
 operations:
   - replaceText:
