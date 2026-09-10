@@ -15,7 +15,8 @@ limitations under the License.
 */
 
 import test from 'tape';
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
+import os from 'node:os';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -237,6 +238,34 @@ function cleanupTestRepo(): void {
 
 // Run setup before tests
 await setupTestRepo();
+
+test('source snapshot refs do not require a configured Git identity', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-source-identity-'));
+  const repo = path.join(root, 'repo');
+  const source = path.join(root, 'source');
+  const env: NodeJS.ProcessEnv = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+  for (const key of Object.keys(env)) {
+    if (/^GIT_(AUTHOR_|COMMITTER_|CONFIG_(COUNT|KEY_|VALUE_))/.test(key)) delete env[key];
+  }
+  try {
+    fs.mkdirSync(source);
+    execFileSync('git', ['init', repo], { env, stdio: 'pipe' });
+    const config = fs.readFileSync(path.join(repo, '.git/config'));
+    const bytes = 'Source history without personal Git settings.\n';
+    fs.writeFileSync(path.join(source, 'page.md'), bytes);
+    const input = JSON.stringify({ 'page.md': { digest: crypto.createHash('sha256').update(bytes).digest('hex'), size: Buffer.byteLength(bytes) } });
+    const branch = 'refs/heads/meadow-sources/identity-test';
+    const capture = JSON.parse(execFileSync(FAST_GIT_OPS_BINARY, ['source-snapshot', repo, source, `${branch}-candidate`], { env, input, encoding: 'utf8' }));
+    execFileSync(FAST_GIT_OPS_BINARY, ['accept-source-snapshot', repo, branch, capture.commit], { env });
+    const successor = JSON.parse(execFileSync(FAST_GIT_OPS_BINARY, ['source-snapshot', repo, source, `${branch}-candidate`, '--parent', capture.commit], { env, input, encoding: 'utf8' }));
+    execFileSync(FAST_GIT_OPS_BINARY, ['accept-source-snapshot', repo, branch, successor.commit], { env });
+    t.equal(execFileSync('git', ['-C', repo, 'rev-parse', branch], { env, encoding: 'utf8' }).trim(), successor.commit);
+    t.ok(fs.readFileSync(path.join(repo, '.git/logs', branch), 'utf8').includes('Meadow <meadow@local>'));
+    t.deepEqual(fs.readFileSync(path.join(repo, '.git/config')), config, 'does not write identity into user configuration');
+  } catch (error) { t.fail(String(error)); }
+  finally { fs.rmSync(root, { recursive: true, force: true }); }
+  t.end();
+});
 
 test('fast_git_ops binary exists', (t) => {
   t.ok(fs.existsSync(FAST_GIT_OPS_BINARY), `Binary exists at ${FAST_GIT_OPS_BINARY}`);

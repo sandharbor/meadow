@@ -12,19 +12,25 @@ fn validate_path(value: &str) -> Result<()> {
     Ok(())
 }
 
-fn update_branch(repo: &gix::Repository, branch: &str, commit: gix::ObjectId) -> Result<()> {
+fn update_branch(repo: &mut gix::Repository, branch: &str, commit: gix::ObjectId) -> Result<()> {
     if !branch.starts_with("refs/heads/meadow-sources/") { return Err("Not a source-history branch".into()); }
     let expected = match repo.try_find_reference(branch)? {
         Some(mut reference) => gix::refs::transaction::PreviousValue::MustExistAndMatch(gix::refs::Target::Object(reference.peel_to_id_in_place()?.detach())),
         None => gix::refs::transaction::PreviousValue::MustNotExist,
     };
+    // Reflogs need their own identity even though the snapshot commit already
+    // has one. Override only this repository handle, never the user's config.
+    let mut config = repo.config_snapshot_mut();
+    config.set_value(&gix::config::tree::Committer::NAME, "Meadow")?;
+    config.set_value(&gix::config::tree::Committer::EMAIL, "meadow@local")?;
+    let repo = config.commit_auto_rollback()?;
     repo.reference(branch, commit, expected, "source snapshot")?;
     Ok(())
 }
 
 pub fn capture(directory: PathBuf, source: PathBuf, branch: String, parent: Option<String>) -> Result<()> {
     if !branch.starts_with("refs/heads/meadow-sources/") { return Err("Not a source-history branch".into()); }
-    let repo = gix::discover(directory)?;
+    let mut repo = gix::discover(directory)?;
     let source = source.canonicalize()?;
     let mut input = String::new();
     std::io::stdin().read_to_string(&mut input)?;
@@ -53,7 +59,7 @@ pub fn capture(directory: PathBuf, source: PathBuf, branch: String, parent: Opti
     let signature = gix_actor::Signature { name: "Meadow".into(), email: "meadow@local".into(), time: gix_date::Time::now_utc() };
     let commit = gix_object::Commit { tree: tree_id, parents, author: signature.clone(), committer: signature, encoding: None, message: "Capture source snapshot".into(), extra_headers: Default::default() };
     let commit_id = repo.write_object(commit)?.detach();
-    update_branch(&repo, &branch, commit_id)?;
+    update_branch(&mut repo, &branch, commit_id)?;
     println!("{}", serde_json::json!({"commit": commit_id.to_string(), "tree": tree_id.to_string(), "files": files}));
     Ok(())
 }
@@ -79,9 +85,9 @@ pub fn materialize(directory: PathBuf, commit: String, destination: PathBuf) -> 
 }
 
 pub fn accept(directory: PathBuf, branch: String, commit: String) -> Result<()> {
-    let repo = gix::discover(directory)?;
-    let commit = repo.find_object(parse_hex_oid(&commit)?)?.try_into_commit()?;
-    update_branch(&repo, &branch, commit.id().detach())?;
+    let mut repo = gix::discover(directory)?;
+    let commit = repo.find_object(parse_hex_oid(&commit)?)?.try_into_commit()?.id().detach();
+    update_branch(&mut repo, &branch, commit)?;
     println!("{{\"success\":true}}");
     Ok(())
 }
