@@ -29,7 +29,10 @@ export const publishing = define({
 export const publicationRevision = define({
   id: id.publicationRevision, name: "Publication Revision", kind: "entity", searchFacet: true, appAreaIds: area,
   definition: text`A provider-specific record that publishes one saved generated bundle version at one provider address.`,
-  mechanics: [text`Changing either the generated version or the publish slug creates a revision. It records its predecessor, reader connection, retention choice, remote state, and immutable provider identity.`],
+  mechanics: [
+    text`Changing either the generated version or the publish slug creates a revision. It records its predecessor, reader connection, retention choice, remote state, and immutable provider identity.`,
+    text`The provider's returned URL is the authoritative address to relay unchanged, including revision suffixes and encoded paths. It cannot be reconstructed from the bundle slug alone.`,
+  ],
   interplay: text`${link(id.publishing, "Publishing")} creates and manages revisions independently for each provider, while ${link(id.versioning, "Generated Bundle Version")} remains provider-neutral.`,
 });
 

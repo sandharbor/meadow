@@ -11,6 +11,14 @@ Review reads captured source state. Refresh captures current sources for review.
 Accept uses the snapshot ID (candidate.id, or accepted.id) and reviewToken returned
 by review or refresh. It accepts proposed renames and removes orphaned configuration;
 source files are never deleted. Stale reviews are rejected. No browser is opened.
+
+Refresh alone leaves curation and generation on the accepted snapshot. To include
+edited source text in the next preview, inspect the refreshed candidate, then
+accept it with the returned candidate.id and reviewToken before generating.
+If the user explicitly keeps a changed private file included, track that same
+file again with 'bundle node track --include-sensitive' after acceptance to
+record the inclusion decision for its updated content, then generate.
+
 Use meadow bundle open <bundle-slug> --source-review to open the modal.`;
 
 export async function runSourcingCommand(args: string[], request: RequestJson): Promise<void> {

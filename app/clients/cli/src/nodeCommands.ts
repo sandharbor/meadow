@@ -61,6 +61,11 @@ Depths:
   --outlinks <depth|inherit>   Set an outlink-depth override or remove it.
   --inlinks <depth|inherit>    Set an inlink-depth override or remove it.
 
+Depth overrides control traversal from the selected page. They do not track
+destination pages. For a setup-only request to change link depths, set the
+requested overrides and preserve other pages' tracking settings. Tracking
+additional destinations is a separate change to bundle membership.
+
 Sensitive files:
   --include-sensitive         Explicitly include exactly one effectively
                               sensitive file. Other tracking invariants remain.

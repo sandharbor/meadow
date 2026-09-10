@@ -100,3 +100,17 @@ test("top-level help advertises version reporting", () => {
   assert.match(result.stdout, /meadow version/);
   assert.match(result.stdout, /version, --version, -v\s+Print the installed Meadow version\./);
 });
+
+for (const command of [
+  "bundles create", "bundle track", "bundle generate", "bundle save-generation",
+  "bundle publish", "bundle publications", "bundle versions", "bundle node",
+]) {
+  test(`help accepts the quoted command path ${command} without a Runtime`, () => {
+    const separate = runCli(["help", ...command.split(" ")]);
+    const quoted = runCli(["help", command]);
+    assert.equal(separate.status, 0, separate.stderr);
+    assert.equal(quoted.status, 0, quoted.stderr);
+    assert.equal(quoted.stderr, "");
+    assert.equal(quoted.stdout, separate.stdout);
+  });
+}

@@ -339,6 +339,10 @@ identity as part of this explicit request. The JSON result includes the public
 URL, provider and provider-instance IDs, whether an identity was created, and
 any remaining provider allowance.
 
+Return the result's url verbatim when sharing the published link. The provider
+owns that address, including any revision suffix and encoded path; do not
+reconstruct it from the bundle slug or shorten it.
+
 Publish refuses an unsaved version. It never chooses between multiple active
 providers; leave exactly one active, or pass --provider. When publishing requires an
 explicit user step, the JSON error includes a structured userAction.`);
@@ -363,6 +367,12 @@ Safe bulk tracking reports newly tracked, already tracked, sensitive-skipped,
 untrackable-skipped, and rejected nodes. It never tracks sensitive nodes.
 Targeted tracking also refuses sensitive or untrackable nodes and makes no
 partial change when any requested key is invalid. Both modes are safe to retry.
+
+Safe here follows Meadow's effective sensitivity rules. Tracking retains a
+local source copy; generation separately applies the bundle's traversal
+constraints. A safe tracked node can therefore remain absent from the site
+when every route to it crosses excluded content. It can remain tracked without
+being generated. Review the generated preview when checking site membership.
 
 After tracking, use the returned nextActions or run
 'meadow bundle generate <bundle-slug>'.`);
@@ -897,7 +907,7 @@ async function listBundleFilters(slug: string): Promise<void> {
 async function main(): Promise<void> {
   const rawArgs = process.argv.slice(2);
   const args = rawArgs[0] === "help" && rawArgs.length > 1
-    ? [...rawArgs.slice(1), "--help"]
+    ? [...rawArgs.slice(1).flatMap(arg => arg.split(/\s+/).filter(Boolean)), "--help"]
     : rawArgs;
   if (args.length === 0 || args[0] === "help" || args[0] === "--help" || args[0] === "-h") {
     showHelp();

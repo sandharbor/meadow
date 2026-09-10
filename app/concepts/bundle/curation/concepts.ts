@@ -218,6 +218,7 @@ export const overrides = defineMeadowConcept({
   definition: conceptText`A per-page traversal setting that differs from the bundle's default configuration.`,
   mechanics: [
     conceptText`The Overrides filter highlights affected pages and excludes the initial page's base settings.`,
+    conceptText`A depth override changes traversal from the selected page without tracking destination pages. Tracking additional pages remains a separate curation decision.`,
   ],
   interplay: conceptText`Overrides are stored in ${conceptLink(coreConceptIds.bundleConfig, "Bundle Page Configuration")} and alter the graph boundary that produces ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}.`,
 });
@@ -273,6 +274,7 @@ export const tracking = defineMeadowConcept({
   definition: conceptText`The explicit decision that a reachable source page belongs in a bundle.`,
   mechanics: [
     conceptText`Single-page and bounded bulk tracking operations persist immediately when they do not require a compound draft.`,
+    conceptText`Tracking retains a local source copy. A safely tracked page can remain absent from generated output when every route to it crosses excluded content; generation applies traversal constraints separately.`,
   ],
   interplay: conceptText`${conceptLink(coreConceptIds.blacklist, "Bundle Page Blacklisting")}, ${conceptLink(coreConceptIds.sensitive, "Sensitivity")}, and graph reachability constrain which pages can be tracked; review shows the output consequences.`,
 });
