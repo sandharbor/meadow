@@ -309,9 +309,7 @@ export async function commitChangesNative(
   const args = [
     'commit-changes',
     ...directories,
-    '-m', message,
-    '-n', 'Meadow',
-    '-e', 'meadow@local'
+    '-m', message
   ];
 
   if (options?.allowEmpty) {

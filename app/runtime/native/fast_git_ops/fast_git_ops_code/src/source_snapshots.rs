@@ -1,6 +1,7 @@
 //! Source history shares Git objects while leaving the user's checkout and index alone.
 use std::{collections::BTreeMap, io::Read, path::PathBuf};
 use sha2::{Digest, Sha256};
+use super::identity::{DEFAULT_EMAIL, DEFAULT_NAME};
 use super::{collect_tree_paths, insert_tree_build_path, parse_hex_oid, write_tree_build_node, TreeBuildNode};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -21,8 +22,8 @@ fn update_branch(repo: &mut gix::Repository, branch: &str, commit: gix::ObjectId
     // Reflogs need their own identity even though the snapshot commit already
     // has one. Override only this repository handle, never the user's config.
     let mut config = repo.config_snapshot_mut();
-    config.set_value(&gix::config::tree::Committer::NAME, "Meadow")?;
-    config.set_value(&gix::config::tree::Committer::EMAIL, "meadow@local")?;
+    config.set_value(&gix::config::tree::Committer::NAME, DEFAULT_NAME)?;
+    config.set_value(&gix::config::tree::Committer::EMAIL, DEFAULT_EMAIL)?;
     let repo = config.commit_auto_rollback()?;
     repo.reference(branch, commit, expected, "source snapshot")?;
     Ok(())
@@ -56,7 +57,7 @@ pub fn capture(directory: PathBuf, source: PathBuf, branch: String, parent: Opti
     let parent = parent.map(|value| parse_hex_oid(&value)).transpose()?;
     if let Some(id) = parent { repo.find_object(id)?.try_into_commit()?; }
     let parents = parent.into_iter().collect();
-    let signature = gix_actor::Signature { name: "Meadow".into(), email: "meadow@local".into(), time: gix_date::Time::now_utc() };
+    let signature = gix_actor::Signature { name: DEFAULT_NAME.into(), email: DEFAULT_EMAIL.into(), time: gix_date::Time::now_utc() };
     let commit = gix_object::Commit { tree: tree_id, parents, author: signature.clone(), committer: signature, encoding: None, message: "Capture source snapshot".into(), extra_headers: Default::default() };
     let commit_id = repo.write_object(commit)?.detach();
     update_branch(&mut repo, &branch, commit_id)?;

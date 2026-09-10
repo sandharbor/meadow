@@ -1,5 +1,6 @@
 #![deny(warnings)]
 
+mod identity;
 mod source_snapshots;
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
@@ -101,10 +102,10 @@ enum Commands {
         #[clap(short, long)]
         message: String,
         /// Author name
-        #[clap(short = 'n', long, default_value = "Meadow")]
+        #[clap(short = 'n', long, default_value = identity::DEFAULT_NAME)]
         author_name: String,
         /// Author email
-        #[clap(short = 'e', long, default_value = "meadow@local")]
+        #[clap(short = 'e', long, default_value = identity::DEFAULT_EMAIL)]
         author_email: String,
         /// Allow creating a commit even if there are no changes (empty commit)
         #[clap(long)]

@@ -239,7 +239,7 @@ function cleanupTestRepo(): void {
 // Run setup before tests
 await setupTestRepo();
 
-test('source snapshot refs do not require a configured Git identity', t => {
+test('source snapshots supply their own reflog identity without modifying Git configuration', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-source-identity-'));
   const repo = path.join(root, 'repo');
   const source = path.join(root, 'source');
