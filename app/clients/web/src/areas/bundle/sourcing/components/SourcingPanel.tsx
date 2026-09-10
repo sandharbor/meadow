@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '../../../../shared/components/Modal.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
+import { SourceSnapshotsModal } from './SourceSnapshotsModal.js';
 import { MoveTraversal } from './MoveTraversal.js';
 import { OrphanReview } from './OrphanReview.js';
 import { FileRoute } from './SourceFileRoute.js';
@@ -69,7 +70,9 @@ function SourceChangeRow({ change, loadComparison, imageUrl }: { imageUrl: Sourc
   </details>;
 }
 
-export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, initialReview = false, onPendingChanges }: {
+export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, initialReview = false, onPendingChanges, snapshotsOpen = false, onCloseSnapshots }: {
+  snapshotsOpen?: boolean;
+  onCloseSnapshots?: () => void;
   onPendingChanges?: (pending: boolean) => void;
   sourceChangeTrigger?: number;
   initialReview?: boolean;
@@ -109,7 +112,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     setNoChanges(announceNoChanges && !result.candidate && result.orphans.length === 0);
   }, []);
 
-  const scan = useCallback(async (replaceCandidate = false, background = false) => {
+  const scan = useCallback(async (replaceCandidate = false, background = false, rebuildIndex = false) => {
     if (inFlight.current) {
       // A requested check can promote the check already running without duplicating it.
       if (!background) { foregroundScan.current = true; setBusy(true); setBackgroundBusy(false); }
@@ -123,8 +126,8 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     setError(null);
     // React can replay an effect during development while its first request is
     // still running. Reuse that request, but let the current effect receive it.
-    const operation = sourceCheck.current?.endpoint === endpoint ? sourceCheck.current
-      : { endpoint, promise: request('/scan', { replaceCandidate }) as Promise<SourcingReview> };
+    const operation = !rebuildIndex && sourceCheck.current?.endpoint === endpoint ? sourceCheck.current
+      : { endpoint, promise: request('/scan', { replaceCandidate, ...(rebuildIndex && { rebuildIndex: true }) }) as Promise<SourcingReview> };
     sourceCheck.current = operation;
     try {
       const result = await operation.promise;
@@ -199,6 +202,12 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const proposedResolutions = proposedSourceMoveResolutions(review?.moves ?? [], resolutions);
 
   return <>
+    <SourceSnapshotsModal isOpen={snapshotsOpen} bundleSlug={bundleSlug} onClose={() => onCloseSnapshots?.()}
+      checking={busy || backgroundBusy} onRecheck={() => {
+        onCloseSnapshots?.();
+        setOpen(true);
+        void scan(true, false, true);
+      }} />
     <div className="flex items-center gap-2 whitespace-nowrap text-sm" data-testid="sourcing-status" data-orphan-count={review?.orphans.length ?? 0} aria-live="polite">
       {busy ? <span role="status" className="flex items-center gap-2 text-neutral-500"><Spinner />Refreshing sources</span>
         : review && (review.candidate || review.orphans.length > 0) ? <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded bg-blue-100 px-3 py-1 font-medium text-blue-900" onClick={() => setOpen(true)}>{reviewLabel}{backgroundProgress}</button>

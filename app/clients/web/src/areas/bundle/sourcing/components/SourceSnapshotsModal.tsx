@@ -7,7 +7,7 @@ import Modal from '../../../../shared/components/Modal.js';
 import { Spinner } from '../../../../shared/components/Spinner.js';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
 
-export function SourceSnapshotsModal({ isOpen, bundleSlug, onClose }: { isOpen: boolean; bundleSlug: string; onClose: () => void }) {
+export function SourceSnapshotsModal({ isOpen, bundleSlug, onClose, onRecheck, checking }: { isOpen: boolean; bundleSlug: string; onClose: () => void; onRecheck: () => void; checking: boolean }) {
   const [history, setHistory] = useState<SourceSnapshotHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
@@ -29,7 +29,12 @@ export function SourceSnapshotsModal({ isOpen, bundleSlug, onClose }: { isOpen: 
   }, [isOpen, bundleSlug, retry]);
 
   if (!isOpen) return null;
-  return createPortal(<Modal isOpen onClose={onClose} title="Source snapshots" closeLabel="Close source snapshots" manageFocus className="w-full max-w-lg">
+  return createPortal(<Modal isOpen onClose={onClose} title="Source snapshots" closeLabel="Close source snapshots" manageFocus className="w-full max-w-lg" footer={
+    <div className="space-y-1">
+      <button className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50" disabled={checking} onClick={onRecheck}>Recheck all source files</button>
+      <p className="text-xs text-neutral-500">Rereads every source file and opens source review. This can take longer than a regular check.</p>
+    </div>
+  }>
     <p className="mb-4 text-sm text-neutral-500">Accepted source material for this bundle. Curation and generation use the current snapshot.</p>
     {error ? <div className="space-y-2"><p role="alert" className="text-sm text-danger-700">{error}</p><button className="text-sm text-main-700 hover:underline" onClick={() => setRetry(value => value + 1)}>Try again</button></div>
       : !history ? <p role="status" className="flex items-center gap-2 text-sm text-neutral-500"><Spinner />Loading snapshots</p>

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { SourceSnapshotsModal } from '../../../areas/bundle/sourcing/components/SourceSnapshotsModal.js';
 import { SourcingPanel } from '../../../areas/bundle/sourcing/components/SourcingPanel.js';
 
 /* global alert */
@@ -951,8 +950,7 @@ const BundleEditor: React.FC = () => {
     if (graphError) {
       return (
         <div className="w-full h-screen flex flex-col items-center justify-center p-8">
-          <SourceSnapshotsModal isOpen={isSourceSnapshotsOpen} bundleSlug={slug || ''} onClose={() => setIsSourceSnapshotsOpen(false)} />
-          <SourcingPanel initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+          <SourcingPanel snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
             setGraphError(null); setConfigChangeTrigger(previous => previous + 1);
           }} />
           <div className="max-w-2xl w-full bg-danger-50 border border-danger-300 rounded-lg p-6">
@@ -1025,8 +1023,7 @@ const BundleEditor: React.FC = () => {
               </button>
             </div>
           )}
-          <SourceSnapshotsModal isOpen={isSourceSnapshotsOpen} bundleSlug={slug || ''} onClose={() => setIsSourceSnapshotsOpen(false)} />
-          <SourcingPanel initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+          <SourcingPanel snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
             refreshBundleNodeConfigs();
             reloadWorkingGraph();
           }} />

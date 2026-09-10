@@ -20,6 +20,7 @@ import { createHash } from 'crypto';
 import { execFile } from 'child_process';
 import { logger } from './logging/backendLoggingUtils.js';
 import { resolveNativeRustBinaryPath } from '../../../../../shared_code/utils/nativeRustBinaryPath.js';
+import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 
 function execWorkingGraph(binaryPath: string, args: string[]): Promise<string> {
@@ -31,7 +32,7 @@ function execWorkingGraph(binaryPath: string, args: string[]): Promise<string> {
       (error, stdout, stderr) => {
         if (error) {
           const err = error as unknown as Error & { stderr?: string; stdout?: string };
-          const message = `${err.message}${stderr ? `\n${stderr}` : ''}`;
+          const message = stderr.trim().replace(/^Error:\s*/, '') || err.message;
           return reject(Object.assign(new Error(message), { cause: error }));
         }
         if (stderr && stderr.length > 0 && !stdout) return reject(new Error(stderr));
@@ -65,6 +66,8 @@ export function getWorkingGraphPath(): string {
 
 export type WorkingGraphRunArgs = {
   graphRoot: string;
+  rebuildIndex?: boolean;
+  immutableSource?: boolean;
   bundleNodeConfigPath: string;
   /** Stable identity for equivalent temporary configuration files. */
   cacheConfigIdentity?: string;
@@ -204,6 +207,8 @@ function workingGraphCommand(runArgs: WorkingGraphRunArgs): {
   const args: string[] = [
     '--graph-root',
     runArgs.graphRoot,
+    '--source-index-root',
+    path.join(getConfigDirectory(), 'cache/source-index'),
     '--bundle-node-config',
     runArgs.bundleNodeConfigPath,
     '--entry-bundle-node-id',
@@ -215,6 +220,8 @@ function workingGraphCommand(runArgs: WorkingGraphRunArgs): {
     '--allow-images-to-extend-to-frontier',
     runArgs.allowImagesToExtendToFrontier ? 'true' : 'false',
   ];
+
+  if (runArgs.rebuildIndex) args.push('--rebuild-index');
 
   if (runArgs.defaultOutlinksDepth !== undefined) {
     args.push('--default-outlinks-depth', String(runArgs.defaultOutlinksDepth));
@@ -232,6 +239,10 @@ function workingGraphCommand(runArgs: WorkingGraphRunArgs): {
 function getWorkingGraphEntry(runArgs: WorkingGraphRunArgs): CachedWorkingGraph {
   const { binaryPath, args } = workingGraphCommand(runArgs);
   const normalizedRoot = path.resolve(runArgs.graphRoot);
+  // Live discovery always reconciles Rust's persistent index, even when no watcher event arrived.
+  if (!runArgs.immutableSource || runArgs.rebuildIndex) {
+    return { graphRoot: normalizedRoot, result: execWorkingGraph(binaryPath, args) };
+  }
   const revision = sourceRevision(normalizedRoot);
   if (revision !== null) {
     const key = cacheKey(runArgs, revision);

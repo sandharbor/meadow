@@ -798,7 +798,6 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
               <BundleNodeTabsDropdown
                 selectedNodeKeys={selectedNodeKeys}
                 graph={graph}
-                onRefresh={onRefresh}
               />
             </div>
           </nav>

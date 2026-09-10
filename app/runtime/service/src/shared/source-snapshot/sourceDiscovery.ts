@@ -29,6 +29,7 @@ export function scopeSourceSnapshot(snapshot: SourceSnapshot, graph: WorkingGrap
   const keys = new Set(nodes.map(node => node.bundleNodeKey));
   const filenames = new Set(nodes.flatMap(node => {
     const key = node.bundleNodeKey;
+    if (node.sourceFile && snapshot.files[node.sourceFile.path]) return [node.sourceFile.path];
     if (snapshot.files[key]) return [key];
     if (node.fileType === 'excalidraw') return [`${key}.md`, key.replace(/\.excalidraw$/, '.md')].filter(filename => snapshot.files[filename]);
     return [];

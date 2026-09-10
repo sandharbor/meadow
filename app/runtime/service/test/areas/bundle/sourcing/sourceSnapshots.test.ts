@@ -374,6 +374,22 @@ describe('source snapshots with the shared big graph', () => {
     expect(loadSourcingState(bundle)?.acceptedId).toBe(pending.accepted.id);
   });
 
+  it('keeps an empty missing page orphaned and an empty replacement new', async () => {
+    fs.writeFileSync(path.join(source, oldName), '');
+    await initializeSourcing(bundle);
+    fs.renameSync(path.join(source, oldName), path.join(source, newName));
+    fs.appendFileSync(path.join(source, 'main page.md'), `\n[[${path.basename(newName, '.md')}]]`);
+    const pending = await scanSourceChanges(bundle);
+    expect(pending.moves.some(move => move.oldPath === oldName)).toBe(false);
+    expect(pending.orphans.some(orphan => orphan.path === oldName)).toBe(true);
+    expect(pending.changes).toContainEqual(expect.objectContaining({ path: newName, kind: 'added' }));
+    const orphan = pending.orphans.find(item => item.path === oldName)!;
+    await acceptSourceSnapshot(bundle, { candidateId: pending.candidate!.id,
+      reviewToken: pending.reviewToken, resolutions: {} });
+    expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeId === orphan.bundleNodeId)).toBe(false);
+    expect(loadSourceNodeConfigs(bundle).some(node => nodeSourcePath(node) === newName)).toBe(false);
+  });
+
   it('accepts the highest-ranked proposal when identical contents have more than one destination', async () => {
     await initializeSourcing(bundle);
     change('rename-page-with-links');
@@ -405,16 +421,18 @@ describe('source snapshots with the shared big graph', () => {
     expect(loadSourceNodeConfigs(bundle).some(node => nodeSourcePath(node) === move!.newPath)).toBe(true);
   });
 
-  it('leaves missing required sources reviewable without accepting an unusable snapshot', async () => {
-    await initializeSourcing(bundle);
+  it.each(['deleted', 'moved'])('requires user repair when the starting page is %s and preserves accepted sources', async action => {
+    const initial = await initializeSourcing(bundle);
     const config = YAML.parse(fs.readFileSync(path.join(bundle, 'config/bundle_config.yaml'), 'utf8'));
     const entry = loadSourceNodeConfigs(bundle).find(node => node.bundleNodeId === config.entryBundleNodeId)!;
-    fs.unlinkSync(path.join(source, nodeSourcePath(entry)));
-    const pending = await scanSourceChanges(bundle);
-    expect(pending.candidate).toBeDefined();
-    await expect(acceptSourceSnapshot(bundle, { candidateId: pending.candidate!.id, reviewToken: pending.reviewToken,
-      resolutions: Object.fromEntries(pending.moves.map(move => [move.bundleNodeId, null])) })).rejects.toThrow(/entry.*missing/);
-    expect(loadSourcingState(bundle)?.acceptedId).toBe(pending.accepted.id);
+    const filename = path.join(source, nodeSourcePath(entry));
+    if (action === 'deleted') fs.unlinkSync(filename);
+    else fs.renameSync(filename, path.join(source, 'relocated starting page.md'));
+    await expect(scanSourceChanges(bundle)).rejects.toThrow(/starting page is missing.*Locate its replacement/);
+    expect(loadSourcingState(bundle)?.acceptedId).toBe(initial.acceptedId);
+    expect(loadSourcingState(bundle)?.candidateId).toBeUndefined();
+    expect(fs.existsSync(path.join(acceptedSourceRoot(bundle), nodeSourcePath(entry)))).toBe(true);
+    expect(loadSourceNodeConfigs(bundle).find(node => node.bundleNodeId === entry.bundleNodeId)).toEqual(entry);
   });
 
   it('recovers both configuration and snapshot identity after an interrupted acceptance', async () => {
@@ -432,7 +450,7 @@ describe('source snapshots with the shared big graph', () => {
     expect(fs.existsSync(path.join(sourcingRoot(bundle), 'acceptance-journal.json'))).toBe(false);
   });
 
-  it('opens an accepted folder snapshot after its live folder moves, then preserves folder identity on acceptance', async () => {
+  it('keeps an accepted folder snapshot usable while its moved starting folder requires repair', async () => {
     const configPath = path.join(bundle, 'config/bundle_config.yaml');
     const config = YAML.parse(fs.readFileSync(configPath, 'utf8'));
     const folderId = config.entryBundleNodeId;
@@ -444,10 +462,11 @@ describe('source snapshots with the shared big graph', () => {
     await initializeSourcing(bundle);
     fs.renameSync(path.join(source, 't001'), path.join(source, 'moved-t001'));
     expect(getFolderBundleRepairStatus(bundle).repairRequired).toBe(false);
-    const pending = await scanSourceChanges(bundle);
-    expect(pending.moves.find(move => move.bundleNodeId === folderId)?.newPath).toBe('moved-t001');
-    await acceptAllMoves();
-    expect(loadSourceNodeConfigs(bundle)[0]).toMatchObject({ bundleNodeId: folderId, sourceGraphSubdirectory: 'moved-t001' });
+    const acceptedId = loadSourcingState(bundle)!.acceptedId;
+    await expect(scanSourceChanges(bundle)).rejects.toThrow(/selected folder.*missing/);
+    expect(loadSourcingState(bundle)!.acceptedId).toBe(acceptedId);
+    expect(loadSourcingState(bundle)!.candidateId).toBeUndefined();
+    expect(loadSourceNodeConfigs(bundle)[0]).toMatchObject({ bundleNodeId: folderId, sourceGraphSubdirectory: 't001' });
     expect(getFolderBundleRepairStatus(bundle).repairRequired).toBe(false);
   });
 

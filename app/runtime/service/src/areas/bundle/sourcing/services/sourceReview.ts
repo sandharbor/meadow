@@ -88,6 +88,8 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
     let candidateBlocks: Map<string, number> | undefined;
     for (const missing of missingFiles) {
       const { node, oldPath, prior } = missing;
+      // Empty contents provide no evidence that two pages share an identity.
+      if (prior.size === 0 || current.files[newPath].size === 0) continue;
       if (path.extname(oldPath).toLowerCase() !== path.extname(newPath).toLowerCase()) continue;
       const exact = prior.digest === current.files[newPath].digest;
       const evidence: string[] = [];
@@ -239,12 +241,12 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
   };
 }
 
-export async function scanSourceChanges(bundleDirectory: string, replaceCandidate = false): Promise<SourcingReview> {
+export async function scanSourceChanges(bundleDirectory: string, replaceCandidate = false, rebuildIndex = false): Promise<SourcingReview> {
   await initializeSourcing(bundleDirectory);
   await withSourcingLock(bundleDirectory, async () => {
     const state = loadSourcingState(bundleDirectory)!;
-    if (state.candidateId && !replaceCandidate) return;
-    let discovery = await discoverSourceSnapshot(bundleDirectory);
+    if (state.candidateId && !replaceCandidate && !rebuildIndex) return;
+    let discovery = await discoverSourceSnapshot(bundleDirectory, rebuildIndex);
     const comparisonId = state.candidateId ?? state.acceptedId;
     if (discovery.digest === loadSourceSnapshot(bundleDirectory, comparisonId).digest) return;
     let captured: SourceSnapshot | undefined;

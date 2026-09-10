@@ -21,13 +21,11 @@ import CopySelectedNodesModal from './CopySelectedNodesModal';
 interface BundleNodeTabsDropdownProps {
   selectedNodeKeys: Set<string>;
   graph: Graph;
-  onRefresh: () => void;
 }
 
 const BundleNodeTabsDropdown: React.FC<BundleNodeTabsDropdownProps> = ({
   selectedNodeKeys,
   graph,
-  onRefresh,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
@@ -89,16 +87,6 @@ const BundleNodeTabsDropdown: React.FC<BundleNodeTabsDropdownProps> = ({
                   Copy as...
                 </button>
 
-                {/* Refresh */}
-                <button
-                  onClick={() => {
-                    onRefresh();
-                    closeMenu();
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
-                >
-                  Refresh
-                </button>
               </div>
             </div>
           )}

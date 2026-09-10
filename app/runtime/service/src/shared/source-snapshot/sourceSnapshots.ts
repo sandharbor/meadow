@@ -180,7 +180,7 @@ function inventory(root: string): Pick<SourceSnapshot, 'files' | 'directories' |
   return { files, directories, fileCount: Object.keys(files).length, digest: sha256(JSON.stringify({ files, directories })) };
 }
 
-export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, nodes = loadSourceNodeConfigs(bundleDirectory), frontierDepth = 1): Promise<WorkingGraphRustOutput> {
+export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, nodes = loadSourceNodeConfigs(bundleDirectory), frontierDepth = 1, rebuildIndex = false): Promise<WorkingGraphRustOutput> {
   const config = loadSourceBundleConfig(bundleDirectory);
   const appConfig = loadAppConfig(getConfigDirectory());
   const scratchDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-snapshot-graph-'));
@@ -189,6 +189,7 @@ export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSna
     fs.writeFileSync(temporary, stringifyBundleNodeConfig(nodes));
     const graph = await runWorkingGraphJson<WorkingGraphRustOutput>({
       graphRoot: snapshotSourceRoot(bundleDirectory, snapshot.id, snapshot), bundleNodeConfigPath: temporary,
+      rebuildIndex, immutableSource: !snapshot.transientSourceRoot,
       cacheConfigIdentity: path.join(sourcingRoot(bundleDirectory), `graph-${sha256(stringifyBundleNodeConfig(nodes))}`),
       entryBundleNodeId: config.entryBundleNodeId!, defaultTraversalBundleNodeId: config.defaultTraversalBundleNodeId!,
       defaultOutlinksDepth: config.defaultOutlinksDepth, defaultInlinksDepth: config.defaultInlinksDepth,
@@ -205,31 +206,31 @@ export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSna
   } finally { fs.rmSync(scratchDirectory, { recursive: true, force: true }); }
 }
 
-export async function discoverSourceSnapshot(bundleDirectory: string): Promise<SourceSnapshot> {
+export async function discoverSourceSnapshot(bundleDirectory: string, rebuildIndex = false): Promise<SourceSnapshot> {
   try {
-  const config = loadSourceBundleConfig(bundleDirectory);
-  if (!config.sourceDirectory) throw new SourcingError('Bundle has no source directory');
-  const live: SourceSnapshot = { id: randomUUID().replace(/-/g, ''), capturedAt: new Date().toISOString(), ...inventory(config.sourceDirectory), transientSourceRoot: config.sourceDirectory };
-  const nodes = loadSourceNodeConfigs(bundleDirectory);
-  let traversalNodes = nodes;
-  if (missingSnapshotRoles(live, config, nodes).length) {
-    const state = loadSourcingState(bundleDirectory);
-    if (state) {
-      const { findSourceMoves, relinkSourceNode } = await import('../../areas/bundle/sourcing/services/sourceReview.js');
-      const previous = loadSourceSnapshot(bundleDirectory, state.acceptedId);
-      const moves = findSourceMoves(bundleDirectory, previous, live, nodes);
-      traversalNodes = nodes.map(node => {
-        const match = moves.find(move => move.bundleNodeId === node.bundleNodeId && !move.competing);
-        return match && node.bundleNodeKind !== 'collection' ? relinkSourceNode(node, match.newPath) : node;
-      });
+    const config = loadSourceBundleConfig(bundleDirectory);
+    if (!config.sourceDirectory) throw new SourcingError('Bundle has no source directory');
+    if (!fs.existsSync(config.sourceDirectory)) throw new SourcingError('Source directory is unavailable; the accepted snapshot has been kept.');
+    const live: SourceSnapshot = { id: randomUUID().replace(/-/g, ''), capturedAt: new Date().toISOString(),
+      ...sourceInventory({}, []), transientSourceRoot: config.sourceDirectory };
+    invalidateWorkingGraphCache(config.sourceDirectory);
+    const graph = await snapshotGraph(bundleDirectory, live, loadSourceNodeConfigs(bundleDirectory), 0, rebuildIndex);
+    // File metadata comes from the same Rust read that produced each node's parsed links.
+    // Physical paths matter: an Excalidraw node can be backed by an ordinary .md filename.
+    for (const node of graph.nodes) {
+      if (node.bundleNodeKind !== 'file') continue;
+      if (!node.sourceFile) throw new SourcingError(`Source metadata is unavailable for ${node.bundleNodeKey}`);
+      const { path: filename, digest, size } = node.sourceFile;
+      live.files[filename] = { digest, size };
     }
+    const scoped = scopeSourceSnapshot(live, graph);
+    rememberLiveSourceLinks(bundleDirectory, scoped.digest, graph);
+    return scoped;
+  } catch (error) {
+    forgetLiveSourceLinks(bundleDirectory);
+    if (error instanceof SourcingError) throw error;
+    throw new SourcingError(error instanceof Error ? error.message : String(error));
   }
-  invalidateWorkingGraphCache(config.sourceDirectory);
-  const graph = missingSnapshotRoles(live, config, traversalNodes).length ? undefined : await snapshotGraph(bundleDirectory, live, traversalNodes, 0);
-  const scoped = scopeSourceSnapshot(live, graph);
-  rememberLiveSourceLinks(bundleDirectory, scoped.digest, graph);
-  return scoped;
-  } catch (error) { forgetLiveSourceLinks(bundleDirectory); throw error; }
 }
 
 export async function captureSourceSnapshot(bundleDirectory: string, options: { preserveTrackedContent?: boolean; discovery?: SourceSnapshot } = {}): Promise<SourceSnapshot> {
@@ -396,12 +397,6 @@ export function missingSnapshotRoles(snapshot: SourceSnapshot, config: BundleCon
     node.bundleNodeKind === 'file' ? !snapshot.files[snapshotFilePath(snapshot, node)]
       : node.bundleNodeKind === 'folder' && Boolean(node.sourceGraphSubdirectory) && !snapshot.directories.includes(node.sourceGraphSubdirectory)
   ));
-}
-
-export function liveSourceDigest(bundleDirectory: string): string {
-  const config = loadSourceBundleConfig(bundleDirectory);
-  if (!config.sourceDirectory) throw new SourcingError('Bundle has no source directory');
-  return inventory(config.sourceDirectory).digest;
 }
 
 export function rememberReachableProvenance(bundleDirectory: string, snapshot: SourceSnapshot, graph: NonNullable<SourceSnapshot['graph']>, configs: BundleNodeConfig[]): void {

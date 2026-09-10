@@ -17,3 +17,9 @@ walkdir = "2"
 link_parser = { path = "./link_parser" }
 
 
+
+sha2 = "0.10"
+fs2 = "0.4"
+
+[dev-dependencies]
+tempfile = "3"

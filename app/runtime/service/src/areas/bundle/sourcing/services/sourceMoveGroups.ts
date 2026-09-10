@@ -75,6 +75,7 @@ export function findGroupedSourceMoves(bundleDirectory: string, previous: Source
       const suffix = oldPath.slice(group.from.length + 1).replace(/[\p{L}\p{N}]+/gu, word => renames.get(word.toLowerCase()) ?? word);
       const newPath = `${group.to}/${suffix}`;
       if (!current.files[newPath] || configuredPaths.has(newPath)) continue;
+      if (previous.files[oldPath].size === 0 || current.files[newPath].size === 0) continue;
       const exact = previous.files[oldPath].digest === current.files[newPath].digest;
       if (!exact && !/\.(md|html|txt)$/i.test(oldPath)) continue;
       const similarity = exact ? 1 : wordOverlap(

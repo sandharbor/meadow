@@ -69,7 +69,7 @@ const formatBundleNodeDetailsAsYaml = (details: Record<string, unknown>): string
       lines.push(`  ${key}: ${value}`);
     }
   }
-  return '- ' + lines.join('\n  ').replace(/^ {2}/, '');
+  return '- ' + lines.join('\n').replace(/^ {2}/, '');
 };
 
 const CopySelectedNodesModal: React.FC<CopySelectedNodesModalProps> = ({

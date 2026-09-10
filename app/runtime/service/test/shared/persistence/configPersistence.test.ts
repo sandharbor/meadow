@@ -173,6 +173,7 @@ describe('startup-critical configuration persistence', () => {
 
     const source = fs.readFileSync(gitignore, 'utf8');
     expect(source).toContain('my-user-rule/**');
+    expect(source.split('\n').filter(line => line === '/cache/source-index/')).toHaveLength(1);
     expect(source.match(/>>> Meadow managed private paths >>>/g)).toHaveLength(1);
     expect(source.match(/\.meadow-migration-recovery\//g)).toHaveLength(1);
     expect(source.match(/app\/publishing_providers\/\*\/pp_secrets\.yaml/g)).toHaveLength(1);

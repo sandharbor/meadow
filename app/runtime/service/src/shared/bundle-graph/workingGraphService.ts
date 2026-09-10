@@ -53,6 +53,7 @@ interface RustLinkResolvedInfo {
 }
 
 interface RustNode {
+  sourceFile?: { path: string; digest: string; size: number };
   bundleNodeKey: string;
   bundleNodeId?: string;
   bundleNodeKind: 'file' | 'folder' | 'collection';
@@ -326,6 +327,7 @@ async function loadWorkingGraphUnlocked(options: {
   const runGraph = async (configFile: string): Promise<WorkingGraphRustOutput> => {
     return await runWorkingGraphJson<WorkingGraphRustOutput>({
       graphRoot: notesDir,
+      immutableSource: notesDir !== bundleConfig.sourceDirectory,
       bundleNodeConfigPath: configFile,
       entryBundleNodeId: bundleConfig.entryBundleNodeId!,
       defaultTraversalBundleNodeId: bundleConfig.defaultTraversalBundleNodeId!,
