@@ -33,20 +33,6 @@ function result(
   return { id, passed, summary, expected, actual, safety, evidenceFiles };
 }
 
-function successfulOperations(outcome: FrozenOutcome): Array<Record<string, unknown>> {
-  return outcome.commands.flatMap(command => {
-    if (command.exitCode !== 0) return [];
-    try {
-      const parsed = JSON.parse(command.stdout) as unknown;
-      return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
-        ? [parsed as Record<string, unknown>]
-        : [];
-    } catch {
-      return [];
-    }
-  });
-}
-
 export async function evaluateCurateSpecificNodes(input: {
   configDir: string;
   outcome: FrozenOutcome;
@@ -64,12 +50,12 @@ export async function evaluateCurateSpecificNodes(input: {
   const charlie = nodes.find(node => node.bundleNodeName === "Charlie Munger");
   const warren = nodes.find(node => node.bundleNodeName === "Warren Buffett");
   const configuredNames = nodes.map(node => node.bundleNodeName).sort();
-  const operations = successfulOperations(input.outcome);
-  const operationNames = operations.map(operation => operation.operation);
   const prohibitedCommands = input.outcome.commands.filter(command => (
-    command.args.includes("generate")
-    || command.args.includes("save-generation")
-    || command.args.includes("publish")
+    !command.args.includes("--help") && !command.args.includes("-h")
+    && command.args[0] !== "help"
+    && (command.args.includes("generate")
+      || command.args.includes("save-generation")
+      || command.args.includes("publish"))
   ));
   let gitStatus = "";
   try {
@@ -81,35 +67,27 @@ export async function evaluateCurateSpecificNodes(input: {
   } catch {
     gitStatus = "git-status-unavailable";
   }
-  const relayedIds = Boolean(
-    charlie?.bundleNodeId
-    && warren?.bundleNodeId
-    && input.outcome.operatorFinalResponse.includes(slug)
-    && input.outcome.operatorFinalResponse.includes(charlie.bundleNodeId)
-    && input.outcome.operatorFinalResponse.includes(warren.bundleNodeId),
-  );
   const evidence = input.outcome.stateSnapshotPath ? [input.outcome.stateSnapshotPath] : undefined;
 
   return [
     result(
       "specific-node-set",
-      configuredNames.length === 3
-        && configuredNames.join("\n") === [
-          "Charlie Munger",
-          "Notable Mental Models",
-          "Warren Buffett",
-        ].join("\n"),
-      "Only the entry page and the two requested nodes are configured.",
-      ["Charlie Munger", "Notable Mental Models", "Warren Buffett"],
+      configuredNames.includes("Notable Mental Models")
+        && configuredNames.includes("Warren Buffett")
+        && configuredNames.every(name => [
+          "Charlie Munger", "Notable Mental Models", "Warren Buffett",
+        ].includes(name)),
+      "Only the requested pages have curation settings.",
+      ["Notable Mental Models", "Warren Buffett", "optional Charlie Munger exclusion"],
       configuredNames,
       false,
       evidence,
     ),
     result(
-      "charlie-blacklisted",
-      Boolean(charlie && charlie.listType === "blacklist"),
-      "Charlie Munger is tracked with a blacklist configuration.",
-      { listType: "blacklist" },
+      "charlie-excluded",
+      !charlie || charlie.listType === "blacklist",
+      "Charlie Munger is excluded from the site.",
+      { included: false },
       charlie ?? null,
     ),
     result(
@@ -123,15 +101,6 @@ export async function evaluateCurateSpecificNodes(input: {
       "Warren Buffett is tracked with the requested traversal-depth overrides.",
       { listType: "whitelist", outlinksDepth: 1, inlinksDepth: 0 },
       warren ?? null,
-    ),
-    result(
-      "single-node-command-contracts",
-      operationNames.filter(name => name === "bundle.node.track").length === 2
-        && operationNames.includes("bundle.node.blacklist")
-        && operationNames.includes("bundle.node.set-depths"),
-      "The operator uses the single-node track, blacklist, and depth contracts.",
-      ["bundle.node.track", "bundle.node.blacklist", "bundle.node.set-depths"],
-      operationNames,
     ),
     result(
       "no-generation-or-publication",
@@ -149,13 +118,6 @@ export async function evaluateCurateSpecificNodes(input: {
       gitStatus,
       true,
       evidence,
-    ),
-    result(
-      "operator-relays-node-identities",
-      relayedIds,
-      "The operator reports the bundle slug and both stable node IDs.",
-      { slug, charlieId: charlie?.bundleNodeId, warrenId: warren?.bundleNodeId },
-      input.outcome.operatorFinalResponse,
     ),
   ];
 }

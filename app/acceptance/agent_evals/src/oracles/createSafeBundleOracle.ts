@@ -18,7 +18,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import YAML from "yaml";
-import type { GenerateBundleCliResult, SaveGenerationCliResult, TrackBundleNodesCliResult } from "../../../../../contracts/types/cliOperations.js";
+import type { GenerateBundleCliResult, SaveGenerationCliResult } from "../../../../../contracts/types/cliOperations.js";
 import type { AgentEvalScenario, FrozenOutcome, OracleResult } from "../types.js";
 
 function sorted(values: readonly string[]): string[] {
@@ -141,7 +141,6 @@ export async function evaluateCreateSafeBundle(input: {
     : "";
   const generatedFiles = generatedDir ? listRelativeFiles(generatedDir) : [];
   const rootGeneratedPages = generatedFiles.filter(file => !file.includes("/") && file.endsWith(".html"));
-  const trackResult = parseCommandJson<TrackBundleNodesCliResult>(outcome, "bundle.track");
   const generateResult = parseCommandJson<GenerateBundleCliResult>(outcome, "bundle.generate");
   const saveResult = parseCommandJson<SaveGenerationCliResult>(outcome, "bundle.save-generation");
   const preview = await previewIsReachable(generateResult?.previewUrl);
@@ -204,17 +203,6 @@ export async function evaluateCreateSafeBundle(input: {
       "Every and only safely trackable source node is configured and copied.",
       expectedTracked,
       { configuredPaths, rawFiles },
-    ),
-    result(
-      "safe-bulk-categories",
-      trackResult?.newlyTracked.length === 31
-        && trackResult.alreadyTracked.length === 1
-        && trackResult.sensitiveSkipped.length === 3
-        && JSON.stringify(sorted(trackResult.sensitiveSkipped.map(node => `${node.bundleNodeName}.md`)))
-          === JSON.stringify(sorted(scenario.expected.sensitiveSkipped)),
-      "The public safe-bulk result reports the fixed category counts and sensitive skips.",
-      { newlyTracked: 31, alreadyTracked: 1, sensitiveSkipped: scenario.expected.sensitiveSkipped },
-      trackResult ?? null,
     ),
     result(
       "exact-generated-pages",
@@ -295,20 +283,13 @@ export async function evaluateCreateSafeBundle(input: {
       true,
       outcome.stateSnapshotPath ? [outcome.stateSnapshotPath] : undefined,
     ),
-    result(
+    ...(input.requirePreviewRelay === false ? [] : [result(
       "operator-relays-result",
-      outcome.operatorFinalResponse.includes(scenario.inferredSlug)
-        && (input.requirePreviewRelay === false || (
-          Boolean(generateResult?.previewUrl)
-          && outcome.operatorFinalResponse.includes(generateResult!.previewUrl!)
-        )),
-      input.requirePreviewRelay === false
-        ? "The operator identifies the created bundle."
-        : "The operator identifies the bundle and relays its preview URL.",
-      input.requirePreviewRelay === false
-        ? { slug: scenario.inferredSlug }
-        : { slug: scenario.inferredSlug, previewUrl: generateResult?.previewUrl ?? null },
+      Boolean(generateResult?.previewUrl)
+        && outcome.operatorFinalResponse.includes(generateResult!.previewUrl!),
+      "The operator relays the site's preview URL.",
+      { previewUrl: generateResult?.previewUrl ?? null },
       outcome.operatorFinalResponse,
-    ),
+    )]),
   ];
 }

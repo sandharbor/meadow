@@ -15,33 +15,46 @@ limitations under the License.
 */
 
 import type { AgentEvalScenario } from "../types.js";
+import { CREATE_SAFE_BUNDLE_SCENARIO } from "./createSafeBundle.js";
 
 export const SENSITIVE_FILE = "Thoughts on Munger's Investment Portfolio.md";
-export const TRANSITION_FILE = "Warren Buffett.md";
+export const SOURCE_UPDATE_TEXT =
+  "My updated conclusion: patience matters more than diversification.";
 
 export const CURATE_SENSITIVE_FILE_SCENARIO: AgentEvalScenario = {
   schemaVersion: 1,
   id: "curate-sensitive-file",
-  version: 3,
-  title: "Explicitly include sensitive content and resolve a boundary-review pause",
+  version: 4,
+  title: "Make a local site with a private note, then update it",
   baseRequestTemplate: [
-    "Use Meadow's command line to create a bundle from `<source-directory>`, starting at `Notable Mental Models.md`, and keep Meadow's normal defaults.",
-    `Try to track \`${SENSITIVE_FILE}\` normally, then explicitly include it after Meadow refuses. Run each inclusion sequentially: wait for that first explicit inclusion to finish, then retry the identical command and wait for changed:false to prove it is idempotent. Do not run those commands in parallel.`,
-    "Only after the idempotent retry finishes will a source editor change that file; then refresh its tracking evidence with another explicit inclusion.",
-    `First track \`${TRANSITION_FILE}\` successfully while it is still non-sensitive. Only after it is tracked, mark that node sensitive; do not mark it sensitive before tracking. Then attempt generation and use Meadow's command workflow to resolve any required boundary-review pause without opening a browser.`,
-    "Generate successfully after reaffirmation. Do not save or publish. Report the bundle slug, both node IDs, the Review Request ID, and the final version ID.",
+    "Make a local site from my notes in `<source-directory>`, starting with",
+    "`Notable Mental Models.md`. Include the safe notes and also",
+    "`Thoughts on Munger's Investment Portfolio.md`",
+    "even though it is marked private; I want that page in this site.",
+    "Keep the usual settings. Give me a preview link, but don't open a browser,",
+    "save or publish yet.",
   ].join(" "),
+  followUpRequests: [
+    [
+      "I've updated my Munger portfolio note. Please update the site to include the new text.",
+      "I still want that private page included. Give me the new preview link;",
+      "don't open a browser, save or publish yet.",
+    ].join(" "),
+  ],
   publishingRequestAddition: "",
   entryPage: "Notable Mental Models.md",
   inferredSlug: "notable-mental-models",
   defaults: { outlinksDepth: 3, inlinksDepth: 1 },
   expected: {
-    newlyTracked: [SENSITIVE_FILE, TRANSITION_FILE],
-    alreadyTracked: ["Notable Mental Models.md"],
-    sensitiveSkipped: [],
-    trackedButNotGenerated: [],
-    generatedPages: [],
-    generatedContentAssets: [],
+    ...CREATE_SAFE_BUNDLE_SCENARIO.expected,
+    newlyTracked: [...CREATE_SAFE_BUNDLE_SCENARIO.expected.newlyTracked, SENSITIVE_FILE],
+    sensitiveSkipped: CREATE_SAFE_BUNDLE_SCENARIO.expected.sensitiveSkipped.filter(
+      file => file !== SENSITIVE_FILE,
+    ),
+    generatedPages: [
+      ...CREATE_SAFE_BUNDLE_SCENARIO.expected.generatedPages,
+      SENSITIVE_FILE.replace(/\.md$/, ".html"),
+    ],
   },
   profiles: {
     manager: {
@@ -72,9 +85,8 @@ export function curateSensitiveFileAnswerSheet(sourceDirectory: string): string 
     `The supplied source directory is ${sourceDirectory}.`,
     `The entry page is ${CURATE_SENSITIVE_FILE_SCENARIO.entryPage}.`,
     `The initially sensitive file is ${SENSITIVE_FILE}.`,
-    `The non-sensitive file that will become sensitive is ${TRANSITION_FILE}.`,
     "Keep the normal defaults.",
-    "The explicit sensitive inclusion and deterministic CLI reaffirmation are requested.",
+    "The user wants the private Munger portfolio page included in the local site.",
     "Browser opening, saving, and publication are not requested.",
   ].join("\n");
 }

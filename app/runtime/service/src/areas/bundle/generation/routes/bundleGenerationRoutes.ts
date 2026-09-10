@@ -22,7 +22,6 @@ import path, { join } from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { sourceFileRequestPathCandidates } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
-import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../../../shared_code/utils/compressionManifestUtils.js';
 import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
@@ -44,11 +43,9 @@ import { clearBundleGuidCache, logBundleError, logBundleInfo } from '../../../..
 import { createBundleOperationLogger } from '../../../../shared/utils/logging/bundleOperationLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { timeAsync, timeSync } from '../../../../shared/telemetry/timingMetrics.js';
-import { parseBundleNodeConfig, resolveBundleNodeRoles } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import {
-  createPreviewReadToken,
-  MEADOW_PREVIEW_TOKEN_QUERY,
-} from '../../../../shared/app-shell/controlPlaneSecurity.js';
+  previewFileUrl, loadDefaultTraversalPage,
+} from '../../../../shared/generated-bundle-versioning/previewUrls.js';
 import {
   CLI_MUTATION_BEHAVIORS,
   CLI_OPERATION_SCHEMA_VERSION,
@@ -168,30 +165,6 @@ async function generateCurrentVersionHtml(
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-function getRequestOrigin(req: express.Request): string { return `${req.protocol}://${req.get('host')}`; }
-
-function previewFileUrl(req: express.Request, bundleSlug: string, relativePath: string): string {
-  const capability = process.env.MEADOW_API_CAPABILITY;
-  if (!capability) throw new Error('Preview access requires the launch capability');
-  const url = new URL(
-    `${getRequestOrigin(req)}/api/bundles/${encodeURIComponent(bundleSlug)}/generation/published/${encodePathForUrl(relativePath)}`,
-  );
-  url.searchParams.set(MEADOW_PREVIEW_TOKEN_QUERY, createPreviewReadToken(capability, bundleSlug));
-  return url.toString();
-}
-
-function loadDefaultTraversalPage(bundleDirectory: string): { title: string; directory: string } {
-  const configPath = BundleConfigPaths.getBundleConfigFile(bundleDirectory);
-  const nodeConfigPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
-  const bundleConfig = YAML.parse(fs.readFileSync(configPath, 'utf8')) as BundleConfig;
-  const nodes = parseBundleNodeConfig(fs.readFileSync(nodeConfigPath, 'utf8'), nodeConfigPath);
-  const { defaultTraversalNode } = resolveBundleNodeRoles(nodes, bundleConfig, configPath);
-  return {
-    title: defaultTraversalNode.bundleNodeName,
-    directory: defaultTraversalNode.sourceGraphSubdirectory || '',
-  };
-}
 
 // Serve the vendored Excalidraw renderer bundle so the editor frontend
 // can use the same exportToSvg + lz-string surface that the published bundle

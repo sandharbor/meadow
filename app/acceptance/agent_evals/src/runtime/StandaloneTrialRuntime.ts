@@ -42,7 +42,7 @@ import {
   CREATE_SAFE_BUNDLE_SCENARIO,
   materializeCreateSafeBundleSource,
 } from "../scenarios/createSafeBundle.js";
-import { SENSITIVE_FILE } from "../scenarios/curateSensitiveFile.js";
+import { SENSITIVE_FILE, SOURCE_UPDATE_TEXT } from "../scenarios/curateSensitiveFile.js";
 import type {
   AgentEvalScenario,
   FrozenOutcome,
@@ -85,6 +85,7 @@ export class StandaloneTrialRuntime implements TrialRuntime {
   private broker: MeadowCommandBroker | null = null;
   private stopped = false;
   private sensitiveSourceEditApplied = false;
+  private initialStageVerified = false;
 
   constructor(private readonly options: {
     artifactDirectory: string;
@@ -165,15 +166,43 @@ export class StandaloneTrialRuntime implements TrialRuntime {
       cliWorkingDirectory: REPO_ROOT,
       runtimeSessionPath: this.runtimeSessionPath,
       phase: () => this.phase,
-      afterCommand: command => this.applyScenarioSourceEvent(command),
     });
     await this.broker.start();
     this.captureFocusedState("pre-task-state");
   }
 
+  async checkpoint(operatorResponse: string, stage: number): Promise<OracleResult[]> {
+    if (stage !== 0 || this.scenario.id !== "curate-sensitive-file") {
+      throw new Error("Unexpected scenario checkpoint");
+    }
+    const outcome = await this.captureOutcome(operatorResponse, "initial-stage");
+    const checks = await evaluateCurateSensitiveFile({
+      configDir: this.configDir, outcome, sourceDirectory: this.sourceFixture.directory,
+    });
+    this.initialStageVerified = checks.length > 0 && checks.every(check => check.passed);
+    return checks;
+  }
+
+  async prepareFollowUp(stage: number): Promise<void> {
+    if (stage !== 0 || !this.initialStageVerified || this.sensitiveSourceEditApplied) {
+      throw new Error("Source edit requires a verified initial stage");
+    }
+    appendFileSync(
+      path.join(this.sourceFixture.directory, SENSITIVE_FILE),
+      `\n${SOURCE_UPDATE_TEXT}\n`, "utf8",
+    );
+    this.sensitiveSourceEditApplied = true;
+  }
+
   async freeze(operatorFinalResponse: string): Promise<FrozenOutcome> {
     this.phase = "frozen";
-    const stateSnapshotPath = this.captureFocusedState("frozen-state");
+    return this.captureOutcome(operatorFinalResponse, "frozen-state");
+  }
+
+  private async captureOutcome(
+    operatorFinalResponse: string, name: string,
+  ): Promise<FrozenOutcome> {
+    const stateSnapshotPath = this.captureFocusedState(name);
     const generatedEvidencePaths: string[] = [];
     const generateCommand = [...(this.broker?.records ?? [])].reverse().find(command => {
       try {
@@ -230,7 +259,10 @@ export class StandaloneTrialRuntime implements TrialRuntime {
     const baseResults = this.scenario.id === "curate-specific-nodes"
       ? await evaluateCurateSpecificNodes({ configDir: this.configDir, outcome })
       : this.scenario.id === "curate-sensitive-file"
-        ? await evaluateCurateSensitiveFile({ configDir: this.configDir, outcome })
+        ? await evaluateCurateSensitiveFile({
+          configDir: this.configDir, outcome, sourceDirectory: this.sourceFixture.directory,
+          requireSourceUpdate: true,
+        })
         : await evaluateCreateSafeBundle({
           scenario: this.scenario,
           configDir: this.configDir,
@@ -293,35 +325,6 @@ export class StandaloneTrialRuntime implements TrialRuntime {
   private privateBackendUrl(): string {
     const contents = JSON.parse(readFileSync(this.runtimeSessionPath, "utf8")) as { backendPort: number };
     return `http://127.0.0.1:${contents.backendPort}/api/app-config`;
-  }
-
-  private applyScenarioSourceEvent(command: FrozenOutcome["commands"][number]): void {
-    if (
-      this.scenario.id !== "curate-sensitive-file"
-      || this.sensitiveSourceEditApplied
-      || command.exitCode !== 0
-      || !command.args.includes("--include-sensitive")
-    ) return;
-    try {
-      const result = JSON.parse(command.stdout) as {
-        operation?: string;
-        changed?: boolean;
-        node?: { bundleNodeName?: string };
-      };
-      if (
-        result.operation !== "bundle.node.track"
-        || result.changed !== false
-        || result.node?.bundleNodeName !== path.parse(SENSITIVE_FILE).name
-      ) return;
-    } catch {
-      return;
-    }
-    appendFileSync(
-      path.join(this.sourceFixture.directory, SENSITIVE_FILE),
-      "\nExternal source edit after the first inclusion decision.\n",
-      "utf8",
-    );
-    this.sensitiveSourceEditApplied = true;
   }
 
   private git(args: string[]): string {

@@ -32,6 +32,8 @@ export type CliSemanticOperation =
   | 'publish-generation';
 
 export interface CliNextAction {
+  optional?: boolean;
+  guidance?: string;
   operation: CliSemanticOperation;
   args: string[];
   displayCommand: string;
@@ -253,6 +255,8 @@ export interface GenerateBundleReviewPauseCliResult extends CliOperationResultBa
 
 export interface SaveGenerationCliResult extends CliOperationResultBase {
   operation: 'bundle.save-generation';
+  message: string;
+  previewUrl: string | null;
   versionId: GeneratedBundleVersionId;
   savedGenerationId: string;
   commitSha?: string;

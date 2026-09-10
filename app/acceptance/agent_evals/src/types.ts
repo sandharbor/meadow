@@ -40,6 +40,8 @@ export interface AgentEvalScenario {
   title: string;
   baseRequestTemplate: string;
   publishingRequestAddition: string;
+  /** User requests delivered after the previous stage passes its checkpoint. */
+  followUpRequests?: string[];
   entryPage: string;
   inferredSlug: string;
   defaults: { outlinksDepth: number; inlinksDepth: number };
@@ -106,6 +108,7 @@ export interface ManagingAgent {
   readonly profile: AgentProfile;
   readonly version: string;
   initialRequest(exactRequest: string): Promise<string>;
+  followUpRequest(exactRequest: string): Promise<string>;
   answerQuestion(input: {
     question: string;
     answerSheet: string;
@@ -165,6 +168,10 @@ export interface FrozenOutcome {
 
 export interface TrialRuntime {
   start(): Promise<void>;
+  /** Capture and verify the completed stage without freezing the command broker. */
+  checkpoint?(operatorResponse: string, stage: number): Promise<OracleResult[]>;
+  /** Apply deterministic fixture changes only after a passing checkpoint. */
+  prepareFollowUp?(stage: number): Promise<void>;
   freeze(operatorFinalResponse: string): Promise<FrozenOutcome>;
   evaluate(outcome: FrozenOutcome): Promise<OracleResult[]>;
   stop(): Promise<void>;

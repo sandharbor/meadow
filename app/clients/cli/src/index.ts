@@ -318,8 +318,11 @@ Saving commits the generated files with Meadow's normal versioning and returns
 their savedGenerationId. The command refuses a stale or non-current version and
 is safe to retry; a retry returns changed: false with the same identities.
 
-After saving, use the returned nextActions or run
-'meadow bundle publish <slug> --version <version-id>'.`);
+Saving completes the local site workflow. The response includes previewUrl for
+viewing the saved site; a preview does not require publishing.
+
+Publishing is optional. Only run 'meadow bundle publish <slug> --version <version-id>'
+if the user explicitly asks to publish.`);
 }
 
 function showBundlePublishHelp(): void {

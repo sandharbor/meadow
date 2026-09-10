@@ -16,14 +16,12 @@ limitations under the License.
 
 import { execFile } from "node:child_process";
 import path from "node:path";
+import type { SourcingReview } from "../../../../../contracts/types/sourcing.js";
 import type {
   GenerateBundleCliResult,
-  GenerateBundleReviewPauseCliResult,
-  MutateBundleNodeCliResult,
 } from "../../../../../contracts/types/cliOperations.js";
 import {
   SENSITIVE_FILE,
-  TRANSITION_FILE,
 } from "../scenarios/curateSensitiveFile.js";
 import type { OperatorLaunchContext } from "../runtime/StandaloneTrialRuntime.js";
 import type { AgentAdapter, AgentProfile, AgentTurnResult, TrialPhase } from "../types.js";
@@ -40,7 +38,7 @@ export class ScriptedSensitiveCurationAdapter implements AgentAdapter {
     reasoningEffort: "none",
     profileVersion: 1,
   };
-  readonly version = "scripted-sensitive-curation-adapter-v1";
+  readonly version = "scripted-sensitive-curation-adapter-v3";
   private readonly transcriptLines: string[] = [];
   private started = false;
 
@@ -56,64 +54,36 @@ export class ScriptedSensitiveCurationAdapter implements AgentAdapter {
       "--entry", "Notable Mental Models.md",
     ], context);
 
-    await this.run([
-      "bundle", "node", "track", "notable-mental-models",
-      "--path", SENSITIVE_FILE,
-    ], context, 1);
-    const sensitiveFirst = this.parse<MutateBundleNodeCliResult>((await this.run([
-      "bundle", "node", "track", "notable-mental-models",
-      "--path", SENSITIVE_FILE, "--include-sensitive",
-    ], context)).stdout);
-    await this.run([
-      "bundle", "node", "track", "notable-mental-models",
-      "--id", sensitiveFirst.node.bundleNodeId!, "--include-sensitive",
-    ], context);
-
-    await this.run([
-      "bundle", "node", "track", "notable-mental-models",
-      "--id", sensitiveFirst.node.bundleNodeId!, "--include-sensitive",
-    ], context);
-
-    const transition = this.parse<MutateBundleNodeCliResult>((await this.run([
-      "bundle", "node", "track", "notable-mental-models",
-      "--path", TRANSITION_FILE,
-    ], context)).stdout);
-    await this.run([
-      "bundle", "node", "mark-sensitive", "notable-mental-models",
-      "--id", transition.node.bundleNodeId!,
-    ], context);
-    const pause = this.parse<GenerateBundleReviewPauseCliResult>((await this.run([
-      "bundle", "generate", "notable-mental-models",
-    ], context, 2)).stdout);
-    await this.run([
-      "bundle", "node", "track", "notable-mental-models",
-      "--id", transition.node.bundleNodeId!, "--include-sensitive",
-    ], context);
-    const generated = this.parse<GenerateBundleCliResult>((await this.run([
-      "bundle", "generate", "notable-mental-models",
-    ], context)).stdout);
-
-    const message = [
-      "Completed sensitive curation for notable-mental-models.",
-      `Sensitive node ${sensitiveFirst.node.bundleNodeId}.`,
-      `Transition node ${transition.node.bundleNodeId}.`,
-      `Resolved ${pause.reviewRequest.reviewRequestId}.`,
-      `Generated ${generated.versionId}.`,
-    ].join(" ");
-    this.transcriptLines.push(`[${phase}] result: ${message}`);
-    return { status: "completed", message };
+    await this.run(["bundle", "track", "notable-mental-models", "--all-safe"], context);
+    await this.includePrivateNote(context);
+    return this.generate(context);
   }
 
   async continue(prompt: string, phase: TrialPhase): Promise<AgentTurnResult> {
     this.transcriptLines.push(`[${phase}] task: ${prompt}`);
-    return {
-      status: "completed",
-      message: [
-        "The structured refusal supplied the exact explicit retry.",
-        "The generation pause supplied a stable review request and reaffirmation path.",
-        "The same one-node track operation resolved the transition without a browser.",
-      ].join(" "),
-    };
+    if (phase !== "autonomous") {
+      return { status: "completed", message: "Source review connects edits to site updates." };
+    }
+    const context = this.launchContext();
+    await this.acceptSourceUpdate(context);
+    await this.includePrivateNote(context);
+    return this.generate(context);
+  }
+
+  private async includePrivateNote(context: OperatorLaunchContext): Promise<void> {
+    await this.run([
+      "bundle", "node", "track", "notable-mental-models",
+      "--path", SENSITIVE_FILE, "--include-sensitive",
+    ], context);
+  }
+
+  private async generate(context: OperatorLaunchContext): Promise<AgentTurnResult> {
+    const generated = this.parse<GenerateBundleCliResult>((await this.run([
+      "bundle", "generate", "notable-mental-models",
+    ], context)).stdout);
+    const message = `Here is the local site: ${generated.previewUrl}`;
+    this.transcriptLines.push(message);
+    return { status: "completed", message };
   }
 
   async stop(): Promise<void> {}
@@ -124,6 +94,17 @@ export class ScriptedSensitiveCurationAdapter implements AgentAdapter {
 
   private parse<T>(stdout: string): T {
     return JSON.parse(stdout) as T;
+  }
+
+  private async acceptSourceUpdate(context: OperatorLaunchContext): Promise<void> {
+    const review = this.parse<SourcingReview>((await this.run([
+      "bundle", "sources", "refresh", "notable-mental-models",
+    ], context)).stdout);
+    if (!review.candidate) throw new Error("Expected a source update to accept");
+    await this.run([
+      "bundle", "sources", "accept", "notable-mental-models",
+      "--snapshot", review.candidate.id, "--review-token", review.reviewToken,
+    ], context);
   }
 
   private run(

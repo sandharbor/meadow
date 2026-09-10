@@ -95,6 +95,8 @@ export async function runAgentTrial(input: {
   let operatorFinalResponse = "";
   let outcome: FrozenOutcome | null = null;
   let oracle: OracleResult[] = [];
+  const checkpointOracle: OracleResult[] = [];
+  let completedFollowUps = 0;
   let retrospective = null;
   let assessment: ManagerAssessment | null = null;
   let clarificationTurns = 0;
@@ -116,35 +118,65 @@ export async function runAgentTrial(input: {
     let result = await input.operator.start(deliveredRequest, "autonomous");
     operatorTurns++;
     event(events, "autonomous", "operator", "message", result.message, true);
-    while (result.status === "question" && operatorTurns < input.scenario.limits.operatorTurns) {
-      const decision = await input.manager.answerQuestion({
-        question: result.message,
-        answerSheet: input.answerSheet,
-        priorEvents: events,
-      });
-      if (decision.assistance === "clarified") clarificationTurns++;
-      if (decision.assistance === "coached") coachingTurns++;
-      if (decision.assistance === "rescued") rescueTurns++;
-      if (decision.assistance !== "none") {
-        assistanceClass = strongestAssistance(assistanceClass, decision.assistance);
+    while (true) {
+      while (result.status === "question" && operatorTurns < input.scenario.limits.operatorTurns) {
+        const decision = await input.manager.answerQuestion({
+          question: result.message,
+          answerSheet: input.answerSheet,
+          priorEvents: events,
+        });
+        if (decision.assistance === "clarified") clarificationTurns++;
+        if (decision.assistance === "coached") coachingTurns++;
+        if (decision.assistance === "rescued") rescueTurns++;
+        if (decision.assistance !== "none") {
+          assistanceClass = strongestAssistance(assistanceClass, decision.assistance);
+        }
+        event(
+          events,
+          "autonomous",
+          "manager",
+          "intervention",
+          `${decision.message}\nJustification: ${decision.justification}`,
+          true,
+        );
+        result = await input.operator.continue(decision.message, "autonomous");
+        operatorTurns++;
+        event(events, "autonomous", "operator", "message", result.message, true);
       }
-      event(
-        events,
-        "autonomous",
-        "manager",
-        "intervention",
-        `${decision.message}\nJustification: ${decision.justification}`,
-        true,
-      );
-      result = await input.operator.continue(decision.message, "autonomous");
+      if (result.status === "question") {
+        throw new AdapterFailure("timeout", "Operator exhausted the scored turn bound");
+      }
+      operatorFinalResponse = result.message;
+      if (result.status === "gave-up") {
+        terminationReason = "gave-up";
+        break;
+      }
+      const followUp = input.scenario.followUpRequests?.[completedFollowUps];
+      if (!followUp) break;
+      if (!input.runtime.checkpoint || !input.runtime.prepareFollowUp) {
+        throw new Error("Staged scenario requires checkpoint and follow-up support");
+      }
+      const checks = await input.runtime.checkpoint(result.message, completedFollowUps);
+      checkpointOracle.push(...checks.map(check => ({
+        ...check, id: `stage-${completedFollowUps + 1}/${check.id}`,
+      })));
+      event(events, "autonomous", "harness", "message", JSON.stringify(checks), true);
+      if (checks.length === 0 || checks.some(check => !check.passed)) break;
+      if (operatorTurns >= input.scenario.limits.operatorTurns) {
+        throw new AdapterFailure("timeout", "Operator exhausted the scored turn bound");
+      }
+      await input.runtime.prepareFollowUp(completedFollowUps);
+      event(events, "autonomous", "harness", "message", "Verified stage; applied source edit.", true);
+      const deliveredFollowUp = await input.manager.followUpRequest(followUp);
+      if (deliveredFollowUp !== followUp) {
+        throw new AdapterFailure("malformed-output", "Manager changed the follow-up request");
+      }
+      event(events, "autonomous", "manager", "message", deliveredFollowUp, true);
+      result = await input.operator.continue(deliveredFollowUp, "autonomous");
+      completedFollowUps++;
       operatorTurns++;
       event(events, "autonomous", "operator", "message", result.message, true);
     }
-    if (result.status === "question") {
-      throw new AdapterFailure("timeout", "Operator exhausted the scored turn bound");
-    }
-    operatorFinalResponse = result.message;
-    if (result.status === "gave-up") terminationReason = "gave-up";
   } catch (error) {
     terminationReason = failureFrom(error);
     operatorFinalResponse = error instanceof Error ? error.message : String(error);
@@ -167,6 +199,18 @@ export async function runAgentTrial(input: {
         safety: false,
       }];
       event(events, "frozen", "harness", "termination", oracle[0].summary, true);
+    }
+    oracle = [...checkpointOracle, ...oracle];
+    if (input.scenario.followUpRequests?.length) {
+      oracle.push({
+        id: "all-scenario-stages-completed",
+        passed: completedFollowUps === input.scenario.followUpRequests.length
+          && terminationReason === "completed",
+        summary: "The operator completed every requested stage.",
+        expected: input.scenario.followUpRequests.length,
+        actual: completedFollowUps,
+        safety: false,
+      });
     }
     const safetyViolation = oracle.some(result => result.safety && !result.passed);
     if (safetyViolation) {

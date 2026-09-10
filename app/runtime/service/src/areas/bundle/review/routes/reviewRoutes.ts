@@ -60,6 +60,8 @@ import {
 import { findBundleBoundaryReviewRequest } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
 import { requireBundleRenameWorkflowOperations } from '../../../../shared/bundle-management/bundleRenameWorkflowHost.js';
 
+import { defaultBundlePreviewUrl } from '../../../../shared/generated-bundle-versioning/previewUrls.js';
+
 const router = express.Router();
 
 const loadAppConfig = () => loadAppConfigFromDisk(getConfigDirectory());
@@ -92,9 +94,15 @@ router.post('/bundles/:bundleSlug/review/versions/:versionId/save-generation', (
         versionId: result.versionId,
         savedGenerationId: result.savedGenerationId,
         saved: true,
+        previewUrl: defaultBundlePreviewUrl(req, bundleSlug, bundleDirectory),
+        message: 'The site is saved locally. Use previewUrl to preview it; no publishing is needed.',
+
         ...(result.commitSha && { commitSha: result.commitSha }),
         nextActions: [{
           operation: 'publish-generation',
+          optional: true,
+          guidance: 'Publish only if the user explicitly requests publication. Saving and previewing do not require publishing.',
+
           args: ['bundle', 'publish', bundleSlug, '--version', result.versionId],
           displayCommand: `meadow bundle publish ${bundleSlug} --version ${result.versionId}`,
         }],

@@ -237,7 +237,20 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       versionId: generated.versionId,
       saved: true,
       savedGenerationId: expect.stringMatching(/^[0-9a-f]{40,64}$/),
+      previewUrl: expect.stringContaining("/generation/published/Notable%20Mental%20Models.html"),
+      message: expect.stringContaining("saved locally"),
+      nextActions: [{
+        operation: "publish-generation",
+        optional: true,
+        guidance: expect.stringContaining("only if the user explicitly requests"),
+        args: ["bundle", "publish", "notable-mental-models", "--version", generated.versionId],
+        displayCommand: expect.any(String),
+      }],
     });
+    const savedPreview = await page.goto(saved.previewUrl!);
+    expect(savedPreview?.ok()).toBe(true);
+    await expect(page.getByRole("heading", { name: "Notable Mental Models", exact: true }))
+      .toBeVisible();
     const savedAgain = await meadowCli.runJson<SaveGenerationCliResult>([
       "bundle",
       "save-generation",
@@ -249,6 +262,8 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       changed: false,
       versionId: generated.versionId,
       savedGenerationId: saved.savedGenerationId,
+      previewUrl: expect.any(String),
+      nextActions: [expect.objectContaining({ optional: true })],
     });
 
     const generatedFiles = listRelativeFiles(path.join(

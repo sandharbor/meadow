@@ -119,6 +119,16 @@ export class CodexManagingAgent implements ManagingAgent {
     return output.value.message;
   }
 
+  async followUpRequest(exactRequest: string): Promise<string> {
+    const output = await this.process.resume([
+      "The harness verified the previous task and prepared the next user request.",
+      "Deliver this request verbatim, with no procedural advice or additional context.",
+      "Use kind=initial, assistance=none, empty summary and evidence, and null smallestMissingClue.",
+      "<exact-request>", exactRequest, "</exact-request>",
+    ].join("\n"));
+    return output.value.message;
+  }
+
   async answerQuestion(input: {
     question: string;
     answerSheet: string;

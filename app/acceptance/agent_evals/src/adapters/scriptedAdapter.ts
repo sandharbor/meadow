@@ -98,6 +98,10 @@ export class ScriptedManagingAgent implements ManagingAgent {
     return exactRequest;
   }
 
+  async followUpRequest(exactRequest: string): Promise<string> {
+    return exactRequest;
+  }
+
   async answerQuestion(_input: {
     question: string;
     answerSheet: string;
