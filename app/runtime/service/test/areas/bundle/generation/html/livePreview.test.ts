@@ -68,6 +68,7 @@ describe('live preview during atomic version generation', () => {
   let origin: string;
   let finish: ReturnType<typeof deferred>;
   let failRender: boolean;
+  let responseErrors: Error[];
   const selectedPage = 'nested/Selected page.html';
 
   beforeEach(async () => {
@@ -99,7 +100,12 @@ describe('live preview during atomic version generation', () => {
       fs.writeFileSync(path.join(options.outputDirectory, 'Last page.html'), '<h1>Last page</h1>');
     });
     const app = express();
+    responseErrors = [];
     app.use('/api', generationRoutes, reviewRoutes);
+    app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      responseErrors.push(error);
+      res.status(500).end();
+    });
     server = app.listen(0, '127.0.0.1');
     await new Promise<void>(resolve => server.once('listening', resolve));
     const address = server.address();
@@ -157,6 +163,23 @@ describe('live preview during atomic version generation', () => {
     for await (const event of events) remaining.push(event);
     expect(remaining.at(-1)?.stage).toBe(expected);
     expect(currentGeneratedBundleVersionDirectory(bundleDirectory) !== null).toBe(expected === 'complete');
+  });
+
+  it.each(['EPIPE', 'ECONNRESET', 'EIO'])('handles a streamed asset callback with %s before disconnect flags update', async code => {
+    const { events } = await openPreview();
+    const error = Object.assign(new Error(`Injected ${code}`), { code });
+    vi.spyOn(express.response, 'sendFile').mockImplementation(function (_file, optionsOrCallback, callback) {
+      expect(this.destroyed).toBe(false);
+      expect(this.req.aborted).toBe(false);
+      const done = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
+      done!(error);
+      if (!this.writableEnded) this.end();
+    });
+    const asset = await fetch(`${origin}/api/bundles/example/generation/published/_mw_assets/style.css`);
+    await asset.text();
+    expect(responseErrors).toEqual(code === 'EIO' ? [error] : []);
+    finish.resolve();
+    for await (const event of events) expect(event.stage).not.toBe('error');
   });
 
   it('serves complete HTML when generation grows a page before streaming starts', async () => {

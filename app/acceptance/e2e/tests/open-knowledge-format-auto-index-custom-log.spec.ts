@@ -48,6 +48,16 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
 }) => {
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
+  const optionsUrl = `/api/bundles/${Bundle.Big}/generation/open-knowledge-format/log-page-options?query=OKF&limit=200`;
+  const concurrentOptions = await Promise.all(
+    Array.from({ length: 6 }, () => page.request.get(optionsUrl)),
+  );
+  for (const response of concurrentOptions) {
+    expect(response.ok(), await response.text()).toBe(true);
+    const options = await response.json() as { pages: Array<{ title: string }> };
+    expect(options.pages.map(candidate => candidate.title)).toContain(chosenLogPageName);
+    expect(options.pages.map(candidate => candidate.title)).not.toContain(orphanLogSubstitutePageName);
+  }
   const modal = new PreviewPublishModal(page, expect);
   await snapshot("preview loaded");
 

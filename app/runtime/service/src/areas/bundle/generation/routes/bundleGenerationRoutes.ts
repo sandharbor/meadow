@@ -211,15 +211,19 @@ router.get('/bundles/:bundleSlug/generation/open-knowledge-format/log-page-optio
       return res.status(404).json({ error: `Bundle '${bundleSlug}' not found` });
     }
 
-    const bundleConfig = loadBundleConfig(bundleDirectory);
-    if (bundleConfig.sourceDirectory) {
-      await withSourcingLock(bundleDirectory, () => ensureTrackedPageContent(bundleDirectory, acceptedSourceRoot(bundleDirectory)));
-    }
-
     const rawQuery = typeof req.query.query === 'string' ? req.query.query : '';
     const parsedLimit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : NaN;
     const limit = !Number.isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
-    res.json(await getOpenKnowledgeFormatLogPageOptions(bundleDirectory, { query: rawQuery, limit }));
+    const options = await withSourcingLock(bundleDirectory, async () => {
+      const bundleConfig = loadBundleConfig(bundleDirectory);
+      if (bundleConfig.sourceDirectory) {
+        await ensureTrackedPageContent(bundleDirectory, acceptedSourceRoot(bundleDirectory));
+      }
+      // Keep the graph read under the lock: another request can replace the
+      // tracked content tree while the native graph process is reading it.
+      return await getOpenKnowledgeFormatLogPageOptions(bundleDirectory, { query: rawQuery, limit });
+    });
+    res.json(options);
   })().catch(next);
 });
 
@@ -900,7 +904,10 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
         }
         return;
       }
-      if (fileError.code === 'ECONNABORTED' || req.aborted || res.destroyed) {
+      // Socket write failures can reach sendFile before the request/response
+      // close flags update when a reader navigates away from a streamed asset.
+      if (fileError.code === 'ECONNABORTED' || fileError.code === 'EPIPE'
+        || fileError.code === 'ECONNRESET' || req.aborted || res.destroyed) {
         return;
       }
       next(error);
