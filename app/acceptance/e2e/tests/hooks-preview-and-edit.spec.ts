@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { test, expect } from "../src/run/test-fixtures.js";
-import { BundleListPage, BundleEditorPage, PreviewPublishModal, CustomizeTab } from "../src/run/pages/index.js";
+import { BundleListPage, BundleEditorPage, PreviewPublishModal, CustomizeTab, ChangesTab } from "../src/run/pages/index.js";
 import { htmlGeneration, hooks } from "../../../concepts/index.js";
 import { hooksBundle } from "../src/bundle-docs/index.js";
 
@@ -62,14 +62,15 @@ test("Hooks preview shows normalized title and editing hook updates it", async (
   await snapshot("hook content modified");
 
   // Save the hook — this triggers preview regeneration via SSE stream.
-  // Wait for the preview-stream EventSource response to arrive so that
-  // the new preview content is fully generated before the iframe reloads,
-  // avoiding transient 404s from the old iframe fetching replaced resources.
-  const previewStreamDone = page.waitForResponse(
+  // Response headers mark the start of generation. The updated heading can
+  // appear while output is still staging, so also wait for regeneration to
+  // finish before teardown captures the generated files.
+  const previewStreamStarted = page.waitForResponse(
     (resp) => resp.url().includes("/preview-stream")
   );
   await pageTitleHook.save();
-  await previewStreamDone;
+  await previewStreamStarted;
+  await new ChangesTab(page, expect).waitForRegenerationComplete();
   await snapshot("hook saved - preview regenerated");
 
   // Verify the updated heading (sidebar is alongside the preview, iframe is already visible)
