@@ -12,13 +12,25 @@ const projectRoot = fileURLToPath(new URL('../../../../../', import.meta.url));
 const sourceGraph = 'meadow-test-bundles-data';
 const moved = 't001/deeper/t001 ---- child 2.md';
 
-function session(t: test.TestContext) {
+function session(t: test.TestContext, excludeRelativePaths?: readonly string[]) {
   const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-source-changes-')));
   t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
   const sourceGraphsDir = path.join(temporary, 'source_graphs');
-  const root = materializeSourceGraph({ projectRoot, sourceGraphsDir, sourceGraph });
+  const root = materializeSourceGraph({ projectRoot, sourceGraphsDir, sourceGraph, excludeRelativePaths });
   return { root, sourceGraphsDir, projectRoot, sourceGraph };
 }
+
+test('a filtered session omits the oversized image while the complete fixture remains available', t => {
+  const image = 't006/t006 --- too-big.png';
+  const filtered = session(t, [image]);
+  assert.equal(fs.existsSync(path.join(filtered.root, image)), false);
+  assert.equal(fs.existsSync(path.join(filtered.root, 't006/t006 --- meadow.png')), true);
+  const complete = session(t);
+  assert.deepEqual(
+    fs.readFileSync(path.join(complete.root, image)),
+    fs.readFileSync(path.join(projectRoot, 'app/shared_data/source_graphs', sourceGraph, image)),
+  );
+});
 
 test('every big-graph source change applies to a clean session and leaves the canonical graph intact', t => {
   const changes = loadSourceChanges(projectRoot, sourceGraph);

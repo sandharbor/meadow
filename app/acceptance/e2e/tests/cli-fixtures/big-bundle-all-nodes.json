@@ -1886,27 +1886,6 @@
       "isFrontierImageExtension": false
     },
     {
-      "bundleNodeKey": "t006/t006 --- too-big.png",
-      "bundleNodeKind": "file",
-      "label": "t006 --- too-big",
-      "bundleNodeName": "t006 --- too-big",
-      "sourceGraphSubdirectory": "t006",
-      "fileType": "png",
-      "tracked": false,
-      "blacklisted": false,
-      "sensitive": false,
-      "depth": 2,
-      "remaining_depth": 2,
-      "remaining_inlinks_depth": 98,
-      "path": [
-        "/main page.md",
-        "/t006 - embedded media.md",
-        "t006/t006 --- too-big.png"
-      ],
-      "isFrontierNode": false,
-      "isFrontierImageExtension": false
-    },
-    {
       "bundleNodeKey": "t010/t010 ---- same depth 1 - 2 out 0 in.md",
       "bundleNodeId": "a0ac819282f6",
       "bundleNodeKind": "file",
@@ -3760,12 +3739,6 @@
     {
       "source": "/t006 - embedded media.md",
       "target": "t006/t006 --- page that embeds Excalidraw in another directory.md",
-      "bundleEdgeKind": "semanticLink",
-      "isBidirectional": false
-    },
-    {
-      "source": "/t006 - embedded media.md",
-      "target": "t006/t006 --- too-big.png",
       "bundleEdgeKind": "semanticLink",
       "isBidirectional": false
     },

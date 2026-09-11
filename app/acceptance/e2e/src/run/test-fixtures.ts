@@ -223,15 +223,33 @@ function populateConfigDir(
   configDir: string,
   fixtureName = "home_fixture_big_and_small",
   isolateSourceGraphs = false,
+  includeOversizedImage = false,
 ): string {
   const appDir = path.join(configDir, "app");
   const sharedSourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
-  const sourceGraphsDir = isolateSourceGraphs
+  // Filtering needs a private copy so the checked-in fixture stays complete.
+  const copySourceGraphs = isolateSourceGraphs || !includeOversizedImage;
+  const sourceGraphsDir = copySourceGraphs
     ? path.join(configDir, "source_graphs")
     : sharedSourceGraphsDir;
   mkdirSync(appDir, { recursive: true });
+  const prepareSourceGraph = (sourceGraph: string) => {
+    if (copySourceGraphs) {
+      materializeSourceGraph({
+        projectRoot: REPO_ROOT,
+        sourceGraphsDir,
+        sourceGraph,
+        excludeRelativePaths: !includeOversizedImage && sourceGraph === "meadow-test-bundles-data"
+          ? ["t006/t006 --- too-big.png"]
+          : [],
+      });
+    }
+    return path.join(sourceGraphsDir, sourceGraph);
+  };
 
   if (fixtureName === "none") {
+    // Empty-home scenarios can still create bundles from the big source fixture.
+    prepareSourceGraph("meadow-test-bundles-data");
     writeFileSync(path.join(appDir, "app_config.yaml"), "version: 1.0.0\n", "utf8");
     return sourceGraphsDir;
   }
@@ -278,10 +296,7 @@ function populateConfigDir(
 
       if (config.sourceDirectory && typeof config.sourceDirectory === "string") {
         const sourceFolder = path.basename(config.sourceDirectory);
-        if (isolateSourceGraphs) {
-          materializeSourceGraph({ projectRoot: REPO_ROOT, sourceGraphsDir, sourceGraph: sourceFolder });
-        }
-        config.sourceDirectory = path.join(sourceGraphsDir, sourceFolder);
+        config.sourceDirectory = prepareSourceGraph(sourceFolder);
       }
 
       writeFileSync(bundleConfigPath, YAML.stringify(config), "utf8");
@@ -501,6 +516,8 @@ export const test = base.extend<{
   fixtureHome: string;
   /** Copy configured source graphs into the test's temporary home before launch. */
   isolateSourceGraphs: boolean;
+  /** Include the large PNG fixture only for scenarios that exercise image size limits. */
+  includeOversizedImage: boolean;
   trackBigBundleExcalidrawPages: boolean;
   recordVideo: boolean;
   testServer: TestServer;
@@ -570,6 +587,7 @@ export const test = base.extend<{
   serialGroup: [null, { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   isolateSourceGraphs: [false, { option: true }],
+  includeOversizedImage: [false, { option: true }],
   sourceChanges: async ({ testServer, isolateSourceGraphs }, use, testInfo) => {
     await use({ apply: async (changeId, sourceGraph = 'meadow-test-bundles-data') => {
       if (!isolateSourceGraphs) throw new Error('Source changes require isolateSourceGraphs: true');
@@ -631,7 +649,7 @@ export const test = base.extend<{
   },
 
   testServer: [
-    async ({ fixtureHome, isolateSourceGraphs, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
+    async ({ fixtureHome, isolateSourceGraphs, includeOversizedImage, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
       const workerIndex = testInfo.parallelIndex;
       const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
 
@@ -643,7 +661,7 @@ export const test = base.extend<{
       }).trim();
 
       // 2. Populate fixture data
-      const sourceGraphsDir = populateConfigDir(configDir, fixtureHome, isolateSourceGraphs);
+      const sourceGraphsDir = populateConfigDir(configDir, fixtureHome, isolateSourceGraphs, includeOversizedImage);
       if (shouldTrackBigBundleExcalidrawPages) {
         trackBigBundleExcalidrawPages(configDir);
       }

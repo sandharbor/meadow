@@ -207,27 +207,6 @@
       ],
       "isFrontierNode": false,
       "isFrontierImageExtension": false
-    },
-    {
-      "bundleNodeKey": "t006/t006 --- too-big.png",
-      "bundleNodeKind": "file",
-      "label": "t006 --- too-big",
-      "bundleNodeName": "t006 --- too-big",
-      "sourceGraphSubdirectory": "t006",
-      "fileType": "png",
-      "tracked": false,
-      "blacklisted": false,
-      "sensitive": false,
-      "depth": 2,
-      "remaining_depth": 2,
-      "remaining_inlinks_depth": 98,
-      "path": [
-        "/main page.md",
-        "/t006 - embedded media.md",
-        "t006/t006 --- too-big.png"
-      ],
-      "isFrontierNode": false,
-      "isFrontierImageExtension": false
     }
   ],
   "edges": [

@@ -36,7 +36,7 @@ test("mix filters intersects soloed untracked and sensitive filters in graph and
   const filterPanel = new FilterPanelComponent(page, expect);
 
   await filterPanel.enableAndSoloFilter("Untracked");
-  await editor.expectGraphViewPageCount(11);
+  await editor.expectGraphViewPageCount(10);
   await filterPanel.expectMixFiltersHidden();
   await snapshot("untracked filter soloed without mix filters");
 

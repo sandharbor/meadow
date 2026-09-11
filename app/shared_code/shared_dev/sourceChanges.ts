@@ -105,8 +105,15 @@ function assertSessionDestination(projectRoot: string, sourceGraphsDir: string):
 }
 
 /** Materialize one graph per session; bundles using the same graph share its mutable copy. */
-export function materializeSourceGraph(options: { projectRoot: string; sourceGraphsDir: string; sourceGraph: string }): string {
+export function materializeSourceGraph(options: {
+  projectRoot: string;
+  sourceGraphsDir: string;
+  sourceGraph: string;
+  /** Paths relative to this graph to omit when first creating its session copy. */
+  excludeRelativePaths?: readonly string[];
+}): string {
   const { projectRoot, sourceGraphsDir, sourceGraph } = options;
+  const excludedPaths = new Set(options.excludeRelativePaths ?? []);
   assertSessionDestination(projectRoot, sourceGraphsDir);
   const source = sourceFixtureRoot(projectRoot, sourceGraph);
   const destination = safePath(sourceGraphsDir, sourceGraph);
@@ -123,6 +130,7 @@ export function materializeSourceGraph(options: { projectRoot: string; sourceGra
       if (entry.name === '.DS_Store' || entry.name.endsWith('.pagespec.yaml')) continue;
       if (entry.isSymbolicLink()) throw new Error(`Source graph fixture contains a symlink: ${entry.name}`);
       const input = path.join(from, entry.name);
+      if (excludedPaths.has(path.relative(source, input).split(path.sep).join('/'))) continue;
       const output = path.join(to, entry.name);
       if (entry.isDirectory()) copy(input, output);
       else if (entry.isFile()) fs.writeFileSync(output, fixtureBytes(input), { mode: fs.statSync(input).mode & 0o777 });

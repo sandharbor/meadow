@@ -33,6 +33,8 @@ test("Delete unpublished bundle from within bundle editor", async ({
 
   const editor = new BundleEditorPage(page, expect);
   const deleteModal = new DeleteBundleModal(page, expect);
+  // Finish the initial fixture review before exercising bundle deletion.
+  await editor.waitForSourceCheck();
 
   // Open bundle options menu and click Delete bundle
   await editor.clickBundleOptionsMenu();
