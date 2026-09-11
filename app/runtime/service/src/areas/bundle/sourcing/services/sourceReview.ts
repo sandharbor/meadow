@@ -278,7 +278,11 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
   await withSourcingLock(bundleDirectory, async () => {
     const state = loadSourcingState(bundleDirectory)!;
     const token = sha256(`${state.acceptedId}\0${state.candidateId ?? ''}\0${sourceConfigFingerprint(bundleDirectory)}`);
-    if (request.reviewToken !== token || review.reviewToken !== token || (state.candidateId ?? state.acceptedId) !== request.candidateId) throw new SourcingError('This review is stale. Reopen source review before applying.');
+    if (request.reviewToken !== token || review.reviewToken !== token) throw new SourcingError('This review is stale. Reopen source review before applying.');
+    const reviewedSnapshotId = state.candidateId ?? state.acceptedId;
+    if (reviewedSnapshotId !== request.candidateId) {
+      throw new SourcingError(`Snapshot '${request.candidateId}' does not match the reviewed snapshot '${reviewedSnapshotId}'. Copy the snapshot ID and review token exactly from source review before applying.`);
+    }
     if (fs.existsSync(path.join(bundleDirectory, 'config/draft_bundle_node_config.yaml'))) throw new SourcingError('Save or undo curation changes before accepting a source update.');
     if (request.orphanRemovals !== undefined && request.orphanKeeps !== undefined) throw new SourcingError('Choose either orphan removals or retained entries, not both.', 400);
     const removals = new Set(request.orphanRemovals ?? []);

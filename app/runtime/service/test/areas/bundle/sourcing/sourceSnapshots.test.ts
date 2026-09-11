@@ -362,6 +362,21 @@ describe('source snapshots with the shared big graph', () => {
     expect(loadSourcingState(bundle)?.acceptedId).toBe(pending.accepted.id);
   });
 
+  it('identifies a mistyped snapshot without applying it and accepts the exact reviewed ID', async () => {
+    await initializeSourcing(bundle);
+    change('replace-section-page');
+    const pending = await scanSourceChanges(bundle);
+    const candidateId = pending.candidate!.id;
+    const request = { candidateId, reviewToken: pending.reviewToken, resolutions: {} };
+    const before = loadSourcingState(bundle);
+    await expect(acceptSourceSnapshot(bundle, { ...request, candidateId: `${candidateId}8` }))
+      .rejects.toThrow(`Snapshot '${candidateId}8' does not match the reviewed snapshot '${candidateId}'`);
+    expect(loadSourcingState(bundle)).toEqual(before);
+    const accepted = await acceptSourceSnapshot(bundle, request);
+    expect(accepted.accepted.id).toBe(candidateId);
+    expect(accepted.candidate).toBeUndefined();
+  });
+
   it('rejects stale reviews, altered captures, and paths outside the snapshot', async () => {
     await initializeSourcing(bundle);
     change('rename-page-with-links');

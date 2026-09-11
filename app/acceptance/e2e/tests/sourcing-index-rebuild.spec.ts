@@ -18,7 +18,10 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForSourceCheck();
   await page.clock.install();
-  await page.clock.pauseAt(Date.now());
+  const pausedAt = Date.now();
+  // Freeze wall time before pausing timers so protocol latency cannot put the target in the past.
+  await page.clock.setFixedTime(pausedAt);
+  await page.clock.pauseAt(pausedAt);
   const bundle = path.join(testServer.configDir, 'bundles/meadow-test-bundle-big');
   const config = YAML.parse(fs.readFileSync(path.join(bundle, 'config/bundle_config.yaml'), 'utf8')) as { sourceDirectory: string };
   const root = fs.realpathSync(config.sourceDirectory);
