@@ -298,6 +298,10 @@ Generates or regenerates the bundle's current working version. The JSON result
 contains a versionId, saved: false, and a bundle-scoped read-only previewUrl.
 It does not expose Meadow Home or generated-file paths.
 
+Copy previewUrl verbatim when sharing the preview. Preserve its encoded path
+and complete query string, including every character of meadowPreviewToken;
+shortening or reconstructing the URL invalidates access to the preview.
+
 Generation and saving are deliberately separate. Use the returned nextActions
 or run 'meadow bundle save-generation <slug> --version <version-id>'.
 
