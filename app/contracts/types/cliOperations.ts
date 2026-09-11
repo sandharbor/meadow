@@ -99,7 +99,7 @@ export const CLI_MUTATION_BEHAVIORS = {
     idempotency: 'provider-defined',
     staleWrite: 'provider-defined',
     details: [
-      'Meadow passes the explicit saved version and a distinct operationId to the active provider; external commit, retry, and stale-write behavior are declared by that provider.',
+      'Meadow passes the explicit saved version and a distinct operationId to the selected provider; external commit, retry, and stale-write behavior are declared by that provider.',
     ],
   },
   archiveBundle: {

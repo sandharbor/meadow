@@ -21,10 +21,14 @@ import type {
   CleanupPublishedBundleResult,
   IPublishingProviderBackend,
   PrepareBundleRenamePublicationOptions,
+  PublishGeneratedBundleOptions,
+  PublishGeneratedBundleResult,
 } from '../../../runtime/service/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
+import { PublishingProviderOperationError } from '../../../runtime/service/src/shared/publishing-provider-host/IPublishingProviderBackend.js';
+import { publishS3Version } from './internal/publishVersion.js';
 import { registerS3Routes } from './internal/routes/registerS3Routes.js';
 import { cleanupS3PublishedFiles } from './internal/cleanupPublishedBundle.js';
-import { loadS3ConfigForBundle, loadS3Resources, S3_PROVIDER_ID } from './internal/s3Config.js';
+import { loadS3ConfigForBundle, loadS3Resources, normalizeWebBaseUrl, S3_PROVIDER_ID } from './internal/s3Config.js';
 import {
   ensureS3PublicationRevision,
   getS3PublicationSummary,
@@ -57,6 +61,24 @@ async function cleanupPublishedBundle(
   options: CleanupPublishedBundleOptions,
 ): Promise<CleanupPublishedBundleResult> {
   return cleanupS3PublishedFiles(options);
+}
+
+async function publishGeneratedBundle(options: PublishGeneratedBundleOptions): Promise<PublishGeneratedBundleResult> {
+  if (!normalizeWebBaseUrl(loadS3Resources().webBaseUrl)) {
+    throw new PublishingProviderOperationError({
+      statusCode: 400,
+      code: 'PUBLIC_URL_NOT_CONFIGURED',
+      message: 'Configure an S3 web base URL before publishing through the CLI',
+    });
+  }
+  const result = await publishS3Version(options);
+  return {
+    providerInstanceId: result.providerInstanceId,
+    versionId: result.versionId,
+    savedGenerationId: result.savedGenerationId,
+    url: result.publishedUrl!,
+    changed: true,
+  };
 }
 
 function getBundleRenamePublicationPlan(bundleSlug: string) {
@@ -99,6 +121,7 @@ const s3Provider: IPublishingProviderBackend = {
     registerS3Routes(app);
   },
   isBundlePublished,
+  publishGeneratedBundle,
   getBundlePublicationSummaries: getS3PublicationSummary,
   cleanupPublishedBundle,
   getBundleRenamePublicationPlan,

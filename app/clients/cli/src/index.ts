@@ -740,54 +740,11 @@ async function saveBundleGeneration(options: BundleVersionOptions): Promise<void
 
 async function publishBundle(options: BundlePublishOptions): Promise<void> {
   console.error(`meadow: publishing version '${options.versionId}' for bundle '${options.slug}'...`);
-  if (options.providerId) {
-    const providerRoot = `/sharing/publishing-providers/${encodeURIComponent(options.providerId)}/bundles/${encodeURIComponent(options.slug)}`;
-    await requestJson(resolveSession(), `${providerRoot}/provider-config`);
-    const response = await requestJson(
-      resolveSession(),
-      `${providerRoot}/publish`,
-      "POST",
-      { versionId: options.versionId },
-    );
-    if (typeof response !== "object" || response === null || (response as { success?: unknown }).success !== true) {
-      throw new Error("Meadow returned an invalid provider publication response.");
-    }
-    const published = response as Record<string, unknown>;
-    const url = typeof published.publishedUrl === "string"
-      ? published.publishedUrl
-      : typeof published.bundleUrl === "string" ? published.bundleUrl : null;
-    const savedGenerationId = typeof published.savedGenerationId === "string" ? published.savedGenerationId : null;
-    if (!url || !savedGenerationId || published.versionId !== options.versionId) {
-      throw new Error("Meadow returned an incomplete provider publication response.");
-    }
-    const state = await requestJson(
-      resolveSession(),
-      `/sharing/publishing-providers/${encodeURIComponent(options.providerId)}/bundles/${encodeURIComponent(options.slug)}/publication-state?versionId=${encodeURIComponent(options.versionId)}`,
-    ) as { providerInstanceId?: unknown };
-    if (typeof state.providerInstanceId !== "string") {
-      throw new Error("Meadow returned publication state without a provider instance.");
-    }
-    console.log(JSON.stringify({
-      schemaVersion: 1,
-      operation: "bundle.publish",
-      slug: options.slug,
-      versionId: options.versionId,
-      savedGenerationId,
-      changed: typeof published.changed === "boolean" ? published.changed : true,
-      provider: { id: options.providerId, instanceId: state.providerInstanceId },
-      url,
-      identityCreated: typeof published.identityCreated === "boolean" ? published.identityCreated : null,
-      remainingAllowance: typeof published.remainingAllowance === "number"
-        ? published.remainingAllowance
-        : null,
-    }, null, 2));
-    return;
-  }
   const response = await requestJson(
     resolveSession(),
     `/bundles/${encodeURIComponent(options.slug)}/sharing/publish`,
     "POST",
-    { versionId: options.versionId },
+    { versionId: options.versionId, ...(options.providerId ? { providerId: options.providerId } : {}) },
   );
   if (
     typeof response !== "object"

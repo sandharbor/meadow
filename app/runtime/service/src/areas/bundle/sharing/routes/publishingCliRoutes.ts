@@ -26,7 +26,7 @@ import {
 import {
   PublishingProviderOperationError,
 } from '../../../../shared/publishing-provider-host/IPublishingProviderBackend.js';
-import { getActiveBackendProviders } from '../../../../shared/publishing-provider-host/providerRegistry.js';
+import { getActiveBackendProviders, getAllBackendProviders } from '../../../../shared/publishing-provider-host/providerRegistry.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 const router = express.Router();
@@ -70,8 +70,28 @@ router.post('/bundles/:bundleSlug/sharing/publish', (req, res) => {
       return;
     }
 
-    const activeProviders = getActiveBackendProviders();
-    if (activeProviders.length === 0) {
+    const providerId = (req.body as { providerId?: unknown } | undefined)?.providerId;
+    if (providerId !== undefined && (typeof providerId !== 'string' || providerId.trim().length === 0)) {
+      sendError(res, 400, {
+        code: 'INVALID_PUBLISH_REQUEST',
+        error: 'providerId must be a non-empty string when supplied',
+        nextActions: ["Run 'meadow bundle publish --help' for the supported arguments."],
+      });
+      return;
+    }
+
+    const providers = providerId === undefined
+      ? getActiveBackendProviders()
+      : getAllBackendProviders().filter(provider => provider.manifest.id === providerId);
+    if (providerId !== undefined && providers.length === 0) {
+      sendError(res, 404, {
+        code: 'PUBLISHING_PROVIDER_NOT_FOUND',
+        error: `Publishing provider '${providerId}' is not installed`,
+        nextActions: ["Run 'meadow providers list' and select an installed provider."],
+      });
+      return;
+    }
+    if (providers.length === 0) {
       sendError(res, 409, {
         code: 'NO_ACTIVE_PUBLISHING_PROVIDER',
         error: 'No publishing provider is active',
@@ -79,21 +99,21 @@ router.post('/bundles/:bundleSlug/sharing/publish', (req, res) => {
       });
       return;
     }
-    if (activeProviders.length > 1) {
+    if (providers.length > 1) {
       sendError(res, 409, {
         code: 'MULTIPLE_ACTIVE_PUBLISHING_PROVIDERS',
         error: 'More than one publishing provider is active',
-        details: `Active providers: ${activeProviders.map(provider => provider.manifest.id).join(', ')}`,
-        nextActions: ['Leave exactly one publishing provider active, then retry the command.'],
+        details: `Active providers: ${providers.map(provider => provider.manifest.id).join(', ')}`,
+        nextActions: ['Pass --provider with an installed provider ID, or leave exactly one publishing provider active.'],
       });
       return;
     }
 
-    const provider = activeProviders[0];
+    const provider = providers[0];
     if (!provider.publishGeneratedBundle) {
       sendError(res, 409, {
         code: 'PUBLISHING_PROVIDER_CLI_UNSUPPORTED',
-        error: `The active publishing provider '${provider.manifest.displayName}' does not support command-line publishing`,
+        error: `The selected publishing provider '${provider.manifest.displayName}' does not support command-line publishing`,
         nextActions: ['Use the provider publishing interface or activate a provider that supports this command.'],
       });
       return;
