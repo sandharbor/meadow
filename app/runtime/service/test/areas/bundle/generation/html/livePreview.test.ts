@@ -182,24 +182,25 @@ describe('live preview during atomic version generation', () => {
     for await (const event of events) expect(event.stage).not.toBe('error');
   });
 
-  it('serves complete HTML when generation grows a page before streaming starts', async () => {
-    const { events, url } = await openPreview();
+  it.each([
+    { filename: selectedPage, before: '<html><head></head><body><h1>Selected page</h1></body></html>', after: '<html><head><meta name="generation-metadata" content="added after the first page is ready"></head><body><h1>Selected page</h1></body></html>' },
+    { filename: 'Drawing.excalidraw.md', before: '# Drawing\n' + 'old drawing content\n'.repeat(100), after: '# Drawing\nUpdated drawing content\n' },
+  ])('serves complete $filename when generation rewrites it before streaming starts', async ({ filename, before, after }) => {
+    const { events } = await openPreview();
     const options = vi.mocked(generateHtmlForBundle).mock.calls.at(-1)![1];
-    const livePagePath = path.join(options.outputDirectory, selectedPage);
-    const before = '<html><head></head><body><h1>Selected page</h1></body></html>';
-    const after = before.replace('</head>', '<meta name="generation-metadata" content="added after the first page is ready"></head>');
+    const livePagePath = path.join(options.outputDirectory, filename);
     fs.writeFileSync(livePagePath, before);
 
-    // sendFile stats the path before opening its stream. Reproduce the renderer
-    // adding version metadata in that gap, so the old byte count is too small.
+    // sendFile stats the path before opening its stream. Reproduce a rewrite
+    // in that gap, leaving the Content-Length too small or too large.
     const createReadStream = fs.createReadStream;
     vi.spyOn(fs, 'createReadStream').mockImplementation((file, streamOptions) => {
       if (file === livePagePath) fs.writeFileSync(livePagePath, after);
       return createReadStream(file, streamOptions);
     });
-    const html = await (await fetch(url)).text();
-    expect([before, after]).toContain(html);
-    expect(html).toContain('<h1>Selected page</h1></body></html>');
+    const url = `${origin}/api/bundles/example/generation/published/${encodeURIComponent(filename)}`;
+    const content = await (await fetch(url)).text();
+    expect([before, after]).toContain(content);
     finish.resolve();
     for await (const event of events) {
       expect(event.stage).not.toBe('error');

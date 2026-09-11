@@ -841,12 +841,13 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
     }
 
     // Set appropriate content type based on file extension
-    if (filename.endsWith('.html')) {
-      res.setHeader('Content-Type', 'text/html');
+    if (filename.endsWith('.html') || filename.endsWith('.excalidraw.md')) {
+      res.setHeader('Content-Type', filename.endsWith('.html') ? 'text/html' : 'text/markdown');
       if (isPreviewGenerationActive(bundleSlug)) {
-        // Rendering can append version metadata while this page is served.
-        // Snapshot live HTML: sendFile's separate stat/read can otherwise send
-        // a new document using its old Content-Length and truncate the preview.
+        // Rendering can rewrite HTML metadata and copied drawing sources.
+        // Snapshot mutable live documents: sendFile's separate stat/read can
+        // otherwise send new bytes with an old Content-Length, truncating or
+        // stalling the response while the preview is already visible.
         return res.send(fs.readFileSync(filePath));
       }
     } else if (filename.endsWith('.css')) {
