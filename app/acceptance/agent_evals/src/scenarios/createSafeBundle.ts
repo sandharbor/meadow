@@ -77,11 +77,11 @@ export const EXPECTED_GENERATED_CONTENT_ASSETS = [
 export const CREATE_SAFE_BUNDLE_SCENARIO: AgentEvalScenario = {
   schemaVersion: 1,
   id: "create-safe-bundle",
-  version: 3,
+  version: 4,
   title: "Create, curate, generate, and save from an empty Meadow Home",
   baseRequestTemplate: [
     "Make and save a site from my notes in `<source-directory>`, starting with",
-    "`Notable Mental Models.md`. Keep the usual settings and include everything safe to share.",
+    "`Notable Mental Models.md`. Keep the usual settings and include everything Meadow considers safe to share.",
     "Give me a link to preview the site.",
   ].join(" "),
   publishingRequestAddition:

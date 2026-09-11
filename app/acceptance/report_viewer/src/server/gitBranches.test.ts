@@ -6,6 +6,8 @@ import path from 'node:path';
 import { createGitBranchFixture } from '../../e2e/fixtures/git-branch-fixture';
 import { readGitBranches } from './gitBranches';
 
+// Real Git processes and collection compete with the other checks in a full run.
+// Give this filesystem integration test its own budget instead of the unit default.
 test('branch replay uses observed ticks and preserves replaced candidates through Git collection', () => {
   const directory = mkdtempSync(path.join(os.tmpdir(), 'meadow-branch-test-'));
   try {
@@ -25,4 +27,4 @@ test('branch replay uses observed ticks and preserves replaced candidates throug
     writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify(manifest));
     expect(readGitBranches(directory, f.candidate).inferredTiming).toBe(true);
   } finally { rmSync(directory, { recursive: true, force: true }); }
-});
+}, 15_000);
