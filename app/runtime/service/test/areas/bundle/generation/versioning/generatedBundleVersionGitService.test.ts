@@ -162,21 +162,28 @@ describe('generated bundle version Git identity and integrity', () => {
       ]);
   });
 
-  it('compares a thousand files without blocking the event loop and preserves unusual filenames', async () => {
-    for (let index = 0; index < 1000; index++) {
-      fs.writeFileSync(path.join(versionDirectory, `page-${index}.html`), `<h1>${index}</h1>`);
-    }
+  describe('large generated trees', () => {
     const unusualPath = 'nested/quoted "page" with\nnewline and naïve.html';
-    fs.writeFileSync(path.join(versionDirectory, unusualPath), 'before');
-    commitAll('save large generation');
-    fs.writeFileSync(path.join(versionDirectory, unusualPath), 'after');
 
-    let eventLoopServiced = false;
-    setTimeout(() => { eventLoopServiced = true; }, 0);
-    const changes = await compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, {
-      workingCurrentVersionId: VERSION_ID,
+    // Creating and committing the fixture is disk-intensive under parallel
+    // quickcheck load. Keep setup outside the comparison's test deadline.
+    beforeEach(() => {
+      for (let index = 0; index < 1000; index++) {
+        fs.writeFileSync(path.join(versionDirectory, `page-${index}.html`), `<h1>${index}</h1>`);
+      }
+      fs.writeFileSync(path.join(versionDirectory, unusualPath), 'before');
+      commitAll('save large generation');
+      fs.writeFileSync(path.join(versionDirectory, unusualPath), 'after');
     });
-    expect(eventLoopServiced).toBe(true);
-    expect(changes).toEqual([{ status: 'modified', relativePath: unusualPath }]);
+
+    it('compares a thousand files without blocking the event loop and preserves unusual filenames', async () => {
+      let eventLoopServiced = false;
+      setTimeout(() => { eventLoopServiced = true; }, 0);
+      const changes = await compareGeneratedBundleVersionTrees(bundleDirectory, VERSION_ID, {
+        workingCurrentVersionId: VERSION_ID,
+      });
+      expect(eventLoopServiced).toBe(true);
+      expect(changes).toEqual([{ status: 'modified', relativePath: unusualPath }]);
+    });
   });
 });
