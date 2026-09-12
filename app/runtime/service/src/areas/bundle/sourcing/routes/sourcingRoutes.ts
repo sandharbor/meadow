@@ -36,6 +36,7 @@ router.post('/bundles/:bundleSlug/sourcing/scan', handle(req => {
 router.post('/bundles/:bundleSlug/sourcing/accept', handle(req => {
   const body = (req.body ?? {}) as Partial<SourceSnapshotAcceptance>;
   if (typeof body.candidateId !== 'string' || typeof body.reviewToken !== 'string'
+    || (body.trackNewPages !== undefined && typeof body.trackNewPages !== 'boolean')
     || !body.resolutions || typeof body.resolutions !== 'object' || Array.isArray(body.resolutions)
     || Object.values(body.resolutions).some(value => value !== null && typeof value !== 'string')
     || (body.orphanKeeps !== undefined && (!Array.isArray(body.orphanKeeps) || body.orphanKeeps.some(id => typeof id !== 'string')))

@@ -16,6 +16,19 @@ export class SourceReviewModal {
     return this.page.getByRole('dialog', { name: 'Source changes', exact: true });
   }
 
+  private get trackNewPagesCheckbox() {
+    return this.dialog.getByRole('checkbox', { name: 'Track new pages', exact: true });
+  }
+
+  async expectTrackNewPages(checked: boolean) {
+    await this.expect(this.trackNewPagesCheckbox).toBeVisible();
+    await this.expect(this.trackNewPagesCheckbox).toBeChecked({ checked });
+  }
+
+  async setTrackNewPages(checked: boolean) {
+    await this.trackNewPagesCheckbox.setChecked(checked);
+  }
+
   private changeDisclosure(path: string) {
     return this.dialog.getByRole('region', { name: 'Source content changes', exact: true })
       .locator(`summary[aria-label=${JSON.stringify(`Details ${path}`)}]`);

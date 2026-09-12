@@ -46,6 +46,8 @@ export interface SourceOrphanExplanation {
 }
 
 export interface SourcingReview {
+  /** Bundle preference for tracking additions on acceptance; defaults to true. */
+  trackNewPages?: boolean;
   accepted: SourceSnapshotSummary;
   candidate?: SourceSnapshotSummary;
   moves: SourceMoveCandidate[];
@@ -56,6 +58,8 @@ export interface SourcingReview {
 }
 
 export interface SourceSnapshotAcceptance {
+  /** Override and save this bundle’s preference when accepting the update. */
+  trackNewPages?: boolean;
   candidateId: string;
   reviewToken: string;
   /** Overrides to the proposed matches. Omitted nodes use their proposed rename; null keeps pages separate. */

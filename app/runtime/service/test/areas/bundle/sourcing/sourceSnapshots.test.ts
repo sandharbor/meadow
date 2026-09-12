@@ -52,6 +52,30 @@ async function acceptAllMoves() {
 }
 
 describe('source snapshots with the shared big graph', () => {
+  it.each([true, false])('tracks only reviewed additions according to the saved bundle preference %s', async trackNewPages => {
+    await initializeSourcing(bundle);
+    const initialConfigs = loadSourceNodeConfigs(bundle);
+    change('add-linked-page');
+    let review = await scanSourceChanges(bundle);
+    expect(review.trackNewPages).toBe(true);
+    await acceptSourceSnapshot(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages });
+    const configs = loadSourceNodeConfigs(bundle);
+    expect(configs.some(node => node.bundleNodeName === 'added field notes')).toBe(trackNewPages);
+    const removedIds = new Set(review.orphans.filter(orphan => !orphan.removalBlockedReason).map(orphan => orphan.bundleNodeId));
+    expect(configs.filter(node => node.bundleNodeName !== 'added field notes')).toEqual(initialConfigs.filter(node => !removedIds.has(node.bundleNodeId)));
+    change('add-embedded-image');
+    review = await scanSourceChanges(bundle);
+    expect(review.trackNewPages).toBe(trackNewPages);
+    await acceptSourceSnapshot(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {} });
+    expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeName === 'added sunflower')).toBe(trackNewPages);
+    if (trackNewPages) {
+      const added = loadSourceNodeConfigs(bundle).find(node => node.bundleNodeName === 'added field notes')!;
+      expect(loadTrackingRecords(bundle)[added.bundleNodeId].lastReachable?.path).toBe('source-changes/added field notes.md');
+      await ensureTrackedPageContent(bundle, acceptedSourceRoot(bundle));
+      expect(fs.readFileSync(path.join(bundle, 'raw/tracked_page_content/source-changes/added field notes.md'), 'utf8')).toContain('# Field notes');
+    }
+  }, 20000);
+
   it('reads only accepted history without capturing sources or including a pending candidate', async () => {
     expect(sourceSnapshotHistory(bundle)).toEqual({ acceptedId: null, snapshots: [] });
     expect(loadSourcingState(bundle)).toBeNull();
@@ -402,7 +426,7 @@ describe('source snapshots with the shared big graph', () => {
     await acceptSourceSnapshot(bundle, { candidateId: pending.candidate!.id,
       reviewToken: pending.reviewToken, resolutions: {} });
     expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeId === orphan.bundleNodeId)).toBe(false);
-    expect(loadSourceNodeConfigs(bundle).some(node => nodeSourcePath(node) === newName)).toBe(false);
+    expect(loadSourceNodeConfigs(bundle).find(node => nodeSourcePath(node) === newName)).toMatchObject({ listType: 'whitelist' });
   });
 
   it('accepts the highest-ranked proposal when identical contents have more than one destination', async () => {
@@ -450,18 +474,22 @@ describe('source snapshots with the shared big graph', () => {
     expect(loadSourceNodeConfigs(bundle).find(node => node.bundleNodeId === entry.bundleNodeId)).toEqual(entry);
   });
 
-  it('recovers both configuration and snapshot identity after an interrupted acceptance', async () => {
+  it('recovers node configuration, bundle tracking preference, and snapshot identity after an interrupted acceptance', async () => {
     const state = await initializeSourcing(bundle);
     const configPath = path.join(bundle, 'config/bundle_node_config.yaml');
     const nodeConfig = fs.readFileSync(configPath, 'utf8');
     change('rename-page-with-links');
     const pending = await scanSourceChanges(bundle);
     const previous = loadSourcingState(bundle)!;
-    writeSourcingJson(path.join(sourcingRoot(bundle), 'acceptance-journal.json'), { state: previous, nodeConfig });
+    const bundleConfigPath = path.join(bundle, 'config/bundle_config.yaml');
+    const bundleConfig = fs.readFileSync(bundleConfigPath, 'utf8');
+    writeSourcingJson(path.join(sourcingRoot(bundle), 'acceptance-journal.json'), { state: previous, nodeConfig, bundleConfig });
+    fs.writeFileSync(bundleConfigPath, YAML.stringify({ ...YAML.parse(bundleConfig), trackNewPages: false }));
     fs.writeFileSync(configPath, 'interrupted write');
     writeSourcingJson(path.join(sourcingRoot(bundle), 'state.json'), { ...previous, acceptedId: pending.candidate!.id });
     expect(loadSourcingState(bundle)?.acceptedId).toBe(state.acceptedId);
     expect(fs.readFileSync(configPath, 'utf8')).toBe(nodeConfig);
+    expect(fs.readFileSync(bundleConfigPath, 'utf8')).toBe(bundleConfig);
     expect(fs.existsSync(path.join(sourcingRoot(bundle), 'acceptance-journal.json'))).toBe(false);
   });
 

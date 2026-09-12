@@ -29,6 +29,8 @@ export interface BundleConfig {
   defaultTraversalBundleNodeId?: BundleNodeId;
   defaultOutlinksDepth?: number;
   defaultInlinksDepth?: number;
+  /** Track newly added pages when accepting source updates (default: true). Initial capture is unaffected. */
+  trackNewPages?: boolean;
   archivedAt?: string | null;
   bundleCreatedAt?: string;
   bundleUpdatedAt?: string;

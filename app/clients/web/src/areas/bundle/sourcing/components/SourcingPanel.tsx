@@ -93,6 +93,8 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const sourceCheck = useRef<{ endpoint: string; promise: Promise<SourcingReview> }>();
   const reviewToken = useRef<string>();
   const [showAllChanges, setShowAllChanges] = useState(false);
+  const [trackNewPages, setTrackNewPages] = useState(true);
+  const trackNewPagesHintId = useId();
   const closeReview = useCallback(() => setOpen(false), []);
   const endpoint = `bundles/${encodeURIComponent(bundleSlug)}/sourcing`;
 
@@ -106,7 +108,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   }, [endpoint]);
 
   const receive = useCallback((result: SourcingReview, announceNoChanges = true) => {
-    if (reviewToken.current !== result.reviewToken) { setResolutions({}); setComparison(null); setShowAllChanges(false); }
+    if (reviewToken.current !== result.reviewToken) { setResolutions({}); setComparison(null); setShowAllChanges(false); setTrackNewPages(result.trackNewPages ?? true); }
     reviewToken.current = result.reviewToken;
     setReview(result);
     setNoChanges(announceNoChanges && !result.candidate && result.orphans.length === 0);
@@ -185,7 +187,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     if (!review || (!review.candidate && orphanRemovals.size === 0)) return;
     inFlight.current = true; setBusy(true); setError(null);
     try {
-      receive(await request('/accept', { candidateId: review.candidate?.id ?? review.accepted.id, reviewToken: review.reviewToken, resolutions, orphanKeeps: [] }) as SourcingReview);
+      receive(await request('/accept', { candidateId: review.candidate?.id ?? review.accepted.id, reviewToken: review.reviewToken, resolutions, orphanKeeps: [], trackNewPages }) as SourcingReview);
       setOpen(false); setComparison(null); setResolutions({}); onAccepted();
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { inFlight.current = false; setBusy(false); }
@@ -200,6 +202,8 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const backgroundProgress = backgroundBusy && <span aria-hidden="true" data-testid="source-background-progress" className="absolute bottom-0 left-0 h-0.5 w-1/3 bg-current motion-safe:animate-[source-update-sweep_1.2s_ease-in-out_infinite_alternate] motion-reduce:w-full" />;
   const imageUrl: SourceImageUrl = (filename, side) => `bundles/${encodeURIComponent(bundleSlug)}/sourcing/image?${new URLSearchParams({ snapshotId: (side === 'before' ? review?.accepted.id : review?.candidate?.id) ?? '', path: filename })}`;
   const proposedResolutions = proposedSourceMoveResolutions(review?.moves ?? [], resolutions);
+  const orderedChanges = [...(review?.changes ?? [])].sort((left, right) => Number(right.kind === 'added') - Number(left.kind === 'added'));
+  const hasAddedPages = orderedChanges.some(change => change.kind === 'added');
 
   return <>
     <SourceSnapshotsModal isOpen={snapshotsOpen} bundleSlug={bundleSlug} onClose={() => onCloseSnapshots?.()}
@@ -254,8 +258,12 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
           })}
         </section>}
         {Boolean(review?.changes.length) && <section aria-label="Source content changes"><h3 className="mb-2 text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}<SourceChangeCount count={review?.changes.length ?? 0} /></h3>
-          <div className="divide-y divide-neutral-100">{review?.changes.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
-            const query = new URLSearchParams({ beforeId: review.accepted.id, afterId: review.candidate!.id, beforePath: change.path, afterPath: change.path });
+          {hasAddedPages && <div className="mb-3 rounded border border-neutral-200 p-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" className="accent-main-600" checked={trackNewPages} disabled={busy || backgroundBusy} aria-describedby={trackNewPagesHintId} onChange={event => setTrackNewPages(event.target.checked)} />Track new pages</label>
+            <p id={trackNewPagesHintId} className="mt-1 pl-5 text-xs text-neutral-500">Track the added pages when you accept source changes. Your choice is saved for this bundle when you accept.</p>
+          </div>}
+          <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
+            const query = new URLSearchParams({ beforeId: review!.accepted.id, afterId: review!.candidate!.id, beforePath: change.path, afterPath: change.path });
             return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
           }} />)}</div>
           {(review?.changes.length ?? 0) > 8 && <button className="mt-2 text-xs text-main-700 hover:underline" onClick={() => setShowAllChanges(previous => !previous)}>{showAllChanges ? 'Show fewer' : `Show all ${review?.changes.length} changes`}</button>}

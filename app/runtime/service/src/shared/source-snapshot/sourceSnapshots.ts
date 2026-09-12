@@ -347,7 +347,7 @@ export function verifySourceSnapshot(bundleDirectory: string, snapshot: SourceSn
   if (digest !== snapshot.digest) throw new SourcingError('The captured snapshot has changed on disk. Capture a new source update before accepting.');
 }
 
-interface AcceptanceJournal { state: SourcingState; nodeConfig: string; }
+interface AcceptanceJournal { state: SourcingState; nodeConfig: string; bundleConfig?: string; }
 
 function acceptanceJournalPath(bundleDirectory: string): string { return path.join(sourcingRoot(bundleDirectory), 'acceptance-journal.json'); }
 
@@ -360,15 +360,23 @@ function recoverSourcingAcceptance(bundleDirectory: string): void {
   if (accepted.git) retainAcceptedSourceTree(accepted.git);
   writeSourcingJson(sourcingStatePath(bundleDirectory), journal.state);
   writeDurableDocument({ path: path.join(bundleDirectory, 'config/bundle_node_config.yaml'), value: journal.nodeConfig, codec: textDocumentCodec });
+  if (journal.bundleConfig !== undefined) writeDurableDocument({ path: path.join(bundleDirectory, 'config/bundle_config.yaml'), value: journal.bundleConfig, codec: textDocumentCodec });
   fs.rmSync(filename);
 }
 
 /** No asynchronous work may occur between these writes; recovery restores both sides after interruption. */
-export function installAcceptedSnapshot(bundleDirectory: string, previous: SourcingState, next: SourcingState, configs: BundleNodeConfig[]): void {
+export function installAcceptedSnapshot(bundleDirectory: string, previous: SourcingState, next: SourcingState, configs: BundleNodeConfig[], trackNewPages?: boolean): void {
   const configPath = path.join(bundleDirectory, 'config/bundle_node_config.yaml');
-  writeSourcingJson(acceptanceJournalPath(bundleDirectory), { state: previous, nodeConfig: fs.readFileSync(configPath, 'utf8') });
+  const bundleConfigPath = path.join(bundleDirectory, 'config/bundle_config.yaml');
+  const bundleConfig = fs.readFileSync(bundleConfigPath, 'utf8');
+  writeSourcingJson(acceptanceJournalPath(bundleDirectory), { state: previous, nodeConfig: fs.readFileSync(configPath, 'utf8'), bundleConfig });
   try {
     writeDurableDocument({ path: configPath, value: stringifyBundleNodeConfig(configs), codec: textDocumentCodec });
+    if (trackNewPages !== undefined) {
+      const document = YAML.parseDocument(bundleConfig);
+      document.set('trackNewPages', trackNewPages);
+      writeDurableDocument({ path: bundleConfigPath, value: document.toString(), codec: textDocumentCodec });
+    }
     const accepted = loadSourceSnapshot(bundleDirectory, next.acceptedId);
     if (accepted.git) retainAcceptedSourceTree(accepted.git);
     writeSourcingJson(sourcingStatePath(bundleDirectory), next);

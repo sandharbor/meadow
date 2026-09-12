@@ -1,5 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { generateBundleNodeId } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import { loadTrackingRecords } from '../../../../shared/bundle-node/trackingRecords.js';
 import { diagnoseOrphanConnection } from './orphanDiagnosis.js';
 import { findGroupedSourceMoves } from './sourceMoveGroups.js';
@@ -234,6 +236,7 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
   const orphanPaths = new Set(orphans.map(orphan => orphan.path));
   const distinctChanges = changes.filter(change => change.kind !== 'missing' || !orphanPaths.has(change.path));
   return {
+    trackNewPages: loadSourceBundleConfig(bundleDirectory).trackNewPages ?? true,
     accepted: state.history.find(item => item.id === accepted.id) ?? snapshotSummary(accepted),
     ...(candidate && { candidate: snapshotSummary(candidate) }), moves, changes: distinctChanges,
     orphans, history: state.history,
@@ -320,15 +323,33 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
     if (!state.candidateId && !removals.size) throw new SourcingError('No orphan removals or source update to apply.');
     for (const id of removals) if (!stillOrphaned.has(id)) throw new SourcingError('A selected entry is reachable after the chosen moves. Keep it and review the update again.');
     const next = relinked.filter(node => !removals.has(node.bundleNodeId));
-    const graph = removals.size ? await snapshotGraph(bundleDirectory, candidate, next, 0) : relinkedGraph;
+    let graph = removals.size ? await snapshotGraph(bundleDirectory, candidate, next, 0) : relinkedGraph;
+    const trackNewPages = request.trackNewPages ?? bundle.trackNewPages ?? true;
+    if (trackNewPages && state.candidateId) {
+      // Only explicit additions in this review are selected. Existing untracked
+      // pages and rejected rename matches remain curation decisions.
+      const additions = new Set(review.changes.filter(change => change.kind === 'added').map(change => change.path));
+      const configuredPaths = new Set(next.map(node => snapshotFilePath(candidate, node)));
+      const existingIds = new Set(next.map(node => node.bundleNodeId));
+      for (const node of graph.nodes) {
+        if (node.bundleNodeKind !== 'file' || !node.fileType || !additions.has(node.bundleNodeKey)
+          || configuredPaths.has(node.bundleNodeKey) || node.effectiveBlacklistingBundleNodeId || isUntrackableFrontierNode(node)) continue;
+        const bundleNodeId = generateBundleNodeId(existingIds);
+        existingIds.add(bundleNodeId);
+        next.push({ bundleNodeKind: 'file', bundleNodeId, bundleNodeName: node.bundleNodeName,
+          sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '', fileType: node.fileType, listType: 'whitelist' });
+        configuredPaths.add(node.bundleNodeKey);
+      }
+      if (next.length !== relinked.length - removals.size) graph = await snapshotGraph(bundleDirectory, candidate, next, 0);
+    }
     if (token !== sha256(`${state.acceptedId}\0${state.candidateId ?? ''}\0${sourceConfigFingerprint(bundleDirectory)}`)) throw new SourcingError('Curation changed while applying. Review the source update again.');
     const acceptedAt = new Date().toISOString();
     installAcceptedSnapshot(bundleDirectory, state, {
       version: 1, storage: "git", acceptedId: candidate.id, history: state.candidateId ? [...state.history, snapshotSummary(candidate, acceptedAt)] : state.history,
-    }, next);
+    }, next, trackNewPages);
     rememberReachableProvenance(bundleDirectory, candidate, graph, next);
     writeSourcingJson(path.join(sourcingRoot(bundleDirectory), state.candidateId ? `acceptance-${candidate.id}.json` : `orphan-cleanup-${randomUUID()}.json`), {
-      snapshotId: candidate.id, acceptedAt, previousSnapshotId: state.acceptedId, resolutions, orphanRemovals: [...removals],
+      snapshotId: candidate.id, acceptedAt, previousSnapshotId: state.acceptedId, resolutions, trackNewPages, orphanRemovals: [...removals],
     });
     await commitChangesNative([path.join(bundleDirectory, 'config'), sourcingRoot(bundleDirectory)],
       `accept source snapshot for ${path.basename(bundleDirectory)}`, { configDir: getConfigDirectory() });
