@@ -257,11 +257,17 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
             </article>;
           })}
         </section>}
-        {Boolean(review?.changes.length) && <section aria-label="Source content changes"><h3 className="mb-2 text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}<SourceChangeCount count={review?.changes.length ?? 0} /></h3>
-          {hasAddedPages && <div className="mb-3 rounded border border-neutral-200 p-3">
-            <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" className="accent-main-600" checked={trackNewPages} disabled={busy || backgroundBusy} aria-describedby={trackNewPagesHintId} onChange={event => setTrackNewPages(event.target.checked)} />Track new pages</label>
-            <p id={trackNewPagesHintId} className="mt-1 pl-5 text-xs text-neutral-500">Track the added pages when you accept source changes. Your choice is saved for this bundle when you accept.</p>
-          </div>}
+        {Boolean(review?.changes.length) && <section aria-label="Source content changes">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h3 className="text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}<SourceChangeCount count={review?.changes.length ?? 0} /></h3>
+            {hasAddedPages && <div className="ml-auto flex items-center gap-2 text-xs text-neutral-500">
+              <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" className="accent-main-600" checked={trackNewPages} disabled={busy || backgroundBusy} aria-describedby={trackNewPagesHintId} onChange={event => setTrackNewPages(event.target.checked)} />Track added pages</label>
+              <span className="group relative inline-flex">
+                <button type="button" aria-label="About tracking added pages" aria-describedby={trackNewPagesHintId} className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-neutral-400 text-[10px] text-neutral-500">?</button>
+                <span id={trackNewPagesHintId} role="tooltip" className="pointer-events-none invisible fixed z-[9999] -ml-2 w-80 max-w-[calc(100vw-3rem)] -translate-x-full rounded border border-neutral-200 bg-white p-3 text-xs font-normal text-neutral-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">Automatically track the added pages in the bundle when you accept the source changes</span>
+              </span>
+            </div>}
+          </div>
           <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
             const query = new URLSearchParams({ beforeId: review!.accepted.id, afterId: review!.candidate!.id, beforePath: change.path, afterPath: change.path });
             return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };

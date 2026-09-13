@@ -17,7 +17,7 @@ export class SourceReviewModal {
   }
 
   private get trackNewPagesCheckbox() {
-    return this.dialog.getByRole('checkbox', { name: 'Track new pages', exact: true });
+    return this.dialog.getByRole('checkbox', { name: 'Track added pages', exact: true });
   }
 
   async expectTrackNewPages(checked: boolean) {
