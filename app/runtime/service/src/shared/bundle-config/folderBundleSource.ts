@@ -17,12 +17,15 @@ limitations under the License.
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import type { FolderBundleSelectionValidation } from '../../../../../contracts/types/folderBundleSelection.js';
 import { normalizeFolderSourceGraphSubdirectory } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 
 export const FOLDER_BUNDLE_HIGH_IMPACT_SEED_FILES = 1_000;
 export const FOLDER_BUNDLE_HIGH_IMPACT_RAW_NODES = 5_000;
 export const FOLDER_BUNDLE_MAX_RAW_NODES = 25_000;
 export const FOLDER_BUNDLE_MAX_TYPED_EDGES = 100_000;
+
+class FolderSelectionError extends Error {}
 
 export function canonicalFolderBundleSourceDirectory(sourceDirectory: string): string {
   if (!sourceDirectory) throw new Error('sourceDirectory is required');
@@ -38,20 +41,41 @@ export function normalizeSelectedFolder(sourceRoot: string, selection: string): 
   const resolvedAbsolute = fs.realpathSync(lexicalAbsolute);
   const relative = path.relative(sourceRoot, resolvedAbsolute);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`Selected folder escapes sourceDirectory: ${selection}`);
+    throw new FolderSelectionError('This folder is outside the Notes Root. Choose the root itself or one of its subfolders.');
   }
   const normalized = normalizeFolderSourceGraphSubdirectory(relative.split(path.sep).join('/'));
   const expectedAbsolute = normalized ? path.join(sourceRoot, ...normalized.split('/')) : sourceRoot;
   const stat = fs.lstatSync(expectedAbsolute);
-  if (stat.isSymbolicLink()) throw new Error(`Selected folder cannot be a symlink: ${selection}`);
-  if (!stat.isDirectory()) throw new Error(`Selected folder is not a directory: ${selection}`);
+  if (stat.isSymbolicLink()) throw new FolderSelectionError('Choose a folder inside the Notes Root instead of a symbolic link.');
+  if (!stat.isDirectory()) throw new FolderSelectionError('Choose a folder rather than a file.');
   if (fs.realpathSync(expectedAbsolute) !== expectedAbsolute) {
-    throw new Error(`Selected folder cannot traverse a symlink: ${selection}`);
+    throw new FolderSelectionError('Choose a folder inside the Notes Root instead of a symbolic link.');
   }
   if (normalized.split('/').some(segment => ['.git', '.meadow', '_meadow'].includes(segment))) {
-    throw new Error(`Selected folder is reserved and cannot be published: ${selection}`);
+    throw new FolderSelectionError('This is a reserved folder and cannot be included.');
   }
   return normalized;
+}
+
+/** Check folder locations without scanning their contents or building a graph. */
+export function validateFolderBundleSelection(sourceDirectory: string, selectedFolders: string[]): FolderBundleSelectionValidation {
+  let sourceRoot: string;
+  try {
+    sourceRoot = canonicalFolderBundleSourceDirectory(sourceDirectory);
+  } catch {
+    return { selectionError: 'Choose an existing, readable folder for the Notes Root.', folderErrors: [] };
+  }
+  const folderErrors = selectedFolders.flatMap(folder => {
+    try {
+      normalizeSelectedFolder(sourceRoot, folder);
+      return [];
+    } catch (error) {
+      return [{ folder, message: error instanceof FolderSelectionError
+        ? error.message
+        : 'This folder could not be opened. Choose an existing, readable folder inside the Notes Root.' }];
+    }
+  });
+  return { selectionError: null, folderErrors };
 }
 
 export function folderName(sourceRoot: string, locator: string): string {

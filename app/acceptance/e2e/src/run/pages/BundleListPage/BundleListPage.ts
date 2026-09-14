@@ -58,6 +58,10 @@ export class BundleListPage {
     await btn.click();
   }
 
+  async clickCreateNewBundle() {
+    await this.page.getByRole("button", { name: "Create New Bundle", exact: true }).click();
+  }
+
   async clickCreateBundleForPage() {
     const btn = this.page.locator("button", { hasText: "Create Bundle for Page" });
     await this.expect(btn).toBeVisible();

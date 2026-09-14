@@ -52,6 +52,7 @@ import {
   type FolderBundleCreationPlan,
 } from '../services/folderBundleCreation.js';
 import { persistFolderBundleAtomically } from '../services/folderBundlePersistence.js';
+import { validateFolderBundleSelection } from '../../../shared/bundle-config/folderBundleSource.js';
 import {
   getFolderBundleRepairStatusFromConfiguration,
 } from '../../../shared/bundle-config/folderBundleRepair.js';
@@ -744,6 +745,15 @@ router.post('/bundles/add-example', (req, res, next) => {
     next(error);
   }
   })().catch(next);
+});
+
+router.post('/bundles/folders/validate-selection', (req, res) => {
+  const { sourceDirectory, selectedFolders } = (req.body ?? {}) as { sourceDirectory?: unknown; selectedFolders?: unknown };
+  if (typeof sourceDirectory !== 'string' || !Array.isArray(selectedFolders)
+    || !selectedFolders.every(folder => typeof folder === 'string')) {
+    return res.status(400).json({ error: 'A Notes Root and a list of folders are required.' });
+  }
+  res.json(validateFolderBundleSelection(sourceDirectory, selectedFolders));
 });
 
 router.post('/bundles/folders/preflight', (req, res, next) => {

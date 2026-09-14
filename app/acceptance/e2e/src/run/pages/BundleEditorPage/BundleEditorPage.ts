@@ -193,18 +193,8 @@ export class BundleEditorPage {
     await btn.click();
   }
 
-  async expectDepthCalloutVisible() {
-    await this.expect(this.depthCallout).toBeVisible();
-  }
-
   async expectDepthCalloutNotVisible() {
     await this.expect(this.depthCallout).not.toBeVisible();
-  }
-
-  async dismissDepthCallout() {
-    const dismissBtn = this.page.locator('button[title="Dismiss"]');
-    await this.expect(dismissBtn).toBeVisible();
-    await dismissBtn.click();
   }
 
   async expectSinglePagePreviewWarningVisible() {

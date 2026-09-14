@@ -17,14 +17,14 @@ limitations under the License.
 import path from "path";
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from "../src/run/pages/index.js";
-import { callout } from "../../../concepts/index.js";
+import { bundleConfig } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "none" });
 
-test("Callout depth limit shown on new bundle and dismissed permanently", async ({
+test("new bundle uses chosen depths without the introductory depth callout", async ({
   page,
   testServer,
   snapshot,
@@ -32,48 +32,36 @@ test("Callout depth limit shown on new bundle and dismissed permanently", async 
   addKeyFrame,
 }) => {
   const bundleList = new BundleListPage(page, expect);
-  await bundleList.goto();
-  await bundleList.expectCalloutVisible("Turn your notes into bundles");
-
-  // Click "create a bundle" in the empty state callout
-  await bundleList.clickCreateBundleLink();
-
-  // Fill in the Create New Bundle modal
   const createModal = new CreateAndEditBundleModal(page, expect);
-  const sourceDir = path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data");
-  await createModal.fillSourceDirectory(sourceDir);
-  await createModal.typeInitialPageTitle("main page");
-  await createModal.selectSuggestion("main page");
-  await createModal.clickCreateBundle();
-
-  // Wait for graph view to load
   const editor = new BundleEditorPage(page, expect);
-  await editor.waitForLoad("main-page");
+  await bundleList.goto();
 
-  // Assert depth callout is visible
-  await editor.expectDepthCalloutVisible();
-  await addKeyFrame(callout);
-  await snapshot("depth callout visible on new bundle");
+  for (const outlinksDepth of [2, 4]) {
+    const slug = `main-page-depth-${outlinksDepth}`;
+    await bundleList.clickCreateNewBundle();
+    if (outlinksDepth === 2) {
+      await createModal.fillSourceDirectory(path.join(testServer.sourceGraphsDir, "meadow-test-bundles-data"));
+    }
+    await createModal.typeInitialPageTitle("main page");
+    await createModal.selectSuggestion("main page");
+    await createModal.fillDefaultTraversalDepths(outlinksDepth, 0);
+    await createModal.clickEditSlug();
+    await createModal.fillSlug(slug);
+    await addKeyFrame(bundleConfig);
+    await createModal.clickCreateBundle();
+    await editor.waitForLoad(slug);
+    await editor.expectGraphViewHasPages();
+    await editor.expectDepthCalloutNotVisible();
+    await addKeyFrame(bundleConfig);
+    await snapshot(`new bundle with chosen traversal depth ${outlinksDepth}`);
 
-  // Dismiss the callout and wait for the API call to complete before navigating
-  const dismissalResponse = page.waitForResponse(
-    (resp) => resp.url().includes("/callout-dismissal/") && resp.status() === 200
-  );
-  await editor.dismissDepthCallout();
-  await dismissalResponse;
-
-  // Go back to bundle list
-  await editor.clickBackToBundles();
-  await bundleList.expectHeadingVisible();
-
-  // Re-enter the bundle
-  await bundleList.clickBundle("main-page");
-  await editor.waitForLoad("main-page");
-
-  // Assert depth callout is NOT visible (dismissal persisted)
-  await editor.expectDepthCalloutNotVisible();
-  await snapshot("depth callout not visible after dismissal");
+    await editor.clickBackToBundles();
+    await bundleList.clickBundle(slug);
+    await editor.waitForLoad(slug);
+    await editor.expectDepthCalloutNotVisible();
+    await snapshot(`depth ${outlinksDepth} bundle reopened without introductory callout`);
+    await editor.clickBackToBundles();
+  }
   void customBundle;
-
   await assertMeadowHomeState();
 });

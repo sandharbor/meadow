@@ -15,8 +15,12 @@ limitations under the License.
 */
 
 /* global alert */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../../../shared/components/Modal';
+import { Spinner } from '../../../shared/components/Spinner';
+import { DisabledTooltip } from '../../../shared/components/DisabledTooltip';
+import { useFolderSelectionValidation } from './useFolderSelectionValidation';
+import { createBundleModalViewModel, findUniqueSlug, normalizeDirectory, slugFromTitle, sourcePageFallbackPath } from './bundleModalViewModel';
 import { apiRequest } from '../../../shared/utils/apiClient';
 import type { SourcePageFileInfo } from '../../../../../../contracts/types/sourcePageFileInfo';
 import { logger } from '../../../shared/utils/logger';
@@ -24,6 +28,7 @@ import FolderBundleFields from './FolderBundleFields';
 import PagePickerButton from './PagePickerButton';
 import {
   EntryStrategyPicker,
+  BundleNameField,
   MoreBundleDetails,
   BundleTraversalDefaultsFields,
   SourceDirectoryField,
@@ -54,30 +59,9 @@ interface FolderBundlePreflight {
   supportedSeedFileCount: number;
 }
 
-const sourcePageFallbackPath = (page: { title: string; directory: string; file_type: string }): string => {
-  const filename = page.file_type === 'excalidraw'
-    ? `${page.title}.excalidraw.md`
-    : `${page.title}.${page.file_type || 'md'}`;
-  return page.directory ? `${page.directory}/${filename}` : filename;
-};
-
-const findUniqueSlug = (baseSlug: string, existingSlugs: string[]): string => {
-  const slugSet = new Set(existingSlugs);
-  if (!slugSet.has(baseSlug)) return baseSlug;
-  let counter = 1;
-  while (slugSet.has(`${baseSlug}-${counter}`)) {
-    counter++;
-  }
-  return `${baseSlug}-${counter}`;
-};
-
-const normalizeDirectory = (dir: string): string => {
-  return dir === '/' ? '' : dir;
-};
-
 const EMPTY_SLUGS: string[] = [];
 
-const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
+const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
   isOpen,
   onClose,
   mode,
@@ -87,23 +71,19 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
   findInBundlesOptions = null,
   editBundle = null
 }) => {
-  // Form state
-  const [form, setForm] = useState<CreateBundleForm>({
-    slug: '',
-    sourceDirectory: '',
-    entryBundleNodeName: '',
-    entrySourceGraphSubdirectory: '',
-    entryFileType: '',
-    bundleNotes: ''
-  });
+  const [viewModel] = useState(() => createBundleModalViewModel({
+    mode, directories, existingSlugs, findInBundlesOptions, editBundle,
+  }));
+  const [form, setForm] = useState<CreateBundleForm>(viewModel.form);
 
   // Track which auto-generated fields are being manually edited
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
-  const [isSourceDirectoryManuallyEdited, setIsSourceDirectoryManuallyEdited] = useState(false);
+  const [isSourceDirectoryManuallyEdited, setIsSourceDirectoryManuallyEdited] = useState(viewModel.isSourceDirectoryManuallyEdited);
 
   // Validation state
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInProgress = useRef(false);
   const [duplicatePages, setDuplicatePages] = useState<MatchingPage[]>([]);
   const [showDuplicatePicker, setShowDuplicatePicker] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -111,7 +91,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
   const [typeaheadCandidates, setTypeaheadCandidates] = useState<SourcePageFileInfo[]>([]);
   const [typeaheadTotalCount, setTypeaheadTotalCount] = useState(0);
   const [isTitleFocused, setIsTitleFocused] = useState(false);
-  const [selectedInitialPage, setSelectedInitialPage] = useState<SourcePageFileInfo | null>(null);
+  const [selectedInitialPage, setSelectedInitialPage] = useState<SourcePageFileInfo | null>(viewModel.selectedInitialPage);
   const [isEditingInitialPage, setIsEditingInitialPage] = useState(false);
   const [initialPageEditBackup, setInitialPageEditBackup] = useState<{
     form: CreateBundleForm;
@@ -122,122 +102,14 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
   const [slugConflictError, setSlugConflictError] = useState<string | null>(null);
 
   // More details toggle
-  const [showMoreDetails, setShowMoreDetails] = useState(false);
-  const [entryStrategy, setEntryStrategy] = useState<EntryStrategy>('page');
+  const [showMoreDetails, setShowMoreDetails] = useState(viewModel.showMoreDetails);
+  const [entryStrategy, setEntryStrategy] = useState<EntryStrategy>(viewModel.entryStrategy);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
-  const [defaultOutlinksDepth, setDefaultOutlinksDepth] = useState('3');
-  const [defaultInlinksDepth, setDefaultInlinksDepth] = useState('1');
-
-  // Reset and initialize form when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      const recentSourceDirectory = directories[0] ?? '';
-      const initialForm: CreateBundleForm =
-        mode === 'edit' && editBundle
-          ? {
-              slug: editBundle.slug,
-              sourceDirectory: editBundle.sourceDirectory || '',
-              entryBundleNodeName: editBundle.entryBundleNodeName || '',
-              entrySourceGraphSubdirectory: normalizeDirectory(editBundle.entrySourceGraphSubdirectory || ''),
-              entryFileType: editBundle.entryFileType || 'md',
-              bundleNotes: editBundle.bundleNotes || ''
-            }
-          : {
-              slug: '',
-              sourceDirectory: recentSourceDirectory,
-              entryBundleNodeName: '',
-              entrySourceGraphSubdirectory: '',
-              entryFileType: '',
-              bundleNotes: ''
-            };
-
-      if (mode === 'create' && findInBundlesOptions) {
-        const pageName = findInBundlesOptions.pageName || findInBundlesOptions.pageName || '';
-        initialForm.entryBundleNodeName = pageName;
-        // Use vault path as source directory when page is specified via find in bundles
-        // (only override if vaultPath is non-empty; otherwise keep recentSourceDirectory)
-        if (findInBundlesOptions.vaultPath) {
-          initialForm.sourceDirectory = findInBundlesOptions.vaultPath;
-        }
-        // Set the folder path as the initial bundle page directory (for nested pages)
-        initialForm.entrySourceGraphSubdirectory = findInBundlesOptions.folderPath;
-        // Generate slug from the page name, auto-incrementing if taken
-        const baseSlug = pageName
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
-        const slug = findUniqueSlug(baseSlug, existingSlugs);
-        initialForm.slug = slug;
-      }
-
-      setForm(initialForm);
-      setIsSlugManuallyEdited(false);
-      
-      // If there's no source directory to suggest, start in edit mode
-      setIsSourceDirectoryManuallyEdited(
-        mode === 'edit'
-          ? false
-          : (!recentSourceDirectory && !findInBundlesOptions?.vaultPath)
-      );
-      
-      // Reset validation state
-      setValidationError(null);
-      setSlugConflictError(null);
-      setDuplicatePages([]);
-      setShowDuplicatePicker(false);
-      setTypeaheadCandidates([]);
-      setTypeaheadTotalCount(0);
-      setIsTitleFocused(false);
-      setIsLoadingSuggestions(false);
-      setSuggestionsLoadError(null);
-      if (mode === 'edit' && editBundle && !editBundle.folderDerived) {
-        const dir = normalizeDirectory(editBundle.entrySourceGraphSubdirectory || '');
-        setSelectedInitialPage({
-          title: editBundle.entryBundleNodeName,
-          directory: dir,
-          file_type: (editBundle.entryFileType || 'md') as SourcePageFileInfo['file_type'],
-          fullPath: sourcePageFallbackPath({
-            title: editBundle.entryBundleNodeName,
-            directory: dir,
-            file_type: editBundle.entryFileType || 'md',
-          }),
-          modifiedTimeMs: 0
-        });
-      } else {
-        setSelectedInitialPage(null);
-      }
-      setIsEditingInitialPage(false);
-      setInitialPageEditBackup(null);
-      setShowMoreDetails(mode === 'edit');
-      setEntryStrategy(mode === 'edit' && editBundle?.folderDerived ? 'folders' : 'page');
-      setSelectedFolders([]);
-      setDefaultOutlinksDepth(String(editBundle?.defaultOutlinksDepth ?? (editBundle?.folderDerived ? 1 : 3)));
-      setDefaultInlinksDepth(String(editBundle?.defaultInlinksDepth ?? (editBundle?.folderDerived ? 0 : 1)));
-
-      if (mode === 'create' && findInBundlesOptions) {
-        const pageName = findInBundlesOptions.pageName || findInBundlesOptions.pageName || '';
-        const dir = normalizeDirectory(findInBundlesOptions.folderPath || '');
-        setSelectedInitialPage({
-          title: pageName,
-          directory: dir,
-          file_type: 'md',
-          fullPath: dir ? `${dir}/${pageName}.md` : `${pageName}.md`,
-          modifiedTimeMs: 0
-        });
-      }
-    }
-  }, [isOpen, directories, existingSlugs, findInBundlesOptions, mode, editBundle]);
-
-  const slugFromTitle = (value: string): string => {
-    return value
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '');
-  };
+  const [isFolderTitleManuallyEdited, setIsFolderTitleManuallyEdited] = useState(false);
+  const [defaultOutlinksDepth, setDefaultOutlinksDepth] = useState(viewModel.defaultOutlinksDepth);
+  const [defaultInlinksDepth, setDefaultInlinksDepth] = useState(viewModel.defaultInlinksDepth);
+  const folderValidation = useFolderSelectionValidation(isOpen && mode === 'create' && entryStrategy === 'folders', form.sourceDirectory, selectedFolders);
+  const submitDisabledReason = isSubmitting ? 'Please wait while your bundle is saved.' : slugConflictError || folderValidation.disabledReason;
 
   // Server-side typeahead: query source pages by title (debounced).
   useEffect(() => {
@@ -305,7 +177,7 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
     // Check for slug conflicts when manually editing
     if (field === 'slug') {
       if (existingSlugs.includes(value)) {
-        setSlugConflictError(`A bundle config folder named "${value}" already exists.`);
+        setSlugConflictError(`A bundle named "${value}" already exists.`);
       } else {
         setSlugConflictError(null);
       }
@@ -376,34 +248,31 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
         title: 'Select folders for this bundle'
       });
       if (!result || result.canceled || result.filePaths.length === 0) return;
-      setSelectedFolders(previous => [...previous, ...result.filePaths]);
-      if (!form.entryBundleNodeName) {
-        const name = result.filePaths[0].split(/[\\/]/).filter(Boolean).pop() || 'Folder bundle';
-        setForm(previous => ({
-          ...previous,
-          entryBundleNodeName: name,
-          ...(!isSlugManuallyEdited && {
-            slug: findUniqueSlug(slugFromTitle(name), existingSlugs),
-          }),
-        }));
-      }
+      updateSelectedFolders([...new Set([...selectedFolders, ...result.filePaths])]);
     } catch (err) {
       logger.error('Failed to select bundle folders:', err);
     }
   };
 
+  const updateSelectedFolders = (folders: string[]) => {
+    setSelectedFolders(folders);
+    if (!isFolderTitleManuallyEdited || folders.length <= 1) {
+      const name = folders[0]?.split(/[\\/]/).filter(Boolean).pop() || '';
+      handleInitialTitleChange(name);
+      setIsFolderTitleManuallyEdited(false);
+    }
+  };
+
   const removeSelectedFolder = (index: number) => {
-    setSelectedFolders(previous => previous.filter((_folder, candidateIndex) => candidateIndex !== index));
+    updateSelectedFolders(selectedFolders.filter((_folder, candidateIndex) => candidateIndex !== index));
   };
 
   const moveSelectedFolder = (index: number, direction: -1 | 1) => {
-    setSelectedFolders(previous => {
-      const target = index + direction;
-      if (target < 0 || target >= previous.length) return previous;
-      const next = [...previous];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
+    const target = index + direction;
+    if (target < 0 || target >= selectedFolders.length) return;
+    const next = [...selectedFolders];
+    [next[index], next[target]] = [next[target], next[index]];
+    updateSelectedFolders(next);
   };
 
   const handleDefaultOutlinksDepthChange = (value: string) => {
@@ -639,14 +508,15 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Block submission if slug conflicts with an existing bundle
-    if (slugConflictError) {
+    if (submissionInProgress.current || submitDisabledReason) {
       return;
     }
 
+    // Lock immediately, including submissions before React renders the disabled button.
+    submissionInProgress.current = true;
+    setIsSubmitting(true);
     // Clear previous validation state
     setValidationError(null);
-    setIsValidating(true);
     
     try {
       parsedTraversalDefaults();
@@ -654,29 +524,25 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
       if (mode === 'create' && entryStrategy === 'folders') {
         if (!form.sourceDirectory) throw new Error('Please choose a source directory.');
         if (selectedFolders.length === 0) throw new Error('Please choose at least one folder.');
-        if (!form.entryBundleNodeName.trim()) throw new Error('Please enter a bundle name.');
-        if (!form.slug) throw new Error('Please enter a bundle config folder name.');
+        if (!form.entryBundleNodeName.trim()) throw new Error('Please enter a home page title.');
+        if (!form.slug) throw new Error('Please enter a bundle name.');
         const preflight = await runFolderPreflight();
         await createFolderBundle(preflight);
-        setIsValidating(false);
         return;
       }
 
       if (mode === 'edit' && editBundle?.folderDerived) {
         await updateBundleWithForm(form);
-        setIsValidating(false);
         return;
       }
 
       if (!selectedInitialPage && !form.entryBundleNodeName.trim()) {
         setValidationError('Please choose an initial bundle page.');
-        setIsValidating(false);
         return;
       }
 
       // If the initial page is already locked in, trust it and proceed.
       if (selectedInitialPage) {
-        setIsValidating(false);
         await submitForm(form);
         return;
       }
@@ -687,7 +553,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
       if (!searchResult.found) {
         // Page not found - show error and don't close
         setValidationError(`Page "${form.entryBundleNodeName}" was not found in the source directory. Please check the page name and try again.`);
-        setIsValidating(false);
         return;
       }
 
@@ -697,7 +562,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
         setDuplicatePages(searchResult.pages);
         setShowDuplicatePicker(true);
         setValidationError(`Found ${searchResult.count} pages named "${form.entryBundleNodeName}". Please select which one you want to use:`);
-        setIsValidating(false);
         return;
       }
 
@@ -719,7 +583,6 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
       });
       setIsEditingInitialPage(false);
       setInitialPageEditBackup(null);
-      setIsValidating(false);
 
       // Pass the updated form directly since setForm is async
       await submitForm(updatedForm);
@@ -727,14 +590,21 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
     } catch (err) {
       logger.error('Failed to validate page:', err);
       setValidationError(err instanceof Error ? err.message : 'Failed to validate page in source directory');
-      setIsValidating(false);
+    } finally {
+      submissionInProgress.current = false;
+      setIsSubmitting(false);
     }
+  };
+
+  const handleClose = () => {
+    if (!submissionInProgress.current) onClose();
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
+      showCloseButton={!isSubmitting}
       title={mode === 'edit' ? 'Edit Bundle Details' : 'Create New Bundle'}
       className="w-2/3 max-w-2xl"
     >
@@ -766,7 +636,11 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
           <EntryStrategyPicker
             value={entryStrategy}
             onChange={strategy => {
+              if (strategy === entryStrategy) return;
               setEntryStrategy(strategy);
+              setSelectedFolders([]);
+              setIsFolderTitleManuallyEdited(false);
+              handleInitialTitleChange('');
               setDefaultOutlinksDepth(strategy === 'folders' ? '1' : '3');
               setDefaultInlinksDepth(strategy === 'folders' ? '0' : '1');
               if (strategy === 'folders') {
@@ -781,7 +655,11 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
           <FolderBundleFields
             bundleName={form.entryBundleNodeName}
             selectedFolders={selectedFolders}
-            onBundleNameChange={handleInitialTitleChange}
+            validation={folderValidation}
+            onBundleNameChange={value => {
+              setIsFolderTitleManuallyEdited(true);
+              handleInitialTitleChange(value);
+            }}
             onAddFolders={handleAddSelectedFolders}
             onMoveFolder={moveSelectedFolder}
             onRemoveFolder={removeSelectedFolder}
@@ -790,12 +668,12 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
 
         <SourceDirectoryField
           value={form.sourceDirectory}
-          directories={directories}
+          choices={viewModel.sourceDirectoryChoices(form.sourceDirectory)}
           isManuallyEdited={isSourceDirectoryManuallyEdited}
           readOnly={mode === 'edit' && editBundle?.folderDerived === true}
           label={entryStrategy === 'folders' ? 'Notes Root' : 'Source Directory'}
           helpText={entryStrategy === 'folders'
-            ? 'The top-level notes folder Meadow uses to resolve links and assets—not the folders that start the bundle. Every selected folder must be inside it. In Obsidian, this is usually your vault folder.'
+            ? 'The top-level notes folder Meadow uses to resolve links and assets. Include this root folder itself or folders nested inside it. In Obsidian, this is usually your vault folder.'
             : 'The folder Meadow searches for source pages, links, and assets.'}
           onStartManualEdit={() => setIsSourceDirectoryManuallyEdited(true)}
           onChange={value => handleFormChange('sourceDirectory', value)}
@@ -896,6 +774,16 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
         </div>
         )}
 
+        {mode === 'create' && (
+          <BundleNameField
+            slug={form.slug}
+            isSlugManuallyEdited={isSlugManuallyEdited}
+            slugConflictError={slugConflictError}
+            onStartSlugEdit={() => setIsSlugManuallyEdited(true)}
+            onSlugChange={value => handleFormChange('slug', value)}
+          />
+        )}
+
         <BundleTraversalDefaultsFields
           outlinksDepth={defaultOutlinksDepth}
           inlinksDepth={defaultInlinksDepth}
@@ -905,14 +793,8 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
 
         <MoreBundleDetails
           expanded={showMoreDetails}
-          isCreate={mode === 'create'}
-          slug={form.slug}
           notes={form.bundleNotes}
-          isSlugManuallyEdited={isSlugManuallyEdited}
-          slugConflictError={slugConflictError}
           onToggle={() => setShowMoreDetails(!showMoreDetails)}
-          onStartSlugEdit={() => setIsSlugManuallyEdited(true)}
-          onSlugChange={value => handleFormChange('slug', value)}
           onNotesChange={value => handleFormChange('bundleNotes', value)}
         />
 
@@ -921,28 +803,37 @@ const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = ({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onClose();
+              handleClose();
             }}
             className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
-            disabled={isValidating}
+            disabled={isSubmitting}
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-btn-confirm-normal text-btn-confirm-text rounded hover:bg-btn-confirm-hover disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isValidating || !!slugConflictError}
-          >
-            {isValidating
-              ? (entryStrategy === 'folders' ? 'Creating...' : 'Validating...')
-              : (mode === 'edit'
-                ? 'Update Bundle'
-                : 'Create Bundle')}
-          </button>
+          <DisabledTooltip disabled={!!submitDisabledReason} tooltip={submitDisabledReason ?? undefined} align="right" className="inline-flex">
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-btn-confirm-normal text-btn-confirm-text rounded hover:bg-btn-confirm-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!!submitDisabledReason}
+              aria-busy={isSubmitting}
+            >
+              {isSubmitting && <Spinner />}
+              <span aria-live="polite">
+                {isSubmitting
+                  ? (mode === 'edit' ? 'Updating...' : 'Creating...')
+                  : (mode === 'edit' ? 'Update Bundle' : 'Create Bundle')}
+              </span>
+            </button>
+          </DisabledTooltip>
         </div>
       </form>
     </Modal>
   );
 };
+
+// Closing ends the editing session; reopening captures fresh defaults and
+// directory choices. Parent updates while open must not reset the user's work.
+const CreateOrEditBundleModal: React.FC<CreateOrEditBundleModalProps> = props =>
+  props.isOpen ? <BundleModalSession {...props} /> : null;
 
 export default CreateOrEditBundleModal;

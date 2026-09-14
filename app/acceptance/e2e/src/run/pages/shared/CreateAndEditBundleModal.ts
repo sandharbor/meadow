@@ -27,11 +27,11 @@ export class CreateAndEditBundleModal {
   }
 
   private get slugDisplay() {
-    return this.page.locator("text=Bundle Config Folder Name").locator("..").locator(".bg-gray-50");
+    return this.page.getByText("Bundle Name *", { exact: true }).locator("..").locator(".bg-gray-50");
   }
 
   private get slugEditBtn() {
-    return this.page.locator("text=Bundle Config Folder Name").locator("..").locator('button[title="Edit manually"]');
+    return this.page.getByRole("button", { name: "Edit bundle name" });
   }
 
   private get slugInput() {
@@ -42,6 +42,33 @@ export class CreateAndEditBundleModal {
     const input = this.page.locator('input[placeholder="Enter a custom directory path"]');
     await this.expect(input).toBeVisible();
     await input.fill(dirPath);
+  }
+
+  async changeSourceDirectory(dirPath: string) {
+    if (!await this.page.getByPlaceholder("Enter a custom directory path").isVisible()) {
+      await this.page.getByTitle("Choose a different folder", { exact: true }).click();
+    }
+    await this.fillSourceDirectory(dirPath);
+  }
+
+  async expectFolderOutsideRoot(folderPath: string) {
+    const row = this.page.getByRole("listitem").filter({ has: this.page.getByTitle(folderPath, { exact: true }) });
+    await this.expect(row.getByRole("alert")).toHaveText("This folder is outside the Notes Root. Choose the root itself or one of its subfolders.");
+    await row.scrollIntoViewIfNeeded();
+    await this.expectCreateBundleDisabled();
+  }
+
+  async expectCreateDisabledTooltip() {
+    const wrapper = this.page.getByRole("button", { name: "Create Bundle", exact: true }).locator("..");
+    await wrapper.hover();
+    const tooltip = wrapper.getByText("Fix the highlighted folders or change the Notes Root before creating the bundle.", { exact: true });
+    await this.expect(tooltip).toBeVisible();
+    await this.expect(tooltip).toHaveCSS("opacity", "1");
+  }
+
+  async expectFolderSelectionValid() {
+    await this.expect(this.page.getByRole("button", { name: "Create Bundle", exact: true })).toBeEnabled();
+    await this.expect(this.page.getByRole("alert")).toHaveCount(0);
   }
 
   async typeInitialPageTitle(title: string) {
@@ -71,9 +98,13 @@ export class CreateAndEditBundleModal {
       const target = window as unknown as {
         electronAPI?: Record<string, unknown>;
       };
+      const originalAPI = target.electronAPI;
       target.electronAPI = {
-        ...(target.electronAPI || {}),
-        showOpenDialog: async () => ({ canceled: false, filePaths: paths }),
+        ...originalAPI,
+        showOpenDialog: async () => {
+          target.electronAPI = originalAPI;
+          return { canceled: false, filePaths: paths };
+        },
       };
     }, folderPaths);
     const button = this.page.getByRole("button", { name: "Add folders" });
@@ -81,8 +112,19 @@ export class CreateAndEditBundleModal {
     await button.click();
   }
 
-  async fillFolderBundleName(name: string) {
-    const input = this.page.locator('input[placeholder="Research bundle"]');
+  async expectFolderSelectionBeforeNaming() {
+    const folders = this.page.getByRole("button", { name: "Add folders" });
+    await this.expect(folders).toBeVisible();
+    await this.expect(this.slugDisplay).toBeVisible();
+    const foldersBounds = await folders.boundingBox();
+    const nameBounds = await this.slugDisplay.boundingBox();
+    this.expect(foldersBounds).not.toBeNull();
+    this.expect(nameBounds).not.toBeNull();
+    this.expect(foldersBounds!.y + foldersBounds!.height).toBeLessThan(nameBounds!.y);
+  }
+
+  async fillFolderHomePageTitle(name: string) {
+    const input = this.page.getByRole("textbox", { name: "Home Page Title" });
     await this.expect(input).toBeVisible();
     await input.fill(name);
   }
@@ -108,7 +150,7 @@ export class CreateAndEditBundleModal {
     const toggle = this.page.locator("button", { hasText: "More details" });
     await this.expect(toggle).toBeVisible();
     await toggle.click();
-    await this.expect(this.page.locator("text=Bundle Config Folder Name")).toBeVisible();
+    await this.expect(this.page.getByPlaceholder("Enter any notes about this bundle...")).toBeVisible();
   }
 
   async getSlugDisplayText(): Promise<string> {
@@ -127,7 +169,6 @@ export class CreateAndEditBundleModal {
   }
 
   async fillDefaultTraversalDepths(outlinks: number, inlinks: number) {
-    await this.showDetails();
     const outlinksInput = this.page.getByRole("spinbutton", { name: "Default outlink depth" });
     const inlinksInput = this.page.getByRole("spinbutton", { name: "Default inlink depth" });
     await this.expect(outlinksInput).toBeVisible();

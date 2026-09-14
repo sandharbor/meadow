@@ -22,7 +22,6 @@ import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH } from './ImageHoverPreview';
 import BundleNodeHoverCard from './BundleNodeHoverCard';
-import DepthCallout, { useDepthCalloutDismissal, useHasFrontierOutlinks } from './DepthCallout';
 import { computeLabelPlacements } from '../utils/graphSearchLabels';
 import GraphSearchLabels from './GraphSearchLabels';
 import BundleNodeGlyph, { BUNDLE_NODE_RADIUS } from './BundleNodeGlyph';
@@ -79,8 +78,6 @@ const GraphVis: React.FC<GraphVisProps> = ({
     highlights: Highlight[];
   } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const { calloutDismissed, handleDismissCallout } = useDepthCalloutDismissal();
-  const hasFrontierOutlinks = useHasFrontierOutlinks(graph, graphUpdateTrigger);
 
   // Bundle preview hover state
 
@@ -473,35 +470,6 @@ const GraphVis: React.FC<GraphVisProps> = ({
   
   const hasSelection = selectedNodeKeys.size > 0;
 
-  // Get initial page screen position for callout placement
-  const getInitialPageScreenPosition = useCallback((): { x: number; y: number } | null => {
-    if (!svgRef.current || !containerRef.current) return null;
-
-    const initialPage = displayGraph.allDisplayNodes.find(n => n.distance === 0);
-    if (!initialPage) return null;
-
-    const pagePos = positions.get(initialPage.bundleNodeKey);
-    if (!pagePos) return null;
-
-    const pt = svgRef.current.createSVGPoint();
-    pt.x = pagePos.x;
-    pt.y = pagePos.y;
-    const ctm = svgRef.current.getScreenCTM();
-    const containerRect = containerRef.current.getBoundingClientRect();
-
-    if (ctm) {
-      const screenPt = pt.matrixTransform(ctm);
-      return {
-        x: screenPt.x - containerRect.left,
-        y: screenPt.y - containerRect.top,
-      };
-    }
-    return null;
-  }, [displayGraph, positions]);
-
-  const showDepthCallout = hasFrontierOutlinks && calloutDismissed === false && positions.size > 0;
-  const initialPageScreenPos = showDepthCallout ? getInitialPageScreenPosition() : null;
-
   // Extract search text from filters for label highlighting
   const searchText = useMemo(() => {
     const searchFilter = filters.find(f => f.id === 'search-by-title-filter');
@@ -582,13 +550,6 @@ const GraphVis: React.FC<GraphVisProps> = ({
           </button>
         )}
       </div>
-
-
-
-      {/* Depth callout - shown when only the initial page is tracked */}
-      {showDepthCallout && initialPageScreenPos && (
-        <DepthCallout position={initialPageScreenPos} onDismiss={handleDismissCallout} />
-      )}
 
       <div ref={containerRef} className="w-full h-full">
         {hoveredNode && (

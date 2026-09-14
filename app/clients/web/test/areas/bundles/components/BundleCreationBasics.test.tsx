@@ -27,7 +27,7 @@ describe('SourceDirectoryField', () => {
     render(
       <SourceDirectoryField
         value="/notes/recent"
-        directories={['/notes/recent', '/notes/older']}
+        choices={{ visible: true, options: ['/notes/older'] }}
         isManuallyEdited={false}
         onStartManualEdit={vi.fn()}
         onChange={onChange}
@@ -46,7 +46,7 @@ describe('SourceDirectoryField', () => {
     render(
       <SourceDirectoryField
         value="/notes"
-        directories={['/notes']}
+        choices={{ visible: false, options: [] }}
         isManuallyEdited={false}
         label="Notes Root"
         helpText="Every selected folder must be inside it. In Obsidian, this is usually your vault folder."

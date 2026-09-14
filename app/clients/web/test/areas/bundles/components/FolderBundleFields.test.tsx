@@ -32,6 +32,7 @@ describe('FolderBundleFields', () => {
       <FolderBundleFields
         bundleName="Research"
         selectedFolders={['/vault/Alpha', '/vault/Beta']}
+        validation={{ selectionError: null, folderErrors: [], isChecking: false }}
         {...handlers}
       />
     );

@@ -16,6 +16,7 @@ limitations under the License.
 
 import React from 'react';
 import type { FindInBundlesOptions } from '../../../../../../contracts/types/findInBundlesOptions';
+import type { SourceDirectoryChoices } from './bundleModalViewModel';
 
 export interface CreateBundleForm {
   slug: string;
@@ -84,7 +85,7 @@ export const EntryStrategyPicker: React.FC<EntryStrategyPickerProps> = ({ value,
 
 interface SourceDirectoryFieldProps {
   value: string;
-  directories: string[];
+  choices: SourceDirectoryChoices;
   isManuallyEdited: boolean;
   readOnly?: boolean;
   label?: string;
@@ -96,7 +97,7 @@ interface SourceDirectoryFieldProps {
 
 export const SourceDirectoryField: React.FC<SourceDirectoryFieldProps> = ({
   value,
-  directories,
+  choices,
   isManuallyEdited,
   readOnly = false,
   label = 'Source Directory',
@@ -105,8 +106,6 @@ export const SourceDirectoryField: React.FC<SourceDirectoryFieldProps> = ({
   onChange,
   onBrowse,
 }) => {
-  const existingDirectoryOptions = directories.filter(directory => directory && directory !== value);
-
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label} *</label>
@@ -131,7 +130,7 @@ export const SourceDirectoryField: React.FC<SourceDirectoryFieldProps> = ({
         </div>
       )}
       <p className="text-xs text-gray-500 mt-1">{helpText}</p>
-      {!readOnly && existingDirectoryOptions.length > 0 && (
+      {!readOnly && choices.visible && (
         <div className="mt-2">
           <label className="block text-xs text-gray-500 mb-1">Or use a directory from another bundle:</label>
           <select
@@ -141,7 +140,7 @@ export const SourceDirectoryField: React.FC<SourceDirectoryFieldProps> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
           >
             <option value="">Select a recent directory</option>
-            {existingDirectoryOptions.map(directory => <option key={directory} value={directory}>{directory}</option>)}
+            {choices.options.map(directory => <option key={directory} value={directory}>{directory}</option>)}
           </select>
         </div>
       )}
@@ -200,29 +199,61 @@ export const BundleTraversalDefaultsFields: React.FC<BundleTraversalDefaultsFiel
   </fieldset>
 );
 
-interface MoreBundleDetailsProps {
-  expanded: boolean;
-  isCreate: boolean;
+interface BundleNameFieldProps {
   slug: string;
-  notes: string;
   isSlugManuallyEdited: boolean;
   slugConflictError: string | null;
-  onToggle: () => void;
   onStartSlugEdit: () => void;
   onSlugChange: (value: string) => void;
+}
+
+export const BundleNameField: React.FC<BundleNameFieldProps> = ({
+  slug,
+  isSlugManuallyEdited,
+  slugConflictError,
+  onStartSlugEdit,
+  onSlugChange,
+}) => (
+  <div>
+    <label htmlFor="bundle-name" className="block text-sm font-medium text-gray-700 mb-1">Bundle Name *</label>
+    {!isSlugManuallyEdited ? (
+      <div className="flex items-center space-x-2">
+        <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">{slug || 'Suggested after you choose a page or folder'}</div>
+        <button type="button" onClick={event => { event.stopPropagation(); onStartSlugEdit(); }} className="text-blue-600 hover:text-blue-900" title="Edit bundle name" aria-label="Edit bundle name">✏️</button>
+      </div>
+    ) : (
+      <div>
+        <input
+          id="bundle-name"
+          type="text"
+          value={slug}
+          onChange={event => onSlugChange(event.target.value)}
+          aria-describedby="bundle-name-help bundle-name-format"
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-inset ${slugConflictError ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
+          required
+          pattern="[a-z0-9\-]+"
+          title="Only lowercase letters, numbers, and dashes allowed"
+        />
+        <p id="bundle-name-format" className={`text-xs mt-1 ${slugConflictError ? 'text-red-600' : 'text-gray-500'}`}>
+          {slugConflictError || 'Only lowercase letters, numbers, and dashes allowed'}
+        </p>
+      </div>
+    )}
+    <p id="bundle-name-help" className="text-xs text-gray-500 mt-1">Shown in your bundle list. The published home page has its own title.</p>
+  </div>
+);
+
+interface MoreBundleDetailsProps {
+  expanded: boolean;
+  notes: string;
+  onToggle: () => void;
   onNotesChange: (value: string) => void;
 }
 
 export const MoreBundleDetails: React.FC<MoreBundleDetailsProps> = ({
   expanded,
-  isCreate,
-  slug,
   notes,
-  isSlugManuallyEdited,
-  slugConflictError,
   onToggle,
-  onStartSlugEdit,
-  onSlugChange,
   onNotesChange,
 }) => (
   <>
@@ -232,32 +263,6 @@ export const MoreBundleDetails: React.FC<MoreBundleDetailsProps> = ({
     </button>
     {expanded && (
       <div className="space-y-4 pl-4 border-l-2 border-gray-200">
-        {isCreate && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Bundle Config Folder Name *</label>
-            {!isSlugManuallyEdited ? (
-              <div className="flex items-center space-x-2">
-                <div className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">{slug || 'will-be-auto-generated-from-title'}</div>
-                <button type="button" onClick={event => { event.stopPropagation(); onStartSlugEdit(); }} className="text-blue-600 hover:text-blue-900" title="Edit manually">✏️</button>
-              </div>
-            ) : (
-              <div>
-                <input
-                  type="text"
-                  value={slug}
-                  onChange={event => onSlugChange(event.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-inset ${slugConflictError ? 'border-red-400 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
-                  required
-                  pattern="[a-z0-9\-]+"
-                  title="Only lowercase letters, numbers, and dashes allowed"
-                />
-                <p className={`text-xs mt-1 ${slugConflictError ? 'text-red-600' : 'text-gray-500'}`}>
-                  {slugConflictError || 'Only lowercase letters, numbers, and dashes allowed'}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
           <textarea value={notes} onChange={event => onNotesChange(event.target.value)} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" placeholder="Enter any notes about this bundle..." />

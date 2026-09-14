@@ -46,6 +46,57 @@ afterEach(() => {
 });
 
 describe('folder-bundle routes', () => {
+  it('validates the root and nested folders while identifying every outside selection before preflight', async () => {
+    const home = makeHome();
+    const sourceDirectory = path.join(home, 'source');
+    const nested = path.join(sourceDirectory, 'Notes', 'Nested');
+    const sibling = path.join(home, 'source-other');
+    const escapeLink = path.join(sourceDirectory, 'Outside');
+    fs.mkdirSync(nested, { recursive: true });
+    fs.mkdirSync(sibling);
+    fs.symlinkSync(sibling, escapeLink);
+    const app = express();
+    app.use(express.json());
+    app.use('/api', bundleListingRoutes);
+
+    const result = await request(app).post('/api/bundles/folders/validate-selection').send({
+      sourceDirectory,
+      selectedFolders: [sourceDirectory, nested, home, sibling, escapeLink],
+    }).expect(200);
+
+    expect(result.body.selectionError).toBeNull();
+    expect(result.body.folderErrors).toEqual([home, sibling, escapeLink].map(folder => ({
+      folder,
+      message: 'This folder is outside the Notes Root. Choose the root itself or one of its subfolders.',
+    })));
+    expect(fs.existsSync(path.join(home, 'bundles'))).toBe(false);
+
+    const corrected = await request(app).post('/api/bundles/folders/validate-selection').send({
+      sourceDirectory: home,
+      selectedFolders: [sourceDirectory, nested, sibling],
+    }).expect(200);
+    expect(corrected.body).toEqual({ selectionError: null, folderErrors: [] });
+  });
+
+  it('reports a missing root or folder without leaking filesystem errors', async () => {
+    const home = makeHome();
+    const app = express();
+    app.use(express.json());
+    app.use('/api', bundleListingRoutes);
+    const missingRoot = await request(app).post('/api/bundles/folders/validate-selection').send({
+      sourceDirectory: path.join(home, 'missing'), selectedFolders: [home],
+    }).expect(200);
+    expect(missingRoot.body).toEqual({
+      selectionError: 'Choose an existing, readable folder for the Notes Root.', folderErrors: [],
+    });
+    const missingFolder = await request(app).post('/api/bundles/folders/validate-selection').send({
+      sourceDirectory: home, selectedFolders: ['missing'],
+    }).expect(200);
+    expect(missingFolder.body.folderErrors).toEqual([{
+      folder: 'missing', message: 'This folder could not be opened. Choose an existing, readable folder inside the Notes Root.',
+    }]);
+  });
+
   it('enables generated folder navigation on newly created folder bundles', async () => {
     const home = makeHome();
     process.env.MEADOW_HOME_DIRECTORY_OVERRIDE = home;
