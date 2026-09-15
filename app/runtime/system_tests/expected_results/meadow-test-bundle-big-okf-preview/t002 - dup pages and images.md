@@ -34,4 +34,3 @@ The purpose of this test is to ensure that duplicate image paths are correctly r
 [t002 ---- points to png dup 2 with no path from extra nested](/t002/extra%20nested/t002%20----%20points%20to%20png%20dup%202%20with%20no%20path%20from%20extra%20nested.md)
 
 [t002 ---- points to png dup 2 with no path from second directory](/t002%20-%20second%20directory/t002%20----%20points%20to%20png%20dup%202%20with%20no%20path%20from%20second%20directory.md)
-

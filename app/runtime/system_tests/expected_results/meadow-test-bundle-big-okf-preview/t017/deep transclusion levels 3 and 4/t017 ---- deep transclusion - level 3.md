@@ -11,4 +11,3 @@ It links to a page in another directory [t017 ---- linked from deep transclusion
 It also transcludes level 4, which is in this same directory
 
 ![t017 ---- deep transclusion - level 4](/t017/deep%20transclusion%20levels%203%20and%204/t017%20----%20deep%20transclusion%20-%20level%204.md)
-

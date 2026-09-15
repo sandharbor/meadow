@@ -23,16 +23,3 @@ What mental model is one of the best defenses against [[Confirmation Bias]]?
 
 
 #flashcards/mental-models
-
-```yaml
-pagespecs:
-  - bundle: example-bundle
-    curation:
-      isTracked: false
-      isInWorkingGraph: false
-      frontierDepthOrNullForOrphan: 1
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
-```

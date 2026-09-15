@@ -13,4 +13,3 @@ This tests full page, section, and block transclusion, as well as deep transclus
 [t017 ---- block transclusion](/t017/t017%20----%20block%20transclusion.md)
 
 [t017 ---- deep transclusion](/t017/t017%20----%20deep%20transclusion.md)
-

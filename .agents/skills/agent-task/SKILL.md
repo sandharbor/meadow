@@ -22,12 +22,12 @@ each task lives.
 ## When invoked with arguments (`/agent-task <name> [options]`)
 
 1. **Resolve the task file** — match the user's `<name>` against the discovered
-   agent task files. Use fuzzy/substring matching (e.g. "pagespec" matches
-   `pagespec_chaos_check.md`). If the match is ambiguous, ask the user to
+   agent task files. Use fuzzy/substring matching (e.g. "nodespec" matches
+   `nodespec_chaos_check.md`). If the match is ambiguous, ask the user to
    clarify.
 
 2. **Determine run count** — look for a number in the user's request (e.g.
-   "run pagespec chaos 30 times", or "-n 30"). Default to 1 if not specified.
+   "run nodespec chaos 30 times", or "-n 30"). Default to 1 if not specified.
 
 3. **Run it** — execute the runner, which invokes `claude --print` in a loop:
 

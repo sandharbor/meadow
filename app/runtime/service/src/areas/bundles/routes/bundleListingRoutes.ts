@@ -32,7 +32,6 @@ import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPat
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../shared_code/utils/appConfigGitUtils.js';
 import { rankSourcePageCandidatesWithCount, recentSourcePageCandidatesWithCount } from '../../../../../../shared_code/utils/sourcePageSearchUtils.js';
 import { generateBundleGuid } from '../../../../../../shared_code/utils/bundleGuidUtils.js';
-import { extractContentWithoutPagespecs } from '../../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
 import { getConfigDirectory, getBundlesDirectory, getBundleDirectory, getBundleConfigPath } from '../../../shared/bundle-config/bundleConfigPaths.js';
 import {
@@ -80,19 +79,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Recursively copy a directory, stripping pagespecs blocks from .md files.
+ * Copy source files verbatim, omitting node spec authoring metadata.
  */
-function copyDirectoryWithPagespecStripping(src: string, dest: string): void {
+function copySourceGraph(src: string, dest: string): void {
   fs.mkdirSync(dest, { recursive: true });
   const entries = fs.readdirSync(src, { withFileTypes: true });
   for (const entry of entries) {
+    if (entry.name.endsWith('.nodespec.yaml')) continue;
     const srcPath = join(src, entry.name);
     const destPath = join(dest, entry.name);
     if (entry.isDirectory()) {
-      copyDirectoryWithPagespecStripping(srcPath, destPath);
-    } else if (entry.name.endsWith('.md')) {
-      const content = fs.readFileSync(srcPath, 'utf8');
-      fs.writeFileSync(destPath, extractContentWithoutPagespecs(content), 'utf8');
+      copySourceGraph(srcPath, destPath);
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
@@ -706,10 +703,10 @@ router.post('/bundles/add-example', (req, res, next) => {
 
     const configDir = getConfigDirectory();
 
-    // Copy source graph to a unique directory, stripping pagespecs from .md files
+    // Copy source graph to a unique directory, omitting node spec files
     const sourceGraphDirName = slug.replace(/-/g, '_') + '_source_graph';
     const sourceGraphDest = join(configDir, sourceGraphDirName);
-    copyDirectoryWithPagespecStripping(sourceGraphSrc, sourceGraphDest);
+    copySourceGraph(sourceGraphSrc, sourceGraphDest);
 
     // Copy config/ from fixture
     const bundleDir = getBundleDirectory(slug);

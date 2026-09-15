@@ -11,37 +11,3 @@ Here's another block transclusion with a different identifier:
 ![[t017 ---- block source#^f4c4d5]]
 
 This second transclusion should also appear above this line.
-
-```yaml
-pagespecs:
-  - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: true
-      isInWorkingGraph: true
-      links:
-        outlinks:
-          - linkPath: /t017/t017 ---- block source.md
-            isInGraph: true
-        inlinks:
-          - linkPath: /t017 - transclusion.md
-            isInGraph: true
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: t017 ---- block source.html
-          - relativeLinkPath: t017 ---- block source.html
-        footerSectionBacklinks:
-          - relativeLinkPath: ../t017 - transclusion.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: ../t017 - transclusion.html
-                embeddedLinks: []
-  - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: false
-      isInWorkingGraph: false
-      frontierDepthOrNullForOrphan: null
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
-```

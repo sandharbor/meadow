@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getEffectivePagespecBlock, getPagespecForBundle } from '../../../runtime/system_tests/pagespecs/index.js';
+import { getNodespecBlock, getNodespecForBundle } from '../../../runtime/system_tests/nodespecs/index.js';
 import { extractMainSectionLinkPaths, extractFooterBacklinkPaths } from '../../../runtime/system_tests/helpers/htmlLinkExtractor.js';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage, PreviewPublishModal } from '../src/run/pages/index.js';
@@ -42,19 +42,19 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   const record = JSON.parse(fs.readFileSync(path.join(generationInputs, fs.readdirSync(generationInputs)[0]), 'utf8'));
   const accepted = JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'raw/sourcing/state.json'), 'utf8'));
   expect(record.sourceSnapshotId).toBe(accepted.acceptedId);
-  // The complete replacement page carries an ordinary, unconditional PageSpec.
+  // The complete replacement page carries an ordinary, unconditional NodeSpec.
   const replacement = fileURLToPath(new URL('../../../shared_data/source_changes/meadow-test-bundles-data/replace-section-page/replacement.md', import.meta.url));
-  const pageSpec = getPagespecForBundle(getEffectivePagespecBlock(replacement, fs.readFileSync(replacement, 'utf8')).block!, slug)!;
+  const nodeSpec = getNodespecForBundle(getNodespecBlock(replacement).block!, slug)!;
   const graphResponse = await page.request.get(`/api/bundles/${slug}/curation/working-graph`);
   expect(graphResponse.ok()).toBe(true);
   const graph = await graphResponse.json();
   const node = graph.nodes.find((item: { bundleNodeName: string }) => item.bundleNodeName === originalTitle);
-  expect(Boolean(node)).toBe(pageSpec.curation.isInWorkingGraph);
-  expect(node.tracked).toBe(pageSpec.curation.isTracked);
+  expect(Boolean(node)).toBe(nodeSpec.curation.isInWorkingGraph);
+  expect(node.tracked).toBe(nodeSpec.curation.isTracked);
   const versionsRoot = path.join(testServer.configDir, 'bundles', slug, 'html/generated_bundle_versions');
   const html = fs.readFileSync(path.join(versionsRoot, fs.readdirSync(versionsRoot).find(name => /^v[A-Za-z0-9]{6}$/.test(name))!, `${originalTitle}.html`), 'utf8');
-  expect(extractMainSectionLinkPaths(html).sort()).toEqual(pageSpec.generation.htmlRenderedLinks.mainSectionLinks.map(link => link.relativeLinkPath).sort());
-  expect(extractFooterBacklinkPaths(html).sort()).toEqual(pageSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
+  expect(extractMainSectionLinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.mainSectionLinks.map(link => link.relativeLinkPath).sort());
+  expect(extractFooterBacklinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
   await addKeyFrame(sourceSnapshot);
   await snapshot('generation adopts replaced source only after snapshot acceptance');
   await skipMeadowHomeStateCheck();

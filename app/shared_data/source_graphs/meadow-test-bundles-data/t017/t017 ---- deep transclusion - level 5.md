@@ -3,25 +3,3 @@
 This is level 5, and it transcludes level 6:
 
 ![[t017 ---- deep transclusion - level 6]]
-
-```yaml
-pagespecs:
-  - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: false
-      isInWorkingGraph: false
-      frontierDepthOrNullForOrphan: 1
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
-  - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: false
-      isInWorkingGraph: false
-      frontierDepthOrNullForOrphan: null
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
-```

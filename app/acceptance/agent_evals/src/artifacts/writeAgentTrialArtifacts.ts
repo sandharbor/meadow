@@ -78,7 +78,7 @@ export function writeAgentTrialArtifacts(input: {
     scenario: input.result.scenario,
     revisions: { meadow: revision(REPO_ROOT) },
     fixture: {
-      id: "example-bundle-data-without-pagespecs",
+      id: "example-bundle-data-without-nodespecs",
       sha256: input.fixtureSha256,
     },
     profiles: input.result.profiles,

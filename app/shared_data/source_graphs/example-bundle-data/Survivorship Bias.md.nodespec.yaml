@@ -1,0 +1,10 @@
+nodespecs:
+  - bundle: example-bundle
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

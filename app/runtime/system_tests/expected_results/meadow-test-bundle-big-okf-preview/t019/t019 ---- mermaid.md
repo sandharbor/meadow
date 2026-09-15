@@ -8,4 +8,3 @@ This tests a minimal mermaid fenced code block.
 graph TD
   A-->B
 ```
-

@@ -1,8 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { test, expect } from '../src/run/test-fixtures.js';
-import { Workflows } from '../src/run/workflows.js';
-import { BundleEditorPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
+import { Bundle, Workflows } from '../src/run/workflows.js';
+import { BundleEditorPage, BundleListPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
 import { sourceSnapshot } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
@@ -24,7 +24,9 @@ test('Sourcing remembers the bundle preference to leave new pages untracked', as
   await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.NotTracked);
   await addKeyFrame(sourceSnapshot);
   await snapshot('turning tracking off leaves the accepted addition untracked');
-  await workflows.navigateToBigBundle();
+  await editor.clickBackToBundles();
+  await new BundleListPage(page, expect).clickBundle(Bundle.Big);
+  await editor.waitForLoad(Bundle.Big);
   await editor.waitForSourceCheck();
   await sourceChanges.apply('add-embedded-image');
   await editor.checkSourceChanges();

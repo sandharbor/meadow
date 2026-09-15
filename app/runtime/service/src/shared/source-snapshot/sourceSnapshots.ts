@@ -163,7 +163,7 @@ function inventory(root: string): Pick<SourceSnapshot, 'files' | 'directories' |
   const directories: string[] = [];
   const visit = (directory: string, relative: string) => {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (entry.name.startsWith('.') || entry.name.endsWith('.pagespec.yaml')) continue;
+      if (entry.name.startsWith('.') || entry.name.endsWith('.nodespec.yaml')) continue;
       const key = relative ? `${relative}/${entry.name}` : entry.name;
       const filename = path.join(directory, entry.name);
       if (entry.isSymbolicLink()) throw new SourcingError(`Cannot capture the symbolic link ${key}; the accepted snapshot has been kept.`);

@@ -1,0 +1,19 @@
+nodespecs:
+  - bundle: single-folder-bundle
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
+  - bundle: ordered-folders
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

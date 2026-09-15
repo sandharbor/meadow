@@ -48,9 +48,14 @@ test('every big-graph source change applies to a clean session and leaves the ca
   assert.deepEqual(fs.readFileSync(canonical), before);
 });
 
-test('the same session graph is reused by bundles and PageSpec metadata stays out of runtime source bytes', t => {
+test('the same session graph is reused by bundles and NodeSpec metadata stays out of runtime source bytes', t => {
   const context = session(t);
-  assert.doesNotMatch(fs.readFileSync(path.join(context.root, moved), 'utf8'), /pagespecs:/);
+  assert.deepEqual(
+    fs.readFileSync(path.join(context.root, moved)),
+    fs.readFileSync(path.join(projectRoot, 'app/shared_data/source_graphs', sourceGraph, moved)),
+  );
+  assert.equal(fs.existsSync(path.join(context.root, `${moved}.nodespec.yaml`)), false);
+  assert.ok(fs.existsSync(path.join(projectRoot, 'app/shared_data/source_graphs', sourceGraph, `${moved}.nodespec.yaml`)));
   applySourceChange({ ...context, changeId: 'move-nested-page' });
   assert.equal(materializeSourceGraph(context), context.root);
   assert.equal(fs.existsSync(path.join(context.root, moved)), false);

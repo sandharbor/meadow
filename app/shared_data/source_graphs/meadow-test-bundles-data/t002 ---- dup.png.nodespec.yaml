@@ -1,0 +1,23 @@
+nodespecs:
+  - bundle: meadow-test-bundle-big
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /t002/t002 ---- points to root png dup.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
+  - bundle: meadow-test-bundle-small
+    curation:
+      isTracked: false
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

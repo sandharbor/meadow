@@ -25,16 +25,3 @@ How does [[Inversion]] help counter [[Survivorship Bias]]?
 Instead of asking "what did the winners do?", ask "what did the losers also do?" — the overlap reveals which factors were incidental.
 
 #flashcards/mental-models
-
-```yaml
-pagespecs:
-  - bundle: example-bundle
-    curation:
-      isTracked: false
-      isInWorkingGraph: false
-      frontierDepthOrNullForOrphan: 1
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
-```

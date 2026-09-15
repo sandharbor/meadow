@@ -25,16 +25,3 @@ Why does [[Availability Bias]] make people overestimate the risk of flying?
 Plane crashes are vivid and heavily covered, making them easy to recall — so the brain treats them as more common than they are.
 
 #flashcards/mental-models
-
-```yaml
-pagespecs:
-  - bundle: example-bundle
-    curation:
-      isTracked: false
-      isInWorkingGraph: false
-      frontierDepthOrNullForOrphan: 1
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
-```

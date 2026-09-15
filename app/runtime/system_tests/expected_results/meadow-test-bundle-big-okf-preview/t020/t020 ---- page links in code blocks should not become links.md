@@ -10,4 +10,3 @@ Inline code: `[[t020 - code blocks]]`
 [[t020 - code blocks]]
 some other text
 ```
-

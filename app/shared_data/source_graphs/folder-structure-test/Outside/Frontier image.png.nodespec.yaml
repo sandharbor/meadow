@@ -1,0 +1,27 @@
+nodespecs:
+  - bundle: single-folder-bundle
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /Outside/Beyond outside.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
+  - bundle: ordered-folders
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /Outside/Beyond outside.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

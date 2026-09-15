@@ -202,13 +202,12 @@ fn is_supported_source_extension(extension: &str) -> bool {
         || IMAGE_EXTENSIONS_MAIN.contains(&extension)
 }
 
-/// Sidecar pagespec files like `foo.html.pagespec.yaml` or
-/// `foo.excalidraw.pagespec.yaml` carry test metadata for files that should not embed
-/// pagespecs inline. The graph scanner must not treat them as pages.
-fn is_pagespec_sidecar(path: &std::path::Path) -> bool {
+/// Paired `<full-source-filename>.nodespec.yaml` files carry test metadata.
+/// The graph scanner must not treat them as source nodes.
+fn is_nodespec_sidecar(path: &std::path::Path) -> bool {
     path.file_name()
         .and_then(|s| s.to_str())
-        .map(|s| s.ends_with(".pagespec.yaml"))
+        .map(|s| s.ends_with(".nodespec.yaml"))
         .unwrap_or(false)
 }
 
@@ -863,8 +862,8 @@ fn build_folder_scope_report(
                     ScopePathClassification::HardExcluded => "hardExcluded",
                     ScopePathClassification::OutsideScope => return None,
                     ScopePathClassification::Included => {
-                        if is_pagespec_sidecar(entry.path()) {
-                            "pagespecSidecar"
+                        if is_nodespec_sidecar(entry.path()) {
+                            "nodespecSidecar"
                         } else {
                             let extension = entry
                                 .path()

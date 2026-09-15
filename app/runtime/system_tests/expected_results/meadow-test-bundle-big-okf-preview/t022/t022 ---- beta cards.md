@@ -28,4 +28,3 @@ The flag is {{c1::red}}, {{c1::white}}, and {{c2::blue}}.
 <!--SR:!2026-03-14,4,250-->
 
 <!--MEADOW_SR_GUID:7500eef2337bf-->
-

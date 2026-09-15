@@ -7,4 +7,3 @@ This tests a fenced TypeScript code block (baseline: render without syntax highl
 ```typescript
 const x: number = 1;
 ```
-

@@ -13,39 +13,3 @@ Which separator creates a reverse card?:::Use the triple-colon form.
 
 Brazilians speak ==Portuguese== and Argentinians speak ==Spanish==.
 <!--SR:!2026-03-13,4,250-->
-
-```yaml
-pagespecs:
-  - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: true
-      isInWorkingGraph: true
-      links:
-        outlinks:
-          - linkPath: /t022/t022 ---- beta cards.md
-            isInGraph: true
-        inlinks:
-          - linkPath: /t022 - spaced repetition.md
-            isInGraph: true
-          - linkPath: /t022/t022 ---- beta cards.md
-            isInGraph: true
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: ../_mw_gen/tagpages/tag--t022-srs--alpha.html
-          - relativeLinkPath: t022 ---- beta cards.html
-        footerSectionBacklinks:
-          - relativeLinkPath: ../t022 - spaced repetition.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: ../t022 - spaced repetition.html
-                embeddedLinks: []
-  - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: false
-      isInWorkingGraph: false
-      frontierDepthOrNullForOrphan: null
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
-```

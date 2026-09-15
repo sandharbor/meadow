@@ -15,4 +15,3 @@ Here is another block that comes after the key insight.
 This block has a specific identifier for testing. ^f4c4d5
 
 And this is the final paragraph without a block identifier.
-

@@ -2,7 +2,7 @@
 
 //! Disposable, per-source-directory parse index. Every request reconciles metadata;
 //! cached links remain unresolved so target additions/deletions can redirect old links.
-use crate::{is_pagespec_sidecar, is_supported_source_extension, scan_file, ScanResult};
+use crate::{is_nodespec_sidecar, is_supported_source_extension, scan_file, ScanResult};
 use anyhow::{ensure, Context, Result};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
@@ -114,7 +114,7 @@ fn inventory(root: &Path) -> Result<(BTreeMap<String, Stamp>, HashSet<String>)> 
         .filter_entry(|entry| {
             entry.depth() == 0
                 || (!entry.file_name().to_string_lossy().starts_with('.')
-                    && !is_pagespec_sidecar(entry.path()))
+                    && !is_nodespec_sidecar(entry.path()))
         })
     {
         let entry = entry.context("Could not inspect source directory; the index has been kept")?;

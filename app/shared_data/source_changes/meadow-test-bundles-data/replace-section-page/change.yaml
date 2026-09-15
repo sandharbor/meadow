@@ -1,7 +1,7 @@
 id: replace-section-page
 label: Replace a page with a complete revision
 description: Replace the section page with a complete Markdown file. Its
-  unconditional PageSpec remains authoring metadata.
+  unconditional NodeSpec remains authoring metadata.
 categories: [modify]
 sourceGraph: meadow-test-bundles-data
 operations:

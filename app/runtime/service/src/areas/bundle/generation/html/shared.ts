@@ -24,7 +24,6 @@ import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { logBundleDebug, logBundleWarn } from '../../../../shared/utils/logging/bundleLogger.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import { extractContentWithoutPagespecs } from '../../../../../../../shared_code/utils/pagespecBlockUtils.js';
 
 export function normalizePageTitle(pageTitle: string, bundleConfig: BundleConfig, bundleSlug?: string): string {
   if (bundleSlug) {
@@ -84,10 +83,8 @@ export function getMdContent(
     mdContent = removeFrontmatter(mdContent);
   }
 
-  // Always strip pagespecs blocks - they are test metadata, not content
-  mdContent = extractContentWithoutPagespecs(mdContent);
-
-  return mdContent;
+  // Keep trailing whitespace normalization stable for transclusions and block anchors.
+  return mdContent.trimEnd();
 }
 
 export function anchorNameFor(pageName: string): string {

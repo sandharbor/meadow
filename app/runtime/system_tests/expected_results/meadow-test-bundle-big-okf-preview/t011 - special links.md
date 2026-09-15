@@ -18,4 +18,3 @@ First, before we get into the table, let's just do one _outside_ the table:
 |----------|--------------------|----------|
 | [table test row 1 column 1](/t011/t011%20---%20table%20test%20row%201%20column%201.md) | This is a test of row 1 | [table test row 1 column 3](/t011/t011%20---%20table%20test%20row%201%20column%203.md) |
 | [table test row 2 column 1](/t011/t011%20---%20table%20test%20row%202%20column%201.md) | This is a test of row 2 | [table test row 2 column 3](/t011/t011%20---%20table%20test%20row%202%20column%203.md) |
-

@@ -9,4 +9,3 @@ data NonEmpty a = a :| [a]
 ```
 ......
 The dots line above should not be included in the haskell code block
-

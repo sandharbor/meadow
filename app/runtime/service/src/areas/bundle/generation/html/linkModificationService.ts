@@ -22,7 +22,6 @@ import type { LinkInfo, PageNameToPage } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import { encodePathForUrl } from '../../../../../../../shared_code/utils/urlUtils.js';
-import { extractContentWithoutPagespecs, hasPagespecsBlock } from '../../../../../../../shared_code/utils/pagespecBlockUtils.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { IMAGE_FILE_TYPES } from './constants.js';
 import type { BundleRouteTable } from './bundleRoutePlanner.js';
@@ -539,18 +538,8 @@ export function linkOrImageHtml(
           logger.warn(`Excalidraw source not found: ${excalidrawMdSrc}`);
         }
       } else if (fs.existsSync(imageSrc)) {
-        // SVG files are text-based and may contain appended pagespecs blocks — strip before writing
-        if (imageName.toLowerCase().endsWith('.svg')) {
-          const svgContent = fs.readFileSync(imageSrc, 'utf-8');
-          if (hasPagespecsBlock(svgContent)) {
-            fs.writeFileSync(imageDest, extractContentWithoutPagespecs(svgContent) + '\n', 'utf-8');
-          } else if (!fs.existsSync(imageDest)) {
-            // The bundle-generation asset pass writes link-rewritten SVGs
-            // before Markdown pages render. Do not replace that generated
-            // document with the raw source while producing an embed.
-            fs.copyFileSync(imageSrc, imageDest);
-          }
-        } else {
+        // Preserve link-rewritten SVGs already written by the asset pass.
+        if (!imageName.toLowerCase().endsWith('.svg') || !fs.existsSync(imageDest)) {
           fs.copyFileSync(imageSrc, imageDest);
         }
         logger.debug(`Copied image: ${imageName} to ${imageOutputDir}`);

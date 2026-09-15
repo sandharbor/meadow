@@ -24,39 +24,3 @@ The flag is {{c1::red}}, {{c1::white}}, and {{c2::blue}}.
 <!--SR:!2026-03-14,4,250-->
 
 <!--MEADOW_SR_GUID:7500eef2337bf-->
-
-```yaml
-pagespecs:
-  - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: true
-      isInWorkingGraph: true
-      links:
-        outlinks:
-          - linkPath: /t022/t022 ---- alpha cards.md
-            isInGraph: true
-        inlinks:
-          - linkPath: /t022 - spaced repetition.md
-            isInGraph: true
-          - linkPath: /t022/t022 ---- alpha cards.md
-            isInGraph: true
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: ../_mw_gen/tagpages/tag--t022-srs--beta.html
-          - relativeLinkPath: t022 ---- alpha cards.html
-        footerSectionBacklinks:
-          - relativeLinkPath: ../t022 - spaced repetition.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: ../t022 - spaced repetition.html
-                embeddedLinks: []
-  - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: false
-      isInWorkingGraph: false
-      frontierDepthOrNullForOrphan: null
-    generation:
-      htmlRenderedLinks:
-        mainSectionLinks: []
-        footerSectionBacklinks: []
-```

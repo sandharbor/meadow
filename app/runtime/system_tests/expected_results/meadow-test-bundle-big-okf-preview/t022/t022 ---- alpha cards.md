@@ -17,4 +17,3 @@ Which separator creates a reverse card?:::Use the triple-colon form.
 
 Brazilians speak ==Portuguese== and Argentinians speak ==Spanish==.
 <!--SR:!2026-03-13,4,250-->
-

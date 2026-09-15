@@ -15,4 +15,3 @@ Here's another block transclusion with a different identifier:
 ![t017 ---- block source](/t017/t017%20----%20block%20source.md#%5Ef4c4d5)
 
 This second transclusion should also appear above this line.
-

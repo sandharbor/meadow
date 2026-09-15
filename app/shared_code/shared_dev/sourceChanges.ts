@@ -6,7 +6,6 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import YAML from 'yaml';
 import { textDocumentCodec, writeDurableDocument } from '../utils/durableDocument.js';
-import { extractContentWithoutPagespecs } from '../utils/pagespecBlockUtils.js';
 import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory } from './sourceChangesTypes.js';
 import type { SourceChangeDefinition, SourceChangeOperation, SourceChangeResult, SourceChangeStatus } from './sourceChangesTypes.js';
 
@@ -59,14 +58,6 @@ function safePath(root: string, relative: string): string {
     cursor = parent;
   }
   return filename;
-}
-
-function fixtureBytes(filename: string): Buffer {
-  const bytes = fs.readFileSync(filename);
-  // Expectations are retained in the fixture, never in the mutable runtime source bytes.
-  return /\.(md|svg)$/i.test(filename)
-    ? Buffer.from(extractContentWithoutPagespecs(bytes.toString('utf8')))
-    : bytes;
 }
 
 function sourceFixtureRoot(projectRoot: string, name: string): string {
@@ -127,13 +118,13 @@ export function materializeSourceGraph(options: {
   const copy = (from: string, to: string) => {
     fs.mkdirSync(to, { recursive: true });
     for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
-      if (entry.name === '.DS_Store' || entry.name.endsWith('.pagespec.yaml')) continue;
+      if (entry.name === '.DS_Store' || entry.name.endsWith('.nodespec.yaml')) continue;
       if (entry.isSymbolicLink()) throw new Error(`Source graph fixture contains a symlink: ${entry.name}`);
       const input = path.join(from, entry.name);
       if (excludedPaths.has(path.relative(source, input).split(path.sep).join('/'))) continue;
       const output = path.join(to, entry.name);
       if (entry.isDirectory()) copy(input, output);
-      else if (entry.isFile()) fs.writeFileSync(output, fixtureBytes(input), { mode: fs.statSync(input).mode & 0o777 });
+      else if (entry.isFile()) fs.writeFileSync(output, fs.readFileSync(input), { mode: fs.statSync(input).mode & 0o777 });
     }
   };
   try {
@@ -197,7 +188,7 @@ function planChange(projectRoot: string, definition: SourceChangeDefinition): Ch
   const get = (relative: string): Buffer | null => {
     if (!after.has(relative)) {
       const filename = safePath(sourceRoot, relative);
-      const bytes = fs.existsSync(filename) ? fixtureBytes(filename) : null;
+      const bytes = fs.existsSync(filename) ? fs.readFileSync(filename) : null;
       before.set(relative, bytes);
       after.set(relative, bytes);
     }
@@ -227,7 +218,7 @@ function planChange(projectRoot: string, definition: SourceChangeDefinition): Ch
     } else {
       get(operation.write.path);
       const replacementRoot = safePath(path.join(projectRoot, 'app/shared_data/source_changes'), `${definition.sourceGraph}/${definition.id}`);
-      after.set(operation.write.path, fixtureBytes(safePath(replacementRoot, operation.write.contentFile)));
+      after.set(operation.write.path, fs.readFileSync(safePath(replacementRoot, operation.write.contentFile)));
     }
   }
   return { definition, before, after };
@@ -319,7 +310,7 @@ export function applySourceChange(options: {
           const filename = safePath(root, operation.write.path);
           fs.mkdirSync(path.dirname(filename), { recursive: true });
           const replacement = safePath(path.join(projectRoot, 'app/shared_data/source_changes', sourceGraph, changeId), operation.write.contentFile);
-          fs.writeFileSync(filename, fixtureBytes(replacement));
+          fs.writeFileSync(filename, fs.readFileSync(replacement));
         }
       }
     } catch (error) {

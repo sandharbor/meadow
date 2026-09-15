@@ -8,4 +8,3 @@ Should get the png in the same directory, which is the  `t002/extra nested` dire
 ![t002 ---- dup 2.png](/t002/extra%20nested/t002%20----%20dup%202.png).
 
 Same folder as this file
-

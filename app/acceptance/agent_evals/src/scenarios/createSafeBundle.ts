@@ -22,13 +22,9 @@ import {
   realpathSync,
   readdirSync,
   rmSync,
-  statSync,
-  unlinkSync,
-  writeFileSync,
 } from "fs";
 import os from "os";
 import path from "path";
-import { extractContentWithoutPagespecs } from "../../../../../shared_code/utils/pagespecBlockUtils.js";
 import type { AgentEvalScenario } from "../types.js";
 
 const EXAMPLE_SOURCE = path.resolve(
@@ -174,21 +170,10 @@ export function materializeCreateSafeBundleSource(options: { readOnly?: boolean 
 } {
   const root = mkdtempSync(path.join(os.tmpdir(), "meadow-agent-eval-source-"));
   const directory = path.join(root, "source-graph");
-  cpSync(EXAMPLE_SOURCE, directory, { recursive: true });
-  const visit = (current: string): void => {
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const entryPath = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        visit(entryPath);
-      } else if (entry.name.endsWith(".pagespec.yaml")) {
-        unlinkSync(entryPath);
-      } else if (entry.name.endsWith(".md") && statSync(entryPath).isFile()) {
-        const content = readFileSync(entryPath, "utf8");
-        writeFileSync(entryPath, extractContentWithoutPagespecs(content), "utf8");
-      }
-    }
-  };
-  visit(directory);
+  cpSync(EXAMPLE_SOURCE, directory, {
+    recursive: true,
+    filter: source => !source.endsWith(".nodespec.yaml"),
+  });
   if (options.readOnly) {
     const makeReadOnly = (current: string): void => {
       for (const entry of readdirSync(current, { withFileTypes: true })) {

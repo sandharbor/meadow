@@ -10,4 +10,3 @@ Inline code: `#tag-inside-code-ticks`
 #tag-inside-fenced-code-block
 some other text
 ```
-

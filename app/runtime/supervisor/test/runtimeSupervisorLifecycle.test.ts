@@ -93,10 +93,22 @@ async function waitUntil(predicate: () => boolean, timeoutMs = 5_000): Promise<v
 }
 
 afterEach(async () => {
-  await Promise.all(leases.splice(0).map(lease => lease.release()));
+  const attached = leases.splice(0);
+  await Promise.all(attached.map(lease => lease.release()));
+  // Descriptor removal starts shutdown; the Supervisor can still write its
+  // final ownership log until it exits. Keep its Home intact until then.
+  const supervisorPids = new Set(attached.map(lease => lease.descriptor.supervisorPid));
+  await Promise.all([...supervisorPids].map(pid => waitUntil(() => {
+    try {
+      process.kill(pid, 0);
+      return false;
+    } catch (error) {
+      if ((error as { code?: string }).code !== "ESRCH") throw error;
+      return true;
+    }
+  })));
   for (const home of homes.splice(0)) {
     const paths = getRuntimePaths(home);
-    await waitUntil(() => !existsSync(paths.sessionDescriptor)).catch(() => {});
     rmSync(paths.directory, { recursive: true, force: true });
     rmSync(home, { recursive: true, force: true });
   }

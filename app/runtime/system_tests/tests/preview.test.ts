@@ -28,44 +28,6 @@ import {
 } from '../helpers/serverManager.js';
 import { SystemTestBundleSetup } from '../helpers/testSetup.js';
 
-function stripPagespecBlocks(content: string): string {
-  const lines = content.split(/\r?\n/);
-  const output: string[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim() === '```yaml' && lines[i + 1]?.trim() === 'pagespecs:') {
-      i += 2;
-      while (i < lines.length && lines[i].trim() !== '```') {
-        i++;
-      }
-      continue;
-    }
-
-    output.push(lines[i]);
-  }
-
-  return output.join('\n');
-}
-
-function removePagespecBlocksFromMarkdownFiles(directory: string): void {
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const filePath = path.join(directory, entry.name);
-
-    if (entry.isDirectory()) {
-      removePagespecBlocksFromMarkdownFiles(filePath);
-      continue;
-    }
-
-    if (entry.isFile() && entry.name.endsWith('.md')) {
-      const before = fs.readFileSync(filePath, 'utf8');
-      const after = stripPagespecBlocks(before);
-      if (after !== before) {
-        fs.writeFileSync(filePath, after, 'utf8');
-      }
-    }
-  }
-}
-
 describe('Preview System Tests', () => {
   beforeAll(async () => {
     await startServer();
@@ -441,7 +403,6 @@ describe('Preview System Tests', () => {
         { bundleFolderName: 'meadow-test-bundle-big' }
       );
       testSetup.setUp();
-      removePagespecBlocksFromMarkdownFiles(testSetup.getSourceGraphPath());
 
       const bundleConfigPath = testSetup.getPathInBundle('config/bundle_config.yaml');
       fs.appendFileSync(bundleConfigPath, 'generationOpenKnowledgeFormatEnabled: true\n', 'utf8');

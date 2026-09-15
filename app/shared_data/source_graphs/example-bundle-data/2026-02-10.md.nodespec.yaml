@@ -1,0 +1,24 @@
+nodespecs:
+  - bundle: example-bundle
+    curation:
+      isTracked: false
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /2025 taxes.md
+            isInGraph: true
+          - linkPath: /Charlie Munger.md
+            isInGraph: true
+          - linkPath: /Inversion.md
+            isInGraph: true
+          - linkPath: /Latticework of Mental Models.md
+            isInGraph: true
+          - linkPath: /Probabilistic Thinking.md
+            isInGraph: true
+        inlinks:
+          - linkPath: /Inversion.md
+            isInGraph: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

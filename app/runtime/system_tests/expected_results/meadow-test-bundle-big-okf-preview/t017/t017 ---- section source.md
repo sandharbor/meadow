@@ -17,4 +17,3 @@ It contains specific information that we want to embed in another document.
 ### Conclusion
 
 This is the conclusion section. It should also not be transcluded.
-

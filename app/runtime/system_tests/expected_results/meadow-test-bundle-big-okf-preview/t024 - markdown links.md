@@ -13,4 +13,3 @@ Link to inlink-only page: [Inlink Only](./t024/t024 ---- inlink only.md)
 Link to an image: [Test Image](./t024/t024 ---- test image.png)
 
 Link outside the source graph: [Outside](../../../somewhere/else.md)
-

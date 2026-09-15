@@ -194,16 +194,18 @@ class GenerationOptionsSection {
 
   /** Set the Sources ZIP bundle-level setting to "On" (enabled). */
   async enableSourcesExport() {
+    // Observe the request before waiting for idle; a fast render can finish
+    // before Playwright samples the transient spinner.
     const previewStarted = this.page.waitForResponse(response => (
       response.url().includes("/preview-stream")
     ));
     await this.selectHoverOption("Sources ZIP", "On");
-    await previewStarted;
+    const preview = await previewStarted;
+    this.expect(preview.ok()).toBe(true);
     const changesSpinner = this.page
       .locator("nav button", { hasText: "Changes" })
       .first()
       .locator("span.animate-spin");
-    await this.expect(changesSpinner).toBeVisible({ timeout: 10_000 });
     await this.expect(changesSpinner).not.toBeVisible({ timeout: 60_000 });
   }
 
@@ -213,12 +215,12 @@ class GenerationOptionsSection {
       response.url().includes("/preview-stream")
     ));
     await this.selectHoverOption("Sources ZIP", "Off");
-    await previewStarted;
+    const preview = await previewStarted;
+    this.expect(preview.ok()).toBe(true);
     const changesSpinner = this.page
       .locator("nav button", { hasText: "Changes" })
       .first()
       .locator("span.animate-spin");
-    await this.expect(changesSpinner).toBeVisible({ timeout: 10_000 });
     await this.expect(changesSpinner).not.toBeVisible({ timeout: 60_000 });
   }
 

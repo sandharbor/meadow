@@ -9,4 +9,3 @@ Note that _this_ page, itself, is in the `t002` folder, too.
 ![t002 ---- dup.png](/t002/t002%20----%20dup.png).
 
 Same folder as this file:
-

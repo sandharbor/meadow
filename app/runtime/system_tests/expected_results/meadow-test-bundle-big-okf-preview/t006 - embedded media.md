@@ -70,5 +70,3 @@ enableOpenDedicatedPage: false
 | ------------------------------------------- |
 | _link not tracked_ |
 [t006 --- page that embeds Excalidraw in another directory](/t006/t006%20---%20page%20that%20embeds%20Excalidraw%20in%20another%20directory.md)
-
-
