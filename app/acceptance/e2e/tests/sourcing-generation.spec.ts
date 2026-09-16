@@ -49,7 +49,7 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   expect(graphResponse.ok()).toBe(true);
   const graph = await graphResponse.json();
   const node = graph.nodes.find((item: { bundleNodeName: string }) => item.bundleNodeName === originalTitle);
-  expect(Boolean(node)).toBe(nodeSpec.curation.isInWorkingGraph);
+  expect(Boolean(node)).toBe(nodeSpec.sourcing.isInWorkingGraph);
   expect(node.tracked).toBe(nodeSpec.curation.isTracked);
   const versionsRoot = path.join(testServer.configDir, 'bundles', slug, 'html/generated_bundle_versions');
   const html = fs.readFileSync(path.join(versionsRoot, fs.readdirSync(versionsRoot).find(name => /^v[A-Za-z0-9]{6}$/.test(name))!, `${originalTitle}.html`), 'utf8');

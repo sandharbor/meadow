@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: example-bundle
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -32,6 +31,8 @@ nodespecs:
             isInGraph: true
           - linkPath: /Survivorship Bias.md
             isInGraph: false
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

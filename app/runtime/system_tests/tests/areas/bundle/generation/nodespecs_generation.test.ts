@@ -207,7 +207,7 @@ describe('Runtime Nodespec Generation Validation', () => {
         if (!block) continue;
 
         const bundleSpec = getNodespecForBundle(block, bundleName);
-        if (!bundleSpec || !bundleSpec.curation.isInWorkingGraph) continue;
+        if (!bundleSpec || !bundleSpec.sourcing.isInWorkingGraph) continue;
 
         const relativePath = path.relative(sourceGraphDir, sourceFile).replace(/\.md$/, '.html');
         const htmlPath = path.join(generatedHtmlFolderPath, relativePath);

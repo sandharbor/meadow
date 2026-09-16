@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: single-folder-bundle
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -10,6 +9,8 @@ nodespecs:
           - linkPath: /Outside/Outside note.md
             isInGraph: true
         inlinks: []
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
@@ -17,8 +18,7 @@ nodespecs:
           - relativeLinkPath: ../Outside/Outside note.html
         footerSectionBacklinks: []
   - bundle: ordered-folders
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -27,6 +27,8 @@ nodespecs:
           - linkPath: /Outside/Outside note.md
             isInGraph: true
         inlinks: []
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks:

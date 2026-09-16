@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: true
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -22,6 +21,8 @@ nodespecs:
             isInGraph: true
           - linkPath: /t026/t026 ---- shared image.svg
             isInGraph: true
+    curation:
+      isTracked: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
@@ -30,10 +31,11 @@ nodespecs:
           - relativeLinkPath: t026 ---- shared image.svg
         footerSectionBacklinks: []
   - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: false
       frontierDepthOrNullForOrphan: null
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

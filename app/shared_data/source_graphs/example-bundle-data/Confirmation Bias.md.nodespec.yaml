@@ -1,9 +1,10 @@
 nodespecs:
   - bundle: example-bundle
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: false
       frontierDepthOrNullForOrphan: 1
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

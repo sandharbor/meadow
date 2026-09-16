@@ -26,6 +26,7 @@ import {
   isNodespecNotInWorkingGraph,
   parseNodespecSidecarContent,
   sourceFileForSidecarPath,
+  validateNodespecsBlock,
   validateNodespecsBlockStructure,
 } from '../nodespecs/index.js';
 import type { NodespecsBlock } from '../nodespecs/index.js';
@@ -39,6 +40,80 @@ import {
 } from './support/nodespecTestHelpers.js';
 
 describe('Nodespecs General System Tests', () => {
+  describe('Sourcing and Curation Structure', () => {
+    const entry = {
+      bundle: 'test-bundle',
+      sourcing: { isInWorkingGraph: true as const, links: { outlinks: [], inlinks: [] } },
+      curation: { isTracked: true, filtersSelected: { 'untracked-filter': false } },
+      generation: { htmlRenderedLinks: { mainSectionLinks: [], footerSectionBacklinks: [] } },
+    };
+
+    const entries: NodespecsBlock['nodespecs'] = [
+      entry,
+      { ...entry, sourcing: { isInWorkingGraph: false, frontierDepthOrNullForOrphan: 1 } },
+      { ...entry, sourcing: { isInWorkingGraph: false, frontierDepthOrNullForOrphan: null } },
+    ];
+
+    it.each(entries)('validates separate source and curation state: %j', spec => {
+      for (const isTracked of [true, false]) {
+        const block = { nodespecs: [{ ...spec, curation: { ...spec.curation, isTracked } }] };
+        expect(validateNodespecsBlock(block, [], new Set(['test-bundle']), 'testPage')).toEqual([]);
+      }
+    });
+
+    it.each([
+      ['sourcing', 'isTracked', true],
+      ['sourcing', 'filtersSelected', { 'untracked-filter': false }],
+      ['curation', 'isInWorkingGraph', true],
+      ['curation', 'links', { outlinks: [], inlinks: [] }],
+      ['curation', 'frontierDepthOrNullForOrphan', null],
+    ] as const)('rejects misplaced %s.%s', (area, key, value) => {
+      const block = { nodespecs: [{ ...entry, [area]: { ...entry[area], [key]: value } }] };
+      const errors = validateNodespecsBlockStructure(block, 'testPage');
+      expect(errors.map(error => error.message)).toContain(`Nodespec entry 0.${area} has unknown key "${key}"`);
+    });
+
+    it.each(['sourcing', 'curation'] as const)('requires a %s object', area => {
+      for (const value of [undefined, null, [], true, 'invalid']) {
+        const errors = validateNodespecsBlockStructure({ nodespecs: [{ ...entry, [area]: value }] }, 'testPage');
+        expect(errors.map(error => error.message)).toContain(`Nodespec entry 0 must have a "${area}" object`);
+      }
+    });
+
+    it.each([
+      ['sourcing', 'isInWorkingGraph'],
+      ['curation', 'isTracked'],
+    ] as const)('requires a boolean at %s.%s', (area, key) => {
+      for (const value of [undefined, null, 'true']) {
+        const block = { nodespecs: [{ ...entry, [area]: { ...entry[area], [key]: value } }] };
+        const errors = validateNodespecsBlockStructure(block, 'testPage');
+        expect(errors.map(error => error.message)).toContain(`Nodespec entry 0.${area} must have an "${key}" boolean`);
+      }
+    });
+
+    it('reports the old combined layout as invalid instead of silently accepting it', () => {
+      const block = parseNodespecSidecarContent(`nodespecs:
+  - bundle: test-bundle
+    curation:
+      isTracked: true
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks: []
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []
+`)!;
+      const errors = validateNodespecsBlock(block, [], new Set(['test-bundle']), 'testPage');
+      expect(errors.map(error => error.message)).toEqual([
+        'Nodespec entry 0 must have a "sourcing" object',
+        'Nodespec entry 0.curation has unknown key "isInWorkingGraph"',
+        'Nodespec entry 0.curation has unknown key "links"',
+      ]);
+    });
+  });
+
   describe('Nodespec Fixture Structure Tests', () => {
     it('should have valid source graph directories', () => {
       for (const sourceGraphDir of nodespecSourceGraphDirs) {
@@ -69,6 +144,48 @@ describe('Nodespecs General System Tests', () => {
 
       if (errors.length > 0) {
         throw new Error(`Nodespecs parsing errors:\n${errors.join('\n')}`);
+      }
+    });
+
+    it('all nodespecs should pass validation', () => {
+      const availableBundles = getAvailableBundles();
+      const errors: string[] = [];
+
+      for (const sourceGraphDir of nodespecSourceGraphDirs) {
+        const nodespecSourceFiles = findAllNodespecSourceFiles(sourceGraphDir);
+        const allReferencedBundles: string[] = [];
+
+        for (const sourceFile of nodespecSourceFiles) {
+          const block = getNodespecBlock(sourceFile).block;
+          if (block) {
+            for (const bundle of getReferencedBundles(block)) {
+              if (!allReferencedBundles.includes(bundle)) {
+                allReferencedBundles.push(bundle);
+              }
+            }
+          }
+        }
+
+        for (const sourceFile of nodespecSourceFiles) {
+          const block = getNodespecBlock(sourceFile).block;
+          if (!block) continue;
+
+          const pageTitle = getPageTitle(sourceFile);
+          const validationErrors = validateNodespecsBlock(
+            block,
+            allReferencedBundles,
+            availableBundles,
+            pageTitle
+          );
+
+          for (const err of validationErrors) {
+            errors.push(`${sourceFile}: [${err.field ?? 'general'}] ${err.message}`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        throw new Error(`Nodespec validation errors:\n${errors.join('\n')}`);
       }
     });
 
@@ -164,9 +281,10 @@ describe('Nodespecs General System Tests', () => {
     it('parseNodespecSidecarContent should parse valid YAML', () => {
       const content = `nodespecs:
   - bundle: meadow-test-bundle-big
+    sourcing:
+      isInWorkingGraph: true
     curation:
       isTracked: true
-      isInWorkingGraph: true
       filtersSelected:
         untracked-filter: false
     generation:
@@ -174,10 +292,11 @@ describe('Nodespecs General System Tests', () => {
         mainSectionLinks: []
         footerSectionBacklinks: []
   - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: false
       frontierDepthOrNullForOrphan: 1
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
@@ -190,13 +309,13 @@ describe('Nodespecs General System Tests', () => {
 
       const bigBundleSpec = getNodespecForBundle(block!, 'meadow-test-bundle-big');
       expect(bigBundleSpec).toBeDefined();
-      expect(bigBundleSpec!.curation.isInWorkingGraph).toBe(true);
+      expect(bigBundleSpec!.sourcing.isInWorkingGraph).toBe(true);
 
       const smallBundleSpec = getNodespecForBundle(block!, 'meadow-test-bundle-small');
       expect(smallBundleSpec).toBeDefined();
-      expect(smallBundleSpec!.curation.isInWorkingGraph).toBe(false);
+      expect(smallBundleSpec!.sourcing.isInWorkingGraph).toBe(false);
       if (isNodespecNotInWorkingGraph(smallBundleSpec!)) {
-        expect(smallBundleSpec.curation.frontierDepthOrNullForOrphan).toBe(1);
+        expect(smallBundleSpec.sourcing.frontierDepthOrNullForOrphan).toBe(1);
       }
     });
 
@@ -205,15 +324,18 @@ describe('Nodespecs General System Tests', () => {
         nodespecs: [
           {
             bundle: 'bundle-a',
-            curation: { isTracked: true, isInWorkingGraph: true },
+            sourcing: { isInWorkingGraph: true },
+            curation: { isTracked: true },
             generation: { htmlRenderedLinks: { mainSectionLinks: [], footerSectionBacklinks: [] } },
           },
           {
             bundle: 'bundle-b',
-            curation: {
-              isTracked: true,
+            sourcing: {
               isInWorkingGraph: false,
               frontierDepthOrNullForOrphan: null,
+            },
+            curation: {
+              isTracked: true,
             },
             generation: { htmlRenderedLinks: { mainSectionLinks: [], footerSectionBacklinks: [] } },
           },

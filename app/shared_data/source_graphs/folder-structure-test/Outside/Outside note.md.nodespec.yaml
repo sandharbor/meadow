@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: single-folder-bundle
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -10,6 +9,8 @@ nodespecs:
         inlinks:
           - linkPath: /Alpha/Alpha note.md
             isInGraph: true
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
@@ -22,8 +23,7 @@ nodespecs:
                   - linkName: Nested note
                     linkRelativePath: ../Alpha/Nested/Nested note.html
   - bundle: ordered-folders
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -32,6 +32,8 @@ nodespecs:
         inlinks:
           - linkPath: /Alpha/Alpha note.md
             isInGraph: true
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks:

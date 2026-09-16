@@ -20,7 +20,7 @@ import {
   getFixturesPath,
   getSourceGraphsPath,
 } from '../../helpers/serverManager.js';
-import type { SystemTestBundleSetup } from '../../helpers/testSetup.js';
+import { SystemTestBundleSetup } from '../../helpers/testSetup.js';
 import type { BundleNodeConfig } from '../../../../contracts/types/bundleNodeConfig.js';
 import { FILE_TYPES } from '../../../../contracts/types/FileType.js';
 import { getNodespecBlock, getReferencedBundles, isExcalidrawMarkdown } from '../../nodespecs/index.js';
@@ -214,6 +214,18 @@ export interface NodespecBundleSetups {
   example: SystemTestBundleSetup;
   folderStructureSingle: SystemTestBundleSetup;
   folderStructureMultiple: SystemTestBundleSetup;
+}
+
+export function setUpNodespecBundles(prefix: string): NodespecBundleSetups {
+  const setups = {
+    big: new SystemTestBundleSetup('home_fixture_big_and_small', `${prefix}-big`, { bundleFolderName: 'meadow-test-bundle-big' }),
+    small: new SystemTestBundleSetup('home_fixture_big_and_small', `${prefix}-small`, { bundleFolderName: 'meadow-test-bundle-small' }),
+    example: new SystemTestBundleSetup('home_fixture_example', `${prefix}-example`, { bundleFolderName: 'example-bundle' }),
+    folderStructureSingle: new SystemTestBundleSetup('home_fixture_folder_structure_single', `${prefix}-folder-single`, { bundleFolderName: 'single-folder-bundle' }),
+    folderStructureMultiple: new SystemTestBundleSetup('home_fixture_folder_structure_multiple', `${prefix}-folder-multiple`, { bundleFolderName: 'ordered-folders' }),
+  };
+  for (const setup of Object.values(setups)) setup.setUp();
+  return setups;
 }
 
 export function getNodespecBundlesToCheck(

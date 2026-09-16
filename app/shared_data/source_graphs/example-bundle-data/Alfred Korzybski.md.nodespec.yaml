@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: example-bundle
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -24,6 +23,8 @@ nodespecs:
             isInGraph: true
           - linkPath: /Map is Not the Territory.md
             isInGraph: true
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

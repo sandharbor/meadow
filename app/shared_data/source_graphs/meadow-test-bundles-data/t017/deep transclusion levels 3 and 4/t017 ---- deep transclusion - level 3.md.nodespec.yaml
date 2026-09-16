@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: true
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -12,6 +11,8 @@ nodespecs:
         inlinks:
           - linkPath: /t017/t017 ---- deep transclusion.md
             isInGraph: true
+    curation:
+      isTracked: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
@@ -27,10 +28,11 @@ nodespecs:
                   - linkName: t017 ---- linked from deep transclusion level 3
                     linkRelativePath: ../../t017 - second directory/t017 ---- linked from deep transclusion level 3.html
   - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: false
       frontierDepthOrNullForOrphan: null
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

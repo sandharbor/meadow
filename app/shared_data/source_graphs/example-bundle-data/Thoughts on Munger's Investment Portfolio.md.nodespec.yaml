@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: example-bundle
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -12,6 +11,8 @@ nodespecs:
         inlinks:
           - linkPath: /Charlie Munger.md
             isInGraph: true
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

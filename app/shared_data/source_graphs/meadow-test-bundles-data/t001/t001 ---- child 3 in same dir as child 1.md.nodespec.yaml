@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: true
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -10,6 +9,8 @@ nodespecs:
         inlinks:
           - linkPath: /t001 - deeply nested.md
             isInGraph: true
+    curation:
+      isTracked: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
@@ -20,8 +21,7 @@ nodespecs:
               - seeInContextLinkRelativePath: ../t001 - deeply nested.html
                 embeddedLinks: []
   - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: false
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -30,6 +30,8 @@ nodespecs:
         inlinks:
           - linkPath: /t001 - deeply nested.md
             isInGraph: true
+    curation:
+      isTracked: false
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

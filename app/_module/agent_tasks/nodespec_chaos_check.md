@@ -28,14 +28,15 @@ Every source format uses `<full-source-filename>.nodespec.yaml` in the same dire
 ```yaml
 nodespecs:
   - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: true
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
           - linkPath: /some page.md
             isInGraph: true
         inlinks: []
+    curation:
+      isTracked: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks:
@@ -43,9 +44,9 @@ nodespecs:
         footerSectionBacklinks: []
 ```
 
-The `curation` section describes tracked state, working graph membership,
-filters, frontier/orphan status, and graph links. The `generation` section
-describes rendered HTML expectations.
+The `sourcing` section describes working graph membership, graph links, and
+frontier/orphan status. The `curation` section describes tracked state and filters.
+The `generation` section describes rendered HTML expectations.
 
 These discrepancies appear to arise for several reasons:
 
@@ -127,7 +128,7 @@ for potential issues.
 Possible actions include:
 
 - Inspect a small section of nodespec logic.
-- Check whether curation validation and generation validation are covered in
+- Check whether sourcing, curation, and generation validation are covered in
   their area-specific system tests.
 - Attempt minor code modifications.
 - Observe whether those modifications should logically cause a failure.
@@ -175,7 +176,7 @@ Rename a key within a nodespec to test whether keys are strictly validated.
 
 1. Select a nodespec.
 2. Modify the name of one of its keys. Prefer changing one nested key inside
-   either `curation` or `generation` rather than only changing the top-level
+   `sourcing`, `curation`, or `generation` rather than only changing the top-level
    `bundle` key.
 3. Run the root-level checks.
 
@@ -191,8 +192,8 @@ Flip a boolean field in a nodespec to verify that mismatches are detected.
 **Behavior:**
 
 1. Pick a random page.
-2. Select a boolean value in its `curation` nodespec, such as `isTracked`,
-   `isInWorkingGraph`, `isInGraph`, or a `filtersSelected` value.
+2. Select a boolean value in its `sourcing` section (`isInWorkingGraph` or
+   `isInGraph`) or `curation` section (`isTracked` or a `filtersSelected` value).
 3. Flip the value (`true → false` or `false → true`).
 4. Run the root-level checks.
 
@@ -209,8 +210,8 @@ Modify path definitions inside a nodespec.
 
 For a randomly selected page:
 
-- Change one of the paths specified in the nodespec. Include both curation
-  paths such as `curation.links.*.linkPath` and generation paths such as
+- Change one of the paths specified in the nodespec. Include both sourcing
+  paths such as `sourcing.links.*.linkPath` and generation paths such as
   `generation.htmlRenderedLinks.*.relativeLinkPath` in the random selection.
 - Remove an existing path
 - Add an additional path
@@ -230,13 +231,13 @@ Within a single node's spec, look for inconsistencies
 
 **Behavior:**
 
-Compare the `curation` section and the `generation` section for one page. For
-example, this was an issue we found at one point. One curation inlink was to the
+Compare the `sourcing` section and the `generation` section for one page. For
+example, this was an issue we found at one point. One sourcing inlink was to the
 "nested" one, but the generation backlink was to the "root" one:
 
 ```
     <snip>
-    curation:
+    sourcing:
       links:
         outlinks: []
         inlinks:
@@ -254,7 +255,7 @@ Or this one where the inlink was completely absent from the footerSectionBacklin
 
 ```
     <snip>
-    curation:
+    sourcing:
       links:
         outlinks: []
         inlinks:
@@ -316,7 +317,7 @@ When debugging a failure, targeted nodespec tests may be run first:
 
 ```bash
 cd app/runtime/system_tests
-npx vitest run tests/nodespecs_general.test.ts tests/areas/bundle/curation/nodespecs_curation.test.ts tests/areas/bundle/generation/nodespecs_generation.test.ts
+npx vitest run tests/nodespecs_general.test.ts tests/areas/bundle/sourcing/nodespecs_sourcing.test.ts tests/areas/bundle/curation/nodespecs_curation.test.ts tests/areas/bundle/generation/nodespecs_generation.test.ts
 ```
 
 The final validation for a run must still be the root-level check.

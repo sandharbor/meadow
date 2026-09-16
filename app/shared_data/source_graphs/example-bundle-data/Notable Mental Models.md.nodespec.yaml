@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: example-bundle
-    curation:
-      isTracked: true
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks:
@@ -34,6 +33,8 @@ nodespecs:
           - linkPath: /images/Mental Models Diagram.svg
             isInGraph: true
         inlinks: []
+    curation:
+      isTracked: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks:

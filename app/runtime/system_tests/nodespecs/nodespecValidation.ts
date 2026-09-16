@@ -501,7 +501,7 @@ export function validateNodespecEntry(
 
   // If not in working graph, frontierDepthOrNullForOrphan must be present
   if (isNodespecNotInWorkingGraph(spec)) {
-    if (spec.curation.frontierDepthOrNullForOrphan === undefined) {
+    if (spec.sourcing.frontierDepthOrNullForOrphan === undefined) {
       errors.push({
         message: `When isInWorkingGraph is false, frontierDepthOrNullForOrphan must be specified`,
         pageTitle,
@@ -510,25 +510,11 @@ export function validateNodespecEntry(
       });
     }
   } else {
-    const { curation } = spec;
-
-    // Page is in working graph - validate filter IDs if present
-    if (curation.filtersSelected) {
-      for (const filterId of Object.keys(curation.filtersSelected)) {
-        if (!isValidFilterId(filterId)) {
-          errors.push({
-            message: `Invalid filter ID "${filterId}". Must be a built-in filter (${BUILTIN_FILTER_IDS.join(', ')}) or match pattern "custom-{id}"`,
-            pageTitle,
-            bundle: spec.bundle,
-            field: 'filtersSelected',
-          });
-        }
-      }
-    }
+    const { sourcing } = spec;
 
     // Require links section when isInWorkingGraph is true (if option enabled)
     if (requireLinksWhenInWorkingGraph && isNodespecInWorkingGraph(spec)) {
-      if (!curation.links) {
+      if (!sourcing.links) {
         errors.push({
           message: `When isInWorkingGraph is true, links section must be specified`,
           pageTitle,
@@ -537,7 +523,21 @@ export function validateNodespecEntry(
         });
       } else {
         // Validate the links section structure
-        errors.push(...validateLinksSection(curation.links, pageTitle, spec.bundle));
+        errors.push(...validateLinksSection(sourcing.links, pageTitle, spec.bundle));
+      }
+    }
+  }
+
+  // Curation assertions are separate from source graph membership.
+  if (spec.curation.filtersSelected) {
+    for (const filterId of Object.keys(spec.curation.filtersSelected)) {
+      if (!isValidFilterId(filterId)) {
+        errors.push({
+          message: `Invalid filter ID "${filterId}". Must be a built-in filter (${BUILTIN_FILTER_IDS.join(', ')}) or match pattern "custom-{id}"`,
+          pageTitle,
+          bundle: spec.bundle,
+          field: 'filtersSelected',
+        });
       }
     }
   }
@@ -576,7 +576,8 @@ export function validateNodespecsBlock(
   pageTitle: string,
   options: ValidationOptions = {}
 ): ValidationError[] {
-  const errors: ValidationError[] = [];
+  const errors = validateNodespecsBlockStructure(block, pageTitle);
+  if (errors.length > 0) return errors;
 
   // Validate each entry
   for (const spec of block.nodespecs) {
@@ -660,7 +661,14 @@ export function validateNodespecsBlockStructure(
       });
     }
 
-    if (!entry.curation || typeof entry.curation !== 'object') {
+    if (!entry.sourcing || typeof entry.sourcing !== 'object' || Array.isArray(entry.sourcing)) {
+      errors.push({
+        message: `Nodespec entry ${i} must have a "sourcing" object`,
+        pageTitle,
+      });
+    }
+
+    if (!entry.curation || typeof entry.curation !== 'object' || Array.isArray(entry.curation)) {
       errors.push({
         message: `Nodespec entry ${i} must have a "curation" object`,
         pageTitle,
@@ -675,7 +683,7 @@ export function validateNodespecsBlockStructure(
     }
 
     // Validate that no unknown keys are present
-    const allowedKeys = new Set(['bundle', 'curation', 'generation']);
+    const allowedKeys = new Set(['bundle', 'sourcing', 'curation', 'generation']);
     for (const key of Object.keys(entry)) {
       if (!allowedKeys.has(key)) {
         errors.push({
@@ -685,7 +693,28 @@ export function validateNodespecsBlockStructure(
       }
     }
 
-    if (entry.curation && typeof entry.curation === 'object') {
+    if (entry.sourcing && typeof entry.sourcing === 'object' && !Array.isArray(entry.sourcing)) {
+      const sourcing = entry.sourcing as Record<string, unknown>;
+
+      if (typeof sourcing.isInWorkingGraph !== 'boolean') {
+        errors.push({
+          message: `Nodespec entry ${i}.sourcing must have an "isInWorkingGraph" boolean`,
+          pageTitle,
+        });
+      }
+
+      const allowedSourcingKeys = new Set(['isInWorkingGraph', 'links', 'frontierDepthOrNullForOrphan']);
+      for (const key of Object.keys(sourcing)) {
+        if (!allowedSourcingKeys.has(key)) {
+          errors.push({
+            message: `Nodespec entry ${i}.sourcing has unknown key "${key}"`,
+            pageTitle,
+          });
+        }
+      }
+    }
+
+    if (entry.curation && typeof entry.curation === 'object' && !Array.isArray(entry.curation)) {
       const curation = entry.curation as Record<string, unknown>;
 
       if (typeof curation.isTracked !== 'boolean') {
@@ -695,20 +724,7 @@ export function validateNodespecsBlockStructure(
         });
       }
 
-      if (typeof curation.isInWorkingGraph !== 'boolean') {
-        errors.push({
-          message: `Nodespec entry ${i}.curation must have an "isInWorkingGraph" boolean`,
-          pageTitle,
-        });
-      }
-
-      const allowedCurationKeys = new Set([
-        'isTracked',
-        'isInWorkingGraph',
-        'filtersSelected',
-        'links',
-        'frontierDepthOrNullForOrphan',
-      ]);
+      const allowedCurationKeys = new Set(['isTracked', 'filtersSelected']);
       for (const key of Object.keys(curation)) {
         if (!allowedCurationKeys.has(key)) {
           errors.push({

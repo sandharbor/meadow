@@ -53,20 +53,22 @@ export interface HtmlRenderedLinks {
 
 export type NodespecFiltersSelected = Record<string, boolean>;
 
-export interface NodespecCurationInWorkingGraph {
-  isTracked: boolean;
+export interface NodespecSourcingInWorkingGraph {
   isInWorkingGraph: true;
-  filtersSelected?: NodespecFiltersSelected;
   links?: NodespecLinks;
 }
 
-export interface NodespecCurationNotInWorkingGraph {
-  isTracked: boolean;
+export interface NodespecSourcingNotInWorkingGraph {
   isInWorkingGraph: false;
   frontierDepthOrNullForOrphan: number | null;
 }
 
-export type NodespecCuration = NodespecCurationInWorkingGraph | NodespecCurationNotInWorkingGraph;
+export type NodespecSourcing = NodespecSourcingInWorkingGraph | NodespecSourcingNotInWorkingGraph;
+
+export interface NodespecCuration {
+  isTracked: boolean;
+  filtersSelected?: NodespecFiltersSelected;
+}
 
 export interface NodespecGeneration {
   htmlRenderedLinks: HtmlRenderedLinks;
@@ -74,13 +76,15 @@ export interface NodespecGeneration {
 
 export interface NodespecInWorkingGraph {
   bundle: string;
-  curation: NodespecCurationInWorkingGraph;
+  sourcing: NodespecSourcingInWorkingGraph;
+  curation: NodespecCuration;
   generation: NodespecGeneration;
 }
 
 export interface NodespecNotInWorkingGraph {
   bundle: string;
-  curation: NodespecCurationNotInWorkingGraph;
+  sourcing: NodespecSourcingNotInWorkingGraph;
+  curation: NodespecCuration;
   generation: NodespecGeneration;
 }
 
@@ -94,12 +98,12 @@ export interface NodespecsBlock {
  * Type guard to check if a nodespec entry indicates the page is in the working graph.
  */
 export function isNodespecInWorkingGraph(spec: NodespecEntry): spec is NodespecInWorkingGraph {
-  return spec.curation.isInWorkingGraph === true;
+  return spec.sourcing.isInWorkingGraph === true;
 }
 
 /**
  * Type guard to check if a nodespec entry indicates the page is NOT in the working graph.
  */
 export function isNodespecNotInWorkingGraph(spec: NodespecEntry): spec is NodespecNotInWorkingGraph {
-  return spec.curation.isInWorkingGraph === false;
+  return spec.sourcing.isInWorkingGraph === false;
 }

@@ -1,7 +1,6 @@
 nodespecs:
   - bundle: meadow-test-bundle-big
-    curation:
-      isTracked: true
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks: []
@@ -10,6 +9,8 @@ nodespecs:
             isInGraph: true
           - linkPath: /t001/t001 ---- child 3 in same dir as child 1.md
             isInGraph: true
+    curation:
+      isTracked: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
@@ -23,8 +24,7 @@ nodespecs:
               - seeInContextLinkRelativePath: t001 ---- child 3 in same dir as child 1.html
                 embeddedLinks: []
   - bundle: meadow-test-bundle-small
-    curation:
-      isTracked: true
+    sourcing:
       isInWorkingGraph: true
       links:
         outlinks: []
@@ -33,6 +33,8 @@ nodespecs:
             isInGraph: true
           - linkPath: /t001/t001 ---- child 3 in same dir as child 1.md
             isInGraph: true
+    curation:
+      isTracked: true
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []

@@ -183,10 +183,12 @@ async function main() {
 
         entry = {
           bundle: BUNDLE_NAME,
-          curation: {
-            isTracked,
+          sourcing: {
             isInWorkingGraph: true,
             links: { outlinks, inlinks },
+          },
+          curation: {
+            isTracked,
           },
           generation: {
             htmlRenderedLinks,
@@ -202,10 +204,12 @@ async function main() {
 
         entry = {
           bundle: BUNDLE_NAME,
-          curation: {
-            isTracked,
+          sourcing: {
             isInWorkingGraph: false,
             frontierDepthOrNullForOrphan,
+          },
+          curation: {
+            isTracked,
           },
           generation: {
             htmlRenderedLinks,
