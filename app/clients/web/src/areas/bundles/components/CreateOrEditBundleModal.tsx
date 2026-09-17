@@ -109,7 +109,9 @@ const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
   const [defaultOutlinksDepth, setDefaultOutlinksDepth] = useState(viewModel.defaultOutlinksDepth);
   const [defaultInlinksDepth, setDefaultInlinksDepth] = useState(viewModel.defaultInlinksDepth);
   const folderValidation = useFolderSelectionValidation(isOpen && mode === 'create' && entryStrategy === 'folders', form.sourceDirectory, selectedFolders);
-  const submitDisabledReason = isSubmitting ? 'Please wait while your bundle is saved.' : slugConflictError || folderValidation.disabledReason;
+  const submitDisabledReason = isSubmitting
+    ? mode === 'create' ? 'Please wait while your bundle is created.' : 'Please wait while your bundle is saved.'
+    : slugConflictError || folderValidation.disabledReason;
 
   // Server-side typeahead: query source pages by title (debounced).
   useEffect(() => {
