@@ -17,7 +17,7 @@ export class SourceReviewModal {
   }
 
   private get trackNewPagesCheckbox() {
-    return this.dialog.getByRole('checkbox', { name: 'Track added pages', exact: true });
+    return this.dialog.getByRole('checkbox', { name: 'Track non-sensitive added pages', exact: true });
   }
 
   async expectTrackNewPages(checked: boolean) {
@@ -75,6 +75,10 @@ export class SourceReviewModal {
     ]);
     await this.expectClosed();
     await this.expect(this.page.getByRole('status').filter({ hasText: 'Recalculating graph…' })).not.toBeVisible();
+  }
+
+  async expectSensitivity(path: string, label: 'Sensitive' | 'Sensitive via filter') {
+    await this.expect(this.changeDisclosure(path).getByText(label, { exact: true })).toBeVisible();
   }
 
   async expectModified(path: string) {

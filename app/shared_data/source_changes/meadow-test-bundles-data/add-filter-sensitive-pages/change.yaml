@@ -1,0 +1,19 @@
+id: add-filter-sensitive-pages
+label: Add safe and filter-sensitive pages
+description: Accept all new source pages while curation skips sensitive additions during bulk tracking.
+categories: [add]
+sourceGraph: meadow-test-bundles-data
+operations:
+  - replaceText:
+      path: main page.md
+      before: "[[t001 - deeply nested]]"
+      after: "[[t001 - deeply nested]]\n\n[[source-changes/added public update]]\n\n[[source-changes/added confidential notes]]\n\n[[source-changes/added confidential planning]]"
+  - write:
+      path: source-changes/added public update.md
+      contentFile: added-0.md
+  - write:
+      path: source-changes/added confidential notes.md
+      contentFile: added-1.md
+  - write:
+      path: source-changes/added confidential planning.md
+      contentFile: added-2.md

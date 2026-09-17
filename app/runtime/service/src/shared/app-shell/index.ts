@@ -1,4 +1,5 @@
-import sourcingRoutes from '../../areas/bundle/sourcing/routes/sourcingRoutes.js';
+import { createSourcingRoutes } from '../../areas/bundle/sourcing/routes/sourcingRoutes.js';
+import { sourceCurationWorkflow } from './sourceCurationWorkflow.js';
 import { acceptedSourceRoot, SourcingError } from '../source-snapshot/sourceSnapshots.js';
 /*
 Copyright 2026 Sand Harbor Software, LLC
@@ -142,7 +143,7 @@ app.use('/api', createRuntimeOperationLeaseMiddleware({
 // Use graph config routes
 app.use('/api', bundleConfigRoutes);
 app.use('/api', customFiltersRoutes);
-app.use('/api', sourcingRoutes);
+app.use('/api', createSourcingRoutes(sourceCurationWorkflow));
 app.use('/api', bundleCurationRoutes);
 app.use('/api', bundleOperationRoutes);
 app.use('/api', hooksRoutes);

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import type { SnapshotTrackingOutcome } from '../../../../../../contracts/types/curationTracking.js';
 import { SourcingPanel } from '../../../areas/bundle/sourcing/components/SourcingPanel.js';
 
 /* global alert */
@@ -44,6 +45,8 @@ import RenameBundleModal from '../../bundle-management/RenameBundleModal';
 const BundleEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigateInApp = useAppNavigation('bundleEditor');
+  const [sourceTrackingOutcome, setSourceTrackingOutcome] = useState<SnapshotTrackingOutcome>();
+  useEffect(() => setSourceTrackingOutcome(undefined), [slug]);
   const [pendingSourceChanges, setPendingSourceChanges] = useState(false);
   const [sourceCheckCompleted, setSourceCheckCompleted] = useState(false);
   const handleSourceCheck = useCallback((pending: boolean) => { setPendingSourceChanges(pending); setSourceCheckCompleted(true); }, []);
@@ -950,7 +953,8 @@ const BundleEditor: React.FC = () => {
     if (graphError) {
       return (
         <div className="w-full h-screen flex flex-col items-center justify-center p-8">
-          <SourcingPanel snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+          <SourcingPanel snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
+            setSourceTrackingOutcome(result.trackingOutcome);
             setGraphError(null); setConfigChangeTrigger(previous => previous + 1);
           }} />
           <div className="max-w-2xl w-full bg-danger-50 border border-danger-300 rounded-lg p-6">
@@ -1023,7 +1027,8 @@ const BundleEditor: React.FC = () => {
               </button>
             </div>
           )}
-          <SourcingPanel snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={() => {
+          <SourcingPanel snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
+            setSourceTrackingOutcome(result.trackingOutcome);
             refreshBundleNodeConfigs();
             reloadWorkingGraph();
           }} />
@@ -1226,6 +1231,8 @@ const BundleEditor: React.FC = () => {
           filters={filters}
           onFiltersChange={setFilters}
           onReloadCustomFilters={reloadCustomFilters}
+          sourceTrackingOutcome={sourceTrackingOutcome}
+          onDismissSourceTracking={() => setSourceTrackingOutcome(undefined)}
           graphUpdateTrigger={updateTrigger}
           onConfigChange={saveToDraft}
           onCheckDraftStatus={checkDraftStatus}

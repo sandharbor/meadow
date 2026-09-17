@@ -1,7 +1,5 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { generateBundleNodeId } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import { loadTrackingRecords } from '../../../../shared/bundle-node/trackingRecords.js';
 import { diagnoseOrphanConnection } from './orphanDiagnosis.js';
 import { findGroupedSourceMoves } from './sourceMoveGroups.js';
@@ -13,7 +11,7 @@ import { readSourceBlob, retainCandidateSourceTree, SourceCaptureChangedError } 
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { BundleNodeConfig, FileBundleNodeConfig, FolderBundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
-import type { SourceMoveCandidate, SourceOrphanExplanation, SourceSnapshotAcceptance, SourceSnapshotHistory, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceMoveCandidate, SourceOrphanExplanation, SourceSnapshotAcceptance, SourceSnapshotAcceptanceResult, SourceSnapshotHistory, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
 import { commitChangesNative } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import {
@@ -281,7 +279,8 @@ export async function scanSourceChanges(bundleDirectory: string, replaceCandidat
   return await sourcingReview(bundleDirectory);
 }
 
-export async function acceptSourceSnapshot(bundleDirectory: string, request: SourceSnapshotAcceptance): Promise<SourcingReview> {
+export async function acceptSourceSnapshot(bundleDirectory: string, request: SourceSnapshotAcceptance): Promise<SourceSnapshotAcceptanceResult> {
+  let trackingRequest: SourceSnapshotAcceptanceResult['trackingRequest'];
   // Build the review before taking the write lock; acceptance checks its revision again inside it.
   const review = await sourcingReview(bundleDirectory);
   await withSourcingLock(bundleDirectory, async () => {
@@ -329,24 +328,17 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
     if (!state.candidateId && !removals.size) throw new SourcingError('No orphan removals or source update to apply.');
     for (const id of removals) if (!stillOrphaned.has(id)) throw new SourcingError('A selected entry is reachable after the chosen moves. Keep it and review the update again.');
     const next = relinked.filter(node => !removals.has(node.bundleNodeId));
-    let graph = removals.size ? await snapshotGraph(bundleDirectory, candidate, next, 0) : relinkedGraph;
+    const graph = removals.size ? await snapshotGraph(bundleDirectory, candidate, next, 0) : relinkedGraph;
     const trackNewPages = request.trackNewPages ?? bundle.trackNewPages ?? true;
     if (trackNewPages && state.candidateId) {
-      // Only explicit additions in this review are selected. Existing untracked
-      // pages and rejected rename matches remain curation decisions.
+      // Sourcing identifies the reviewed additions; curation owns tracking and safety policy.
+      // Existing configuration and rejected rename matches are separate curation decisions.
       const additions = new Set(review.changes.filter(change => change.kind === 'added').map(change => change.path));
       const configuredPaths = new Set(next.map(node => snapshotFilePath(candidate, node)));
-      const existingIds = new Set(next.map(node => node.bundleNodeId));
-      for (const node of graph.nodes) {
-        if (node.bundleNodeKind !== 'file' || !node.fileType || !additions.has(node.bundleNodeKey)
-          || configuredPaths.has(node.bundleNodeKey) || node.effectiveBlacklistingBundleNodeId || isUntrackableFrontierNode(node)) continue;
-        const bundleNodeId = generateBundleNodeId(existingIds);
-        existingIds.add(bundleNodeId);
-        next.push({ bundleNodeKind: 'file', bundleNodeId, bundleNodeName: node.bundleNodeName,
-          sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '', fileType: node.fileType, listType: 'whitelist' });
-        configuredPaths.add(node.bundleNodeKey);
-      }
-      if (next.length !== relinked.length - removals.size) graph = await snapshotGraph(bundleDirectory, candidate, next, 0);
+      const nodeKeys = graph.nodes.filter(node => node.bundleNodeKind === 'file'
+        && additions.has(node.bundleNodeKey) && !configuredPaths.has(node.bundleNodeKey))
+        .map(node => node.bundleNodeKey);
+      if (nodeKeys.length) trackingRequest = { snapshotId: candidate.id, nodeKeys };
     }
     if (token !== sha256(`${state.acceptedId}\0${state.candidateId ?? ''}\0${sourceConfigFingerprint(bundleDirectory)}`)) throw new SourcingError('Curation changed while applying. Review the source update again.');
     const acceptedAt = new Date().toISOString();
@@ -355,12 +347,12 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
     }, next, trackNewPages);
     rememberReachableProvenance(bundleDirectory, candidate, graph, next);
     writeSourcingJson(path.join(sourcingRoot(bundleDirectory), state.candidateId ? `acceptance-${candidate.id}.json` : `orphan-cleanup-${randomUUID()}.json`), {
-      snapshotId: candidate.id, acceptedAt, previousSnapshotId: state.acceptedId, resolutions, trackNewPages, orphanRemovals: [...removals],
+      snapshotId: candidate.id, acceptedAt, previousSnapshotId: state.acceptedId, resolutions, trackNewPages, trackingRequest, orphanRemovals: [...removals],
     });
     await commitChangesNative([path.join(bundleDirectory, 'config'), sourcingRoot(bundleDirectory)],
       `accept source snapshot for ${path.basename(bundleDirectory)}`, { configDir: getConfigDirectory() });
   });
-  return await sourcingReview(bundleDirectory);
+  return { ...await sourcingReview(bundleDirectory), ...(trackingRequest && { trackingRequest }) };
 }
 
 export function sourceComparison(bundleDirectory: string, beforeId: string, afterId: string, beforePath: string, afterPath: string): {

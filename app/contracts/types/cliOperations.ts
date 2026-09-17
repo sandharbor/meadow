@@ -156,7 +156,7 @@ export interface SkippedBundleNodeResult {
 
 export interface TrackBundleNodesCliResult extends CliOperationResultBase {
   operation: 'bundle.track';
-  mode: 'targeted' | 'all-safe';
+  mode: 'targeted' | 'all-safe' | 'safe-targeted';
   newlyTracked: TrackedBundleNodeResult[];
   alreadyTracked: TrackedBundleNodeResult[];
   sensitiveSkipped: SkippedBundleNodeResult[];

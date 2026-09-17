@@ -93,6 +93,10 @@ export class BundleEditorPage {
     await previewButton.click();
   }
 
+  async clickSelectNone() {
+    await this.page.getByRole('button', { name: 'Select None', exact: true }).click();
+  }
+
   async clickSelectAll() {
     const btn = this.page.locator("button", { hasText: "Select All" });
     await this.expect(btn).toBeVisible();
@@ -525,7 +529,7 @@ export class BundleEditorPage {
 
   /** The Solo button in the Selection toolbar (inside <nav>). */
   private get selectionSoloBtn() {
-    return this.page.locator('nav button[title="Solo"]');
+    return this.page.locator('nav button[title="Solo"], nav button[title="Exit solo mode"]');
   }
 
   async clickFindInBundles() {

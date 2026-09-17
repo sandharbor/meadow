@@ -110,11 +110,13 @@ export class FilterPanelComponent {
     field,
     matchType,
     value,
+    markSensitive = false,
   }: {
     name: string;
     field: string;
     matchType: string;
     value: string;
+    markSensitive?: boolean;
   }) {
     await this.filterNameInput.fill(name);
 
@@ -128,6 +130,9 @@ export class FilterPanelComponent {
       .locator('input[placeholder="Enter search text"]')
       .fill(value);
 
+    if (markSensitive) {
+      await this.page.locator('select').filter({ has: this.page.locator('option[value="mark_sensitive"]') }).selectOption('mark_sensitive');
+    }
     await this.saveFilterBtn.click();
     await this.expect(this.createCustomFilterHeading).toBeHidden();
   }

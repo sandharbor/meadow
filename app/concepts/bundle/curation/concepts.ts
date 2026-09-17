@@ -246,7 +246,7 @@ export const sensitive = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`A page marked as requiring protection from casual inclusion in a bundle.`,
   mechanics: [
-    conceptText`Sensitive pages are excluded from bulk tracking and remain available for deliberate, page-specific review.`,
+    conceptText`Sensitive pages are excluded from bulk tracking and remain available for deliberate, page-specific review. This includes requests handed to curation after source acceptance, and sensitivity derived from enabled bundle or global filters. Curation tracks the safe requested subset, reports skipped pages, and can select and solo exactly that skipped set without including unrelated untracked pages.`,
   ],
   interplay: conceptText`Sensitivity constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} and is surfaced through ${conceptLink(coreConceptIds.filters, "Custom Filters")} and ${conceptLink(coreConceptIds.callout, "Curation Callouts")}.`,
 });

@@ -16,7 +16,8 @@ import { SourceChangeCount, SourcePath } from './SourceReviewPresentation.js';
 import DiffView from '../../../../../shared_components/ConfigFileExplorer/DiffView.js';
 import { PathChange } from '../../../../shared/components/PathChange.js';
 import { Spinner } from '../../../../shared/components/Spinner.js';
-import type { SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourcingReview, SourceSnapshotAcceptanceResult } from '../../../../../../../contracts/types/sourcing.js';
+import type { TrackingSensitivity } from '../../../../../../../contracts/types/curationTracking.js';
 import './SourcingPanel.css';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
 
@@ -37,7 +38,7 @@ function ContentComparison({ comparison, imageUrl }: { comparison: Comparison; i
 }
 
 
-function SourceChangeRow({ change, loadComparison, imageUrl, graph, onTraversalDetails }: { graph?: Graph; onTraversalDetails?: () => void; imageUrl: SourceImageUrl; change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
+function SourceChangeRow({ change, sensitivity, loadComparison, imageUrl, graph, onTraversalDetails }: { sensitivity?: TrackingSensitivity; graph?: Graph; onTraversalDetails?: () => void; imageUrl: SourceImageUrl; change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
   const contentId = useId();
   const [expanded, setExpanded] = useState(false);
   const [comparison, setComparison] = useState<Comparison | null>(null);
@@ -52,9 +53,10 @@ function SourceChangeRow({ change, loadComparison, imageUrl, graph, onTraversalD
     finally { setLoading(false); }
   };
   const route = change.route?.length ? [...change.route] : [];
+  const sensitivityBadge = sensitivity && <span className="shrink-0 rounded bg-danger-100 px-1.5 py-0.5 text-xs text-danger-800" title={sensitivity === 'source' ? 'Marked meadow-sensitive in the captured page. Bulk tracking will skip it.' : 'An enabled bundle or global filter marks this page sensitive. Bulk tracking will skip it.'}>{sensitivity === 'source' ? 'Sensitive' : 'Sensitive via filter'}</span>;
   if (route.length && route.at(-1) !== change.path) route.push(change.path);
   if (change.kind === 'added' && isSourceImage(change.path)) return <div className="ml-3 flex items-center gap-2 py-2.5 text-xs text-neutral-500">
-    <span className="w-28 shrink-0">Added</span><SourcePath value={change.path} />
+    <span className="w-28 shrink-0">Added</span><SourcePath value={change.path} />{sensitivityBadge}
     <SourceImagePreview url={imageUrl(change.path, 'after')} filename={change.path} route={route} graph={graph} />
     {onTraversalDetails && <button type="button" className="text-main-700 underline" aria-label={`Traversal details for ${change.path}`} onClick={onTraversalDetails}>Details</button>}
   </div>;
@@ -63,6 +65,7 @@ function SourceChangeRow({ change, loadComparison, imageUrl, graph, onTraversalD
       <span className="flex items-baseline gap-2">
         <span className="w-28 shrink-0 text-neutral-500">{change.kind === 'missing' ? 'No longer included' : change.kind === 'added' ? 'Added' : 'Modified'}</span>
         <SourcePath value={change.path} />
+        {sensitivityBadge}
       </span>
     </summary>
     <div id={contentId} hidden={!expanded}>
@@ -80,7 +83,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   onPendingChanges?: (pending: boolean) => void;
   sourceChangeTrigger?: number;
   initialReview?: boolean;
-  bundleSlug: string; hasDraftChanges: boolean; onAccepted: () => void;
+  bundleSlug: string; hasDraftChanges: boolean; onAccepted: (result: SourceSnapshotAcceptanceResult) => void;
 }) {
   const [review, setReview] = useState<SourcingReview | null>(null);
   const traversal = useSourceTraversal(review, bundleSlug);
@@ -193,8 +196,9 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     if (!review || (!review.candidate && orphanRemovals.size === 0)) return;
     inFlight.current = true; setBusy(true); setError(null);
     try {
-      receive(await request('/accept', { candidateId: review.candidate?.id ?? review.accepted.id, reviewToken: review.reviewToken, resolutions, orphanKeeps: [], trackNewPages }) as SourcingReview);
-      setOpen(false); setComparison(null); setResolutions({}); onAccepted();
+      const result = await request('/accept', { candidateId: review.candidate?.id ?? review.accepted.id, reviewToken: review.reviewToken, resolutions, orphanKeeps: [], trackNewPages }) as SourceSnapshotAcceptanceResult;
+      receive(result);
+      setOpen(false); setComparison(null); setResolutions({}); onAccepted(result);
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { inFlight.current = false; setBusy(false); }
   };
@@ -267,14 +271,14 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
           <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <h3 className="text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}<SourceChangeCount count={review?.changes.length ?? 0} /></h3>
             {hasAddedPages && <div className="ml-auto flex items-center gap-2 text-xs text-neutral-500">
-              <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" className="accent-main-600" checked={trackNewPages} disabled={busy || backgroundBusy} aria-describedby={trackNewPagesHintId} onChange={event => setTrackNewPages(event.target.checked)} />Track added pages</label>
+              <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" className="accent-main-600" checked={trackNewPages} disabled={busy || backgroundBusy} aria-describedby={trackNewPagesHintId} onChange={event => setTrackNewPages(event.target.checked)} />Track non-sensitive added pages</label>
               <span className="group relative inline-flex">
                 <button type="button" aria-label="About tracking added pages" aria-describedby={trackNewPagesHintId} className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-neutral-400 text-[10px] text-neutral-500">?</button>
-                <span id={trackNewPagesHintId} role="tooltip" className="pointer-events-none invisible fixed z-[9999] -ml-2 w-80 max-w-[calc(100vw-3rem)] -translate-x-full rounded border border-neutral-200 bg-white p-3 text-xs font-normal text-neutral-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">Automatically track the added pages in the bundle when you accept the source changes</span>
+                <span id={trackNewPagesHintId} role="tooltip" className="pointer-events-none invisible fixed z-[9999] -ml-2 w-80 max-w-[calc(100vw-3rem)] -translate-x-full rounded border border-neutral-200 bg-white p-3 text-xs font-normal text-neutral-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">Automatically track new pages after accepting the source changes. Pages marked sensitive directly or by an enabled filter stay untracked.</span>
               </span>
             </div>}
           </div>
-          <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} graph={traversal.graphs.candidate} onTraversalDetails={traversal.graphs.candidate?.getNode(change.path)?.path?.length ? () => traversal.show('candidate', change.path) : undefined} loadComparison={async () => {
+          <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} sensitivity={review?.trackingSensitivity?.[change.path]} graph={traversal.graphs.candidate} onTraversalDetails={traversal.graphs.candidate?.getNode(change.path)?.path?.length ? () => traversal.show('candidate', change.path) : undefined} loadComparison={async () => {
             const query = new URLSearchParams({ beforeId: review!.accepted.id, afterId: review!.candidate!.id, beforePath: change.path, afterPath: change.path });
             return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
           }} />)}</div>

@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import type { SnapshotTrackingOutcome } from '../../../../../../../contracts/types/curationTracking';
+import SourceTrackingNotice from './SourceTrackingNotice';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { apiRequest } from '../../../../shared/utils/apiClient';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
@@ -43,6 +45,8 @@ import {
 } from '../utils/bundleTrackingInteraction';
 
 interface BundleNodeTabsProps {
+  sourceTrackingOutcome?: SnapshotTrackingOutcome;
+  onDismissSourceTracking?: () => void;
   graph: Graph;
   entryBundleNodeId?: string;
   filters: IFilter[];
@@ -71,6 +75,8 @@ type ViewType = 'graph' | 'list';
 
 const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   graph,
+  sourceTrackingOutcome,
+  onDismissSourceTracking,
   entryBundleNodeId,
   filters,
   onFiltersChange,
@@ -352,6 +358,26 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   // State for "Show Bundle" solo mode
   const [isBundlePreviewOnlyActive, setIsBundlePreviewOnlyActive] = useState(false);
   const [bundlePreviewHover, setBundlePreviewHover] = useState(false);
+
+  const skippedTrackingKeys = [...(sourceTrackingOutcome?.sensitiveSkipped ?? []), ...(sourceTrackingOutcome?.otherSkipped ?? [])]
+    .map(node => node.bundleNodeKey);
+  const showSkippedTrackingPages = () => {
+    const keys = new Set(skippedTrackingKeys);
+    // Clear visibility restrictions without disabling sensitivity actions.
+    onFiltersChange(previous => previous.map(filter => ({
+      ...filter, isSolo: false, isHidden: false,
+      ...(filter.folderStates && { folderStates: Object.fromEntries(Object.entries(filter.folderStates)
+        .map(([key, state]) => [key, { ...state, isSolo: false, isHidden: false }])) }),
+      ...(filter.nodeTypeStates && { nodeTypeStates: Object.fromEntries(Object.entries(filter.nodeTypeStates)
+        .map(([key, state]) => [key, { ...state, isSolo: false, isHidden: false }])) }),
+    })));
+    setHiddenNodeKeys(new Set());
+    setIsBundlePreviewOnlyActive(false);
+    onSelectedNodeKeysChange(keys);
+    setSoloNodeKeys(keys);
+    setSelectionShowTitles(true);
+    onDismissSourceTracking?.();
+  };
 
   // Check if we're in solo mode
   const isSoloActive = soloNodeKeys.size > 0;
@@ -655,6 +681,10 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
 
   return (
     <div className="flex h-full min-w-0">
+      {sourceTrackingOutcome && <SourceTrackingNotice outcome={sourceTrackingOutcome}
+        onClose={() => onDismissSourceTracking?.()} onShowPages={showSkippedTrackingPages}
+        canShowPages={skippedTrackingKeys.length > 0 && skippedTrackingKeys.every(key => Boolean(graph.getNode(key)))} />}
+
       <ResizableSidebar
         side="left"
         defaultWidth={310}

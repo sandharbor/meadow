@@ -2,6 +2,7 @@
 
 import type { SerializableBundleNode } from './IBundleNode.js';
 import type { IEdge } from './graph.js';
+import type { SnapshotTrackingRequest, SnapshotTrackingOutcome, TrackingSensitivity } from './curationTracking.js';
 
 /** Only the nodes and connections needed to explain this review's routes. */
 export interface SourceTraversalGraph {
@@ -56,9 +57,11 @@ export interface SourceOrphanExplanation {
 }
 
 export interface SourcingReview {
+  /** Curation's assessment of reviewed additions; informational, not a tracking decision. */
+  trackingSensitivity?: Record<string, TrackingSensitivity>;
   /** Traversals evaluated separately against each snapshot, using the reviewed configuration. */
   traversalGraphs?: { accepted?: SourceTraversalGraph; candidate?: SourceTraversalGraph };
-  /** Bundle preference for tracking additions on acceptance; defaults to true. */
+  /** Bundle preference for requesting safe bulk tracking after acceptance; defaults to true. */
   trackNewPages?: boolean;
   accepted: SourceSnapshotSummary;
   candidate?: SourceSnapshotSummary;
@@ -67,6 +70,11 @@ export interface SourcingReview {
   orphans: SourceOrphanExplanation[];
   history: SourceSnapshotSummary[];
   reviewToken: string;
+}
+
+export interface SourceSnapshotAcceptanceResult extends SourcingReview {
+  trackingRequest?: SnapshotTrackingRequest;
+  trackingOutcome?: SnapshotTrackingOutcome;
 }
 
 export interface SourceSnapshotAcceptance {

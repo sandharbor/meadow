@@ -62,6 +62,7 @@ import { acceptedSourceRoot, initializeSourcing, loadSourceSnapshot, loadSourcin
 
 export type TrackBundleNodesOptions =
   | { mode: 'targeted'; nodeKeys: string[] }
+  | { mode: 'safe-targeted'; nodeKeys: string[] }
   | { mode: 'all-safe' };
 
 export class BundleTrackingOperationError extends Error {
@@ -307,7 +308,8 @@ export async function trackBundleNodes(
   slug: string,
   options: TrackBundleNodesOptions,
 ): Promise<TrackBundleNodesCliResult> {
-  const loaded = await loadWorkingGraph({ bundleSlug: slug });
+  const cached = await loadWorkingGraph({ bundleSlug: slug });
+  const loaded = { ...cached, nodes: cached.nodes.map(node => ({ ...node })) };
   if (loaded.draftNodes) {
     throw new BundleTrackingOperationError(
       'This bundle has pending curation changes. Save or undo them before using the CLI tracking operation.',
@@ -327,7 +329,7 @@ export async function trackBundleNodes(
 
   const orderedNodes = [...loaded.nodes].sort(compareNodes);
   let selectedNodes: IBundleNode[];
-  if (options.mode === 'targeted') {
+  if (options.mode !== 'all-safe') {
     const uniqueKeys = [...new Set(options.nodeKeys)];
     if (uniqueKeys.length === 0) {
       throw new BundleTrackingOperationError('At least one --node-key is required', 400);
@@ -345,7 +347,7 @@ export async function trackBundleNodes(
     }
     selectedNodes = uniqueKeys.map(key => byKey.get(key)!).sort(compareNodes);
     const sensitive = selectedNodes.filter(node => effectivelySensitive.has(node.bundleNodeKey));
-    if (sensitive.length > 0) {
+    if (options.mode === 'targeted' && sensitive.length > 0) {
       throw new BundleTrackingOperationError(
         `Refusing to track sensitive node(s): ${sensitive.map(node => node.bundleNodeName).join(', ')}. No sensitive-content override is available in this command.`,
         409,
@@ -353,7 +355,7 @@ export async function trackBundleNodes(
       );
     }
     const untrackable = selectedNodes.filter(node => untrackableReason(node) !== null);
-    if (untrackable.length > 0) {
+    if (options.mode === 'targeted' && untrackable.length > 0) {
       throw new BundleTrackingOperationError(
         `Cannot track the selected node(s): ${untrackable.map(node => node.bundleNodeName).join(', ')}`,
         409,
@@ -379,12 +381,12 @@ export async function trackBundleNodes(
       continue;
     }
     if (effectivelySensitive.has(node.bundleNodeKey)) {
-      if (options.mode === 'all-safe') sensitiveSkipped.push(skippedResult(node, 'effectively-sensitive'));
+      sensitiveSkipped.push(skippedResult(node, 'effectively-sensitive'));
       continue;
     }
     const reason = untrackableReason(node);
     if (reason) {
-      if (options.mode === 'all-safe') untrackableSkipped.push(skippedResult(node, reason));
+      untrackableSkipped.push(skippedResult(node, reason));
       continue;
     }
     if (node.blacklisted) {
