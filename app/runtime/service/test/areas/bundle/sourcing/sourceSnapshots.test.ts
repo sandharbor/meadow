@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { scanWithTrackingAssessment } from '../../../../src/areas/bundle/sourcing/services/reviewWithTrackingAssessment.js';
 import { sourceCurationWorkflow } from '../../../../src/shared/app-shell/sourceCurationWorkflow.js';
 import { trackSnapshotAdditions } from '../../../../src/areas/bundle/curation/services/snapshotTracking.js';
 import { loadWorkingGraph } from '../../../../src/shared/bundle-graph/workingGraphService.js';
@@ -152,7 +153,7 @@ describe('source snapshots with the shared big graph', () => {
         createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
       }] }));
     }
-    const review = await sourceCurationWorkflow.scan(bundle, false, false);
+    const review = await scanWithTrackingAssessment(bundle, false, false);
     const privateKeys = ['source-changes/added confidential notes.md', 'source-changes/added confidential planning.md'];
     expect(review.trackingSensitivity).toEqual(shouldSkip ? Object.fromEntries(privateKeys.map(key => [key, mode === 'direct' ? 'source' : 'filter'])) : {});
     const accepted = await sourceCurationWorkflow.accept(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages: true });
@@ -170,7 +171,7 @@ describe('source snapshots with the shared big graph', () => {
   it('keeps sources accepted and additions untracked when curation cannot evaluate its filters', async () => {
     await initializeSourcing(bundle);
     change('add-linked-page');
-    const review = await sourceCurationWorkflow.scan(bundle, false, false);
+    const review = await scanWithTrackingAssessment(bundle, false, false);
     // Simulate a filter document becoming invalid after the user reviewed sources.
     fs.writeFileSync(path.join(bundle, 'config/custom_filters.json'), '{malformed');
     const accepted = await sourceCurationWorkflow.accept(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {} });
@@ -183,7 +184,7 @@ describe('source snapshots with the shared big graph', () => {
   it('reevaluates sensitivity at tracking time instead of trusting the review badge', async () => {
     await initializeSourcing(bundle);
     change('add-filter-sensitive-pages');
-    const review = await sourceCurationWorkflow.scan(bundle, false, false);
+    const review = await scanWithTrackingAssessment(bundle, false, false);
     expect(review.trackingSensitivity).toEqual({});
     fs.writeFileSync(path.join(bundle, 'config/custom_filters.json'), JSON.stringify({ version: '1.0.0', filters: [{
       id: 'confidential', name: 'Confidential', scope: 'bundle', enabled: true,

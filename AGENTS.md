@@ -22,6 +22,18 @@ concept only for durable ubiquitous language, not for every helper, class, UI
 control, or test. Read [`app/concepts/README.md`](app/concepts/README.md) before
 adding or reorganizing concepts.
 
+## App-area interfaces
+
+Outside callers must use an area's `exported.ts`, never its private files.
+Keep that file to explicit named re-exports, at most 100 lines and 15 exports,
+with the standard narrow-interface guidance comment. Service operations name
+the actual caller: `<caller>Command...` or `<caller>Query...`. The checker matches
+that caller to the importing file, including aliases; there is no general prefix.
+The closed caller set and UI/type conventions are defined in
+`app/concepts/bundle/appAreas.ts` and enforced by `check_area_boundaries.js`.
+Prefer durable data flowing from sourcing through curation, generation, review,
+and sharing. Widening an interface deserves architectural reconsideration.
+
 ## After Making Changes
 
 Always run the `./quickcheck` script after making changes:

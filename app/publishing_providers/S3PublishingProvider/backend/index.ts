@@ -41,7 +41,7 @@ import {
   cancelPendingPublicationRevision,
   currentPublicationRevision,
   predecessorRevisionIdsForCleanup,
-} from '../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
+} from '../../../runtime/service/src/shared/generated-bundle-versioning/publicationRevisions.js';
 
 const manifest: PublishingProviderManifest = {
   id: S3_PROVIDER_ID,

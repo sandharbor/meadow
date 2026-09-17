@@ -15,20 +15,20 @@ limitations under the License.
 */
 
 import type { SnapshotTrackingOutcome } from '../../../../../../contracts/types/curationTracking.js';
-import { SourcingPanel } from '../../../areas/bundle/sourcing/components/SourcingPanel.js';
+import { AppShellComponentSourcingPanel as SourcingPanel } from '../../../areas/bundle/sourcing/exported.js';
 
 /* global alert */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiRequest } from '../../utils/apiClient';
 import { Graph, IEdge } from '../../../../../../contracts/types/graph';
 import { IBundleNode } from '../../../../../../contracts/types/IBundleNode.js';
-import BundleNodeTabs from '../../../areas/bundle/curation/components/BundleNodeTabs';
+import { AppShellComponentBundleNodeTabs as BundleNodeTabs } from '../../../areas/bundle/curation/exported.js';
 import BundleLogsModal from './BundleLogsModal';
-import SinglePagePreviewCallout, { useSinglePagePreviewCallout } from '../../../areas/bundle/review/components/calloutModals/SinglePagePreviewCallout';
-import CreateOrEditBundleModal from '../../../areas/bundles/components/CreateOrEditBundleModal';
+import { AppShellComponentSinglePagePreviewCallout as SinglePagePreviewCallout, useAppShellStateSinglePagePreviewCallout as useSinglePagePreviewCallout } from '../../../areas/bundle/review/exported.js';
+import { AppShellComponentCreateOrEditBundleModal as CreateOrEditBundleModal } from '../../../areas/bundles/exported.js';
 import PreviewPublishModal from './PreviewPublishModal';
-import type { OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
-import { useFilterState, createUntrackedNodeSelector } from '../../../areas/bundle/curation/types/filters';
+import type { AppShellTypeOpenKnowledgeFormatSettings as OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/exported.js';
+import { useAppShellStateFilterState as useFilterState, appShellQueryCreateUntrackedNodeSelector as createUntrackedNodeSelector } from '../../../areas/bundle/curation/exported.js';
 import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig';
 import { nodeConfigMatchesNode } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { applySensitiveFromApiData, applyNodeConfigsToNodes, buildNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';

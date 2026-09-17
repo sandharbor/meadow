@@ -77,7 +77,7 @@ describe('tracking source additions', () => {
     await act(async () => { pending.resolve(response({ ...review, trackNewPages: savedPreference,
       candidate: { ...review.accepted, id: 'b'.repeat(32) }, changes: [{ kind: 'added', path: 'New page.md' }] })); });
     fireEvent.click(screen.getByRole('button', { name: '1 source change available – Review' }));
-    const checkbox = screen.getByRole('checkbox', { name: 'Track added pages' });
+    const checkbox = screen.getByRole('checkbox', { name: 'Track non-sensitive added pages' });
     expect(checkbox).toHaveProperty('checked', savedPreference);
     fireEvent.click(checkbox);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Accept source changes' })); });

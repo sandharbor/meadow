@@ -24,7 +24,7 @@ import {
   s3SuccessorManifestKey,
   saveS3PublicationState,
 } from './versioning/publicationStore.js';
-import { recordPublicationDeletion, remotelyPresentPublicationRevisions } from '../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
+import { recordPublicationDeletion, remotelyPresentPublicationRevisions } from '../../../../runtime/service/src/shared/generated-bundle-versioning/publicationRevisions.js';
 
 export async function cleanupS3PublishedFiles(
   options: CleanupPublishedBundleOptions,

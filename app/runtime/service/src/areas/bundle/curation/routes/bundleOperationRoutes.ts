@@ -29,7 +29,7 @@ import {
 import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import type { BundleNodeLocator } from '../../../../../../../contracts/types/cliOperations.js';
 import { WorkingGraphOperationError } from '../../../../shared/bundle-graph/workingGraphService.js';
-import { runSerializedBundleNodeMutation } from '../services/bundleNodeMutationQueue.js';
+import { runSerializedBundleNodeMutation } from '../../../../shared/bundle-node/bundleNodeMutationQueue.js';
 
 const router = express.Router();
 

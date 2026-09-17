@@ -60,7 +60,7 @@ import {
 import { findBundleBoundaryReviewRequest } from '../../../../shared/bundle-boundary-review/bundleBoundaryReviewService.js';
 import { requireBundleRenameWorkflowOperations } from '../../../../shared/bundle-management/bundleRenameWorkflowHost.js';
 
-import { defaultBundlePreviewUrl } from '../../../../shared/generated-bundle-versioning/previewUrls.js';
+import { defaultBundlePreviewUrl } from '../services/defaultBundlePreviewUrl.js';
 
 const router = express.Router();
 

@@ -17,7 +17,6 @@ limitations under the License.
 
 import type express from 'express';
 import fs from 'fs';
-import path from 'path';
 import YAML from 'yaml';
 import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
@@ -26,8 +25,6 @@ import {
   parseBundleNodeConfig, resolveBundleNodeRoles,
 } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { createPreviewReadToken, MEADOW_PREVIEW_TOKEN_QUERY } from '../app-shell/controlPlaneSecurity.js';
-import { currentGeneratedBundleVersionDirectory } from './generatedBundleVersionManifestService.js';
-import { getHtmlPathForPage } from '../utils/htmlPathLookup.js';
 
 function getRequestOrigin(req: express.Request): string { return `${req.protocol}://${req.get('host')}`; }
 
@@ -51,18 +48,4 @@ export function loadDefaultTraversalPage(bundleDirectory: string): { title: stri
     title: defaultTraversalNode.bundleNodeName,
     directory: defaultTraversalNode.sourceGraphSubdirectory || '',
   };
-}
-
-export function defaultBundlePreviewUrl(
-  req: express.Request, bundleSlug: string, bundleDirectory: string,
-): string | null {
-  const directory = currentGeneratedBundleVersionDirectory(bundleDirectory);
-  if (!directory) return null;
-  const page = loadDefaultTraversalPage(bundleDirectory);
-  const relativePath = getHtmlPathForPage(bundleDirectory, page.title, page.directory);
-  if (relativePath && fs.existsSync(path.join(directory, relativePath))) {
-    return previewFileUrl(req, bundleSlug, relativePath);
-  }
-  const fallback = fs.readdirSync(directory).find(file => file.endsWith('.html'));
-  return fallback ? previewFileUrl(req, bundleSlug, fallback) : null;
 }

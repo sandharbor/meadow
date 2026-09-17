@@ -17,7 +17,8 @@ limitations under the License.
 import type { Express } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { importExtensionModule } from '../module-loading/importExtensionModule.js';
+import { fileURLToPath } from 'url';
 import type { IPublishingProviderBackend } from './IPublishingProviderBackend.js';
 import { loadProviderConfig } from '../../../../../shared_code/utils/publishingProviderConfigUtils.js';
 import type { RuntimeBuildPerspective } from '../../../../../contracts/types/runtime.js';
@@ -62,7 +63,7 @@ async function discoverProviders(): Promise<IPublishingProviderBackend[]> {
     const entrypoint = candidates.find((p) => fs.existsSync(p));
     if (!entrypoint) continue;
 
-    const mod = (await import(pathToFileURL(entrypoint).href)) as ProviderModule;
+    const mod = (await importExtensionModule(entrypoint)) as ProviderModule;
     const provider = mod.default;
     if (!provider) {
       logger.warn(`Publishing provider at ${entrypoint} is missing a default export`);

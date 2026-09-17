@@ -22,8 +22,8 @@ import type {
   PublicationRevision,
   PublicationRevisionId,
   ReaderConnectionToPredecessor,
-} from '../../../../../../../contracts/types/generatedBundleVersioning.js';
-import { PUBLICATION_REVISION_ID_PATTERN } from '../../../../../../../contracts/types/generatedBundleVersioning.js';
+} from '../../../../../contracts/types/generatedBundleVersioning.js';
+import { PUBLICATION_REVISION_ID_PATTERN } from '../../../../../contracts/types/generatedBundleVersioning.js';
 
 const PUBLICATION_REVISION_ID_CHARACTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 

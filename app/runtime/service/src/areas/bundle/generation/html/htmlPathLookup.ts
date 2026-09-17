@@ -16,13 +16,13 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
-import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
-import { planBundleRoutes, routeForBundleNode } from '../../areas/bundle/generation/html/bundleRoutePlanner.js';
-import { normalizePageTitle } from '../../areas/bundle/generation/html/shared.js';
-import { loadBundleConfig } from './bundleConfigUtils.js';
-import { logger } from './logging/backendLoggingUtils.js';
-import { getBundleDirectory } from '../bundle-config/bundleConfigPaths.js';
+import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
+import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { planBundleRoutes, routeForBundleNode } from './bundleRoutePlanner.js';
+import { normalizePageTitle } from './shared.js';
+import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
+import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
+import { getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 
 /**
  * Get the HTML file path for a page by looking up its subdirectory from

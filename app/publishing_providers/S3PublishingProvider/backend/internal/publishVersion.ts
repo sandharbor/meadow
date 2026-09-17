@@ -44,7 +44,7 @@ import {
   predecessorRevisionIdsForCleanup,
   recordPublicationDeletion,
   recordPublicationSuccess,
-} from '../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
+} from '../../../../runtime/service/src/shared/generated-bundle-versioning/publicationRevisions.js';
 import { publishVersionFilesThenManifest } from './versioning/remoteTransactions.js';
 
 import { PublishingProviderOperationError, type PublishGeneratedBundleOptions } from '../../../../runtime/service/src/shared/publishing-provider-host/IPublishingProviderBackend.js';

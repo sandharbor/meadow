@@ -28,7 +28,7 @@ import {
   predecessorRevisionIdsForCleanup,
   recordPublicationDeletion,
   recordPublicationSuccess,
-} from '../../../../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
+} from '../../../../../src/shared/generated-bundle-versioning/publicationRevisions.js';
 
 const version = (value: string) => value as GeneratedBundleVersionId;
 const revision = (value: string) => value as PublicationRevisionId;

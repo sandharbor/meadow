@@ -25,7 +25,7 @@ import {
   pendingPublicationRevision,
   recordPublicationDeletion,
   recordPublicationSuccess,
-} from '../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
+} from '../../../../runtime/service/src/shared/generated-bundle-versioning/publicationRevisions.js';
 import { uploadDirectory } from '../internal/s3Operations.js';
 import {
   buildS3SuccessorManifest,

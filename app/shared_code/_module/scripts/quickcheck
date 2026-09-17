@@ -4,6 +4,8 @@
 source "$(dirname "$0")/../../check_support/check_no_console_calls.sh"
 check_no_console_calls . || exit 1
 
+node --test check_support/area_boundary_check.test.js || exit 1
+
 echo "🧪 Running type checking and linting in parallel..."
 
 # Create temporary files for results

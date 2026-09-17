@@ -34,7 +34,7 @@ import { deleteManifestThenVersionFiles } from '../versioning/remoteTransactions
 import {
   recordPublicationDeletion,
   requirePublicationRevisionId,
-} from '../../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
+} from '../../../../../runtime/service/src/shared/generated-bundle-versioning/publicationRevisions.js';
 
 export function registerS3DeletePublishedRoute(router: Router): void {
   const deletePublished = (

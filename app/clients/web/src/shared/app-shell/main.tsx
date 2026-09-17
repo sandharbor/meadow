@@ -18,7 +18,7 @@ import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import BundleEditor from './components/BundleEditor'
-import BundleList from '../../areas/bundles/components/BundleList'
+import { AppShellComponentBundleList as BundleList } from '../../areas/bundles/exported.js';
 import TitleBar from './components/TitleBar'
 import UpdateModal from './components/UpdateModal'
 import { initializeApiConfig } from '../utils/apiConfig'

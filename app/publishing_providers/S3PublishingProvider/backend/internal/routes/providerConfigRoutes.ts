@@ -41,7 +41,7 @@ import {
   cancelPendingPublicationRevision,
   currentPublicationRevision,
   requirePublicationRevisionId,
-} from '../../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
+} from '../../../../../runtime/service/src/shared/generated-bundle-versioning/publicationRevisions.js';
 
 /**
  * Per-bundle S3 provider config routes. Unlike Meadow, there's no prefix — a

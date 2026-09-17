@@ -34,7 +34,7 @@ import {
 } from '../../../../shared/generated-bundle-versioning/generatedBundleVersionLifecycle.js';
 import { normalizePageTitle } from '../html/shared.js';
 import { loadBundleConfig, saveBundleConfigToPath } from '../../../../shared/utils/bundleConfigUtils.js';
-import { getHtmlPathForPage } from '../../../../shared/utils/htmlPathLookup.js';
+import { getHtmlPathForPage } from '../html/htmlPathLookup.js';
 import { ensureTrackedPageContent } from '../source-material/trackedPageContent.js';
 import { readOpenKnowledgeFormatGenerationManifest } from '../open-knowledge-format/openKnowledgeFormatGenerationManifest.js';
 import { getOpenKnowledgeFormatLogPageOptions } from '../open-knowledge-format/openKnowledgeFormatLogPages.js';

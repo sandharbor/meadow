@@ -1,10 +1,11 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import express from 'express';
+import { reviewWithTrackingAssessment, scanWithTrackingAssessment } from '../services/reviewWithTrackingAssessment.js';
 import { getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { sourceComparison, sourceSnapshotImage, sourceSnapshotHistory } from '../services/sourceReview.js';
 import { SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
-import type { SourceSnapshotAcceptance, SourceSnapshotAcceptanceResult, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import type { SourceSnapshotAcceptance, SourceSnapshotAcceptanceResult } from '../../../../../../../contracts/types/sourcing.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 
@@ -27,16 +28,14 @@ function handle(action: (req: express.Request) => unknown): express.RequestHandl
 }
 
 export function createSourcingRoutes(workflow: {
-  review: (directory: string) => Promise<SourcingReview>;
-  scan: (directory: string, replaceCandidate: boolean, rebuildIndex: boolean) => Promise<SourcingReview>;
   accept: (directory: string, request: SourceSnapshotAcceptance) => Promise<SourceSnapshotAcceptanceResult>;
 }) {
   const router = express.Router();
-  router.get('/bundles/:bundleSlug/sourcing', handle(req => workflow.review(directory(req))));
+  router.get('/bundles/:bundleSlug/sourcing', handle(req => reviewWithTrackingAssessment(directory(req))));
   router.get('/bundles/:bundleSlug/sourcing/history', handle(req => sourceSnapshotHistory(directory(req))));
   router.post('/bundles/:bundleSlug/sourcing/scan', handle(req => {
     const body = req.body as { replaceCandidate?: unknown; rebuildIndex?: unknown } | undefined;
-    return workflow.scan(directory(req), body?.replaceCandidate === true, body?.rebuildIndex === true);
+    return scanWithTrackingAssessment(directory(req), body?.replaceCandidate === true, body?.rebuildIndex === true);
   }));
   router.post('/bundles/:bundleSlug/sourcing/accept', handle(req => {
     const body = (req.body ?? {}) as Partial<SourceSnapshotAcceptance>;

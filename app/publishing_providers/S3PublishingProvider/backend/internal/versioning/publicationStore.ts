@@ -29,7 +29,7 @@ import {
   furthestConnectedPresentSuccessor,
   planPublicationRevision,
   remotelyPresentPublicationRevisions,
-} from '../../../../../runtime/service/src/areas/bundle/sharing/versioning/publicationRevisions.js';
+} from '../../../../../runtime/service/src/shared/generated-bundle-versioning/publicationRevisions.js';
 import { S3_PROVIDER_ID } from '../s3Config.js';
 import { isPlainObject, readDurableDocument, requireValidDocument, writeDurableDocument, yamlDocumentCodec } from '../../../../../shared_code/utils/durableDocument.js';
 import { publicationRevisionStateCodec } from '../../../../../shared_code/utils/publicationRevisionDocument.js';

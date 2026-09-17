@@ -1,4 +1,4 @@
-import { createSourcingRoutes } from '../../areas/bundle/sourcing/routes/sourcingRoutes.js';
+import { appShellCommandCreateSourcingRoutes as createSourcingRoutes } from '../../areas/bundle/sourcing/exported.js';
 import { sourceCurationWorkflow } from './sourceCurationWorkflow.js';
 import { acceptedSourceRoot, SourcingError } from '../source-snapshot/sourceSnapshots.js';
 /*
@@ -21,31 +21,28 @@ import dotenv from 'dotenv';
 import express from 'express';
 import fs from 'fs';
 import { AppConfigPaths } from '../../../../../shared_code/paths/appConfigPaths.js';
-import bundleConfigRoutes from '../../areas/bundle/curation/routes/bundleConfigRoutes.js';
-import customFiltersRoutes from '../../areas/bundle/curation/routes/customFiltersRoutes.js';
-import bundleCurationRoutes from '../../areas/bundle/curation/routes/bundleCurationRoutes.js';
-import bundleOperationRoutes from '../../areas/bundle/curation/routes/bundleOperationRoutes.js';
-import hooksRoutes from '../../areas/bundle/generation/routes/hooksRoutes.js';
-import customAssetsRoutes from '../../areas/bundle/generation/routes/customAssetsRoutes.js';
+import { appShellRouterBundleConfigRoutes as bundleConfigRoutes } from '../../areas/bundle/curation/exported.js';
+import { appShellRouterCustomFiltersRoutes as customFiltersRoutes } from '../../areas/bundle/curation/exported.js';
+import { appShellRouterBundleCurationRoutes as bundleCurationRoutes } from '../../areas/bundle/curation/exported.js';
+import { appShellRouterBundleOperationRoutes as bundleOperationRoutes } from '../../areas/bundle/curation/exported.js';
+import { appShellRouterHooksRoutes as hooksRoutes } from '../../areas/bundle/generation/exported.js';
+import { appShellRouterCustomAssetsRoutes as customAssetsRoutes } from '../../areas/bundle/generation/exported.js';
 import appConfigRoutes from '../routes/appConfigRoutes.js';
-import { createLocalSaveRoutes } from '../../areas/bundle/sharing/routes/localSaveRoutes.js';
-import { buildFilteredSourcesExportForBundle } from '../../areas/bundle/generation/sources-export/filteredSourcesExport.js';
-import { buildFilteredOpenKnowledgeFormatForBundle } from '../../areas/bundle/generation/open-knowledge-format/filteredOpenKnowledgeFormat.js';
-import bundleListingRoutes from '../../areas/bundles/routes/bundleListingRoutes.js';
-import bundleGenerationRoutes from '../../areas/bundle/generation/routes/bundleGenerationRoutes.js';
-import { generateHtmlForBundle } from '../../areas/bundle/generation/html/htmlService.js';
-import { ensureTrackedPageContent } from '../../areas/bundle/generation/source-material/trackedPageContent.js';
-import {
-  hasPendingBundleRename,
-  undoPendingBundleRename,
-} from '../../areas/bundles/services/bundleRename.js';
-import stylePresetsRoutes from '../../areas/bundle/generation/routes/stylePresetsRoutes.js';
+import { appShellCommandCreateLocalSaveRoutes as createLocalSaveRoutes } from '../../areas/bundle/sharing/exported.js';
+import { appShellCommandBuildFilteredSourcesExportForBundle as buildFilteredSourcesExportForBundle } from '../../areas/bundle/generation/exported.js';
+import { appShellCommandBuildFilteredOpenKnowledgeFormatForBundle as buildFilteredOpenKnowledgeFormatForBundle } from '../../areas/bundle/generation/exported.js';
+import { appShellRouterBundleListingRoutes as bundleListingRoutes } from '../../areas/bundles/exported.js';
+import { appShellRouterBundleGenerationRoutes as bundleGenerationRoutes } from '../../areas/bundle/generation/exported.js';
+import { appShellCommandGenerateHtmlForBundle as generateHtmlForBundle } from '../../areas/bundle/generation/exported.js';
+import { appShellCommandEnsureTrackedPageContent as ensureTrackedPageContent } from '../../areas/bundle/generation/exported.js';
+import { appShellQueryHasPendingBundleRename as hasPendingBundleRename, appShellCommandUndoPendingBundleRename as undoPendingBundleRename } from '../../areas/bundles/exported.js';
+import { appShellRouterStylePresetsRoutes as stylePresetsRoutes } from '../../areas/bundle/generation/exported.js';
 import logRoutes from '../routes/logRoutes.js';
 import appConfigFileRoutes from '../routes/appConfigFileRoutes.js';
-import providerDiscoveryRoutes from '../../areas/bundle/sharing/routes/providerDiscoveryRoutes.js';
-import publishingCliRoutes from '../../areas/bundle/sharing/routes/publishingCliRoutes.js';
+import { appShellRouterProviderDiscoveryRoutes as providerDiscoveryRoutes } from '../../areas/bundle/sharing/exported.js';
+import { appShellRouterPublishingCliRoutes as publishingCliRoutes } from '../../areas/bundle/sharing/exported.js';
 import { createHealthRoutes } from '../routes/healthRoutes.js';
-import reviewRoutes from '../../areas/bundle/review/routes/reviewRoutes.js';
+import { appShellRouterReviewRoutes as reviewRoutes } from '../../areas/bundle/review/exported.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { ResourcesConfig } from '../../../../../contracts/types/resourcesConfig.js';
 import {

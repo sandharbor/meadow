@@ -16,7 +16,8 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { importExtensionModule } from '../module-loading/importExtensionModule.js';
+import { fileURLToPath } from 'url';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
 import { commitChangesNative } from '../utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
@@ -108,7 +109,7 @@ function listMigrationFiles(migrationsDir: string): string[] {
 async function loadDescriptor(scope: MigrationScope, filename: string): Promise<MigrationDescriptor> {
   const id = logicalIdFromFilename(filename);
   const fullPath = path.join(scope.migrationsDir, filename);
-  const mod = (await import(`${pathToFileURL(fullPath).href}?meadowMigration=${encodeURIComponent(id)}`)) as {
+  const mod = (await importExtensionModule(fullPath, id)) as {
     migration?: Migration;
   };
   if (!mod.migration || typeof mod.migration.run !== 'function') {

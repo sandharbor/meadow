@@ -18,7 +18,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getHtmlPathForPage } from '../../../src/shared/utils/htmlPathLookup.js';
+import { getHtmlPathForPage } from '../../../src/areas/bundle/generation/html/htmlPathLookup.js';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
 import { stringifyBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { makeBundleNodeConfig } from '../support/bundleNodeConfigTestUtils.js';

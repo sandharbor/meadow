@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import React from 'react';
-import { Spinner } from '../../../../shared/components/Spinner.js';
+import { Spinner } from './Spinner.js';
 
 export type ProgressStatusProps = {
   message: string;

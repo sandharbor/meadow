@@ -15,15 +15,15 @@ limitations under the License.
 */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import HtmlGenerationProgress from '../../../areas/bundle/generation/components/HtmlGenerationProgress';
-import { SaveLocallyTab } from '../../../areas/bundle/sharing/components/SaveLocallyTab';
-import { AdvancedTab } from '../../../areas/bundle/sharing/components/AdvancedTab';
+import { AppShellComponentGenerationProgress as GenerationProgress } from '../../../areas/bundle/generation/exported.js';
+import { AppShellComponentSaveLocallyTab as SaveLocallyTab } from '../../../areas/bundle/sharing/exported.js';
+import { AppShellComponentAdvancedTab as AdvancedTab } from '../../../areas/bundle/sharing/exported.js';
 import { useActivePublishingProvider } from '../../publishing-provider-host/useActivePublishingProvider';
-import CustomizeSidebar from '../../../areas/bundle/generation/components/CustomizeSidebar';
-import { UntrackedPagesButton } from '../../../areas/bundle/review/components/UntrackedPagesButton';
-import PreviewChangesTab from '../../../areas/bundle/review/components/PreviewChangesTab';
-import { VersionsTab } from '../../../areas/bundle/review/components/VersionsTab';
-import { casualVersionName, versionCreatedDate } from '../../../areas/bundle/review/utils/versionLabels';
+import { AppShellComponentCustomizeSidebar as CustomizeSidebar } from '../../../areas/bundle/generation/exported.js';
+import { AppShellComponentUntrackedPagesButton as UntrackedPagesButton } from '../../../areas/bundle/review/exported.js';
+import { AppShellComponentPreviewChangesTab as PreviewChangesTab } from '../../../areas/bundle/review/exported.js';
+import { AppShellComponentVersionsTab as VersionsTab } from '../../../areas/bundle/review/exported.js';
+import { appShellQueryCasualVersionName as casualVersionName, appShellQueryVersionCreatedDate as versionCreatedDate } from '../../../areas/bundle/review/exported.js';
 import { ConfigFileExplorerApi } from '../../../../shared_components/ConfigFileExplorer/index';
 import { encodePathForUrl } from '../../../../../../shared_code/utils/urlUtils';
 import { apiRequest, AuthenticatedEventSource } from '../../utils/apiClient';
@@ -31,7 +31,7 @@ import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import Modal from '../../components/Modal';
-import type { OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/components/open-knowledge-format/OpenKnowledgeFormatSettingsModal';
+import type { AppShellTypeOpenKnowledgeFormatSettings as OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/exported.js';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 type TopLevelTab = 'review' | 'share';
@@ -1013,12 +1013,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             isRegeneratingPreview ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          <HtmlGenerationProgress
-            isPublishing={false}
-            isRegeneratingPreview={isRegeneratingPreview}
-            publishProgress={null}
-            previewProgress={previewProgress}
-          />
+          <GenerationProgress progress={previewProgress} />
         </div>
         {/* "Done" indicator - absolutely positioned with fade */}
         <div

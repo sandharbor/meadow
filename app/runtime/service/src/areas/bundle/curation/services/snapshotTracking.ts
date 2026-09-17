@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'node:path';
+import { runSerializedBundleNodeMutation } from '../../../../shared/bundle-node/bundleNodeMutationQueue.js';
 import type { SnapshotTrackingRequest, SnapshotTrackingOutcome, TrackingSensitivity } from '../../../../../../../contracts/types/curationTracking.js';
 import { Graph } from '../../../../../../../contracts/types/graph.js';
 import { applyNodeConfigsToNodes, applySensitiveFromApiData } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
@@ -28,16 +29,18 @@ export async function snapshotTrackingSensitivity(directory: string, snapshotId:
     .map(key => [key, graph.getNode(key)?.sensitive ? 'source' : 'filter']));
 }
 
-/** Called by the application workflow while holding the bundle's curation mutation queue. */
+/** Own the mutation lock and revalidate the handoff against the accepted snapshot inside it. */
 export async function trackSnapshotAdditions(directory: string, request: SnapshotTrackingRequest): Promise<SnapshotTrackingOutcome> {
-  if (loadSourcingState(directory)?.acceptedId !== request.snapshotId) {
-    throw new Error('The accepted source snapshot changed before tracking. Review these pages in curation.');
-  }
-  const result = await trackBundleNodes(path.basename(directory), { mode: 'safe-targeted', nodeKeys: request.nodeKeys });
-  return {
-    snapshotId: request.snapshotId,
-    trackedNodeKeys: [...result.newlyTracked, ...result.alreadyTracked].map(node => node.bundleNodeKey),
-    sensitiveSkipped: result.sensitiveSkipped,
-    otherSkipped: [...result.untrackableSkipped, ...result.rejected],
-  };
+  return runSerializedBundleNodeMutation(path.basename(directory), async () => {
+    if (loadSourcingState(directory)?.acceptedId !== request.snapshotId) {
+      throw new Error('The accepted source snapshot changed before tracking. Review these pages in curation.');
+    }
+    const result = await trackBundleNodes(path.basename(directory), { mode: 'safe-targeted', nodeKeys: request.nodeKeys });
+    return {
+      snapshotId: request.snapshotId,
+      trackedNodeKeys: [...result.newlyTracked, ...result.alreadyTracked].map(node => node.bundleNodeKey),
+      sensitiveSkipped: result.sensitiveSkipped,
+      otherSkipped: [...result.untrackableSkipped, ...result.rejected],
+    };
+  });
 }
