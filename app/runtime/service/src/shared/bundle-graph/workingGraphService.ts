@@ -69,6 +69,7 @@ interface RustNode {
   path: string[];
   traversal_details?: BundleNodeTraversalDetails;
   traversal_path_steps?: BundleNodeTraversalPathStep[];
+  traversal_alternative_routes?: BundleNodeTraversalPathStep[][];
   traversal_states?: Array<{ remaining_outlinks_depth: number; remaining_inlinks_depth: number }>;
   isFrontierNode?: boolean;
   isFrontierImageExtension?: boolean;
@@ -160,6 +161,7 @@ function serializeNodes(output: WorkingGraphRustOutput): IBundleNode[] {
       path: node.path,
       traversal_details: node.traversal_details,
       traversal_path_steps: node.traversal_path_steps,
+      traversal_alternative_routes: node.traversal_alternative_routes,
       traversal_states: node.traversal_states,
       ...(node.effectiveBlacklistingBundleNodeId && {
         effectiveBlacklistingBundleNodeId: node.effectiveBlacklistingBundleNodeId as IBundleNode['bundleNodeId'],

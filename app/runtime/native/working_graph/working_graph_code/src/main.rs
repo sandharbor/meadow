@@ -93,6 +93,8 @@ struct OutputNode {
     traversal_details: Option<TraversalDetails>,
     #[serde(skip_serializing_if = "Option::is_none")]
     traversal_path_steps: Option<Vec<OutputTraversalStep>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    traversal_alternative_routes: Vec<Vec<OutputTraversalStep>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     isFrontierNode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -109,6 +111,11 @@ struct OutputTraversalStep {
     depth: i32,
     remaining_depth: i32,
     remaining_inlinks_depth: i32,
+    #[serde(
+        rename = "retainedForTraversal",
+        skip_serializing_if = "Option::is_none"
+    )]
+    retained_for_traversal: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     traversal_details: Option<TraversalDetails>,
     #[serde(rename = "isFrontierImageExtension")]
@@ -132,6 +139,7 @@ fn route_step(
         depth: step.depth as i32,
         remaining_depth: step.remaining_outlinks as i32,
         remaining_inlinks_depth: step.remaining_inlinks as i32,
+        retained_for_traversal: step.retained_for_traversal,
         traversal_details: Some(TraversalDetails {
             outlinks_depth_set_first_time: initial.then_some(depths.outlinks as i32),
             outlinks_depth_inherited: step
@@ -531,6 +539,7 @@ fn main() -> anyhow::Result<()> {
                 path: node.path.clone(),
                 traversal_details: None,
                 traversal_path_steps: None,
+                traversal_alternative_routes: Vec::new(),
                 isFrontierNode: None,
                 isFrontierImageExtension: None,
                 traversal_states: None,
@@ -649,30 +658,43 @@ fn main() -> anyhow::Result<()> {
         let config = configs.iter().find(|config| {
             matches!(config, BundleNodeConfig::File { .. }) && config.bundle_node_key() == key
         });
-        let mut route: Vec<_> = node.route.iter().map(|path| logical_path(path)).collect();
-        let mut steps = Vec::new();
-        if let Some(prefix) = node.route.first().and_then(|path| seed_paths.get(path)) {
-            route.splice(0..1, prefix.clone());
-            for key in prefix.iter().take(prefix.len().saturating_sub(1)) {
-                let structural = structural_nodes
-                    .iter()
-                    .find(|node| &node.bundleNodeKey == key)
-                    .context("Traversal route is missing its structural node")?;
-                steps.push(OutputTraversalStep {
-                    bundle_node_key: key.clone(),
-                    depth: structural.depth,
-                    remaining_depth: structural.remaining_depth,
-                    remaining_inlinks_depth: structural.remaining_inlinks_depth,
-                    traversal_details: None,
-                    is_frontier_image_extension: false,
-                });
-            }
-        }
-        steps.extend(
-            node.route_steps
-                .iter()
-                .map(|step| route_step(step, &query, &logical_path)),
-        );
+        let adapt_route =
+            |route: &[linkrange::RouteStep]| -> anyhow::Result<Vec<OutputTraversalStep>> {
+                let mut steps = Vec::new();
+                if let Some(prefix) = route.first().and_then(|step| seed_paths.get(&step.path)) {
+                    for key in prefix.iter().take(prefix.len().saturating_sub(1)) {
+                        let structural = structural_nodes
+                            .iter()
+                            .find(|node| &node.bundleNodeKey == key)
+                            .context("Traversal route is missing its structural node")?;
+                        steps.push(OutputTraversalStep {
+                            bundle_node_key: key.clone(),
+                            depth: structural.depth,
+                            remaining_depth: structural.remaining_depth,
+                            remaining_inlinks_depth: structural.remaining_inlinks_depth,
+                            retained_for_traversal: None,
+                            traversal_details: None,
+                            is_frontier_image_extension: false,
+                        });
+                    }
+                }
+                steps.extend(
+                    route
+                        .iter()
+                        .map(|step| route_step(step, &query, &logical_path)),
+                );
+                Ok(steps)
+            };
+        let steps = adapt_route(&node.route_steps)?;
+        let route = steps
+            .iter()
+            .map(|step| step.bundle_node_key.clone())
+            .collect();
+        let alternatives = node
+            .alternative_routes
+            .iter()
+            .map(|route| adapt_route(route))
+            .collect::<anyhow::Result<Vec<_>>>()?;
         let traversal_details = steps.last().and_then(|step| step.traversal_details.clone());
         let initial = node.inherited.is_none();
         nodes.push(OutputNode {
@@ -696,6 +718,7 @@ fn main() -> anyhow::Result<()> {
             path: route,
             traversal_details,
             traversal_path_steps: Some(steps),
+            traversal_alternative_routes: alternatives,
             isFrontierNode: (!initial || !matches!(entry, BundleNodeConfig::File { .. }))
                 .then_some(node.inclusion == Inclusion::Frontier),
             isFrontierImageExtension: (!initial || !matches!(entry, BundleNodeConfig::File { .. }))

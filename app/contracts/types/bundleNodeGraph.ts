@@ -35,6 +35,8 @@ export type BundleNodeTraversalPathStep = {
   depth: number;
   remaining_depth: number;
   remaining_inlinks_depth: number;
+  /** Exact arrival retained for traversal; absent in older captured snapshots. */
+  retainedForTraversal?: boolean;
   traversal_details?: BundleNodeTraversalDetails;
   isFrontierImageExtension?: boolean;
 };

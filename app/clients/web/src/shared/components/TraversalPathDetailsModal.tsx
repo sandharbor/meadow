@@ -16,6 +16,8 @@ limitations under the License.
 
 import React from 'react';
 import Modal from './Modal.js';
+import TraversalRouteDiagram from './TraversalRouteDiagram.js';
+import { explainedTraversalRoutes, defaultTraversalRoute } from '../utils/traversalRoutes.js';
 import { IBundleNode } from '../../../../../contracts/types/IBundleNode';
 import { Graph } from '../../../../../contracts/types/graph';
 import { traversalLinkType, type TraversalLinkType } from '../utils/traversalLinkType.js';
@@ -32,7 +34,7 @@ interface TraversalPathDetailsModalProps {
 type DepthEvent = 'set_first_time' | 'overridden' | 'inherited';
 
 interface StepInfo {
-  node: IBundleNode;
+  node: Pick<IBundleNode, 'bundleNodeKey' | 'bundleNodeName' | 'bundleNodeKind'>;
   linkType: TraversalLinkType;
   outlinksDepthEvent: DepthEvent;
   outlinksDepthValue: number | undefined;
@@ -151,18 +153,22 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
   addedNodeKeys,
   manageFocus = false,
 }) => {
-  if (!selectedNode.path || selectedNode.path.length === 0) {
+  const [selection, setSelection] = React.useState<{ node: IBundleNode; index: number } | null>(null);
+  const routes = explainedTraversalRoutes(selectedNode);
+  const routeIndex = selection?.node === selectedNode ? selection.index : defaultTraversalRoute(routes);
+  const selectedRoute = routes[routeIndex] ?? routes[0];
+  const selectedPath = selectedRoute.path;
+  if (selectedPath.length === 0) {
     return null;
   }
 
-  const steps: StepInfo[] = selectedNode.path
+  const steps: StepInfo[] = selectedPath
     .map((bundleNodeKey, index): StepInfo | null => {
       const node = graph.getNode(bundleNodeKey);
-      if (!node) return null;
-
-      const recordedStep = selectedNode.traversal_path_steps?.[index];
+      const recordedStep = selectedRoute.steps?.[index];
       const routeStep = recordedStep?.bundleNodeKey === bundleNodeKey ? recordedStep : undefined;
       const arrival = routeStep ?? node;
+      if (!arrival) return null;
       const details = arrival.traversal_details;
       const outlinksInfo = getDepthInfo(
         details?.outlinks_depth_set_first_time,
@@ -175,15 +181,19 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
         details?.inlinks_depth_inherited
       );
 
-      const previousKey = selectedNode.path?.[index - 1];
+      const previousKey = selectedPath[index - 1];
       const linkType = routeStep?.traversal_details?.link_type && routeStep.traversal_details.link_type !== 'start'
         ? routeStep.traversal_details.link_type
         : traversalLinkType(graph, previousKey, bundleNodeKey);
-      const effectivePolicyName = node.effectiveFolderPolicyBundleNodeId
+      const effectivePolicyName = node?.effectiveFolderPolicyBundleNodeId
         ? graph.getAllNodes().find(candidate => candidate.bundleNodeId === node.effectiveFolderPolicyBundleNodeId)?.bundleNodeName
         : undefined;
       return {
-        node,
+        node: node ?? {
+          bundleNodeKey: bundleNodeKey as IBundleNode['bundleNodeKey'],
+          bundleNodeName: bundleNodeKey.split('/').pop()!,
+          bundleNodeKind: bundleNodeKey.startsWith('folder:') ? 'folder' : bundleNodeKey.startsWith('collection:') ? 'collection' : 'file',
+        },
         linkType,
         outlinksDepthEvent: outlinksInfo.event,
         outlinksDepthValue: outlinksInfo.value,
@@ -197,8 +207,8 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
         depth: arrival.depth,
         isFrontierImageExtension: Boolean(arrival.isFrontierImageExtension),
         // Older captures may lack route arrivals. Never substitute a different route's budgets.
-        hasRouteValues: Boolean(routeStep) || Boolean(node.path && node.path.length === index + 1
-          && node.path.every((key, step) => key === selectedNode.path?.[step])),
+        hasRouteValues: Boolean(routeStep) || Boolean(node?.path && node.path.length === index + 1
+          && node.path.every((key, step) => key === selectedPath[step])),
       };
     })
     .filter((s): s is StepInfo => s !== null);
@@ -213,6 +223,9 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
     >
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto pr-2">
+          {routes.length > 1 && <TraversalRouteDiagram routes={routes} graph={graph} selected={routeIndex}
+            onSelect={index => setSelection({ node: selectedNode, index })} addedNodeKeys={addedNodeKeys} />}
+          {routes.length > 1 && <div className="mb-3 text-xs font-semibold text-neutral-600">{selectedRoute.label} · step details</div>}
           {steps.map((step, index) => (
             <React.Fragment key={`${index}:${step.node.bundleNodeKey}`}>
               {/* Connector between steps */}

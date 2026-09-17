@@ -222,6 +222,17 @@ fn route_arrivals_keep_the_budget_that_enabled_an_incoming_hop() {
     // Then node display metadata stays shortest, while the target's route is coherent.
     assert_eq!(find("/Hub.md")["depth"], 1);
     assert_eq!(find("/Hub.md")["remaining_inlinks_depth"], 0);
+    let alternatives = find("/Hub.md")["traversal_alternative_routes"]
+        .as_array()
+        .unwrap();
+    assert_eq!(alternatives.len(), 1);
+    assert_eq!(alternatives[0][1]["bundleNodeKey"], "/Taxonomy.md");
+    assert_eq!(alternatives[0][2]["remaining_inlinks_depth"], 1);
+    assert_eq!(alternatives[0][2]["retainedForTraversal"], true);
+    assert_eq!(
+        find("/Hub.md")["traversal_path_steps"][1]["retainedForTraversal"],
+        false
+    );
     let target = find("/Target.md");
     let steps = target["traversal_path_steps"].as_array().unwrap();
     assert_eq!(
@@ -236,6 +247,33 @@ fn route_arrivals_keep_the_budget_that_enabled_an_incoming_hop() {
     assert_eq!(steps[1]["traversal_details"]["inlinks_depth_inherited"], 0);
     assert_eq!(steps[1]["traversal_details"]["inlinks_depth_overridden"], 2);
     assert_eq!(steps[3]["traversal_details"]["link_type"], "inlink");
+
+    // A new zero override keeps the stronger arrival as evidence, while blocking the incoming hop.
+    let mut config_value: Value = serde_json::from_slice(&std::fs::read(&config).unwrap()).unwrap();
+    config_value["nodes"].as_array_mut().unwrap().push(json!({
+        "bundleNodeKind":"file", "bundleNodeId":"c1b2c3d4e5f6", "bundleNodeName":"Hub",
+        "fileType":"md", "listType":"whitelist", "inlinksDepth":0
+    }));
+    std::fs::write(&config, serde_json::to_vec(&config_value).unwrap()).unwrap();
+    let restricted = run("a1b2c3d4e5f6", &source, &config, "3", "1");
+    let hub = restricted["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["bundleNodeKey"] == "/Hub.md")
+        .unwrap();
+    let arrival = hub["traversal_alternative_routes"][0]
+        .as_array()
+        .unwrap()
+        .last()
+        .unwrap();
+    assert_eq!(arrival["traversal_details"]["inlinks_depth_inherited"], 1);
+    assert_eq!(arrival["traversal_details"]["inlinks_depth_overridden"], 0);
+    assert_eq!(arrival["remaining_inlinks_depth"], 0);
+    assert_eq!(arrival["retainedForTraversal"], false);
+    assert_eq!(hub["traversal_path_steps"][1]["retainedForTraversal"], true);
+    assert!(!has_node(&restricted, "/Incoming.md"));
+    assert!(!has_node(&restricted, "/Target.md"));
 }
 
 #[test]

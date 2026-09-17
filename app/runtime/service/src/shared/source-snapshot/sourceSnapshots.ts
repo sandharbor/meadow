@@ -201,6 +201,7 @@ export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSna
     return { ...graph,
       nodes: graph.nodes.map(node => ({ ...node, bundleNodeKey: relative(node.bundleNodeKey), path: node.path.map(relative),
         traversal_path_steps: node.traversal_path_steps?.map(step => ({ ...step, bundleNodeKey: relative(step.bundleNodeKey) })),
+        traversal_alternative_routes: node.traversal_alternative_routes?.map(route => route.map(step => ({ ...step, bundleNodeKey: relative(step.bundleNodeKey) }))),
       })),
       edges: graph.edges.map(edge => ({ ...edge, source: relative(edge.source), target: relative(edge.target) })),
       allInlinkSources: links(graph.allInlinkSources), allOutlinkTargets: links(graph.allOutlinkTargets),

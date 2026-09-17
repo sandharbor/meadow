@@ -48,6 +48,7 @@ interface BaseBundleNode {
   path?: string[]; // Traversal path from the start node to this node
   traversal_details?: BundleNodeTraversalDetails;
   traversal_path_steps?: BundleNodeTraversalPathStep[];
+  traversal_alternative_routes?: BundleNodeTraversalPathStep[][];
   traversal_states?: BundleNodeTraversalStateSummary[];
   effectiveBlacklistingBundleNodeId?: BundleNodeId;
   effectiveFolderPolicyBundleNodeId?: BundleNodeId;

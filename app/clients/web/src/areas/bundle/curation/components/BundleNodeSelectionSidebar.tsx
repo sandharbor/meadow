@@ -20,6 +20,7 @@ import {
   isUntrackableFrontierNode,
   type IBundleNode,
 } from '../../../../../../../contracts/types/IBundleNode';
+import { inheritedTraversalDepths, remainingTraversalDepths } from '../../../../shared/utils/traversalRoutes.js';
 import TraversalPathDetailsModal from '../../../../shared/components/TraversalPathDetailsModal.js';
 import BundleNodeLinksModal from './BundleNodeLinksModal';
 import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';
@@ -385,7 +386,8 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
               if (aPriority !== bPriority) return aPriority - bPriority;
               return a.originalIndex - b.originalIndex;
             })
-            .map(({ page }) => (
+            .map(({ page }) => ({ page, depths: remainingTraversalDepths(page!), inheritedDepths: inheritedTraversalDepths(page!) }))
+            .map(({ page, depths, inheritedDepths }) => (
               <div key={page!.bundleNodeKey} className="p-4 hover:bg-neutral-50" data-testid={`selected-page-${page!.bundleNodeKey}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium truncate flex-1 mr-2">{page!.data?.bundleNodeName || page!.label}</span>
@@ -539,7 +541,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                       {page!.depth !== 0 && Array.isArray(page!.path) && page!.path.length > 0 && (
                         <div style={{ position: 'relative' }}>
                           <div className="flex items-center justify-between mb-1">
-                            <div className="text-xs font-semibold text-neutral-700">Path</div>
+                            <div className="text-xs font-semibold text-neutral-700">{page!.traversal_alternative_routes?.length ? 'Shortest path' : 'Path'}</div>
                             <button
                               onClick={() => {
                                 setTraversalDetailsBundleNodeKey(page!.bundleNodeKey);
@@ -669,7 +671,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-semibold text-neutral-700">Outlink Depth</div>
                               <div className="text-xs text-neutral-500">
-                                {page!.conf?.outlinksDepth ?? page!.remaining_depth}
+                                {page!.conf?.outlinksDepth ?? depths.outlinks}
                               </div>
                             </div>
                             <div className="mt-1 flex items-center gap-2">
@@ -678,7 +680,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                                 min="0"
                                 value={
                                   outlinksDepthInputsByBundleNodeKey[page!.bundleNodeKey] ??
-                                  String(page!.conf?.outlinksDepth ?? page!.remaining_depth)
+                                  String(page!.conf?.outlinksDepth ?? depths.outlinks)
                                 }
                                 onChange={(e) => setOutlinksDepthInputForPage(page!.bundleNodeKey, e.target.value)}
                                 placeholder="depth"
@@ -700,16 +702,16 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                               <div className="text-xs text-neutral-500">
                                 {page!.conf?.outlinksDepth !== undefined ? (
                                   <span className="flex items-center gap-1">
-                                    {page!.traversal_details?.outlinks_depth_inherited !== undefined && (
+                                    {inheritedDepths.outlinks !== undefined && (
                                       <>
-                                        <span className="line-through decoration-2 text-neutral-400">{page!.traversal_details.outlinks_depth_inherited}</span>
+                                        <span className="line-through decoration-2 text-neutral-400">{inheritedDepths.outlinks}</span>
                                         <span className="text-amber-500">→</span>
                                       </>
                                     )}
                                     <span className="font-semibold text-neutral-700">{page!.conf.outlinksDepth}</span>
                                   </span>
                                 ) : (
-                                  <span className="text-neutral-400">inherited: {page!.remaining_depth}</span>
+                                  <span className="text-neutral-400">inherited: {depths.outlinks}</span>
                                 )}
                               </div>
                             </div>
@@ -749,9 +751,9 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                               <span className="text-xs font-semibold text-neutral-700">Outlink Depth</span>
                               <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-600">override</span>
                               <span className="flex items-center gap-1 text-xs">
-                                {page!.traversal_details?.outlinks_depth_inherited !== undefined && (
+                                {inheritedDepths.outlinks !== undefined && (
                                   <>
-                                    <span className="line-through decoration-2 text-neutral-400">{page!.traversal_details.outlinks_depth_inherited}</span>
+                                    <span className="line-through decoration-2 text-neutral-400">{inheritedDepths.outlinks}</span>
                                     <span className="text-amber-500">→</span>
                                   </>
                                 )}
@@ -789,7 +791,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                           <div className="flex items-center justify-between gap-2">
                             <div className="text-xs font-semibold text-neutral-700">Outlink Depth</div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-neutral-500">{page!.remaining_depth}</span>
+                              <span className="text-xs text-neutral-500">{depths.outlinks}</span>
                               <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Frontier pages cannot be edited" align="right">
                                 <button
                                   title="Add outlink depth override"
@@ -814,7 +816,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-semibold text-neutral-700">Inlink Depth</div>
                               <div className="text-xs text-neutral-500">
-                                {page!.conf?.inlinksDepth ?? page!.remaining_inlinks_depth ?? 0}
+                                {page!.conf?.inlinksDepth ?? depths.inlinks}
                               </div>
                             </div>
                             <div className="mt-1 flex items-center gap-2">
@@ -823,7 +825,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                                 min="0"
                                 value={
                                   inlinksDepthInputsByBundleNodeKey[page!.bundleNodeKey] ??
-                                  String(page!.conf?.inlinksDepth ?? page!.remaining_inlinks_depth ?? 0)
+                                  String(page!.conf?.inlinksDepth ?? depths.inlinks)
                                 }
                                 onChange={(e) => setInlinksDepthInputForPage(page!.bundleNodeKey, e.target.value)}
                                 placeholder="depth"
@@ -845,16 +847,16 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                               <div className="text-xs text-neutral-500">
                                 {page!.conf?.inlinksDepth !== undefined ? (
                                   <span className="flex items-center gap-1">
-                                    {page!.traversal_details?.inlinks_depth_inherited !== undefined && (
+                                    {inheritedDepths.inlinks !== undefined && (
                                       <>
-                                        <span className="line-through decoration-2 text-neutral-400">{page!.traversal_details.inlinks_depth_inherited}</span>
+                                        <span className="line-through decoration-2 text-neutral-400">{inheritedDepths.inlinks}</span>
                                         <span className="text-amber-500">→</span>
                                       </>
                                     )}
                                     <span className="font-semibold text-neutral-700">{page!.conf.inlinksDepth}</span>
                                   </span>
                                 ) : (
-                                  <span className="text-neutral-400">inherited: {page!.remaining_inlinks_depth ?? 0}</span>
+                                  <span className="text-neutral-400">inherited: {depths.inlinks}</span>
                                 )}
                               </div>
                             </div>
@@ -894,9 +896,9 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                               <span className="text-xs font-semibold text-neutral-700">Inlink Depth</span>
                               <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-600">override</span>
                               <span className="flex items-center gap-1 text-xs">
-                                {page!.traversal_details?.inlinks_depth_inherited !== undefined && (
+                                {inheritedDepths.inlinks !== undefined && (
                                   <>
-                                    <span className="line-through decoration-2 text-neutral-400">{page!.traversal_details.inlinks_depth_inherited}</span>
+                                    <span className="line-through decoration-2 text-neutral-400">{inheritedDepths.inlinks}</span>
                                     <span className="text-amber-500">→</span>
                                   </>
                                 )}
@@ -934,7 +936,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                           <div className="flex items-center justify-between gap-2">
                             <div className="text-xs font-semibold text-neutral-700">Inlink Depth</div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-neutral-500">{page!.remaining_inlinks_depth ?? 0}</span>
+                              <span className="text-xs text-neutral-500">{depths.inlinks}</span>
                               <DisabledTooltip disabled={page!.isFrontierNode} tooltip="Frontier pages cannot be edited" align="right">
                                 <button
                                   onClick={() => setInlinksDepthOverrideOpenByBundleNodeKey(prev => ({ ...prev, [page!.bundleNodeKey]: true }))}

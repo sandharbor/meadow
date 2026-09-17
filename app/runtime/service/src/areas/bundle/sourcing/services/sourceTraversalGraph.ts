@@ -7,6 +7,12 @@ import { serializeWorkingGraphOutput, type WorkingGraphRustOutput } from '../../
 export function sourceTraversalGraph(snapshotId: string, output: WorkingGraphRustOutput | undefined, routes: string[][]): SourceTraversalGraph | undefined {
   if (!output) return undefined;
   const keys = new Set(routes.flat());
+  // Include the alternative explanations of each inspectable node, with their labels and policies.
+  for (const node of output.nodes.filter(node => keys.has(node.bundleNodeKey))) {
+    for (const route of node.traversal_alternative_routes ?? []) {
+      route.forEach(step => keys.add(step.bundleNodeKey));
+    }
+  }
   const policies = new Set(output.nodes.filter(node => keys.has(node.bundleNodeKey)).map(node => node.effectiveFolderPolicyBundleNodeId).filter(Boolean));
   const nodes = output.nodes.filter(node => keys.has(node.bundleNodeKey) || (node.bundleNodeId && policies.has(node.bundleNodeId)));
   const selectedKeys = new Set(nodes.map(node => node.bundleNodeKey));
