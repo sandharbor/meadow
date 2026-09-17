@@ -420,11 +420,17 @@ fn main() -> anyhow::Result<()> {
         },
         frontier_depth: args.frontier_depth as u32,
         adjacency: true,
-        boundary_embed_types: if args.allow_images_to_extend_to_frontier {
-            vec!["png".into(), "jpg".into(), "jpeg".into(), "gif".into()]
-        } else {
-            Vec::new()
+        boundary_embed_types: {
+            // Stylesheets and scripts are dependencies of an included HTML page,
+            // even at the depth boundary. Ordinary links get no exception.
+            let mut formats = vec!["css".into(), "js".into()];
+            if args.allow_images_to_extend_to_frontier {
+                formats.extend(["png", "jpg", "jpeg", "gif"].map(String::from));
+            }
+            formats
         },
+        // All direct HTML embeds use the same terminal boundary exception as images.
+        boundary_embed_source_types: vec!["html".into()],
         ..Default::default()
     };
     for config in &configs {

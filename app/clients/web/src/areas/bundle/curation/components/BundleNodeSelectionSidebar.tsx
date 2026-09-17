@@ -16,6 +16,7 @@ limitations under the License.
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Graph } from '../../../../../../../contracts/types/graph';
+import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import {
   isUntrackableFrontierNode,
   type IBundleNode,
@@ -473,8 +474,8 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                     </span>
                   )}
                   {page!.isFrontierImageExtension && (
-                    <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-violet-100 text-violet-800" title="This image was included because it was linked from a frontier-edge page and we try not to break images">
-                      Frontier Image
+                    <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-violet-100 text-violet-800" title="Included to preserve an embedded asset needed by a page at the traversal boundary">
+                      {isImageFileType(page!.fileType ?? '') ? 'Frontier Image' : 'Embedded Asset'}
                     </span>
                   )}
                 </div>

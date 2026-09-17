@@ -21,6 +21,7 @@ import { explainedTraversalRoutes, defaultTraversalRoute } from '../utils/traver
 import { IBundleNode } from '../../../../../contracts/types/IBundleNode';
 import { Graph } from '../../../../../contracts/types/graph';
 import { traversalLinkType, type TraversalLinkType } from '../utils/traversalLinkType.js';
+import { isImageFileType } from '../../../../../shared_code/utils/fileTypeUtils.js';
 
 interface TraversalPathDetailsModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ interface TraversalPathDetailsModalProps {
 type DepthEvent = 'set_first_time' | 'overridden' | 'inherited';
 
 interface StepInfo {
-  node: Pick<IBundleNode, 'bundleNodeKey' | 'bundleNodeName' | 'bundleNodeKind'>;
+  node: Pick<IBundleNode, 'bundleNodeKey' | 'bundleNodeName' | 'bundleNodeKind' | 'fileType'>;
   linkType: TraversalLinkType;
   outlinksDepthEvent: DepthEvent;
   outlinksDepthValue: number | undefined;
@@ -261,7 +262,7 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                     )}
                     {step.hasRouteValues && step.isFrontierImageExtension && (
                       <span className="text-[10px] text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded">
-                        frontier image
+                        {isImageFileType(step.node.fileType ?? '') ? 'frontier image' : 'embedded asset'}
                       </span>
                     )}
                     {step.hasRouteValues && <span className="text-[10px] text-neutral-400 bg-neutral-50 px-1.5 py-0.5 rounded tabular-nums">
@@ -270,10 +271,10 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Frontier image explanation */}
+                {/* Boundary embedded asset explanation */}
                 {step.hasRouteValues && step.isFrontierImageExtension && (
                   <div className="mb-2 px-2.5 py-1.5 bg-violet-100/60 rounded text-[11px] text-violet-600 leading-relaxed">
-                    Included because it was linked from a page at the frontier edge (remaining depth = 0).
+                    Included because it is embedded in a page at the traversal boundary (remaining depth = 0).
                   </div>
                 )}
 

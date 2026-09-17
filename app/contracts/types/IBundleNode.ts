@@ -53,7 +53,7 @@ interface BaseBundleNode {
   effectiveBlacklistingBundleNodeId?: BundleNodeId;
   effectiveFolderPolicyBundleNodeId?: BundleNodeId;
   isFrontierNode?: boolean; // True if this node is beyond the normal working area boundary
-  isFrontierImageExtension?: boolean; // True if this image was included because it was linked from a frontier-edge page
+  isFrontierImageExtension?: boolean; // Legacy field name: a directly embedded file retained at the traversal boundary.
   source_page_outlink_count?: number;
   source_page_inlink_count?: number;
 
@@ -91,7 +91,7 @@ export interface CollectionBundleNode extends BaseBundleNode {
 
 export type IBundleNode = FileBundleNode | FolderBundleNode | CollectionBundleNode;
 
-/** Frontier-image extensions remain trackable even though they also carry the frontier flag. */
+/** Boundary embedded assets remain trackable even though they also carry the frontier flag. */
 export function isUntrackableFrontierNode(
   node: Pick<IBundleNode, 'isFrontierNode' | 'isFrontierImageExtension'>,
 ): boolean {

@@ -99,9 +99,9 @@ export const frontier = defineMeadowConcept({
   definition: conceptText`A reachable page just beyond the bundle's current traversal boundary.`,
   mechanics: [
     conceptText`Frontier depth bounds exploration beyond the normal traversal boundary. Depth overrides on frontier-only pages are ignored, including overrides that would shorten exploration; exhausted incoming-link traversal remains exhausted. Stop and exclusion policies still apply.`,
-    conceptText`A frontier image extension remains directly trackable so an image embedded at the boundary can be preserved without expanding ordinary page traversal.`,
+    conceptText`An embedded asset at the boundary remains directly trackable without expanding ordinary page traversal. Direct embeds in HTML pages are retained, including stylesheets, scripts, images, and embedded documents. Supported images in other source formats are retained when the image extension setting is enabled.`,
   ],
-  interplay: conceptText`An ordinary frontier page is visible for boundary reasoning but cannot become a ${conceptLink(coreConceptIds.tracking, "tracked bundle page")} until the graph constraints admit it; frontier image extensions are the deliberate exception.`,
+  interplay: conceptText`An ordinary frontier page is visible for boundary reasoning but cannot become a ${conceptLink(coreConceptIds.tracking, "tracked bundle page")} until the graph constraints admit it; required embedded assets are the deliberate exception.`,
 });
 
 export const frontierPendingSources = defineMeadowConcept({
@@ -130,13 +130,13 @@ export const frontierDismissal = defineMeadowConcept({
 
 export const frontierEmbeddedAssets = defineMeadowConcept({
   id: coreConceptIds.frontierEmbeddedAssets,
-  name: "Embedded images cross the traversal boundary",
+  name: "Embedded assets cross the traversal boundary",
   kind: "behavioral-rule",
   searchFacet: false,
   parentId: coreConceptIds.frontier,
   appAreaIds: curationArea,
-  definition: conceptText`An embedded image required by an included page may be retained at the traversal boundary; an ordinary link to an image receives no exception.`,
-  mechanics: [conceptText`Rationale: Required embedded assets preserve an included page while ordinary links remain governed by traversal depth.`, conceptText`Example: At depth zero, ![[diagram.png]] can retain the diagram. [[diagram.png]] remains a frontier page and cannot be tracked from there.`],
+  definition: conceptText`Files directly embedded in an included HTML page are retained at the traversal boundary. Embedded stylesheets and scripts in other source formats, and supported images when enabled, receive the same exception. Ordinary links receive no exception.`,
+  mechanics: [conceptText`Rationale: Required embedded assets preserve an included page while ordinary links remain governed by traversal depth. This exception includes a directly embedded file without granting more traversal through that file; stop and exclusion policies still apply.`, conceptText`Example: At depth zero, an HTML page retains its stylesheet, script sources, SVG image, and iframe document. The iframe's own links do not gain additional depth. With image extension enabled, ![[diagram.png]] can retain the diagram, while [[diagram.png]] remains an ordinary frontier page.`],
   interplay: conceptText`This is a behavioral rule of ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}.`,
 });
 

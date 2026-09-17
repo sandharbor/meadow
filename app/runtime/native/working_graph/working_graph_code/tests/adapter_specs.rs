@@ -138,6 +138,86 @@ fn native_html_nodes_keep_their_type_and_page_and_asset_adjacency() {
     );
 }
 #[test]
+fn html_at_the_depth_boundary_keeps_direct_embeds_including_encoded_stylesheets_and_scripts() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("source");
+    std::fs::create_dir_all(source.join("site")).unwrap();
+    // Given an HTML page reached on the last allowed hop.
+    std::fs::write(source.join("Start.md"), "[page](site/page.html)").unwrap();
+    std::fs::write(
+        source.join("site/page.html"),
+        r#"
+        <link rel="stylesheet" href="change%20matrix.css">
+        <script defer src="change%20matrix.data.js"></script>
+        <script defer src="change%20matrix.js"></script>
+        <img src="diagram.svg">
+        <img src="photo.webp">
+        <iframe src="embedded.html"></iframe>
+        <object data="document.pdf"></object>
+        <a href="ordinary.css">download stylesheet</a>
+        <a href="beyond.html">another page</a>
+    "#,
+    )
+    .unwrap();
+    for file in [
+        "change matrix.css",
+        "change matrix.data.js",
+        "change matrix.js",
+        "diagram.svg",
+        "photo.webp",
+        "document.pdf",
+        "ordinary.css",
+        "beyond.html",
+    ] {
+        std::fs::write(source.join("site").join(file), "").unwrap();
+    }
+    std::fs::write(
+        source.join("site/embedded.html"),
+        "<iframe src='beyond.html'></iframe>",
+    )
+    .unwrap();
+    let config = temp.path().join("config.yaml");
+    std::fs::write(
+        &config,
+        serde_json::to_vec(&json!({"nodes": [{
+            "bundleNodeKind":"file", "bundleNodeId":"a1b2c3d4e5f6", "bundleNodeName":"Start",
+            "fileType":"md", "listType":"whitelist"
+        }]}))
+        .unwrap(),
+    )
+    .unwrap();
+    // When the adapter requests one hop and no frontier.
+    let result = run("a1b2c3d4e5f6", &source, &config, "1", "0");
+    // Then dependencies remain eligible for snapshotting, but ordinary links don't extend it.
+    assert_eq!(result["nodes"].as_array().unwrap().len(), 9);
+    for asset in [
+        "change matrix.css",
+        "change matrix.data.js",
+        "change matrix.js",
+        "diagram.svg",
+        "photo.webp",
+        "embedded.html",
+        "document.pdf",
+    ] {
+        let path = format!("site/{asset}");
+        let node = result["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|node| node["bundleNodeKey"] == path)
+            .expect("embedded dependency included");
+        assert_eq!(node["isFrontierImageExtension"], true);
+        let raw = asset.replace(' ', "%20");
+        assert_eq!(
+            result["allLinkResolutionMaps"]["site/page.html"][raw]["link_resolved_target_path"],
+            path
+        );
+    }
+    assert!(!has_node(&result, "site/ordinary.css"));
+    assert!(!has_node(&result, "site/beyond.html"));
+}
+
+#[test]
 fn folder_scope_seeds_descendants_and_retains_meadows_structural_edges() {
     let result = folder(false);
     for key in [
