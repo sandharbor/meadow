@@ -80,6 +80,11 @@ describe('source snapshots with the shared big graph', () => {
     expect(graph.nodes.map(node => node.bundleNodeKey).sort()).toEqual([...route!].sort());
     expect(graph.nodes.find(node => node.bundleNodeKey === 'Incoming.md')).toMatchObject({
       path: route, remaining_depth: 0, remaining_inlinks_depth: 0, traversal_details: { link_type: 'inlink' },
+      traversal_path_steps: [
+        { bundleNodeKey: 'Start.md', depth: 0, remaining_depth: 2, remaining_inlinks_depth: 2, traversal_details: { link_type: 'start' } },
+        { bundleNodeKey: 'Bridge.md', depth: 1, remaining_depth: 1, remaining_inlinks_depth: 1, traversal_details: { link_type: 'outlink' } },
+        { bundleNodeKey: 'Incoming.md', depth: 2, remaining_depth: 0, remaining_inlinks_depth: 0, traversal_details: { link_type: 'inlink' } },
+      ],
     });
     expect(graph.edges).toEqual(expect.arrayContaining([expect.objectContaining({ source: 'Incoming.md', target: 'Bridge.md' })]));
     expect(pending.traversalGraphs!.accepted!.snapshotId).toBe(state.acceptedId);

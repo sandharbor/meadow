@@ -93,9 +93,15 @@ impl BundleNodeConfig {
 
     pub fn bundle_node_name(&self) -> &str {
         match self {
-            Self::File { bundle_node_name, .. }
-            | Self::Folder { bundle_node_name, .. }
-            | Self::Collection { bundle_node_name, .. } => bundle_node_name,
+            Self::File {
+                bundle_node_name, ..
+            }
+            | Self::Folder {
+                bundle_node_name, ..
+            }
+            | Self::Collection {
+                bundle_node_name, ..
+            } => bundle_node_name,
         }
     }
 
@@ -147,9 +153,7 @@ impl BundleNodeConfig {
 
     pub fn inlinks_depth(&self) -> Option<i32> {
         match self {
-            Self::File { inlinks_depth, .. } | Self::Folder { inlinks_depth, .. } => {
-                *inlinks_depth
-            }
+            Self::File { inlinks_depth, .. } | Self::Folder { inlinks_depth, .. } => *inlinks_depth,
             Self::Collection { .. } => None,
         }
     }
@@ -208,11 +212,11 @@ impl BundleNodeConfig {
 pub fn normalize_folder_source_graph_subdirectory(value: &str) -> anyhow::Result<String> {
     anyhow::ensure!(!value.contains('\\'), "must use '/' separators");
     anyhow::ensure!(
-        !value.starts_with('/')
-            && !(value.len() >= 3
+        !(value.starts_with('/')
+            || (value.len() >= 3
                 && value.as_bytes()[0].is_ascii_alphabetic()
                 && value.as_bytes()[1] == b':'
-                && value.as_bytes()[2] == b'/'),
+                && value.as_bytes()[2] == b'/')),
         "must be relative"
     );
     let mut segments = Vec::new();
@@ -278,11 +282,13 @@ pub fn parse_bundle_node_config_yaml(yaml_content: &str) -> anyhow::Result<Vec<B
         } = node
         {
             let normalized = normalize_folder_source_graph_subdirectory(source_graph_subdirectory)
-                .map_err(|error| anyhow::anyhow!(
-                    "record {} field 'sourceGraphSubdirectory': {}",
-                    index + 1,
-                    error
-                ))?;
+                .map_err(|error| {
+                    anyhow::anyhow!(
+                        "record {} field 'sourceGraphSubdirectory': {}",
+                        index + 1,
+                        error
+                    )
+                })?;
             anyhow::ensure!(
                 normalized == *source_graph_subdirectory,
                 "record {} field 'sourceGraphSubdirectory': must be normalized as '{}'",
@@ -337,14 +343,20 @@ pub fn parse_bundle_node_config_yaml(yaml_content: &str) -> anyhow::Result<Vec<B
             ..
         } = node
         {
-            anyhow::ensure!(list_type == "whitelist", "collection nodes must be whitelisted");
+            anyhow::ensure!(
+                list_type == "whitelist",
+                "collection nodes must be whitelisted"
+            );
             anyhow::ensure!(
                 member_bundle_node_ids.len() >= 2,
                 "collection memberBundleNodeIds must contain at least two IDs"
             );
             let mut members = HashSet::new();
             for member_id in member_bundle_node_ids {
-                anyhow::ensure!(members.insert(member_id), "collection member IDs must be unique");
+                anyhow::ensure!(
+                    members.insert(member_id),
+                    "collection member IDs must be unique"
+                );
                 let member = by_id.get(member_id.as_str()).ok_or_else(|| {
                     anyhow::anyhow!("collection memberBundleNodeId does not resolve: {member_id}")
                 })?;
@@ -407,7 +419,10 @@ nodes:
 
     #[test]
     fn rejects_unknown_legacy_fields() {
-        let legacy = CANONICAL.replace("    listType: whitelist", "    listType: whitelist\n    tracked: true");
+        let legacy = CANONICAL.replace(
+            "    listType: whitelist",
+            "    listType: whitelist\n    tracked: true",
+        );
         let error = parse_bundle_node_config_yaml(&legacy).expect_err("legacy field must fail");
         assert!(error.to_string().contains("unknown field `tracked`"));
     }

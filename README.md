@@ -31,6 +31,23 @@ See the Readme in `_agent` for how we do agentic development
 It starts the app's backend, frontend, and then `app/tooling/dev_tools`, which is
 just a nice UI for launching the app with different configurations.
 
+# Rust source dependency
+
+Meadow's graph helper uses [Linkrange](https://github.com/sandharbor/linkrange).
+Install Rust (Cargo) and Git, then run `./prepare`: it downloads the exact revision
+in `app/runtime/native/working_graph/linkrange-version.json` and compiles the
+helper from source. Development and Desktop/Command builds use the same native
+build entrypoint; packaged applications contain the compiled helper and need no
+Rust toolchain at runtime.
+
+To develop Linkrange locally, bind a checkout with
+`LINKRANGE_SOURCE_PATH=/absolute/path/to/linkrange node app/runtime/native/working_graph/prepare-linkrange.mjs`.
+The binding persists for subsequent Cargo builds. Restore the pinned source with
+`node app/runtime/native/working_graph/prepare-linkrange.mjs --pinned` (with the
+override environment variable unset). Downloaded sources and the local binding
+are ignored by Git. The committed fixture snapshot inside Linkrange makes its
+Rust tests independently runnable.
+
 # Building the app
 
 There is an `app-build` skill that runs the build script under `app/hosts/desktop`

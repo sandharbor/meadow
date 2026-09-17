@@ -23,7 +23,7 @@ import type {
   BundleNodeKey,
 } from './bundleNodeConfig.js';
 import type { FileType } from './FileType.js';
-import type { BundleNodeTraversalDetails, BundleNodeTraversalStateSummary } from './bundleNodeGraph.js';
+import type { BundleNodeTraversalDetails, BundleNodeTraversalStateSummary, BundleNodeTraversalPathStep } from './bundleNodeGraph.js';
 
 export interface LinkResolvedInfo {
   link_resolved_target_directory: string;
@@ -47,6 +47,7 @@ interface BaseBundleNode {
   remaining_inlinks_depth?: number;
   path?: string[]; // Traversal path from the start node to this node
   traversal_details?: BundleNodeTraversalDetails;
+  traversal_path_steps?: BundleNodeTraversalPathStep[];
   traversal_states?: BundleNodeTraversalStateSummary[];
   effectiveBlacklistingBundleNodeId?: BundleNodeId;
   effectiveFolderPolicyBundleNodeId?: BundleNodeId;

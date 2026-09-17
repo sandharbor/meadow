@@ -26,9 +26,9 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   const config = YAML.parse(fs.readFileSync(path.join(bundle, 'config/bundle_config.yaml'), 'utf8')) as { sourceDirectory: string };
   const root = fs.realpathSync(config.sourceDirectory);
   const key = createHash('sha256').update(root).digest('hex');
-  const indexPath = path.join(testServer.configDir, 'cache/source-index', key, 'index.json');
+  const indexPath = path.join(testServer.configDir, 'cache/source-index', key, 'last-run.json');
   const readIndex = () => JSON.parse(fs.readFileSync(indexPath, 'utf8')) as {
-    sourceRoot: string; generation: number; rebuilt: boolean; filesRead: number; files: Record<string, unknown>;
+    sourceRoot: string; completedAtNanos: number; metrics: { cacheRebuilt: boolean; filesRead: number; indexedFiles: number };
   };
   const readState = () => JSON.parse(fs.readFileSync(path.join(bundle, 'raw/sourcing/state.json'), 'utf8')) as { acceptedId: string; candidateId?: string };
   const before = readIndex();
@@ -45,9 +45,9 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   await expect(page.getByRole('dialog', { name: 'Source snapshots', exact: true })).not.toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: 'Check again', exact: true })).toBeEnabled();
   const rebuilt = readIndex();
-  expect(rebuilt.generation).toBeGreaterThan(before.generation);
-  expect(rebuilt.rebuilt).toBe(true);
-  expect(rebuilt.filesRead).toBe(Object.keys(rebuilt.files).length);
+  expect(rebuilt.completedAtNanos).toBeGreaterThan(before.completedAtNanos);
+  expect(rebuilt.metrics.cacheRebuilt).toBe(true);
+  expect(rebuilt.metrics.filesRead).toBe(rebuilt.metrics.indexedFiles);
   expect(readState().acceptedId).toBe(acceptedId);
   await addKeyFrame(sourceSnapshot);
   await snapshot('a thorough source check rebuilds the populated index without accepting source material');
@@ -62,7 +62,7 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   ]);
   await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: 'Check again', exact: true })).toBeEnabled();
   await editor.sourceReview.expectModified('t003 ---- page with section to link to.md');
-  expect(readIndex().filesRead).toBe(Object.keys(readIndex().files).length);
+  expect(readIndex().metrics.filesRead).toBe(readIndex().metrics.indexedFiles);
   expect(readState().acceptedId).toBe(acceptedId);
   expect(readState().candidateId).toBeTruthy();
   await addKeyFrame(sourceSnapshot);

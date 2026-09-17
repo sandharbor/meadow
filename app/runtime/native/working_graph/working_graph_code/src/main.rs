@@ -1,23 +1,31 @@
+use anyhow::Context;
 use clap::Parser;
-use link_parser_lib::{parse_link_text, parse_markdown_link_href, AnchorType as LibAnchorType};
-use serde::{Deserialize, Serialize};
-mod source_index;
-use std::collections::{HashMap, HashSet};
-use std::fs;
-use std::path::{Path, PathBuf};
+use linkrange::links::AnchorType as LibAnchorType;
+use linkrange::{
+    Depths, FileInfo, FrontmatterField, Graph, Inclusion, IndexOptions, Query, Rule, Start,
+};
+use serde::Serialize;
+use sha2::{Digest, Sha256};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::{Path, PathBuf},
+};
 use walkdir::WalkDir;
-
 use working_graph::bundle_node_config::{
     find_config_by_id, parse_bundle_node_config_yaml, BundleNodeConfig,
 };
 use working_graph::folder_scope::{
     build_folder_scope_projection, classify_directory_for_selected_roots, ScopePathClassification,
 };
-use working_graph::traversal::{get_multi_seed_working_nodes, get_working_graph, TraverseOpts};
-use working_graph::types::{
-    BasicEdge, FileBundleNode, TraversalDetails, TraversalStateSummary, WorkingNode,
-};
+use working_graph::types::{FileBundleNode, LinkType, TraversalDetails, TraversalStateSummary};
 
+#[derive(Serialize, Clone)]
+struct SourceFile {
+    path: String,
+    digest: String,
+    size: u64,
+}
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Args {
@@ -57,55 +65,11 @@ struct Args {
     allow_lower_depths: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-struct FileIdentifier {
-    directory: String,
-    title: String,
-    file_type: String,
-    path: String, // no leading "/" (matches fs_search `path`)
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct LinkOut {
-    link_original_text: String,
-    link_source_page_path: String,
-
-    link_parsed_directory: String,
-    link_parsed_title: String,
-    link_parsed_file_type: String,
-    link_parsed_anchor: Option<String>,
-    link_parsed_anchor_type: Option<LibAnchorType>,
-    link_parsed_alias: Option<String>,
-    link_parsed_media_size: Option<u32>,
-
-    link_resolved_target_directory: String,
-    link_resolved_target_path: String,
-
-    /// True for standard markdown links `[text](href)` where paths are relative to the source file.
-    /// False for wiki-links `[[inner]]` where paths are resolved by fuzzy search.
-    is_relative_path_link: bool,
-    is_embedded: bool,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum ExtractedLink {
-    Wiki(String),
-    Embedded(Box<ExtractedLink>),
-    Markdown { text: String, href: String },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct ScanResult {
-    source_file: FileIdentifier,
-    is_sensitive: bool,
-    outgoing_links: Vec<LinkOut>,
-}
-
 #[allow(non_snake_case)]
 #[derive(Serialize)]
 struct OutputNode {
     #[serde(skip_serializing_if = "Option::is_none")]
-    sourceFile: Option<source_index::SourceFile>,
+    sourceFile: Option<SourceFile>,
     bundleNodeKey: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     bundleNodeId: Option<String>,
@@ -128,12 +92,67 @@ struct OutputNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     traversal_details: Option<TraversalDetails>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    traversal_path_steps: Option<Vec<OutputTraversalStep>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     isFrontierNode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     isFrontierImageExtension: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     traversal_states: Option<Vec<TraversalStateSummary>>,
     is_sensitive: bool,
+}
+
+#[derive(Serialize)]
+struct OutputTraversalStep {
+    #[serde(rename = "bundleNodeKey")]
+    bundle_node_key: String,
+    depth: i32,
+    remaining_depth: i32,
+    remaining_inlinks_depth: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    traversal_details: Option<TraversalDetails>,
+    #[serde(rename = "isFrontierImageExtension")]
+    is_frontier_image_extension: bool,
+}
+
+fn route_step(
+    step: &linkrange::RouteStep,
+    query: &Query,
+    logical_path: &impl Fn(&str) -> String,
+) -> OutputTraversalStep {
+    let initial = step.inherited.is_none();
+    let depths = query
+        .starts
+        .iter()
+        .find(|start| start.path == step.path)
+        .and_then(|start| start.depths.as_ref())
+        .unwrap_or(&query.depths);
+    OutputTraversalStep {
+        bundle_node_key: logical_path(&step.path),
+        depth: step.depth as i32,
+        remaining_depth: step.remaining_outlinks as i32,
+        remaining_inlinks_depth: step.remaining_inlinks as i32,
+        traversal_details: Some(TraversalDetails {
+            outlinks_depth_set_first_time: initial.then_some(depths.outlinks as i32),
+            outlinks_depth_inherited: step
+                .inherited
+                .as_ref()
+                .map(|state| state.remaining_outlinks as i32),
+            outlinks_depth_overridden: step.overridden_outlinks.map(|n| n as i32),
+            inlinks_depth_set_first_time: initial.then_some(depths.inlinks as i32),
+            inlinks_depth_inherited: step
+                .inherited
+                .as_ref()
+                .map(|state| state.remaining_inlinks as i32),
+            inlinks_depth_overridden: step.overridden_inlinks.map(|n| n as i32),
+            link_type: Some(match step.via.as_str() {
+                "start" => LinkType::Start,
+                "inlink" => LinkType::Inlink,
+                _ => LinkType::Outlink,
+            }),
+        }),
+        is_frontier_image_extension: step.inclusion == Inclusion::EmbeddedAsset,
+    }
 }
 
 #[allow(non_snake_case)]
@@ -193,645 +212,47 @@ struct LinkResolvedInfo {
     link_resolved_target_path: Option<String>,
 }
 
-const IMAGE_EXTENSIONS_MAIN: &[&str] = &["jpg", "jpeg", "png", "gif", "svg", "webp", "excalidraw"];
-const TEXT_SOURCE_EXTENSIONS: &[&str] = &["md", "html", "css", "js"];
-
-fn is_supported_source_extension(extension: &str) -> bool {
-    TEXT_SOURCE_EXTENSIONS.contains(&extension)
-        || extension == "pdf"
-        || IMAGE_EXTENSIONS_MAIN.contains(&extension)
-}
-
-/// Paired `<full-source-filename>.nodespec.yaml` files carry test metadata.
-/// The graph scanner must not treat them as source nodes.
-fn is_nodespec_sidecar(path: &std::path::Path) -> bool {
+fn is_nodespec_sidecar(path: &Path) -> bool {
     path.file_name()
-        .and_then(|s| s.to_str())
-        .map(|s| s.ends_with(".nodespec.yaml"))
-        .unwrap_or(false)
+        .is_some_and(|name| name.to_string_lossy().ends_with(".nodespec.yaml"))
 }
-
-/// Detects whether a markdown file is an Obsidian Excalidraw drawing by content.
-/// Obsidian's Excalidraw plugin writes `excalidraw-plugin: parsed` into the YAML
-/// frontmatter. We only inspect the leading frontmatter region to keep this cheap.
-fn is_excalidraw_markdown(content: &str) -> bool {
-    if !content.starts_with("---") {
-        return false;
-    }
-    let after_open = &content[3..];
-    let close_rel = match after_open.find("\n---") {
-        Some(idx) => idx,
-        None => return false,
-    };
-    let frontmatter = &after_open[..close_rel];
-    frontmatter.contains("excalidraw-plugin: parsed")
+fn is_supported_source_extension(extension: &str) -> bool {
+    matches!(
+        extension,
+        "md" | "html"
+            | "css"
+            | "js"
+            | "pdf"
+            | "jpg"
+            | "jpeg"
+            | "png"
+            | "gif"
+            | "svg"
+            | "webp"
+            | "excalidraw"
+    )
 }
-
-fn extract_page_identifier(path: &std::path::Path, base_dir: &std::path::Path) -> FileIdentifier {
-    let mut directory = path
-        .parent()
-        .unwrap_or_else(|| std::path::Path::new(""))
-        .strip_prefix(base_dir)
-        .unwrap_or_else(|_| path.parent().unwrap_or_else(|| std::path::Path::new("")))
-        .to_string_lossy()
-        .into_owned();
-    if directory.starts_with("./") {
-        directory = directory[2..].to_string();
-    }
-
-    let file_name_full = path.file_name().unwrap_or_default().to_string_lossy();
-    let (name_part, file_type_str) = if let Some(dot_pos) = file_name_full.rfind('.') {
-        let stem_candidate = &file_name_full[..dot_pos];
-        let mut ext = file_name_full[dot_pos + 1..].to_lowercase();
-
-        const KNOWN_PARSEABLE_EXTENSIONS: &[&str] = &["md", "html", "css", "js", "txt"];
-        const KNOWN_OTHER_DOCUMENT_EXTENSIONS: &[&str] = &["pdf"];
-
-        if !(KNOWN_PARSEABLE_EXTENSIONS.contains(&ext.as_str())
-            || KNOWN_OTHER_DOCUMENT_EXTENSIONS.contains(&ext.as_str())
-            || IMAGE_EXTENSIONS_MAIN.contains(&ext.as_str()))
-        {
-            ext = "other".to_string();
-        }
-        (stem_candidate.to_string(), ext)
-    } else {
-        (file_name_full.to_string(), "md".to_string())
-    };
-
-    let title = if let Some(hash_pos) = name_part.rfind("#^") {
-        name_part[..hash_pos].to_string()
-    } else {
-        name_part
-    };
-
-    let path = if directory.is_empty() {
-        format!("{}.{}", title, file_type_str)
-    } else {
-        format!("{}/{}.{}", directory, title, file_type_str)
-    };
-
-    FileIdentifier {
-        directory,
-        title,
-        file_type: file_type_str,
-        path,
+fn logical(file: &FileInfo) -> String {
+    format!("{}/{}.{}", file.directory, file.title, file.format)
+}
+fn sensitive(file: &FileInfo) -> bool {
+    file.metadata
+        .get("meadow-sensitive")
+        .and_then(serde_json::Value::as_bool)
+        == Some(true)
+}
+fn configured_file(file: &FileInfo) -> FileBundleNode {
+    FileBundleNode {
+        source_graph_subdirectory: file.directory.clone(),
+        bundle_node_name: file.title.clone(),
+        file_type: file.format.clone(),
+        bundle_node_id: None,
+        is_sensitive: sensitive(file),
+        conf_outlinks_depth: None,
+        conf_inlinks_depth: None,
+        conf_is_blacklisted: None,
     }
 }
-
-fn calculate_normalized_directory(
-    source_dir_path_str: &str,
-    link_path_prefix_opt: Option<&String>,
-) -> String {
-    let initial_path_to_normalize: std::path::PathBuf = match link_path_prefix_opt {
-        None => std::path::PathBuf::from(source_dir_path_str),
-        Some(prefix_str) => {
-            std::path::PathBuf::from(prefix_str.strip_prefix('/').unwrap_or(prefix_str))
-        }
-    };
-
-    let mut normalized_components = Vec::new();
-    for component in initial_path_to_normalize.components() {
-        match component {
-            std::path::Component::ParentDir => {
-                if normalized_components
-                    .last()
-                    .map_or(false, |c| matches!(c, std::path::Component::Normal(_)))
-                {
-                    normalized_components.pop();
-                } else {
-                    normalized_components.push(component);
-                }
-            }
-            std::path::Component::CurDir => {}
-            _ => normalized_components.push(component),
-        }
-    }
-
-    let final_path: std::path::PathBuf = normalized_components.into_iter().collect();
-    let mut path_str = final_path.to_string_lossy().into_owned();
-    if path_str == "." {
-        path_str = String::new();
-    }
-    path_str
-}
-
-fn parse_extracted_link(link: ExtractedLink, source: &FileIdentifier) -> LinkOut {
-    match link {
-        ExtractedLink::Wiki(inner) => parse_out_link(&inner, source),
-        ExtractedLink::Markdown { text, href } => parse_out_markdown_link(&text, &href, source),
-        ExtractedLink::Embedded(inner) => {
-            let mut link = parse_extracted_link(*inner, source);
-            link.is_embedded = true;
-            link
-        }
-    }
-}
-
-fn extract_links(content: &str) -> Vec<ExtractedLink> {
-    let mut out = Vec::new();
-    let mut i = 0;
-    let bytes = content.as_bytes();
-    let len = bytes.len();
-    // Track whether we are inside a fenced code block or inline code span
-    let mut in_fenced_code = false;
-
-    while i < len {
-        // Check for fenced code block delimiter (``` at start of line)
-        if i + 2 < len && &bytes[i..i + 3] == b"```" && (i == 0 || bytes[i - 1] == b'\n') {
-            in_fenced_code = !in_fenced_code;
-            i += 3;
-            continue;
-        }
-
-        // Skip inline code spans: `...`
-        if !in_fenced_code && bytes[i] == b'`' {
-            if let Some(end_rel) = content[i + 1..].find('`') {
-                // Jump past the closing backtick
-                i = i + 1 + end_rel + 1;
-                continue;
-            }
-        }
-
-        // Look for links only outside code
-        if !in_fenced_code {
-            // Wiki links: [[...]]
-            if i + 1 < len && &bytes[i..i + 2] == b"[[" {
-                let start_idx = i + 2;
-                if let Some(end_rel) = content[start_idx..].find("]]") {
-                    let end_idx = start_idx + end_rel;
-                    let link = ExtractedLink::Wiki(content[start_idx..end_idx].to_string());
-                    out.push(if i > 0 && bytes[i - 1] == b'!' {
-                        ExtractedLink::Embedded(Box::new(link))
-                    } else {
-                        link
-                    });
-                    i = end_idx + 2;
-                    continue;
-                }
-            }
-
-            // Standard markdown links: [text](href) and ![alt](href)
-            // For ![alt](href), the `!` is at i-1. Both are extracted for graph edge building.
-            if bytes[i] == b'[' && (i == 0 || bytes[i - 1] != b'[') {
-                // Check this isn't part of a [[ wiki link (already handled above)
-                if i + 1 < len && bytes[i + 1] == b'[' {
-                    i += 1;
-                    continue;
-                }
-
-                if let Some(extracted) = try_extract_markdown_link(content, i) {
-                    let embedded = bytes[i] == b'!' || (i > 0 && bytes[i - 1] == b'!');
-                    i = extracted.end_pos;
-                    out.push(if embedded {
-                        ExtractedLink::Embedded(Box::new(extracted.link))
-                    } else {
-                        extracted.link
-                    });
-                    continue;
-                }
-            }
-
-            // Also catch ![alt](href) where ! is at current position
-            if bytes[i] == b'!' && i + 1 < len && bytes[i + 1] == b'[' {
-                if let Some(extracted) = try_extract_markdown_link(content, i + 1) {
-                    let embedded = bytes[i] == b'!' || (i > 0 && bytes[i - 1] == b'!');
-                    i = extracted.end_pos;
-                    out.push(if embedded {
-                        ExtractedLink::Embedded(Box::new(extracted.link))
-                    } else {
-                        extracted.link
-                    });
-                    continue;
-                }
-            }
-        }
-
-        i += 1;
-    }
-    out
-}
-
-fn is_html_attribute_boundary(byte: u8) -> bool {
-    !byte.is_ascii_alphanumeric() && !matches!(byte, b'-' | b'_' | b':')
-}
-
-fn is_internal_html_target(target: &str) -> bool {
-    let lower = target.trim().to_ascii_lowercase();
-    !lower.is_empty()
-        && !lower.starts_with('#')
-        && !lower.starts_with("//")
-        && !lower.starts_with("http://")
-        && !lower.starts_with("https://")
-        && !lower.starts_with("mailto:")
-        && !lower.starts_with("tel:")
-        && !lower.starts_with("data:")
-        && !lower.starts_with("javascript:")
-}
-
-/// Extracts local URLs from the `href` and `src` attributes used by native
-/// HTML and SVG pages. This intentionally stays small: the graph only needs
-/// URL attributes, not a full browser-grade markup tree, and preserving the
-/// literal attribute value gives the generation layer an exact resolution-map
-/// key.
-fn extract_markup_links(content: &str) -> Vec<ExtractedLink> {
-    let bytes = content.as_bytes();
-    let mut links = Vec::new();
-    let mut cursor = 0;
-
-    while cursor < bytes.len() {
-        let remaining = &content[cursor..];
-        let href_offset = remaining.to_ascii_lowercase().find("href");
-        let src_offset = remaining.to_ascii_lowercase().find("src");
-        let (offset, attr_len) = match (href_offset, src_offset) {
-            (Some(href), Some(src)) if href <= src => (href, 4),
-            (Some(_), Some(src)) => (src, 3),
-            (Some(href), None) => (href, 4),
-            (None, Some(src)) => (src, 3),
-            (None, None) => break,
-        };
-        let attr_start = cursor + offset;
-        let attr_end = attr_start + attr_len;
-        let has_left_boundary =
-            attr_start == 0 || is_html_attribute_boundary(bytes[attr_start - 1]);
-        let has_right_boundary =
-            attr_end == bytes.len() || is_html_attribute_boundary(bytes[attr_end]);
-        if !has_left_boundary || !has_right_boundary {
-            cursor = attr_end;
-            continue;
-        }
-
-        let mut value_start = attr_end;
-        while value_start < bytes.len() && bytes[value_start].is_ascii_whitespace() {
-            value_start += 1;
-        }
-        if value_start >= bytes.len() || bytes[value_start] != b'=' {
-            cursor = attr_end;
-            continue;
-        }
-        value_start += 1;
-        while value_start < bytes.len() && bytes[value_start].is_ascii_whitespace() {
-            value_start += 1;
-        }
-        if value_start >= bytes.len() {
-            break;
-        }
-
-        let quote = bytes[value_start];
-        let (target_start, target_end) = if quote == b'\'' || quote == b'"' {
-            let target_start = value_start + 1;
-            let Some(relative_end) = bytes[target_start..].iter().position(|byte| *byte == quote)
-            else {
-                break;
-            };
-            (target_start, target_start + relative_end)
-        } else {
-            let target_start = value_start;
-            let target_end = bytes[target_start..]
-                .iter()
-                .position(|byte| byte.is_ascii_whitespace() || *byte == b'>')
-                .map(|relative_end| target_start + relative_end)
-                .unwrap_or(bytes.len());
-            (target_start, target_end)
-        };
-
-        let target = content[target_start..target_end].trim();
-        if is_internal_html_target(target) {
-            let link = ExtractedLink::Markdown {
-                text: target.to_string(),
-                href: target.to_string(),
-            };
-            links.push(if attr_len == 3 {
-                ExtractedLink::Embedded(Box::new(link))
-            } else {
-                link
-            });
-        }
-        cursor = target_end.saturating_add(1);
-    }
-
-    links
-}
-
-struct ExtractedMarkdownLink {
-    link: ExtractedLink,
-    end_pos: usize,
-}
-
-/// Tries to extract a markdown link starting at `start` which points to the opening `[`.
-/// Returns the extracted link and the position after the closing `)`, or None if not a valid link.
-fn try_extract_markdown_link(content: &str, start: usize) -> Option<ExtractedMarkdownLink> {
-    let bytes = content.as_bytes();
-    let len = bytes.len();
-
-    // Find the matching `]` for `[text]`
-    let mut depth = 0;
-    let mut j = start;
-    while j < len {
-        if bytes[j] == b'[' {
-            depth += 1;
-        } else if bytes[j] == b']' {
-            depth -= 1;
-            if depth == 0 {
-                break;
-            }
-        } else if bytes[j] == b'\n' {
-            // Don't span across newlines for the text part
-            return None;
-        }
-        j += 1;
-    }
-    if depth != 0 || j >= len {
-        return None;
-    }
-
-    let text = &content[start + 1..j];
-    let after_bracket = j + 1;
-
-    // Must be immediately followed by `(`
-    if after_bracket >= len || bytes[after_bracket] != b'(' {
-        return None;
-    }
-
-    // Find the matching `)` for `(href)`
-    let href_start = after_bracket + 1;
-    let mut paren_depth = 1;
-    let mut k = href_start;
-    while k < len && paren_depth > 0 {
-        if bytes[k] == b'(' {
-            paren_depth += 1;
-        } else if bytes[k] == b')' {
-            paren_depth -= 1;
-        } else if bytes[k] == b'\n' {
-            return None;
-        }
-        k += 1;
-    }
-    if paren_depth != 0 {
-        return None;
-    }
-
-    let href = content[href_start..k - 1].trim();
-
-    // Skip external links
-    if href.starts_with("http://") || href.starts_with("https://") {
-        return None;
-    }
-    // Skip anchor-only links
-    if href.starts_with('#') {
-        return None;
-    }
-    // Skip empty hrefs
-    if href.is_empty() {
-        return None;
-    }
-
-    Some(ExtractedMarkdownLink {
-        link: ExtractedLink::Markdown {
-            text: text.to_string(),
-            href: href.to_string(),
-        },
-        end_pos: k,
-    })
-}
-
-fn make_source_page_path(source_page: &FileIdentifier) -> String {
-    if source_page.directory.is_empty() {
-        format!("{}.{}", source_page.title, source_page.file_type)
-    } else {
-        format!(
-            "{}/{}.{}",
-            source_page.directory, source_page.title, source_page.file_type
-        )
-    }
-}
-
-fn parse_out_link(inner_link_text: &str, source_page: &FileIdentifier) -> LinkOut {
-    let semantics = parse_link_text(inner_link_text);
-
-    LinkOut {
-        link_original_text: inner_link_text.to_string(),
-        link_source_page_path: make_source_page_path(source_page),
-        link_parsed_directory: semantics.target_path_prefix,
-        link_parsed_title: semantics.title,
-        link_parsed_file_type: semantics.file_type,
-        link_parsed_anchor: semantics.anchor,
-        link_parsed_anchor_type: semantics.anchor_type,
-        link_parsed_alias: semantics.alias,
-        link_parsed_media_size: semantics.media_size,
-        link_resolved_target_directory: String::new(),
-        link_resolved_target_path: String::new(),
-        is_relative_path_link: false,
-        is_embedded: false,
-    }
-}
-
-fn parse_out_markdown_link(
-    display_text: &str,
-    href: &str,
-    source_page: &FileIdentifier,
-) -> LinkOut {
-    let mut semantics = parse_markdown_link_href(href);
-
-    // Resolve the relative path against the source file's directory.
-    // Markdown links are relative to the source file, so we prepend the source directory
-    // and let calculate_normalized_directory handle `..` and `.` segments.
-    let resolved_prefix = if semantics.target_path_prefix.is_empty() {
-        // Same-directory reference: use source page's directory
-        if source_page.directory.is_empty() {
-            String::new()
-        } else {
-            format!("{}/", source_page.directory)
-        }
-    } else {
-        // Combine source dir with relative path
-        if source_page.directory.is_empty() {
-            semantics.target_path_prefix.clone()
-        } else {
-            format!("{}/{}", source_page.directory, semantics.target_path_prefix)
-        }
-    };
-
-    // Normalize the combined path (resolves `..` and `.` segments)
-    let normalized_dir = if resolved_prefix.is_empty() {
-        String::new()
-    } else {
-        let trailing_slash = resolved_prefix.ends_with('/');
-        let normalized = calculate_normalized_directory("", Some(&resolved_prefix));
-        if trailing_slash && !normalized.is_empty() && !normalized.ends_with('/') {
-            format!("{}/", normalized)
-        } else if trailing_slash && normalized.is_empty() {
-            String::new()
-        } else {
-            normalized
-        }
-    };
-
-    // Override alias with the display text from [text](href)
-    semantics.alias = Some(display_text.to_string());
-
-    LinkOut {
-        link_original_text: href.to_string(),
-        link_source_page_path: make_source_page_path(source_page),
-        link_parsed_directory: normalized_dir,
-        link_parsed_title: semantics.title,
-        link_parsed_file_type: semantics.file_type,
-        link_parsed_anchor: semantics.anchor,
-        link_parsed_anchor_type: semantics.anchor_type,
-        link_parsed_alias: semantics.alias,
-        link_parsed_media_size: semantics.media_size,
-        link_resolved_target_directory: String::new(),
-        link_resolved_target_path: String::new(),
-        is_relative_path_link: true,
-        is_embedded: false,
-    }
-}
-
-fn target_text_without_alias_or_size(link_text: &str) -> String {
-    let mut last_unescaped_pipe = None;
-    let mut escaped = false;
-    for (idx, ch) in link_text.char_indices() {
-        if escaped {
-            escaped = false;
-            continue;
-        }
-        if ch == '\\' {
-            escaped = true;
-            continue;
-        }
-        if ch == '|' {
-            last_unescaped_pipe = Some(idx);
-        }
-    }
-    let target = last_unescaped_pipe
-        .map(|idx| &link_text[..idx])
-        .unwrap_or(link_text);
-    target.replace("\\|", "|")
-}
-
-fn strip_anchor_markers_for_extension_check(name: &str) -> &str {
-    if let Some(pos) = name.rfind("#^") {
-        &name[..pos]
-    } else if let Some(pos) = name.rfind('^') {
-        &name[..pos]
-    } else if let Some(pos) = name.rfind('#') {
-        &name[..pos]
-    } else {
-        name
-    }
-}
-
-fn wiki_link_has_explicit_file_type(link: &LinkOut) -> bool {
-    if link.is_relative_path_link {
-        return true;
-    }
-    if link.link_parsed_file_type != "md" {
-        return true;
-    }
-
-    let target_text = target_text_without_alias_or_size(&link.link_original_text);
-    let filename = target_text
-        .rsplit('/')
-        .next()
-        .unwrap_or(target_text.as_str());
-    let filename_without_anchor = strip_anchor_markers_for_extension_check(filename);
-    Path::new(filename_without_anchor)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map(|ext| ext.eq_ignore_ascii_case("md"))
-        .unwrap_or(false)
-}
-
-fn file_type_sort_rank(file_type: &str) -> usize {
-    match file_type {
-        "md" => 0,
-        "html" => 1,
-        "excalidraw" => 2,
-        "css" | "js" => 3,
-        "png" | "jpg" | "jpeg" | "gif" | "svg" | "webp" => 4,
-        "pdf" | "txt" => 5,
-        _ => 6,
-    }
-}
-
-fn sort_resolution_candidates(candidates: &mut Vec<(String, String)>) {
-    candidates.sort_by(|(dir_a, ft_a), (dir_b, ft_b)| {
-        let depth_a = if dir_a.is_empty() {
-            0
-        } else {
-            dir_a.matches('/').count() + 1
-        };
-        let depth_b = if dir_b.is_empty() {
-            0
-        } else {
-            dir_b.matches('/').count() + 1
-        };
-        match depth_a.cmp(&depth_b) {
-            std::cmp::Ordering::Equal => match dir_a.cmp(dir_b) {
-                std::cmp::Ordering::Equal => {
-                    match file_type_sort_rank(ft_a).cmp(&file_type_sort_rank(ft_b)) {
-                        std::cmp::Ordering::Equal => ft_a.cmp(ft_b),
-                        other => other,
-                    }
-                }
-                other => other,
-            },
-            other => other,
-        }
-    });
-}
-
-fn exact_any_file_type_candidate(
-    file_index_map: &HashMap<(String, String, String), usize>,
-    directory: &str,
-    title: &str,
-) -> Option<(String, String)> {
-    let mut candidates: Vec<(String, String)> = Vec::new();
-    for (key_dir, key_title, key_ft) in file_index_map.keys() {
-        if key_dir == directory && key_title == title {
-            candidates.push((key_dir.clone(), key_ft.clone()));
-        }
-    }
-    sort_resolution_candidates(&mut candidates);
-    candidates.into_iter().next()
-}
-
-/// Parse a file already read by the index, so fingerprints and links describe the same bytes.
-fn scan_file(path: &Path, graph_root: &Path, bytes: &[u8]) -> ScanResult {
-    let mut source_file = extract_page_identifier(path, graph_root);
-    let mut outgoing_links = Vec::new();
-    let mut is_sensitive = false;
-    if let Ok(content) = std::str::from_utf8(bytes) {
-        if source_file.file_type == "md" {
-            if is_excalidraw_markdown(content) {
-                source_file.file_type = "excalidraw".to_string();
-                if let Some(title) = source_file.title.strip_suffix(".excalidraw") {
-                    source_file.title = title.to_string();
-                }
-                source_file.path = if source_file.directory.is_empty() {
-                    format!("{}.excalidraw", source_file.title)
-                } else {
-                    format!("{}/{}.excalidraw", source_file.directory, source_file.title)
-                };
-            }
-            outgoing_links = extract_links(content)
-                .into_iter()
-                .map(|link| parse_extracted_link(link, &source_file))
-                .collect();
-            is_sensitive = content.contains("meadow-sensitive: true");
-        } else if source_file.file_type == "html" || source_file.file_type == "svg" {
-            outgoing_links = extract_markup_links(content)
-                .into_iter()
-                .map(|link| parse_extracted_link(link, &source_file))
-                .collect();
-        }
-    }
-    ScanResult {
-        source_file,
-        outgoing_links,
-        is_sensitive,
-    }
-}
-
 fn build_folder_scope_report(
     graph_root: &Path,
     selected_roots: Vec<String>,
@@ -904,392 +325,145 @@ fn build_folder_scope_report(
     }
 }
 
-fn resolve_links(mut scans: Vec<ScanResult>) -> Vec<ScanResult> {
-    let mut file_index_map_for_resolution: HashMap<(String, String, String), usize> =
-        HashMap::new();
-    for (idx, res) in scans.iter().enumerate() {
-        let key = (
-            res.source_file.directory.clone(),
-            res.source_file.title.clone(),
-            res.source_file.file_type.clone(),
-        );
-        file_index_map_for_resolution.insert(key, idx);
-    }
-
-    for scan in scans.iter_mut() {
-        for link in scan.outgoing_links.iter_mut() {
-            let implicit_wiki_file_type = !wiki_link_has_explicit_file_type(link);
-            let (dir, file_type) = if link.is_relative_path_link {
-                // Markdown links: directory was already resolved in parse_out_markdown_link.
-                // The link_parsed_directory is already normalized (combined with source dir).
-                // Strip any trailing slash for consistency with wiki-link resolution.
-                let d = link.link_parsed_directory.trim_end_matches('/').to_string();
-                // If the normalized path still contains `..` it means the link escapes the
-                // source graph root. Treat it as unresolvable by clearing the directory.
-                let dir = if d.contains("..") { String::new() } else { d };
-                (dir, link.link_parsed_file_type.clone())
-            } else if !link.link_parsed_directory.is_empty() {
-                let raw_dir = calculate_normalized_directory("", Some(&link.link_parsed_directory));
-                let exact_key = (
-                    raw_dir.clone(),
-                    link.link_parsed_title.clone(),
-                    link.link_parsed_file_type.clone(),
-                );
-                if file_index_map_for_resolution.contains_key(&exact_key) {
-                    (raw_dir, link.link_parsed_file_type.clone())
-                } else {
-                    // Strict match missed — fall back to suffix-matching. This handles
-                    // graphs where the user pointed `sourceDirectory` at a directory that
-                    // wraps the actual notes one level deeper: a wiki link like
-                    // `[[t006/foo.png]]` should still find `wrapper/.../t006/foo.png`,
-                    // not just a top-level `t006/foo.png`. The shallowest match wins, so
-                    // a true root-rooted hit (when one exists) outranks deeper ones.
-                    let suffix = if raw_dir.is_empty() {
-                        String::new()
-                    } else {
-                        format!("/{}", raw_dir)
-                    };
-                    let mut potential_dirs: Vec<String> = Vec::new();
-                    for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
-                        if key_title != &link.link_parsed_title
-                            || key_ft != &link.link_parsed_file_type
-                        {
-                            continue;
-                        }
-                        if key_dir == &raw_dir || (!suffix.is_empty() && key_dir.ends_with(&suffix))
-                        {
-                            potential_dirs.push(key_dir.clone());
-                        }
-                    }
-                    if !potential_dirs.is_empty() {
-                        potential_dirs.sort_by(|a, b| {
-                            let depth_a = if a.is_empty() {
-                                0
-                            } else {
-                                a.matches('/').count() + 1
-                            };
-                            let depth_b = if b.is_empty() {
-                                0
-                            } else {
-                                b.matches('/').count() + 1
-                            };
-                            match depth_a.cmp(&depth_b) {
-                                std::cmp::Ordering::Equal => a.cmp(b),
-                                other => other,
-                            }
-                        });
-                        (
-                            potential_dirs[0].clone(),
-                            link.link_parsed_file_type.clone(),
-                        )
-                    } else if implicit_wiki_file_type {
-                        let mut candidates: Vec<(String, String)> = Vec::new();
-                        for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
-                            if key_title != &link.link_parsed_title {
-                                continue;
-                            }
-                            if key_dir == &raw_dir
-                                || (!suffix.is_empty() && key_dir.ends_with(&suffix))
-                            {
-                                candidates.push((key_dir.clone(), key_ft.clone()));
-                            }
-                        }
-                        sort_resolution_candidates(&mut candidates);
-                        candidates
-                            .into_iter()
-                            .next()
-                            .unwrap_or((raw_dir, link.link_parsed_file_type.clone()))
-                    } else {
-                        (raw_dir, link.link_parsed_file_type.clone())
-                    }
-                }
-            } else {
-                let root_key = (
-                    String::new(),
-                    link.link_parsed_title.clone(),
-                    link.link_parsed_file_type.clone(),
-                );
-                if file_index_map_for_resolution.contains_key(&root_key) {
-                    (String::new(), link.link_parsed_file_type.clone())
-                } else {
-                    let source_dir = &scan.source_file.directory;
-                    let same_dir_key = (
-                        source_dir.clone(),
-                        link.link_parsed_title.clone(),
-                        link.link_parsed_file_type.clone(),
-                    );
-                    if file_index_map_for_resolution.contains_key(&same_dir_key) {
-                        (source_dir.clone(), link.link_parsed_file_type.clone())
-                    } else {
-                        let mut potential_dirs: Vec<String> = Vec::new();
-                        for (key_dir, key_title, key_ft) in file_index_map_for_resolution.keys() {
-                            if key_title == &link.link_parsed_title
-                                && key_ft == &link.link_parsed_file_type
-                            {
-                                potential_dirs.push(key_dir.clone());
-                            }
-                        }
-                        if !potential_dirs.is_empty() {
-                            potential_dirs.sort_by(|a, b| {
-                                let depth_a = if a.is_empty() {
-                                    0
-                                } else {
-                                    a.matches('/').count() + 1
-                                };
-                                let depth_b = if b.is_empty() {
-                                    0
-                                } else {
-                                    b.matches('/').count() + 1
-                                };
-                                match depth_a.cmp(&depth_b) {
-                                    std::cmp::Ordering::Equal => a.cmp(b),
-                                    other => other,
-                                }
-                            });
-                            (
-                                potential_dirs[0].clone(),
-                                link.link_parsed_file_type.clone(),
-                            )
-                        } else if implicit_wiki_file_type {
-                            if let Some(root_candidate) = exact_any_file_type_candidate(
-                                &file_index_map_for_resolution,
-                                "",
-                                &link.link_parsed_title,
-                            ) {
-                                root_candidate
-                            } else if let Some(same_dir_candidate) = exact_any_file_type_candidate(
-                                &file_index_map_for_resolution,
-                                source_dir,
-                                &link.link_parsed_title,
-                            ) {
-                                same_dir_candidate
-                            } else {
-                                let mut candidates: Vec<(String, String)> = Vec::new();
-                                for (key_dir, key_title, key_ft) in
-                                    file_index_map_for_resolution.keys()
-                                {
-                                    if key_title == &link.link_parsed_title {
-                                        candidates.push((key_dir.clone(), key_ft.clone()));
-                                    }
-                                }
-                                sort_resolution_candidates(&mut candidates);
-                                candidates
-                                    .into_iter()
-                                    .next()
-                                    .unwrap_or((String::new(), link.link_parsed_file_type.clone()))
-                            }
-                        } else {
-                            (String::new(), link.link_parsed_file_type.clone())
-                        }
-                    }
-                }
-            };
-
-            link.link_parsed_file_type = file_type.clone();
-            link.link_resolved_target_directory = dir.clone();
-            link.link_resolved_target_path = if dir.is_empty() {
-                format!("{}.{}", link.link_parsed_title, file_type)
-            } else {
-                format!("{}/{}.{}", dir, link.link_parsed_title, file_type)
-            };
-        }
-    }
-
-    scans
-}
-
-fn file_bundle_node_from_identifier(file: &FileIdentifier, is_sensitive: bool) -> FileBundleNode {
-    FileBundleNode {
-        source_graph_subdirectory: file.directory.clone(),
-        bundle_node_name: file.title.clone(),
-        file_type: file.file_type.clone(),
-        bundle_node_id: None,
-        is_sensitive,
-        conf_outlinks_depth: None,
-        conf_inlinks_depth: None,
-        conf_is_blacklisted: None,
-    }
-}
-
-fn file_bundle_node_from_config(config: &BundleNodeConfig) -> FileBundleNode {
-    FileBundleNode {
-        source_graph_subdirectory: config.source_graph_subdirectory().unwrap_or("").to_string(),
-        bundle_node_name: config.bundle_node_name().to_string(),
-        file_type: config.file_type().unwrap_or("").to_string(),
-        bundle_node_id: Some(config.bundle_node_id().to_string()),
-        is_sensitive: false,
-        conf_outlinks_depth: config.outlinks_depth(),
-        conf_inlinks_depth: config.inlinks_depth(),
-        conf_is_blacklisted: Some(config.list_type() == "blacklist"),
-    }
-}
-
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-
+    anyhow::ensure!(
+        args.frontier_depth >= 0
+            && args.default_outlinks_depth.is_none_or(|n| n >= 0)
+            && args.default_inlinks_depth.is_none_or(|n| n >= 0),
+        "Depths must be nonnegative"
+    );
     let graph_root = args.graph_root.canonicalize()?;
-    let config_content = fs::read_to_string(&args.bundle_node_config)?;
-    let bundle_node_configs: Vec<BundleNodeConfig> =
-        parse_bundle_node_config_yaml(&config_content)?;
-
-    // Scan and resolve links
-    let cache_root = args
+    let configs = parse_bundle_node_config_yaml(&fs::read_to_string(&args.bundle_node_config)?)?;
+    let entry = find_config_by_id(&configs, &args.entry_bundle_node_id)
+        .ok_or_else(|| anyhow::anyhow!("entryBundleNodeId does not resolve"))?;
+    let traversal = find_config_by_id(&configs, &args.default_traversal_bundle_node_id)
+        .ok_or_else(|| anyhow::anyhow!("defaultTraversalBundleNodeId does not resolve"))?;
+    anyhow::ensure!(
+        entry.list_type() == "whitelist" && traversal.list_type() == "whitelist",
+        "Entry and traversal nodes must be whitelisted"
+    );
+    let graph = Graph::open(
+        &graph_root,
+        &IndexOptions {
+            cache_directory: Some(
+                args.source_index_root
+                    .clone()
+                    .unwrap_or_else(|| std::env::temp_dir().join("meadow-working-graph-index")),
+            ),
+            rebuild: args.rebuild_index,
+            frontmatter: vec![FrontmatterField {
+                key: "meadow-sensitive".into(),
+                substring: None,
+            }],
+            ..Default::default()
+        },
+    )?;
+    // Keep a small integration diagnostic independent of Linkrange's private
+    // cache representation. Source review can verify a requested full recheck.
+    let diagnostic_root = args
         .source_index_root
         .clone()
         .unwrap_or_else(|| std::env::temp_dir().join("meadow-working-graph-index"));
-    let index = source_index::load(&graph_root, &cache_root, args.rebuild_index)?;
-    let scans = resolve_links(index.scans());
-
-    // Build file lookup by source locator.
-    let mut file_lookup: HashMap<(String, String, String), (FileIdentifier, bool)> = HashMap::new();
-    for s in &scans {
-        file_lookup.insert(
-            (
-                s.source_file.directory.clone(),
-                s.source_file.title.clone(),
-                s.source_file.file_type.clone(),
-            ),
-            (s.source_file.clone(), s.is_sensitive),
-        );
-    }
-
-    // Build per-link edges + basic edges for traversal
-    let mut per_link_edges: Vec<OutputEdge> = Vec::new();
-    let mut basic_edges: Vec<BasicEdge> = Vec::new();
-    let mut all_link_resolution_maps: HashMap<String, HashMap<String, LinkResolvedInfo>> =
-        HashMap::new();
-
-    for s in &scans {
-        let source_tf = file_bundle_node_from_identifier(&s.source_file, s.is_sensitive);
-        let source_id = source_tf.bundle_node_key();
-        let entry = all_link_resolution_maps
-            .entry(source_id.clone())
-            .or_default();
-        for l in &s.outgoing_links {
-            // Store link resolution map for outgoing links even if the target file is missing.
-            // This matches the historical fs_search behavior and is important for the HTML layer
-            // to correctly show "link not whitelisted" vs resolving to an unintended duplicate.
-            entry.insert(
-                l.link_original_text.clone(),
-                LinkResolvedInfo {
-                    link_resolved_target_directory: l.link_resolved_target_directory.clone(),
-                    link_resolved_target_path: Some(l.link_resolved_target_path.clone()),
-                },
-            );
-
-            // Only keep edges that resolve to an existing file
-            let target_key = (
-                l.link_resolved_target_directory.clone(),
-                l.link_parsed_title.clone(),
-                l.link_parsed_file_type.clone(),
-            );
-            if let Some((target_file, target_sensitive)) = file_lookup.get(&target_key) {
-                let target_tf = file_bundle_node_from_identifier(target_file, *target_sensitive);
-
-                basic_edges.push(BasicEdge {
-                    is_embedded: l.is_embedded,
-                    source: source_tf.clone(),
-                    target: target_tf.clone(),
-                    is_bidirectional: false,
-                });
-
-                per_link_edges.push(OutputEdge {
-                    source: source_tf.bundle_node_key(),
-                    target: target_tf.bundle_node_key(),
-                    bundleEdgeKind: "semanticLink",
-                    isBidirectional: false, // filled in after we build the full set
-                    link_source_page_path: l.link_source_page_path.clone(),
-                    link_original_text: l.link_original_text.clone(),
-                    link_parsed_directory: l.link_parsed_directory.clone(),
-                    link_parsed_title: l.link_parsed_title.clone(),
-                    link_parsed_file_type: l.link_parsed_file_type.clone(),
-                    link_parsed_anchor: l.link_parsed_anchor.clone(),
-                    link_parsed_anchor_type: l.link_parsed_anchor_type,
-                    link_parsed_alias: l.link_parsed_alias.clone(),
-                    link_parsed_media_size: l.link_parsed_media_size,
-                    link_resolved_target_directory: l.link_resolved_target_directory.clone(),
-                    link_resolved_target_path: l.link_resolved_target_path.clone(),
-                });
+    let key = format!(
+        "{:x}",
+        Sha256::digest(graph_root.to_string_lossy().as_bytes())
+    );
+    let diagnostic_dir = diagnostic_root.join(key);
+    fs::create_dir_all(&diagnostic_dir)?;
+    let staged = diagnostic_dir.join(format!("last-run.{}.tmp", std::process::id()));
+    fs::write(
+        &staged,
+        serde_json::to_vec(&serde_json::json!({
+            "schemaVersion": 1, "sourceRoot": graph_root,
+            "completedAtNanos": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos(),
+            "metrics": graph.metrics(),
+        }))?,
+    )?;
+    fs::rename(staged, diagnostic_dir.join("last-run.json"))?;
+    let files: HashMap<String, &FileInfo> =
+        graph.files().map(|file| (logical(file), file)).collect();
+    let by_physical: HashMap<String, &FileInfo> = graph
+        .files()
+        .map(|file| (file.path.clone(), file))
+        .collect();
+    let physical = |config: &BundleNodeConfig| {
+        files
+            .get(&config.bundle_node_key())
+            .map(|file| file.path.clone())
+            .unwrap_or_else(|| config.bundle_node_key().trim_start_matches('/').into())
+    };
+    let logical_path = |path: &str| {
+        by_physical
+            .get(path)
+            .map(|file| logical(file))
+            .unwrap_or_else(|| {
+                if path.contains('/') {
+                    path.into()
+                } else {
+                    format!("/{path}")
+                }
+            })
+    };
+    let mut query = Query {
+        depths: Depths {
+            outlinks: args.default_outlinks_depth.unwrap_or(i32::MAX) as u32,
+            inlinks: args.default_inlinks_depth.unwrap_or(0) as u32,
+        },
+        frontier_depth: args.frontier_depth as u32,
+        adjacency: true,
+        boundary_embed_types: if args.allow_images_to_extend_to_frontier {
+            vec!["png".into(), "jpg".into(), "jpeg".into(), "gif".into()]
+        } else {
+            Vec::new()
+        },
+        ..Default::default()
+    };
+    for config in &configs {
+        match config {
+            BundleNodeConfig::File { .. } => query.rules.push(Rule {
+                path: physical(config),
+                outlinks: config.outlinks_depth().map(|n| n as u32),
+                inlinks: config.inlinks_depth().map(|n| n as u32),
+                stop: config.list_type() == "blacklist",
+                ..Default::default()
+            }),
+            BundleNodeConfig::Folder { .. } if config.list_type() == "blacklist" => {
+                query.rules.push(Rule {
+                    path: config.source_graph_subdirectory().unwrap_or("").into(),
+                    subtree: true,
+                    exclude: true,
+                    ..Default::default()
+                })
             }
+            _ => {}
         }
     }
-
-    // Compute bidirectional per-link marking (if reverse link exists anywhere in the source graph).
-    let mut directed_pairs: HashSet<(String, String)> = HashSet::new();
-    for e in &per_link_edges {
-        directed_pairs.insert((e.source.clone(), e.target.clone()));
-    }
-    for e in per_link_edges.iter_mut() {
-        if directed_pairs.contains(&(e.target.clone(), e.source.clone())) {
-            e.isBidirectional = true;
-        }
-    }
-
-    let entry_config = find_config_by_id(&bundle_node_configs, &args.entry_bundle_node_id)
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "entryBundleNodeId does not resolve: {}",
-                args.entry_bundle_node_id
-            )
-        })?;
-    anyhow::ensure!(
-        entry_config.list_type() == "whitelist",
-        "entryBundleNodeId must reference a whitelisted node"
-    );
-    let traversal_config =
-        find_config_by_id(&bundle_node_configs, &args.default_traversal_bundle_node_id)
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "defaultTraversalBundleNodeId does not resolve: {}",
-                    args.default_traversal_bundle_node_id
-                )
-            })?;
-    anyhow::ensure!(
-        traversal_config.list_type() == "whitelist",
-        "defaultTraversalBundleNodeId must reference a whitelisted node"
-    );
-    for role in [entry_config, traversal_config] {
-        if matches!(role, BundleNodeConfig::File { .. }) {
-            let node = file_bundle_node_from_config(role);
-            anyhow::ensure!(scans.iter().any(|scan| scan.source_file.path == node.bundle_node_key().trim_start_matches('/')),
-                "Required starting page is missing: {}. Locate its replacement in bundle settings; the accepted snapshot has been kept.", node.bundle_node_key());
-        }
-    }
-    let mut structural_output_nodes: Vec<OutputNode> = Vec::new();
-    let mut structural_output_edges: Vec<OutputEdge> = Vec::new();
-    let mut effective_policy_bundle_node_ids: HashMap<String, String> = HashMap::new();
-    let mut folder_scope_report: Option<FolderScopeReport> = None;
-    let working_nodes: Vec<WorkingNode> = if matches!(entry_config, BundleNodeConfig::File { .. }) {
-        let entry_node = file_bundle_node_from_config(entry_config);
+    let mut structural_nodes = Vec::new();
+    let mut structural_edges = Vec::new();
+    let mut seed_paths = HashMap::new();
+    let mut policy_ids = HashMap::new();
+    let mut folder_scope = None;
+    if matches!(entry, BundleNodeConfig::File { .. }) {
         anyhow::ensure!(
-            matches!(traversal_config, BundleNodeConfig::File { .. }),
-            "file-entry bundles require a file default traversal node"
+            matches!(traversal, BundleNodeConfig::File { .. }),
+            "File-entry bundles require a file default traversal node"
         );
-        let traversal_node = file_bundle_node_from_config(traversal_config);
-        get_working_graph(
-            &basic_edges,
-            &bundle_node_configs,
-            &entry_node,
-            &traversal_node,
-            args.default_outlinks_depth,
-            args.default_inlinks_depth,
-            TraverseOpts {
-                allow_lower_depths: args.allow_lower_depths,
-            },
-            args.frontier_depth,
-            args.allow_images_to_extend_to_frontier,
-        )?
-        .0
+        for config in [entry, traversal] {
+            anyhow::ensure!(files.contains_key(&config.bundle_node_key()),"Required starting page is missing: {}. Locate its replacement in bundle settings; the accepted snapshot has been kept.",config.bundle_node_key());
+        }
+        query.starts.push(Start {
+            path: physical(entry),
+            depths: None,
+        });
     } else {
-        let supported_files: Vec<FileBundleNode> = scans
-            .iter()
-            .map(|scan| file_bundle_node_from_identifier(&scan.source_file, scan.is_sensitive))
-            .collect();
+        let supported: Vec<_> = graph.files().map(configured_file).collect();
+        let directories = graph.directories().iter().cloned().collect();
         let projection = build_folder_scope_projection(
-            &bundle_node_configs,
+            &configs,
             &args.entry_bundle_node_id,
-            &supported_files,
-            &index.directories,
+            &supported,
+            &directories,
             args.default_outlinks_depth.unwrap_or(1),
             args.default_inlinks_depth.unwrap_or(0),
         )?;
@@ -1298,7 +472,7 @@ fn main() -> anyhow::Result<()> {
             "repair required: selected folder(s) missing: {}",
             projection.missing_selected_roots.join(", ")
         );
-        folder_scope_report = Some(build_folder_scope_report(
+        folder_scope = Some(build_folder_scope_report(
             &graph_root,
             projection.selected_roots.clone(),
             projection.seeds.len(),
@@ -1308,16 +482,35 @@ fn main() -> anyhow::Result<()> {
                 .filter(|node| node.bundle_node_kind == "folder")
                 .count(),
         ));
-        effective_policy_bundle_node_ids = projection.effective_policy_bundle_node_ids.clone();
-        structural_output_nodes = projection
-            .structural_nodes
-            .iter()
-            .filter(|node| {
-                node.effective_blacklisting_bundle_node_id
-                    .as_ref()
-                    .is_none_or(|blacklist_id| node.bundle_node_id.as_ref() == Some(blacklist_id))
-            })
-            .map(|node| OutputNode {
+        for seed in &projection.seeds {
+            let key = seed.file.bundle_node_key();
+            if let Some(file) = files.get(&key) {
+                query.starts.push(Start {
+                    path: file.path.clone(),
+                    depths: Some(Depths {
+                        outlinks: seed.outlinks_depth as u32,
+                        inlinks: seed.inlinks_depth as u32,
+                    }),
+                });
+                seed_paths.insert(file.path.clone(), seed.structural_path.clone());
+            }
+        }
+        for key in &projection.blocked_file_keys {
+            if let Some(file) = files.get(key) {
+                query.rules.push(Rule {
+                    path: file.path.clone(),
+                    exclude: true,
+                    ..Default::default()
+                });
+            }
+        }
+        policy_ids = projection.effective_policy_bundle_node_ids;
+        for node in projection.structural_nodes.iter().filter(|node| {
+            node.effective_blacklisting_bundle_node_id
+                .as_ref()
+                .is_none_or(|blacklist| node.bundle_node_id.as_ref() == Some(blacklist))
+        }) {
+            structural_nodes.push(OutputNode {
                 sourceFile: None,
                 bundleNodeKey: node.bundle_node_key.clone(),
                 bundleNodeId: node.bundle_node_id.clone(),
@@ -1337,18 +530,17 @@ fn main() -> anyhow::Result<()> {
                 remaining_inlinks_depth: 0,
                 path: node.path.clone(),
                 traversal_details: None,
+                traversal_path_steps: None,
                 isFrontierNode: None,
                 isFrontierImageExtension: None,
                 traversal_states: None,
                 is_sensitive: false,
-            })
-            .collect();
-        structural_output_edges = projection
-            .structural_edges
-            .iter()
-            .map(|edge| OutputEdge {
-                source: edge.source.clone(),
-                target: edge.target.clone(),
+            });
+        }
+        for edge in projection.structural_edges {
+            structural_edges.push(OutputEdge {
+                source: edge.source,
+                target: edge.target,
                 bundleEdgeKind: edge.bundle_edge_kind,
                 isBidirectional: false,
                 link_source_page_path: String::new(),
@@ -1362,575 +554,265 @@ fn main() -> anyhow::Result<()> {
                 link_parsed_media_size: None,
                 link_resolved_target_directory: String::new(),
                 link_resolved_target_path: String::new(),
-            })
-            .collect();
-        get_multi_seed_working_nodes(
-            &basic_edges,
-            &bundle_node_configs,
-            &projection.seeds,
-            &projection.blocked_file_keys,
-            args.frontier_depth,
-            args.allow_images_to_extend_to_frontier,
-        )
-    };
-
-    let working_node_keys: HashSet<String> = working_nodes
-        .iter()
-        .map(|n| n.file.bundle_node_key())
-        .collect();
-
-    // Build source graph link count maps from basic_edges
-    // Count unique target pages per source (for outlinks)
-    // Count unique source pages per target (for inlinks)
-    let mut outlink_targets: HashMap<String, HashSet<String>> = HashMap::new();
-    let mut inlink_sources: HashMap<String, HashSet<String>> = HashMap::new();
-
-    for e in &basic_edges {
-        let source_id = e.source.bundle_node_key();
-        let target_id = e.target.bundle_node_key();
-        outlink_targets
-            .entry(source_id.clone())
-            .or_default()
-            .insert(target_id.clone());
-        inlink_sources
-            .entry(target_id)
-            .or_default()
-            .insert(source_id);
+            });
+        }
+        // An empty selected folder is valid and still has Meadow structure.
+        if query.starts.is_empty() {
+            query.starts = projection
+                .selected_roots
+                .iter()
+                .map(|path| Start {
+                    path: path.clone(),
+                    depths: Some(Depths {
+                        outlinks: 0,
+                        inlinks: 0,
+                    }),
+                })
+                .collect();
+        }
     }
-
-    let source_files: HashMap<_, _> = index.source_files();
-    let mut out_nodes: Vec<OutputNode> = working_nodes
+    let mut response = graph.query(&query)?;
+    anyhow::ensure!(
+        response.complete,
+        "Source index is incomplete; the accepted snapshot has been kept"
+    );
+    if let Some(diagnostic) = response
+        .diagnostics
         .iter()
-        .map(|n| OutputNode {
-            sourceFile: source_files
-                .get(n.file.bundle_node_key().trim_start_matches('/'))
-                .cloned(),
-            bundleNodeKey: n.file.bundle_node_key(),
-            bundleNodeId: n.file.bundle_node_id.clone(),
+        .find(|diagnostic| diagnostic.code == "malformedFrontmatter")
+    {
+        anyhow::bail!(
+            "Requested source metadata is malformed in {}: {}; the accepted snapshot has been kept",
+            diagnostic.path,
+            diagnostic.message
+        );
+    }
+    // Meadow's focus projection stays separate from source discovery.
+    if entry.bundle_node_id() != traversal.bundle_node_id()
+        && matches!(entry, BundleNodeConfig::File { .. })
+    {
+        let focus = physical(traversal);
+        let minimum = response
+            .nodes
+            .iter()
+            .find(|node| node.file.path == focus)
+            .map(|node| node.depth)
+            .unwrap_or(u32::MAX);
+        let nodes: HashMap<_, _> = response
+            .nodes
+            .iter()
+            .map(|node| (node.file.path.clone(), node))
+            .collect();
+        let mut pending = vec![focus];
+        let mut selected = HashSet::new();
+        while let Some(path) = pending.pop() {
+            let Some(node) = nodes.get(&path) else {
+                continue;
+            };
+            if (!args.allow_lower_depths && node.depth < minimum) || !selected.insert(path.clone())
+            {
+                continue;
+            }
+            let config = configs
+                .iter()
+                .find(|config| config.bundle_node_key() == logical(&node.file));
+            if node.inclusion == Inclusion::EmbeddedAsset
+                || config.is_some_and(|config| config.list_type() == "blacklist")
+            {
+                continue;
+            }
+            for edge in &response.edges {
+                if edge.source == path {
+                    pending.push(edge.target.clone());
+                } else if edge.target == path
+                    && (args.allow_lower_depths
+                        || node.states.iter().any(|state| state.remaining_inlinks > 0))
+                {
+                    pending.push(edge.source.clone());
+                }
+            }
+        }
+        response
+            .nodes
+            .retain(|node| selected.contains(&node.file.path));
+        response
+            .edges
+            .retain(|edge| selected.contains(&edge.source) && selected.contains(&edge.target));
+        response
+            .links_by_source
+            .retain(|path, _| selected.contains(path));
+        response.adjacency.retain(|path, _| selected.contains(path));
+    }
+    let mut nodes = Vec::new();
+    for node in &response.nodes {
+        let key = logical(&node.file);
+        let config = configs.iter().find(|config| {
+            matches!(config, BundleNodeConfig::File { .. }) && config.bundle_node_key() == key
+        });
+        let mut route: Vec<_> = node.route.iter().map(|path| logical_path(path)).collect();
+        let mut steps = Vec::new();
+        if let Some(prefix) = node.route.first().and_then(|path| seed_paths.get(path)) {
+            route.splice(0..1, prefix.clone());
+            for key in prefix.iter().take(prefix.len().saturating_sub(1)) {
+                let structural = structural_nodes
+                    .iter()
+                    .find(|node| &node.bundleNodeKey == key)
+                    .context("Traversal route is missing its structural node")?;
+                steps.push(OutputTraversalStep {
+                    bundle_node_key: key.clone(),
+                    depth: structural.depth,
+                    remaining_depth: structural.remaining_depth,
+                    remaining_inlinks_depth: structural.remaining_inlinks_depth,
+                    traversal_details: None,
+                    is_frontier_image_extension: false,
+                });
+            }
+        }
+        steps.extend(
+            node.route_steps
+                .iter()
+                .map(|step| route_step(step, &query, &logical_path)),
+        );
+        let traversal_details = steps.last().and_then(|step| step.traversal_details.clone());
+        let initial = node.inherited.is_none();
+        nodes.push(OutputNode {
+            sourceFile: Some(SourceFile {
+                path: node.file.path.clone(),
+                digest: node.file.digest.clone(),
+                size: node.file.size,
+            }),
+            bundleNodeKey: key.clone(),
+            bundleNodeId: config.map(|c| c.bundle_node_id().into()),
             bundleNodeKind: "file",
-            bundleNodeName: n.file.bundle_node_name.clone(),
-            sourceGraphSubdirectory: Some(n.file.source_graph_subdirectory.clone()),
-            fileType: Some(n.file.file_type.clone()),
+            bundleNodeName: node.file.title.clone(),
+            sourceGraphSubdirectory: Some(node.file.directory.clone()),
+            fileType: Some(node.file.format.clone()),
             memberBundleNodeIds: None,
             effectiveBlacklistingBundleNodeId: None,
-            effectiveFolderPolicyBundleNodeId: effective_policy_bundle_node_ids
-                .get(&n.file.bundle_node_key())
-                .cloned(),
-            depth: n.depth,
-            remaining_depth: n.remaining_depth,
-            remaining_inlinks_depth: n.remaining_inlinks_depth,
-            path: n.path.clone(),
-            traversal_details: n.traversal_details.clone(),
-            isFrontierNode: n.is_frontier_node,
-            isFrontierImageExtension: n.is_frontier_image_extension,
-            traversal_states: n.traversal_states.clone(),
-            is_sensitive: n.file.is_sensitive,
-        })
-        .collect();
-    out_nodes.extend(structural_output_nodes);
-    let output_node_keys: HashSet<String> = out_nodes
+            effectiveFolderPolicyBundleNodeId: policy_ids.get(&key).cloned(),
+            depth: node.depth as i32,
+            remaining_depth: node.remaining_outlinks as i32,
+            remaining_inlinks_depth: node.remaining_inlinks as i32,
+            path: route,
+            traversal_details,
+            traversal_path_steps: Some(steps),
+            isFrontierNode: (!initial || !matches!(entry, BundleNodeConfig::File { .. }))
+                .then_some(node.inclusion == Inclusion::Frontier),
+            isFrontierImageExtension: (!initial || !matches!(entry, BundleNodeConfig::File { .. }))
+                .then_some(node.inclusion == Inclusion::EmbeddedAsset),
+            traversal_states: Some(
+                node.states
+                    .iter()
+                    .map(|state| TraversalStateSummary {
+                        remaining_outlinks_depth: state.remaining_outlinks as i32,
+                        remaining_inlinks_depth: state.remaining_inlinks as i32,
+                    })
+                    .collect(),
+            ),
+            is_sensitive: sensitive(&node.file),
+        });
+    }
+    nodes.extend(structural_nodes);
+    let node_keys: HashSet<_> = nodes
         .iter()
         .map(|node| node.bundleNodeKey.clone())
         .collect();
-
-    let mut out_edges: Vec<OutputEdge> = per_link_edges
-        .into_iter()
-        .filter(|e| working_node_keys.contains(&e.source) && working_node_keys.contains(&e.target))
+    let mut edges: Vec<_> = response
+        .edges
+        .iter()
+        .map(|edge| {
+            let link = &edge.link;
+            let target = logical_path(&edge.target)
+                .trim_start_matches('/')
+                .to_string();
+            OutputEdge {
+                source: logical_path(&edge.source),
+                target: logical_path(&edge.target),
+                bundleEdgeKind: "semanticLink",
+                isBidirectional: edge.bidirectional,
+                link_source_page_path: logical_path(&edge.source).trim_start_matches('/').into(),
+                link_original_text: link.link_original_text.clone(),
+                link_parsed_directory: link.link_parsed_directory.clone(),
+                link_parsed_title: link.link_parsed_title.clone(),
+                link_parsed_file_type: link.link_parsed_file_type.clone(),
+                link_parsed_anchor: link.link_parsed_anchor.clone(),
+                link_parsed_anchor_type: link.link_parsed_anchor_type,
+                link_parsed_alias: link.link_parsed_alias.clone(),
+                link_parsed_media_size: link.link_parsed_media_size,
+                link_resolved_target_directory: target
+                    .rsplit_once('/')
+                    .map_or("", |(dir, _)| dir)
+                    .into(),
+                link_resolved_target_path: target,
+            }
+        })
         .collect();
-    out_edges.extend(structural_output_edges.into_iter().filter(|edge| {
-        output_node_keys.contains(&edge.source) && output_node_keys.contains(&edge.target)
-    }));
-    if let Some(report) = &mut folder_scope_report {
-        report.predictedRawNodeCount = out_nodes.len();
-        report.predictedTypedEdgeCount = out_edges.len();
+    edges.extend(
+        structural_edges
+            .into_iter()
+            .filter(|edge| node_keys.contains(&edge.source) && node_keys.contains(&edge.target)),
+    );
+    let all_link_resolution_maps = response
+        .links_by_source
+        .iter()
+        .map(|(source, links)| {
+            let map = links
+                .iter()
+                .map(|link| {
+                    let target = link
+                        .target
+                        .as_ref()
+                        .map(|target| logical_path(target).trim_start_matches('/').to_string())
+                        .unwrap_or_else(|| link.link_resolved_target_path.clone());
+                    (
+                        link.link_original_text.clone(),
+                        LinkResolvedInfo {
+                            link_resolved_target_directory: target
+                                .rsplit_once('/')
+                                .map_or("", |(dir, _)| dir)
+                                .into(),
+                            link_resolved_target_path: Some(target),
+                        },
+                    )
+                })
+                .collect();
+            (logical_path(source), map)
+        })
+        .collect();
+    let all_inlink_sources = response
+        .adjacency
+        .iter()
+        .map(|(source, adj)| {
+            (
+                logical_path(source),
+                adj.inlinks.iter().map(|path| logical_path(path)).collect(),
+            )
+        })
+        .collect();
+    let all_outlink_targets = response
+        .adjacency
+        .iter()
+        .map(|(source, adj)| {
+            (
+                logical_path(source),
+                adj.outlinks.iter().map(|path| logical_path(path)).collect(),
+            )
+        })
+        .collect();
+    if let Some(report) = &mut folder_scope {
+        report.predictedRawNodeCount = nodes.len();
+        report.predictedTypedEdgeCount = edges.len();
     }
-
-    // Convert HashSets to sorted Vecs for JSON output
-    let all_inlink_sources: HashMap<String, Vec<String>> = inlink_sources
-        .into_iter()
-        .map(|(k, v)| {
-            let mut vec: Vec<String> = v.into_iter().collect();
-            vec.sort();
-            (k, vec)
-        })
-        .collect();
-
-    let all_outlink_targets: HashMap<String, Vec<String>> = outlink_targets
-        .into_iter()
-        .map(|(k, v)| {
-            let mut vec: Vec<String> = v.into_iter().collect();
-            vec.sort();
-            (k, vec)
-        })
-        .collect();
-
-    let output = OutputGraph {
-        nodes: out_nodes,
-        edges: out_edges,
-        allLinkResolutionMaps: all_link_resolution_maps,
-        allInlinkSources: all_inlink_sources,
-        allOutlinkTargets: all_outlink_targets,
-        folderScope: folder_scope_report,
-    };
-
-    println!("{}", serde_json::to_string_pretty(&output)?);
+    serde_json::to_writer(
+        std::io::stdout().lock(),
+        &OutputGraph {
+            nodes,
+            edges,
+            allLinkResolutionMaps: all_link_resolution_maps,
+            allInlinkSources: all_inlink_sources,
+            allOutlinkTargets: all_outlink_targets,
+            folderScope: folder_scope,
+        },
+    )?;
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_links_wiki_basic() {
-        let content = "Hello [[page one]] and [[page two]]";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![
-                ExtractedLink::Wiki("page one".to_string()),
-                ExtractedLink::Wiki("page two".to_string()),
-            ]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_wiki_skips_fenced_code_block() {
-        let content = "Before\n```\n[[hidden link]]\n```\nAfter [[visible link]]";
-        let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Wiki("visible link".to_string())]);
-    }
-
-    #[test]
-    fn test_extract_links_wiki_skips_fenced_code_block_with_language() {
-        let content = "Before\n```txt\n[[hidden link]]\nsome text\n```\nAfter [[visible link]]";
-        let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Wiki("visible link".to_string())]);
-    }
-
-    #[test]
-    fn test_extract_links_wiki_skips_inline_code() {
-        let content = "Before `[[hidden link]]` and [[visible link]]";
-        let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Wiki("visible link".to_string())]);
-    }
-
-    #[test]
-    fn test_extract_links_wiki_skips_both_code_types() {
-        let content = "Inline `[[a]]` and fenced:\n```\n[[b]]\n```\nReal [[c]]";
-        let links = extract_links(content);
-        assert_eq!(links, vec![ExtractedLink::Wiki("c".to_string())]);
-    }
-
-    #[test]
-    fn test_extract_links_no_links() {
-        let content = "No links here, just text.";
-        let links = extract_links(content);
-        assert!(links.is_empty());
-    }
-
-    #[test]
-    fn test_extract_links_empty_string() {
-        let links = extract_links("");
-        assert!(links.is_empty());
-    }
-
-    #[test]
-    fn test_extract_markup_links_finds_pages_and_assets() {
-        let content = r#"<!doctype html>
-            <link rel="stylesheet" href="./shared.css">
-            <a href='../note.md'>Note</a>
-            <img src="./image.svg" alt="">
-            <script src="./behavior.js"></script>"#;
-        assert_eq!(
-            extract_markup_links(content),
-            vec![
-                ExtractedLink::Markdown {
-                    text: "./shared.css".to_string(),
-                    href: "./shared.css".to_string(),
-                },
-                ExtractedLink::Markdown {
-                    text: "../note.md".to_string(),
-                    href: "../note.md".to_string(),
-                },
-                ExtractedLink::Embedded(Box::new(ExtractedLink::Markdown {
-                    text: "./image.svg".to_string(),
-                    href: "./image.svg".to_string(),
-                })),
-                ExtractedLink::Embedded(Box::new(ExtractedLink::Markdown {
-                    text: "./behavior.js".to_string(),
-                    href: "./behavior.js".to_string(),
-                })),
-            ]
-        );
-    }
-
-    #[test]
-    fn test_extract_markup_links_skips_external_and_non_url_attributes() {
-        let content = r##"<a data-href="./not-a-link.md" href="#local">Local</a>
-            <a href="https://example.com">External</a>
-            <img src="data:image/svg+xml;base64,abc">
-            <a HREF="./page.html">Page</a>"##;
-        assert_eq!(
-            extract_markup_links(content),
-            vec![ExtractedLink::Markdown {
-                text: "./page.html".to_string(),
-                href: "./page.html".to_string(),
-            }]
-        );
-    }
-
-    #[test]
-    fn test_extract_markup_links_finds_svg_shape_links() {
-        let content = r##"<svg xmlns="http://www.w3.org/2000/svg">
-            <a href="../page.md"><circle r="20"/></a>
-            <a href="#local"><rect width="10" height="10"/></a>
-            <image href="./texture.png"/>
-        </svg>"##;
-        assert_eq!(
-            extract_markup_links(content),
-            vec![
-                ExtractedLink::Markdown {
-                    text: "../page.md".to_string(),
-                    href: "../page.md".to_string(),
-                },
-                ExtractedLink::Markdown {
-                    text: "./texture.png".to_string(),
-                    href: "./texture.png".to_string(),
-                },
-            ]
-        );
-    }
-
-    // --- Markdown link extraction tests ---
-
-    #[test]
-    fn test_extract_links_markdown_basic() {
-        let content = "See [my page](./path/to/file.md) for details.";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Markdown {
-                text: "my page".to_string(),
-                href: "./path/to/file.md".to_string(),
-            }]
-        );
-    }
-
-    #[test]
-    fn wiki_embeds_are_distinct_from_links() {
-        assert_eq!(
-            extract_links("![[image.png]] [[image.png]]"),
-            vec![
-                ExtractedLink::Embedded(Box::new(ExtractedLink::Wiki("image.png".into()))),
-                ExtractedLink::Wiki("image.png".into()),
-            ]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_markdown_image_embed() {
-        let content = "An image: ![alt text](./images/photo.png)";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Embedded(Box::new(ExtractedLink::Markdown {
-                text: "alt text".to_string(),
-                href: "./images/photo.png".to_string(),
-            }))]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_markdown_skips_external() {
-        let content = "Visit [Google](https://google.com) and [local](./page.md)";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Markdown {
-                text: "local".to_string(),
-                href: "./page.md".to_string(),
-            }]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_markdown_skips_anchor_only() {
-        let content = "See [section](#heading) and [file](./file.md)";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Markdown {
-                text: "file".to_string(),
-                href: "./file.md".to_string(),
-            }]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_markdown_skips_code_block() {
-        let content = "Before\n```\n[hidden](./hidden.md)\n```\nAfter [visible](./visible.md)";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Markdown {
-                text: "visible".to_string(),
-                href: "./visible.md".to_string(),
-            }]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_markdown_skips_inline_code() {
-        let content = "Code `[hidden](./hidden.md)` and [visible](./visible.md)";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Markdown {
-                text: "visible".to_string(),
-                href: "./visible.md".to_string(),
-            }]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_mixed_wiki_and_markdown() {
-        let content = "Wiki [[page one]] and markdown [page two](./page-two.md)";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![
-                ExtractedLink::Wiki("page one".to_string()),
-                ExtractedLink::Markdown {
-                    text: "page two".to_string(),
-                    href: "./page-two.md".to_string(),
-                },
-            ]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_excalidraw_element_links_section() {
-        let content = [
-            "## Element Links",
-            "iWVOgeeI: [[page linked from a non-text element]]",
-            "",
-            "%%",
-            "## Drawing",
-            "```compressed-json",
-            "[[hidden inside compressed scene text]]",
-            "```",
-        ]
-        .join("\n");
-        let links = extract_links(&content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Wiki(
-                "page linked from a non-text element".to_string()
-            ),]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_markdown_with_anchor() {
-        let content = "See [section](./file.md#heading)";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Markdown {
-                text: "section".to_string(),
-                href: "./file.md#heading".to_string(),
-            }]
-        );
-    }
-
-    #[test]
-    fn test_extract_links_markdown_relative_parent() {
-        let content = "Go [up](../parent/file.md)";
-        let links = extract_links(content);
-        assert_eq!(
-            links,
-            vec![ExtractedLink::Markdown {
-                text: "up".to_string(),
-                href: "../parent/file.md".to_string(),
-            }]
-        );
-    }
-
-    // --- resolve_links: wiki link with directory prefix ---
-    //
-    // Wiki link prefixes (`[[sub/foo.png]]`) match Obsidian's vault-relative
-    // semantics: the prefix is matched as a path *suffix* against any file in
-    // the graph, not strictly rooted at graph_root. The exact-match fast path
-    // covers the simple unwrapped case; the suffix fallback covers the case
-    // where the user pointed `sourceDirectory` one level above the actual data.
-
-    fn make_page(directory: &str, title: &str, file_type: &str) -> FileIdentifier {
-        let path = if directory.is_empty() {
-            format!("{}.{}", title, file_type)
-        } else {
-            format!("{}/{}.{}", directory, title, file_type)
-        };
-        FileIdentifier {
-            directory: directory.to_string(),
-            title: title.to_string(),
-            file_type: file_type.to_string(),
-            path,
-        }
-    }
-
-    fn wiki_link(prefix: &str, title: &str, file_type: &str, source: &FileIdentifier) -> LinkOut {
-        LinkOut {
-            link_original_text: format!("{}{}.{}", prefix, title, file_type),
-            link_source_page_path: source.path.clone(),
-            link_parsed_directory: prefix.to_string(),
-            link_parsed_title: title.to_string(),
-            link_parsed_file_type: file_type.to_string(),
-            link_parsed_anchor: None,
-            link_parsed_anchor_type: None,
-            link_parsed_alias: None,
-            link_parsed_media_size: None,
-            link_resolved_target_directory: String::new(),
-            link_resolved_target_path: String::new(),
-            is_relative_path_link: false,
-            is_embedded: false,
-        }
-    }
-
-    fn extensionless_wiki_link(prefix: &str, title: &str, source: &FileIdentifier) -> LinkOut {
-        LinkOut {
-            link_original_text: format!("{}{}", prefix, title),
-            link_source_page_path: source.path.clone(),
-            link_parsed_directory: prefix.to_string(),
-            link_parsed_title: title.to_string(),
-            link_parsed_file_type: "md".to_string(),
-            link_parsed_anchor: None,
-            link_parsed_anchor_type: None,
-            link_parsed_alias: None,
-            link_parsed_media_size: None,
-            link_resolved_target_directory: String::new(),
-            link_resolved_target_path: String::new(),
-            is_relative_path_link: false,
-            is_embedded: false,
-        }
-    }
-
-    fn page_only(p: FileIdentifier) -> ScanResult {
-        ScanResult {
-            source_file: p,
-            is_sensitive: false,
-            outgoing_links: vec![],
-        }
-    }
-
-    fn page_with_link(p: FileIdentifier, link: LinkOut) -> ScanResult {
-        ScanResult {
-            source_file: p,
-            is_sensitive: false,
-            outgoing_links: vec![link],
-        }
-    }
-
-    #[test]
-    fn test_resolve_wiki_link_with_prefix_exact_match() {
-        let source = make_page("", "embedded media", "md");
-        let target = make_page("t006", "foo", "png");
-        let link = wiki_link("t006/", "foo", "png", &source);
-        let out = resolve_links(vec![page_with_link(source, link), page_only(target)]);
-        let resolved = &out[0].outgoing_links[0];
-        assert_eq!(resolved.link_resolved_target_directory, "t006");
-        assert_eq!(resolved.link_resolved_target_path, "t006/foo.png");
-    }
-
-    #[test]
-    fn test_resolve_wiki_link_with_prefix_falls_back_to_suffix_match() {
-        // Wrapper case: graph_root is a directory above the actual notes, so
-        // `[[t006/foo.png]]` from `data/embedded media.md` must still find
-        // `data/t006/foo.png` even though no `t006/foo.png` exists at root.
-        let source = make_page("data", "embedded media", "md");
-        let target = make_page("data/t006", "foo", "png");
-        let link = wiki_link("t006/", "foo", "png", &source);
-        let out = resolve_links(vec![page_with_link(source, link), page_only(target)]);
-        let resolved = &out[0].outgoing_links[0];
-        assert_eq!(resolved.link_resolved_target_directory, "data/t006");
-        assert_eq!(resolved.link_resolved_target_path, "data/t006/foo.png");
-    }
-
-    #[test]
-    fn test_resolve_wiki_link_with_prefix_suffix_match_prefers_shallowest() {
-        // Two candidates both end with `/sub`: shallowest wins.
-        let source = make_page("", "src", "md");
-        let shallow = make_page("shallow/sub", "foo", "png");
-        let deep = make_page("deep/extra/sub", "foo", "png");
-        let link = wiki_link("sub/", "foo", "png", &source);
-        let out = resolve_links(vec![
-            page_with_link(source, link),
-            page_only(shallow),
-            page_only(deep),
-        ]);
-        let resolved = &out[0].outgoing_links[0];
-        assert_eq!(resolved.link_resolved_target_directory, "shallow/sub");
-    }
-
-    #[test]
-    fn test_resolve_wiki_link_with_prefix_root_match_outranks_deeper_suffix() {
-        // When both a root-rooted match and a deeper suffix match exist,
-        // the exact (root) match wins via the fast path and never enters the
-        // fallback.
-        let source = make_page("", "src", "md");
-        let at_root = make_page("t006", "foo", "png");
-        let nested = make_page("data/t006", "foo", "png");
-        let link = wiki_link("t006/", "foo", "png", &source);
-        let out = resolve_links(vec![
-            page_with_link(source, link),
-            page_only(at_root),
-            page_only(nested),
-        ]);
-        let resolved = &out[0].outgoing_links[0];
-        assert_eq!(resolved.link_resolved_target_directory, "t006");
-    }
-
-    #[test]
-    fn test_resolve_wiki_link_with_prefix_unresolvable_keeps_prefix() {
-        // No file matches by title+file_type at all: leave the resolved
-        // directory as the raw prefix so the link stays unresolvable rather
-        // than collapsing to an unrelated file.
-        let source = make_page("", "src", "md");
-        let unrelated = make_page("other", "different", "png");
-        let link = wiki_link("t006/", "foo", "png", &source);
-        let out = resolve_links(vec![page_with_link(source, link), page_only(unrelated)]);
-        let resolved = &out[0].outgoing_links[0];
-        assert_eq!(resolved.link_resolved_target_directory, "t006");
-        assert_eq!(resolved.link_resolved_target_path, "t006/foo.png");
-    }
-
-    #[test]
-    fn test_resolve_extensionless_wiki_link_can_target_excalidraw() {
-        let source = make_page("t006", "embedding page", "md");
-        let target = make_page("t006 - second directory", "embedded drawing", "excalidraw");
-        let link = extensionless_wiki_link("", "embedded drawing", &source);
-        let out = resolve_links(vec![page_with_link(source, link), page_only(target)]);
-        let resolved = &out[0].outgoing_links[0];
-        assert_eq!(resolved.link_parsed_file_type, "excalidraw");
-        assert_eq!(
-            resolved.link_resolved_target_directory,
-            "t006 - second directory"
-        );
-        assert_eq!(
-            resolved.link_resolved_target_path,
-            "t006 - second directory/embedded drawing.excalidraw"
-        );
-    }
-
-    #[test]
-    fn test_resolve_explicit_md_wiki_link_does_not_target_excalidraw() {
-        let source = make_page("t006", "embedding page", "md");
-        let target = make_page("t006 - second directory", "embedded drawing", "excalidraw");
-        let link = wiki_link("", "embedded drawing", "md", &source);
-        let out = resolve_links(vec![page_with_link(source, link), page_only(target)]);
-        let resolved = &out[0].outgoing_links[0];
-        assert_eq!(resolved.link_parsed_file_type, "md");
-        assert_eq!(resolved.link_resolved_target_directory, "");
-        assert_eq!(resolved.link_resolved_target_path, "embedded drawing.md");
-    }
 }

@@ -28,3 +28,13 @@ export type BundleNodeTraversalStateSummary = {
   remaining_outlinks_depth: number;
   remaining_inlinks_depth: number;
 };
+
+/** Recorded arrivals along one selected path, aligned with its path keys. */
+export type BundleNodeTraversalPathStep = {
+  bundleNodeKey: string;
+  depth: number;
+  remaining_depth: number;
+  remaining_inlinks_depth: number;
+  traversal_details?: BundleNodeTraversalDetails;
+  isFrontierImageExtension?: boolean;
+};

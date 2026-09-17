@@ -1,8 +1,5 @@
 #!/bin/bash
-
-# Run the integration tests from the working_graph_integration_test directory
-cd "$(dirname "${BASH_SOURCE[0]}")/working_graph_integration_test"
-npm install --silent
-npm test
-
-
+set -euo pipefail
+cd "$(dirname "$0")/working_graph_code"
+node ../prepare-linkrange.mjs
+cargo test --locked

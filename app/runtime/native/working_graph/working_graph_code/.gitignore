@@ -1,1 +1,4 @@
-target/
+/target/
+/linkrange-source
+/.linkrange-cache/
+/linkrange-source.*.tmp

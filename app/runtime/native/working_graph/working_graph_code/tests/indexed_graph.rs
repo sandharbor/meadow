@@ -71,3 +71,39 @@ fn graph_and_source_metadata_match_full_rebuild_after_content_and_topology_chang
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("starting page is missing"));
 }
+
+#[test]
+fn explicit_rebuild_reports_real_library_reads_in_a_compact_diagnostic_receipt() {
+    use sha2::{Digest, Sha256};
+    let temp = tempfile::tempdir().unwrap();
+    let directory = temp.path();
+    let vault = directory.join("vault");
+    fs::create_dir(&vault).unwrap();
+    fs::write(vault.join("main.md"), "[[second]]").unwrap();
+    fs::write(vault.join("second.md"), "").unwrap();
+    fs::write(directory.join("nodes.yaml"),"nodes:\n  - bundleNodeId: '000000000001'\n    bundleNodeKind: file\n    bundleNodeName: main\n    sourceGraphSubdirectory: ''\n    fileType: md\n    listType: whitelist\n").unwrap();
+    let key = format!(
+        "{:x}",
+        Sha256::digest(vault.canonicalize().unwrap().to_string_lossy().as_bytes())
+    );
+    let receipt = directory.join("cache").join(key).join("last-run.json");
+    let read = || serde_json::from_slice::<Value>(&fs::read(&receipt).unwrap()).unwrap();
+    graph(directory, false, 0);
+    let cold = read();
+    assert_eq!(cold["metrics"]["filesRead"], 2);
+    graph(directory, false, 0);
+    let warm = read();
+    assert_eq!(warm["metrics"]["filesRead"], 0);
+    graph(directory, true, 0);
+    let rebuilt = read();
+    assert_eq!(rebuilt["metrics"]["filesRead"], 2);
+    assert_eq!(rebuilt["metrics"]["indexedFiles"], 2);
+    assert_eq!(rebuilt["metrics"]["cacheRebuilt"], true);
+    assert!(
+        rebuilt["completedAtNanos"].as_u64().unwrap() > cold["completedAtNanos"].as_u64().unwrap()
+    );
+    assert!(
+        fs::metadata(receipt).unwrap().len() < 2048,
+        "receipt does not duplicate indexed paths"
+    );
+}

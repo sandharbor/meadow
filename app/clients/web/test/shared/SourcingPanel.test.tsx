@@ -88,17 +88,25 @@ describe('tracking source additions', () => {
 });
 
 describe('source traversal details', () => {
-  it('shows candidate directions, budgets, and added steps along the path, then closes back to review', async () => {
-    // Given the accepted graph has different budgets for a shared path node.
-    const paths = ['Start.md', 'Bridge.md', 'Incoming.md'];
+  it.each([true, false])('shows candidate route arrivals and added steps, with recorded steps available: %s', async withRouteSteps => {
+    // Given Hub has a shorter independent arrival with no incoming budget.
+    const paths = ['Start.md', 'Bridge.md', 'Hub.md', 'Incoming.md'];
+    const routeSteps = paths.map((key, index) => ({
+      bundleNodeKey: key, depth: index, remaining_depth: [3, 3, 2, 1][index],
+      remaining_inlinks_depth: [1, 2, 1, 0][index],
+      traversal_details: {
+        link_type: index === 0 ? 'start' as const : index === 3 ? 'inlink' as const : 'outlink' as const,
+        ...(index === 1 && { outlinks_depth_inherited: 2, outlinks_depth_overridden: 3,
+          inlinks_depth_inherited: 0, inlinks_depth_overridden: 2 }),
+      },
+    }));
     const nodes: SerializableBundleNode[] = paths.map((key, index) => ({
+      ...routeSteps[index],
       bundleNodeKey: key as SerializableBundleNode['bundleNodeKey'], bundleNodeKind: 'file',
       bundleNodeName: key.slice(0, -3), sourceGraphSubdirectory: '', fileType: 'md', label: key,
-      depth: index, remaining_depth: 3 - index, remaining_inlinks_depth: 2 - index,
-      path: index === 1 ? ['Alternate start.md', key] : paths.slice(0, index + 1), traversal_details: {
-        link_type: index === 0 ? 'start' : index === 1 ? 'outlink' : 'inlink',
-        ...(index === 1 && { outlinks_depth_inherited: 2, outlinks_depth_overridden: 3 }),
-      },
+      path: paths.slice(0, index + 1),
+      ...(index === 2 && { path: ['Start.md', key], depth: 1, remaining_inlinks_depth: 0 }),
+      ...(withRouteSteps && index === 3 && { traversal_path_steps: routeSteps }),
     }));
     const pending: SourcingReview = { ...review, reviewToken: 'candidate-traversal',
       candidate: { ...review.accepted, id: 'b'.repeat(32) },
@@ -107,7 +115,9 @@ describe('source traversal details', () => {
         accepted: { snapshotId: review.accepted.id, nodes: nodes.slice(0, 1).map(node => ({ ...node, remaining_depth: 99 })), edges: [] },
         candidate: { snapshotId: 'b'.repeat(32), nodes, edges: [
           { source: 'Start.md', target: 'Bridge.md', bundleEdgeKind: 'semanticLink' },
-          { source: 'Incoming.md', target: 'Bridge.md', bundleEdgeKind: 'semanticLink' },
+          { source: 'Start.md', target: 'Hub.md', bundleEdgeKind: 'semanticLink' },
+          { source: 'Bridge.md', target: 'Hub.md', bundleEdgeKind: 'semanticLink' },
+          { source: 'Incoming.md', target: 'Hub.md', bundleEdgeKind: 'semanticLink' },
         ] },
       },
     };
@@ -116,15 +126,26 @@ describe('source traversal details', () => {
     fireEvent.click(await screen.findByRole('button', { name: '2 source changes available – Review' }));
     fireEvent.click(screen.getByLabelText('Details Incoming.md'));
     const details = await screen.findByRole('button', { name: 'Traversal details for Incoming.md' });
-    expect(within(details.parentElement!).getByRole('img', { name: 'outlink' })).toHaveTextContent('→');
+    expect(within(details.parentElement!).getAllByRole('img', { name: 'outlink' })[0]).toHaveTextContent('→');
     expect(within(details.parentElement!).getByRole('img', { name: 'inlink' })).toHaveTextContent('←');
 
     // When the candidate's details are opened, the shared modal uses that same snapshot.
     fireEvent.click(details);
     const modal = screen.getByRole('dialog', { name: 'Traversal Path' });
-    expect(within(modal).getByText('↓ outlink')).toBeInTheDocument();
+    expect(within(modal).getAllByText('↓ outlink')).toHaveLength(2);
     expect(within(modal).getByText('↑ inlink')).toBeInTheDocument();
-    expect(within(modal).getByText(/depth values below come from this page’s separately recorded route/)).toBeInTheDocument();
+    const hub = within(modal).getByRole('heading', { name: 'Hub' }).parentElement!.parentElement!;
+    if (withRouteSteps) {
+      expect(within(hub).getByText('depth 2')).toBeInTheDocument();
+      const incomingBudget = within(hub).getByText('inlinks').parentElement!;
+      expect(within(incomingBudget).getByText('remaining').parentElement).toHaveTextContent('remaining1');
+      expect(within(modal).queryByText(/weren’t recorded/)).not.toBeInTheDocument();
+    } else {
+      expect(within(hub).getByText('Depth details weren’t recorded for this step of the path.')).toBeInTheDocument();
+      expect(within(hub).queryByText('inlinks')).not.toBeInTheDocument();
+      expect(within(hub).queryByText('depth 1')).not.toBeInTheDocument();
+    }
+    expect(within(modal).queryByText(/separately recorded route/)).not.toBeInTheDocument();
     expect(within(modal).queryByText('99')).not.toBeInTheDocument();
     // Both the earlier addition and the selected addition are marked; existing steps stay unmarked.
     for (const title of ['Bridge', 'Incoming']) {
@@ -133,7 +154,7 @@ describe('source traversal details', () => {
       expect(within(header).getByRole('button', { name: 'About added pages' })).toHaveAccessibleDescription('This page is newly included in the candidate snapshot.');
     }
     expect(within(within(modal).getByRole('heading', { name: 'Start' }).parentElement!).queryByText('Added')).not.toBeInTheDocument();
-    const override = within(modal).getByText('override').parentElement!;
+    const override = within(modal).getAllByText('override')[0].parentElement!;
     expect(within(override).getByText('2')).not.toHaveClass('line-through');
     expect(within(override).getByText('3')).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });

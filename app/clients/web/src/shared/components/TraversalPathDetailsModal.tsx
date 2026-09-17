@@ -43,7 +43,9 @@ interface StepInfo {
   remainingDepth: number;
   remainingInlinksDepth: number;
   effectivePolicyName?: string;
-  hasDifferentRecordedPath: boolean;
+  depth: number;
+  isFrontierImageExtension: boolean;
+  hasRouteValues: boolean;
 }
 
 function getDepthInfo(
@@ -158,7 +160,10 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
       const node = graph.getNode(bundleNodeKey);
       if (!node) return null;
 
-      const details = node.traversal_details;
+      const recordedStep = selectedNode.traversal_path_steps?.[index];
+      const routeStep = recordedStep?.bundleNodeKey === bundleNodeKey ? recordedStep : undefined;
+      const arrival = routeStep ?? node;
+      const details = arrival.traversal_details;
       const outlinksInfo = getDepthInfo(
         details?.outlinks_depth_set_first_time,
         details?.outlinks_depth_overridden,
@@ -171,7 +176,9 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
       );
 
       const previousKey = selectedNode.path?.[index - 1];
-      const linkType = traversalLinkType(graph, previousKey, bundleNodeKey);
+      const linkType = routeStep?.traversal_details?.link_type && routeStep.traversal_details.link_type !== 'start'
+        ? routeStep.traversal_details.link_type
+        : traversalLinkType(graph, previousKey, bundleNodeKey);
       const effectivePolicyName = node.effectiveFolderPolicyBundleNodeId
         ? graph.getAllNodes().find(candidate => candidate.bundleNodeId === node.effectiveFolderPolicyBundleNodeId)?.bundleNodeName
         : undefined;
@@ -184,11 +191,14 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
         inlinksDepthEvent: inlinksInfo.event,
         inlinksDepthValue: inlinksInfo.value,
         inlinksDepthInherited: inlinksInfo.inheritedFrom,
-        remainingDepth: node.remaining_depth,
-        remainingInlinksDepth: node.remaining_inlinks_depth ?? 0,
+        remainingDepth: arrival.remaining_depth,
+        remainingInlinksDepth: arrival.remaining_inlinks_depth ?? 0,
         effectivePolicyName,
-        hasDifferentRecordedPath: Boolean(node.path && (node.path.length !== index + 1
-          || node.path.some((key, step) => key !== selectedNode.path?.[step]))),
+        depth: arrival.depth,
+        isFrontierImageExtension: Boolean(arrival.isFrontierImageExtension),
+        // Older captures may lack route arrivals. Never substitute a different route's budgets.
+        hasRouteValues: Boolean(routeStep) || Boolean(node.path && node.path.length === index + 1
+          && node.path.every((key, step) => key === selectedNode.path?.[step])),
       };
     })
     .filter((s): s is StepInfo => s !== null);
@@ -204,13 +214,13 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto pr-2">
           {steps.map((step, index) => (
-            <React.Fragment key={step.node.bundleNodeKey}>
+            <React.Fragment key={`${index}:${step.node.bundleNodeKey}`}>
               {/* Connector between steps */}
               {index > 0 && <LinkConnector linkType={step.linkType as Exclude<StepInfo['linkType'], 'start'>} />}
 
               {/* Step card */}
               <div className={`rounded-lg border p-3 ${
-                step.node.isFrontierImageExtension
+                step.hasRouteValues && step.isFrontierImageExtension
                   ? 'bg-violet-50/50 border-violet-200'
                   : index === steps.length - 1
                     ? 'bg-blue-50/40 border-blue-200'
@@ -236,19 +246,19 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                         start
                       </span>
                     )}
-                    {step.node.isFrontierImageExtension && (
+                    {step.hasRouteValues && step.isFrontierImageExtension && (
                       <span className="text-[10px] text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded">
                         frontier image
                       </span>
                     )}
-                    <span className="text-[10px] text-neutral-400 bg-neutral-50 px-1.5 py-0.5 rounded tabular-nums">
-                      depth {step.node.depth}
-                    </span>
+                    {step.hasRouteValues && <span className="text-[10px] text-neutral-400 bg-neutral-50 px-1.5 py-0.5 rounded tabular-nums">
+                      depth {step.depth}
+                    </span>}
                   </div>
                 </div>
 
                 {/* Frontier image explanation */}
-                {step.node.isFrontierImageExtension && (
+                {step.hasRouteValues && step.isFrontierImageExtension && (
                   <div className="mb-2 px-2.5 py-1.5 bg-violet-100/60 rounded text-[11px] text-violet-600 leading-relaxed">
                     Included because it was linked from a page at the frontier edge (remaining depth = 0).
                   </div>
@@ -259,10 +269,10 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                     Folder policy: {step.effectivePolicyName}.
                   </div>
                 )}
-                {step.hasDifferentRecordedPath && <p className="mb-2 text-[11px] text-neutral-600">
-                  Also reached through another path. The depth values below come from this page’s separately recorded route.
+                {!step.hasRouteValues && <p className="mb-2 text-[11px] text-neutral-600">
+                  Depth details weren’t recorded for this step of the path.
                 </p>}
-                {step.node.bundleNodeKind === 'file' && <div className="flex flex-col gap-1">
+                {step.hasRouteValues && step.node.bundleNodeKind === 'file' && <div className="flex flex-col gap-1">
                   <DepthBadge
                     label="outlinks"
                     event={step.outlinksDepthEvent}
@@ -286,13 +296,6 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                     overrideBorderClass="border-amber-300"
                   />
                 </div>}
-                {(step.node.traversal_states?.length ?? 0) > 1 && (
-                  <div className="mt-2 text-[11px] text-neutral-500">
-                    Non-dominated remaining states: {step.node.traversal_states!
-                      .map(state => `out ${state.remaining_outlinks_depth} / in ${state.remaining_inlinks_depth}`)
-                      .join(', ')}
-                  </div>
-                )}
               </div>
             </React.Fragment>
           ))}

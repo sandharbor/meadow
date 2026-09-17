@@ -1,8 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-
-echo "Building working_graph_bin release..."
-cargo build --release --bin working_graph_bin
-echo "✅ Built target/release/working_graph_bin"
-
-
+cd "$(dirname "$0")"
+node ../prepare-linkrange.mjs
+cargo build --release --locked --bin working_graph_bin

@@ -98,7 +98,7 @@ export const frontier = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`A reachable page just beyond the bundle's current traversal boundary.`,
   mechanics: [
-    conceptText`Frontier depth and frontier-focused filtering explain how the graph would expand if the boundary moved.`,
+    conceptText`Frontier depth bounds exploration beyond the normal traversal boundary. Depth overrides on frontier-only pages are ignored, including overrides that would shorten exploration; exhausted incoming-link traversal remains exhausted. Stop and exclusion policies still apply.`,
     conceptText`A frontier image extension remains directly trackable so an image embedded at the boundary can be preserved without expanding ordinary page traversal.`,
   ],
   interplay: conceptText`An ordinary frontier page is visible for boundary reasoning but cannot become a ${conceptLink(coreConceptIds.tracking, "tracked bundle page")} until the graph constraints admit it; frontier image extensions are the deliberate exception.`,
@@ -232,7 +232,7 @@ export const paths = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`A structural or traversal route that explains how Meadow reached a page in the working graph.`,
   mechanics: [
-    conceptText`Path-oriented workflows select relevant routes and expose the sequence of relationships leading to a node.`,
+    conceptText`Path-oriented workflows select relevant routes and expose the sequence of relationships leading to a node. Each step's depth, inherited budgets, overrides, and remaining budgets describe its arrival along the displayed path. An intermediate page may have a shorter independent arrival with less remaining budget; its own shortest path must not replace the arrival that enabled traversal to the selected endpoint.`,
   ],
   interplay: conceptText`${conceptLink(coreConceptIds.links, "Bundle Page Links")} provide the local edges; curation paths assemble those edges into an explanation of reachability.`,
 });

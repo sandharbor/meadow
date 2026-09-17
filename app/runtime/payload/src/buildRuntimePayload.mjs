@@ -243,8 +243,8 @@ export function buildRuntimePayload(options) {
     requireCommand("npm", ["run", "build"], webRoot, buildEnvironment);
     for (const component of RUNTIME_NATIVE_COMPONENTS) {
       requireCommand(
-        "cargo",
-        ["build", "--release"],
+        "./make_release",
+        [],
         path.join(meadowRoot, "app/runtime/native", component.projectPath),
       );
     }

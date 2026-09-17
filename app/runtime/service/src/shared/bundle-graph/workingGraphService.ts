@@ -21,7 +21,7 @@ import path from 'path';
 import YAML from 'yaml';
 import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
 import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
-import type { BundleNodeTraversalDetails } from '../../../../../contracts/types/bundleNodeGraph.js';
+import type { BundleNodeTraversalDetails, BundleNodeTraversalPathStep } from '../../../../../contracts/types/bundleNodeGraph.js';
 import type { FileType } from '../../../../../contracts/types/FileType.js';
 import type { FolderScopeGraphSnapshot } from '../../../../../contracts/types/folderScopeChanges.js';
 import type { IBundleNode } from '../../../../../contracts/types/IBundleNode.js';
@@ -68,6 +68,7 @@ interface RustNode {
   remaining_inlinks_depth: number;
   path: string[];
   traversal_details?: BundleNodeTraversalDetails;
+  traversal_path_steps?: BundleNodeTraversalPathStep[];
   traversal_states?: Array<{ remaining_outlinks_depth: number; remaining_inlinks_depth: number }>;
   isFrontierNode?: boolean;
   isFrontierImageExtension?: boolean;
@@ -158,6 +159,7 @@ function serializeNodes(output: WorkingGraphRustOutput): IBundleNode[] {
       remaining_inlinks_depth: node.remaining_inlinks_depth,
       path: node.path,
       traversal_details: node.traversal_details,
+      traversal_path_steps: node.traversal_path_steps,
       traversal_states: node.traversal_states,
       ...(node.effectiveBlacklistingBundleNodeId && {
         effectiveBlacklistingBundleNodeId: node.effectiveBlacklistingBundleNodeId as IBundleNode['bundleNodeId'],

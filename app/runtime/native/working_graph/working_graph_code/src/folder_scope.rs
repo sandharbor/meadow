@@ -107,9 +107,7 @@ fn selected_root_indexes_for_locator(locator: &str, roots: &[String]) -> Vec<usi
     roots
         .iter()
         .enumerate()
-        .filter_map(|(index, root)| {
-            is_allowed_below_selected_root(locator, root).then_some(index)
-        })
+        .filter_map(|(index, root)| is_allowed_below_selected_root(locator, root).then_some(index))
         .collect()
 }
 
@@ -130,7 +128,9 @@ fn selected_folder_configs<'a>(
     let entry = configs
         .iter()
         .find(|config| config.bundle_node_id() == entry_bundle_node_id)
-        .ok_or_else(|| anyhow::anyhow!("entryBundleNodeId does not resolve: {entry_bundle_node_id}"))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!("entryBundleNodeId does not resolve: {entry_bundle_node_id}")
+        })?;
     match entry {
         BundleNodeConfig::Folder { .. } => Ok((None, vec![entry])),
         BundleNodeConfig::Collection {
@@ -143,7 +143,9 @@ fn selected_folder_configs<'a>(
                     configs
                         .iter()
                         .find(|config| config.bundle_node_id() == member_id)
-                        .ok_or_else(|| anyhow::anyhow!("collection member does not resolve: {member_id}"))
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("collection member does not resolve: {member_id}")
+                        })
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?;
             Ok((Some(entry), members))
@@ -239,8 +241,7 @@ pub fn build_folder_scope_projection(
     default_outlinks_depth: i32,
     default_inlinks_depth: i32,
 ) -> anyhow::Result<FolderScopeProjection> {
-    let (collection, selected_configs) =
-        selected_folder_configs(configs, entry_bundle_node_id)?;
+    let (collection, selected_configs) = selected_folder_configs(configs, entry_bundle_node_id)?;
     let selected_roots: Vec<String> = selected_configs
         .iter()
         .map(|config| config.source_graph_subdirectory().unwrap_or("").to_string())
@@ -256,11 +257,18 @@ pub fn build_folder_scope_projection(
         materialized_folders.insert(root.clone());
     }
 
-    for config in configs.iter().filter(|config| matches!(config, BundleNodeConfig::Folder { .. })) {
+    for config in configs
+        .iter()
+        .filter(|config| matches!(config, BundleNodeConfig::Folder { .. }))
+    {
         let locator = config.source_graph_subdirectory().unwrap_or("");
         for root_index in selected_root_indexes_for_locator(locator, &selected_roots) {
             if existing_directories.contains(locator) {
-                materialize_chain(&mut materialized_folders, &selected_roots[root_index], locator);
+                materialize_chain(
+                    &mut materialized_folders,
+                    &selected_roots[root_index],
+                    locator,
+                );
             }
         }
     }
@@ -268,21 +276,17 @@ pub fn build_folder_scope_projection(
     let mut contained_files: Vec<FileBundleNode> = supported_files
         .iter()
         .filter(|file| {
-            !selected_root_indexes_for_locator(
-                &file.source_graph_subdirectory,
-                &selected_roots,
-            )
-            .is_empty()
+            !selected_root_indexes_for_locator(&file.source_graph_subdirectory, &selected_roots)
+                .is_empty()
         })
         .cloned()
         .collect();
     contained_files.sort_by_key(|file| file.bundle_node_key());
     contained_files.dedup_by_key(|file| file.bundle_node_key());
     for file in &contained_files {
-        for root_index in selected_root_indexes_for_locator(
-            &file.source_graph_subdirectory,
-            &selected_roots,
-        ) {
+        for root_index in
+            selected_root_indexes_for_locator(&file.source_graph_subdirectory, &selected_roots)
+        {
             materialize_chain(
                 &mut materialized_folders,
                 &selected_roots[root_index],
@@ -331,7 +335,8 @@ pub fn build_folder_scope_projection(
     let entry_key = collection
         .map(BundleNodeConfig::bundle_node_key)
         .unwrap_or_else(|| selected_configs[0].bundle_node_key());
-    let mut paths: HashMap<String, Vec<String>> = HashMap::from([(entry_key.clone(), vec![entry_key])]);
+    let mut paths: HashMap<String, Vec<String>> =
+        HashMap::from([(entry_key.clone(), vec![entry_key])]);
     let mut queue: VecDeque<String> = paths.keys().cloned().collect();
     while let Some(source) = queue.pop_front() {
         let source_path = paths.get(&source).cloned().unwrap_or_default();
@@ -360,7 +365,10 @@ pub fn build_folder_scope_projection(
             member_bundle_node_ids: collection.member_bundle_node_ids().map(<[String]>::to_vec),
             effective_blacklisting_bundle_node_id: None,
             effective_folder_policy_bundle_node_id: None,
-            path: paths.get(&collection.bundle_node_key()).cloned().unwrap_or_default(),
+            path: paths
+                .get(&collection.bundle_node_key())
+                .cloned()
+                .unwrap_or_default(),
         });
     }
     for locator in &folder_locators {
@@ -400,10 +408,14 @@ pub fn build_folder_scope_projection(
         }
         let policy = most_specific_folder_config(configs, &file.source_graph_subdirectory);
         if let Some(policy) = policy {
-            effective_policy_bundle_node_ids.insert(key.clone(), policy.bundle_node_id().to_string());
+            effective_policy_bundle_node_ids
+                .insert(key.clone(), policy.bundle_node_id().to_string());
         }
         seeds.push(MultiSeed {
-            structural_path: paths.get(&key).cloned().unwrap_or_else(|| vec![key.clone()]),
+            structural_path: paths
+                .get(&key)
+                .cloned()
+                .unwrap_or_else(|| vec![key.clone()]),
             file,
             outlinks_depth: policy
                 .and_then(BundleNodeConfig::outlinks_depth)
@@ -488,7 +500,8 @@ mod tests {
         assert!(projection
             .structural_nodes
             .iter()
-            .any(|node| node.bundle_node_key == "folder:Projects/Sub/Deep" && node.bundle_node_id.is_none()));
+            .any(|node| node.bundle_node_key == "folder:Projects/Sub/Deep"
+                && node.bundle_node_id.is_none()));
         assert!(projection.structural_edges.iter().any(|edge| {
             edge.source == "collection:c1b2c3d4e5f6"
                 && edge.target == "folder:Projects/Sub"
@@ -534,14 +547,16 @@ mod tests {
             *outlinks_depth = Some(2);
         }
         let mut nested = folder("Blocked", "Projects/Blocked", "b1b2c3d4e5f6", "blacklist");
-        if let BundleNodeConfig::Folder { outlinks_depth, inlinks_depth, .. } = &mut nested {
+        if let BundleNodeConfig::Folder {
+            outlinks_depth,
+            inlinks_depth,
+            ..
+        } = &mut nested
+        {
             *outlinks_depth = Some(9);
             *inlinks_depth = Some(3);
         }
-        let directories = HashSet::from([
-            "Projects".to_string(),
-            "Projects/Blocked".to_string(),
-        ]);
+        let directories = HashSet::from(["Projects".to_string(), "Projects/Blocked".to_string()]);
         let projection = build_folder_scope_projection(
             &[selected, nested],
             "p1b2c3d4e5f6",
