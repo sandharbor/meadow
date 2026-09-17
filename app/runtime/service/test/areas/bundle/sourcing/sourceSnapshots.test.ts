@@ -52,6 +52,42 @@ async function acceptAllMoves() {
 }
 
 describe('source snapshots with the shared big graph', () => {
+  it('returns candidate traversal provenance from captured sources without changing the accepted graph', async () => {
+    // Given a saved two-page graph, a later incoming link extends the candidate.
+    source = path.join(temporary, 'traversal-source');
+    fs.mkdirSync(source);
+    const configPath = path.join(bundle, 'config/bundle_config.yaml');
+    const config = YAML.parse(fs.readFileSync(configPath, 'utf8'));
+    fs.writeFileSync(configPath, YAML.stringify({ ...config, sourceDirectory: source, defaultOutlinksDepth: 2, defaultInlinksDepth: 2 }));
+    fs.writeFileSync(path.join(bundle, 'config/bundle_node_config.yaml'), YAML.stringify({ nodes: [{
+      bundleNodeKind: 'file', fileType: 'md', bundleNodeName: 'Start', sourceGraphSubdirectory: '',
+      bundleNodeId: config.entryBundleNodeId, listType: 'whitelist',
+    }] }));
+    fs.writeFileSync(path.join(source, 'Start.md'), '[[Bridge]]');
+    fs.writeFileSync(path.join(source, 'Bridge.md'), 'The bridge');
+    const state = await initializeSourcing(bundle);
+    fs.writeFileSync(path.join(source, 'Incoming.md'), '[[Bridge]]');
+    const captured = await scanSourceChanges(bundle);
+    // Subsequent live changes must not leak into details for the reviewed capture.
+    fs.writeFileSync(path.join(source, 'Incoming.md'), '[[Live only]]');
+    fs.writeFileSync(path.join(source, 'Live only.md'), 'Not captured');
+    const pending = await sourcingReview(bundle);
+    expect(pending.reviewToken).toBe(captured.reviewToken);
+    const route = pending.changes.find(item => item.path === 'Incoming.md')!.route;
+    expect(route).toEqual(['Start.md', 'Bridge.md', 'Incoming.md']);
+    const graph = pending.traversalGraphs!.candidate!;
+    expect(graph.snapshotId).toBe(pending.candidate!.id);
+    expect(graph.nodes.map(node => node.bundleNodeKey).sort()).toEqual([...route!].sort());
+    expect(graph.nodes.find(node => node.bundleNodeKey === 'Incoming.md')).toMatchObject({
+      path: route, remaining_depth: 0, remaining_inlinks_depth: 0, traversal_details: { link_type: 'inlink' },
+    });
+    expect(graph.edges).toEqual(expect.arrayContaining([expect.objectContaining({ source: 'Incoming.md', target: 'Bridge.md' })]));
+    expect(pending.traversalGraphs!.accepted!.snapshotId).toBe(state.acceptedId);
+    expect(pending.traversalGraphs!.accepted!.nodes.some(node => node.bundleNodeKey === 'Incoming.md')).toBe(false);
+    expect(loadSourceSnapshot(bundle, state.acceptedId).files['Incoming.md']).toBeUndefined();
+    expect(loadSourcingState(bundle)!.acceptedId).toBe(state.acceptedId);
+  });
+
   it.each([true, false])('tracks only reviewed additions according to the saved bundle preference %s', async trackNewPages => {
     await initializeSourcing(bundle);
     const initialConfigs = loadSourceNodeConfigs(bundle);

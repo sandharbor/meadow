@@ -8,6 +8,9 @@ import { SourceSnapshotsModal } from './SourceSnapshotsModal.js';
 import { MoveTraversal } from './MoveTraversal.js';
 import { OrphanReview } from './OrphanReview.js';
 import { FileRoute } from './SourceFileRoute.js';
+import { useSourceTraversal } from './useSourceTraversal.js';
+import TraversalPathDetailsModal from '../../../../shared/components/TraversalPathDetailsModal.js';
+import type { Graph } from '../../../../../../../contracts/types/graph.js';
 import { isSourceImage, SourceImagePreview, SourceImageComparison, type SourceImageUrl } from './SourceImagePreview.js';
 import { SourceChangeCount, SourcePath } from './SourceReviewPresentation.js';
 import DiffView from '../../../../../shared_components/ConfigFileExplorer/DiffView.js';
@@ -34,7 +37,7 @@ function ContentComparison({ comparison, imageUrl }: { comparison: Comparison; i
 }
 
 
-function SourceChangeRow({ change, loadComparison, imageUrl }: { imageUrl: SourceImageUrl; change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
+function SourceChangeRow({ change, loadComparison, imageUrl, graph, onTraversalDetails }: { graph?: Graph; onTraversalDetails?: () => void; imageUrl: SourceImageUrl; change: SourcingReview['changes'][number]; loadComparison: () => Promise<Comparison> }) {
   const contentId = useId();
   const [expanded, setExpanded] = useState(false);
   const [comparison, setComparison] = useState<Comparison | null>(null);
@@ -52,7 +55,8 @@ function SourceChangeRow({ change, loadComparison, imageUrl }: { imageUrl: Sourc
   if (route.length && route.at(-1) !== change.path) route.push(change.path);
   if (change.kind === 'added' && isSourceImage(change.path)) return <div className="ml-3 flex items-center gap-2 py-2.5 text-xs text-neutral-500">
     <span className="w-28 shrink-0">Added</span><SourcePath value={change.path} />
-    <SourceImagePreview url={imageUrl(change.path, 'after')} filename={change.path} route={route} />
+    <SourceImagePreview url={imageUrl(change.path, 'after')} filename={change.path} route={route} graph={graph} />
+    {onTraversalDetails && <button type="button" className="text-main-700 underline" aria-label={`Traversal details for ${change.path}`} onClick={onTraversalDetails}>Details</button>}
   </div>;
   return <details className="py-2.5 text-sm text-neutral-500" onToggle={event => void toggle(event.currentTarget.open)}>
     <summary className="ml-3 cursor-pointer rounded text-xs hover:bg-neutral-50 [list-style-position:outside]" aria-label={`Details ${change.path}`} aria-expanded={expanded} aria-controls={contentId}>
@@ -62,7 +66,7 @@ function SourceChangeRow({ change, loadComparison, imageUrl }: { imageUrl: Sourc
       </span>
     </summary>
     <div id={contentId} hidden={!expanded}>
-      {change.kind === 'added' && route.length > 0 && <div className="mt-3 text-xs text-neutral-500">Reached through<FileRoute paths={route} /></div>}
+      {change.kind === 'added' && route.length > 0 && <div className="mt-3 text-xs text-neutral-500">Reached through · Candidate source<FileRoute paths={route} graph={graph} onDetails={onTraversalDetails} /></div>}
       {loading && <p role="status" className="mt-3 flex items-center gap-2 text-xs text-neutral-500"><Spinner />Loading comparison</p>}
       {error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}
       {comparison && <ContentComparison comparison={comparison} imageUrl={imageUrl} />}
@@ -79,6 +83,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   bundleSlug: string; hasDraftChanges: boolean; onAccepted: () => void;
 }) {
   const [review, setReview] = useState<SourcingReview | null>(null);
+  const traversal = useSourceTraversal(review, bundleSlug);
   const [open, setOpen] = useState(false);
   useEffect(() => { if (review) onPendingChanges?.(Boolean(review.candidate)); }, [review, onPendingChanges]);
   const [busy, setBusy] = useState(true);
@@ -95,7 +100,8 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const [showAllChanges, setShowAllChanges] = useState(false);
   const [trackNewPages, setTrackNewPages] = useState(true);
   const trackNewPagesHintId = useId();
-  const closeReview = useCallback(() => setOpen(false), []);
+  const closeTraversal = traversal.close;
+  const closeReview = useCallback(() => { closeTraversal(); setOpen(false); }, [closeTraversal]);
   const endpoint = `bundles/${encodeURIComponent(bundleSlug)}/sourcing`;
 
   const request = useCallback(async (suffix = '', body?: unknown) => {
@@ -219,7 +225,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
         : <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded border border-neutral-300 bg-neutral-50 px-3 py-1 font-medium text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 hover:text-neutral-800" onClick={() => void scan(true)}>Refresh sources{backgroundProgress}</button>}
       {error && !open && <span role="alert" title={error} className="text-red-700">Source update failed<span className="sr-only">: {error}</span></span>}
     </div>
-    {open && createPortal(<Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus className="w-full max-w-3xl" footer={
+    {open && createPortal(<Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus={!traversal.details} className="w-full max-w-3xl" footer={
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button className="text-xs text-main-700 hover:underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void scan(true)}>{busy || backgroundBusy ? 'Checking…' : 'Check again'}</button>
         <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.' : ''}</p>
@@ -247,7 +253,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
                       <span>Same page <span className="text-neutral-500">— keep its identity and settings</span>{moves.length > 1 && <span className="mt-1 block text-xs [overflow-wrap:anywhere]">{move.newPath}</span>}</span>
                     </label>
                     <p className="pl-5">{move.evidence.join(' · ')}</p>
-                    <MoveTraversal move={move} />
+                    <MoveTraversal move={move} graphs={traversal.graphs} onDetails={traversal.show} />
                     {move.contentChanged && <button className="ml-5 text-main-700 hover:underline" onClick={() => void inspect(move.oldPath, move.newPath)}>Compare content{moves.length > 1 && <span className="sr-only">: {move.newPath}</span>}</button>}
                     {comparison?.beforePath === move.oldPath && comparison.afterPath === move.newPath && <ContentComparison comparison={comparison} imageUrl={imageUrl} />}
                   </div>)}
@@ -268,7 +274,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
               </span>
             </div>}
           </div>
-          <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} loadComparison={async () => {
+          <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} graph={traversal.graphs.candidate} onTraversalDetails={traversal.graphs.candidate?.getNode(change.path)?.path?.length ? () => traversal.show('candidate', change.path) : undefined} loadComparison={async () => {
             const query = new URLSearchParams({ beforeId: review!.accepted.id, afterId: review!.candidate!.id, beforePath: change.path, afterPath: change.path });
             return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
           }} />)}</div>
@@ -278,5 +284,6 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
 
       </div>
     </Modal>, document.body)}
+    {open && traversal.details && createPortal(<TraversalPathDetailsModal isOpen onClose={traversal.close} {...traversal.details} manageFocus />, document.body)}
   </>;
 }

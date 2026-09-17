@@ -5,6 +5,7 @@ import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/
 import { loadTrackingRecords } from '../../../../shared/bundle-node/trackingRecords.js';
 import { diagnoseOrphanConnection } from './orphanDiagnosis.js';
 import { findGroupedSourceMoves } from './sourceMoveGroups.js';
+import { sourceTraversalGraph } from './sourceTraversalGraph.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 
 import fs from 'node:fs';
@@ -236,6 +237,11 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
   const orphanPaths = new Set(orphans.map(orphan => orphan.path));
   const distinctChanges = changes.filter(change => change.kind !== 'missing' || !orphanPaths.has(change.path));
   return {
+    traversalGraphs: {
+      accepted: sourceTraversalGraph(accepted.id, graph, moves.map(move => move.previousRoute)),
+      ...(candidate && { candidate: sourceTraversalGraph(candidate.id, candidateGraph,
+        [...moves.map(move => move.currentRoute), ...distinctChanges.map(change => change.route ?? [])]) }),
+    },
     trackNewPages: loadSourceBundleConfig(bundleDirectory).trackNewPages ?? true,
     accepted: state.history.find(item => item.id === accepted.id) ?? snapshotSummary(accepted),
     ...(candidate && { candidate: snapshotSummary(candidate) }), moves, changes: distinctChanges,

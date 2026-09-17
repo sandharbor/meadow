@@ -15,22 +15,25 @@ limitations under the License.
 */
 
 import React from 'react';
-import Modal from '../../../../shared/components/Modal';
-import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
-import { Graph } from '../../../../../../../contracts/types/graph';
+import Modal from './Modal.js';
+import { IBundleNode } from '../../../../../contracts/types/IBundleNode';
+import { Graph } from '../../../../../contracts/types/graph';
+import { traversalLinkType, type TraversalLinkType } from '../utils/traversalLinkType.js';
 
 interface TraversalPathDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedNode: IBundleNode;
   graph: Graph;
+  addedNodeKeys?: ReadonlySet<string>;
+  manageFocus?: boolean;
 }
 
 type DepthEvent = 'set_first_time' | 'overridden' | 'inherited';
 
 interface StepInfo {
   node: IBundleNode;
-  linkType: 'start' | 'outlink' | 'inlink' | 'bidirectional' | 'directoryContainment' | 'collectionMembership';
+  linkType: TraversalLinkType;
   outlinksDepthEvent: DepthEvent;
   outlinksDepthValue: number | undefined;
   outlinksDepthInherited: number | undefined;
@@ -39,8 +42,8 @@ interface StepInfo {
   inlinksDepthInherited: number | undefined;
   remainingDepth: number;
   remainingInlinksDepth: number;
-  isSemanticSeed: boolean;
   effectivePolicyName?: string;
+  hasDifferentRecordedPath: boolean;
 }
 
 function getDepthInfo(
@@ -64,6 +67,7 @@ const LinkConnector: React.FC<{ linkType: Exclude<StepInfo['linkType'], 'start'>
     bidirectional: { arrow: '↕', label: 'bidirectional' },
     directoryContainment: { arrow: '↓', label: 'contained in folder' },
     collectionMembership: { arrow: '↓', label: 'selected folder' },
+    unknown: { arrow: '·', label: 'direction unavailable' },
   };
   const { arrow, label } = labels[linkType];
 
@@ -103,7 +107,7 @@ const DepthBadge: React.FC<{
           <span className={`flex items-center gap-1 ${overrideBgClass} px-2 py-0.5 rounded-md border ${overrideBorderClass}`}>
             <span className={`text-[10px] font-semibold uppercase tracking-wider ${accentClass}`}>override</span>
             {inheritedFrom !== undefined && (
-              <span className="text-xs text-neutral-400 line-through decoration-2">{inheritedFrom}</span>
+              <span className="text-xs text-neutral-600">{inheritedFrom}</span>
             )}
             <span className={`${accentClass} text-sm`}>→</span>
             <span className={`text-sm font-bold ${accentClass}`}>
@@ -126,11 +130,24 @@ const DepthBadge: React.FC<{
   );
 };
 
+function AddedTraversalBadge() {
+  const helpId = React.useId();
+  return <span className="group relative inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+    <span>Added</span>
+    <button type="button" aria-label="About added pages" aria-describedby={helpId} className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-emerald-600 text-[9px] leading-none">?</button>
+    <span id={helpId} role="tooltip" className="pointer-events-none invisible fixed z-[9999] -ml-2 w-64 max-w-[calc(100vw-3rem)] -translate-x-full rounded border border-neutral-200 bg-white p-3 text-xs font-normal text-neutral-700 opacity-0 shadow-lg group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+      This page is newly included in the candidate snapshot.
+    </span>
+  </span>;
+}
+
 const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
   isOpen,
   onClose,
   selectedNode,
   graph,
+  addedNodeKeys,
+  manageFocus = false,
 }) => {
   if (!selectedNode.path || selectedNode.path.length === 0) {
     return null;
@@ -154,14 +171,7 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
       );
 
       const previousKey = selectedNode.path?.[index - 1];
-      const incomingEdge = previousKey
-        ? graph.getOutgoingEdges(previousKey).find(edge => edge.target === bundleNodeKey)
-        : undefined;
-      const linkType = index === 0
-        ? 'start'
-        : incomingEdge?.bundleEdgeKind !== 'semanticLink'
-          ? incomingEdge?.bundleEdgeKind ?? 'outlink'
-          : details?.link_type ?? 'outlink';
+      const linkType = traversalLinkType(graph, previousKey, bundleNodeKey);
       const effectivePolicyName = node.effectiveFolderPolicyBundleNodeId
         ? graph.getAllNodes().find(candidate => candidate.bundleNodeId === node.effectiveFolderPolicyBundleNodeId)?.bundleNodeName
         : undefined;
@@ -176,10 +186,9 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
         inlinksDepthInherited: inlinksInfo.inheritedFrom,
         remainingDepth: node.remaining_depth,
         remainingInlinksDepth: node.remaining_inlinks_depth ?? 0,
-        isSemanticSeed: node.bundleNodeKind === 'file'
-          && (linkType === 'directoryContainment' || linkType === 'collectionMembership' || index === 0)
-          && details?.link_type === 'start',
         effectivePolicyName,
+        hasDifferentRecordedPath: Boolean(node.path && (node.path.length !== index + 1
+          || node.path.some((key, step) => key !== selectedNode.path?.[step]))),
       };
     })
     .filter((s): s is StepInfo => s !== null);
@@ -189,13 +198,10 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Traversal Path"
+      manageFocus={manageFocus}
       className="w-4/5 max-w-3xl max-h-[85vh]"
     >
       <div className="flex flex-col h-full">
-        <div className="mb-4 text-xs text-neutral-500">
-          How Meadow reached <span className="font-medium text-neutral-700">{selectedNode.bundleNodeName}</span> through selected-folder structure and seeded semantic traversal.
-        </div>
-
         <div className="flex-1 overflow-y-auto pr-2">
           {steps.map((step, index) => (
             <React.Fragment key={step.node.bundleNodeKey}>
@@ -224,14 +230,10 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
 
                   {/* Badges */}
                   <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
+                    {addedNodeKeys?.has(step.node.bundleNodeKey) && <AddedTraversalBadge />}
                     {step.linkType === 'start' && (
                       <span className="text-[10px] uppercase tracking-wider text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded">
                         start
-                      </span>
-                    )}
-                    {step.isSemanticSeed && (
-                      <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                        semantic seed
                       </span>
                     )}
                     {step.node.isFrontierImageExtension && (
@@ -252,12 +254,14 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                   </div>
                 )}
 
-                {step.node.bundleNodeKind === 'file' && (
+                {step.node.bundleNodeKind === 'file' && step.effectivePolicyName && (
                   <div className="mb-2 rounded bg-emerald-50 px-2.5 py-1.5 text-[11px] text-emerald-800">
-                    Effective folder policy: {step.effectivePolicyName ?? 'bundle defaults'}.
-                    {step.isSemanticSeed ? ' Structural steps cost zero; semantic budgets begin here.' : ''}
+                    Folder policy: {step.effectivePolicyName}.
                   </div>
                 )}
+                {step.hasDifferentRecordedPath && <p className="mb-2 text-[11px] text-neutral-600">
+                  Also reached through another path. The depth values below come from this page’s separately recorded route.
+                </p>}
                 {step.node.bundleNodeKind === 'file' && <div className="flex flex-col gap-1">
                   <DepthBadge
                     label="outlinks"

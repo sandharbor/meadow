@@ -20,7 +20,7 @@ import {
   isUntrackableFrontierNode,
   type IBundleNode,
 } from '../../../../../../../contracts/types/IBundleNode';
-import TraversalPathDetailsModal from './TraversalPathDetailsModal';
+import TraversalPathDetailsModal from '../../../../shared/components/TraversalPathDetailsModal.js';
 import BundleNodeLinksModal from './BundleNodeLinksModal';
 import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';

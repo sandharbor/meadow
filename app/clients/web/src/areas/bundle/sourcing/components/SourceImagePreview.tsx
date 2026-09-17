@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage.js';
 import { FileRoute } from './SourceFileRoute.js';
+import type { Graph } from '../../../../../../../contracts/types/graph.js';
 
 export const isSourceImage = (filename: string) => /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(filename);
 export type SourceImageUrl = (filename: string, side: 'before' | 'after') => string;
 
-export function SourceImagePreview({ url, filename, route }: { url: string; filename: string; route?: string[] }) {
+export function SourceImagePreview({ url, filename, route, graph }: { url: string; filename: string; route?: string[]; graph?: Graph }) {
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
   const show = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -20,7 +21,7 @@ export function SourceImagePreview({ url, filename, route }: { url: string; file
     </button>
     {position && createPortal(<div role="tooltip" className="pointer-events-none fixed z-[9999] w-80 max-w-[calc(100vw-1rem)] rounded border border-neutral-200 bg-white p-3 text-xs text-neutral-700 shadow-lg" style={{ left: position.left, top: Math.min(position.top, Math.max(8, window.innerHeight - 370)) }}>
       <AuthenticatedImage sourcePath={url} alt={filename} className="h-56 w-full object-contain" />
-      {Boolean(route?.length) && <div className="mt-2">Reached through<FileRoute paths={route!} /></div>}
+      {Boolean(route?.length) && <div className="mt-2">Reached through · Candidate source<FileRoute paths={route!} graph={graph} /></div>}
     </div>, document.body)}
   </>;
 }

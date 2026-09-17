@@ -1,5 +1,15 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import type { SerializableBundleNode } from './IBundleNode.js';
+import type { IEdge } from './graph.js';
+
+/** Only the nodes and connections needed to explain this review's routes. */
+export interface SourceTraversalGraph {
+  snapshotId: string;
+  nodes: SerializableBundleNode[];
+  edges: IEdge[];
+}
+
 export interface SourceSnapshotSummary {
   id: string;
   capturedAt: string;
@@ -46,6 +56,8 @@ export interface SourceOrphanExplanation {
 }
 
 export interface SourcingReview {
+  /** Traversals evaluated separately against each snapshot, using the reviewed configuration. */
+  traversalGraphs?: { accepted?: SourceTraversalGraph; candidate?: SourceTraversalGraph };
   /** Bundle preference for tracking additions on acceptance; defaults to true. */
   trackNewPages?: boolean;
   accepted: SourceSnapshotSummary;
