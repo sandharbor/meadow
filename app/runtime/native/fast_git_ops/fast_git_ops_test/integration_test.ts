@@ -267,6 +267,40 @@ test('source snapshots supply their own reflog identity without modifying Git co
   t.end();
 });
 
+test('source snapshots round-trip large and small blobs through native materialization and Git', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-source-blob-roundtrip-'));
+  const repo = path.join(root, 'repo');
+  const source = path.join(root, 'source');
+  const large = fs.readFileSync(path.resolve(import.meta.dirname,
+    '../../../../shared_data/source_graphs/meadow-test-bundles-data/t006/t006 --- too-big.png'));
+  const files = { 'before.md': Buffer.from('Before the large asset.'), 'large.png': large, 'nested/after.md': Buffer.from('After the large asset.') };
+  let passed = false;
+  try {
+    fs.mkdirSync(path.join(source, 'nested'), { recursive: true });
+    execFileSync('git', ['init', repo], { stdio: 'pipe' });
+    for (const [filename, bytes] of Object.entries(files)) fs.writeFileSync(path.join(source, filename), bytes);
+    const input = JSON.stringify(Object.fromEntries(Object.entries(files).map(([filename, bytes]) =>
+      [filename, { digest: crypto.createHash('sha256').update(bytes).digest('hex'), size: bytes.length }])));
+    let parent: string | undefined;
+    for (let captureNumber = 0; captureNumber < 2; captureNumber++) {
+      const capture = JSON.parse(execFileSync(FAST_GIT_OPS_BINARY, ['source-snapshot', repo, source,
+        'refs/heads/meadow-sources/blob-roundtrip', ...(parent ? ['--parent', parent] : [])], { input, encoding: 'utf8' }));
+      const destination = path.join(root, `materialized-${captureNumber}`);
+      execFileSync(FAST_GIT_OPS_BINARY, ['materialize-source-snapshot', repo, capture.commit, destination]);
+      execFileSync('git', ['-C', repo, 'fsck', '--full', '--no-dangling'], { stdio: 'pipe' });
+      for (const [filename, bytes] of Object.entries(files)) {
+        t.deepEqual(fs.readFileSync(path.join(destination, filename)), bytes, `native round-trip ${captureNumber}: ${filename}`);
+        t.deepEqual(execFileSync('git', ['-C', repo, 'show', `${capture.commit}:${filename}`], { maxBuffer: large.length + 1024 }), bytes,
+          `Git round-trip ${captureNumber}: ${filename}`);
+      }
+      parent = capture.commit;
+    }
+    passed = true;
+  } catch (error) { t.fail(`${String(error)}; test repository retained at ${root}`); }
+  finally { if (passed) fs.rmSync(root, { recursive: true, force: true }); }
+  t.end();
+});
+
 test('fast_git_ops binary exists', (t) => {
   t.ok(fs.existsSync(FAST_GIT_OPS_BINARY), `Binary exists at ${FAST_GIT_OPS_BINARY}`);
   t.end();

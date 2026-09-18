@@ -41,10 +41,13 @@ beforeEach(() => {
   config.sourceDirectory = source;
   fs.writeFileSync(filename, YAML.stringify(config));
 });
-afterEach(() => {
+afterEach(({ task }) => {
   if (priorHome === undefined) delete process.env.MEADOW_HOME_DIRECTORY_OVERRIDE;
   else process.env.MEADOW_HOME_DIRECTORY_OVERRIDE = priorHome;
-  fs.rmSync(temporary, { recursive: true, force: true });
+  // Preserve the actual Git objects when a snapshot fails; deleting the home
+  // would make intermittent capture/materialization errors impossible to inspect.
+  if (task.result?.state === 'fail') console.error(`Failed source-snapshot test home retained at ${temporary}`);
+  else fs.rmSync(temporary, { recursive: true, force: true });
 });
 function change(changeId: string) { return applySourceChange({ projectRoot, sourceGraphsDir: path.dirname(source), sourceGraph, changeId }); }
 
