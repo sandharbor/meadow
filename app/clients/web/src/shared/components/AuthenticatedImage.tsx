@@ -35,15 +35,18 @@ export function AuthenticatedImage({
   onError,
   ...imageProps
 }: AuthenticatedImageProps) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [loadedImage, setLoadedImage] = useState<{ sourcePath: string; objectUrl: string } | null>(null);
   const [errored, setErrored] = useState(false);
+  // Remove the old <img> during render, before the previous effect revokes its
+  // URL. Clearing URL state inside the new effect happens after that cleanup.
+  const objectUrl = loadedImage?.sourcePath === sourcePath ? loadedImage.objectUrl : null;
 
   useEffect(() => {
     const abortController = new AbortController();
     let generatedObjectUrl: string | null = null;
     let cancelled = false;
 
-    setObjectUrl(null);
+    setLoadedImage(null);
     setErrored(false);
 
     void (async () => {
@@ -55,7 +58,7 @@ export function AuthenticatedImage({
         const blob = await response.blob();
         if (cancelled) return;
         generatedObjectUrl = URL.createObjectURL(blob);
-        setObjectUrl(generatedObjectUrl);
+        setLoadedImage({ sourcePath, objectUrl: generatedObjectUrl });
       } catch (error) {
         if (cancelled || (error instanceof DOMException && error.name === 'AbortError')) return;
         setErrored(true);

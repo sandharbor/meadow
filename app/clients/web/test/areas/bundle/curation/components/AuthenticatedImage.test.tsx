@@ -96,4 +96,24 @@ describe('AuthenticatedImage', () => {
       'error',
     );
   });
+
+  it('removes the old image before revoking its URL when the source view changes', async () => {
+    mockedApiRequest.mockResolvedValueOnce(new globalThis.Response(
+      new globalThis.Blob(['captured image'], { type: 'image/png' }),
+      { status: 200 },
+    )).mockImplementation(() => new Promise(() => {}));
+    const stillRenderedWhenRevoked: boolean[] = [];
+    vi.mocked(globalThis.URL.revokeObjectURL).mockImplementation(url => {
+      stillRenderedWhenRevoked.push(Array.from(document.images).some(image => image.src === url));
+    });
+    const sourcePath = 'bundles/example/generation/source-file/flower.png';
+    const { rerender, unmount } = render(<AuthenticatedImage sourcePath={sourcePath} alt="flower" />);
+    await screen.findByRole('img', { name: 'flower' });
+
+    rerender(<AuthenticatedImage sourcePath={`${sourcePath}?sourceView=live`} alt="flower" />);
+
+    expect(stillRenderedWhenRevoked).toEqual([false]);
+    expect(screen.getByRole('status', { name: 'Loading flower' })).toBeInTheDocument();
+    unmount();
+  });
 });

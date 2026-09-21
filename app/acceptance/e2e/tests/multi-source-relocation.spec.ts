@@ -36,6 +36,7 @@ test('Multi-source relocation preserves captured pages and accepts the repaired 
   const relocated = path.join(testServer.sourceGraphsDir, 'multi-source/research-relocated');
   await sources.setDirectory('research', relocated);
   await sources.stage();
+  await editor.sourceReview.expectReadyToAccept();
   expect(fs.readFileSync(configFile, 'utf8')).toBe(beforeConfig);
   expect(fs.readFileSync(nodesFile, 'utf8')).toBe(beforeNodes);
   await addKeyFrame(sourceSnapshot);
