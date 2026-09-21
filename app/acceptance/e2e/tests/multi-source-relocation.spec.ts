@@ -40,16 +40,18 @@ test('Multi-source relocation preserves captured pages and accepts the repaired 
   expect(fs.readFileSync(nodesFile, 'utf8')).toBe(beforeNodes);
   await addKeyFrame(sourceSnapshot);
   await snapshot('location repair is staged while accepted configuration remains intact');
-  await Promise.all([
+  const [draftStatus] = await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/curation/bundle-config-draft-status') && response.ok()),
     page.waitForResponse(response => response.url().includes('/curation/bundle-config') && response.ok()),
     page.waitForResponse(response => response.url().includes('/obsidian-info') && response.ok()),
     editor.sourceReview.accept(),
   ]);
   expect(YAML.parse(fs.readFileSync(configFile, 'utf8')).sources.find((source: { id: string }) => source.id === 'source000002').directory).toBe(relocated);
   expect(fs.readFileSync(nodesFile, 'utf8')).toBe(beforeNodes);
-  // A reload cancels browser fetches before React can run effect cleanup.
-  // Let the accepted graph's dependent configuration reads finish first.
-  await page.waitForLoadState('networkidle');
+  // The graph's configuration read starts a dependent draft-status request.
+  // Finish that request before reload; networkidle may still describe the
+  // earlier document load when this request has only just been scheduled.
+  await draftStatus.finished();
   await page.reload();
   await editor.waitForLoad('multi-source-page');
   await editor.waitForSourceCheck();
