@@ -6,7 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, URL } from 'node:url';
-import { applySourceChange, listSourceChangeStatus, loadSourceChanges, materializeSourceGraph } from '../../../../shared_code/shared_dev/sourceChanges.js';
+import { portableFixtureSourceDirectory } from '../../../../shared_code/shared_dev/fixtureSourceLocation.js';
+import { applySourceChange, listSourceChangeStatus, loadSourceChanges, materializeSourceGraph, fixtureSourceGraphs } from '../../../../shared_code/shared_dev/sourceChanges.js';
 
 const projectRoot = fileURLToPath(new URL('../../../../../', import.meta.url));
 const sourceGraph = 'meadow-test-bundles-data';
@@ -94,4 +95,59 @@ test('independent changes compose while overlapping changes report their conflic
   assert.equal(status.find(item => item.id === 'move-nested-page')?.state, 'applied');
   assert.equal(status.find(item => item.id === 'delete-nested-page')?.state, 'conflict');
   assert.equal(status.find(item => item.id === 'delete-linked-section')?.state, 'applied');
+});
+
+function multiSourceSession(t: test.TestContext) {
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-multi-source-changes-')));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const context = { projectRoot, sourceGraphsDir: path.join(temporary, 'source_graphs'), sourceGraph: 'multi-source' };
+  return { ...context, root: materializeSourceGraph(context) };
+}
+
+test('the multi-source home exposes every shared change and isolates each scenario', t => {
+  assert.deepEqual(fixtureSourceGraphs(projectRoot, 'home_fixture_multi_source'), ['multi-source']);
+  const changes = loadSourceChanges(projectRoot, 'multi-source');
+  assert.equal(changes.length, 7);
+  for (const change of changes) {
+    const context = multiSourceSession(t);
+    assert.equal(listSourceChangeStatus(projectRoot, context.sourceGraphsDir, context.sourceGraph).find(item => item.id === change.id)?.state, 'available');
+    applySourceChange({ ...context, changeId: change.id });
+    assert.equal(listSourceChangeStatus(projectRoot, context.sourceGraphsDir, context.sourceGraph).find(item => item.id === change.id)?.state, 'applied');
+    assert.throws(() => applySourceChange({ ...context, changeId: change.id }), /already applied/);
+    assert.ok(fs.existsSync(path.join(projectRoot, 'app/shared_data/source_graphs/multi-source/notes/Start.md')));
+  }
+});
+
+test('directory relocation really disconnects the old root and rejects extra files or occupied destinations', t => {
+  const context = multiSourceSession(t);
+  const bytes = fs.readFileSync(path.join(context.root, 'research/Overview.md'));
+  const extra = path.join(context.root, 'research/independent.md');
+  fs.writeFileSync(extra, 'An independent file must not move silently.');
+  assert.throws(() => applySourceChange({ ...context, changeId: 'relocate-research' }), /starting files/);
+  assert.ok(fs.existsSync(extra));
+  fs.unlinkSync(extra);
+  const destination = path.join(context.root, 'research-relocated');
+  fs.mkdirSync(destination);
+  assert.throws(() => applySourceChange({ ...context, changeId: 'relocate-research' }), /starting files/);
+  fs.rmdirSync(destination);
+  applySourceChange({ ...context, changeId: 'relocate-research' });
+  assert.equal(fs.existsSync(path.join(context.root, 'research')), false);
+  assert.deepEqual(fs.readFileSync(path.join(destination, 'Overview.md')), bytes);
+});
+
+test('a failed relocation journal restores the original root and bytes', t => {
+  const context = multiSourceSession(t);
+  const journal = path.join(context.sourceGraphsDir, '.source-changes.jsonl');
+  fs.mkdirSync(journal);
+  assert.throws(() => applySourceChange({ ...context, changeId: 'relocate-research' }));
+  assert.equal(fs.existsSync(path.join(context.root, 'research-relocated')), false);
+  assert.equal(fs.existsSync(path.join(context.root, 'research/Overview.md')), true);
+});
+
+test('saving fixture paths preserves registered child roots and rejects unsaved relocations', t => {
+  const context = multiSourceSession(t);
+  const authored = path.join(projectRoot, 'app/shared_data/source_graphs');
+  assert.equal(portableFixtureSourceDirectory(path.join(context.root, 'research'), context.sourceGraphsDir, authored), './source_graphs/multi-source/research');
+  assert.throws(() => portableFixtureSourceDirectory(path.dirname(context.sourceGraphsDir), context.sourceGraphsDir, authored), /outside/);
+  assert.throws(() => portableFixtureSourceDirectory(path.join(context.root, 'research-relocated'), context.sourceGraphsDir, authored), /no authored fixture counterpart/);
 });

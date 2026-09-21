@@ -7,6 +7,7 @@ import type { SourceTraversalGraph, SourcingReview } from '../../../../../../../
 function hydrate(source?: SourceTraversalGraph): Graph | undefined {
   if (!source) return undefined;
   const graph = new Graph();
+  graph.sources = source.sources ?? [];
   source.nodes.forEach(node => graph.addNode({ ...node, getIdent: () => node.bundleNodeKey }));
   source.edges.forEach(edge => graph.addEdge(edge));
   return graph;

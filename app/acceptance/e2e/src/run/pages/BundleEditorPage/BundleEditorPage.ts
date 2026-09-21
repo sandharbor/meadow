@@ -258,6 +258,15 @@ export class BundleEditorPage {
     await row.click();
   }
 
+  async expectListViewSourceDirectory(bundleNodeKey: string, directory: string) {
+    const row = this.listViewRowByNodeKey(bundleNodeKey);
+    await this.expect(row.getByRole('cell', { name: directory, exact: true })).toBeVisible();
+  }
+
+  async expectListViewNodeVisible(bundleNodeKey: string, visible: boolean) {
+    await this.expect(this.listViewRowByNodeKey(bundleNodeKey)).toBeVisible({ visible });
+  }
+
   /** Assert that no list-view row with the given exact title exists. */
   async expectListViewRowByExactNameNotPresent(text: string) {
     const row = this.listViewRows.filter({

@@ -1,0 +1,59 @@
+nodespecs:
+  - bundle: multi-source-page
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - source: notes
+            linkPath: /Frontier.md
+            isInGraph: true
+          - linkPath: /Study.md
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: ../notes/Frontier.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../notes/Frontier.html
+                embeddedLinks:
+                  - linkName: Study
+                    linkRelativePath: Study.html
+          - relativeLinkPath: Study.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Study.html
+                embeddedLinks:
+                  - linkName: Overview
+                    linkRelativePath: ../research/Overview.html
+  - bundle: multi-source-mixed
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - source: notes
+            linkPath: /Frontier.md
+            isInGraph: true
+          - linkPath: /Study.md
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: ../notes/Frontier.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../notes/Frontier.html
+                embeddedLinks:
+                  - linkName: Study
+                    linkRelativePath: Study.html
+          - relativeLinkPath: Study.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Study.html
+                embeddedLinks:
+                  - linkName: Overview
+                    linkRelativePath: ../research/Overview.html

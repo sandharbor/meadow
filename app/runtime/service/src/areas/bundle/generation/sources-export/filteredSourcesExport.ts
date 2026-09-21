@@ -18,7 +18,8 @@ import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNod
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { bundleNodeConfigToKey, BundleNodeConfigMap } from '../../../../shared/bundle-node/nodeKeys.js';
-import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+import { runGenerationWorkingGraph } from '../source-material/generationWorkingGraph.js';
+import { prepareGenerationSourceMaterial } from '../source-material/trackedPageContent.js';
 import { loadBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { prepareSrsRenderSourceDirectory } from '../render-source/srsMarkdown.js';
 import { prepareScrubbedSourceDirectory } from '../source-material/sourceScrubbing.js';
@@ -54,9 +55,10 @@ function readBundleNodeConfigMap(bundleNodeConfPath: string): BundleNodeConfigMa
  */
 export async function buildFilteredSourcesExportForBundle(bundleDirectory: string): Promise<string> {
   const bundleConfig = loadBundleConfig(bundleDirectory);
-  const bundleNodeConfPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
+  const prepared = prepareGenerationSourceMaterial(bundleDirectory, { tagsEnabled: false });
+  const bundleNodeConfPath = prepared.bundleNodeConfigPath;
   const bundleNodeConfs = readBundleNodeConfigMap(bundleNodeConfPath);
-  const trackedContentDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
+  const trackedContentDir = prepared.sourceContentDirectory;
   const renderSourceContentDir = BundleConfigPaths.getRenderSourceContentDir(bundleDirectory);
   const legacyRenderSourceContentDir = BundleConfigPaths.getLegacyRenderSourceContentDir(bundleDirectory);
   const scrubbedSourceDir = BundleConfigPaths.getScrubbedSourceContentDir(bundleDirectory);
@@ -92,7 +94,7 @@ export async function buildFilteredSourcesExportForBundle(bundleDirectory: strin
   }>> = new Map();
   if (bundleConfig.entryBundleNodeId && bundleConfig.defaultTraversalBundleNodeId) {
     try {
-      const raw = await runWorkingGraphRaw({
+      const raw = await runGenerationWorkingGraph({
         graphRoot: sourceContentDir,
         bundleNodeConfigPath: bundleNodeConfPath,
         entryBundleNodeId: bundleConfig.entryBundleNodeId,
@@ -102,7 +104,7 @@ export async function buildFilteredSourcesExportForBundle(bundleDirectory: strin
         frontierDepth: 0,
         allowImagesToExtendToFrontier: true,
         allowLowerDepths: false,
-      });
+      }, bundleConfig);
       const output = JSON.parse(raw) as WorkingGraphOutput;
       allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
       for (const node of output.nodes) {
@@ -128,7 +130,7 @@ export async function buildFilteredSourcesExportForBundle(bundleDirectory: strin
     allLinkResolutionMaps
   );
 
-  prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceDir, sourcesExportDir);
+  prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceDir, sourcesExportDir, bundleConfig.sources ? allLinkResolutionMaps : undefined);
 
   return sourcesExportDir;
 }

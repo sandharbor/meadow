@@ -20,6 +20,7 @@ import { isUntrackableFrontierNode } from '../../../../../../../contracts/types/
 import { IFilter } from '../types/filters';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
+import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH } from './ImageHoverPreview';
 import BundleNodeHoverCard from './BundleNodeHoverCard';
 import { computeLabelPlacements } from '../utils/graphSearchLabels';
@@ -858,16 +859,16 @@ const GraphVis: React.FC<GraphVisProps> = ({
                     const filename = isExcalidraw
                       ? `${page.bundleNodeName}.excalidraw.md`
                       : `${page.bundleNodeName}.${page.fileType}`;
-                    const filePath = page.sourceGraphSubdirectory
+                    const filePath = sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory
                       ? `${page.sourceGraphSubdirectory}/${filename}`
-                      : filename;
+                      : filename);
                     setHoveredNode({
                       id: page.bundleNodeKey,
                       x: screenPt.x - containerRect.left,
                       y: screenPt.y - containerRect.top,
                       title: page.bundleNodeName,
                       isImage: isImage && !page.isFrontierNode,
-                      imagePath: isImage && !page.isFrontierNode ? `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(filePath)}` : undefined,
+                      imagePath: isImage && !page.isFrontierNode ? `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(filePath)}${displayGraph.underlyingGraph.sourceContentView === 'live' ? '?sourceView=live' : ''}` : undefined,
                       highlights: page.highlights,
                     });
                   }

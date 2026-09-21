@@ -1,0 +1,51 @@
+nodespecs:
+  - bundle: multi-source-page
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /Start.md
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: ../Start.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../Start.html
+                embeddedLinks:
+                  - linkName: Frontier
+                    linkRelativePath: ../Frontier.html
+  - bundle: multi-source-mixed
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks: []
+        inlinks:
+          - linkPath: /Start.md
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks:
+          - relativeLinkPath: ../Start.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../Start.html
+                embeddedLinks:
+                  - linkName: Frontier
+                    linkRelativePath: ../Frontier.html
+  - bundle: multi-source-omitted
+    sourcing:
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    curation:
+      isTracked: false
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'node:path';
+import { sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import { runSerializedBundleNodeMutation } from '../../../../shared/bundle-node/bundleNodeMutationQueue.js';
 import type { SnapshotTrackingRequest, SnapshotTrackingOutcome, TrackingSensitivity } from '../../../../../../../contracts/types/curationTracking.js';
 import { Graph } from '../../../../../../../contracts/types/graph.js';
@@ -8,14 +9,16 @@ import { applyNodeConfigsToNodes, applySensitiveFromApiData } from '../../../../
 import { serializeWorkingGraphOutput } from '../../../../shared/bundle-graph/workingGraphService.js';
 import { selectEffectivelySensitiveNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
 import { loadCustomFiltersForBundle } from '../../../../shared/custom-filters/customFilterLoader.js';
-import { loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, snapshotGraph } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+import { loadSourceBundleConfig, loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, snapshotGraph } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import { trackBundleNodes } from './bundleTrackingOperations.js';
 
 /** Assess the complete captured graph, including nodes needed by graph-based filter selectors. */
 export async function snapshotTrackingSensitivity(directory: string, snapshotId: string, nodeKeys: string[]): Promise<Record<string, TrackingSensitivity>> {
   if (!nodeKeys.length) return {};
-  const configs = loadSourceNodeConfigs(directory);
-  const output = serializeWorkingGraphOutput(await snapshotGraph(directory, loadSourceSnapshot(directory, snapshotId), configs, 0));
+  const snapshot = loadSourceSnapshot(directory, snapshotId);
+  const context = sourceProposalContext(loadSourceBundleConfig(directory), loadSourceNodeConfigs(directory), loadSourcingState(directory)?.candidateId === snapshotId ? snapshot : undefined);
+  const configs = context.nodes;
+  const output = serializeWorkingGraphOutput(await snapshotGraph(directory, snapshot, configs, 0, false, context.config));
   // Serialized graph data is cached; curation flags belong to this assessment only.
   const nodes = output.nodes.map(node => ({ ...node }));
   applySensitiveFromApiData(nodes);

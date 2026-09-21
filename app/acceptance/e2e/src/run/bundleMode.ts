@@ -18,6 +18,7 @@ export const BUNDLE_MODES = [
   "single-file",
   "single-folder",
   "multiple-folders",
+  "mixed-starts",
 ] as const;
 
 export type BundleMode = (typeof BUNDLE_MODES)[number];

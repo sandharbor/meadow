@@ -156,7 +156,7 @@ router.post('/bundles/:bundleSlug/curation/bundle-config', validateBundleSlug, a
       return configuration;
     }));
   } else {
-    const sourceDirectory = bundleConfig.sourceDirectory;
+    const sourceDirectory = bundleConfig.sourceDirectory ?? bundleConfig.sources?.[0]?.directory;
     if (!sourceDirectory) {
       res.status(409).json({ error: `Bundle '${bundleSlug}' has no source directory` });
       return;

@@ -40,8 +40,8 @@ import { loadAppConfig } from '../../../../../../../shared_code/utils/appConfigU
 import { resolveEffectiveGenerationOptions } from '../../../../../../../shared_code/utils/generationOptionsUtils.js';
 import {
   invalidateWorkingGraphCache,
-  runWorkingGraphRaw,
 } from '../../../../shared/utils/workingGraphUtils.js';
+import { runGenerationWorkingGraph } from '../source-material/generationWorkingGraph.js';
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { IEdge } from '../../../../../../../contracts/types/graph.js';
@@ -97,6 +97,7 @@ import { planBundleRoutes, routeForBundleNode } from './bundleRoutePlanner.js';
 import { canonicalPageFilename, isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { rewriteNativeHtmlUrls } from './nativeHtml.js';
 import { emitVersionAwarenessAssets } from '../versioning/versionAwarenessAssets.js';
+import { sourceOutputDirectory } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -287,7 +288,7 @@ async function loadWorkingGraphData(options: {
     return { breadcrumbPaths, breadcrumbNodeKeysByNodeKey, allLinkResolutionMaps, traversablePageKeys, graphNodes, graphEdges };
   }
 
-  const raw = await runWorkingGraphRaw({
+  const raw = await runGenerationWorkingGraph({
     graphRoot,
     bundleNodeConfigPath,
     entryBundleNodeId: bundleConfig.entryBundleNodeId,
@@ -297,7 +298,7 @@ async function loadWorkingGraphData(options: {
     frontierDepth: 0,
     allowImagesToExtendToFrontier: true,
     allowLowerDepths: false,
-  });
+  }, bundleConfig);
   const output = JSON.parse(raw) as RustOutput;
 
   graphNodes = output.nodes.map(node => {
@@ -354,7 +355,7 @@ export async function generateHtmlForBundle(
     /** Operation-specific destination used by the version lifecycle staging service. */
     outputDirectory: string;
     preview?: boolean;
-    startPage?: { title: string; directory?: string };
+    startPage?: { title: string; directory?: string; sourceId?: string };
     startPagePath?: string; // relative HTML path to prioritize (e.g., "subdir/Page Name.html")
     onStartPageRendered?: (info: { title: string; directory: string; relativeHtmlPath: string }) => void;
     shouldCancel?: () => boolean;
@@ -915,7 +916,7 @@ export async function generateHtmlForBundle(
         if (fs.existsSync(legacySourcesExportOutputDir)) {
           fs.rmSync(legacySourcesExportOutputDir, { recursive: true, force: true });
         }
-        prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, sourcesExportDir);
+        prepareSourcesExportFromScrubbedSourceDirectory(scrubbedSourceContentDirectory, sourcesExportDir, bundleConfig.sources ? allLinkResolutionMaps : undefined);
 
         const sourcesExportOutputDir = path.join(
           assetsDirectory,
@@ -983,6 +984,7 @@ export async function generateHtmlForBundle(
           scrubbedSourceContentDirectory,
           bundleNodeConfigs: bundleNodeConfigsArrayForLinks,
           allLinkResolutionMaps,
+          sourceQualified: Boolean(bundleConfig.sources),
           entryNodeName,
           entrySourceGraphSubdirectory: entryNodeSourceGraphSubdirectory,
           indexSource: openKnowledgeFormatIndexSourceFromBundleConfig(bundleConfig),
@@ -1033,6 +1035,20 @@ export async function generateHtmlForBundle(
 
     // Read the text content.
     const content = fs.readFileSync(pageContentPath, 'utf-8');
+
+    if (bundleConfig.sources) {
+      // Resolved paths retain both the source and file type. Titles are labels,
+      // never identities for backlinks between independently named sources.
+      for (const resolved of Object.values(allLinkResolutionMaps.get(pageKey) ?? {})) {
+        const target = resolved.link_resolved_target_path;
+        if (!target || !/\.(?:md|html|excalidraw)$/i.test(target)) continue;
+        const targetKey = target.includes('/') ? target : `/${target}`;
+        const inlinks = inverseLinks[targetKey] ??= [];
+        if (!inlinks.includes(pageKey)) inlinks.push(pageKey);
+      }
+      pageNameToPage[pageKey] = new Page();
+      continue;
+    }
 
     // Native HTML and SVG use the Rust graph's resolved URL-attribute map.
     // Markdown and Excalidraw retain the richer existing backlink-context
@@ -1184,7 +1200,9 @@ export async function generateHtmlForBundle(
 
   // Determine which page to render first (for fast preview UX)
   const requestedStartTitle = options.startPage?.title;
-  const requestedStartDir = options.startPage?.directory ?? '';
+  const requestedStartDir = options.startPage?.sourceId
+    ? sourceOutputDirectory(bundleConfig, options.startPage.sourceId, options.startPage.directory ?? '')
+    : options.startPage?.directory ?? '';
   const defaultStartTitle = defaultTraversalNode.bundleNodeName;
   const defaultStartDir = defaultTraversalNode.sourceGraphSubdirectory || '';
 

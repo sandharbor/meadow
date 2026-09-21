@@ -67,13 +67,29 @@ export const folderBundles = defineMeadowConcept({
   kind: "entity",
   searchFacet: true,
   appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleCuration],
-  definition: conceptText`A bundle whose initial structure is derived from one selected folder or an ordered collection of folders.`,
+  definition: conceptText`A bundle whose starting structure contains a selected folder, alone or within an ordered collection of files and folders.`,
   mechanics: [
     conceptText`Folder roots drive recursive structural discovery, explicit-root tracking, and generated folder or collection home pages.`,
     conceptText`Creation starts with folder selection. One folder supplies its own home-page title; several folders have a collection home-page title that can be customized separately from Bundle Name.`,
-    conceptText`Each selected folder must be the Notes Root itself or nested within it. Creation checks the selection whenever the folders or root change and remains unavailable until the folders are valid.`,
+    conceptText`Each selected folder must belong to a configured source. Creation checks the selection whenever folders or sources change and remains unavailable until the starting structure is valid.`,
   ],
   interplay: conceptText`${conceptLink(coreConceptIds.folderFilter, "Source Folder Filter")} controls source-folder visibility, while ordinary ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} rules still determine which discovered pages enter the bundle.`,
+});
+
+export const startingSelection = defineMeadowConcept({
+  id: coreConceptIds.startingSelection, name: 'Starting Selection', kind: 'entity', searchFacet: false,
+  appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleSourcing],
+  definition: conceptText`A file or folder in a configured source from which a bundle's traversal begins.`,
+  mechanics: [conceptText`Starting selections are independent of source admission. One page can traverse several sources. Several selections form an ordered collection, and each member begins with its applicable depth budget. Missing required starts require explicit setup repair; Meadow never chooses replacement pages automatically.`],
+  interplay: conceptText`${conceptLink(coreConceptIds.source, 'Sources')} bound the available filesystem inventory; the ${conceptLink(coreConceptIds.collectionNode, 'Collection Node')} groups multiple starting selections.`,
+});
+
+export const collectionNode = defineMeadowConcept({
+  id: coreConceptIds.collectionNode, name: 'Collection Node', kind: 'entity', searchFacet: false,
+  appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleCuration, coreConceptIds.bundleGeneration],
+  definition: conceptText`A generated grouping node with ordered file or folder members and no physical source of its own.`,
+  mechanics: [conceptText`Adding a second starting selection creates a collection without replacing the original page or its durable identity. Membership edges consume no link-depth budget. A reviewed collection may retain a single surviving selection, but cannot be empty or contain another collection. Folder members retain ordinary structural discovery and folder policy semantics.`],
+  interplay: conceptText`Collections group ${conceptLink(coreConceptIds.startingSelection, 'Starting Selections')} and supply a generated home page. They do not admit sources or change parsed-file link semantics.`,
 });
 
 export const multiBundle = defineMeadowConcept({
@@ -111,6 +127,8 @@ export const bundleCollectionConcepts = [
   archived,
   findInBundles,
   folderBundles,
+  startingSelection,
+  collectionNode,
   multiBundle,
   cli,
 ] as const;

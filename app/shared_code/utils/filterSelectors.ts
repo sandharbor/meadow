@@ -22,7 +22,7 @@ limitations under the License.
 import { Graph } from '../../contracts/types/graph.js';
 import { IBundleNode } from '../../contracts/types/IBundleNode.js';
 import { CustomBundleNodeSelectorConfig } from '../../contracts/types/customFilters.js';
-import { nodeIsInFolder } from './folderFilterUtils.js';
+import { nodeMatchesFolderState } from './folderFilterUtils.js';
 import type { BundleNodeKind } from '../../contracts/types/bundleNodeConfig.js';
 import type { FileType } from '../../contracts/types/FileType.js';
 
@@ -226,7 +226,7 @@ export const createFolderNodeSelector = (folderPath: string): INormalBundleNodeS
   select: (graph: Graph) => {
     const selectedNodeKeys = new Set<string>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
-      if (nodeIsInFolder(node.sourceGraphSubdirectory, folderPath)) {
+      if (nodeMatchesFolderState(node, folderPath)) {
         selectedNodeKeys.add(node.bundleNodeKey);
       }
     });

@@ -1,0 +1,85 @@
+nodespecs:
+  - bundle: multi-source-page
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /diagram.svg
+            isInGraph: true
+        inlinks:
+          - linkPath: /Start.md
+            isInGraph: true
+          - linkPath: /diagram.svg
+            isInGraph: true
+          - source: research
+            linkPath: /Report.html
+            isInGraph: true
+          - source: research
+            linkPath: /diagram.svg
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: diagram.svg
+        footerSectionBacklinks:
+          - relativeLinkPath: Start.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Start.html
+                embeddedLinks:
+                  - linkName: research overview
+                    linkRelativePath: ../research/Overview.html
+          - relativeLinkPath: diagram.svg
+            backlinkContexts: []
+          - relativeLinkPath: ../research/Report.html
+            backlinkContexts: []
+          - relativeLinkPath: ../research/diagram.svg
+            backlinkContexts: []
+  - bundle: multi-source-mixed
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /diagram.svg
+            isInGraph: true
+        inlinks:
+          - linkPath: /Start.md
+            isInGraph: true
+          - linkPath: /diagram.svg
+            isInGraph: true
+          - source: research
+            linkPath: /Report.html
+            isInGraph: true
+          - source: research
+            linkPath: /diagram.svg
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: diagram.svg
+        footerSectionBacklinks:
+          - relativeLinkPath: Start.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Start.html
+                embeddedLinks:
+                  - linkName: research overview
+                    linkRelativePath: ../research/Overview.html
+          - relativeLinkPath: diagram.svg
+            backlinkContexts: []
+          - relativeLinkPath: ../research/Report.html
+            backlinkContexts: []
+          - relativeLinkPath: ../research/diagram.svg
+            backlinkContexts: []
+  - bundle: multi-source-omitted
+    sourcing:
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    curation:
+      isTracked: false
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 import fs from 'fs';
 import path from 'path';
 import { BundleConfigPaths } from '../../../../../shared_code/paths/bundleConfigPaths.js';
@@ -50,14 +51,14 @@ export function syncTrackedSourceContent(options: {
 
   for (const config of options.configs) {
     if (config.bundleNodeKind !== 'folder') continue;
-    const sourceFolder = config.sourceGraphSubdirectory
-      ? path.join(options.sourceDirectory, ...config.sourceGraphSubdirectory.split('/'))
+    const sourceFolder = (config.sourceGraphSubdirectory || config.sourceId)
+      ? path.join(options.sourceDirectory, sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory))
       : options.sourceDirectory;
     if (!fs.existsSync(sourceFolder) || !fs.statSync(sourceFolder).isDirectory()) {
       throw new Error(`Tracked source folder no longer exists: ${config.sourceGraphSubdirectory}`);
     }
-    const targetFolder = config.sourceGraphSubdirectory
-      ? path.join(targetDirectory, ...config.sourceGraphSubdirectory.split('/'))
+    const targetFolder = (config.sourceGraphSubdirectory || config.sourceId)
+      ? path.join(targetDirectory, sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory))
       : targetDirectory;
     fs.mkdirSync(targetFolder, { recursive: true });
   }
@@ -67,7 +68,7 @@ export function syncTrackedSourceContent(options: {
     (config): config is FileBundleNodeConfig => config.bundleNodeKind === 'file',
   );
   for (const config of fileConfigs) {
-    const subdirectory = config.sourceGraphSubdirectory ?? '';
+    const subdirectory = sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory ?? '');
     const sourcePath = sourceFileCandidateFilenames(config.bundleNodeName, config.fileType)
       .map(filename => path.join(options.sourceDirectory, subdirectory, filename))
       .find(candidate => fs.existsSync(candidate));

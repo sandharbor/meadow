@@ -14,12 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import type { BundleSource } from '../../contracts/types/bundleConfig.js';
 import { IBundleNode } from '../../contracts/types/IBundleNode.js';
 
 export const ROOT_FOLDER_LABEL = 'Root';
 
 export interface FolderTreeNode {
   name: string;
+  sourceRow?: boolean;
+  displayPath?: string;
   path: string;
   nodeCount: number;
   directNodeCount: number;
@@ -39,7 +42,7 @@ export const normalizeFolderPath = (path: string | undefined): string => (
 );
 
 export const hasNodesInMultipleFolders = (nodes: IBundleNode[]): boolean => {
-  const folders = new Set(nodes.map(node => normalizeFolderPath(node.sourceGraphSubdirectory)));
+  const folders = new Set(nodes.map(node => folderStatePath(node)));
   return folders.size > 1;
 };
 
@@ -53,7 +56,33 @@ const toFolderTreeNode = (node: MutableFolderTreeNode): FolderTreeNode => ({
     .map(toFolderTreeNode)
 });
 
-export const buildFolderTree = (nodes: IBundleNode[]): FolderTreeNode[] => {
+export const folderStatePath = (node: Pick<IBundleNode, 'sourceId' | 'sourceGraphSubdirectory'>): string =>
+  node.sourceId ? `source:${node.sourceId}/folders/${normalizeFolderPath(node.sourceGraphSubdirectory)}` : normalizeFolderPath(node.sourceGraphSubdirectory);
+
+export const nodeMatchesFolderState = (node: IBundleNode, key: string): boolean => {
+  if (key.startsWith('source:')) {
+    const [source, scope, ...segments] = key.split('/');
+    if (source !== `source:${node.sourceId}`) return false;
+    if (!scope) return true;
+    return nodeIsInFolder(node.sourceGraphSubdirectory, segments.join('/'));
+  }
+  // Existing folder settings migrate to the original source only.
+  return (!node.sourceId || node.sourceId === 'source000001') && nodeIsInFolder(node.sourceGraphSubdirectory, key);
+};
+
+export const buildFolderTree = (nodes: IBundleNode[], sources?: readonly BundleSource[]): FolderTreeNode[] => {
+  if (sources?.length) {
+    const qualify = (node: FolderTreeNode, source: BundleSource): FolderTreeNode => ({ ...node,
+      path: `source:${source.id}/folders/${node.path}`, displayPath: `${source.name}/${node.path || ROOT_FOLDER_LABEL}`,
+      children: node.children.map(child => qualify(child, source)),
+    });
+    return sources.flatMap(source => {
+      const members = nodes.filter(node => node.bundleNodeKind !== 'collection' && node.sourceId === source.id);
+      const folders = buildFolderTree(members).map(node => qualify(node, source));
+      return sources.length === 1 ? folders : [{ name: source.name, path: `source:${source.id}`, displayPath: source.name,
+        sourceRow: true, nodeCount: members.length, directNodeCount: 0, children: folders }];
+    });
+  }
   const topLevel = new Map<string, MutableFolderTreeNode>();
   let rootNodeCount = 0;
 

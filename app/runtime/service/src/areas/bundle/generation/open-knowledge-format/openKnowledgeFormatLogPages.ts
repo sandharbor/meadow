@@ -25,6 +25,7 @@ import {
 } from '../../../../../../../shared_code/utils/sourcePageSearchUtils.js';
 import { bundleNodeConfigToKey, type BundleNodeConfigMap } from '../../../../shared/bundle-node/nodeKeys.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { loadValidatedBundleNodeConfiguration } from '../../../../shared/bundle-node/bundleNodeConfigLoader.js';
 import {
   selectAutoOpenKnowledgeFormatIndexSource,
@@ -71,7 +72,7 @@ function sourcePathForConfig(config: FileBundleNodeConfig): string {
   const filename = fileType === 'excalidraw'
     ? `${config.bundleNodeName}.excalidraw.md`
     : `${config.bundleNodeName}.${fileType}`;
-  const dir = config.sourceGraphSubdirectory || '';
+  const dir = sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory || '');
   return dir ? `${dir}/${filename}` : filename;
 }
 
@@ -84,7 +85,7 @@ function pageInfoForConfig(config: FileBundleNodeConfig, trackedContentDir: stri
   }
   return {
     title: config.bundleNodeName,
-    directory: config.sourceGraphSubdirectory || '',
+    directory: sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory || ''),
     file_type: config.fileType,
     fullPath,
     modifiedTimeMs,
@@ -98,6 +99,7 @@ async function reachableMarkdownPages(bundleDirectory: string): Promise<SourcePa
   const trackedContentDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
   const raw = await runWorkingGraphRaw({
     graphRoot: trackedContentDir,
+    sources: bundleConfig.sources?.map(source => ({ ...source, directory: path.join(trackedContentDir, sourceGraphPath(source.id, '')) })),
     bundleNodeConfigPath: bundleNodeConfPath,
     entryBundleNodeId: bundleConfig.entryBundleNodeId,
     defaultTraversalBundleNodeId: bundleConfig.defaultTraversalBundleNodeId,

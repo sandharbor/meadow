@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { createHash } from 'crypto';
+import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 import fs from 'fs';
 import path from 'path';
 import type { FileBundleNodeConfig, TrackingEvidence } from '../../../../../contracts/types/bundleNodeConfig.js';
@@ -32,7 +33,7 @@ export function sourceFilePathForConfig(
   sourceDirectory: string,
   config: FileBundleNodeConfig,
 ): string {
-  const subdirectory = config.sourceGraphSubdirectory ?? '';
+  const subdirectory = sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory ?? '');
   const sourcePath = sourceFileCandidateFilenames(config.bundleNodeName, config.fileType)
     .map(filename => path.join(sourceDirectory, subdirectory, filename))
     .find(candidate => fs.existsSync(candidate));
@@ -74,7 +75,7 @@ export function applyTrackingEvidenceFromSnapshot(options: {
     if (effectivelySensitive === undefined) continue;
     const snapshotPath = path.join(
       snapshotRoot,
-      config.sourceGraphSubdirectory ?? '',
+      sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory ?? ''),
       canonicalPageFilename(config.bundleNodeName, config.fileType),
     );
     if (!fs.existsSync(snapshotPath) || !fs.statSync(snapshotPath).isFile()) {

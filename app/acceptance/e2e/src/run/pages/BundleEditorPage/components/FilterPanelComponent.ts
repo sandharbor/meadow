@@ -152,6 +152,12 @@ export class FilterPanelComponent {
     await checkbox.check();
   }
 
+  async disableFilter(filterName: string) {
+    const checkbox = this.filterCheckbox(filterName);
+    await this.expect(checkbox).toBeVisible();
+    await checkbox.uncheck();
+  }
+
   async getFilterThresholdValue(filterName: string): Promise<number> {
     const gapDirection = this.gapDirection(filterName);
     if (gapDirection) {

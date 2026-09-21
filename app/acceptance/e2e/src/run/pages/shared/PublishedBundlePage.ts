@@ -51,8 +51,8 @@ export class PublishedBundlePage {
   }
 
   /** Assert that the main heading is visible. */
-  async expectMainHeadingVisible() {
-    await this.expect(this.mainHeading).toBeVisible();
+  async expectMainHeadingVisible(title?: string) {
+    await this.expect(title ? this.page.getByRole('main').getByRole('heading', { name: title, level: 1, exact: true }) : this.mainHeading).toBeVisible();
   }
 
   /** Click the first visible link in the main content area. */
@@ -68,6 +68,10 @@ export class PublishedBundlePage {
   async expectNewerPageLink(expectedUrl: string) {
     await this.expect(this.versionAwareness).toContainText("A newer version of this page is available");
     await this.expect(this.versionAwareness.getByRole("link", { name: "Open the newer version." })).toHaveAttribute("href", expectedUrl);
+  }
+
+  async openNewerVersion() {
+    await this.versionAwareness.getByRole('link', { name: 'Open the newer version.' }).click();
   }
 
   async expectMissingPageNotice(expectedEntryUrl: string) {

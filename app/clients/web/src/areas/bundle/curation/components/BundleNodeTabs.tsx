@@ -185,6 +185,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
         const data = await res.json();
         if (!cancelled) {
           setObsidianInfo({
+            sources: data?.sources,
             hasObsidianVault: data?.hasObsidianVault === true,
             sourceDirectory: typeof data?.sourceDirectory === 'string' ? data.sourceDirectory : null,
             vaultNameGuess: typeof data?.vaultNameGuess === 'string' ? data.vaultNameGuess : null,
@@ -198,7 +199,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
       loadObsidianInfo();
     }
     return () => { cancelled = true; };
-  }, [bundleSlug]);
+  }, [bundleSlug, graph.sources]);
 
   // State for meadow-sensitive consent modal
   const [showSensitiveConsentModal, setShowSensitiveConsentModal] = useState(false);
@@ -594,7 +595,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
       const response = await apiRequest(`bundles/${bundleSlug || ''}/curation/page/${encodeURIComponent(page.bundleNodeName)}/sensitive`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isSensitive, sourceGraphDirectory: page.sourceGraphSubdirectory })
+        body: JSON.stringify({ isSensitive, sourceId: page.sourceId, sourceGraphDirectory: page.sourceGraphSubdirectory })
       });
 
       if (!response.ok) {

@@ -11,3 +11,5 @@
  */
 
 export { SourcingPanel as AppShellComponentSourcingPanel } from './components/SourcingPanel.js';
+
+export { ManageSources as AppShellComponentManageSources } from './components/ManageSources.js';

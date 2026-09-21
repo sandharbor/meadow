@@ -79,6 +79,14 @@ export class PublishToS3Tab {
     await this.publishBtn.click();
   }
 
+  async confirmConnectedRevisionKeepingEarlierFiles() {
+    const dialog = this.page.getByRole('dialog', { name: 'Publish a new revision', exact: true });
+    await this.expect(dialog).toBeVisible();
+    await dialog.getByRole('combobox', { name: 'Earlier readers', exact: true }).selectOption({ label: 'Point to new revision' });
+    await dialog.getByRole('combobox', { name: 'Earlier files', exact: true }).selectOption({ label: 'Keep after publish' });
+    await dialog.getByRole('button', { name: 'Continue to publish', exact: true }).click();
+  }
+
   async expectPublishButtonLabel(label: string) {
     await this.expect(this.publishBtn).toHaveText(label, { timeout: 30_000 });
   }

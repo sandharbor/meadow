@@ -83,7 +83,7 @@ router.put('/bundles/:slug', (req, res, next) => {
     }
 
     const bundleGuid = isValidBundleGuid(existingConfig.bundleGuid) ? existingConfig.bundleGuid : generateBundleGuid();
-    if (folderDerived) {
+    if (folderDerived || existingConfig.sources) {
       if (sourceDirectory !== undefined && sourceDirectory !== existingConfig.sourceDirectory) {
         return res.status(409).json({ error: 'The source directory for a folder-derived bundle cannot be changed here' });
       }

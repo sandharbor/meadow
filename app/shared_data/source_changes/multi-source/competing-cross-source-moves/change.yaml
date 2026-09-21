@@ -1,0 +1,22 @@
+id: competing-cross-source-moves
+label: Create competing cross-source move candidates
+description: Replace the notebook Inside page with two identical, reachable
+  files in different sources. Review must not silently assign either one the old
+  identity.
+categories:
+  - move
+  - add
+  - remove
+operations:
+  - delete: notes/Same/Inside.md
+  - write:
+      path: research/Moved/Inside.md
+      contentFile: Inside.md
+  - write:
+      path: reference/Moved/Inside.md
+      contentFile: Inside.md
+  - replaceText:
+      path: notes/Start.md
+      before: "[[Same/Inside]]"
+      after: "[[Moved/Inside::research]] and [[Moved/Inside::reference]]"
+sourceGraph: multi-source

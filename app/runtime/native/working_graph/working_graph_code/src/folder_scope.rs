@@ -244,9 +244,10 @@ pub fn build_folder_scope_projection(
     let (collection, selected_configs) = selected_folder_configs(configs, entry_bundle_node_id)?;
     let selected_roots: Vec<String> = selected_configs
         .iter()
+        .filter(|config| matches!(config, BundleNodeConfig::Folder { .. }))
         .map(|config| config.source_graph_subdirectory().unwrap_or("").to_string())
         .collect();
-    let missing_selected_roots: Vec<String> = selected_roots
+    let mut missing_selected_roots: Vec<String> = selected_roots
         .iter()
         .filter(|root| !existing_directories.contains(root.as_str()))
         .cloned()
@@ -411,26 +412,70 @@ pub fn build_folder_scope_projection(
             effective_policy_bundle_node_ids
                 .insert(key.clone(), policy.bundle_node_id().to_string());
         }
-        seeds.push(MultiSeed {
-            structural_path: paths
-                .get(&key)
-                .cloned()
-                .unwrap_or_else(|| vec![key.clone()]),
-            file,
-            outlinks_depth: policy
-                .and_then(BundleNodeConfig::outlinks_depth)
-                .unwrap_or(default_outlinks_depth),
-            inlinks_depth: policy
-                .and_then(BundleNodeConfig::inlinks_depth)
-                .unwrap_or(default_inlinks_depth),
-        });
+        let member_order = selected_configs
+            .iter()
+            .position(|config| {
+                matches!(config, BundleNodeConfig::Folder { .. })
+                    && is_allowed_below_selected_root(
+                        &file.source_graph_subdirectory,
+                        config.source_graph_subdirectory().unwrap_or(""),
+                    )
+            })
+            .unwrap_or(usize::MAX);
+        seeds.push((
+            member_order,
+            MultiSeed {
+                structural_path: paths
+                    .get(&key)
+                    .cloned()
+                    .unwrap_or_else(|| vec![key.clone()]),
+                file,
+                outlinks_depth: policy
+                    .and_then(BundleNodeConfig::outlinks_depth)
+                    .unwrap_or(default_outlinks_depth),
+                inlinks_depth: policy
+                    .and_then(BundleNodeConfig::inlinks_depth)
+                    .unwrap_or(default_inlinks_depth),
+            },
+        ));
     }
+
+    // A file member is its own start, including when a folder also contains it.
+    // Keep both arrivals so folder policy cannot reduce the explicit start's reach.
+    for (member_order, selected) in selected_configs
+        .iter()
+        .enumerate()
+        .filter(|(_, config)| matches!(config, BundleNodeConfig::File { .. }))
+    {
+        let key = selected.bundle_node_key();
+        let Some(file) = supported_files
+            .iter()
+            .find(|file| file.bundle_node_key() == key)
+        else {
+            missing_selected_roots.push(key);
+            continue;
+        };
+        contained_file_keys.insert(key.clone());
+        if nearest_blacklisted_folder(configs, &file.source_graph_subdirectory).is_some() {
+            blocked_file_keys.insert(key.clone());
+        }
+        seeds.push((
+            member_order,
+            MultiSeed {
+                structural_path: paths.get(&key).cloned().unwrap_or_else(|| vec![key]),
+                file: file.clone(),
+                outlinks_depth: selected.outlinks_depth().unwrap_or(default_outlinks_depth),
+                inlinks_depth: selected.inlinks_depth().unwrap_or(default_inlinks_depth),
+            },
+        ));
+    }
+    seeds.sort_by_key(|(order, seed)| (*order, seed.file.bundle_node_key()));
 
     Ok(FolderScopeProjection {
         selected_roots,
         structural_nodes,
         structural_edges,
-        seeds,
+        seeds: seeds.into_iter().map(|(_, seed)| seed).collect(),
         contained_file_keys,
         blocked_file_keys,
         missing_selected_roots,
@@ -457,6 +502,7 @@ mod tests {
 
     fn folder(name: &str, locator: &str, id: &str, list_type: &str) -> BundleNodeConfig {
         BundleNodeConfig::Folder {
+            source_id: None,
             bundle_node_name: name.to_string(),
             source_graph_subdirectory: locator.to_string(),
             bundle_node_id: id.to_string(),

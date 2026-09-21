@@ -1,0 +1,13 @@
+id: disconnect-reference
+label: Disconnect the reference source
+description: Move reference out of its registered location. Review disconnected
+  state, then reconnect at reference-disconnected or remove the source
+  explicitly.
+categories:
+  - move
+  - remove
+operations:
+  - move:
+      from: reference
+      to: reference-disconnected
+sourceGraph: multi-source

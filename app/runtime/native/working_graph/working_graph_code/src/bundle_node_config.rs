@@ -24,6 +24,8 @@ pub struct TrackingEvidence {
 pub enum BundleNodeConfig {
     #[serde(rename = "file")]
     File {
+        #[serde(default, rename = "sourceId")]
+        source_id: Option<String>,
         #[serde(rename = "bundleNodeName")]
         bundle_node_name: String,
         #[serde(default, rename = "sourceGraphSubdirectory")]
@@ -43,6 +45,8 @@ pub enum BundleNodeConfig {
     },
     #[serde(rename = "folder")]
     Folder {
+        #[serde(default, rename = "sourceId")]
+        source_id: Option<String>,
         #[serde(rename = "bundleNodeName")]
         bundle_node_name: String,
         #[serde(rename = "sourceGraphSubdirectory")]
@@ -80,6 +84,7 @@ impl BundleNodeConfig {
         inlinks_depth: Option<i32>,
     ) -> Self {
         Self::File {
+            source_id: None,
             bundle_node_name,
             source_graph_subdirectory,
             file_type,
@@ -135,6 +140,42 @@ impl BundleNodeConfig {
         }
     }
 
+    pub fn source_id(&self) -> Option<&str> {
+        match self {
+            Self::File { source_id, .. } | Self::Folder { source_id, .. } => source_id.as_deref(),
+            Self::Collection { .. } => None,
+        }
+    }
+
+    /// Project the source-relative locator into the adapter's stable graph namespace.
+    pub fn project_source_directory(&mut self) {
+        match self {
+            Self::File {
+                source_id,
+                source_graph_subdirectory,
+                ..
+            } => {
+                if let Some(id) = source_id.take() {
+                    *source_graph_subdirectory = Some(crate::source_registry::source_graph_path(
+                        &id,
+                        source_graph_subdirectory.as_deref().unwrap_or(""),
+                    ));
+                }
+            }
+            Self::Folder {
+                source_id,
+                source_graph_subdirectory,
+                ..
+            } => {
+                if let Some(id) = source_id.take() {
+                    *source_graph_subdirectory =
+                        crate::source_registry::source_graph_path(&id, source_graph_subdirectory);
+                }
+            }
+            Self::Collection { .. } => {}
+        }
+    }
+
     pub fn file_type(&self) -> Option<&str> {
         match self {
             Self::File { file_type, .. } => Some(file_type),
@@ -169,6 +210,12 @@ impl BundleNodeConfig {
     }
 
     pub fn bundle_node_key(&self) -> String {
+        if let Some(id) = self.source_id() {
+            let mut projected = self.clone();
+            debug_assert!(!id.is_empty());
+            projected.project_source_directory();
+            return projected.bundle_node_key();
+        }
         match self {
             Self::File {
                 bundle_node_name,
@@ -190,6 +237,11 @@ impl BundleNodeConfig {
     }
 
     fn logical_locator_key(&self) -> String {
+        if self.source_id().is_some() {
+            let mut projected = self.clone();
+            projected.project_source_directory();
+            return projected.logical_locator_key();
+        }
         match self {
             Self::File {
                 bundle_node_name,
@@ -263,6 +315,16 @@ pub fn parse_bundle_node_config_yaml(yaml_content: &str) -> anyhow::Result<Vec<B
     anyhow::ensure!(collection_count <= 1, "only one collection is permitted");
 
     for (index, node) in parsed.nodes.iter().enumerate() {
+        if let Some(id) = node.source_id() {
+            anyhow::ensure!(
+                id.len() == 12
+                    && id
+                        .bytes()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()),
+                "record {} field 'sourceId': must match [a-z0-9]{{12}}",
+                index + 1
+            );
+        }
         anyhow::ensure!(
             !node.bundle_node_name().trim().is_empty(),
             "record {} field 'bundleNodeName': must be non-empty",
@@ -348,8 +410,8 @@ pub fn parse_bundle_node_config_yaml(yaml_content: &str) -> anyhow::Result<Vec<B
                 "collection nodes must be whitelisted"
             );
             anyhow::ensure!(
-                member_bundle_node_ids.len() >= 2,
-                "collection memberBundleNodeIds must contain at least two IDs"
+                !member_bundle_node_ids.is_empty(),
+                "collection memberBundleNodeIds must contain at least one ID"
             );
             let mut members = HashSet::new();
             for member_id in member_bundle_node_ids {
@@ -361,8 +423,8 @@ pub fn parse_bundle_node_config_yaml(yaml_content: &str) -> anyhow::Result<Vec<B
                     anyhow::anyhow!("collection memberBundleNodeId does not resolve: {member_id}")
                 })?;
                 anyhow::ensure!(
-                    matches!(member, BundleNodeConfig::Folder { .. }),
-                    "collection member must resolve to a folder: {member_id}"
+                    !matches!(member, BundleNodeConfig::Collection { .. }),
+                    "collection member must resolve to a file or folder: {member_id}"
                 );
             }
         }

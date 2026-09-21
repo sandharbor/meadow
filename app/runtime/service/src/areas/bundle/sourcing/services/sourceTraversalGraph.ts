@@ -4,7 +4,7 @@ import type { SourceTraversalGraph } from '../../../../../../../contracts/types/
 import { serializeWorkingGraphOutput, type WorkingGraphRustOutput } from '../../../../shared/bundle-graph/workingGraphService.js';
 
 /** Reuse the exact graph used to build the review; do not rediscover live sources for details. */
-export function sourceTraversalGraph(snapshotId: string, output: WorkingGraphRustOutput | undefined, routes: string[][]): SourceTraversalGraph | undefined {
+export function sourceTraversalGraph(snapshotId: string, output: WorkingGraphRustOutput | undefined, routes: string[][], sources?: SourceTraversalGraph['sources']): SourceTraversalGraph | undefined {
   if (!output) return undefined;
   const keys = new Set(routes.flat());
   // Include the alternative explanations of each inspectable node, with their labels and policies.
@@ -20,5 +20,5 @@ export function sourceTraversalGraph(snapshotId: string, output: WorkingGraphRus
     edges: output.edges.filter(edge => selectedKeys.has(edge.source) && selectedKeys.has(edge.target)),
     allLinkResolutionMaps: {}, allInlinkSources: {}, allOutlinkTargets: {},
   });
-  return { snapshotId, nodes: graph.nodes, edges: graph.edges };
+  return { snapshotId, ...(sources && { sources }), nodes: graph.nodes, edges: graph.edges };
 }

@@ -46,6 +46,7 @@ export interface BundleConfigWithSlug extends BundleConfig {
  * Data needed for the edit bundle modal
  */
 export interface BundleEditData {
+  sources?: import('../../../../../contracts/types/bundleConfig.js').BundleSource[];
   slug: string;
   sourceDirectory: string;
   entryBundleNodeName: string;
@@ -100,6 +101,7 @@ export async function fetchBundleEditData(slug: string): Promise<{
     bundleEditData: {
       slug: bundle.slug,
       sourceDirectory: bundle.sourceDirectory || '',
+      sources: bundle.sources,
       entryBundleNodeName: bundle.entryBundleNodeName || '',
       entrySourceGraphSubdirectory: bundle.entrySourceGraphSubdirectory || '',
       entryFileType: bundle.entryFileType,

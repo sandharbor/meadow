@@ -22,6 +22,7 @@ import path, { join } from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { sourceFileRequestPathCandidates } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
+import { splitSourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { loadGzipPathSet, COMPRESSION_MANIFEST_FILENAME } from '../../../../../../../shared_code/utils/compressionManifestUtils.js';
 import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
@@ -216,7 +217,7 @@ router.get('/bundles/:bundleSlug/generation/open-knowledge-format/log-page-optio
     const limit = !Number.isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
     const options = await withSourcingLock(bundleDirectory, async () => {
       const bundleConfig = loadBundleConfig(bundleDirectory);
-      if (bundleConfig.sourceDirectory) {
+      if (bundleConfig.sourceDirectory || bundleConfig.sources) {
         await ensureTrackedPageContent(bundleDirectory, acceptedSourceRoot(bundleDirectory));
       }
       // Keep the graph read under the lock: another request can replace the
@@ -480,6 +481,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
   const { bundleSlug } = req.params;
   const startPageTitleRaw = typeof req.query.startPageTitle === 'string' ? req.query.startPageTitle : undefined;
   const startPageDirectoryRaw = typeof req.query.startPageDirectory === 'string' ? req.query.startPageDirectory : undefined;
+  const startPageSourceId = typeof req.query.startPageSourceId === 'string' ? req.query.startPageSourceId : undefined;
   const startPagePathRaw = typeof req.query.startPagePath === 'string' ? req.query.startPagePath : undefined;
   const startPageTitle = startPageTitleRaw?.trim() ? startPageTitleRaw.trim() : undefined;
   const startPageDirectory = (startPageDirectoryRaw ?? '').trim();
@@ -578,7 +580,7 @@ router.get('/bundles/:bundleSlug/generation/preview-stream', (req, res, _next) =
         { stage: 'generate_html', bundle_slug: bundleSlug },
         () => generateCurrentVersionHtml(bundleSlug, bundleDirectory, {
           preview: true,
-          startPage: startPageTitle ? { title: startPageTitle, directory: startPageDirectory } : undefined,
+          startPage: startPageTitle ? { title: startPageTitle, directory: startPageDirectory, sourceId: startPageSourceId } : undefined,
           startPagePath,
           shouldCancel,
           onStartPageRendered: ({ relativeHtmlPath }) => {
@@ -736,7 +738,7 @@ router.get('/bundles/:bundleSlug/generation/source-file/*', (req, res, next) => 
     const requestPath = req.path;
     const sourceFileIndex = requestPath.indexOf('/source-file/');
     const rawFilename = sourceFileIndex !== -1 ? requestPath.substring(sourceFileIndex + '/source-file/'.length) : '';
-    const filename = decodeURIComponent(rawFilename);
+    let filename = decodeURIComponent(rawFilename);
     
     if (!bundleSlug || !filename) {
       return res.status(400).json({ error: 'bundleSlug and filename are required' });
@@ -747,7 +749,7 @@ router.get('/bundles/:bundleSlug/generation/source-file/*', (req, res, next) => 
       return res.status(400).json({ error: 'Invalid filename' });
     }
 
-    // Load bundle config to get sourceDirectory
+    // Captured bytes remain available when a configured source disconnects.
     const configPath = getBundleConfigPath(bundleSlug);
     let sourceDirectory = '';
     try {
@@ -755,9 +757,17 @@ router.get('/bundles/:bundleSlug/generation/source-file/*', (req, res, next) => 
         return res.status(500).json({ error: `bundle_config.yaml not found for slug ${bundleSlug}` });
       }
       const yamlContent = fs.readFileSync(configPath, 'utf8');
-      const config = YAML.parse(yamlContent) as { sourceDirectory?: string };
-      if (config && typeof config.sourceDirectory === 'string') {
-        sourceDirectory = acceptedSourceRoot(getBundleDirectory(bundleSlug));
+      const config = YAML.parse(yamlContent) as BundleConfig;
+      if (config && (typeof config.sourceDirectory === 'string' || config.sources)) {
+        let locator: ReturnType<typeof splitSourceGraphPath>;
+        try { locator = splitSourceGraphPath(filename, config.sources); }
+        catch { return res.status(400).json({ error: 'Invalid source file path' }); }
+        if (req.query.sourceView === 'live') {
+          sourceDirectory = config.sources?.find(source => source.id === locator.sourceId)?.directory ?? config.sourceDirectory ?? '';
+          filename = locator.relativePath;
+        } else {
+          sourceDirectory = acceptedSourceRoot(getBundleDirectory(bundleSlug));
+        }
       }
     } catch {
       return next(new Error(`Failed to load bundle configuration for ${bundleSlug}`));

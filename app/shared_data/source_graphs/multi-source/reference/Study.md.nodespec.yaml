@@ -1,0 +1,67 @@
+nodespecs:
+  - bundle: multi-source-page
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Appendix.md
+            isInGraph: true
+          - source: research
+            linkPath: /Overview.md
+            isInGraph: true
+        inlinks:
+          - source: notes
+            linkPath: /Frontier.md
+            isInGraph: true
+          - source: research
+            linkPath: /Report.html
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Appendix.html
+          - relativeLinkPath: ../research/Overview.html
+        footerSectionBacklinks:
+          - relativeLinkPath: ../notes/Frontier.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../notes/Frontier.html
+                embeddedLinks:
+                  - linkName: Appendix
+                    linkRelativePath: Appendix.html
+          - relativeLinkPath: ../research/Report.html
+            backlinkContexts: []
+  - bundle: multi-source-mixed
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - linkPath: /Appendix.md
+            isInGraph: true
+          - source: research
+            linkPath: /Overview.md
+            isInGraph: true
+        inlinks:
+          - source: notes
+            linkPath: /Frontier.md
+            isInGraph: true
+          - source: research
+            linkPath: /Report.html
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: Appendix.html
+          - relativeLinkPath: ../research/Overview.html
+        footerSectionBacklinks:
+          - relativeLinkPath: ../notes/Frontier.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../notes/Frontier.html
+                embeddedLinks:
+                  - linkName: Appendix
+                    linkRelativePath: Appendix.html
+          - relativeLinkPath: ../research/Report.html
+            backlinkContexts: []

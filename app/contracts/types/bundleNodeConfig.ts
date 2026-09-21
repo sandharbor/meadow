@@ -43,6 +43,7 @@ export interface TrackingEvidence {
 }
 
 export interface FileBundleNodeConfig extends BaseBundleNodeConfig, TraversalBundleNodeConfig {
+  sourceId?: string;
   sourceGraphSubdirectory?: string;
   bundleNodeKind: 'file';
   fileType: FileType;
@@ -50,6 +51,7 @@ export interface FileBundleNodeConfig extends BaseBundleNodeConfig, TraversalBun
 }
 
 export interface FolderBundleNodeConfig extends BaseBundleNodeConfig, TraversalBundleNodeConfig {
+  sourceId?: string;
   sourceGraphSubdirectory: string;
   bundleNodeKind: 'folder';
   fileType?: never;
@@ -58,6 +60,7 @@ export interface FolderBundleNodeConfig extends BaseBundleNodeConfig, TraversalB
 }
 
 export interface CollectionBundleNodeConfig extends BaseBundleNodeConfig {
+  sourceId?: never;
   bundleNodeKind: 'collection';
   sourceGraphSubdirectory?: never;
   fileType?: never;

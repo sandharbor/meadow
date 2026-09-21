@@ -22,6 +22,7 @@ limitations under the License.
  */
 
 export interface NodespecLinkSpec {
+  source?: string;      // Canonical registered source name; omission means the tested node's own source.
   linkPath: string;      // e.g., "/some filename.md"
   isInGraph: boolean;
 }

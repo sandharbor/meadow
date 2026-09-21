@@ -5,6 +5,7 @@ import { Buffer } from 'node:buffer';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import YAML from 'yaml';
+import { fixtureSourceLocation } from './fixtureSourceLocation.js';
 import { textDocumentCodec, writeDurableDocument } from '../utils/durableDocument.js';
 import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory } from './sourceChangesTypes.js';
 import type { SourceChangeDefinition, SourceChangeOperation, SourceChangeResult, SourceChangeStatus } from './sourceChangesTypes.js';
@@ -12,7 +13,27 @@ import type { SourceChangeDefinition, SourceChangeOperation, SourceChangeResult,
 const SESSION_FILE = '.meadow-source-session.json';
 type Session = { version: 1; sourceGraphs: string[] };
 type FileState = Map<string, Buffer | null>;
-type ChangePlan = { definition: SourceChangeDefinition; before: FileState; after: FileState };
+type DirectoryMove = { from: string; to: string; entries: string[] };
+type ChangePlan = { definition: SourceChangeDefinition; before: FileState; after: FileState; directoryMove?: DirectoryMove };
+
+function directoryInventory(root: string, relative: string, authored = false): string[] {
+  const directory = safePath(root, relative);
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    if (authored && (entry.name === '.DS_Store' || entry.name.endsWith('.nodespec.yaml'))) return [];
+    safePath(root, `${relative}/${entry.name}`);
+    if (entry.isDirectory()) return [`${entry.name}/`, ...directoryInventory(root, `${relative}/${entry.name}`, authored).map(child => `${entry.name}/${child}`)];
+    if (!entry.isFile()) throw new Error(`Source changes require regular files: ${entry.name}`);
+    return [entry.name];
+  }).sort();
+}
+
+function directoryMoveMatches(root: string, move: DirectoryMove | undefined, after: boolean): boolean {
+  if (!move) return true;
+  const present = after ? move.to : move.from;
+  const absent = after ? move.from : move.to;
+  return !fs.existsSync(safePath(root, absent)) && fs.existsSync(safePath(root, present))
+    && JSON.stringify(directoryInventory(root, present)) === JSON.stringify(move.entries);
+}
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected an object');
@@ -185,6 +206,7 @@ function planChange(projectRoot: string, definition: SourceChangeDefinition): Ch
   const before: FileState = new Map();
   const after: FileState = new Map();
   const sourceRoot = sourceFixtureRoot(projectRoot, definition.sourceGraph);
+  let directoryMove: DirectoryMove | undefined;
   const get = (relative: string): Buffer | null => {
     if (!after.has(relative)) {
       const filename = safePath(sourceRoot, relative);
@@ -202,6 +224,20 @@ function planChange(projectRoot: string, definition: SourceChangeDefinition): Ch
   for (const operation of definition.operations) {
     if ('move' in operation) {
       const { from, to } = operation.move;
+      const original = safePath(sourceRoot, from);
+      if (fs.existsSync(original) && fs.statSync(original).isDirectory()) {
+        if (definition.operations.length !== 1) throw new Error('A directory relocation must be a separate source change');
+        if (to === from || to.startsWith(`${from}/`) || from.startsWith(`${to}/`) || fs.existsSync(safePath(sourceRoot, to))) throw new Error('Directory move destination must be separate and absent');
+        const entries = directoryInventory(sourceRoot, from, true);
+        directoryMove = { from, to, entries };
+        for (const entry of entries.filter(entry => !entry.endsWith('/'))) {
+          const bytes = requireFile(`${from}/${entry}`);
+          get(`${to}/${entry}`);
+          after.set(`${from}/${entry}`, null);
+          after.set(`${to}/${entry}`, bytes);
+        }
+        continue;
+      }
       const bytes = requireFile(from);
       if (get(to) !== null) throw new Error(`Move destination already exists: ${to}`);
       after.set(from, null);
@@ -221,7 +257,7 @@ function planChange(projectRoot: string, definition: SourceChangeDefinition): Ch
       after.set(operation.write.path, fs.readFileSync(safePath(replacementRoot, operation.write.contentFile)));
     }
   }
-  return { definition, before, after };
+  return { definition, before, after, directoryMove };
 }
 
 function readState(root: string, expected: FileState): FileState {
@@ -255,8 +291,8 @@ export function listSourceChangeStatus(projectRoot: string, sourceGraphsDir: str
       const journal = safePath(sourceGraphsDir, '.source-changes.jsonl');
       const applied = fs.existsSync(journal) && fs.readFileSync(journal, 'utf8').trim().split('\n')
         .some(line => { const item = JSON.parse(line) as SourceChangeResult; return item.changeId === definition.id && item.sourceGraph === sourceGraph; });
-      if (applied && matches(plan.after, current)) return { ...definition, state: 'applied' };
-      if (matches(plan.before, current)) return { ...definition, state: 'available' };
+      if (applied && matches(plan.after, current) && directoryMoveMatches(root, plan.directoryMove, true)) return { ...definition, state: 'applied' };
+      if (matches(plan.before, current) && directoryMoveMatches(root, plan.directoryMove, false)) return { ...definition, state: 'available' };
       return { ...definition, state: 'conflict', reason: 'An affected file differs from this change’s starting state. Restart the fixture to restore its baseline.' };
     } catch (error) {
       return { ...definition, state: 'conflict', reason: error instanceof Error ? error.message : String(error) };
@@ -292,7 +328,13 @@ export function applySourceChange(options: {
   fs.mkdirSync(lock);
   try {
     const current = readState(root, plan.before);
-    if (!matches(plan.before, current)) throw new Error('Source change is already applied or its starting files have changed');
+    if (!matches(plan.before, current) || !directoryMoveMatches(root, plan.directoryMove, false)) throw new Error('Source change is already applied or its starting files have changed');
+    const restore = () => {
+      if (plan.directoryMove) {
+        const destination = safePath(root, plan.directoryMove.to);
+        if (fs.existsSync(destination)) fs.renameSync(destination, safePath(root, plan.directoryMove.from));
+      } else writeState(root, current);
+    };
     // Resolve every destination before the first write, including absent paths.
     for (const relative of plan.after.keys()) safePath(root, relative);
     try {
@@ -314,7 +356,7 @@ export function applySourceChange(options: {
         }
       }
     } catch (error) {
-      writeState(root, current);
+      restore();
       throw error;
     }
     const result: SourceChangeResult = {
@@ -327,7 +369,7 @@ export function applySourceChange(options: {
     try {
       const previous = fs.existsSync(journal) ? fs.readFileSync(journal, 'utf8') : '';
       writeDurableDocument({ path: journal, value: `${previous}${JSON.stringify(result)}\n`, codec: textDocumentCodec });
-    } catch (error) { writeState(root, current); throw error; }
+    } catch (error) { restore(); throw error; }
     return result;
   } finally {
     fs.rmdirSync(lock);
@@ -341,8 +383,8 @@ export function fixtureSourceGraphs(projectRoot: string, fixtureName: string): s
   if (!/^home_fixture_[a-z0-9_]+$/.test(fixtureName)) throw new Error('Invalid fixture name');
   const bundles = path.join(projectRoot, 'app/shared_data/home_fixtures', fixtureName, 'bundles');
   if (!fs.existsSync(bundles)) return [];
-  return [...new Set(fs.readdirSync(bundles, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => {
-    const config = YAML.parse(fs.readFileSync(path.join(bundles, entry.name, 'config/bundle_config.yaml'), 'utf8')) as { sourceDirectory: string };
-    return path.basename(config.sourceDirectory);
+  return [...new Set(fs.readdirSync(bundles, { withFileTypes: true }).filter(entry => entry.isDirectory()).flatMap(entry => {
+    const config = YAML.parse(fs.readFileSync(path.join(bundles, entry.name, 'config/bundle_config.yaml'), 'utf8')) as { sourceDirectory?: string; sources?: { directory: string }[] };
+    return (config.sources?.map(source => source.directory) ?? [config.sourceDirectory!]).map(directory => fixtureSourceLocation(directory).graph);
   }))];
 }

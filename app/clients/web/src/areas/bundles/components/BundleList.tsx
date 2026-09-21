@@ -357,7 +357,7 @@ const BundleList: React.FC = () => {
     for (const bundle of bundles) {
       if (signal?.aborted) return;
       logger.debug(`[BundleList] Checking bundle: ${bundle.slug}`);
-      const tracks = await doesBundleTrackPage(bundle.slug, pageName, signal);
+      const tracks = await doesBundleTrackPage(bundle.slug, pageName, signal, findInBundlesOptions);
       logger.debug(`[BundleList] Bundle ${bundle.slug} tracks "${pageName}": ${tracks}`);
       if (tracks) {
         trackingBundles.add(bundle.slug);
@@ -371,9 +371,14 @@ const BundleList: React.FC = () => {
   }, [findInBundlesOptions, bundles]);
 
   // Check if a bundle tracks the target page
-  const doesBundleTrackPage = async (bundleSlug: string, pageName: string, signal?: AbortSignal): Promise<boolean> => {
+  const doesBundleTrackPage = async (bundleSlug: string, pageName: string, signal?: AbortSignal, source?: FindInBundlesOptions): Promise<boolean> => {
     try {
-      const url = `bundles/${bundleSlug}/tracks-page?pageName=${encodeURIComponent(pageName)}`;
+      const query = new URLSearchParams({ pageName });
+      if (source?.vaultPath) {
+        query.set('sourceDirectory', source.vaultPath);
+        query.set('folderPath', source.folderPath);
+      }
+      const url = `bundles/${bundleSlug}/tracks-page?${query}`;
       logger.debug(`Making request to: ${url}`);
       const response = await apiRequest(url, { signal });
       logger.debug(`Response status: ${response.status} ${response.statusText}`);
@@ -476,8 +481,10 @@ const BundleList: React.FC = () => {
     // Store find in bundles page name in sessionStorage for auto-selection
     if (findInBundlesOptions) {
       sessionStorage.setItem('autoSelectPageName', findInBundlesOptions.pageName);
+      sessionStorage.setItem('autoSelectPageSource', JSON.stringify({ directory: findInBundlesOptions.vaultPath, folder: findInBundlesOptions.folderPath }));
     } else {
       sessionStorage.removeItem('autoSelectPageName');
+      sessionStorage.removeItem('autoSelectPageSource');
     }
 
     navigateInApp({ page: 'bundle', slug });

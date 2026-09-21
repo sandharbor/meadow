@@ -17,6 +17,8 @@ limitations under the License.
 /*
   Shared Graph Types and Class
 */
+import type { BundleSource } from './bundleConfig.js';
+import type { SourceReferenceDiagnostic } from './sourcing.js';
 import type { IBundleNode } from './IBundleNode.js';
 export type { IBundleNode } from './IBundleNode.js';
 
@@ -33,6 +35,10 @@ export interface IEdge {
 }
 
 export class Graph {
+  sources: BundleSource[] = [];
+  sourceDiagnostics: SourceReferenceDiagnostic[] = [];
+  ignoredSourceNames: string[] = [];
+  sourceContentView: 'accepted' | 'live' = 'accepted';
   private nodes: Map<string, IBundleNode>;
   private edges: IEdge[];
   private changeListeners: Set<() => void>;

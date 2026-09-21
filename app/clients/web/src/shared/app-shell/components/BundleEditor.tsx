@@ -15,7 +15,8 @@ limitations under the License.
 */
 
 import type { SnapshotTrackingOutcome } from '../../../../../../contracts/types/curationTracking.js';
-import { AppShellComponentSourcingPanel as SourcingPanel } from '../../../areas/bundle/sourcing/exported.js';
+import { AppShellComponentSourcingPanel as SourcingPanel, AppShellComponentManageSources as ManageSources } from '../../../areas/bundle/sourcing/exported.js';
+import { SourceNamesProvider } from '../../components/SourceNames.js';
 
 /* global alert */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -53,6 +54,8 @@ const BundleEditor: React.FC = () => {
   useEffect(() => { setSourceCheckCompleted(false); setPendingSourceChanges(false); }, [slug]);
   const [frontierUnavailable, setFrontierUnavailable] = useState<string | null>(null);
   const [sourceChangeTrigger, setSourceChangeTrigger] = useState(0);
+  const [isManageSourcesOpen, setIsManageSourcesOpen] = useState(false);
+  const [sourceReviewTrigger, setSourceReviewTrigger] = useState(0);
   const [isSourceSnapshotsOpen, setIsSourceSnapshotsOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [graph, setGraph] = useState<Graph | null>(null);
@@ -71,7 +74,7 @@ const BundleEditor: React.FC = () => {
   // Preview/Publish modal state
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isModalBusy, setIsModalBusy] = useState(false);
-  const [previewStartPage, setPreviewStartPage] = useState<{ title: string; sourceGraphSubdirectory?: string } | undefined>();
+  const [previewStartPage, setPreviewStartPage] = useState<{ title: string; sourceGraphSubdirectory?: string; sourceId?: string } | undefined>();
   const [previewModalTab, setPreviewModalTab] = useState<'bundlePreview' | 'changes' | 'versions' | 'customization' | 'localExport' | 'publish' | 'advanced'>('bundlePreview'); // customization kept for URL param backward compat
   const [hooksHaveErrors, setHooksHaveErrors] = useState(false); // Track if hooks have load errors
 
@@ -111,6 +114,10 @@ const BundleEditor: React.FC = () => {
     void updateTrigger; // Graph mutations publish a revision without replacing the Graph object.
     if (!graph || !pendingSourceChanges) return graph;
     const visible = new Graph();
+    visible.sources = graph.sources;
+    visible.sourceDiagnostics = graph.sourceDiagnostics;
+    visible.ignoredSourceNames = graph.ignoredSourceNames;
+    visible.sourceContentView = graph.sourceContentView;
     const nodes = graph.getAllNodes().filter(node => !node.isFrontierNode);
     nodes.forEach(node => visible.addNode(node));
     graph.getAllEdges().filter(edge => visible.getNode(edge.source) && visible.getNode(edge.target)).forEach(edge => visible.addEdge(edge));
@@ -421,7 +428,13 @@ const BundleEditor: React.FC = () => {
         }
         if (cancelled) return;
         setFrontierUnavailable(data.frontierUnavailable ?? null);
+        if (typeof data.entryBundleNodeId === 'string') setEntryBundleNodeId(data.entryBundleNodeId);
+        if (typeof data.defaultTraversalBundleNodeId === 'string') setDefaultTraversalBundleNodeId(data.defaultTraversalBundleNodeId);
         const g = new Graph();
+        g.sources = data.sources ?? [];
+        g.sourceDiagnostics = data.sourceDiagnostics ?? [];
+        g.ignoredSourceNames = data.ignoredSourceNames ?? [];
+        g.sourceContentView = data.sourceContentView ?? 'accepted';
         const nodesWithSensitive = applySensitiveFromApiData(data.nodes as IBundleNode[]);
         nodesWithSensitive.forEach(node => g.addNode(node));
         (data.edges as IEdge[]).forEach(edge => g.addEdge(edge));
@@ -509,6 +522,7 @@ const BundleEditor: React.FC = () => {
           candidate.fileType,
           candidate.bundleNodeKind,
           candidate.bundleNodeId,
+          candidate.sourceId,
         )
       );
       if (node) {
@@ -526,12 +540,18 @@ const BundleEditor: React.FC = () => {
     const autoSelectPageName = sessionStorage.getItem('autoSelectPageName');
     if (autoSelectPageName) {
       // Find the page by title
-      const pageToSelect = graph.getAllNodes().find(p => p.bundleNodeName === autoSelectPageName);
+      let source: { directory?: string; folder?: string } | null = null;
+      try { source = JSON.parse(sessionStorage.getItem('autoSelectPageSource') ?? 'null'); } catch { /* An older navigation can retain only a title. */ }
+      const pageToSelect = graph.getAllNodes().find(p => p.bundleNodeName === autoSelectPageName && (!source?.directory || (
+        p.sourceGraphSubdirectory === source.folder
+        && (graph.sources.length === 0 || graph.sources.find(candidate => candidate.id === p.sourceId)?.directory === source.directory)
+      )));
       if (pageToSelect) {
         logger.debug(`Auto-selecting page: ${autoSelectPageName}`);
         setSelectedNodeKeys(new Set([pageToSelect.bundleNodeKey]));
         // Clear the session storage after selection
         sessionStorage.removeItem('autoSelectPageName');
+        sessionStorage.removeItem('autoSelectPageSource');
       }
     }
   }, [graph]);
@@ -556,6 +576,7 @@ const BundleEditor: React.FC = () => {
           node.fileType,
           node.bundleNodeKind,
           node.bundleNodeId,
+          node.sourceId,
         )
       );
       return !hasMatchingNodeInCurrentGraph;
@@ -668,7 +689,7 @@ const BundleEditor: React.FC = () => {
     if (!page) return;
 
     const pageTitle = page.data?.title || page.label || bundleNodeKey;
-    setPreviewStartPage({ title: pageTitle, sourceGraphSubdirectory: page.sourceGraphSubdirectory });
+    setPreviewStartPage({ title: pageTitle, sourceGraphSubdirectory: page.sourceGraphSubdirectory, sourceId: page.sourceId });
     setIsPublishModalOpen(true);
   };
 
@@ -953,7 +974,7 @@ const BundleEditor: React.FC = () => {
     if (graphError) {
       return (
         <div className="w-full h-screen flex flex-col items-center justify-center p-8">
-          <SourcingPanel snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
+          <SourcingPanel reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
             setSourceTrackingOutcome(result.trackingOutcome);
             setGraphError(null); setConfigChangeTrigger(previous => previous + 1);
           }} />
@@ -987,7 +1008,7 @@ const BundleEditor: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full overflow-hidden flex flex-col">
+    <SourceNamesProvider sources={graph.sources}><div className="w-full h-full overflow-hidden flex flex-col">
       <div className="flex border-b border-neutral-200 items-center py-2 flex-shrink-0">
         <button
           className="ml-4 px-3 py-1 bg-neutral-200 rounded hover:bg-neutral-300"
@@ -1027,7 +1048,7 @@ const BundleEditor: React.FC = () => {
               </button>
             </div>
           )}
-          <SourcingPanel snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
+          <SourcingPanel reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
             setSourceTrackingOutcome(result.trackingOutcome);
             refreshBundleNodeConfigs();
             reloadWorkingGraph();
@@ -1044,6 +1065,7 @@ const BundleEditor: React.FC = () => {
             {isBundleMenuOpen && (
               <div className="absolute right-0 mt-1 w-48 bg-white border border-neutral-200 rounded-md shadow-lg z-50">
                 <div className="py-1">
+                  <button className="w-full px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100" onClick={() => { setIsManageSourcesOpen(true); setIsBundleMenuOpen(false); }}>Manage sources…</button>
                   <button
                     onClick={() => {
                       setIsSourceSnapshotsOpen(true);
@@ -1220,6 +1242,7 @@ const BundleEditor: React.FC = () => {
         directories={directories}
       />
 
+      <ManageSources bundleSlug={slug || ''} graph={graph} isOpen={isManageSourcesOpen} onOpen={() => setIsManageSourcesOpen(true)} onClose={() => setIsManageSourcesOpen(false)} onChanged={reloadWorkingGraph} onStaged={() => { setSourceReviewTrigger(value => value + 1); }} />
       {viewFrontierEnabled && (pendingSourceChanges || frontierUnavailable) && <div role="status" className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-2 text-sm text-neutral-600">
         <span>{pendingSourceChanges ? 'The frontier can’t be shown while source changes are waiting for review.' : frontierUnavailable}</span>
         <button className="rounded border border-neutral-300 bg-white px-3 py-1 hover:bg-neutral-100" onClick={() => { setFilters(filters.map(filter => filter.id === 'frontier-filter' ? { ...filter, enabled: false } : filter)); setFrontierUnavailable(null); }}>Okay</button>
@@ -1252,7 +1275,7 @@ const BundleEditor: React.FC = () => {
           protectedBundleNodeIds={new Set([entryBundleNodeId, defaultTraversalBundleNodeId].filter((id): id is string => id !== null))}
         />
       </div>
-    </div>
+    </div></SourceNamesProvider>
   );
 };
 

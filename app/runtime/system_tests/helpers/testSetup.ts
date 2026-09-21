@@ -25,6 +25,7 @@ import {
 } from './serverManager.js';
 import { AppConfigPaths } from '../../../shared_code/paths/appConfigPaths.js';
 import { BundleConfigPaths } from '../../../shared_code/paths/bundleConfigPaths.js';
+import { fixtureSourceLocation } from '../../../shared_code/shared_dev/fixtureSourceLocation.js';
 
 interface ResolvedFixtureSourceGraph {
   sharedPath: string;
@@ -122,7 +123,19 @@ export class SystemTestBundleSetup {
       const yamlContent = fs.readFileSync(bundleYamlPath, 'utf8');
       const config = YAML.parse(yamlContent) as Record<string, unknown>;
 
-      if (config.sourceDirectory && typeof config.sourceDirectory === 'string') {
+      if (Array.isArray(config.sources)) {
+        const copiedGraphs = new Set<string>();
+        config.sources = config.sources.map((source: { directory: string }) => {
+          const { graph, subdirectory } = fixtureSourceLocation(source.directory);
+          const destination = path.join(this.destinationBundlePath, 'source_graphs', graph);
+          if (!copiedGraphs.has(graph)) {
+            fs.cpSync(path.join(getSourceGraphsPath(), graph), destination, { recursive: true, filter: src => !src.includes('.DS_Store') });
+            copiedGraphs.add(graph);
+          }
+          this.isolatedSourceGraphPath = copiedGraphs.size === 1 ? destination : path.join(this.destinationBundlePath, 'source_graphs');
+          return { ...source, directory: path.join(destination, subdirectory) };
+        });
+      } else if (config.sourceDirectory && typeof config.sourceDirectory === 'string') {
         const resolvedSourceGraph = resolveFixtureSourceGraph(config.sourceDirectory);
         if (!resolvedSourceGraph) {
           throw new Error(`Could not resolve fixture source graph path from "${config.sourceDirectory}"`);

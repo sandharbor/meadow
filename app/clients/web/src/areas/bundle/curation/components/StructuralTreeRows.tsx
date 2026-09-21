@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { SourceDirectoryLabel } from '../../../../shared/components/SourceNames.js';
 import type { DisplayGraph, DisplayNode } from '../types/displayGraph';
 import ListNodeGlyph from './ListNodeGlyph';
 
@@ -143,7 +144,7 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
             {node.underlyingNode.effectiveBlacklistingBundleNodeId && <span className="text-xs text-red-700">Excluded by folder</span>}
           </span>
         </td>
-        <td className="border px-3 py-2 text-neutral-500">{node.sourceGraphSubdirectory}</td>
+        <td className="border px-3 py-2 text-neutral-500"><SourceDirectoryLabel sourceId={node.sourceId} directory={node.sourceGraphSubdirectory} /></td>
         <td className="border px-3 py-2 text-neutral-500 font-mono text-sm">{kindLabel(node)}</td>
         <td className="border px-3 py-2">{node.distance ?? 'N/A'}</td>
       </tr>

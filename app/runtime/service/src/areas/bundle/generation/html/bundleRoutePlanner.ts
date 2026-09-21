@@ -20,6 +20,7 @@ import type { BundleConfig } from '../../../../../../../contracts/types/bundleCo
 import type { FileBundleNodeConfig, BundleNodeConfig, BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { canonicalPageFilename } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { normalizePageTitle } from './shared.js';
+import { sourceOutputDirectory } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 
 export type BundleRouteTable = ReadonlyMap<BundleNodeId, string>;
 
@@ -39,7 +40,9 @@ const canonicalRoute = (route: string): string => route.normalize('NFC').toLocal
 const posixJoin = (...parts: string[]): string => path.posix.join(...parts.filter(Boolean));
 
 function preferredFileRoute(config: FileBundleNodeConfig, bundleConfig: BundleConfig, bundleSlug?: string): string {
-  const sourceDirectory = config.sourceGraphSubdirectory ?? '';
+  const sourceDirectory = config.sourceId
+    ? sourceOutputDirectory(bundleConfig, config.sourceId, config.sourceGraphSubdirectory ?? '')
+    : config.sourceGraphSubdirectory ?? '';
   const rendersAsSvg = config.fileType === 'svg';
   const name = rendersAsSvg
     ? config.bundleNodeName
@@ -101,7 +104,8 @@ export function planBundleRoutes(
 ): BundleRoutePlan {
   const entry = configs.find(config => config.bundleNodeId === bundleConfig.entryBundleNodeId);
   if (!entry) throw new Error('Cannot plan routes: entryBundleNodeId does not resolve');
-  const rendered = configs.filter(config => config.listType === 'whitelist');
+  const rendered = configs.filter(config => config.listType === 'whitelist'
+    && (!config.sourceId || bundleConfig.sources?.some(source => source.id === config.sourceId)));
   const folderDerived = entry.bundleNodeKind !== 'file';
 
   const preferred = new Map<BundleNodeId, string>();
@@ -119,7 +123,7 @@ export function planBundleRoutes(
   // duplicate preferred source routes. The reserved namespace makes the new
   // generated routes collision-safe without changing how existing pages win
   // same-path collisions during generation.
-  if (!folderDerived) {
+  if (!folderDerived && !bundleConfig.sourceOutputLayout) {
     return {
       folderDerived: false,
       routes: new Map(rendered.map(config => [config.bundleNodeId, preferred.get(config.bundleNodeId)!])),

@@ -55,6 +55,7 @@ export const htmlGeneration = define({
   definition: text`The process that turns a curated source graph into browsable HTML bundle output.`,
   mechanics: [
     text`It renders pages and assets, applies ${link(id.hooks, "Generation Hooks")}, and prepares output for preview or export.`,
+    text`A bundle that adopts multi-source output places source pages and assets beneath sources/<canonical-name>/<relative-path>. One mapping governs rendered routes, backlinks, transclusions, navigation, exports, and generated formats; generated collection pages and internal assets retain their own namespaces. Existing single-source paths remain unchanged until adoption, and returning to one source keeps the adopted layout. Source-qualified links are rewritten to portable destinations in each format.`,
     text`The selected preview page becomes readable as soon as it renders, including after customization, while remaining pages continue rendering. Live preview reads do not install or save a partial version; the complete generated output is installed atomically.`,
   ],
   interplay: text`It consumes ${link(id.bundleCuration, "Bundle Curation")} results and exposes them to ${link(id.bundleReview, "Bundle Review")} and ${link(id.bundleSharing, "Bundle Sharing")}.`,
@@ -100,6 +101,7 @@ export const versioning = define({
   definition: text`An immutable, named snapshot in the lifecycle of generated bundle output.`,
   mechanics: [
     text`Versions move from initial unsaved output to saved current versions with comparisons, recovery, and cancellation.`,
+    text`Adding a second source or renaming a canonical source can change output paths. Source review recommends a new generated version, a connected publication revision, and retention of the prior publication. This guidance is optional and does not generate or publish a version automatically.`,
     text`Saving completes the local site workflow and returns a local preview link. Publishing is a separate, optional operation that requires an explicit user request.`,
   ],
   interplay: text`${link(id.bundleGeneration, "Bundle Generation")} creates versions and ${link(id.bundleReview, "Bundle Review")} explains their currentness and differences. Reader connections and remote addresses belong to ${link(id.publicationRevision, "Publication Revisions")}, not generated versions.`,

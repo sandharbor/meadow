@@ -1,0 +1,121 @@
+nodespecs:
+  - bundle: multi-source-page
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - source: notes
+            linkPath: /Start.md
+            isInGraph: true
+          - linkPath: /Same/Inside.md
+            isInGraph: true
+          - source: notes
+            linkPath: /diagram.svg
+            isInGraph: true
+        inlinks:
+          - source: notes
+            linkPath: /Start.md
+            isInGraph: true
+          - linkPath: /Incoming.md
+            isInGraph: true
+          - linkPath: /Same/Inside.md
+            isInGraph: true
+          - source: reference
+            linkPath: /Study.md
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../notes/Start.html
+          - relativeLinkPath: Same/Inside.html
+          - relativeLinkPath: ../notes/diagram.svg
+        footerSectionBacklinks:
+          - relativeLinkPath: ../notes/Start.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../notes/Start.html
+                embeddedLinks:
+                  - linkName: Overview
+                    linkRelativePath: ../notes/Overview.html
+          - relativeLinkPath: Incoming.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Incoming.html
+                embeddedLinks:
+                  - linkName: Start
+                    linkRelativePath: ../notes/Start.html
+          - relativeLinkPath: Same/Inside.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Same/Inside.html
+                embeddedLinks: []
+          - relativeLinkPath: ../reference/Study.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../reference/Study.html
+                embeddedLinks:
+                  - linkName: Appendix
+                    linkRelativePath: ../reference/Appendix.html
+  - bundle: multi-source-mixed
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - source: notes
+            linkPath: /Start.md
+            isInGraph: true
+          - linkPath: /Same/Inside.md
+            isInGraph: true
+          - source: notes
+            linkPath: /diagram.svg
+            isInGraph: true
+        inlinks:
+          - source: notes
+            linkPath: /Start.md
+            isInGraph: true
+          - linkPath: /Incoming.md
+            isInGraph: true
+          - linkPath: /Same/Inside.md
+            isInGraph: true
+          - source: reference
+            linkPath: /Study.md
+            isInGraph: true
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../notes/Start.html
+          - relativeLinkPath: Same/Inside.html
+          - relativeLinkPath: ../notes/diagram.svg
+        footerSectionBacklinks:
+          - relativeLinkPath: ../notes/Start.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../notes/Start.html
+                embeddedLinks:
+                  - linkName: Overview
+                    linkRelativePath: ../notes/Overview.html
+          - relativeLinkPath: Incoming.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Incoming.html
+                embeddedLinks:
+                  - linkName: Start
+                    linkRelativePath: ../notes/Start.html
+          - relativeLinkPath: Same/Inside.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: Same/Inside.html
+                embeddedLinks: []
+          - relativeLinkPath: ../reference/Study.html
+            backlinkContexts:
+              - seeInContextLinkRelativePath: ../reference/Study.html
+                embeddedLinks:
+                  - linkName: Appendix
+                    linkRelativePath: ../reference/Appendix.html
+  - bundle: multi-source-omitted
+    sourcing:
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: 1
+    curation:
+      isTracked: false
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

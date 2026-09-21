@@ -174,6 +174,7 @@ export async function assessBundleBoundary(slug: string): Promise<{
       candidate.fileType,
       candidate.bundleNodeKind,
       candidate.bundleNodeId,
+      candidate.sourceId,
     ));
     if (!node) continue;
     const digest = currentSourceContentDigest(sourceDirectory, config);

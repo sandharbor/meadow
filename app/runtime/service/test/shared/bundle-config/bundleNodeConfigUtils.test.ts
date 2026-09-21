@@ -29,7 +29,10 @@ import {
   projectBundleNodeConfigsForGeneration,
   stringifyBundleNodeConfig,
   validateCanonicalBundleConfiguration,
+  nodeConfigMatchesNode,
 } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { assignLegacySourceIdentity, bundleSources, sourceGraphPath, sourceOutputDirectory, splitSourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
+import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
 
 const id = (value: string) => value as BundleNodeId;
 const node = (overrides: Partial<FileBundleNodeConfig> = {}): FileBundleNodeConfig => ({
@@ -61,6 +64,52 @@ const collection = (overrides: Partial<CollectionBundleNodeConfig> = {}): Collec
 });
 
 describe('canonical bundle node configuration', () => {
+  it('keeps identical paths and folder policies independent across sources', () => {
+    const first = node({ sourceId: 'source000001' });
+    const second = node({ sourceId: 'source000002', bundleNodeId: id('b1b2c3d4e5f6') });
+    const nodes = parseBundleNodeConfig(stringifyBundleNodeConfig([first, second]));
+    expect(nodes).toHaveLength(2);
+    expect(nodeConfigMatchesNode(first, second.bundleNodeName, second.sourceGraphSubdirectory, second.fileType, 'file', second.bundleNodeId, second.sourceId)).toBe(false);
+    expect(() => stringifyBundleNodeConfig([first, { ...second, sourceId: first.sourceId }])).toThrow(/duplicate/);
+    const config: BundleConfig = {
+      sources: [{ id: first.sourceId!, name: 'notes', directory: '/notes' }, { id: second.sourceId!, name: 'research', directory: '/research' }],
+      entryBundleNodeId: first.bundleNodeId, defaultTraversalBundleNodeId: first.bundleNodeId,
+    };
+    expect(() => validateCanonicalBundleConfiguration({ committedNodes: [first, folder({ sourceId: second.sourceId, listType: 'blacklist' })], bundleConfig: config })).not.toThrow();
+    expect(() => validateCanonicalBundleConfiguration({ committedNodes: [first, folder({ sourceId: first.sourceId, listType: 'blacklist' })], bundleConfig: config })).toThrow(/blacklisted/);
+  });
+
+  it('supports ordered mixed starting selections and one reviewed survivor', () => {
+    const page = node({ sourceId: 'source000001' });
+    const selectedFolder = folder({ sourceId: 'source000002' });
+    const entry = collection({ memberBundleNodeIds: [page.bundleNodeId, selectedFolder.bundleNodeId] });
+    const parsed = parseBundleNodeConfig(stringifyBundleNodeConfig([selectedFolder, entry, page]));
+    expect(parsed.find(candidate => candidate.bundleNodeKind === 'collection')).toMatchObject({ memberBundleNodeIds: [page.bundleNodeId, selectedFolder.bundleNodeId] });
+    expect(() => stringifyBundleNodeConfig([page, { ...entry, memberBundleNodeIds: [page.bundleNodeId] }])).not.toThrow();
+    expect(() => stringifyBundleNodeConfig([page, { ...entry, memberBundleNodeIds: [] }])).toThrow(/at least one/);
+    expect(() => stringifyBundleNodeConfig([page, { ...entry, memberBundleNodeIds: [entry.bundleNodeId] }])).toThrow(/file or folder/);
+    expect(() => stringifyBundleNodeConfig([page, { ...entry, sourceId: page.sourceId } as unknown as BundleNodeConfig])).toThrow(/sourceId.*not valid/);
+  });
+
+  it('separates stable source identity from mutable names, locations, and output routes', () => {
+    const original = node();
+    const migrated = assignLegacySourceIdentity([original])[0];
+    expect(migrated).toMatchObject({ ...original, sourceId: 'source000001' });
+    expect(original.sourceId).toBeUndefined();
+    const legacy: BundleConfig = { sourceDirectory: '/old/notes' };
+    const source = bundleSources(legacy)[0];
+    const config: BundleConfig = { sources: [source], sourceOutputLayout: 'multi' };
+    const graphPath = sourceGraphPath(source.id, 'Projects/Example.md');
+    expect(splitSourceGraphPath(graphPath, config.sources)).toEqual({ sourceId: source.id, relativePath: 'Projects/Example.md' });
+    expect(sourceOutputDirectory(legacy, undefined, 'Projects')).toBe('Projects');
+    expect(sourceOutputDirectory(config, source.id, 'Projects')).toBe('sources/source/Projects');
+    const renamed: BundleConfig = { ...config, sources: [{ ...source, name: 'research', aliases: ['source'], directory: '/new/location' }] };
+    expect(sourceGraphPath(bundleSources(renamed)[0].id, 'Projects/Example.md')).toBe(graphPath);
+    expect(sourceOutputDirectory(renamed, source.id, 'Projects')).toBe('sources/research/Projects');
+    expect(() => bundleSources({ ...renamed, sources: [...renamed.sources!, { id: 'source000002', name: 'source', directory: '/other' }] })).toThrow(/already registered/);
+    expect(splitSourceGraphPath('_mw_sources/source000001/Actual.md')).toEqual({ relativePath: '_mw_sources/source000001/Actual.md' });
+  });
+
   it('round-trips tracking evidence and explicitly excludes it from generation projection', () => {
     const withEvidence = node({
       trackingEvidence: {

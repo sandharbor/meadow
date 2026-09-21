@@ -4,6 +4,8 @@ import path from 'node:path';
 import type { SourceSnapshot, SnapshotFile } from './sourceSnapshots.js';
 import type { WorkingGraphRustOutput } from '../bundle-graph/workingGraphService.js';
 import { sha256 } from './sourceSnapshots.js';
+import type { BundleSource } from '../../../../../contracts/types/bundleConfig.js';
+import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 
 // Wider link discovery is session data, never part of a durable snapshot.
 const liveLinks = new Map<string, { digest: string; graph: WorkingGraphRustOutput }>();
@@ -17,10 +19,10 @@ export function liveSourceLinks(bundleDirectory: string, digest: string): Workin
   return value?.digest === digest ? value.graph : undefined;
 }
 
-export function sourceInventory(files: Record<string, SnapshotFile>, directories: string[]) {
+export function sourceInventory(files: Record<string, SnapshotFile>, directories: string[], sources?: BundleSource[]) {
   const sortedFiles = Object.fromEntries(Object.keys(files).sort().map(filename => [filename, { digest: files[filename].digest, size: files[filename].size }]));
   const sortedDirectories = [...new Set(directories)].sort();
-  return { files: sortedFiles, directories: sortedDirectories, fileCount: Object.keys(sortedFiles).length, digest: sha256(JSON.stringify({ files: sortedFiles, directories: sortedDirectories })) };
+  return { files: sortedFiles, directories: sortedDirectories, fileCount: Object.keys(sortedFiles).length, digest: sha256(JSON.stringify({ files: sortedFiles, directories: sortedDirectories, ...(sources && { sources }) })) };
 }
 
 /** Discovery may inspect the library; the durable projection contains only admitted nodes. */
@@ -35,14 +37,16 @@ export function scopeSourceSnapshot(snapshot: SourceSnapshot, graph: WorkingGrap
     return [];
   }));
   const files = Object.fromEntries(Object.entries(snapshot.files).filter(([filename]) => filenames.has(filename)));
-  const directories = new Set(nodes.filter(node => node.bundleNodeKind === 'folder').map(node => node.sourceGraphSubdirectory ?? node.bundleNodeKey));
+  const directories = new Set(nodes.filter(node => node.bundleNodeKind === 'folder').map(node => sourceGraphPath(node.sourceId, node.sourceGraphSubdirectory ?? '')));
+  for (const source of snapshot.sources ?? []) directories.add(sourceGraphPath(source.id, ''));
   for (const filename of Object.keys(files)) {
     let directory = path.posix.dirname(filename);
     while (directory !== '.') { directories.add(directory); directory = path.posix.dirname(directory); }
   }
   directories.delete('');
   const links = (map: Record<string, string[]>) => Object.fromEntries(Object.entries(map).filter(([key]) => keys.has(key)).map(([key, values]) => [key, values.filter(value => keys.has(value))]));
-  return { ...snapshot, ...sourceInventory(files, [...directories]), graph: graph ? { ...graph, nodes,
+  return { ...snapshot, ...sourceInventory(files, [...directories], snapshot.sources), graph: graph ? { ...graph, nodes,
+    ...(graph.sourceDiagnostics && { sourceDiagnostics: graph.sourceDiagnostics.filter(diagnostic => keys.has(diagnostic.path)) }),
     allLinkResolutionMaps: Object.fromEntries(Object.entries(graph.allLinkResolutionMaps).filter(([key]) => keys.has(key.replace(/^\/+/, ''))).map(([key, resolutions]) => [key, Object.fromEntries(Object.entries(resolutions).map(([link, resolution]) => [link, resolution.link_resolved_target_path && keys.has(resolution.link_resolved_target_path.replace(/^\/+/, '')) ? resolution : { link_resolved_target_directory: '', link_resolved_target_path: null }]))])),
     ...(graph.folderScope && { folderScope: { ...graph.folderScope, skippedPaths: graph.folderScope.skippedPaths.filter(item => keys.has(item.path)) } }),
     edges: graph.edges.filter(edge => keys.has(edge.source) && keys.has(edge.target)),

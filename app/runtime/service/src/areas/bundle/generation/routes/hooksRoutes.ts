@@ -17,10 +17,12 @@ limitations under the License.
 import express from 'express';
 import { existsSync, mkdirSync } from 'fs';
 import fs from 'fs';
+import path from 'node:path';
 import { getConfigDirectory, getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { HookType, HookScope, HookMetadata, HookValidationResult, PageValidationDiff } from '../../../../../../../contracts/types/hooks.js';
 import { AppConfigPaths } from '../../../../../../../shared_code/paths/appConfigPaths.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
+import { sourceGraphPath, sourceOutputDirectory } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { HooksLoader } from '../utils/hooksLoader.js';
 import { loadBundleConfig, saveBundleConfig } from '../../../../shared/utils/bundleConfigUtils.js';
 import { commitChangesNative, logWithFile, logErrorWithFile } from '../../../../shared/utils/configDirectory/gitUtils/gitStatusUtils.js';
@@ -402,6 +404,7 @@ router.post('/bundles/:bundleSlug/generation/hooks/validate', validateBundleSlug
     const bundleDirectory = getBundleDirectory(bundleSlug);
     const bundleNodeConfPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
     const bundleNodeConfs = loadBundleNodeConfigMap(bundleNodeConfPath);
+    const bundleConfig = loadBundleConfig(bundleDirectory);
 
     const affectedPages: PageValidationDiff[] = [];
     let totalAffectedCount = 0;
@@ -423,7 +426,7 @@ router.post('/bundles/:bundleSlug/generation/hooks/validate', validateBundleSlug
           if (affectedPages.length < 10) {
             affectedPages.push({
               pageTitle: pageConf.bundleNodeName,
-              pageSubdirectory: pageConf.sourceGraphSubdirectory || '',
+              pageSubdirectory: pageConf.sourceId ? sourceOutputDirectory(bundleConfig, pageConf.sourceId, pageConf.sourceGraphSubdirectory || '') : pageConf.sourceGraphSubdirectory || '',
               before,
               after
             });
@@ -507,9 +510,7 @@ router.post('/bundles/:bundleSlug/generation/hooks/validate', validateBundleSlug
         if (pageConf.bundleNodeKind === 'file' && pageConf.fileType === 'md') {
           // Read the page's markdown content
           const trackedPageContentDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
-          const sourceDir = pageConf.sourceGraphSubdirectory
-            ? BundleConfigPaths.getTrackedPageContentSubdir(bundleDirectory, pageConf.sourceGraphSubdirectory)
-            : trackedPageContentDir;
+          const sourceDir = path.join(trackedPageContentDir, sourceGraphPath(pageConf.sourceId, pageConf.sourceGraphSubdirectory ?? ''));
           
           try {
             const mdContent = getMdContent(sourceDir, pageConf.bundleNodeName, false);
@@ -521,7 +522,7 @@ router.post('/bundles/:bundleSlug/generation/hooks/validate', validateBundleSlug
                 if (affectedPages.length < 10) {
                   affectedPages.push({
                     pageTitle: pageConf.bundleNodeName,
-                    pageSubdirectory: pageConf.sourceGraphSubdirectory || '',
+                    pageSubdirectory: sourceOutputDirectory(bundleConfig, pageConf.sourceId, pageConf.sourceGraphSubdirectory || ''),
                     before: mdContent.substring(0, 500),
                     after: processedPage.substring(0, 500)
                   });

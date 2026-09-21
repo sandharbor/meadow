@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 
 export interface BundleNodeConfigMap {
   [bundleNodeKey: string]: BundleNodeConfig;
@@ -29,7 +30,7 @@ export function makeBundleNodeKey(bundleNodeName: string, fileType: string = 'md
 }
 
 export function bundleNodeConfigToKey(conf: BundleNodeConfig): string {
-  if (conf.bundleNodeKind === 'folder') return `folder:${conf.sourceGraphSubdirectory}`;
+  if (conf.bundleNodeKind === 'folder') return `folder:${sourceGraphPath(conf.sourceId, conf.sourceGraphSubdirectory)}`;
   if (conf.bundleNodeKind === 'collection') return `collection:${conf.bundleNodeId}`;
-  return makeBundleNodeKey(conf.bundleNodeName, conf.fileType, conf.sourceGraphSubdirectory || '');
+  return makeBundleNodeKey(conf.bundleNodeName, conf.fileType, sourceGraphPath(conf.sourceId, conf.sourceGraphSubdirectory || ''));
 }

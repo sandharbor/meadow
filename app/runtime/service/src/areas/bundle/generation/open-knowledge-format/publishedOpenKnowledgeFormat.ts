@@ -46,6 +46,7 @@ export interface GeneratePublishedOpenKnowledgeFormatOptions {
   scrubbedSourceContentDirectory: string;
   bundleNodeConfigs: BundleNodeConfig[];
   allLinkResolutionMaps?: AllLinkResolutionMaps;
+  sourceQualified?: boolean;
   entryNodeName?: string;
   entrySourceGraphSubdirectory?: string;
   indexSource?: OpenKnowledgeFormatIndexSource;
@@ -74,6 +75,7 @@ export async function generatePublishedOpenKnowledgeFormatArtifacts(
     {
       bundleNodeConfigs: options.bundleNodeConfigs,
       allLinkResolutionMaps: options.allLinkResolutionMaps,
+      sourceQualified: options.sourceQualified,
       entryNodeName: options.entryNodeName,
       entrySourceGraphSubdirectory: options.entrySourceGraphSubdirectory,
       indexSource: options.indexSource,

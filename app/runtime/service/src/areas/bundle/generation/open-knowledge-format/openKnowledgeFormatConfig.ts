@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+import { sourceOutputGraphPath } from '../source-material/sourceOutputProjection.js';
 import type {
   OpenKnowledgeFormatIndexSource,
   OpenKnowledgeFormatLogSource
@@ -36,7 +37,7 @@ export function openKnowledgeFormatIndexSourceFromBundleConfig(bundleConfig: Bun
   if (mode === 'trackedPage') {
     const sourceGraphPath = bundleConfig.generationOpenKnowledgeFormatIndexSourcePath;
     if (typeof sourceGraphPath === 'string' && sourceGraphPath.trim()) {
-      return { mode: 'trackedPage', sourceGraphPath: sourceGraphPath.trim() };
+      return { mode: 'trackedPage', sourceGraphPath: sourceOutputGraphPath(bundleConfig, sourceGraphPath.trim()) };
     }
   }
   return { mode: 'generated' };
@@ -48,7 +49,7 @@ export function openKnowledgeFormatLogSourceFromBundleConfig(bundleConfig: Bundl
   if (mode === 'trackedPage') {
     const sourceGraphPath = bundleConfig.generationOpenKnowledgeFormatLogSourcePath;
     if (typeof sourceGraphPath === 'string' && sourceGraphPath.trim()) {
-      return { mode: 'trackedPage', sourceGraphPath: sourceGraphPath.trim() };
+      return { mode: 'trackedPage', sourceGraphPath: sourceOutputGraphPath(bundleConfig, sourceGraphPath.trim()) };
     }
   }
   return { mode: 'auto' };

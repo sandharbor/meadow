@@ -28,6 +28,7 @@ import type {
 } from '../../contracts/types/bundleNodeConfig.js';
 import type { BundleConfig } from '../../contracts/types/bundleConfig.js';
 import type { IBundleNode } from '../../contracts/types/IBundleNode.js';
+import { bundleSources, sourceForNode, validateSourceId } from './bundleSourceUtils.js';
 
 export const BUNDLE_NODE_ID_PATTERN = /^[a-z0-9]{12}$/;
 const BUNDLE_NODE_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -36,6 +37,7 @@ const canonicalDocumentFields = new Set(['nodes']);
 const canonicalNodeFields = new Set([
   'bundleNodeName',
   'sourceGraphSubdirectory',
+  'sourceId',
   'bundleNodeKind',
   'fileType',
   'bundleNodeId',
@@ -148,6 +150,12 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
     }
   }
   const common = parseCommonNodeFields(value, index, filePath);
+  if (value.sourceId !== undefined) {
+    if (typeof value.sourceId !== 'string') fail(filePath, index, 'sourceId', 'must be a string');
+    try { validateSourceId(value.sourceId); }
+    catch (error) { fail(filePath, index, 'sourceId', error instanceof Error ? error.message : String(error)); }
+  }
+  const sourceIdentity = value.sourceId === undefined ? {} : { sourceId: value.sourceId as string };
   switch (value.bundleNodeKind) {
     case 'file': {
       if (value.sourceGraphSubdirectory !== undefined && typeof value.sourceGraphSubdirectory !== 'string') {
@@ -161,6 +169,7 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
       }
       return {
         ...common,
+        ...sourceIdentity,
         ...(value.sourceGraphSubdirectory !== undefined && {
           sourceGraphSubdirectory: value.sourceGraphSubdirectory,
         }),
@@ -202,6 +211,7 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
       }
       return {
         ...common,
+        ...sourceIdentity,
         sourceGraphSubdirectory: normalized,
         bundleNodeKind: 'folder',
         ...(value.outlinksDepth !== undefined && {
@@ -213,6 +223,7 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
       };
     }
     case 'collection': {
+      if (hasOwn(value, 'sourceId')) fail(filePath, index, 'sourceId', 'is not valid for collection nodes');
       if (hasOwn(value, 'sourceGraphSubdirectory')) {
         fail(filePath, index, 'sourceGraphSubdirectory', 'is not valid for collection nodes');
       }
@@ -226,8 +237,8 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
       if (common.listType !== 'whitelist') {
         fail(filePath, index, 'listType', 'collection nodes must be whitelisted');
       }
-      if (!Array.isArray(value.memberBundleNodeIds) || value.memberBundleNodeIds.length < 2) {
-        fail(filePath, index, 'memberBundleNodeIds', 'must contain at least two folder-node IDs');
+      if (!Array.isArray(value.memberBundleNodeIds) || value.memberBundleNodeIds.length < 1) {
+        fail(filePath, index, 'memberBundleNodeIds', 'must contain at least one file or folder node ID');
       }
       const memberBundleNodeIds = value.memberBundleNodeIds.map((member, memberIndex) => {
         if (typeof member !== 'string' || !BUNDLE_NODE_ID_PATTERN.test(member)) {
@@ -250,16 +261,17 @@ function parseNodeRecord(value: unknown, index: number, filePath: string): Bundl
 }
 
 type BundleNodeLocatorInput =
-  | Pick<FileBundleNodeConfig, 'bundleNodeName' | 'sourceGraphSubdirectory' | 'bundleNodeKind' | 'fileType'>
-  | Pick<FolderBundleNodeConfig, 'sourceGraphSubdirectory' | 'bundleNodeKind'>
+  | Pick<FileBundleNodeConfig, 'bundleNodeName' | 'sourceGraphSubdirectory' | 'bundleNodeKind' | 'fileType' | 'sourceId'>
+  | Pick<FolderBundleNodeConfig, 'sourceGraphSubdirectory' | 'bundleNodeKind' | 'sourceId'>
   | Pick<CollectionBundleNodeConfig, 'bundleNodeKind'>;
 
-/** Logical configured-node identity. The file format is intentionally unchanged from Phase 1. */
+/** Source-relative locators are distinct even when sources contain identical paths. */
 export function bundleNodeLocatorKey(node: BundleNodeLocatorInput): string {
+  const prefix = node.bundleNodeKind !== 'collection' && node.sourceId ? `${node.sourceId}\0` : '';
   if (node.bundleNodeKind === 'file') {
-    return [node.bundleNodeName, node.sourceGraphSubdirectory ?? '', node.bundleNodeKind, node.fileType].join('\0');
+    return prefix + [node.bundleNodeName, node.sourceGraphSubdirectory ?? '', node.bundleNodeKind, node.fileType].join('\0');
   }
-  if (node.bundleNodeKind === 'folder') return `folder:${node.sourceGraphSubdirectory}`;
+  if (node.bundleNodeKind === 'folder') return `${prefix}folder:${node.sourceGraphSubdirectory}`;
   return 'collection';
 }
 
@@ -312,8 +324,8 @@ function validateNodeSet(nodes: BundleNodeConfig[], filePath: string): void {
     for (const memberId of collection.memberBundleNodeIds) {
       const member = nodes.find(node => node.bundleNodeId === memberId);
       if (!member) fail(filePath, collectionIndex, 'memberBundleNodeIds', `does not resolve (${memberId})`);
-      if (member.bundleNodeKind !== 'folder') {
-        fail(filePath, collectionIndex, 'memberBundleNodeIds', `must resolve to a folder (${memberId})`);
+      if (member.bundleNodeKind === 'collection') {
+        fail(filePath, collectionIndex, 'memberBundleNodeIds', `must resolve to a file or folder (${memberId})`);
       }
     }
   }
@@ -324,6 +336,7 @@ export function stringifyBundleNodeConfig(nodes: BundleNodeConfig[]): string {
   validateNodeSet(canonicalNodes, 'bundle_node_config.yaml');
   const sorted = canonicalNodes.sort((a, b) =>
     a.bundleNodeName.localeCompare(b.bundleNodeName)
+    || (a.sourceId ?? '').localeCompare(b.sourceId ?? '')
     || (a.sourceGraphSubdirectory ?? '').localeCompare(b.sourceGraphSubdirectory ?? '')
     || a.bundleNodeKind.localeCompare(b.bundleNodeKind)
     || (a.fileType ?? '').localeCompare(b.fileType ?? '')
@@ -333,6 +346,7 @@ export function stringifyBundleNodeConfig(nodes: BundleNodeConfig[]): string {
     nodes: sorted.map(node => {
       const common = {
         bundleNodeName: node.bundleNodeName,
+        ...(node.sourceId && { sourceId: node.sourceId }),
         ...(node.bundleNodeKind !== 'collection' && {
           sourceGraphSubdirectory: node.sourceGraphSubdirectory,
         }),
@@ -429,6 +443,7 @@ function nearestBlacklistedAncestor(node: BundleNodeConfig, nodes: BundleNodeCon
   return nodes
     .filter((candidate): candidate is FolderBundleNodeConfig =>
       candidate.bundleNodeKind === 'folder'
+      && candidate.sourceId === node.sourceId
       && candidate.listType === 'blacklist'
       && (candidate.sourceGraphSubdirectory === ''
         || locator === candidate.sourceGraphSubdirectory
@@ -446,10 +461,15 @@ function validateBundleNodeStrategy(nodes: BundleNodeConfig[], bundleConfig: Bun
     fail(bundleConfigPath, null, 'entryBundleNodeId', 'must reference the bundle collection');
   }
 
-  const sourceRootName = bundleConfig.sourceDirectory?.replace(/[\\/]+$/, '').split(/[\\/]/).pop();
+  bundleSources(bundleConfig);
   for (const [index, node] of nodes.entries()) {
+    if (node.bundleNodeKind === 'collection') continue;
+    if (bundleConfig.sources && !node.sourceId) fail(bundleConfigPath, index, 'sourceId', 'is required for a source registry');
+    const source = sourceForNode(bundleConfig, node);
+    // Kept orphan configuration may refer to a deliberately removed source.
+    const sourceRootName = source?.directory.replace(/[\\/]+$/, '').split(/[\\/]/).pop();
     if (node.bundleNodeKind === 'folder' && node.sourceGraphSubdirectory === ''
-      && sourceRootName && node.bundleNodeName !== sourceRootName) {
+      && !bundleConfig.sources && sourceRootName && node.bundleNodeName !== sourceRootName) {
       fail(bundleConfigPath, index, 'bundleNodeName', `source-root folder must be named '${sourceRootName}'`);
     }
   }
@@ -494,9 +514,11 @@ export function nodeConfigMatchesNode(
   fileType: FileType | undefined,
   bundleNodeKind: BundleNodeKind = 'file',
   bundleNodeId?: BundleNodeId,
+  sourceId?: string,
 ): boolean {
   if (config.bundleNodeKind !== bundleNodeKind || config.bundleNodeName !== bundleNodeName) return false;
   if (config.bundleNodeKind === 'collection') return bundleNodeId === undefined || config.bundleNodeId === bundleNodeId;
+  if (config.sourceId !== sourceId) return false;
   if ((config.sourceGraphSubdirectory ?? '') !== (sourceGraphSubdirectory ?? '')) return false;
   return config.bundleNodeKind === 'folder' || config.fileType === fileType;
 }
@@ -529,6 +551,7 @@ export function applyNodeConfigsToNodes(
       candidate.fileType,
       candidate.bundleNodeKind,
       candidate.bundleNodeId,
+      candidate.sourceId,
     ));
     if (!node) continue;
     node.conf = config;
@@ -555,6 +578,7 @@ export function buildNodeConfigs(nodes: IBundleNode[]): BundleNodeConfig[] {
       }
       const common = {
         bundleNodeName: node.bundleNodeName,
+        ...(node.sourceId && { sourceId: node.sourceId }),
         sourceGraphSubdirectory: node.sourceGraphSubdirectory,
         bundleNodeId: node.conf!.bundleNodeId,
         listType: node.blacklisted ? 'blacklist' as const : 'whitelist' as const,
@@ -586,5 +610,6 @@ export function getOrphanNodeConfigs(
       node.fileType,
       node.bundleNodeKind,
       node.bundleNodeId,
+      node.sourceId,
     )));
 }

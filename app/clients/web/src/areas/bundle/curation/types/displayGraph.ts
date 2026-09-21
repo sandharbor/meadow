@@ -75,6 +75,10 @@ export class DisplayNode {
     return this._node.sourceGraphSubdirectory ?? '';
   }
 
+  get sourceId(): string | undefined {
+    return this._node.sourceId;
+  }
+
   get isVisible(): boolean {
     return this._isVisible;
   }

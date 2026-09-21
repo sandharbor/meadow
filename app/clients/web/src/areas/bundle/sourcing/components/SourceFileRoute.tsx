@@ -1,5 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { useSourcePath } from '../../../../shared/components/SourceNames.js';
 import type { Graph } from '../../../../../../../contracts/types/graph.js';
 import { traversalLinkType, type TraversalLinkType } from '../../../../shared/utils/traversalLinkType.js';
 
@@ -9,7 +10,7 @@ const connectors: Record<TraversalLinkType, { arrow: string; label: string }> = 
   inlink: { arrow: '←', label: 'inlink' },
   bidirectional: { arrow: '↔', label: 'bidirectional' },
   directoryContainment: { arrow: '→', label: 'contained in folder' },
-  collectionMembership: { arrow: '→', label: 'selected folder' },
+  collectionMembership: { arrow: '→', label: 'starting selection' },
   unknown: { arrow: '·', label: 'direction unavailable' },
 };
 
@@ -19,8 +20,10 @@ function RouteConnector({ linkType }: { linkType: TraversalLinkType }) {
 }
 
 export function FilePill({ path }: { path: string }) {
-  return <span title={path} data-testid="source-file-pill" className="inline-flex max-w-full items-baseline gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 align-middle text-neutral-700">
-    <span aria-hidden="true" className="shrink-0 text-neutral-400">▤</span><span className="[overflow-wrap:anywhere]">{path.split('/').pop()}</span>
+  const label = useSourcePath(path);
+  const qualified = label !== path;
+  return <span title={label} data-testid="source-file-pill" className="inline-flex max-w-full items-baseline gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-1.5 py-0.5 align-middle text-neutral-700">
+    <span aria-hidden="true" className="shrink-0 text-neutral-400">▤</span><span className="[overflow-wrap:anywhere]">{qualified ? `${label.split('/')[0]} / ${label.split('/').pop()}` : path.split('/').pop()}</span>
   </span>;
 }
 

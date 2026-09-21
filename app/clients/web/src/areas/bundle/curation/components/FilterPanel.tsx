@@ -281,7 +281,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     }
   };
 
-  const showFolderFilter = hasNodesInMultipleFolders(pages);
+  const showFolderFilter = graph.sources.length > 1 || hasNodesInMultipleFolders(pages);
   const showNodeTypeFilter = getPresentNodeTypeFilters(graph).length > 1;
   const gapFilters = filters.filter(filter => (
     filter.id === 'outlink-gap-filter' || filter.id === 'inlink-gap-filter'
@@ -576,7 +576,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
               {isExpanded && isExpandableFilter && (
                 <div id={`${filter.id}-contents`}>
                   {filter.isFolderFilter && (
-                    <FolderFilterTree filter={filter} pages={pages} onFilterChange={onFilterChange} />
+                    <FolderFilterTree filter={filter} pages={pages} sources={graph.sources} onFilterChange={onFilterChange} />
                   )}
                   {filter.isNodeTypeFilter && (
                     <NodeTypeFilterList filter={filter} graph={graph} onFilterChange={onFilterChange} />

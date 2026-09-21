@@ -20,7 +20,7 @@ import {
   buildFolderTree,
   hasNodesInMultipleFolders,
   normalizeFolderPath,
-  nodeIsInFolder
+  nodeIsInFolder, nodeMatchesFolderState
 } from '../../../../../src/areas/bundle/curation/utils/folderFilterUtils';
 
 const page = (id: string, sourceGraphSubdirectory: string): IBundleNode => ({
@@ -69,4 +69,27 @@ describe('folderFilterUtils', () => {
     expect(nodeIsInFolder('', '')).toBe(true);
     expect(nodeIsInFolder('Projects', '')).toBe(false);
   });
+});
+
+
+it('groups all configured sources and keeps equal folder controls independent across rename', () => {
+  const sources = [
+    { id: 'source000001', name: 'notes', directory: '/notes' },
+    { id: 'source000002', name: 'research', directory: '/research' },
+    { id: 'source000003', name: 'reference', directory: '/reference' },
+  ];
+  const notes = { ...page('notes-page', 'Same'), sourceId: 'source000001' } as IBundleNode;
+  const research = { ...page('research-page', 'Same'), sourceId: 'source000002' } as IBundleNode;
+  const tree = buildFolderTree([notes, research], sources);
+  expect(tree.map(row => [row.name, row.nodeCount, row.sourceRow])).toEqual([['notes', 1, true], ['research', 1, true], ['reference', 0, true]]);
+  const key = tree[0].children[0].path;
+  expect(nodeMatchesFolderState(notes, key)).toBe(true);
+  expect(nodeMatchesFolderState(research, key)).toBe(false);
+  expect(nodeMatchesFolderState(notes, tree[0].path)).toBe(true);
+  expect(nodeMatchesFolderState(research, tree[0].path)).toBe(false);
+  expect(buildFolderTree([notes, research], sources.map(source => ({ ...source, name: source.name + '-renamed' })))[0].children[0].path).toBe(key);
+  const single = buildFolderTree([notes], [sources[0]]);
+  expect(single[0].sourceRow).toBeUndefined();
+  expect(single[0].name).toBe('Same');
+  expect(single[0].path).toBe(key);
 });

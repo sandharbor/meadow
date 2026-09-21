@@ -14,6 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { sourceGraphPath, sourceForNode } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
+import type { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
+
+
 import express from 'express';
 import { join } from 'path';
 import YAML from 'yaml';
@@ -94,7 +98,7 @@ router.post('/bundles/:bundleSlug/curation/copy-tracked-pages', (req, res, next)
   (async () => {
     const { bundleSlug } = req.params;
     const { trackedNodes, commitMessage } = req.body as {
-      trackedNodes?: Array<{ sourceGraphSubdirectory: string; title: string; fileType: string }>;
+      trackedNodes?: Array<{ sourceId?: string; sourceGraphSubdirectory: string; title: string; fileType: string }>;
       commitMessage?: string;
     };
     
@@ -118,8 +122,8 @@ router.post('/bundles/:bundleSlug/curation/copy-tracked-pages', (req, res, next)
         return res.status(500).json({ error: `bundle_config.yaml not found for slug ${bundleSlug}` });
       }
       const yamlContent = fs.readFileSync(configPath, 'utf8');
-      const config = YAML.parse(yamlContent) as { sourceDirectory?: string };
-      if (config && typeof config.sourceDirectory === 'string') {
+      const config = YAML.parse(yamlContent) as BundleConfig;
+      if (config.sourceDirectory || config.sources?.length) {
         notesDir = acceptedSourceRoot(getBundleDirectory(bundleSlug));
       }
     } catch {
@@ -147,9 +151,10 @@ router.post('/bundles/:bundleSlug/curation/copy-tracked-pages', (req, res, next)
       try {
         const filename = canonicalPageFilename(page.title, page.fileType);
         const sourceFile = sourceFileCandidateFilenames(page.title, page.fileType)
-          .map(candidateFilename => join(notesDir, page.sourceGraphSubdirectory, candidateFilename))
+          .map(candidateFilename => join(notesDir, sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory), candidateFilename))
           .find(candidatePath => fs.existsSync(candidatePath));
-        const targetFile = join(targetDir, filename);
+        const targetFile = join(targetDir, sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory), filename);
+        fs.mkdirSync(join(targetFile, '..'), { recursive: true });
 
         if (sourceFile) {
           fs.copyFileSync(sourceFile, targetFile);
@@ -234,6 +239,12 @@ const handleWorkingGraphRequest: express.RequestHandler = (req, res, next) => {
       edges: resultEdges,
       allInlinkSources,
       allOutlinkTargets,
+      entryBundleNodeId: loaded.bundleConfig.entryBundleNodeId,
+      defaultTraversalBundleNodeId: loaded.bundleConfig.defaultTraversalBundleNodeId,
+      sources: loaded.bundleConfig.sources ?? [],
+      sourceDiagnostics: loaded.sourceDiagnostics ?? [],
+      ignoredSourceNames: loaded.bundleConfig.ignoredSourceNames ?? [],
+      sourceContentView: loaded.sourceContentView ?? 'accepted',
       frontierUnavailable: loaded.frontierUnavailable,
       folderScope: loaded.folderScope,
       changeExplanations: loaded.changeExplanations,
@@ -271,10 +282,9 @@ router.patch('/bundles/:bundleSlug/curation/page/:pageTitle/sensitive', (req, re
         return res.status(500).json({ error: `bundle_config.yaml not found for slug ${bundleSlug}` });
       }
       const yamlContent = fs.readFileSync(configPath, 'utf8');
-      const config = YAML.parse(yamlContent) as { sourceDirectory?: string };
-      if (config && typeof config.sourceDirectory === 'string') {
-        notesDir = config.sourceDirectory;
-      }
+      const config = YAML.parse(yamlContent) as BundleConfig;
+      const { sourceId } = req.body as { sourceId?: string };
+      notesDir = sourceForNode(config, { sourceId })?.directory ?? '';
     } catch {
       return res.status(500).json({ error: `Failed to load bundle configuration for ${bundleSlug}` });
     }

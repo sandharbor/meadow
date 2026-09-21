@@ -116,7 +116,7 @@ interface PreviewPublishModalProps {
   slug: string;
 
   // Optional initial context (for "Preview from page")
-  startPage?: { title: string; sourceGraphSubdirectory?: string };
+  startPage?: { title: string; sourceGraphSubdirectory?: string; sourceId?: string };
 
   // Publish options (parent manages these across app)
   globalGenerationOptions: {
@@ -496,6 +496,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
         if (startPage) {
           params.set('startPageTitle', startPage.title);
           params.set('startPageDirectory', startPage.sourceGraphSubdirectory || '');
+          if (startPage.sourceId) params.set('startPageSourceId', startPage.sourceId);
         }
 
         const url = startPage

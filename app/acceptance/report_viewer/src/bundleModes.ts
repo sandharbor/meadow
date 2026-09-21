@@ -18,6 +18,7 @@ export const BUNDLE_MODE_OPTIONS = [
   { id: "single-file", label: "Single file" },
   { id: "single-folder", label: "Single folder" },
   { id: "multiple-folders", label: "Multiple folders" },
+  { id: "mixed-starts", label: "Mixed starting selections" },
 ] as const;
 
 export type BundleMode = (typeof BUNDLE_MODE_OPTIONS)[number]["id"];

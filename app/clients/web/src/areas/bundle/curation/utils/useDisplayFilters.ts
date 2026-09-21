@@ -69,7 +69,7 @@ export function useDisplayFilters({
     const folderFilter = filters.find(filter => filter.isFolderFilter);
     const nodeTypeFilter = filters.find(filter => filter.isNodeTypeFilter);
 
-    if (folderFilter && hasNodesInMultipleFolders(graph.getAllNodes())) {
+    if (folderFilter && (graph.sources.length > 1 || hasNodesInMultipleFolders(graph.getAllNodes()))) {
       Object.entries(folderFilter.folderStates || {}).forEach(([folderPath, state]) => {
         if (!state.showTitles && !state.isSolo && !state.isHidden) return;
         result.push({

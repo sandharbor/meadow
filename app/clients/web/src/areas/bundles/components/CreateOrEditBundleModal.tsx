@@ -15,6 +15,9 @@ limitations under the License.
 */
 
 /* global alert */
+import { MultiSourceBundleFields } from './MultiSourceBundleFields.js';
+import type { BundleSource } from '../../../../../../contracts/types/bundleConfig.js';
+import type { StartingSelection } from '../../../../../../contracts/types/startingSelection.js';
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../../../shared/components/Modal';
 import { Spinner } from '../../../shared/components/Spinner';
@@ -103,7 +106,9 @@ const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
 
   // More details toggle
   const [showMoreDetails, setShowMoreDetails] = useState(viewModel.showMoreDetails);
-  const [entryStrategy, setEntryStrategy] = useState<EntryStrategy>(viewModel.entryStrategy);
+  const [entryStrategy, setEntryStrategy] = useState<EntryStrategy>(editBundle?.sources?.length ? 'sources' : viewModel.entryStrategy);
+  const [sources, setSources] = useState<BundleSource[]>([]);
+  const [startingSelections, setStartingSelections] = useState<StartingSelection[]>([]);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
   const [isFolderTitleManuallyEdited, setIsFolderTitleManuallyEdited] = useState(false);
   const [defaultOutlinksDepth, setDefaultOutlinksDepth] = useState(viewModel.defaultOutlinksDepth);
@@ -115,7 +120,7 @@ const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
 
   // Server-side typeahead: query source pages by title (debounced).
   useEffect(() => {
-    if (!isOpen || entryStrategy === 'folders') return;
+    if (!isOpen || entryStrategy !== 'page') return;
     
     // If the initial page is already locked in, no need to fetch suggestions.
     if (selectedInitialPage && !isEditingInitialPage) return;
@@ -473,7 +478,7 @@ const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
     try {
       const traversalDefaults = parsedTraversalDefaults();
       const normalizedBody = {
-        sourceDirectory: formData.sourceDirectory,
+        ...(!editBundle.sources?.length && { sourceDirectory: formData.sourceDirectory }),
         entryBundleNodeName: formData.entryBundleNodeName,
         entrySourceGraphSubdirectory: normalizeDirectory(formData.entrySourceGraphSubdirectory),
         entryFileType: formData.entryFileType,
@@ -523,6 +528,14 @@ const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
     try {
       parsedTraversalDefaults();
 
+      if (mode === 'create' && entryStrategy === 'sources') {
+        const response = await apiRequest('bundles/sources', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sources, startingSelections, slug: form.slug, bundleName: form.entryBundleNodeName, bundleNotes: form.bundleNotes, ...parsedTraversalDefaults() }) });
+        const value = await response.json();
+        if (!response.ok) throw new Error(value.error ?? 'Could not create bundle');
+        onSuccess(value.slug);
+        return;
+      }
       if (mode === 'create' && entryStrategy === 'folders') {
         if (!form.sourceDirectory) throw new Error('Please choose a source directory.');
         if (selectedFolders.length === 0) throw new Error('Please choose at least one folder.');
@@ -533,7 +546,7 @@ const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
         return;
       }
 
-      if (mode === 'edit' && editBundle?.folderDerived) {
+      if (mode === 'edit' && (editBundle?.folderDerived || editBundle?.sources?.length)) {
         await updateBundleWithForm(form);
         return;
       }
@@ -668,7 +681,9 @@ const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
           />
         )}
 
-        <SourceDirectoryField
+        {mode === 'edit' && editBundle?.sources?.length && <p className="rounded border bg-neutral-50 p-3 text-sm">Use Manage sources to register directories or edit starting selections. Traversal defaults and bundle details can be changed here.</p>}
+        {mode === 'create' && entryStrategy === 'sources' && <MultiSourceBundleFields sources={sources} selections={startingSelections} onSourcesChange={setSources} onSelectionsChange={setStartingSelections} name={form.entryBundleNodeName} onNameChange={handleInitialTitleChange} />}
+        {entryStrategy !== 'sources' && <SourceDirectoryField
           value={form.sourceDirectory}
           choices={viewModel.sourceDirectoryChoices(form.sourceDirectory)}
           isManuallyEdited={isSourceDirectoryManuallyEdited}
@@ -680,7 +695,7 @@ const BundleModalSession: React.FC<CreateOrEditBundleModalProps> = ({
           onStartManualEdit={() => setIsSourceDirectoryManuallyEdited(true)}
           onChange={value => handleFormChange('sourceDirectory', value)}
           onBrowse={handleSelectFolder}
-        />
+        />}
 
         {mode === 'edit' && editBundle?.folderDerived && (
           <section className="rounded-md border border-blue-200 bg-blue-50 p-3" aria-label="Folder-derived bundle scope">

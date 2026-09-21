@@ -1,0 +1,11 @@
+id: relocate-research
+label: Relocate the research source
+description: Move the entire research directory. Its accepted pages remain
+  available; use Manage sources to reconnect research at research-relocated.
+categories:
+  - move
+operations:
+  - move:
+      from: research
+      to: research-relocated
+sourceGraph: multi-source

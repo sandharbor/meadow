@@ -23,10 +23,14 @@ import { openExternal } from '../../../../shared/utils/openExternal';
 import { useAppNavigation } from '../../../../shared/utils/appNavigation';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 
-export interface ObsidianInfo {
+interface SourceObsidianInfo {
   hasObsidianVault: boolean;
   sourceDirectory: string | null;
   vaultNameGuess: string | null;
+}
+
+export interface ObsidianInfo extends SourceObsidianInfo {
+  sources?: Record<string, SourceObsidianInfo>;
 }
 
 export const canMarkNodeSensitive = (node: IBundleNode): boolean =>
@@ -122,23 +126,23 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
   const handleFindInBundles = () => {
     if (!canFindNodeInBundles(page)) return;
 
-    const pathParts = page.bundleNodeKey.split('/');
-    const pageName = page.data?.title || page.label || pathParts[pathParts.length - 1];
-
+    const sourceDirectory = graph.sources.find(source => source.id === page.sourceId)?.directory
+      ?? obsidianInfo?.sourceDirectory ?? '';
     const findInBundlesOptions: FindInBundlesOptions = {
-      vaultPath: '',
-      folderPath: pathParts.slice(0, -1).join('/'),
-      pageName: pageName,
+      vaultPath: sourceDirectory,
+      folderPath: page.sourceGraphSubdirectory ?? '',
+      pageName: page.bundleNodeName,
     };
 
     navigateInApp({ page: 'bundle-list', findInBundlesOptions });
     onClose();
   };
 
+  const pageObsidianInfo = page.sourceId ? obsidianInfo?.sources?.[page.sourceId] : obsidianInfo;
   const openInObsidian = async () => {
-    if (!obsidianInfo?.hasObsidianVault || !obsidianInfo.sourceDirectory) return;
+    if (!pageObsidianInfo?.hasObsidianVault || !pageObsidianInfo.sourceDirectory) return;
     const rel = getPageRelativePath(page);
-    const abs = joinFsPath(obsidianInfo.sourceDirectory, rel);
+    const abs = joinFsPath(pageObsidianInfo.sourceDirectory, rel);
     const url = `obsidian://open?path=${encodeURIComponent(abs)}`;
     await openExternal(url, 'pageContextMenu:openInObsidian');
     onClose();
@@ -278,18 +282,18 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
       {/* Open in Obsidian */}
       <button
         onClick={() => { void openInObsidian(); }}
-        disabled={!obsidianInfo?.hasObsidianVault || !obsidianInfo?.sourceDirectory}
+        disabled={!pageObsidianInfo?.hasObsidianVault || !pageObsidianInfo?.sourceDirectory}
         className={
-          !obsidianInfo || !obsidianInfo.hasObsidianVault || !obsidianInfo.sourceDirectory
+          !pageObsidianInfo || !pageObsidianInfo.hasObsidianVault || !pageObsidianInfo.sourceDirectory
             ? disabledClass
             : buttonClass
         }
         title={
-          !obsidianInfo
+          !pageObsidianInfo
             ? 'Checking for Obsidian vault...'
-            : (!obsidianInfo.hasObsidianVault || !obsidianInfo.sourceDirectory)
-              ? 'This bundle sourceDirectory is not an Obsidian vault (missing .obsidian folder)'
-              : `Open "${getPageRelativePath(page)}" in Obsidian${obsidianInfo.vaultNameGuess ? ` (vault: ${obsidianInfo.vaultNameGuess})` : ''}`
+            : (!pageObsidianInfo.hasObsidianVault || !pageObsidianInfo.sourceDirectory)
+              ? 'This page’s source is not an Obsidian vault (missing .obsidian folder)'
+              : `Open "${getPageRelativePath(page)}" in Obsidian${pageObsidianInfo.vaultNameGuess ? ` (vault: ${pageObsidianInfo.vaultNameGuess})` : ''}`
         }
       >
         Open in Obsidian

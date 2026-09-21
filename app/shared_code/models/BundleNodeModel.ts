@@ -19,6 +19,7 @@ import type { FileBundleNodeConfig, BundleNodeId, BundleNodeKey } from '../../co
 import type { FileType } from '../../contracts/types/FileType.js';
 
 export class BundleNodeModel implements FileBundleNode {
+  sourceId?: string;
   bundleNodeKey: BundleNodeKey;
   bundleNodeId?: BundleNodeId;
   bundleNodeKind = 'file' as const;
@@ -77,9 +78,10 @@ export class BundleNodeModel implements FileBundleNode {
     this.path = path;
     this.linkResolutionMap = linkResolutionMap;
     this.data = data;
+    this.sourceId = conf?.sourceId ?? (typeof data?.sourceId === 'string' ? data.sourceId : undefined);
   }
 
   public getIdent(): string {
-    return `${this.sourceGraphSubdirectory}---${this.bundleNodeName}---${this.fileType}`;
+    return `${this.sourceId ? `${this.sourceId}---` : ''}${this.sourceGraphSubdirectory}---${this.bundleNodeName}---${this.fileType}`;
   }
 }

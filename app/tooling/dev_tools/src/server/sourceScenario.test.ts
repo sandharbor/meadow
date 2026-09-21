@@ -21,3 +21,32 @@ test('Command acceptance requires both a snapshot identity and review token befo
     assert.equal(requested, false);
   }
 });
+
+test('an unavailable-source scenario captures its baseline and opens the accepted bundle for repair', async () => {
+  const actions: string[] = [];
+  const target = await prepareSourceScenario(async args => {
+    actions.push(args[2]);
+    return JSON.stringify({ accepted: { id: 'accepted' }, orphans: [], reviewToken: 'token' });
+  }, 'multi-source-page', async () => { actions.push('disconnect'); }, { sourceUnavailable: true });
+  assert.deepEqual(actions, ['refresh', 'disconnect']);
+  assert.equal(target, '/bundle/multi-source-page');
+});
+
+test('a clean accepted baseline needs no redundant acceptance before applying a scenario', async () => {
+  const actions: string[] = [];
+  const target = await prepareSourceScenario(async args => {
+    actions.push(args[2]);
+    return JSON.stringify({ accepted: { id: 'accepted' }, orphans: [], reviewToken: 'token' });
+  }, 'multi-source-page', async () => { actions.push('move'); });
+  assert.deepEqual(actions, ['refresh', 'move', 'refresh']);
+  assert.equal(target, '/bundle/multi-source-page?sourceReview=1');
+});
+
+test('a baseline with eligible orphans is cleaned up before the scenario starts', async () => {
+  const actions: string[] = [];
+  await prepareSourceScenario(async args => {
+    actions.push(args[2]);
+    return JSON.stringify({ accepted: { id: 'accepted' }, orphans: [{ bundleNodeId: 'orphan' }], reviewToken: 'token' });
+  }, 'bundle', async () => { actions.push('move'); });
+  assert.deepEqual(actions, ['refresh', 'accept', 'move', 'refresh']);
+});

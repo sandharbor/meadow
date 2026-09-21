@@ -33,6 +33,7 @@ import {
   RenderOptions,
   BacklinkContext
 } from './types.js';
+import { bundleNodeConfigToKey, makeBundleNodeKey } from './types.js';
 import { BundleConfig } from '../../../../../../../contracts/types/bundleConfig.js';
 import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import {
@@ -202,7 +203,7 @@ export function renderPageToHtml(
   const rawMdContent = getMdContent(directory, pageName, true);
   const initialMdContent = getMdContent(directory, pageName, false);
 
-  const page = pageNameToPage[pageName];
+  const page = pageNameToPage[bundleConfig?.sources ? makeBundleNodeKey(pageName, 'md', currentPageDirectory) : pageName];
 
   if (skipUninterestingLeafPages && page?.isUninterestingLeafPage()) {
     logger.debug(`Skipping ${pageName} as it is an uninteresting leaf page`);
@@ -375,7 +376,7 @@ export function renderPageToHtml(
             fs.mkdirSync(imageOutputDir, { recursive: true });
           }
           const imageDest = path.join(imageOutputDir, fileName);
-          if (fs.existsSync(imageSrc)) {
+          if (fs.existsSync(imageSrc) && (fileType !== 'svg' || !fs.existsSync(imageDest))) {
             fs.copyFileSync(imageSrc, imageDest);
           }
         }
@@ -421,7 +422,9 @@ export function renderPageToHtml(
 
       // Highlight self-links (links back to the current page) as non-clickable
       if (highlightDoNotLinkPageName &&
-          (resolvedTitle.toLowerCase() === highlightDoNotLinkPageName.toLowerCase())) {
+          (bundleConfig?.sources
+            ? targetDir === effectivePageDir && resolvedTitle === highlightDoNotLinkPageName && renderedPageFileType === 'md'
+            : resolvedTitle.toLowerCase() === highlightDoNotLinkPageName.toLowerCase())) {
         return `<span class="highlight-do-not-link">${normalizedTitle}</span>`;
       }
 
@@ -441,7 +444,8 @@ export function renderPageToHtml(
       }
 
       if (processingMode === 'each-page') {
-        return `<a href="${relativeUrl}">${text}</a>`;
+        const suffix = bundleConfig.sources || href.startsWith('source://') ? href.match(/[?#].*$/)?.[0] ?? '' : '';
+        return `<a href="${relativeUrl}${suffix}">${text}</a>`;
       } else if (processingMode === 'single-page') {
         return `<a href="#${anchorNameFor(normalizedTitle)}">${text}</a>`;
       }
@@ -576,7 +580,8 @@ export function renderPageToHtml(
     // Try path-prefixed key first (e.g., "t011/page name") for links that
     // include a directory path. Fall back to title-only for links without paths.
     const pathPrefixedKey = currentPageDirectory ? `${currentPageDirectory}/${pageName}` : null;
-    const backlinkList = (pathPrefixedKey && inverseLinks[pathPrefixedKey])
+    const backlinkList = bundleConfig?.sources ? inverseLinks[makeBundleNodeKey(pageName, 'md', currentPageDirectory)]
+      : (pathPrefixedKey && inverseLinks[pathPrefixedKey])
       ? inverseLinks[pathPrefixedKey]
       : inverseLinks[pageName];
     if (backlinkList) {
@@ -591,7 +596,8 @@ export function renderPageToHtml(
         for (const backlink of backlinks) {
           let shouldInclude = true;
           
-          const backlinkConfig = bundleNodeConfigs.find(bundleNodeConfig => bundleNodeConfig.bundleNodeName === backlink);
+          const backlinkConfig = bundleNodeConfigs.find(config => bundleConfig?.sources
+            ? bundleNodeConfigToKey(config) === backlink : config.bundleNodeName === backlink);
           if (!backlinkConfig || backlinkConfig.listType !== 'whitelist') {
             shouldInclude = false;
           }
@@ -605,9 +611,10 @@ export function renderPageToHtml(
             
             // Get the backlink's source directory for relative path calculation
             const backlinkSourceDir = backlinkConfig?.sourceGraphSubdirectory || '';
-            const normalizedBacklinkName = normalizePageTitle(backlink, bundleConfig, bundleSlug);
+            const backlinkName = backlinkConfig!.bundleNodeName;
+            const normalizedBacklinkName = normalizePageTitle(backlinkName, bundleConfig, bundleSlug);
 
-            if (showBacklinkContext) {
+            if (showBacklinkContext && backlinkConfig?.fileType === 'md') {
               // Find the backlink content in its subdirectory
               // Use baseContentDirectory (source-content root) as the base,
               // not `directory` which is the current page's directory
@@ -615,14 +622,14 @@ export function renderPageToHtml(
               const backlinkDir = backlinkSourceDir
                 ? `${contentRoot}/${backlinkSourceDir}`
                 : contentRoot;
-              const backlinkInfo = backlinkContext(backlinkDir, backlink, pageName, currentPageDirectory);
-
               // Look up the backlink source page's link resolution map so that
               // wiki links inside the context block resolve correctly.
               const backlinkPageIdent = backlinkSourceDir
-                ? `${backlinkSourceDir}/${backlink}.md`
-                : `/${backlink}.md`;
+                ? `${backlinkSourceDir}/${backlinkName}.md`
+                : `/${backlinkName}.md`;
               const backlinkResolutionMap = allLinkResolutionMaps?.get(backlinkPageIdent);
+              const backlinkInfo = backlinkContext(backlinkDir, backlinkName, pageName, currentPageDirectory,
+                bundleConfig.sources ? backlinkResolutionMap : undefined);
 
               for (const info of backlinkInfo) {
                 const anchorId = info.anchor_id;
@@ -946,7 +953,8 @@ export function renderSimpleBacklinksHtml(
   currentOutputDirectory: string = currentPageDirectory,
 ): string {
   const pathPrefixedKey = currentPageDirectory ? `${currentPageDirectory}/${pageTitle}` : null;
-  const list = (pathPrefixedKey && inverseLinks[pathPrefixedKey])
+  const list = bundleConfig.sources ? (inverseLinks[makeBundleNodeKey(pageTitle, 'excalidraw', currentPageDirectory)] ?? [])
+    : (pathPrefixedKey && inverseLinks[pathPrefixedKey])
     ? inverseLinks[pathPrefixedKey]
     : (inverseLinks[pageTitle] || []);
   const sorted = [...new Set(list)].sort();
@@ -954,10 +962,10 @@ export function renderSimpleBacklinksHtml(
 
   let html = '<h2>Backlinks</h2>\n<ul>\n';
   for (const backlink of sorted) {
-    const cfg = bundleNodeConfigs.find(c => c.bundleNodeName === backlink);
+    const cfg = bundleNodeConfigs.find(c => bundleConfig.sources ? bundleNodeConfigToKey(c) === backlink : c.bundleNodeName === backlink);
     if (!cfg || cfg.listType !== 'whitelist') continue;
     const sourceDir = cfg.sourceGraphSubdirectory || '';
-    const normName = normalizePageTitle(backlink, bundleConfig, bundleSlug);
+    const normName = normalizePageTitle(cfg.bundleNodeName, bundleConfig, bundleSlug);
     const encoded = encodeURIComponent(normName);
     const conventionalTargetPath = sourceDir ? `${sourceDir}/${normName}.html` : `${normName}.html`;
     const plannedRoute = routeTable?.get(cfg.bundleNodeId);
@@ -1171,7 +1179,7 @@ function addBlockAnchors(mdContent: string, originalForHashing?: string): string
   return anchoredBlocks.join('\n\n');
 }
 
-function backlinkContext(directory: string, backlink: string, thePageName: string, currentPageDirectory?: string): BacklinkContext[] {
+function backlinkContext(directory: string, backlink: string, thePageName: string, currentPageDirectory?: string, resolutions?: Record<string, LinkResolvedInfo>): BacklinkContext[] {
   const mdContent = getMdContent(directory, backlink, false);
   const mdContentWithAnchors = addBlockAnchors(mdContent);
   const blocks = mdContentWithAnchors.split('\n\n');
@@ -1180,7 +1188,12 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
   // Links in source markdown may reference a page with or without a directory
   // prefix (e.g. [[page]] vs [[dir/page]]). Build a set of names to match.
   const namesToMatch = [thePageName];
-  if (currentPageDirectory) {
+  const matchingTexts = new Set(Object.entries(resolutions ?? {})
+    .filter(([, value]) => value.link_resolved_target_path?.replace(/^\//, '') === `${currentPageDirectory ? `${currentPageDirectory}/` : ''}${thePageName}.md`)
+    .map(([text]) => text));
+  const hasResolvedTarget = (content: string) => [...content.matchAll(/\[\[([^\]]+)\]\]|\[[^\]]*\]\(([^)]+)\)/g)]
+    .some(match => matchingTexts.has(match[1] ?? match[2]));
+  if (!resolutions && currentPageDirectory) {
     namesToMatch.push(`${currentPageDirectory}/${thePageName}`);
   }
 
@@ -1190,10 +1203,10 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
     // Also extract link targets from standard markdown links [text](path.md)
     extractMarkdownLinkFilenames(content, links);
 
-    if (links.some(link => namesToMatch.includes(link))) {
+    if (resolutions ? hasResolvedTarget(content) : links.some(link => namesToMatch.includes(link))) {
       // For table blocks, extract only the matching row instead of the full table.
       // A markdown table block has lines starting with '|'.
-      const tableRow = extractMatchingTableRow(content, namesToMatch);
+      const tableRow = extractMatchingTableRow(content, namesToMatch, resolutions ? hasResolvedTarget : undefined);
       if (tableRow !== null) {
         matchingBlockInfo.push({ anchor_id: anchorId, content: tableRow });
       } else {
@@ -1210,7 +1223,7 @@ function backlinkContext(directory: string, backlink: string, thePageName: strin
  * row that contains a link matching one of the target names. Returns null when
  * the content is not a table.
  */
-function extractMatchingTableRow(content: string, namesToMatch: string[]): string | null {
+function extractMatchingTableRow(content: string, namesToMatch: string[], hasResolvedTarget?: (content: string) => boolean): string | null {
   const lines = content.split('\n');
   // A markdown table has at least 3 lines (header, separator, data row)
   // and the separator line matches |---|
@@ -1225,7 +1238,7 @@ function extractMatchingTableRow(content: string, namesToMatch: string[]): strin
     const row = lines[i];
     const rowLinks = markdownContentToPageLinkFilenames(row);
     extractMarkdownLinkFilenames(row, rowLinks);
-    if (rowLinks.some(link => namesToMatch.includes(link))) {
+    if (hasResolvedTarget ? hasResolvedTarget(row) : rowLinks.some(link => namesToMatch.includes(link))) {
       return `${headerLine}\n${separatorLine}\n${row}`;
     }
   }

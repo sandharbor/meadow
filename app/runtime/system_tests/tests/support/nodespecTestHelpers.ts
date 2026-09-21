@@ -16,6 +16,11 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
+import YAML from 'yaml';
+import type { BundleConfig, BundleSource } from '../../../../contracts/types/bundleConfig.js';
+import type { NodespecLinks } from '../../nodespecs/types.js';
+import { sourceGraphPath, sourceOutputDirectory } from '../../../../shared_code/utils/bundleSourceUtils.js';
+import { fixtureSourceLocation } from '../../../../shared_code/shared_dev/fixtureSourceLocation.js';
 import {
   getFixturesPath,
   getSourceGraphsPath,
@@ -24,6 +29,57 @@ import { SystemTestBundleSetup } from '../../helpers/testSetup.js';
 import type { BundleNodeConfig } from '../../../../contracts/types/bundleNodeConfig.js';
 import { FILE_TYPES } from '../../../../contracts/types/FileType.js';
 import { getNodespecBlock, getReferencedBundles, isExcalidrawMarkdown } from '../../nodespecs/index.js';
+
+const registryConfigs = new Map<string, BundleConfig>();
+for (const home of fs.readdirSync(getFixturesPath(), { withFileTypes: true }).filter(entry => entry.isDirectory())) {
+  const bundles = path.join(getFixturesPath(), home.name, 'bundles');
+  if (!fs.existsSync(bundles)) continue;
+  for (const bundle of fs.readdirSync(bundles)) {
+    const file = path.join(bundles, bundle, 'config/bundle_config.yaml');
+    if (!fs.existsSync(file)) continue;
+    const config = YAML.parse(fs.readFileSync(file, 'utf8')) as BundleConfig;
+    if (config.sources) registryConfigs.set(bundle, { ...config, sources: config.sources.map(source => {
+      const { graph, subdirectory } = fixtureSourceLocation(source.directory);
+      return { ...source, directory: path.join(getSourceGraphsPath(), graph, subdirectory) };
+    }) });
+  }
+}
+
+function sourceContaining(file: string, sources: BundleSource[]): BundleSource | undefined {
+  return sources.find(source => {
+    const relative = path.relative(source.directory, file);
+    return relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
+  });
+}
+
+export function nodespecBundleIncludesFile(bundleName: string, file: string): boolean {
+  const sources = registryConfigs.get(bundleName)?.sources;
+  return !sources || !!sourceContaining(file, sources);
+}
+
+export function qualifyNodespecLinks(links: NodespecLinks, bundleName: string, sourceFile?: string): NodespecLinks {
+  const sources = registryConfigs.get(bundleName)?.sources;
+  if (!sources) return links;
+  const qualified: NodespecLinks = {};
+  for (const direction of ['outlinks', 'inlinks'] as const) {
+    const values = links[direction];
+    if (!values) continue;
+    qualified[direction] = values.map(link => {
+      const source = link.source ? sources.find(source => source.name === link.source) : sourceFile ? sourceContaining(sourceFile, sources) : undefined;
+      if (!source) throw new Error(`${bundleName}: link ${link.linkPath} must specify a registered canonical source`);
+      return { ...link, linkPath: `/${sourceGraphPath(source.id, link.linkPath.replace(/^\//, ''))}` };
+    });
+  }
+  return qualified;
+}
+
+export function getNodespecOutputPath(file: string, sourceGraphDir: string, bundleName: string): string {
+  const config = registryConfigs.get(bundleName);
+  const source = config?.sources && sourceContaining(file, config.sources);
+  const relative = source ? path.relative(source.directory, file) : path.relative(sourceGraphDir, file);
+  const output = source ? sourceOutputDirectory(config, source.id, relative) : relative;
+  return output.replace(/\.md$/, '.html');
+}
 
 // Discover fixture graphs so adding a new graph cannot bypass completeness checks.
 export const nodespecSourceGraphDirs = fs.readdirSync(getSourceGraphsPath(), { withFileTypes: true })
@@ -78,13 +134,14 @@ export function findAllSidecarNodespecFiles(dir: string): string[] {
 export function findNodespecCompletenessErrors(sourceGraphDir: string): string[] {
   const sources = findAllNodespecSourceFiles(sourceGraphDir).map(sourceFile => ({
     relativePath: path.relative(sourceGraphDir, sourceFile),
+    file: sourceFile,
     ...getNodespecBlock(sourceFile),
   }));
   if (!sources.some(({ source }) => source === 'sidecar')) return [];
 
   const bundles = new Set(sources.flatMap(({ block }) => block ? getReferencedBundles(block) : []));
   const errors: string[] = [];
-  for (const { relativePath, source, block } of sources) {
+  for (const { relativePath, file, source, block } of sources) {
     if (source === 'none') {
       errors.push(`${relativePath}: missing paired node spec`);
       continue;
@@ -93,8 +150,19 @@ export function findNodespecCompletenessErrors(sourceGraphDir: string): string[]
     if (!block) continue;
     const nodeBundles = new Set(getReferencedBundles(block));
     for (const bundle of bundles) {
+      const belongs = nodespecBundleIncludesFile(bundle, file);
+      if (!belongs) {
+        if (nodeBundles.has(bundle)) errors.push(`${relativePath}: node spec for unconfigured source in bundle "${bundle}"`);
+        continue;
+      }
       if (!nodeBundles.has(bundle)) {
         errors.push(`${relativePath}: missing node spec for bundle "${bundle}"`);
+      }
+    }
+    for (const spec of block.nodespecs) {
+      if (spec.sourcing?.isInWorkingGraph && spec.sourcing.links) {
+        try { qualifyNodespecLinks(spec.sourcing.links, spec.bundle, file); }
+        catch (error) { errors.push(`${relativePath}: ${String(error)}`); }
       }
     }
   }
@@ -115,8 +183,11 @@ export function getPageTitle(filePath: string): string {
 export function getPageIdFromPath(
   filePath: string,
   sourceGraphDir: string,
+  bundleName?: string,
 ): string {
-  const relativePath = path.relative(sourceGraphDir, filePath);
+  const registry = bundleName && registryConfigs.get(bundleName)?.sources;
+  const source = registry && sourceContaining(filePath, registry);
+  const relativePath = source ? sourceGraphPath(source.id, path.relative(source.directory, filePath)) : path.relative(sourceGraphDir, filePath);
   let pageId = relativePath.endsWith('.md')
     ? relativePath.slice(0, -3)
     : relativePath;
@@ -161,7 +232,7 @@ export function isPageTracked(
   }
 
   for (const config of bundleNodeConfigs) {
-    const configSubdir = config.sourceGraphSubdirectory || '';
+    const configSubdir = sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory || '');
     const configFileType = config.fileType;
 
     if (
@@ -214,6 +285,9 @@ export interface NodespecBundleSetups {
   example: SystemTestBundleSetup;
   folderStructureSingle: SystemTestBundleSetup;
   folderStructureMultiple: SystemTestBundleSetup;
+  multiSourcePage: SystemTestBundleSetup;
+  multiSourceMixed: SystemTestBundleSetup;
+  multiSourceOmitted: SystemTestBundleSetup;
 }
 
 export function setUpNodespecBundles(prefix: string): NodespecBundleSetups {
@@ -223,6 +297,9 @@ export function setUpNodespecBundles(prefix: string): NodespecBundleSetups {
     example: new SystemTestBundleSetup('home_fixture_example', `${prefix}-example`, { bundleFolderName: 'example-bundle' }),
     folderStructureSingle: new SystemTestBundleSetup('home_fixture_folder_structure_single', `${prefix}-folder-single`, { bundleFolderName: 'single-folder-bundle' }),
     folderStructureMultiple: new SystemTestBundleSetup('home_fixture_folder_structure_multiple', `${prefix}-folder-multiple`, { bundleFolderName: 'ordered-folders' }),
+    multiSourcePage: new SystemTestBundleSetup('home_fixture_multi_source', `${prefix}-multi-page`, { bundleFolderName: 'multi-source-page' }),
+    multiSourceMixed: new SystemTestBundleSetup('home_fixture_multi_source', `${prefix}-multi-mixed`, { bundleFolderName: 'multi-source-mixed' }),
+    multiSourceOmitted: new SystemTestBundleSetup('home_fixture_multi_source', `${prefix}-multi-omitted`, { bundleFolderName: 'multi-source-omitted' }),
   };
   for (const setup of Object.values(setups)) setup.setUp();
   return setups;
@@ -232,6 +309,12 @@ export function getNodespecBundlesToCheck(
   setups: NodespecBundleSetups,
 ): NodespecBundleToCheck[] {
   return [
+    ...(['Page', 'Mixed', 'Omitted'] as const).map(kind => ({
+      name: `multi-source-${kind.toLowerCase()}`,
+      setup: setups[`multiSource${kind}`],
+      initialPage: 'Start',
+      sourceGraphDir: path.join(getSourceGraphsPath(), 'multi-source'),
+    })),
     {
       name: 'meadow-test-bundle-big',
       setup: setups.big,

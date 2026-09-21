@@ -22,7 +22,6 @@ import {
   stopServer,
   TEST_BASE_URL,
 } from '../../../../helpers/serverManager.js';
-import { SystemTestBundleSetup } from '../../../../helpers/testSetup.js';
 import {
   getNodespecBlock,
   getNodespecForBundle,
@@ -38,6 +37,9 @@ import {
   findAllNodespecSourceFiles,
   getAvailableBundles,
   getNodespecBundlesToCheck,
+  setUpNodespecBundles,
+  getNodespecOutputPath,
+  type NodespecBundleSetups,
   getPageTitle,
   nodespecSourceGraphDirs,
 } from '../../../support/nodespecTestHelpers.js';
@@ -116,11 +118,7 @@ describe('Nodespecs Generation System Tests', () => {
 });
 
 describe('Runtime Nodespec Generation Validation', () => {
-  let bigBundleSetup: SystemTestBundleSetup | undefined;
-  let smallBundleSetup: SystemTestBundleSetup | undefined;
-  let exampleBundleSetup: SystemTestBundleSetup | undefined;
-  let folderStructureSingleSetup: SystemTestBundleSetup | undefined;
-  let folderStructureMultipleSetup: SystemTestBundleSetup | undefined;
+  let bundleSetups: NodespecBundleSetups | undefined;
 
   beforeAll(async () => {
     await startServer();
@@ -131,69 +129,28 @@ describe('Runtime Nodespec Generation Validation', () => {
   });
 
   beforeEach(() => {
-    bigBundleSetup = new SystemTestBundleSetup(
-      'home_fixture_big_and_small',
-      'nodespec-generation-validation-big',
-      { bundleFolderName: 'meadow-test-bundle-big' }
-    );
-    bigBundleSetup.setUp();
-
-    smallBundleSetup = new SystemTestBundleSetup(
-      'home_fixture_big_and_small',
-      'nodespec-generation-validation-small',
-      { bundleFolderName: 'meadow-test-bundle-small' }
-    );
-    smallBundleSetup.setUp();
-
-    exampleBundleSetup = new SystemTestBundleSetup(
-      'home_fixture_example',
-      'nodespec-generation-validation-example',
-      { bundleFolderName: 'example-bundle' }
-    );
-    exampleBundleSetup.setUp();
-
-    folderStructureSingleSetup = new SystemTestBundleSetup(
-      'home_fixture_folder_structure_single',
-      'nodespec-generation-validation-folder-single',
-      { bundleFolderName: 'single-folder-bundle' }
-    );
-    folderStructureSingleSetup.setUp();
-
-    folderStructureMultipleSetup = new SystemTestBundleSetup(
-      'home_fixture_folder_structure_multiple',
-      'nodespec-generation-validation-folder-multiple',
-      { bundleFolderName: 'ordered-folders' }
-    );
-    folderStructureMultipleSetup.setUp();
+    bundleSetups = setUpNodespecBundles('nodespec-generation-validation');
   });
 
   afterEach(() => {
-    bigBundleSetup?.tearDown();
-    smallBundleSetup?.tearDown();
-    exampleBundleSetup?.tearDown();
-    folderStructureSingleSetup?.tearDown();
-    folderStructureMultipleSetup?.tearDown();
+    if (bundleSetups) for (const { setup } of getNodespecBundlesToCheck(bundleSetups)) setup.tearDown();
   });
 
   it('should validate htmlRenderedLinks match actual rendered HTML', async () => {
-    const bundlesToCheck = getNodespecBundlesToCheck({
-      big: bigBundleSetup!,
-      small: smallBundleSetup!,
-      example: exampleBundleSetup!,
-      folderStructureSingle: folderStructureSingleSetup!,
-      folderStructureMultiple: folderStructureMultipleSetup!,
-    });
+    const bundlesToCheck = getNodespecBundlesToCheck(bundleSetups!);
 
-    await Promise.all(
+    const generationResults = await Promise.allSettled(
       bundlesToCheck.map(async ({ setup }) => {
         await setup.captureInitialSourceSnapshot();
         const bundleSlug = setup.getBundleSlug();
         const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
           method: 'POST',
         });
-        expect(response.ok).toBe(true);
+        if (!response.ok) throw new Error(`${bundleSlug}: ${await response.text()}`);
       })
     );
+    const generationFailures = generationResults.flatMap(result => result.status === 'rejected' ? [String(result.reason)] : []);
+    if (generationFailures.length) throw new Error(generationFailures.join('\n'));
 
     const errors: string[] = [];
     let pagesValidated = 0;
@@ -209,7 +166,7 @@ describe('Runtime Nodespec Generation Validation', () => {
         const bundleSpec = getNodespecForBundle(block, bundleName);
         if (!bundleSpec || !bundleSpec.sourcing.isInWorkingGraph) continue;
 
-        const relativePath = path.relative(sourceGraphDir, sourceFile).replace(/\.md$/, '.html');
+        const relativePath = getNodespecOutputPath(sourceFile, sourceGraphDir, bundleName);
         const htmlPath = path.join(generatedHtmlFolderPath, relativePath);
 
         // Images, PDFs, and web assets have no rendered HTML link sections.

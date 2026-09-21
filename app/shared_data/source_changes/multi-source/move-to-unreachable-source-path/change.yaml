@@ -1,0 +1,11 @@
+id: move-to-unreachable-source-path
+label: Move a page without updating its link
+description: Move the notebook Inside page into an unreachable research folder.
+  The indexed destination must not be mistaken for an admitted move.
+categories:
+  - move
+operations:
+  - move:
+      from: notes/Same/Inside.md
+      to: research/Unreachable/Inside.md
+sourceGraph: multi-source

@@ -22,6 +22,8 @@ limitations under the License.
 import { existsSync, mkdirSync, cpSync, readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { materializeSourceGraph } from "./sourceChanges.js";
+import YAML from 'yaml';
+import { fixtureSourceLocation } from './fixtureSourceLocation.js';
 
 export interface SetupTestBundlesOptions {
   /** The target meadow home directory (e.g., ~/Library/Application Support/Meadow) */
@@ -100,20 +102,18 @@ export function copyTestBundleFixture(
   // Update the bundle_config.yaml to point to the correct source graph directory
   const bundleYamlPath = join(targetBundleDir, "config", "bundle_config.yaml");
   if (existsSync(bundleYamlPath)) {
-    let yamlContent = readFileSync(bundleYamlPath, "utf8");
-    
-    // Extract the source graph name from the fixture's sourceDirectory
-    // Fixtures use relative paths like: sourceDirectory: ./source_graphs/meadow-test-bundle-for-hooks
-    const sourceDirectoryMatch = yamlContent.match(/sourceDirectory:\s*\.\/source_graphs\/([^\s]+)/);
-    if (sourceDirectoryMatch) {
-      const sourceGraphName = sourceDirectoryMatch[1];
-      const sourceGraphDir = materializeSourceGraph({ projectRoot: options.projectRoot, sourceGraphsDir: join(options.targetConfigDir, "source_graphs"), sourceGraph: sourceGraphName });
-      yamlContent = yamlContent.replace(
-        /sourceDirectory:.*$/m,
-        `sourceDirectory: ${sourceGraphDir}`
-      );
-      writeFileSync(bundleYamlPath, yamlContent, "utf8");
+    const config = YAML.parse(readFileSync(bundleYamlPath, 'utf8'));
+    const materialize = (directory: string): string => {
+      const { graph, subdirectory } = fixtureSourceLocation(directory);
+      const root = materializeSourceGraph({ projectRoot: options.projectRoot, sourceGraphsDir: join(options.targetConfigDir, 'source_graphs'), sourceGraph: graph });
+      return join(root, subdirectory);
+    };
+    if (config.sources) {
+      config.sources = config.sources.map((source: { directory: string }) => ({ ...source, directory: materialize(source.directory) }));
+    } else if (config.sourceDirectory) {
+      config.sourceDirectory = materialize(config.sourceDirectory);
     }
+    writeFileSync(bundleYamlPath, YAML.stringify(config), 'utf8');
   }
   
   console.log(`  ✓ Copied ${sourceBundleSlug} → ${targetBundleSlug}`);

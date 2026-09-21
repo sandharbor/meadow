@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { bundleSources, sourceForNode } from '../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { initializeSourcing } from '../../../shared/source-snapshot/sourceSnapshots.js';
 
 import express from 'express';
@@ -57,6 +58,7 @@ import {
 } from '../../../shared/bundle-config/folderBundleRepair.js';
 import selectedFolderRepairRoutes from './selectedFolderRepairRoutes.js';
 import bundleSettingsRoutes from './bundleSettingsRoutes.js';
+import { createMultiSourceBundle, type CreateMultiSourceBundleInput } from '../services/multiSourceBundleCreation.js';
 import { sourceDirectorySuggestions } from '../services/sourceDirectorySuggestions.js';
 import { deleteLocalBundleOnlyAfterProviderCleanup } from '../services/bundleDeletion.js';
 import {
@@ -181,23 +183,14 @@ router.get('/bundles/:slug/obsidian-info', (req, res, next) => {
     const yamlContent = fs.readFileSync(configPath, 'utf8');
     const config = YAML.parse(yamlContent) as BundleConfig;
 
-    const sourceDirectory = typeof config.sourceDirectory === 'string' ? config.sourceDirectory : null;
-    if (!sourceDirectory) {
-      return res.json({
-        hasObsidianVault: false,
-        sourceDirectory: null,
-        vaultNameGuess: null,
-      });
-    }
-
-    const obsidianDir = join(sourceDirectory, '.obsidian');
-    const hasObsidianVault = fs.existsSync(obsidianDir) && fs.statSync(obsidianDir).isDirectory();
-    const vaultNameGuess = path.basename(sourceDirectory);
-
-    res.json({
-      hasObsidianVault,
+    const inspectSource = (sourceDirectory: string) => ({
+      hasObsidianVault: fs.existsSync(join(sourceDirectory, '.obsidian')) && fs.statSync(join(sourceDirectory, '.obsidian')).isDirectory(),
       sourceDirectory,
-      vaultNameGuess,
+      vaultNameGuess: path.basename(sourceDirectory),
+    });
+    res.json({
+      ...(config.sourceDirectory ? inspectSource(config.sourceDirectory) : { hasObsidianVault: false, sourceDirectory: null, vaultNameGuess: null }),
+      sources: Object.fromEntries(bundleSources(config).map(source => [source.id, inspectSource(source.directory)])),
     });
   } catch (error) {
     next(error);
@@ -346,7 +339,7 @@ router.get('/bundles/:bundleSlug/tracks-page', (req, res, next) => {
     const config = loadBundleConfig(bundleDirectory);
 
     // Check if the bundle tracks the specified page
-    const tracksPage = checkIfBundleTracksPage(bundleDirectory, pageName, config);
+    const tracksPage = checkIfBundleTracksPage(bundleDirectory, pageName, config, typeof req.query.sourceDirectory === 'string' ? req.query.sourceDirectory : undefined, typeof req.query.folderPath === 'string' ? req.query.folderPath : undefined);
 
     res.json({ tracks: tracksPage });
   } catch (error) {
@@ -356,7 +349,7 @@ router.get('/bundles/:bundleSlug/tracks-page', (req, res, next) => {
 });
 
 // Helper function to check if a bundle tracks a specific page
-function checkIfBundleTracksPage(bundleDirectory: string, pageName: string, _config: BundleConfig): boolean {
+function checkIfBundleTracksPage(bundleDirectory: string, pageName: string, config: BundleConfig, sourceDirectory?: string, folderPath?: string): boolean {
   const bundleSlug = bundleDirectory.split('/').pop() || 'unknown';
   logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] Checking for page: "${pageName}"`);
 
@@ -375,7 +368,15 @@ function checkIfBundleTracksPage(bundleDirectory: string, pageName: string, _con
         const titles = bundleNodeConfigs.map(bundleNodeConfig => bundleNodeConfig.bundleNodeName);
         logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] Titles in bundle_node_config.yaml: ${titles.join(', ')}`);
 
-        const found = bundleNodeConfigs.some(bundleNodeConfig => bundleNodeConfig.bundleNodeName.toLowerCase() === pageName.toLowerCase());
+        const canonicalDirectory = (directory: string) => fs.existsSync(directory) ? fs.realpathSync(directory) : path.resolve(directory);
+        const found = bundleNodeConfigs.some(node => {
+          if (node.bundleNodeName.toLowerCase() !== pageName.toLowerCase()) return false;
+          if (!sourceDirectory) return true;
+          const source = sourceForNode(config, node);
+          return node.bundleNodeKind === 'file' && source !== undefined
+            && canonicalDirectory(source.directory) === canonicalDirectory(sourceDirectory)
+            && node.sourceGraphSubdirectory === (folderPath ?? '');
+        });
         if (found) {
           logBundleInfo(bundleSlug, `[checkIfBundleTracksPage] ✓ Found in bundle_node_config.yaml`);
           return true;
@@ -851,6 +852,11 @@ router.post('/bundles/folders', (req, res, next) => {
       throw error;
     }
   })().catch(next);
+});
+
+router.post('/bundles/sources', (req, res, next) => {
+  const input = req.body as CreateMultiSourceBundleInput;
+  void createMultiSourceBundle(input).then(slug => res.json({ success: true, slug })).catch(next);
 });
 
 // Create a new page-derived bundle

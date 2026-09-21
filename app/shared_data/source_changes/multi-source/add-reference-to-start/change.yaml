@@ -1,0 +1,15 @@
+id: add-reference-to-start
+label: Reference the omitted source from Start
+description: Add another reference to the reference source on the starting page.
+  A prior Ignore choice remains effective for this new occurrence.
+categories:
+  - modify
+operations:
+  - replaceText:
+      path: notes/Start.md
+      before: "# A notebook with several sources"
+      after: |-
+        # A notebook with several sources
+
+        A direct [[Study::reference]] reference.
+sourceGraph: multi-source

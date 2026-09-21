@@ -39,6 +39,7 @@ import http from "http";
 import os from "os";
 import path from "path";
 import YAML from "yaml";
+import { fixtureSourceLocation } from '../../../../shared_code/shared_dev/fixtureSourceLocation.js';
 import { resolveFastGitOpsBinary } from "./utils/MeadowHomeGit.js";
 import { MeadowCli } from "./utils/MeadowCli.js";
 import { MinioS3 } from "./utils/MinioS3.js";
@@ -294,7 +295,12 @@ function populateConfigDir(
       const yamlContent = readFileSync(bundleConfigPath, "utf8");
       const config = YAML.parse(yamlContent) as Record<string, unknown>;
 
-      if (config.sourceDirectory && typeof config.sourceDirectory === "string") {
+      if (Array.isArray(config.sources)) {
+        config.sources = config.sources.map((source: { directory: string }) => {
+          const { graph, subdirectory } = fixtureSourceLocation(source.directory);
+          return { ...source, directory: path.join(prepareSourceGraph(graph), subdirectory) };
+        });
+      } else if (config.sourceDirectory && typeof config.sourceDirectory === "string") {
         const sourceFolder = path.basename(config.sourceDirectory);
         config.sourceDirectory = prepareSourceGraph(sourceFolder);
       }

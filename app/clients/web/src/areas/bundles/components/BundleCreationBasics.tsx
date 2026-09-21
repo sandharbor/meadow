@@ -30,6 +30,7 @@ export interface CreateBundleForm {
 export type BundleModalMode = 'create' | 'edit';
 
 export interface EditBundleDefaults {
+  sources?: import('../../../../../../contracts/types/bundleConfig.js').BundleSource[];
   slug: string;
   sourceDirectory: string;
   entryBundleNodeName: string;
@@ -52,7 +53,7 @@ export interface CreateOrEditBundleModalProps {
   editBundle?: EditBundleDefaults | null;
 }
 
-export type EntryStrategy = 'page' | 'folders';
+export type EntryStrategy = 'page' | 'folders' | 'sources';
 
 interface EntryStrategyPickerProps {
   value: EntryStrategy;
@@ -62,10 +63,11 @@ interface EntryStrategyPickerProps {
 export const EntryStrategyPicker: React.FC<EntryStrategyPickerProps> = ({ value, onChange }) => (
   <fieldset>
     <legend className="block text-sm font-medium text-gray-700 mb-2">Start this bundle from</legend>
-    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Bundle entry strategy">
+    <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Bundle entry strategy">
       {([
         ['page', 'A page', 'Use one source page as the bundle entry.'],
         ['folders', 'One or more folders', 'Build a curated bundle from recursive folder contents.'],
+        ['sources', 'Sources and mixed starts', 'Choose files and folders across named sources.'],
       ] as const).map(([strategy, title, help]) => (
         <button
           key={strategy}

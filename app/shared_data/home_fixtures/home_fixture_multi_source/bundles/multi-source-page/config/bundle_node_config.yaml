@@ -1,0 +1,85 @@
+nodes:
+  - bundleNodeName: Start
+    sourceId: source000001
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3265a081dc61
+    listType: whitelist
+  - bundleNodeName: Overview
+    sourceId: source000001
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 95b568da6b98
+    listType: whitelist
+  - bundleNodeName: Inside
+    sourceId: source000001
+    sourceGraphSubdirectory: Same
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 6d6a4fbaefa7
+    listType: whitelist
+  - bundleNodeName: Frontier
+    sourceId: source000001
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3259c73d3fb7
+    listType: whitelist
+  - bundleNodeName: diagram
+    sourceId: source000001
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: svg
+    bundleNodeId: 330ed4164059
+    listType: whitelist
+  - bundleNodeName: Overview
+    sourceId: source000002
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 125c83fef4cb
+    listType: whitelist
+  - bundleNodeName: Incoming
+    sourceId: source000002
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 7a8209a73627
+    listType: whitelist
+  - bundleNodeName: Inside
+    sourceId: source000002
+    sourceGraphSubdirectory: Same
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 701548581d19
+    listType: whitelist
+  - bundleNodeName: Report
+    sourceId: source000002
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: html
+    bundleNodeId: da93f4378695
+    listType: whitelist
+  - bundleNodeName: diagram
+    sourceId: source000002
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: svg
+    bundleNodeId: 3706f1efa0df
+    listType: whitelist
+  - bundleNodeName: Study
+    sourceId: source000003
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3b7c61db76cc
+    listType: whitelist
+  - bundleNodeName: Appendix
+    sourceId: source000003
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 55645c2198de
+    listType: whitelist

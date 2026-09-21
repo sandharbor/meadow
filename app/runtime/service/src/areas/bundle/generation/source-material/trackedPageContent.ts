@@ -17,6 +17,8 @@ limitations under the License.
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
+import { projectTrackedSourceOutput } from './sourceOutputProjection.js';
 import {
   nodeConfigMatchesNode,
   parseBundleNodeConfig,
@@ -77,6 +79,7 @@ function generatedTagBundleNodeId(
 }
 
 type FolderGenerationNode = {
+  sourceId?: string;
   bundleNodeKey: string;
   bundleNodeId?: string;
   bundleNodeKind: 'file' | 'folder' | 'collection';
@@ -125,6 +128,8 @@ async function materializeFolderGenerationConfigs(options: {
 
   const raw = await runWorkingGraphRaw({
     graphRoot: sourceDirectory,
+    sources: bundleConfig.sources?.map(source => ({ ...source, directory: path.join(sourceDirectory, sourceGraphPath(source.id, '')) })),
+    immutableSource: true,
     bundleNodeConfigPath,
     entryBundleNodeId: entryNode.bundleNodeId,
     defaultTraversalBundleNodeId: defaultTraversalNode.bundleNodeId,
@@ -147,6 +152,8 @@ async function materializeFolderGenerationConfigs(options: {
         node.sourceGraphSubdirectory,
         node.fileType,
         node.bundleNodeKind,
+        undefined,
+        node.sourceId,
       ))
       && !node.effectiveBlacklistingBundleNodeId
       && (!node.isFrontierNode || node.isFrontierImageExtension)
@@ -158,6 +165,7 @@ async function materializeFolderGenerationConfigs(options: {
     if (node.bundleNodeKind === 'file' && node.fileType) {
       derivedConfigs.push({
         bundleNodeName: node.bundleNodeName,
+        ...(node.sourceId && { sourceId: node.sourceId }),
         ...(node.sourceGraphSubdirectory && { sourceGraphSubdirectory: node.sourceGraphSubdirectory }),
         bundleNodeKind: 'file',
         fileType: node.fileType,
@@ -172,6 +180,7 @@ async function materializeFolderGenerationConfigs(options: {
     } else if (node.bundleNodeKind === 'folder') {
       derivedConfigs.push({
         bundleNodeName: node.bundleNodeName,
+        ...(node.sourceId && { sourceId: node.sourceId }),
         sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
         bundleNodeKind: 'folder',
         bundleNodeId,
@@ -249,7 +258,7 @@ export async function ensureTrackedPageContent(
       && config.sourceGraphSubdirectory !== tagPagesSubdirName
   );
   for (const bundleNodeConfig of sourceBackedTrackedPages) {
-    const subdir = bundleNodeConfig.sourceGraphSubdirectory || '';
+    const subdir = sourceGraphPath(bundleNodeConfig.sourceId, bundleNodeConfig.sourceGraphSubdirectory || '');
     const filename = canonicalPageFilename(bundleNodeConfig.bundleNodeName, bundleNodeConfig.fileType);
     const relativePath = subdir ? path.join(subdir, filename) : filename;
     // Orphan configuration is retained for source review, but its absent bytes
@@ -271,18 +280,16 @@ export async function ensureTrackedPageContent(
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
+  for (const source of bundleConfig.sources ?? []) fs.mkdirSync(path.join(targetDir, sourceGraphPath(source.id, '')), { recursive: true });
 
   // Folder nodes have no source body. Recreate only their directory shape so
   // selected/configured empty folders remain materialized for graph building.
   for (const config of trackedPages) {
     if (config.bundleNodeKind !== 'folder') continue;
-    const sourceFolder = config.sourceGraphSubdirectory
-      ? path.join(sourceDirectory, ...config.sourceGraphSubdirectory.split('/'))
-      : sourceDirectory;
+    const subdirectory = sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory ?? '');
+    const sourceFolder = path.join(sourceDirectory, subdirectory);
     if (!fs.existsSync(sourceFolder) || !fs.statSync(sourceFolder).isDirectory()) continue;
-    const targetFolder = config.sourceGraphSubdirectory
-      ? path.join(targetDir, ...config.sourceGraphSubdirectory.split('/'))
-      : targetDir;
+    const targetFolder = path.join(targetDir, subdirectory);
     fs.mkdirSync(targetFolder, { recursive: true });
   }
 
@@ -291,7 +298,7 @@ export async function ensureTrackedPageContent(
   for (const [relativePath, conf] of expectedFilePaths) {
     const fileType = conf.fileType || 'md';
 
-    const subdir = conf.sourceGraphSubdirectory || '';
+    const subdir = sourceGraphPath(conf.sourceId, conf.sourceGraphSubdirectory || '');
     const sourcePath = sourceFileCandidateFilenames(conf.bundleNodeName, fileType)
       .map(filename => subdir ? path.join(sourceDirectory, subdir, filename) : path.join(sourceDirectory, filename))
       .find(candidatePath => fs.existsSync(candidatePath));
@@ -363,28 +370,36 @@ export function prepareGenerationSourceMaterial(
   const tagPagesSubdirName = BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;
   const tagPagesDir = path.join(preparedSourceContentDir, tagPagesSubdirName);
 
-  const fallback: PreparedGenerationSourceMaterial = {
+  let fallback: PreparedGenerationSourceMaterial = {
     sourceContentDirectory: trackedPageContentDir,
     bundleNodeConfigPath: baseBundleNodeConfigPath,
     tagPageCount: 0,
   };
 
-  if (!options.tagsEnabled) {
-    cleanupPreparedGenerationSourceMaterial(bundleDirectory);
+  cleanupPreparedGenerationSourceMaterial(bundleDirectory);
+  if (!fs.existsSync(baseBundleNodeConfigPath) || !fs.existsSync(trackedPageContentDir)) {
     return fallback;
   }
 
-  if (!fs.existsSync(baseBundleNodeConfigPath) || !fs.existsSync(trackedPageContentDir)) {
+  const bundleConfig = loadBundleConfig(bundleDirectory);
+  const storedNodes = parseBundleNodeConfig(fs.readFileSync(baseBundleNodeConfigPath, 'utf8'));
+  const prepareBase = () => {
     cleanupPreparedGenerationSourceMaterial(bundleDirectory);
-    return fallback;
-  }
+    if (!bundleConfig.sources) return storedNodes;
+    const projected = projectTrackedSourceOutput(bundleConfig, storedNodes, trackedPageContentDir, preparedSourceContentDir);
+    fs.mkdirSync(path.dirname(preparedBundleNodeConfigPath), { recursive: true });
+    fs.writeFileSync(preparedBundleNodeConfigPath, stringifyBundleNodeConfig(projectBundleNodeConfigsForGeneration(projected)));
+    fallback = { sourceContentDirectory: preparedSourceContentDir, bundleNodeConfigPath: preparedBundleNodeConfigPath, tagPageCount: 0 };
+    return projected;
+  };
+  const bundleNodeConfigs = prepareBase();
+  if (!options.tagsEnabled) return fallback;
 
   try {
-    const bundleNodeConfigs = parseBundleNodeConfig(fs.readFileSync(baseBundleNodeConfigPath, 'utf8'));
     const nonTagConfigs = bundleNodeConfigs.filter(c => (c.sourceGraphSubdirectory || '') !== tagPagesSubdirName);
 
     // 1) Scan tracked markdown for Obsidian-style #tags
-    const trackedMarkdownFiles = listMarkdownFilesRecursive(trackedPageContentDir, { excludeDirNames: new Set([tagPagesSubdirName]) });
+    const trackedMarkdownFiles = listMarkdownFilesRecursive(fallback.sourceContentDirectory, { excludeDirNames: new Set([tagPagesSubdirName]) });
     const tagKeyToExampleBody = new Map<string, string>();
 
     for (const filePath of trackedMarkdownFiles) {
@@ -401,7 +416,6 @@ export function prepareGenerationSourceMaterial(
       .map(tagKey => tagKeyToPageTitle(tagKey));
 
     if (desiredTagPageTitles.length === 0) {
-      cleanupPreparedGenerationSourceMaterial(bundleDirectory);
       return fallback;
     }
 
@@ -421,10 +435,9 @@ export function prepareGenerationSourceMaterial(
     });
 
     // 3) Copy tracked content into the generation-prepared source tree
-    if (fs.existsSync(preparedSourceContentDir)) {
-      fs.rmSync(preparedSourceContentDir, { recursive: true, force: true });
+    if (!bundleConfig.sources) {
+      fs.cpSync(trackedPageContentDir, preparedSourceContentDir, { recursive: true });
     }
-    fs.cpSync(trackedPageContentDir, preparedSourceContentDir, { recursive: true });
     if (fs.existsSync(tagPagesDir)) {
       fs.rmSync(tagPagesDir, { recursive: true, force: true });
     }
@@ -452,7 +465,10 @@ export function prepareGenerationSourceMaterial(
 
     // 6) Rewrite tags in prepared markdown to wikilinks pointing at tag pages
     const preparedMarkdownFiles = listMarkdownFilesRecursive(preparedSourceContentDir, { excludeDirNames: new Set([tagPagesSubdirName]) });
-    const tagBodyToPageTitle = (tagBody: string) => tagKeyToPageTitle(normalizeTagToKey(tagBody));
+    const tagBodyToPageTitle = (tagBody: string) => {
+      const title = tagKeyToPageTitle(normalizeTagToKey(tagBody));
+      return bundleConfig.sources ? `${tagPagesSubdirName}/${title}::${bundleConfig.sources[0].name}` : title;
+    };
     for (const filePath of preparedMarkdownFiles) {
       const original = fs.readFileSync(filePath, 'utf8');
       const rewritten = rewriteObsidianTagsToWikiLinks(original, tagBodyToPageTitle);
@@ -469,7 +485,7 @@ export function prepareGenerationSourceMaterial(
       tagPageCount: desiredTagPageTitles.length,
     };
   } catch (err) {
-    cleanupPreparedGenerationSourceMaterial(bundleDirectory);
+    prepareBase();
     logger.warn(`Tag page source preparation failed (continuing without tags): ${err instanceof Error ? err.message : String(err)}`);
     return fallback;
   }

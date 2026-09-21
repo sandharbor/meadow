@@ -20,7 +20,9 @@ import { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNod
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 import { bundleNodeConfigToKey, BundleNodeConfigMap } from '../../../../shared/bundle-node/nodeKeys.js';
 import { loadValidatedBundleNodeConfiguration } from '../../../../shared/bundle-node/bundleNodeConfigLoader.js';
-import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
+import { runGenerationWorkingGraph } from '../source-material/generationWorkingGraph.js';
+import { prepareGenerationSourceMaterial } from '../source-material/trackedPageContent.js';
+import { parseBundleNodeConfig, resolveBundleNodeRoles } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { prepareSrsRenderSourceDirectory } from '../render-source/srsMarkdown.js';
 import { prepareScrubbedSourceDirectory } from '../source-material/sourceScrubbing.js';
 import { prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory } from './openKnowledgeFormat.js';
@@ -50,10 +52,13 @@ function buildBundleNodeConfigMap(nodes: BundleNodeConfig[]): BundleNodeConfigMa
 }
 
 export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory: string): Promise<string> {
-  const { bundleConfig, nodes, entryNode } = loadValidatedBundleNodeConfiguration(bundleDirectory);
-  const bundleNodeConfPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
+  const { bundleConfig } = loadValidatedBundleNodeConfiguration(bundleDirectory);
+  const prepared = prepareGenerationSourceMaterial(bundleDirectory, { tagsEnabled: false });
+  const bundleNodeConfPath = prepared.bundleNodeConfigPath;
+  const nodes = parseBundleNodeConfig(fs.readFileSync(bundleNodeConfPath, 'utf8'));
+  const { entryNode } = resolveBundleNodeRoles(nodes, bundleConfig);
   const bundleNodeConfs = buildBundleNodeConfigMap(nodes);
-  const trackedContentDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
+  const trackedContentDir = prepared.sourceContentDirectory;
   const renderSourceContentDir = BundleConfigPaths.getRenderSourceContentDir(bundleDirectory);
   const legacyRenderSourceContentDir = BundleConfigPaths.getLegacyRenderSourceContentDir(bundleDirectory);
   const scrubbedSourceDir = BundleConfigPaths.getScrubbedSourceContentDir(bundleDirectory);
@@ -89,7 +94,7 @@ export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory:
   }>> = new Map();
   if (bundleConfig.entryBundleNodeId && bundleConfig.defaultTraversalBundleNodeId) {
     try {
-      const raw = await runWorkingGraphRaw({
+      const raw = await runGenerationWorkingGraph({
         graphRoot: sourceContentDir,
         bundleNodeConfigPath: bundleNodeConfPath,
         entryBundleNodeId: bundleConfig.entryBundleNodeId,
@@ -99,7 +104,7 @@ export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory:
         frontierDepth: 0,
         allowImagesToExtendToFrontier: true,
         allowLowerDepths: false,
-      });
+      }, bundleConfig);
       const output = JSON.parse(raw) as WorkingGraphOutput;
       allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
       for (const node of output.nodes) {
@@ -132,6 +137,7 @@ export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory:
     {
       bundleNodeConfigs: bundleNodeConfigsArrayForLinks,
       allLinkResolutionMaps,
+      sourceQualified: Boolean(bundleConfig.sources),
       entryNodeName: entryNode.bundleNodeName,
       entrySourceGraphSubdirectory: entryNode.sourceGraphSubdirectory || '',
       indexSource: openKnowledgeFormatIndexSourceFromBundleConfig(bundleConfig),

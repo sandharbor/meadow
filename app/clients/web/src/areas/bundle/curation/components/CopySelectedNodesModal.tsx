@@ -15,6 +15,8 @@ limitations under the License.
 */
 
 import React, { useState } from 'react';
+import { useSourcePathFormatter } from '../../../../shared/components/SourceNames.js';
+import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import Modal from '../../../../shared/components/Modal';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 
@@ -28,9 +30,10 @@ interface CopySelectedNodesModalProps {
 }
 
 // Common presenter for the existing user-facing page details export.
-const presentBundleNodeDetails = (node: IBundleNode): Record<string, unknown> => {
+const presentBundleNodeDetails = (node: IBundleNode, sourcePath: string): Record<string, unknown> => {
   const details: Record<string, unknown> = {
     title: node.bundleNodeName,
+    ...(node.sourceId && { sourceId: node.sourceId, sourcePath }),
     sourceGraphSubdirectory: node.sourceGraphSubdirectory,
     fileType: node.fileType,
   };
@@ -46,12 +49,13 @@ const presentBundleNodeDetails = (node: IBundleNode): Record<string, unknown> =>
 
 // Build the file path for a page
 const getSourceFilePath = (node: IBundleNode): string => {
+  if (node.bundleNodeKind === 'folder') return sourceGraphPath(node.sourceId, node.sourceGraphSubdirectory);
   const parts = [];
   if (node.sourceGraphSubdirectory) {
     parts.push(node.sourceGraphSubdirectory);
   }
   parts.push(`${node.bundleNodeName}.${node.fileType}`);
-  return parts.join('/');
+  return node.bundleNodeKind === 'collection' ? node.bundleNodeName : sourceGraphPath(node.sourceId, parts.join('/'));
 };
 
 // Quote a path for unix (always quote for consistency)
@@ -77,6 +81,8 @@ const CopySelectedNodesModal: React.FC<CopySelectedNodesModalProps> = ({
   onClose,
   selectedNodes,
 }) => {
+  const formatSourcePath = useSourcePathFormatter();
+  const detailsFor = (node: IBundleNode) => presentBundleNodeDetails(node, formatSourcePath(getSourceFilePath(node)));
   const [selectedFormat, setSelectedFormat] = useState<CopyFormat>('paths');
   const [pathsVariant, setPathsVariant] = useState<PathsVariant>('space-separated');
 
@@ -87,15 +93,15 @@ const CopySelectedNodesModal: React.FC<CopySelectedNodesModalProps> = ({
       case 'titles':
         return selectedNodes.map(node => node.bundleNodeName).join('\n');
       case 'paths': {
-        const paths = selectedNodes.map(node => quotePathForUnix(getSourceFilePath(node)));
+        const paths = selectedNodes.map(node => quotePathForUnix(formatSourcePath(getSourceFilePath(node))));
         return pathsVariant === 'space-separated' ? paths.join(' ') : paths.join('\n');
       }
       case 'json': {
-        const details = selectedNodes.map(presentBundleNodeDetails);
+        const details = selectedNodes.map(detailsFor);
         return JSON.stringify(details, null, 2);
       }
       case 'yaml':
-        return selectedNodes.map(node => formatBundleNodeDetailsAsYaml(presentBundleNodeDetails(node))).join('\n');
+        return selectedNodes.map(node => formatBundleNodeDetailsAsYaml(detailsFor(node))).join('\n');
     }
   };
 

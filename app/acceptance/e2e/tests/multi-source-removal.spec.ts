@@ -1,0 +1,67 @@
+/* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import YAML from 'yaml';
+import { test, expect } from '../src/run/test-fixtures.js';
+import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
+import { SourcesControl } from '../src/run/pages/BundleEditorPage/components/SourcesControl.js';
+import { bundleSource } from '../../../concepts/index.js';
+import { parseBundleNodeConfig } from '../../../shared_code/utils/bundleNodeConfigUtils.js';
+
+test.use({ bundleMode: 'single-file' });
+test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+
+test('Multi-source removal reviews orphans and ignored source names stay quiet until reconsidered', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+  const list = new BundleListPage(page, expect);
+  await list.goto();
+  await list.clickBundle('multi-source-page');
+  const editor = new BundleEditorPage(page, expect);
+  await editor.waitForLoad('multi-source-page');
+  await editor.waitForSourceCheck();
+  const sources = new SourcesControl(page, expect);
+  const configDir = path.join(testServer.configDir, 'bundles/multi-source-page/config');
+  const configFile = path.join(configDir, 'bundle_config.yaml');
+  const nodesFile = path.join(configDir, 'bundle_node_config.yaml');
+  const originalNodes = parseBundleNodeConfig(fs.readFileSync(nodesFile, 'utf8'));
+  const study = originalNodes.find(node => node.bundleNodeName === 'Study')!;
+  const referenceFile = path.join(testServer.sourceGraphsDir, 'multi-source/reference/Study.md');
+  const referenceContent = fs.readFileSync(referenceFile, 'utf8');
+  await sources.open();
+  await sources.remove('source000003');
+  await sources.stage();
+  await editor.sourceReview.orphans.expectSummaryCount(2);
+  await editor.sourceReview.orphans.keepInConfig('Study');
+  await addKeyFrame(bundleSource);
+  await snapshot('deliberate removal offers orphan cleanup with optional retained configuration');
+  await editor.sourceReview.accept();
+  expect(parseBundleNodeConfig(fs.readFileSync(nodesFile, 'utf8')).find(node => node.bundleNodeId === study.bundleNodeId)).toEqual(study);
+  expect(parseBundleNodeConfig(fs.readFileSync(nodesFile, 'utf8')).some(node => node.bundleNodeName === 'Appendix')).toBe(false);
+  expect(fs.readFileSync(referenceFile, 'utf8')).toBe(referenceContent);
+  expect(YAML.parse(fs.readFileSync(configFile, 'utf8')).sourceOutputLayout).toBe('multi');
+  await sources.expectNotice(['reference']);
+  await sources.reviewMissing();
+  await sources.setIgnored('reference', true);
+  await sources.close();
+  await page.reload();
+  await editor.waitForLoad('multi-source-page');
+  await editor.waitForSourceCheck();
+  await sources.expectNotice();
+  await sourceChanges.apply('add-reference-to-start', 'multi-source');
+  await editor.checkSourceChanges();
+  await editor.sourceReview.open();
+  await editor.sourceReview.accept();
+  await sources.expectNotice();
+  expect(YAML.parse(fs.readFileSync(configFile, 'utf8')).ignoredSourceNames).toContain('reference');
+  await sources.open();
+  await sources.expectReferences('reference', ['notes/Start', 'notes/Frontier']);
+  await addKeyFrame(bundleSource);
+  await snapshot('the saved ignored name also suppresses a newly captured reference');
+  await sources.setIgnored('reference', false);
+  await sources.close();
+  await sources.expectNotice(['reference']);
+  const otherConfig = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles/multi-source-mixed/config/bundle_config.yaml'), 'utf8'));
+  expect(otherConfig.sources).toHaveLength(3);
+  expect(otherConfig.ignoredSourceNames ?? []).toEqual([]);
+  await skipMeadowHomeStateCheck();
+});

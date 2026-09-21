@@ -1,0 +1,49 @@
+nodespecs:
+  - bundle: multi-source-page
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - source: notes
+            linkPath: /Start.md
+            isInGraph: true
+          - linkPath: /Overview.md
+            isInGraph: true
+        inlinks: []
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../notes/Start.html
+          - relativeLinkPath: Overview.html
+        footerSectionBacklinks: []
+  - bundle: multi-source-mixed
+    sourcing:
+      isInWorkingGraph: true
+      links:
+        outlinks:
+          - source: notes
+            linkPath: /Start.md
+            isInGraph: true
+          - linkPath: /Overview.md
+            isInGraph: true
+        inlinks: []
+    curation:
+      isTracked: true
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks:
+          - relativeLinkPath: ../notes/Start.html
+          - relativeLinkPath: Overview.html
+        footerSectionBacklinks: []
+  - bundle: multi-source-omitted
+    sourcing:
+      isInWorkingGraph: false
+      frontierDepthOrNullForOrphan: null
+    curation:
+      isTracked: false
+    generation:
+      htmlRenderedLinks:
+        mainSectionLinks: []
+        footerSectionBacklinks: []

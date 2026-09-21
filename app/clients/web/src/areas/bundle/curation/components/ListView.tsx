@@ -18,12 +18,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { DisplayGraph, DisplayNode, Highlight } from '../types/displayGraph';
 import { apiUrl } from '../../../../shared/utils/apiClient';
 import { isImageFileType } from '../../../../../../../shared_code/utils/fileTypeUtils';
+import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils';
 import { AuthenticatedImage } from '../../../../shared/components/AuthenticatedImage';
 import ImageHoverPreview, { HOVER_IMAGE_WIDTH, HOVER_IMAGE_HEIGHT } from './ImageHoverPreview';
 import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 import BundleNodeHoverCard from './BundleNodeHoverCard';
 import StructuralTreeRows from './StructuralTreeRows';
 import ListNodeGlyph from './ListNodeGlyph';
+import { useSourcePathFormatter } from '../../../../shared/components/SourceNames.js';
 
 interface ListViewProps {
   displayGraph: DisplayGraph;
@@ -43,6 +45,7 @@ export function compareListNodes(
   b: DisplayNode,
   sortField: SortField,
   sortDirection: SortDirection,
+  directoryLabel: (node: DisplayNode) => string = node => node.sourceGraphSubdirectory,
 ): number {
   let comparison = 0;
 
@@ -52,7 +55,7 @@ export function compareListNodes(
       break;
     }
     case 'directory': {
-      comparison = a.sourceGraphSubdirectory.localeCompare(b.sourceGraphSubdirectory);
+      comparison = directoryLabel(a).localeCompare(directoryLabel(b));
       if (comparison === 0) comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
       break;
     }
@@ -83,6 +86,8 @@ const ListView: React.FC<ListViewProps> = ({
   onBundleNodeContextMenu,
   selectedNodeKeys,
 }) => {
+  const formatSourcePath = useSourcePathFormatter();
+  const directoryLabel = React.useCallback((node: DisplayNode) => formatSourcePath(sourceGraphPath(node.sourceId, node.sourceGraphSubdirectory)), [formatSourcePath]);
   const [sortField, setSortField] = useState<SortField>('depth');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -106,8 +111,8 @@ const ListView: React.FC<ListViewProps> = ({
   }, [viewMode]);
 
   const compareNodes = React.useCallback(
-    (a: DisplayNode, b: DisplayNode) => compareListNodes(a, b, sortField, sortDirection),
-    [sortDirection, sortField],
+    (a: DisplayNode, b: DisplayNode) => compareListNodes(a, b, sortField, sortDirection, directoryLabel),
+    [sortDirection, sortField, directoryLabel],
   );
 
   const sortedNodes = useMemo(
@@ -151,13 +156,13 @@ const ListView: React.FC<ListViewProps> = ({
   // drawings can't be `<img src>`'d (the on-disk file is a `.excalidraw.md` whose
   // scene has to be decompressed and rendered) — they go through the vendored
   // renderer instead. Both paths feed the same hover-preview popup.
-  const renderInlineThumbnail = (page: { bundleNodeName: string; fileType: string; sourceGraphSubdirectory: string; isFrontierNode?: boolean }) => {
+  const renderInlineThumbnail = (page: { bundleNodeName: string; fileType: string; sourceGraphSubdirectory: string; sourceId?: string; isFrontierNode?: boolean }) => {
     if (page.isFrontierNode) return null;
     if (page.fileType === 'excalidraw') {
-      const mdPath = page.sourceGraphSubdirectory
+      const mdPath = sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory
         ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.excalidraw.md`
-        : `${page.bundleNodeName}.excalidraw.md`;
-      const mdSourcePath = `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(mdPath)}`;
+        : `${page.bundleNodeName}.excalidraw.md`);
+      const mdSourcePath = `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(mdPath)}${displayGraph.underlyingGraph.sourceContentView === 'live' ? '?sourceView=live' : ''}`;
       return (
         <ExcalidrawThumbnail
           mdSourcePath={mdSourcePath}
@@ -171,7 +176,8 @@ const ListView: React.FC<ListViewProps> = ({
       );
     }
     if (isImageFileType(page.fileType)) {
-      const imagePath = `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.${page.fileType}` : `${page.bundleNodeName}.${page.fileType}`)}`;
+      const filename = sourceGraphPath(page.sourceId, page.sourceGraphSubdirectory ? `${page.sourceGraphSubdirectory}/${page.bundleNodeName}.${page.fileType}` : `${page.bundleNodeName}.${page.fileType}`);
+      const imagePath = `bundles/${bundleSlug}/generation/source-file/${encodeURIComponent(filename)}${displayGraph.underlyingGraph.sourceContentView === 'live' ? '?sourceView=live' : ''}`;
       return (
         <AuthenticatedImage
           sourcePath={imagePath}
@@ -316,7 +322,7 @@ const ListView: React.FC<ListViewProps> = ({
                     </div>
                   </td>
                   <td className="border px-4 py-2 text-neutral-500">
-                    {page.sourceGraphSubdirectory || ''}
+                    {directoryLabel(page)}
                   </td>
                   <td className="border px-4 py-2 text-neutral-500 font-mono text-sm">
                     {nodeKindLabel(page)}

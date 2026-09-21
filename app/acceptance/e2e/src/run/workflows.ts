@@ -32,6 +32,7 @@ export enum Fixture {
   FolderStructureSingle = "home_fixture_folder_structure_single",
   Hooks = "home_fixture_hooks",
   Nested = "home_fixture_nested",
+  MultiSource = "home_fixture_multi_source",
   None = "none",
 }
 

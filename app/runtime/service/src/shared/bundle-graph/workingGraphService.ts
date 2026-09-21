@@ -40,6 +40,7 @@ import { snapshotSourceRoot, initializeSourcing, discoverSourceSnapshot, loadSou
 import { liveSourceLinks } from '../source-snapshot/sourceDiscovery.js';
 import { withPinnedSourceTree } from '../source-snapshot/sourceGit.js';
 import type { SourceSnapshot } from '../source-snapshot/sourceSnapshots.js';
+import { snapshotSourceRegistry } from '../source-snapshot/sourceRegistrySnapshots.js';
 import {
   explainFolderScopeChanges,
   loadFolderScopeSnapshot,
@@ -53,6 +54,7 @@ interface RustLinkResolvedInfo {
 }
 
 interface RustNode {
+  sourceId?: string;
   sourceFile?: { path: string; digest: string; size: number };
   bundleNodeKey: string;
   bundleNodeId?: string;
@@ -86,6 +88,7 @@ interface RustEdge {
 }
 
 export interface WorkingGraphRustOutput {
+  sourceDiagnostics?: import('../../../../../contracts/types/sourcing.js').SourceReferenceDiagnostic[];
   nodes: RustNode[];
   edges: (RustEdge & { link_original_text: string })[];
   allLinkResolutionMaps: Record<string, Record<string, RustLinkResolvedInfo>>;
@@ -95,6 +98,8 @@ export interface WorkingGraphRustOutput {
 }
 
 export interface LoadedWorkingGraph {
+  sourceContentView?: 'accepted' | 'live';
+  sourceDiagnostics?: import('../../../../../contracts/types/sourcing.js').SourceReferenceDiagnostic[];
   frontierUnavailable?: string;
   bundleConfig: BundleConfig;
   committedNodes: BundleNodeConfig[];
@@ -131,6 +136,7 @@ function snapshotFor(output: WorkingGraphRustOutput): FolderScopeGraphSnapshot {
       ...(node.bundleNodeId && { bundleNodeId: node.bundleNodeId }),
       bundleNodeKind: node.bundleNodeKind,
       bundleNodeName: node.bundleNodeName,
+      ...(node.sourceId && { sourceId: node.sourceId }),
       ...(node.sourceGraphSubdirectory !== undefined && { sourceGraphSubdirectory: node.sourceGraphSubdirectory }),
       ...(node.fileType && { fileType: node.fileType }),
       ...(node.effectiveBlacklistingBundleNodeId && { effectiveBlacklistingBundleNodeId: node.effectiveBlacklistingBundleNodeId }),
@@ -175,6 +181,7 @@ function serializeNodes(output: WorkingGraphRustOutput): IBundleNode[] {
       source_page_outlink_count: node.source_page_outlink_count,
       source_page_inlink_count: node.source_page_inlink_count,
       data: {
+        sourceId: node.sourceId,
         bundleNodeName: node.bundleNodeName,
         sourceGraphSubdirectory: node.sourceGraphSubdirectory,
         fileType: node.fileType,
@@ -193,6 +200,7 @@ function serializeNodes(output: WorkingGraphRustOutput): IBundleNode[] {
       return {
         ...common,
         bundleNodeKind: 'folder',
+        sourceId: node.sourceId,
         sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
       };
     }
@@ -200,6 +208,7 @@ function serializeNodes(output: WorkingGraphRustOutput): IBundleNode[] {
     return {
       ...common,
       bundleNodeKind: 'file',
+      sourceId: node.sourceId,
       sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
       fileType: node.fileType,
     };
@@ -240,7 +249,7 @@ function serializeEdges(output: WorkingGraphRustOutput): LoadedWorkingGraph['edg
 
 type SerializedWorkingGraph = Pick<
   LoadedWorkingGraph,
-  'nodes' | 'edges' | 'allInlinkSources' | 'allOutlinkTargets'
+  'nodes' | 'edges' | 'allInlinkSources' | 'allOutlinkTargets' | 'sourceDiagnostics'
 >;
 
 const serializedWorkingGraphs = new WeakMap<WorkingGraphRustOutput, SerializedWorkingGraph>();
@@ -253,6 +262,7 @@ export function serializeWorkingGraphOutput(output: WorkingGraphRustOutput): Ser
     edges: serializeEdges(output),
     allInlinkSources: output.allInlinkSources || {},
     allOutlinkTargets: output.allOutlinkTargets || {},
+    ...(output.sourceDiagnostics?.length && { sourceDiagnostics: output.sourceDiagnostics }),
   };
   serializedWorkingGraphs.set(output, serialized);
   return serialized;
@@ -287,7 +297,8 @@ async function loadWorkingGraphUnlocked(options: {
     throw new Error(`Failed to load bundle configuration for ${bundleSlug}: ${error instanceof Error ? error.message : String(error)}`);
   }
   const bundleDirectory = getBundleDirectory(bundleSlug);
-  let notesDir = snapshotSourceRoot(bundleDirectory, snapshot.id, snapshot);
+  const capturedRoot = snapshotSourceRoot(bundleDirectory, snapshot.id, snapshot);
+  let notesDir = capturedRoot;
   if (frontierDepth > 0) {
     try {
       const state = loadSourcingState(bundleDirectory)!;
@@ -295,7 +306,7 @@ async function loadWorkingGraphUnlocked(options: {
       if (state.candidateId || live.digest !== loadSourceSnapshot(bundleDirectory, state.acceptedId).digest) {
         frontierUnavailable = 'The frontier can’t be shown while source changes are waiting for review.';
       } else {
-        notesDir = bundleConfig.sourceDirectory!;
+        notesDir = bundleConfig.sourceDirectory ?? bundleConfig.sources?.[0]?.directory ?? capturedRoot;
       }
     } catch {
       frontierUnavailable = 'The frontier can’t be shown while sources are unavailable.';
@@ -331,7 +342,8 @@ async function loadWorkingGraphUnlocked(options: {
   const runGraph = async (configFile: string): Promise<WorkingGraphRustOutput> => {
     return await runWorkingGraphJson<WorkingGraphRustOutput>({
       graphRoot: notesDir,
-      immutableSource: notesDir !== bundleConfig.sourceDirectory,
+      sources: notesDir === capturedRoot ? snapshotSourceRegistry(snapshot, capturedRoot) : bundleConfig.sources,
+      immutableSource: notesDir === capturedRoot,
       bundleNodeConfigPath: configFile,
       entryBundleNodeId: bundleConfig.entryBundleNodeId!,
       defaultTraversalBundleNodeId: bundleConfig.defaultTraversalBundleNodeId!,
@@ -387,6 +399,7 @@ async function loadWorkingGraphUnlocked(options: {
   const serialized = serializeWorkingGraphOutput(output);
   return {
     bundleConfig,
+    sourceContentView: notesDir === capturedRoot ? 'accepted' : 'live',
     committedNodes,
     ...(draftNodes && { draftNodes }),
     ...serialized,

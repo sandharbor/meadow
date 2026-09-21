@@ -124,6 +124,11 @@ export class SourceOrphansReview {
     await this.orphanRow(title).getByText('Previous route', { exact: true }).click();
   }
 
+  async keepInConfig(title: string) {
+    await this.showExplanation(title);
+    await this.orphanRow(title).getByRole('checkbox', { name: 'Keep in config', exact: true }).check();
+  }
+
   async expectOrphanListed(title: string) {
     await this.expect(this.orphanRow(title)).toBeVisible();
   }

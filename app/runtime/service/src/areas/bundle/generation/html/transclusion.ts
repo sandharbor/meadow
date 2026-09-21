@@ -152,6 +152,7 @@ function resolveTargetFromCallerContext(
   const linkHasExplicitPath = originalFilename.includes('/');
 
   const resolvedInfo = linkResolutionMapForCaller?.[linkText];
+  if (resolvedInfo && !resolvedInfo.link_resolved_target_path) return null;
   const resolvedDirectory = resolvedInfo?.link_resolved_target_directory ?? '';
 
   let resolvedTitle = originalFilename;
@@ -164,7 +165,7 @@ function resolveTargetFromCallerContext(
     resolvedTitle = parts[parts.length - 1];
   }
 
-  const cfg = findPageConfig(resolvedTitle, resolvedDirectory, linkHasExplicitPath, bundleNodeConfigs);
+  const cfg = findPageConfig(resolvedTitle, resolvedDirectory, Boolean(resolvedInfo) || linkHasExplicitPath, bundleNodeConfigs);
   if (!cfg || cfg.listType !== 'whitelist') {
     return null;
   }

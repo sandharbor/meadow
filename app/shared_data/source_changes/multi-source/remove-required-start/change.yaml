@@ -1,0 +1,10 @@
+id: remove-required-start
+label: Remove the required notebook start
+description: Remove Start.md. Accepted pages remain readable; choose a
+  replacement explicitly in Manage sources before accepting a repaired
+  selection.
+categories:
+  - remove
+operations:
+  - delete: notes/Start.md
+sourceGraph: multi-source

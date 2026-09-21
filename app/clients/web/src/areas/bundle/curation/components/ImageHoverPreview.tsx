@@ -37,7 +37,7 @@ const ImageHoverPreview: React.FC<ImageHoverPreviewProps> = ({
   // Excalidraw drawings live as `<title>.excalidraw.md` on disk and need to be
   // run through the vendored renderer; render via the Excalidraw thumbnail
   // component instead of an `<img>` when the URL points at one.
-  const isExcalidraw = imagePath.toLowerCase().endsWith('.excalidraw.md');
+  const isExcalidraw = imagePath.split(/[?#]/)[0].toLowerCase().endsWith('.excalidraw.md');
   return (
     <div
       data-testid="image-hover-preview"

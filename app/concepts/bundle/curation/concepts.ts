@@ -84,7 +84,7 @@ export const folderFilter = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`The hierarchical filter for focusing curation on selected source folders.`,
   mechanics: [
-    conceptText`It presents recursive page counts, nested activity, title filtering, soloing, hiding, and reset behavior.`,
+    conceptText`It presents recursive page counts, nested activity, title filtering, soloing, hiding, and reset behavior. With multiple configured sources it groups folders beneath canonical source names, including zero-count sources; a single source omits that extra grouping. Folder controls identify a source by its stable identity plus the relative directory, so equal folder names stay independent and settings survive source rename and graph refresh within the editor session.`,
   ],
   interplay: conceptText`It changes the visible source scope without itself changing ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} or the structure of a ${conceptLink(coreConceptIds.folderBundles, "Folder-Derived Bundle")}.`,
 });

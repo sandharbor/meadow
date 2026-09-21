@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { acceptedSourceRoot, loadSourcingState } from '../source-snapshot/sourceSnapshots.js';
+import { sourceForNode } from '../../../../../shared_code/utils/bundleSourceUtils.js';
+import { snapshotSourceRegistry } from '../source-snapshot/sourceRegistrySnapshots.js';
+import { acceptedSourceRoot, loadSourceSnapshot, loadSourcingState } from '../source-snapshot/sourceSnapshots.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
@@ -105,8 +107,8 @@ function loadFolderBundle(bundleDirectory: string, useAcceptedSnapshot = false):
   const bundleConfigPath = path.join(bundleDirectory, 'config', 'bundle_config.yaml');
   const originalNodeConfig = fs.readFileSync(nodeConfigPath, 'utf8');
   const nodes = parseBundleNodeConfig(originalNodeConfig, nodeConfigPath);
-  const bundleConfig = YAML.parse(fs.readFileSync(bundleConfigPath, 'utf8')) as BundleConfig;
-  if (useAcceptedSnapshot && loadSourcingState(bundleDirectory)) bundleConfig.sourceDirectory = acceptedSourceRoot(bundleDirectory);
+  let bundleConfig = YAML.parse(fs.readFileSync(bundleConfigPath, 'utf8')) as BundleConfig;
+  if (useAcceptedSnapshot) bundleConfig = folderCheckConfiguration(bundleDirectory, bundleConfig);
   return folderBundleFromConfiguration(
     bundleDirectory,
     bundleConfig,
@@ -134,7 +136,7 @@ function folderBundleFromConfiguration(
     ? [entry.bundleNodeId]
     : [...entry.memberBundleNodeIds];
   return {
-    sourceRoot: canonicalFolderBundleSourceDirectory(bundleConfig.sourceDirectory ?? ''),
+    sourceRoot: canonicalFolderBundleSourceDirectory(bundleConfig.sourceDirectory ?? bundleConfig.sources?.[0]?.directory ?? ''),
     bundleConfig,
     nodes,
     selectedFolderIds,
@@ -169,7 +171,8 @@ function repairStatusForLoaded(loaded: LoadedFolderBundle): FolderBundleRepairSt
   const missingSelectedFolders = loaded.selectedFolderIds.flatMap(bundleNodeId => {
     const node = loaded.nodes.find(candidate => candidate.bundleNodeId === bundleNodeId);
     if (!node || node.bundleNodeKind !== 'folder') return [];
-    const reason = folderBackingReason(loaded.sourceRoot, node.sourceGraphSubdirectory);
+    const sourceRoot = loaded.bundleConfig.sources ? canonicalFolderBundleSourceDirectory(sourceForNode(loaded.bundleConfig, node)?.directory ?? loaded.sourceRoot) : loaded.sourceRoot;
+    const reason = folderBackingReason(sourceRoot, node.sourceGraphSubdirectory);
     if (!reason) return [];
     return [{
       bundleNodeId,
@@ -192,9 +195,16 @@ export function getFolderBundleRepairStatusFromConfiguration(
   bundleConfig: BundleConfig,
   nodes: BundleNodeConfig[],
 ): FolderBundleRepairStatus {
-  const sourceConfig = loadSourcingState(bundleDirectory)
-    ? { ...bundleConfig, sourceDirectory: acceptedSourceRoot(bundleDirectory) } : bundleConfig;
+  const sourceConfig = folderCheckConfiguration(bundleDirectory, bundleConfig);
   return repairStatusForLoaded(folderBundleFromConfiguration(bundleDirectory, sourceConfig, nodes));
+}
+
+function folderCheckConfiguration(directory: string, config: BundleConfig): BundleConfig {
+  const state = loadSourcingState(directory);
+  if (!state) return config;
+  const root = acceptedSourceRoot(directory);
+  return config.sources ? { ...config, sources: snapshotSourceRegistry(loadSourceSnapshot(directory, state.acceptedId), root) }
+    : { ...config, sourceDirectory: root };
 }
 
 function candidateNodes(loaded: LoadedFolderBundle, bundleNodeId: BundleNodeId, selectedFolder: string): {
@@ -202,6 +212,7 @@ function candidateNodes(loaded: LoadedFolderBundle, bundleNodeId: BundleNodeId, 
   oldNode: FolderBundleNodeConfig;
   newNode: FolderBundleNodeConfig;
 } {
+  if (loaded.bundleConfig.sources) throw new Error('Use Manage sources → Edit starting selections to repair this bundle.');
   const status = repairStatusForLoaded(loaded);
   if (!status.missingSelectedFolders.some(folder => folder.bundleNodeId === bundleNodeId)) {
     throw new Error('Only a missing entry or collection-member folder can be relinked');

@@ -17,9 +17,11 @@ function Explanation({ orphan }: { orphan: SourceOrphanExplanation }) {
   return <>{orphan.reason}</>;
 }
 
-export function OrphanReview({ orphans, hasCandidate }: {
+export function OrphanReview({ orphans, hasCandidate, keeps = [], onKeepChange }: {
   orphans: SourceOrphanExplanation[];
   hasCandidate: boolean;
+  keeps?: string[];
+  onKeepChange?: (id: string, keep: boolean) => void;
 }) {
   const helpId = useId();
   return <section className="text-sm" data-testid="source-orphans">
@@ -44,6 +46,7 @@ export function OrphanReview({ orphans, hasCandidate }: {
             <p className="font-medium text-neutral-700">Why is this orphaned?</p>
             <p className="leading-relaxed [overflow-wrap:anywhere]"><Explanation orphan={orphan} /></p>
             {orphan.previousPath.length > 0 && <details><summary className="cursor-pointer hover:text-neutral-800">Previous route</summary><FileRoute paths={orphan.previousPath} /></details>}
+            {!orphan.removalBlockedReason && onKeepChange && <label className="flex items-center gap-2"><input type="checkbox" checked={keeps.includes(orphan.bundleNodeId)} onChange={event => onKeepChange(orphan.bundleNodeId, event.target.checked)} />Keep in config</label>}
             {orphan.removalBlockedReason && <p>{orphan.removalBlockedReason}</p>}
           </div>
         </details>;

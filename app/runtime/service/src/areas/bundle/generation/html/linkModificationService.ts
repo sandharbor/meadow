@@ -351,6 +351,8 @@ export function isLinkTracked(
   bundleNodeConfigs: BundleNodeConfig[],
   linkResolutionMap?: Record<string, LinkResolvedInfo>
 ): boolean {
+  // An explicit unresolved result must never fall back to a namesake elsewhere.
+  if (linkResolutionMap?.[linkText] && !linkResolutionMap[linkText].link_resolved_target_path) return false;
   const linkInfo = linkInfoWithResolvedTargetType(linkText, linkResolutionMap);
 
   if (linkInfo.type === 'image') {
@@ -382,7 +384,7 @@ export function isLinkTracked(
     // Fallback: if still no match and the original link had no explicit path,
     // try matching by title alone (the image may live in a subdirectory).
     // Mirrors the page-link fallback logic.
-    if (!imageConfig && !originalImageFilename.includes('/')) {
+    if (!imageConfig && !linkResolutionMap?.[linkText] && !originalImageFilename.includes('/')) {
       imageConfig = bundleNodeConfigs.find(bundleNodeConfig =>
         bundleNodeConfig.bundleNodeKind === 'file' && bundleNodeConfig.bundleNodeName === imageNameWithoutExt &&
         bundleNodeConfig.fileType === imageExt
@@ -426,7 +428,7 @@ export function isLinkTracked(
 
     // Fallback: title-only lookup when no explicit path was given (the page
     // may live in a subdirectory).
-    if (!linkConfig && !linkHasExplicitPath) {
+    if (!linkConfig && !linkResolutionMap?.[linkText] && !linkHasExplicitPath) {
       linkConfig = bundleNodeConfigs.find(bundleNodeConfig =>
         bundleNodeConfig.bundleNodeKind === 'file' && bundleNodeConfig.bundleNodeName === resolvedTitle &&
         (bundleNodeConfig.fileType || 'md') === targetFileType
@@ -734,9 +736,9 @@ export function linkOrImageHtml(
       ? normalizePageTitle(linkConfig?.bundleNodeName || resolvedTitle, bundleConfig, bundleSlug)
       : (linkConfig?.bundleNodeName || resolvedTitle);
 
-    if (highlightDoNotLinkPageName &&
-        (originalLinkFilename.toLowerCase() === highlightDoNotLinkPageName.toLowerCase() ||
-         resolvedTitle.toLowerCase() === highlightDoNotLinkPageName.toLowerCase())) {
+    if (highlightDoNotLinkPageName && (bundleConfig?.sources
+      ? targetPageDirectory === currentPageDirectory && resolvedTitle === highlightDoNotLinkPageName && targetFileType === 'md'
+      : originalLinkFilename.toLowerCase() === highlightDoNotLinkPageName.toLowerCase() || resolvedTitle.toLowerCase() === highlightDoNotLinkPageName.toLowerCase())) {
       return `<span class="highlight-do-not-link">${normalizedLinkFilename}</span>`;
     }
 
@@ -783,7 +785,10 @@ export function linkOrImageHtml(
           : encodePathForUrl(`${normalizedLinkFilename}.html`);
         relativeUrl = calculateRelativePath(currentOutputDirectory, targetPath);
       }
-      return `[${textToDisplayInHyperlink}](${relativeUrl})`;
+      const qualifiedTarget = linkText.split(/[#^|]/)[0].includes('::');
+      const heading = linkText.split('|')[0].split('#')[1];
+      const section = (bundleConfig?.sources || qualifiedTarget) && heading ? `#${encodeURIComponent(heading.trim())}` : '';
+      return `[${textToDisplayInHyperlink}](${relativeUrl}${section})`;
     } else if (processingMode === 'single-page') {
       return `<a href="#${anchorNameFor(normalizedLinkFilename)}">${textToDisplayInHyperlink}</a>`;
     }

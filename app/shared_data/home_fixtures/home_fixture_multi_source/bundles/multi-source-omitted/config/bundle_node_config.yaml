@@ -1,0 +1,8 @@
+nodes:
+  - bundleNodeName: Start
+    sourceId: source000001
+    sourceGraphSubdirectory: ""
+    bundleNodeKind: file
+    fileType: md
+    bundleNodeId: 3265a081dc61
+    listType: whitelist

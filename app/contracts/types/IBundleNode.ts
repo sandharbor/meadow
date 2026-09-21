@@ -68,6 +68,7 @@ interface BaseBundleNode {
 }
 
 export interface FileBundleNode extends BaseBundleNode {
+  sourceId?: string;
   bundleNodeKind: 'file';
   sourceGraphSubdirectory: string;
   fileType: FileType;
@@ -75,6 +76,7 @@ export interface FileBundleNode extends BaseBundleNode {
 }
 
 export interface FolderBundleNode extends BaseBundleNode {
+  sourceId?: string;
   bundleNodeKind: 'folder';
   sourceGraphSubdirectory: string;
   fileType?: never;
@@ -82,6 +84,7 @@ export interface FolderBundleNode extends BaseBundleNode {
 }
 
 export interface CollectionBundleNode extends BaseBundleNode {
+  sourceId?: never;
   bundleNodeKind: 'collection';
   sourceGraphSubdirectory?: never;
   fileType?: never;

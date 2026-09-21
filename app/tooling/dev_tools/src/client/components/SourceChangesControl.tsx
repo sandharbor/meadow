@@ -59,7 +59,7 @@ export function SourceChangesControl({ fixtureName, active, launchMode, onStarte
       <span className="group relative ml-2 inline-flex">
         <button type="button" aria-label="About source changes" aria-describedby={`${tabsId}-help`} onClick={event => event.preventDefault()} className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-neutral-400 text-[10px] text-neutral-500">?</button>
         <span id={`${tabsId}-help`} role="tooltip" className="pointer-events-none invisible fixed z-[9999] ml-2 w-80 max-w-[calc(100vw-2rem)] rounded border border-neutral-200 bg-white p-3 text-xs font-normal text-neutral-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-          Start scenario resets this fixture and opens the selected change in source review. Apply change only modifies files in the running fixture.
+          Start scenario resets this fixture and opens the selected change for review or source repair. Apply change only modifies files in the running fixture.
         </span>
       </span>
     </summary>
@@ -81,14 +81,14 @@ export function SourceChangesControl({ fixtureName, active, launchMode, onStarte
             <summary className="cursor-pointer text-sm font-semibold">{change.label}</summary>
             <div className="mt-3 space-y-2 text-xs text-neutral-600">
               <p>{change.description}</p>
-              <p>Start resets the fixture and opens source review. Apply only changes the files in the running fixture.</p>
+              <p>Start resets the fixture and opens source review or repair. Apply only changes the files in the running fixture.</p>
               {change.state === 'applied' && <p>Applied to the current fixture.</p>}
               {change.reason && <p>{change.reason}</p>}
               <h4 className="font-medium">Files & operations</h4>
               <pre className="overflow-auto whitespace-pre-wrap break-words">{JSON.stringify(change.operations, null, 2)}</pre>
             </div>
           </details>
-          {fixtureName === 'home_fixture_big_and_small' && <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={busy !== null} onClick={() => void start(change)}>Start</button>}
+          {['home_fixture_big_and_small', 'home_fixture_multi_source'].includes(fixtureName) && <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={busy !== null} onClick={() => void start(change)}>Start</button>}
           <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:bg-neutral-200 disabled:text-neutral-600" disabled={!active || busy !== null || change.state !== 'available'} onClick={() => void apply(change)}>Apply</button>
         </article>)}
       </div>

@@ -91,7 +91,8 @@ export function rewriteNativeHtmlUrls(args: {
       if (href === null) {
         return `${attribute}${assignment}${quote}#${quote} data-meadow-link-not-tracked="true"`;
       }
-      return `${attribute}${assignment}${quote}${href}${quote}`;
+      const suffix = bundleConfig.sources || rawUrl.startsWith('source://') ? rawUrl.match(/[?#].*$/)?.[0] ?? '' : '';
+      return `${attribute}${assignment}${quote}${href}${suffix}${quote}`;
     }
   );
 }

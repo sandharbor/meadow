@@ -109,7 +109,7 @@ export function validateLinkSpec(
   const linkSpec = spec as Record<string, unknown>;
 
   // Check for unknown keys in link spec
-  const allowedLinkSpecKeys = new Set(['linkPath', 'isInGraph']);
+  const allowedLinkSpecKeys = new Set(['linkPath', 'isInGraph', 'source']);
   for (const key of Object.keys(linkSpec)) {
     if (!allowedLinkSpecKeys.has(key)) {
       errors.push({
@@ -144,6 +144,10 @@ export function validateLinkSpec(
       bundle,
       field: 'links',
     });
+  }
+
+  if (linkSpec.source !== undefined && (typeof linkSpec.source !== 'string' || !/^[a-z][a-z0-9_-]{0,63}$/.test(linkSpec.source))) {
+    errors.push({ message: `${context}.source must be a canonical source name`, pageTitle, bundle, field: 'links' });
   }
 
   return errors;

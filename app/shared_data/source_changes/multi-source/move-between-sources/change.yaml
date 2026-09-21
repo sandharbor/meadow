@@ -1,0 +1,15 @@
+id: move-between-sources
+label: Move a page from notes to research
+description: Move the notebook Inside page into research and update its incoming
+  link. Review the cross-source move and retain its identity and settings.
+categories:
+  - move
+operations:
+  - move:
+      from: notes/Same/Inside.md
+      to: research/Moved/Inside.md
+  - replaceText:
+      path: notes/Start.md
+      before: "[[Same/Inside]]"
+      after: "[[Moved/Inside::research]]"
+sourceGraph: multi-source

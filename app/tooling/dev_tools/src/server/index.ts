@@ -18,6 +18,9 @@ limitations under the License.
 
 import express from "express";
 import cors from "cors";
+import YAML from 'yaml';
+import type { BundleConfig } from '../../../../contracts/types/bundleConfig.js';
+import { portableFixtureSourceDirectory } from '../../../../shared_code/shared_dev/fixtureSourceLocation.js';
 import { existsSync, renameSync, rmSync, readdirSync, readFileSync, writeFileSync, mkdirSync, cpSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath, URL } from "url";
@@ -299,8 +302,8 @@ app.post("/api/config/test-mode/fixture/:fixtureName", async (req, res) => {
 app.post('/api/config/fixtures/:fixtureName/source-scenarios/:changeId/start', async (req, res) => {
   try {
     const { fixtureName, changeId } = req.params;
-    const sourceGraph = 'meadow-test-bundles-data';
-    if (fixtureName !== 'home_fixture_big_and_small' || !loadSourceChanges(projectRoot, sourceGraph).some(change => change.id === changeId)) {
+    const sourceGraph = fixtureSourceGraphs(projectRoot, fixtureName).find(graph => loadSourceChanges(projectRoot, graph).some(change => change.id === changeId));
+    if (!sourceGraph || !['home_fixture_big_and_small', 'home_fixture_multi_source'].includes(fixtureName)) {
       res.status(400).json({ error: 'Unknown source scenario for this fixture' }); return;
     }
     await resetFixture(fixtureName);
@@ -311,9 +314,11 @@ app.post('/api/config/fixtures/:fixtureName/source-scenarios/:changeId/start', a
       });
       return result.stdout;
     };
-    const targetPath = await prepareSourceScenario(run, 'meadow-test-bundle-big', async () => applySourceChange({
+    const slug = fixtureName === 'home_fixture_multi_source' ? changeId === 'add-reference-to-start' ? 'multi-source-omitted' : 'multi-source-page' : 'meadow-test-bundle-big';
+    const sourceUnavailable = fixtureName === 'home_fixture_multi_source' && ['relocate-research', 'disconnect-reference', 'remove-required-start'].includes(changeId);
+    const targetPath = await prepareSourceScenario(run, slug, async () => applySourceChange({
       projectRoot, sourceGraphsDir: join(configDir, 'source_graphs'), sourceGraph, changeId,
-    }));
+    }), { sourceUnavailable });
     res.json({ success: true, targetPath });
   } catch (error) {
     res.status(500).json({ error: errorMessage(error, 'Could not prepare the source scenario') });
@@ -343,6 +348,16 @@ app.post("/api/config/copy-back-to-fixture", (_req, res) => {
       return;
     }
 
+    const portableConfigs = new Map<string, string>();
+    for (const entry of readdirSync(join(configDir, 'bundles'), { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const config = YAML.parse(readFileSync(join(configDir, 'bundles', entry.name, 'config/bundle_config.yaml'), 'utf8')) as BundleConfig;
+      const portable = (directory: string) => portableFixtureSourceDirectory(directory, join(configDir, 'source_graphs'), join(projectRoot, 'app/shared_data/source_graphs'));
+      if (config.sources) config.sources = config.sources.map(source => ({ ...source, directory: portable(source.directory) }));
+      else if (config.sourceDirectory) config.sourceDirectory = portable(config.sourceDirectory);
+      portableConfigs.set(entry.name, YAML.stringify(config));
+    }
+
     rmSync(fixturePath, { recursive: true });
     mkdirSync(fixturePath, { recursive: true });
 
@@ -362,16 +377,8 @@ app.post("/api/config/copy-back-to-fixture", (_req, res) => {
       }
     };
     copyWithFilter(configDir, fixturePath);
-    const copiedBundles = join(fixturePath, 'bundles');
-    for (const entry of readdirSync(copiedBundles, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      const configPath = join(copiedBundles, entry.name, 'config/bundle_config.yaml');
-      const original = readFileSync(configPath, 'utf8');
-      const sourceMatch = original.match(/^sourceDirectory:\s*(.+)$/m);
-      if (sourceMatch) {
-        const graphName = sourceMatch[1].trim().replace(/^['"]|['"]$/g, '').split('/').pop();
-        writeFileSync(configPath, original.replace(/^sourceDirectory:.*$/m, `sourceDirectory: ./source_graphs/${graphName}`));
-      }
+    for (const [bundle, config] of portableConfigs) {
+      writeFileSync(join(fixturePath, 'bundles', bundle, 'config/bundle_config.yaml'), config);
     }
     console.log(`  ✓ Copied config back to fixture`);
 

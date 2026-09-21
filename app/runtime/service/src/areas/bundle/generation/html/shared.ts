@@ -108,6 +108,19 @@ export function linkTextToLinkInfo(link: string): LinkInfo {
   // In markdown tables, Obsidian escapes the alias pipe as \| to avoid
   // conflicting with the table cell separator.
   link = link.replace(/\\\|/g, '|');
+  const targetEnd = link.search(/[#^|]/);
+  const target = targetEnd < 0 ? link : link.slice(0, targetEnd);
+  const qualifier = target.indexOf('::');
+  if (qualifier >= 0) {
+    const filename = target.slice(0, qualifier);
+    const suffix = targetEnd < 0 ? '' : link.slice(targetEnd);
+    const pipe = suffix.indexOf('|');
+    const alias = pipe < 0 ? undefined : suffix.slice(pipe + 1);
+    const section = (pipe < 0 ? suffix : suffix.slice(0, pipe)).match(/#(.*)/)?.[1];
+    return IMAGE_EXTENSIONS.some(ext => filename.toLowerCase().endsWith(ext))
+      ? { type: 'image', filename, size: alias && /^\d+$/.test(alias) ? alias : undefined }
+      : { type: 'page', filename, alternative_name: alias, section };
+  }
   const lowerLink = link.toLowerCase();
 
   // Check if it's an image

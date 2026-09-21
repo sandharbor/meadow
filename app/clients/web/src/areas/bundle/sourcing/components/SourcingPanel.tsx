@@ -1,5 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { SourceNamesProvider } from '../../../../shared/components/SourceNames.js';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '../../../../shared/components/Modal.js';
@@ -77,7 +78,8 @@ function SourceChangeRow({ change, sensitivity, loadComparison, imageUrl, graph,
   </details>;
 }
 
-export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, initialReview = false, onPendingChanges, snapshotsOpen = false, onCloseSnapshots }: {
+export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, reviewTrigger = 0, initialReview = false, onPendingChanges, snapshotsOpen = false, onCloseSnapshots }: {
+  reviewTrigger?: number;
   snapshotsOpen?: boolean;
   onCloseSnapshots?: () => void;
   onPendingChanges?: (pending: boolean) => void;
@@ -100,6 +102,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const inFlight = useRef(false);
   const sourceCheck = useRef<{ endpoint: string; promise: Promise<SourcingReview> }>();
   const reviewToken = useRef<string>();
+  const [orphanKeeps, setOrphanKeeps] = useState<string[]>([]);
   const [showAllChanges, setShowAllChanges] = useState(false);
   const [trackNewPages, setTrackNewPages] = useState(true);
   const trackNewPagesHintId = useId();
@@ -117,7 +120,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   }, [endpoint]);
 
   const receive = useCallback((result: SourcingReview, announceNoChanges = true) => {
-    if (reviewToken.current !== result.reviewToken) { setResolutions({}); setComparison(null); setShowAllChanges(false); setTrackNewPages(result.trackNewPages ?? true); }
+    if (reviewToken.current !== result.reviewToken) { setResolutions({}); setComparison(null); setOrphanKeeps([]); setShowAllChanges(false); setTrackNewPages(result.trackNewPages ?? true); }
     reviewToken.current = result.reviewToken;
     setReview(result);
     setNoChanges(announceNoChanges && !result.candidate && result.orphans.length === 0);
@@ -181,6 +184,20 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     if (sourceChangeTrigger) void scan(true);
   }, [sourceChangeTrigger, scan]);
 
+  useEffect(() => {
+    if (!reviewTrigger) return;
+    setOpen(true); setBusy(true); setError(null);
+    void request().then(result => receive(result as SourcingReview, false))
+      .catch(error => setError(String(error))).finally(() => setBusy(false));
+  }, [reviewTrigger, request, receive]);
+
+  const cancelCandidate = async () => {
+    setBusy(true); setError(null);
+    try { receive(await request('/cancel', {}) as SourcingReview); setOpen(false); }
+    catch (error) { setError(String(error)); }
+    finally { setBusy(false); }
+  };
+
   const inspect = async (oldPath: string, newPath: string) => {
     if (!review?.candidate) return;
     try {
@@ -196,7 +213,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     if (!review || (!review.candidate && orphanRemovals.size === 0)) return;
     inFlight.current = true; setBusy(true); setError(null);
     try {
-      const result = await request('/accept', { candidateId: review.candidate?.id ?? review.accepted.id, reviewToken: review.reviewToken, resolutions, orphanKeeps: [], trackNewPages }) as SourceSnapshotAcceptanceResult;
+      const result = await request('/accept', { candidateId: review.candidate?.id ?? review.accepted.id, reviewToken: review.reviewToken, resolutions, orphanKeeps, trackNewPages }) as SourceSnapshotAcceptanceResult;
       receive(result);
       setOpen(false); setComparison(null); setResolutions({}); onAccepted(result);
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
@@ -229,17 +246,25 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
         : <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded border border-neutral-300 bg-neutral-50 px-3 py-1 font-medium text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 hover:text-neutral-800" onClick={() => void scan(true)}>Refresh sources{backgroundProgress}</button>}
       {error && !open && <span role="alert" title={error} className="text-red-700">Source update failed<span className="sr-only">: {error}</span></span>}
     </div>
-    {open && createPortal(<Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus={!traversal.details} className="w-full max-w-3xl" footer={
+    {open && createPortal(<SourceNamesProvider sources={[...(review?.accepted.sourceNames ?? []), ...(review?.candidate?.sourceNames ?? [])]}><Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus={!traversal.details} className="w-full max-w-3xl" footer={
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button className="text-xs text-main-700 hover:underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void scan(true)}>{busy || backgroundBusy ? 'Checking…' : 'Check again'}</button>
         <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.' : ''}</p>
+        {review?.candidate && <button className="text-sm text-neutral-600 underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void cancelCandidate()}>Discard candidate</button>}
         <button className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50" onClick={closeReview}>Later</button>
-        {(review?.candidate || orphanRemovals.size > 0) && <button className="rounded bg-btn-confirm-normal px-4 py-2 text-sm text-btn-confirm-text hover:bg-btn-confirm-hover disabled:opacity-50" disabled={busy || backgroundBusy || hasDraftChanges} onClick={() => void accept()}>Accept source changes</button>}
+        {(review?.candidate || orphanRemovals.size > 0) && <button className="rounded bg-btn-confirm-normal px-4 py-2 text-sm text-btn-confirm-text hover:bg-btn-confirm-hover disabled:opacity-50" disabled={busy || backgroundBusy || hasDraftChanges || review?.sourceChanges?.stale} onClick={() => void accept()}>Accept source changes</button>}
       </div>
     }>
       <div className="space-y-5 text-neutral-800">
         {!review?.candidate && !review?.orphans.length && <p className="text-xs text-neutral-500">{busy ? 'Checking sources…' : 'No source changes are waiting.'}</p>}
         {error && <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+        {review?.sourceChanges && <section aria-label="Source registry changes" className="space-y-3 rounded border border-neutral-200 p-4 text-sm">
+          <h3 className="font-semibold">Sources after acceptance</h3>
+          {review.sourceChanges.after.map(source => <p key={source.id}><strong>{source.name}</strong> · {source.directory}{source.aliases?.length ? ` · aliases: ${source.aliases.join(', ')}` : ''}</p>)}
+          {review.sourceChanges.before.filter(source => !review.sourceChanges!.after.some(after => after.id === source.id)).map(source => <p key={source.id}>Remove <strong>{source.name}</strong> from this bundle.</p>)}
+          {review.sourceChanges.stale && <p role="alert" className="text-amber-800">Bundle settings changed. Choose Check again before accepting this proposal.</p>}
+          {review.sourceChanges.outputPathsChange && <p className="rounded bg-amber-50 p-3 text-amber-900">Generated page paths will change. For a published bundle, we recommend creating a new generated version, publishing a connected revision, and retaining the prior publication. Readers can use Open the newer version to reach the same pages at their new paths. You can keep working without publishing.</p>}
+        </section>}
         {groups.size > 0 && <section className="space-y-3">
           <h3 className="text-sm font-semibold">Renames and moves<SourceChangeCount count={groups.size} /></h3>
           {[...groups].map(([id, moves]) => {
@@ -279,15 +304,15 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
             </div>}
           </div>
           <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} sensitivity={review?.trackingSensitivity?.[change.path]} graph={traversal.graphs.candidate} onTraversalDetails={traversal.graphs.candidate?.getNode(change.path)?.path?.length ? () => traversal.show('candidate', change.path) : undefined} loadComparison={async () => {
-            const query = new URLSearchParams({ beforeId: review!.accepted.id, afterId: review!.candidate!.id, beforePath: change.path, afterPath: change.path });
-            return { beforePath: change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
+            const query = new URLSearchParams({ beforeId: review!.accepted.id, afterId: review!.candidate!.id, beforePath: change.previousPath ?? change.path, afterPath: change.path });
+            return { beforePath: change.previousPath ?? change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
           }} />)}</div>
           {(review?.changes.length ?? 0) > 8 && <button className="mt-2 text-xs text-main-700 hover:underline" onClick={() => setShowAllChanges(previous => !previous)}>{showAllChanges ? 'Show fewer' : `Show all ${review?.changes.length} changes`}</button>}
         </section>}
-        {review && review.orphans.length > 0 && <OrphanReview orphans={review.orphans} hasCandidate={Boolean(review.candidate)} />}
+        {review && review.orphans.length > 0 && <OrphanReview orphans={review.orphans} hasCandidate={Boolean(review.candidate)} keeps={orphanKeeps} onKeepChange={(id, keep) => setOrphanKeeps(previous => keep ? [...previous, id] : previous.filter(item => item !== id))} />}
 
       </div>
-    </Modal>, document.body)}
+    </Modal></SourceNamesProvider>, document.body)}
     {open && traversal.details && createPortal(<TraversalPathDetailsModal isOpen onClose={traversal.close} {...traversal.details} manageFocus />, document.body)}
   </>;
 }

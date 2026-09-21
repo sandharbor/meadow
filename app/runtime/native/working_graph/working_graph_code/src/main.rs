@@ -1,9 +1,7 @@
 use anyhow::Context;
 use clap::Parser;
 use linkrange::links::AnchorType as LibAnchorType;
-use linkrange::{
-    Depths, FileInfo, FrontmatterField, Graph, Inclusion, IndexOptions, Query, Rule, Start,
-};
+use linkrange::{Depths, FileInfo, FrontmatterField, Inclusion, IndexOptions, Query, Rule, Start};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::{
@@ -18,6 +16,7 @@ use working_graph::bundle_node_config::{
 use working_graph::folder_scope::{
     build_folder_scope_projection, classify_directory_for_selected_roots, ScopePathClassification,
 };
+use working_graph::source_registry::SourceRegistry;
 use working_graph::types::{FileBundleNode, LinkType, TraversalDetails, TraversalStateSummary};
 
 #[derive(Serialize, Clone)]
@@ -31,6 +30,9 @@ struct SourceFile {
 struct Args {
     #[arg(long)]
     graph_root: PathBuf,
+    /// Bundle source registry JSON, including stable IDs and authored names/aliases.
+    #[arg(long)]
+    sources: Option<String>,
 
     /// Parent directory for disposable source indexes (normally Meadow Home/cache/source-index).
     #[arg(long)]
@@ -68,6 +70,8 @@ struct Args {
 #[allow(non_snake_case)]
 #[derive(Serialize)]
 struct OutputNode {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sourceId: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     sourceFile: Option<SourceFile>,
     bundleNodeKey: String,
@@ -191,6 +195,8 @@ struct OutputGraph {
     allLinkResolutionMaps: HashMap<String, HashMap<String, LinkResolvedInfo>>,
     allInlinkSources: HashMap<String, Vec<String>>,
     allOutlinkTargets: HashMap<String, Vec<String>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    sourceDiagnostics: Vec<linkrange::Diagnostic>,
     #[serde(skip_serializing_if = "Option::is_none")]
     folderScope: Option<FolderScopeReport>,
 }
@@ -333,6 +339,58 @@ fn build_folder_scope_report(
     }
 }
 
+fn build_source_folder_scope_report(
+    registry: &SourceRegistry,
+    graph_root: &Path,
+    selected_roots: Vec<String>,
+    supported_seed_file_count: usize,
+    required_raw_folder_node_count: usize,
+) -> FolderScopeReport {
+    let Some(sources) = &registry.sources else {
+        return build_folder_scope_report(
+            graph_root,
+            selected_roots,
+            supported_seed_file_count,
+            required_raw_folder_node_count,
+        );
+    };
+    let mut report = FolderScopeReport {
+        normalizedSelectedFolders: selected_roots.clone(),
+        supportedSeedFileCount: supported_seed_file_count,
+        requiredRawFolderNodeCount: required_raw_folder_node_count,
+        skippedCounts: HashMap::new(),
+        skippedPaths: Vec::new(),
+        skippedPathCount: 0,
+        predictedRawNodeCount: 0,
+        predictedTypedEdgeCount: 0,
+    };
+    for source in sources {
+        let roots = selected_roots
+            .iter()
+            .filter_map(|root| registry.parts(root))
+            .filter(|(selected, _)| selected.id == source.id)
+            .map(|(_, relative)| relative.to_string())
+            .collect::<Vec<_>>();
+        if roots.is_empty() {
+            continue;
+        }
+        let local = build_folder_scope_report(&source.directory, roots, 0, 0);
+        report.skippedPathCount += local.skippedPathCount;
+        for (reason, count) in local.skippedCounts {
+            *report.skippedCounts.entry(reason).or_default() += count;
+        }
+        report
+            .skippedPaths
+            .extend(local.skippedPaths.into_iter().map(|item| SkippedPath {
+                path: working_graph::source_registry::source_graph_path(&source.id, &item.path),
+                reason: item.reason,
+            }));
+    }
+    report.skippedPaths.sort_by(|a, b| a.path.cmp(&b.path));
+    report.skippedPaths.truncate(100);
+    report
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     anyhow::ensure!(
@@ -342,7 +400,10 @@ fn main() -> anyhow::Result<()> {
         "Depths must be nonnegative"
     );
     let graph_root = args.graph_root.canonicalize()?;
-    let configs = parse_bundle_node_config_yaml(&fs::read_to_string(&args.bundle_node_config)?)?;
+    let registry = SourceRegistry::parse(args.sources.as_deref())?;
+    let mut configs =
+        parse_bundle_node_config_yaml(&fs::read_to_string(&args.bundle_node_config)?)?;
+    registry.project_configs(&mut configs)?;
     let entry = find_config_by_id(&configs, &args.entry_bundle_node_id)
         .ok_or_else(|| anyhow::anyhow!("entryBundleNodeId does not resolve"))?;
     let traversal = find_config_by_id(&configs, &args.default_traversal_bundle_node_id)
@@ -351,7 +412,7 @@ fn main() -> anyhow::Result<()> {
         entry.list_type() == "whitelist" && traversal.list_type() == "whitelist",
         "Entry and traversal nodes must be whitelisted"
     );
-    let graph = Graph::open(
+    let graph = registry.open(
         &graph_root,
         &IndexOptions {
             cache_directory: Some(
@@ -389,23 +450,36 @@ fn main() -> anyhow::Result<()> {
         }))?,
     )?;
     fs::rename(staged, diagnostic_dir.join("last-run.json"))?;
-    let files: HashMap<String, &FileInfo> =
-        graph.files().map(|file| (logical(file), file)).collect();
-    let by_physical: HashMap<String, &FileInfo> = graph
+    let projected_files = graph
         .files()
+        .map(|file| registry.project_file(file))
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    let files: HashMap<String, &FileInfo> = projected_files
+        .iter()
+        .map(|file| (logical(file), file))
+        .collect();
+    let by_physical: HashMap<String, &FileInfo> = projected_files
+        .iter()
         .map(|file| (file.path.clone(), file))
         .collect();
     let physical = |config: &BundleNodeConfig| {
         files
             .get(&config.bundle_node_key())
             .map(|file| file.path.clone())
-            .unwrap_or_else(|| config.bundle_node_key().trim_start_matches('/').into())
+            .unwrap_or_else(|| {
+                registry
+                    .linkrange_path(&config.bundle_node_key())
+                    .unwrap_or_default()
+            })
     };
     let logical_path = |path: &str| {
         by_physical
             .get(path)
             .map(|file| logical(file))
             .unwrap_or_else(|| {
+                if registry.sources.is_some() {
+                    return registry.graph_path(path).unwrap_or_else(|_| path.into());
+                }
                 if path.contains('/') {
                     path.into()
                 } else {
@@ -434,6 +508,15 @@ fn main() -> anyhow::Result<()> {
         ..Default::default()
     };
     for config in &configs {
+        // Kept orphan configuration from a removed source has no active query selector.
+        if registry.sources.is_some()
+            && !matches!(config, BundleNodeConfig::Collection { .. })
+            && registry
+                .linkrange_path(config.source_graph_subdirectory().unwrap_or(""))
+                .is_none()
+        {
+            continue;
+        }
         match config {
             BundleNodeConfig::File { .. } => query.rules.push(Rule {
                 path: physical(config),
@@ -444,7 +527,9 @@ fn main() -> anyhow::Result<()> {
             }),
             BundleNodeConfig::Folder { .. } if config.list_type() == "blacklist" => {
                 query.rules.push(Rule {
-                    path: config.source_graph_subdirectory().unwrap_or("").into(),
+                    path: registry
+                        .linkrange_path(config.source_graph_subdirectory().unwrap_or(""))
+                        .context("Folder source is missing")?,
                     subtree: true,
                     exclude: true,
                     ..Default::default()
@@ -471,8 +556,12 @@ fn main() -> anyhow::Result<()> {
             depths: None,
         });
     } else {
-        let supported: Vec<_> = graph.files().map(configured_file).collect();
-        let directories = graph.directories().iter().cloned().collect();
+        let supported: Vec<_> = projected_files.iter().map(configured_file).collect();
+        let directories = graph
+            .directories()
+            .iter()
+            .map(|path| registry.graph_path(path))
+            .collect::<anyhow::Result<_>>()?;
         let projection = build_folder_scope_projection(
             &configs,
             &args.entry_bundle_node_id,
@@ -486,10 +575,16 @@ fn main() -> anyhow::Result<()> {
             "repair required: selected folder(s) missing: {}",
             projection.missing_selected_roots.join(", ")
         );
-        folder_scope = Some(build_folder_scope_report(
+        folder_scope = Some(build_source_folder_scope_report(
+            &registry,
             &graph_root,
             projection.selected_roots.clone(),
-            projection.seeds.len(),
+            projection
+                .seeds
+                .iter()
+                .map(|seed| seed.file.bundle_node_key())
+                .collect::<HashSet<_>>()
+                .len(),
             projection
                 .structural_nodes
                 .iter()
@@ -525,12 +620,21 @@ fn main() -> anyhow::Result<()> {
                 .is_none_or(|blacklist| node.bundle_node_id.as_ref() == Some(blacklist))
         }) {
             structural_nodes.push(OutputNode {
+                sourceId: node
+                    .source_graph_subdirectory
+                    .as_deref()
+                    .and_then(|directory| registry.parts(directory))
+                    .map(|(source, _)| source.id.clone()),
                 sourceFile: None,
                 bundleNodeKey: node.bundle_node_key.clone(),
                 bundleNodeId: node.bundle_node_id.clone(),
                 bundleNodeKind: node.bundle_node_kind,
                 bundleNodeName: node.bundle_node_name.clone(),
-                sourceGraphSubdirectory: node.source_graph_subdirectory.clone(),
+                sourceGraphSubdirectory: node.source_graph_subdirectory.as_ref().map(|directory| {
+                    registry
+                        .parts(directory)
+                        .map_or_else(|| directory.clone(), |(_, relative)| relative.into())
+                }),
                 fileType: None,
                 memberBundleNodeIds: node.member_bundle_node_ids.clone(),
                 effectiveBlacklistingBundleNodeId: node
@@ -577,7 +681,9 @@ fn main() -> anyhow::Result<()> {
                 .selected_roots
                 .iter()
                 .map(|path| Start {
-                    path: path.clone(),
+                    path: registry
+                        .linkrange_path(path)
+                        .expect("Validated starting source"),
                     depths: Some(Depths {
                         outlinks: 0,
                         inlinks: 0,
@@ -660,7 +766,9 @@ fn main() -> anyhow::Result<()> {
     }
     let mut nodes = Vec::new();
     for node in &response.nodes {
-        let key = logical(&node.file);
+        let file = &by_physical[&node.file.path];
+        let key = logical(file);
+        let source_parts = registry.parts(&file.directory);
         let config = configs.iter().find(|config| {
             matches!(config, BundleNodeConfig::File { .. }) && config.bundle_node_key() == key
         });
@@ -704,8 +812,9 @@ fn main() -> anyhow::Result<()> {
         let traversal_details = steps.last().and_then(|step| step.traversal_details.clone());
         let initial = node.inherited.is_none();
         nodes.push(OutputNode {
+            sourceId: source_parts.map(|(source, _)| source.id.clone()),
             sourceFile: Some(SourceFile {
-                path: node.file.path.clone(),
+                path: registry.graph_path(&node.file.path)?,
                 digest: node.file.digest.clone(),
                 size: node.file.size,
             }),
@@ -713,7 +822,10 @@ fn main() -> anyhow::Result<()> {
             bundleNodeId: config.map(|c| c.bundle_node_id().into()),
             bundleNodeKind: "file",
             bundleNodeName: node.file.title.clone(),
-            sourceGraphSubdirectory: Some(node.file.directory.clone()),
+            sourceGraphSubdirectory: Some(
+                source_parts
+                    .map_or_else(|| file.directory.clone(), |(_, relative)| relative.into()),
+            ),
             fileType: Some(node.file.format.clone()),
             memberBundleNodeIds: None,
             effectiveBlacklistingBundleNodeId: None,
@@ -800,7 +912,13 @@ fn main() -> anyhow::Result<()> {
                                 .rsplit_once('/')
                                 .map_or("", |(dir, _)| dir)
                                 .into(),
-                            link_resolved_target_path: Some(target),
+                            link_resolved_target_path: if link.link_source_error.is_some()
+                                || (registry.sources.is_some() && link.target.is_none())
+                            {
+                                None
+                            } else {
+                                Some(target)
+                            },
                         },
                     )
                 })
@@ -832,9 +950,22 @@ fn main() -> anyhow::Result<()> {
         report.predictedRawNodeCount = nodes.len();
         report.predictedTypedEdgeCount = edges.len();
     }
+    let source_diagnostics = response
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| {
+            diagnostic.requested_source.is_some()
+                && response.links_by_source.contains_key(&diagnostic.path)
+        })
+        .map(|diagnostic| linkrange::Diagnostic {
+            path: logical_path(&diagnostic.path),
+            ..diagnostic.clone()
+        })
+        .collect();
     serde_json::to_writer(
         std::io::stdout().lock(),
         &OutputGraph {
+            sourceDiagnostics: source_diagnostics,
             nodes,
             edges,
             allLinkResolutionMaps: all_link_resolution_maps,

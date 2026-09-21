@@ -27,6 +27,7 @@ import {
   restoreMarkdownLinkNotTrackedMarkers
 } from '../sources-export/sourcesExport.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
+import { rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
 type AllLinkResolutionMaps = Map<string, LinkResolutionMap>;
@@ -50,6 +51,7 @@ export interface OpenKnowledgeFormatRename {
 export interface PrepareOpenKnowledgeFormatOptions {
   bundleNodeConfigs: BundleNodeConfig[];
   allLinkResolutionMaps?: AllLinkResolutionMaps;
+  sourceQualified?: boolean;
   entryNodeName?: string;
   entrySourceGraphSubdirectory?: string;
   indexSource?: OpenKnowledgeFormatIndexSource;
@@ -114,8 +116,8 @@ function fileTypeForSourcePath(sourcePath: string): string {
 
 function pageIdentForSourcePath(sourcePath: string): string {
   const dir = relativeDirFor(sourcePath);
-  const title = markdownTitleForSourcePath(sourcePath);
   const fileType = fileTypeForSourcePath(sourcePath);
+  const title = fileType === 'excalidraw' ? markdownTitleForSourcePath(sourcePath) : path.posix.basename(sourcePath, `.${fileType}`);
   const filename = `${title}.${fileType}`;
   return dir ? `${dir}/${filename}` : `/${filename}`;
 }
@@ -180,13 +182,15 @@ function convertWikiLinksToMarkdown(
   sourcePath: string,
   outputPathBySourcePath: Map<string, string>,
   sourcePathByTitleAndDir: Map<string, string>,
-  allLinkResolutionMaps?: AllLinkResolutionMaps
+  allLinkResolutionMaps?: AllLinkResolutionMaps,
+  sourceQualified = false,
 ): string {
   const linkResolutionMap = allLinkResolutionMaps?.get(pageIdentForSourcePath(sourcePath));
 
-  return replaceOutsideCode(content, WIKI_LINK_OR_EMBED_PATTERN, (match: string, embedMarker: string, linkText: string) => {
+  const converted = replaceOutsideCode(content, WIKI_LINK_OR_EMBED_PATTERN, (match: string, embedMarker: string, linkText: string) => {
     const linkInfo = linkTextToLinkInfo(linkText);
     const resolvedTarget = linkResolutionMap?.[linkText]?.link_resolved_target_path;
+    if (linkResolutionMap?.[linkText] && !resolvedTarget) return match;
     const targetSourcePath = resolvedTarget
       ? normalizeSourcePath(resolvedTarget)
       : findFallbackTargetSourcePath(linkText, sourcePathByTitleAndDir);
@@ -200,6 +204,9 @@ function convertWikiLinksToMarkdown(
     const label = escapeMarkdownLabel(markdownLinkLabelFor(linkText));
     return embedMarker === '!' ? `![${label}](${target})` : `[${label}](${target})`;
   });
+  if (!sourceQualified) return converted;
+  return rewriteResolvedSourceUrls(converted, outputPathBySourcePath.get(sourcePath) ?? sourcePath,
+    linkResolutionMap, source => outputPathBySourcePath.get(source), true);
 }
 
 function uniquePathFor(baseOutputPath: string, occupied: Set<string>): string {
@@ -334,7 +341,8 @@ function conceptMarkdownFor(
   sourcePath: string,
   outputPathBySourcePath: Map<string, string>,
   sourcePathByTitleAndDir: Map<string, string>,
-  allLinkResolutionMaps?: AllLinkResolutionMaps
+  allLinkResolutionMaps?: AllLinkResolutionMaps,
+  sourceQualified = false,
 ): string {
   const restoredMarkdown = restoreScrubbedMarkdown(sourceMarkdown);
   const parsed = FrontmatterUtils.parseFromText(restoredMarkdown);
@@ -353,7 +361,7 @@ function conceptMarkdownFor(
     sourcePath,
     outputPathBySourcePath,
     sourcePathByTitleAndDir,
-    allLinkResolutionMaps
+    allLinkResolutionMaps, sourceQualified
   );
   return FrontmatterUtils.combineToText(frontmatter, convertedContent);
 }
@@ -363,7 +371,8 @@ function convertedMarkdownFor(
   sourcePath: string,
   outputPathBySourcePath: Map<string, string>,
   sourcePathByTitleAndDir: Map<string, string>,
-  allLinkResolutionMaps?: AllLinkResolutionMaps
+  allLinkResolutionMaps?: AllLinkResolutionMaps,
+  sourceQualified = false,
 ): { frontmatter: Record<string, unknown>; content: string } {
   const restoredMarkdown = restoreScrubbedMarkdown(sourceMarkdown);
   const parsed = FrontmatterUtils.parseFromText(restoredMarkdown);
@@ -374,7 +383,7 @@ function convertedMarkdownFor(
       sourcePath,
       outputPathBySourcePath,
       sourcePathByTitleAndDir,
-      allLinkResolutionMaps
+      allLinkResolutionMaps, sourceQualified
     ),
   };
 }
@@ -384,14 +393,15 @@ function indexMarkdownFor(
   sourcePath: string,
   outputPathBySourcePath: Map<string, string>,
   sourcePathByTitleAndDir: Map<string, string>,
-  allLinkResolutionMaps?: AllLinkResolutionMaps
+  allLinkResolutionMaps?: AllLinkResolutionMaps,
+  sourceQualified = false,
 ): string {
   const converted = convertedMarkdownFor(
     sourceMarkdown,
     sourcePath,
     outputPathBySourcePath,
     sourcePathByTitleAndDir,
-    allLinkResolutionMaps
+    allLinkResolutionMaps, sourceQualified
   );
   return FrontmatterUtils.combineToText(
     {
@@ -407,14 +417,15 @@ function logMarkdownFor(
   sourcePath: string,
   outputPathBySourcePath: Map<string, string>,
   sourcePathByTitleAndDir: Map<string, string>,
-  allLinkResolutionMaps?: AllLinkResolutionMaps
+  allLinkResolutionMaps?: AllLinkResolutionMaps,
+  sourceQualified = false,
 ): string {
   const converted = convertedMarkdownFor(
     sourceMarkdown,
     sourcePath,
     outputPathBySourcePath,
     sourcePathByTitleAndDir,
-    allLinkResolutionMaps
+    allLinkResolutionMaps, sourceQualified
   );
   return FrontmatterUtils.combineToText(converted.frontmatter, converted.content);
 }
@@ -503,7 +514,7 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
           relativePath,
           outputPathBySourcePath,
           sourcePathByTitleAndDir,
-          options.allLinkResolutionMaps
+          options.allLinkResolutionMaps, options.sourceQualified
         ));
         if (relativePath === logSourcePath) {
           writeTextFile(outputDir, ROOT_LOG_PATH, logMarkdownFor(
@@ -511,7 +522,7 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
             relativePath,
             outputPathBySourcePath,
             sourcePathByTitleAndDir,
-            options.allLinkResolutionMaps
+            options.allLinkResolutionMaps, options.sourceQualified
           ));
         }
         continue;
@@ -522,19 +533,22 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
           relativePath,
           outputPathBySourcePath,
           sourcePathByTitleAndDir,
-          options.allLinkResolutionMaps
+          options.allLinkResolutionMaps, options.sourceQualified
         ));
         continue;
       }
 
       const outputPath = outputPathBySourcePath.get(relativePath);
       if (!outputPath) continue;
-      const output = conceptMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, options.allLinkResolutionMaps);
+      const output = conceptMarkdownFor(content, relativePath, outputPathBySourcePath, sourcePathByTitleAndDir, options.allLinkResolutionMaps, options.sourceQualified);
       writeTextFile(outputDir, outputPath, output);
     } else {
       const outputPath = outputPathBySourcePath.get(relativePath);
       if (!outputPath) continue;
-      writeBinaryFile(outputDir, outputPath, sourcePath);
+      if (options.sourceQualified && /\.(html|svg)$/.test(relativePath)) {
+        writeTextFile(outputDir, outputPath, rewriteResolvedSourceUrls(fs.readFileSync(sourcePath, 'utf8'), outputPath,
+          options.allLinkResolutionMaps?.get(pageIdentForSourcePath(relativePath)), source => outputPathBySourcePath.get(source), true));
+      } else writeBinaryFile(outputDir, outputPath, sourcePath);
     }
   }
 

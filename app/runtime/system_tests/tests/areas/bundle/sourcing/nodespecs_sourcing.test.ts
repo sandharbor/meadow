@@ -41,6 +41,7 @@ import {
   findAllNodespecSourceFiles,
   getAvailableBundles,
   getPageIdFromPath,
+  qualifyNodespecLinks,
   getPageTitle,
   getNodespecBundlesToCheck,
   setUpNodespecBundles,
@@ -450,7 +451,7 @@ async function validateNodespecLinksForBundle(
     const block = getNodespecBlock(sourceFile).block;
     if (!block) continue;
 
-    const pageTitle = getPageIdFromPath(sourceFile, sourceGraphDir);
+    const pageTitle = getPageIdFromPath(sourceFile, sourceGraphDir, bundleName);
     const bundleSpec = getNodespecForBundle(block, bundleName);
 
     if (!bundleSpec || !bundleSpec.sourcing.isInWorkingGraph) continue;
@@ -467,7 +468,7 @@ async function validateNodespecLinksForBundle(
     if (!bundleSpec.sourcing.links) continue;
 
     const result = checkNodespecLinks(
-      bundleSpec.sourcing.links,
+      qualifyNodespecLinks(bundleSpec.sourcing.links, bundleName, sourceFile),
       pageTitle,
       {
         pageIds: workingGraphPageIds,
@@ -549,7 +550,7 @@ describe('Runtime Nodespec Sourcing Validation', () => {
         const block = getNodespecBlock(sourceFile).block;
         if (!block) continue;
 
-        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir);
+        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir, bundleName);
         const bundleSpec = getNodespecForBundle(block, bundleName);
         if (!bundleSpec || bundleSpec.sourcing.isInWorkingGraph !== false) continue;
 
@@ -598,7 +599,7 @@ describe('Runtime Nodespec Sourcing Validation', () => {
         const block = getNodespecBlock(sourceFile).block;
         if (!block) continue;
 
-        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir);
+        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir, bundleName);
         const bundleSpec = getNodespecForBundle(block, bundleName);
         if (!bundleSpec || bundleSpec.sourcing.isInWorkingGraph !== false) continue;
         if (!isNodespecNotInWorkingGraph(bundleSpec)) continue;

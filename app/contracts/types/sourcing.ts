@@ -1,17 +1,20 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import type { BundleSource } from './bundleConfig.js';
 import type { SerializableBundleNode } from './IBundleNode.js';
 import type { IEdge } from './graph.js';
 import type { SnapshotTrackingRequest, SnapshotTrackingOutcome, TrackingSensitivity } from './curationTracking.js';
 
 /** Only the nodes and connections needed to explain this review's routes. */
 export interface SourceTraversalGraph {
+  sources?: BundleSource[];
   snapshotId: string;
   nodes: SerializableBundleNode[];
   edges: IEdge[];
 }
 
 export interface SourceSnapshotSummary {
+  sourceNames?: Pick<BundleSource, 'id' | 'name' | 'aliases'>[];
   id: string;
   capturedAt: string;
   acceptedAt?: string;
@@ -34,6 +37,7 @@ export interface SourceMoveCandidate {
 export interface SourceFileChange {
   /** Missing means absent from the candidate snapshot, not necessarily from the filesystem. */
   kind: 'added' | 'modified' | 'missing';
+  previousPath?: string;
   path: string;
   bundleNodeId?: string;
   /** Captured route explaining why a newly included source is reachable. */
@@ -57,6 +61,7 @@ export interface SourceOrphanExplanation {
 }
 
 export interface SourcingReview {
+  sourceChanges?: { before: BundleSource[]; after: BundleSource[]; outputPathsChange: boolean; stale: boolean };
   /** Curation's assessment of reviewed additions; informational, not a tracking decision. */
   trackingSensitivity?: Record<string, TrackingSensitivity>;
   /** Traversals evaluated separately against each snapshot, using the reviewed configuration. */
@@ -94,4 +99,11 @@ export interface SourceSnapshotAcceptance {
 export interface SourceSnapshotHistory {
   acceptedId: string | null;
   snapshots: SourceSnapshotSummary[];
+}
+export interface SourceReferenceDiagnostic {
+  path: string;
+  code: 'unregisteredSource' | 'invalidSourceReference';
+  message: string;
+  requestedSource: string;
+  linkOriginalText: string;
 }

@@ -22,6 +22,7 @@ import { logger } from './logging/backendLoggingUtils.js';
 import { resolveNativeRustBinaryPath } from '../../../../../shared_code/utils/nativeRustBinaryPath.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { parseBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import type { BundleSource } from '../../../../../contracts/types/bundleConfig.js';
 
 function execWorkingGraph(binaryPath: string, args: string[]): Promise<string> {
   return new Promise<string>((resolve, reject) => {
@@ -66,6 +67,7 @@ export function getWorkingGraphPath(): string {
 
 export type WorkingGraphRunArgs = {
   graphRoot: string;
+  sources?: BundleSource[];
   rebuildIndex?: boolean;
   immutableSource?: boolean;
   bundleNodeConfigPath: string;
@@ -166,7 +168,7 @@ export function workingGraphTopologyFingerprint(
     .digest('hex');
 }
 
-function cacheKey(runArgs: WorkingGraphRunArgs, revision: number): string {
+function cacheKey(runArgs: WorkingGraphRunArgs, revision: number[]): string {
   const configContents = fs.readFileSync(runArgs.bundleNodeConfigPath, 'utf8');
   return JSON.stringify({
     ...runArgs,
@@ -222,6 +224,7 @@ function workingGraphCommand(runArgs: WorkingGraphRunArgs): {
   ];
 
   if (runArgs.rebuildIndex) args.push('--rebuild-index');
+  if (runArgs.sources) args.push('--sources', JSON.stringify(runArgs.sources));
 
   if (runArgs.defaultOutlinksDepth !== undefined) {
     args.push('--default-outlinks-depth', String(runArgs.defaultOutlinksDepth));
@@ -243,9 +246,9 @@ function getWorkingGraphEntry(runArgs: WorkingGraphRunArgs): CachedWorkingGraph 
   if (!runArgs.immutableSource || runArgs.rebuildIndex) {
     return { graphRoot: normalizedRoot, result: execWorkingGraph(binaryPath, args) };
   }
-  const revision = sourceRevision(normalizedRoot);
-  if (revision !== null) {
-    const key = cacheKey(runArgs, revision);
+  const revisions = [...new Set([normalizedRoot, ...(runArgs.sources?.map(source => path.resolve(source.directory)) ?? [])])].map(sourceRevision);
+  if (revisions.every((revision): revision is number => revision !== null)) {
+    const key = cacheKey(runArgs, revisions);
     const cached = workingGraphCache.get(key);
     if (cached) {
       // Refresh insertion order so the bounded map behaves as an LRU cache.

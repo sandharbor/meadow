@@ -29,7 +29,7 @@ import {
 
 const GUID_COMMENT_RE = /^<!--MEADOW_SR_GUID:([^>]+)-->$/;
 const SR_COMMENT_RE = /^<!--SR:[\s\S]*-->$/;
-const REWRITTEN_TAG_WIKILINK_RE = /\[\[tag--[^\]|]+?\|#([A-Za-z0-9][A-Za-z0-9_/-]*)\]\]/g;
+const REWRITTEN_TAG_WIKILINK_RE = /\[\[(?:x-tagpages\/)?tag--[^\]|]+?\|#([A-Za-z0-9][A-Za-z0-9_/-]*)\]\]/g;
 
 export interface PreparedSrsMarkdownResult {
   matchedPageRelativePaths: Set<string>;
@@ -191,7 +191,7 @@ function isEndDelimiterLine(line: string): boolean {
   return line === SRS_END_DELIMITER;
 }
 
-function findSeparatorOutsideInlineCode(line: string, separator: ':::' | '::'): number {
+function findSeparatorOutsideInlineCodeAndLinks(line: string, separator: ':::' | '::'): number {
   let inInlineCode = false;
 
   for (let i = 0; i <= line.length - separator.length; i++) {
@@ -205,6 +205,14 @@ function findSeparatorOutsideInlineCode(line: string, separator: ':::' | '::'): 
       const customClozeEnd = line.indexOf('}}', i + 2);
       if (customClozeEnd >= 0) {
         i = customClozeEnd + 1;
+        continue;
+      }
+    }
+
+    if (!inInlineCode && line.startsWith('[[', i)) {
+      const linkEnd = line.indexOf(']]', i + 2);
+      if (linkEnd >= 0) {
+        i = linkEnd + 1;
         continue;
       }
     }
@@ -258,7 +266,7 @@ export function parseSrsCardLine(line: string): ParsedSrsCardLine | null {
   ];
 
   for (const candidate of separators) {
-    const separatorIndex = findSeparatorOutsideInlineCode(line, candidate.separator);
+    const separatorIndex = findSeparatorOutsideInlineCodeAndLinks(line, candidate.separator);
     if (separatorIndex < 0) {
       continue;
     }

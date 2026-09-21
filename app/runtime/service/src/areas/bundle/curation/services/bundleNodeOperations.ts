@@ -16,6 +16,7 @@ limitations under the License.
 
 import { acceptedSourceRoot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
+import { sourceGraphPath, sourceForNode } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
@@ -99,9 +100,9 @@ function normalizedPath(value: string): string {
 
 function sourcePathFor(node: IBundleNode): string | null {
   if (node.bundleNodeKind === 'collection') return null;
-  if (node.bundleNodeKind === 'folder') return normalizedPath(node.sourceGraphSubdirectory);
+  if (node.bundleNodeKind === 'folder') return sourceGraphPath(node.sourceId, normalizedPath(node.sourceGraphSubdirectory));
   return normalizedPath(path.posix.join(
-    node.sourceGraphSubdirectory,
+    sourceGraphPath(node.sourceId, node.sourceGraphSubdirectory),
     canonicalPageFilename(node.bundleNodeName, node.fileType),
   ));
 }
@@ -386,11 +387,13 @@ function newConfigForNode(
     ? {
         ...common,
         bundleNodeKind: 'folder',
+        ...(node.sourceId && { sourceId: node.sourceId }),
         sourceGraphSubdirectory: node.sourceGraphSubdirectory,
       }
     : {
         ...common,
         bundleNodeKind: 'file',
+        ...(node.sourceId && { sourceId: node.sourceId }),
         sourceGraphSubdirectory: node.sourceGraphSubdirectory,
         fileType: node.fileType,
       };
@@ -401,7 +404,7 @@ function sourceMarkdownPath(context: NodeContext): string {
   if (node.bundleNodeKind !== 'file' || node.fileType !== 'md') {
     throw new BundleNodeOperationError('Only Markdown file nodes can be marked sensitive', 409);
   }
-  const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
+  const sourceDirectory = sourceForNode(context.loaded.bundleConfig, context.node)?.directory;
   if (!sourceDirectory) throw new BundleNodeOperationError('Bundle has no source directory', 409);
   const candidate = sourceFileCandidateFilenames(node.bundleNodeName, node.fileType)
     .map(filename => path.join(sourceDirectory, node.sourceGraphSubdirectory, filename))
@@ -426,7 +429,7 @@ export async function mutateBundleNode(
     changed = FrontmatterUtils.getSensitiveProperty(sourceMarkdownPath(context)) !== sensitive;
     if (changed) {
       FrontmatterUtils.updateSensitiveProperty(sourceMarkdownPath(context), sensitive);
-      const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
+      const sourceDirectory = sourceForNode(context.loaded.bundleConfig, context.node)?.directory;
       if (!sourceDirectory) throw new BundleNodeOperationError(`Bundle '${slug}' has no source directory`, 409);
       invalidateWorkingGraphCache(sourceDirectory);
     }
@@ -504,7 +507,7 @@ export async function mutateBundleNode(
   }
 
   if (changed && mutation.operation !== 'mark-sensitive' && mutation.operation !== 'mark-not-sensitive') {
-    const sourceDirectory = context.loaded.bundleConfig.sourceDirectory;
+    const sourceDirectory = acceptedSourceRoot(getBundleDirectory(slug));
     if (!sourceDirectory) throw new BundleNodeOperationError(`Bundle '${slug}' has no source directory`, 409);
     await persistBundleNodeConfigsAtomically({
       slug,
@@ -569,7 +572,8 @@ export async function findBundleNode(
     if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
     try {
       const config = YAML.parse(fs.readFileSync(getBundleConfigPath(entry.name), 'utf8')) as BundleConfig;
-      if (config.sourceDirectory !== context.loaded.bundleConfig.sourceDirectory) continue;
+      const currentSource = sourceForNode(context.loaded.bundleConfig, node)?.directory;
+      if (!currentSource) continue;
       const configPath = getBundleConfigPath(entry.name, 'bundle_node_config.yaml');
       const match = parseBundleNodeConfig(fs.readFileSync(configPath, 'utf8'), configPath)
         .find(candidate => nodeConfigMatchesNode(
@@ -578,8 +582,9 @@ export async function findBundleNode(
           node.sourceGraphSubdirectory,
           node.fileType,
           node.bundleNodeKind,
-          node.bundleNodeId,
-        ));
+          undefined,
+          candidate.sourceId,
+        ) && sourceForNode(config, candidate)?.directory === currentSource);
       if (!match) continue;
       bundles.push({
         slug: entry.name,

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
 import React, { useMemo, useState } from 'react';
 import { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import { IFilter, IFolderFilterState } from '../types/filters';
@@ -22,6 +23,7 @@ import { buildFolderTree, FolderTreeNode, ROOT_FOLDER_LABEL } from '../utils/fol
 interface FolderFilterTreeProps {
   filter: IFilter;
   pages: IBundleNode[];
+  sources?: BundleSource[];
   onFilterChange: (filterId: string, changes: Partial<IFilter>) => void;
 }
 
@@ -37,10 +39,12 @@ const isActive = (state: IFolderFilterState | undefined): boolean => Boolean(
 
 const folderDisplayName = (path: string): string => path || ROOT_FOLDER_LABEL;
 
-const FolderFilterTree: React.FC<FolderFilterTreeProps> = ({ filter, pages, onFilterChange }) => {
-  const nodes = useMemo(() => buildFolderTree(pages), [pages]);
+const FolderFilterTree: React.FC<FolderFilterTreeProps> = ({ filter, pages, sources, onFilterChange }) => {
+  const nodes = useMemo(() => buildFolderTree(pages, sources), [pages, sources]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const folderStates = filter.folderStates || {};
+  const folderStates = Object.fromEntries(Object.entries(filter.folderStates || {}).map(([key, value]) => [
+    sources?.some(source => source.id === 'source000001') && !key.startsWith('source:') ? `source:source000001/folders/${key}` : key, value,
+  ]));
   const hasActiveSettings = Object.values(folderStates).some(isActive);
 
   const toggleExpanded = (path: string) => {
@@ -80,13 +84,14 @@ const FolderFilterTree: React.FC<FolderFilterTreeProps> = ({ filter, pages, onFi
     const state = folderStates[node.path] || EMPTY_FOLDER_STATE;
     const descendantState = node.path ? descendantActivity(node.path) : EMPTY_FOLDER_STATE;
     const hasDescendantActivity = isActive(descendantState);
-    const displayName = folderDisplayName(node.path);
+    const displayName = node.displayPath ?? folderDisplayName(node.path);
 
     return (
       <React.Fragment key={node.path || '__root__'}>
         <div
-          className="flex h-7 items-center gap-1 rounded px-1 hover:bg-gray-50"
+          className={`flex h-7 items-center gap-1 rounded px-1 hover:bg-gray-50 ${node.sourceRow ? 'border-t border-neutral-200 bg-neutral-100 font-semibold' : ''}`}
           data-folder-path={node.path}
+          data-source-row={node.sourceRow || undefined}
           style={{ paddingLeft: `${depth * 12 + 4}px` }}
         >
           {node.children.length > 0 ? (

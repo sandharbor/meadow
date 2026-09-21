@@ -101,7 +101,7 @@ describe('Nodespec Curation Tracking Validation', () => {
         const block = getNodespecBlock(sourceFile).block;
         if (!block) continue;
 
-        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir);
+        const pageId = getPageIdFromPath(sourceFile, sourceGraphDir, bundleName);
         const bundleSpec = getNodespecForBundle(block, bundleName);
         if (!bundleSpec) continue;
 

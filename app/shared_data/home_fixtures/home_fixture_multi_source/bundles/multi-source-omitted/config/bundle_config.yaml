@@ -1,0 +1,24 @@
+bundleGuid: d0d1973eabf5
+sources:
+  - id: source000001
+    name: notes
+    directory: ./source_graphs/multi-source/notes
+  - id: source000002
+    name: research
+    directory: ./source_graphs/multi-source/research
+    aliases:
+      - papers
+sourceOutputLayout: multi
+entryBundleNodeId: 3265a081dc61
+defaultTraversalBundleNodeId: 3265a081dc61
+defaultOutlinksDepth: 0
+defaultInlinksDepth: 0
+generationFolderNavigationEnabled: true
+generationTagsEnabled: false
+generationMarkdownZipEnabled: true
+generationOpenKnowledgeFormatEnabled: true
+bundleNotes: Shared source-qualified links, namesake pages, mixed starts, and source review.
+archivedAt: null
+bundleCreatedAt: 2026-09-20T00:00:00.000Z
+bundleUpdatedAt: 2026-09-20T00:00:00.000Z
+bundleLastPublishedAt: null

@@ -19,6 +19,8 @@ import path from 'path';
 import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import { replaceOutsideCode } from '../html/markdown.js';
+import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
+import { rewritePortableSourceWikilinks, rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
 import {
   HTML_LINK_NOT_TRACKED_REPLACEMENT,
   prepareScrubbedSourceDirectory,
@@ -27,7 +29,7 @@ import {
 
 export { sanitizeMarkdownLinks };
 
-const GENERATED_TAG_WIKILINK_RE = /\[\[tag--[^\]|]+?\|#([A-Za-z0-9][A-Za-z0-9_/-]*)\]\]/g;
+const GENERATED_TAG_WIKILINK_RE = /\[\[(?:x-tagpages\/)?tag--[^\]|]+?\|#([A-Za-z0-9][A-Za-z0-9_/-]*)\]\]/g;
 const MARKDOWN_LINK_NOT_TRACKED_REPLACEMENT = '_link not tracked_';
 
 function walkFilesRecursively(dir: string): string[] {
@@ -65,7 +67,8 @@ export function restoreMarkdownLinkNotTrackedMarkers(markdown: string): string {
  */
 export function prepareSourcesExportFromScrubbedSourceDirectory(
   scrubbedContentDir: string,
-  exportDir: string
+  exportDir: string,
+  sourceResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>,
 ): void {
   if (fs.existsSync(exportDir)) {
     fs.rmSync(exportDir, { recursive: true, force: true });
@@ -85,11 +88,14 @@ export function prepareSourcesExportFromScrubbedSourceDirectory(
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    if (filePath.endsWith('.md')) {
+    const graphPath = relativePath.replace(/\.excalidraw\.md$/, '.excalidraw').split(path.sep).join('/');
+    const resolutions = sourceResolutionMaps?.get(graphPath.includes('/') ? graphPath : `/${graphPath}`);
+    if (filePath.endsWith('.md') || (sourceResolutionMaps && /\.(html|svg)$/.test(filePath))) {
       const content = fs.readFileSync(filePath, 'utf-8');
+      const restored = restoreMarkdownLinkNotTrackedMarkers(restoreGeneratedTagWikilinks(content));
       fs.writeFileSync(
         outputPath,
-        restoreMarkdownLinkNotTrackedMarkers(restoreGeneratedTagWikilinks(content)),
+        sourceResolutionMaps ? rewriteResolvedSourceUrls(rewritePortableSourceWikilinks(restored, resolutions), relativePath, resolutions) : restored,
         'utf-8'
       );
     } else {

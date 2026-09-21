@@ -16,6 +16,14 @@ limitations under the License.
 
 import type { BundleNodeId } from './bundleNodeConfig.js';
 
+export interface BundleSource {
+  /** Stable within the bundle, including after rename or relocation. */
+  id: string;
+  name: string;
+  directory: string;
+  aliases?: string[];
+}
+
 export interface BundleConfig {
   /**
    * Internal-only stable identifier for this bundle.
@@ -25,6 +33,10 @@ export interface BundleConfig {
    */
   bundleGuid?: string;
   sourceDirectory?: string;
+  sources?: BundleSource[];
+  ignoredSourceNames?: string[];
+  /** Once adopted, source-prefixed output survives a return to one source. */
+  sourceOutputLayout?: 'multi';
   entryBundleNodeId?: BundleNodeId;
   defaultTraversalBundleNodeId?: BundleNodeId;
   defaultOutlinksDepth?: number;

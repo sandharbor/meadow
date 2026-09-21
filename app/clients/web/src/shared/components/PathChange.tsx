@@ -1,5 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
+import { useSourcePath } from './SourceNames.js';
+
 /** Preserve whole words and path segments so common text can recede without hiding the change. */
 export function splitPathChange(before: string, after: string) {
   const left = before.split(/(\s+|\/|[._-]+)/).filter(Boolean);
@@ -30,6 +32,7 @@ function parts(value: string) {
 }
 
 export function PathChange({ before, after }: { before: string; after: string }) {
+  before = useSourcePath(before); after = useSourcePath(after);
   const old = parts(before); const next = parts(after);
   const moved = old.directory !== next.directory;
   const renamed = old.filename !== next.filename;

@@ -1,6 +1,8 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
+import { splitSourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import type { SourceOrphanExplanation } from '../../../../../../../contracts/types/sourcing.js';
 import { sourcePath, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
@@ -11,7 +13,7 @@ function links(graph: Graph, filename: string) {
 }
 
 /** Check only paths already named by the tracked route; never persist wider discovery. */
-export function diagnoseOrphanConnection(root: string | undefined, previous: Graph, current: Graph, from: string, to: string): SourceOrphanExplanation['diagnosis'] {
+export function diagnoseOrphanConnection(root: string | undefined, previous: Graph, current: Graph, from: string, to: string, sources?: BundleSource[]): SourceOrphanExplanation['diagnosis'] {
   if (to.startsWith('folder:') || to.startsWith('collection:')) return undefined;
   const priorLinks = links(previous, from);
   const currentLinks = links(current, from);
@@ -21,8 +23,10 @@ export function diagnoseOrphanConnection(root: string | undefined, previous: Gra
   let exists: boolean | undefined;
   try {
     // An offline or inaccessible source root cannot establish that a file is absent.
+    const locator = splitSourceGraphPath(to, sources);
+    if (sources) root = sources.find(source => source.id === locator.sourceId)?.directory;
     if (root && fs.statSync(root).isDirectory()) {
-      try { fs.statSync(sourcePath(root, to.replace(/^folder:/, ''))); exists = true; }
+      try { fs.statSync(sourcePath(root, locator.relativePath)); exists = true; }
       catch (error) { if (['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) exists = false; }
     }
   } catch { /* Leave filesystem status unknown. */ }

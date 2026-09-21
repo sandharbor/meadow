@@ -16,6 +16,7 @@ limitations under the License.
 
 import { separateTrackingEvidence, trackingRecordsPath } from '../../../../shared/bundle-node/trackingRecords.js';
 
+import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -116,6 +117,7 @@ function configForNode(node: IBundleNode, bundleNodeId: BundleNodeId): BundleNod
     return {
       ...common,
       bundleNodeKind: 'folder',
+      ...(node.sourceId && { sourceId: node.sourceId }),
       sourceGraphSubdirectory: node.sourceGraphSubdirectory,
     };
   }
@@ -125,6 +127,7 @@ function configForNode(node: IBundleNode, bundleNodeId: BundleNodeId): BundleNod
   return {
     ...common,
     bundleNodeKind: 'file',
+    ...(node.sourceId && { sourceId: node.sourceId }),
     sourceGraphSubdirectory: node.sourceGraphSubdirectory,
     fileType: node.fileType,
   };
@@ -155,7 +158,7 @@ export async function persistBundleNodeConfigsAtomically(options: {
 
   const snapshotPathFor = (config: FileBundleNodeConfig): string => path.join(
     snapshotDirectory,
-    config.sourceGraphSubdirectory ?? '',
+    sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory ?? ''),
     canonicalPageFilename(config.bundleNodeName, config.fileType),
   );
   const previousFiles = new Map(previousConfigs
@@ -208,12 +211,12 @@ export async function persistBundleNodeConfigsAtomically(options: {
       if (config.bundleNodeKind !== 'folder') continue;
       const sourceFolder = path.join(
         options.sourceDirectory,
-        ...config.sourceGraphSubdirectory.split('/'),
+        sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory),
       );
       if (!fs.existsSync(sourceFolder) || !fs.statSync(sourceFolder).isDirectory()) {
         throw new Error(`Tracked source folder no longer exists: ${config.sourceGraphSubdirectory}`);
       }
-      fs.mkdirSync(path.join(snapshotDirectory, ...config.sourceGraphSubdirectory.split('/')), {
+      fs.mkdirSync(path.join(snapshotDirectory, sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory)), {
         recursive: true,
       });
     }
@@ -297,6 +300,7 @@ export async function trackingEvidenceDecisionsForNewFiles(
       candidateNode.fileType,
       candidateNode.bundleNodeKind,
       candidateNode.bundleNodeId,
+      candidateNode.sourceId,
     ));
     if (!node) throw new Error(`New tracked file is unavailable in the working graph: ${config.bundleNodeName}`);
     decisions.set(config.bundleNodeId, effectivelySensitive.has(node.bundleNodeKey));
@@ -404,7 +408,7 @@ export async function trackBundleNodes(
   }
 
   if (newConfigs.length > 0) {
-    const sourceDirectory = loaded.bundleConfig.sourceDirectory;
+    const sourceDirectory = acceptedSourceRoot(getBundleDirectory(slug));
     if (!sourceDirectory) throw new Error(`Bundle '${slug}' has no source directory`);
     await persistBundleNodeConfigsAtomically({
       slug,

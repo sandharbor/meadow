@@ -36,6 +36,7 @@ export function getHtmlPathForPage(
   bundleDirectory: string,
   title: string,
   pageDirectory?: string,
+  sourceId?: string,
 ): string | null {
   try {
     const bundleNodeConfPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
@@ -48,10 +49,12 @@ export function getHtmlPathForPage(
 
     const matchingPageConfigs = bundleNodeConfigs.filter(bundleNodeConfig =>
       bundleNodeConfig.bundleNodeName === title &&
+      (sourceId === undefined || bundleNodeConfig.sourceId === sourceId) &&
       (pageDirectory === undefined || (bundleNodeConfig.sourceGraphSubdirectory || '') === (pageDirectory || ''))
     );
     const bundleConfig = loadBundleConfig(bundleDirectory);
     const roleMatch = matchingPageConfigs.find(config => config.bundleNodeId === bundleConfig.defaultTraversalBundleNodeId);
+    if (!roleMatch && sourceId === undefined && new Set(matchingPageConfigs.map(node => node.sourceId)).size > 1) return null;
     const bundleNodeConfig = roleMatch
       ?? matchingPageConfigs.find(config => config.bundleNodeKind === 'file' && config.fileType === 'md')
       ?? matchingPageConfigs[0];

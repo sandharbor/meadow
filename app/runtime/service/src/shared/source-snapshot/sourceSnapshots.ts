@@ -10,7 +10,7 @@ import YAML from 'yaml';
 import { loadAppConfig } from '../../../../../shared_code/utils/appConfigUtils.js';
 import { commitChangesNative } from '../utils/configDirectory/gitUtils/gitStatusUtils.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
-import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig, BundleSource } from '../../../../../contracts/types/bundleConfig.js';
 import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
 import type { SourceSnapshotSummary } from '../../../../../contracts/types/sourcing.js';
 import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../../../../shared_code/utils/bundleNodeConfigUtils.js';
@@ -19,6 +19,8 @@ import { runWorkingGraphJson, invalidateWorkingGraphCache } from '../utils/worki
 import type { WorkingGraphRustOutput } from '../bundle-graph/workingGraphService.js';
 import { scopeSourceSnapshot, sourceInventory, forgetLiveSourceLinks, rememberLiveSourceLinks } from './sourceDiscovery.js';
 import { materializedSourceTree, pruneMaterializedSourceTrees, retainAcceptedSourceTree, retainCandidateSourceTree, storeSourceTree, type SourceGitTree } from './sourceGit.js';
+import { bundleSources, LEGACY_SOURCE_ID, sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
+import { copyDiscoveredSources, nodeInSnapshot, nodesInSnapshot, snapshotSourceRegistry } from './sourceRegistrySnapshots.js';
 
 export interface SnapshotFile {
   digest: string;
@@ -26,9 +28,21 @@ export interface SnapshotFile {
 }
 
 export interface SourceSnapshot extends SourceSnapshotSummary {
+  sources?: BundleSource[];
+  /** The candidate owns its proposed registry until acceptance installs it atomically. */
+  sourceProposal?: {
+    sources: BundleSource[];
+    sourceOutputLayout?: 'multi';
+    baseConfigFingerprint: string;
+    startingSelectionsChanged?: boolean;
+    nodes: BundleNodeConfig[];
+    entryBundleNodeId: NonNullable<BundleConfig['entryBundleNodeId']>;
+    defaultTraversalBundleNodeId: NonNullable<BundleConfig['defaultTraversalBundleNodeId']>;
+  };
   git?: SourceGitTree;
   /** Used only while discovering live sources; never written to snapshot metadata. */
   transientSourceRoot?: string;
+  transientComposed?: boolean;
   digest: string;
   files: Record<string, SnapshotFile>;
   directories: string[];
@@ -134,16 +148,17 @@ export function sourceConfigFingerprint(bundleDirectory: string): string {
 
 export function nodeSourcePath(config: BundleNodeConfig): string {
   if (config.bundleNodeKind === 'collection') return `collection:${config.bundleNodeId}`;
-  if (config.bundleNodeKind === 'folder') return config.sourceGraphSubdirectory;
+  if (config.bundleNodeKind === 'folder') return sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory);
   const extension = config.fileType === 'excalidraw' ? 'excalidraw.md' : config.fileType;
-  return path.posix.join(config.sourceGraphSubdirectory ?? '', `${config.bundleNodeName}.${extension}`);
+  return sourceGraphPath(config.sourceId, path.posix.join(config.sourceGraphSubdirectory ?? '', `${config.bundleNodeName}.${extension}`));
 }
 
 export function snapshotFilePath(snapshot: SourceSnapshot, config: BundleNodeConfig): string {
+  config = nodeInSnapshot(snapshot, config);
   const canonical = nodeSourcePath(config);
   if (snapshot.files[canonical]) return canonical;
   if (config.bundleNodeKind === 'file' && config.fileType === 'excalidraw') {
-    const alternative = path.posix.join(config.sourceGraphSubdirectory ?? '', `${config.bundleNodeName}.md`);
+    const alternative = sourceGraphPath(config.sourceId, path.posix.join(config.sourceGraphSubdirectory ?? '', `${config.bundleNodeName}.md`));
     if (snapshot.files[alternative]) return alternative;
   }
   return canonical;
@@ -180,15 +195,16 @@ function inventory(root: string): Pick<SourceSnapshot, 'files' | 'directories' |
   return { files, directories, fileCount: Object.keys(files).length, digest: sha256(JSON.stringify({ files, directories })) };
 }
 
-export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, nodes = loadSourceNodeConfigs(bundleDirectory), frontierDepth = 1, rebuildIndex = false): Promise<WorkingGraphRustOutput> {
-  const config = loadSourceBundleConfig(bundleDirectory);
+export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, nodes = loadSourceNodeConfigs(bundleDirectory), frontierDepth = 1, rebuildIndex = false, config = loadSourceBundleConfig(bundleDirectory)): Promise<WorkingGraphRustOutput> {
+  nodes = nodesInSnapshot(snapshot, nodes);
   const appConfig = loadAppConfig(getConfigDirectory());
   const scratchDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-snapshot-graph-'));
   const temporary = path.join(scratchDirectory, 'nodes.yaml');
   try {
     fs.writeFileSync(temporary, stringifyBundleNodeConfig(nodes));
+    const graphRoot = snapshotSourceRoot(bundleDirectory, snapshot.id, snapshot);
     const graph = await runWorkingGraphJson<WorkingGraphRustOutput>({
-      graphRoot: snapshotSourceRoot(bundleDirectory, snapshot.id, snapshot), bundleNodeConfigPath: temporary,
+      graphRoot, sources: snapshotSourceRegistry(snapshot, graphRoot), bundleNodeConfigPath: temporary,
       rebuildIndex, immutableSource: !snapshot.transientSourceRoot,
       cacheConfigIdentity: path.join(sourcingRoot(bundleDirectory), `graph-${sha256(stringifyBundleNodeConfig(nodes))}`),
       entryBundleNodeId: config.entryBundleNodeId!, defaultTraversalBundleNodeId: config.defaultTraversalBundleNodeId!,
@@ -209,15 +225,22 @@ export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSna
   } finally { fs.rmSync(scratchDirectory, { recursive: true, force: true }); }
 }
 
-export async function discoverSourceSnapshot(bundleDirectory: string, rebuildIndex = false): Promise<SourceSnapshot> {
+export async function discoverSourceSnapshot(bundleDirectory: string, rebuildIndex = false, context?: { config: BundleConfig; nodes: BundleNodeConfig[] }): Promise<SourceSnapshot> {
   try {
-    const config = loadSourceBundleConfig(bundleDirectory);
-    if (!config.sourceDirectory) throw new SourcingError('Bundle has no source directory');
-    if (!fs.existsSync(config.sourceDirectory)) throw new SourcingError('Source directory is unavailable; the accepted snapshot has been kept.');
+    const config = context?.config ?? loadSourceBundleConfig(bundleDirectory);
+    const sources = bundleSources(config);
+    if (!sources.length) throw new SourcingError('Bundle has no source directory');
+    for (const source of sources) {
+      if (!fs.existsSync(source.directory) || !fs.statSync(source.directory).isDirectory()) throw new SourcingError(`Source "${source.name}" is disconnected: its directory is unavailable (${source.directory}); the accepted snapshot has been kept. Reconnect, relocate, or deliberately remove this source.`);
+    }
     const live: SourceSnapshot = { id: randomUUID().replace(/-/g, ''), capturedAt: new Date().toISOString(),
-      ...sourceInventory({}, []), transientSourceRoot: config.sourceDirectory };
-    invalidateWorkingGraphCache(config.sourceDirectory);
-    const graph = await snapshotGraph(bundleDirectory, live, loadSourceNodeConfigs(bundleDirectory), 0, rebuildIndex);
+      ...(config.sources && { sources: globalThis.structuredClone(config.sources) }),
+      ...sourceInventory({}, [], config.sources), transientSourceRoot: sources[0].directory };
+    for (const source of sources) invalidateWorkingGraphCache(source.directory);
+    // A curation focus narrows the displayed graph, not the source capture. Keep
+    // the entry traversal so changing focus cannot discard its captured pages.
+    const graph = await snapshotGraph(bundleDirectory, live, context?.nodes ?? loadSourceNodeConfigs(bundleDirectory), 0, rebuildIndex,
+      { ...config, defaultTraversalBundleNodeId: config.entryBundleNodeId });
     // File metadata comes from the same Rust read that produced each node's parsed links.
     // Physical paths matter: an Excalidraw node can be backed by an ordinary .md filename.
     for (const node of graph.nodes) {
@@ -236,21 +259,16 @@ export async function discoverSourceSnapshot(bundleDirectory: string, rebuildInd
   }
 }
 
-export async function captureSourceSnapshot(bundleDirectory: string, options: { preserveTrackedContent?: boolean; discovery?: SourceSnapshot } = {}): Promise<SourceSnapshot> {
-  const config = loadSourceBundleConfig(bundleDirectory);
+export async function captureSourceSnapshot(bundleDirectory: string, options: { preserveTrackedContent?: boolean; discovery?: SourceSnapshot; context?: { config: BundleConfig; nodes: BundleNodeConfig[] } } = {}): Promise<SourceSnapshot> {
+  const config = options.context?.config ?? loadSourceBundleConfig(bundleDirectory);
   if (options.preserveTrackedContent) {
-    const discovery = await discoverSourceSnapshot(bundleDirectory);
+    const discovery = await discoverSourceSnapshot(bundleDirectory, false, options.context);
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-source-import-'));
     try {
-      for (const directory of discovery.directories) fs.mkdirSync(sourcePath(temporary, directory), { recursive: true });
-      for (const relative of Object.keys(discovery.files)) {
-        const destination = sourcePath(temporary, relative);
-        fs.mkdirSync(path.dirname(destination), { recursive: true });
-        fs.copyFileSync(sourcePath(discovery.transientSourceRoot!, relative), destination);
-      }
+      copyDiscoveredSources(discovery, temporary);
       // These bytes were already retained by tracking. Preserve that historical material
       // when introducing snapshots, including a tracked page whose live path has moved.
-      for (const node of loadSourceNodeConfigs(bundleDirectory)) {
+      for (const node of options.context?.nodes ?? loadSourceNodeConfigs(bundleDirectory)) {
         if (node.bundleNodeKind !== 'file' || node.listType === 'blacklist') continue;
         const relative = nodeSourcePath(node);
         const retained = sourcePath(path.join(bundleDirectory, 'raw/tracked_page_content'), relative);
@@ -262,20 +280,27 @@ export async function captureSourceSnapshot(bundleDirectory: string, options: { 
         fs.rmSync(destination, { force: true });
         fs.copyFileSync(retained, destination);
       }
-      const imported = { ...discovery, ...sourceInventory(inventory(temporary).files, discovery.directories), transientSourceRoot: temporary };
-      imported.graph = await availableSnapshotGraph(bundleDirectory, imported, 0);
-      return await captureSourceSnapshot(bundleDirectory, { discovery: imported });
+      const imported = { ...discovery, ...sourceInventory(inventory(temporary).files, discovery.directories, discovery.sources), transientSourceRoot: temporary, transientComposed: true };
+      imported.graph = await availableSnapshotGraph(bundleDirectory, imported, 0, options.context);
+      return await captureSourceSnapshot(bundleDirectory, { discovery: imported, context: options.context });
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
   }
-  const discovered = options.discovery ?? await discoverSourceSnapshot(bundleDirectory);
-  const { transientSourceRoot, ...snapshot } = discovered;
+  const discovered = options.discovery ?? await discoverSourceSnapshot(bundleDirectory, false, options.context);
+  const { transientSourceRoot, transientComposed, ...snapshot } = discovered;
   if (!transientSourceRoot) throw new SourcingError('Source discovery is unavailable');
-  const canonicalSource = fs.realpathSync(transientSourceRoot);
-  if (path.resolve(bundleDirectory).startsWith(`${canonicalSource}${path.sep}`)) throw new SourcingError('The source directory contains this bundle’s storage. Choose a source directory outside bundle storage.');
+  for (const source of discovered.sources ?? [{ directory: transientSourceRoot }]) {
+    const canonicalSource = fs.realpathSync(source.directory);
+    if (path.resolve(bundleDirectory) === canonicalSource || path.resolve(bundleDirectory).startsWith(`${canonicalSource}${path.sep}`)) throw new SourcingError('The source directory contains this bundle’s storage. Choose a source directory outside bundle storage.');
+  }
   const state = loadSourcingState(bundleDirectory);
   const previous = state ? loadSourceSnapshot(bundleDirectory, state.acceptedId) : undefined;
-  const stored = await storeSourceTree(transientSourceRoot, snapshot.files, config.bundleGuid ?? path.basename(bundleDirectory), previous?.git?.commit);
-  const captured = sourceInventory(stored.files, snapshot.directories);
+  const temporary = snapshot.sources && !transientComposed ? fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-source-capture-')) : undefined;
+  let stored: Awaited<ReturnType<typeof storeSourceTree>>;
+  try {
+    if (temporary) copyDiscoveredSources(discovered, temporary);
+    stored = await storeSourceTree(temporary ?? transientSourceRoot, snapshot.files, config.bundleGuid ?? path.basename(bundleDirectory), previous?.git?.commit);
+  } finally { if (temporary) fs.rmSync(temporary, { recursive: true, force: true }); }
+  const captured = sourceInventory(stored.files, snapshot.directories, snapshot.sources);
   if (captured.digest !== snapshot.digest) throw new SourcingError('Source files changed during capture. Check for changes again.');
   snapshot.git = { commit: stored.commit, tree: stored.tree, branch: stored.branch };
   try { writeSourcingJson(path.join(snapshotDirectory(bundleDirectory, snapshot.id), 'snapshot.json'), snapshot); }
@@ -288,7 +313,8 @@ export async function captureSourceSnapshot(bundleDirectory: string, options: { 
 }
 
 export function snapshotSummary(snapshot: SourceSnapshot, acceptedAt?: string): SourceSnapshotSummary {
-  return { id: snapshot.id, capturedAt: snapshot.capturedAt, fileCount: snapshot.fileCount, ...(acceptedAt && { acceptedAt }) };
+  return { id: snapshot.id, capturedAt: snapshot.capturedAt, fileCount: snapshot.fileCount,
+    ...(snapshot.sources && { sourceNames: snapshot.sources.map(source => ({ id: source.id, name: source.name, ...(source.aliases?.length && { aliases: source.aliases }) })) }), ...(acceptedAt && { acceptedAt }) };
 }
 
 /** Convert retained history from its own captured graph, never from today's live library. */
@@ -305,7 +331,7 @@ async function migrateSourceSnapshots(bundleDirectory: string, state: SourcingSt
       const source = snapshotSourceRoot(bundleDirectory, id, snapshot);
       snapshot = scopeSourceSnapshot(snapshot, snapshot.graph);
       const stored = await storeSourceTree(source, snapshot.files, config.bundleGuid ?? path.basename(bundleDirectory), parent);
-      if (sourceInventory(stored.files, snapshot.directories).digest !== snapshot.digest) throw new SourcingError('Retained source material changed during migration.');
+      if (sourceInventory(stored.files, snapshot.directories, snapshot.sources).digest !== snapshot.digest) throw new SourcingError('Retained source material changed during migration.');
       snapshot.git = { commit: stored.commit, tree: stored.tree, branch: stored.branch };
       // Publish the immutable reference before removing its former expanded representation.
       if (!candidate) retainAcceptedSourceTree(snapshot.git);
@@ -346,7 +372,7 @@ export async function initializeSourcing(bundleDirectory: string): Promise<Sourc
 
 export function verifySourceSnapshot(bundleDirectory: string, snapshot: SourceSnapshot): void {
   const material = inventory(snapshotSourceRoot(bundleDirectory, snapshot.id));
-  const digest = snapshot.git ? sourceInventory(material.files, snapshot.directories).digest : material.digest;
+  const digest = snapshot.git ? sourceInventory(material.files, snapshot.directories, snapshot.sources).digest : material.digest;
   if (digest !== snapshot.digest) throw new SourcingError('The captured snapshot has changed on disk. Capture a new source update before accepting.');
 }
 
@@ -368,16 +394,29 @@ function recoverSourcingAcceptance(bundleDirectory: string): void {
 }
 
 /** No asynchronous work may occur between these writes; recovery restores both sides after interruption. */
-export function installAcceptedSnapshot(bundleDirectory: string, previous: SourcingState, next: SourcingState, configs: BundleNodeConfig[], trackNewPages?: boolean): void {
+export function installAcceptedSnapshot(bundleDirectory: string, previous: SourcingState, next: SourcingState, configs: BundleNodeConfig[], trackNewPages?: boolean, proposal?: SourceSnapshot['sourceProposal']): void {
   const configPath = path.join(bundleDirectory, 'config/bundle_node_config.yaml');
   const bundleConfigPath = path.join(bundleDirectory, 'config/bundle_config.yaml');
   const bundleConfig = fs.readFileSync(bundleConfigPath, 'utf8');
   writeSourcingJson(acceptanceJournalPath(bundleDirectory), { state: previous, nodeConfig: fs.readFileSync(configPath, 'utf8'), bundleConfig });
   try {
     writeDurableDocument({ path: configPath, value: stringifyBundleNodeConfig(configs), codec: textDocumentCodec });
-    if (trackNewPages !== undefined) {
+    if (trackNewPages !== undefined || proposal) {
       const document = YAML.parseDocument(bundleConfig);
-      document.set('trackNewPages', trackNewPages);
+      if (trackNewPages !== undefined) document.set('trackNewPages', trackNewPages);
+      if (proposal) {
+        if (!document.has('sources')) {
+          for (const key of ['generationOpenKnowledgeFormatIndexSourcePath', 'generationOpenKnowledgeFormatLogSourcePath']) {
+            const value = document.get(key);
+            if (typeof value === 'string' && value) document.set(key, sourceGraphPath(LEGACY_SOURCE_ID, value.replace(/^\//, '')));
+          }
+        }
+        document.delete('sourceDirectory');
+        document.set('sources', proposal.sources);
+        if (proposal.sourceOutputLayout) document.set('sourceOutputLayout', proposal.sourceOutputLayout);
+        document.set('entryBundleNodeId', proposal.entryBundleNodeId);
+        document.set('defaultTraversalBundleNodeId', proposal.defaultTraversalBundleNodeId);
+      }
       writeDurableDocument({ path: bundleConfigPath, value: document.toString(), codec: textDocumentCodec });
     }
     const accepted = loadSourceSnapshot(bundleDirectory, next.acceptedId);
@@ -391,11 +430,11 @@ import type { ParticipatesIn, sourceSnapshot } from '../../../../../concepts/ind
 export type SourceCaptureMeadowConceptParticipations = [ParticipatesIn<typeof sourceSnapshot, "capture", typeof captureSourceSnapshot>];
 
 /** Missing role sources remain reviewable; all other traversal failures are surfaced. */
-export async function availableSnapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, frontierDepth = 1): Promise<WorkingGraphRustOutput | undefined> {
-  const config = loadSourceBundleConfig(bundleDirectory);
-  const nodes = loadSourceNodeConfigs(bundleDirectory);
+export async function availableSnapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, frontierDepth = 1, context?: { config: BundleConfig; nodes: BundleNodeConfig[] }): Promise<WorkingGraphRustOutput | undefined> {
+  const config = context?.config ?? loadSourceBundleConfig(bundleDirectory);
+  const nodes = context?.nodes ?? loadSourceNodeConfigs(bundleDirectory);
   if (missingSnapshotRoles(snapshot, config, nodes).length) return undefined;
-  return await snapshotGraph(bundleDirectory, snapshot, nodes, frontierDepth);
+  return await snapshotGraph(bundleDirectory, snapshot, nodes, frontierDepth, false, config);
 }
 
 /** Collection members are required source roles too; the graph root always represents the empty folder locator. */
@@ -406,7 +445,7 @@ export function missingSnapshotRoles(snapshot: SourceSnapshot, config: BundleCon
   }
   return nodes.filter(node => roles.has(node.bundleNodeId) && (
     node.bundleNodeKind === 'file' ? !snapshot.files[snapshotFilePath(snapshot, node)]
-      : node.bundleNodeKind === 'folder' && Boolean(node.sourceGraphSubdirectory) && !snapshot.directories.includes(node.sourceGraphSubdirectory)
+      : node.bundleNodeKind === 'folder' && Boolean(snapshotFilePath(snapshot, node)) && !snapshot.directories.includes(snapshotFilePath(snapshot, node))
   ));
 }
 

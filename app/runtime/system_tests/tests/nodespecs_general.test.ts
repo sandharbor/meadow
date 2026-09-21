@@ -35,6 +35,7 @@ import {
   findAllSidecarNodespecFiles,
   findNodespecCompletenessErrors,
   getAvailableBundles,
+  nodespecBundleIncludesFile,
   getPageTitle,
   nodespecSourceGraphDirs,
 } from './support/nodespecTestHelpers.js';
@@ -173,7 +174,7 @@ describe('Nodespecs General System Tests', () => {
           const pageTitle = getPageTitle(sourceFile);
           const validationErrors = validateNodespecsBlock(
             block,
-            allReferencedBundles,
+            allReferencedBundles.filter(bundle => nodespecBundleIncludesFile(bundle, sourceFile)),
             availableBundles,
             pageTitle
           );

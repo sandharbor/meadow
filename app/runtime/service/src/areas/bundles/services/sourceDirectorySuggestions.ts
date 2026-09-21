@@ -19,6 +19,7 @@ import path from 'path';
 export interface BundleSourceDirectoryCandidate {
   slug: string;
   sourceDirectory?: string;
+  sources?: Array<{ directory: string }>;
   bundleCreatedAt?: string;
   bundleUpdatedAt?: string;
   configModifiedAtMs?: number;
@@ -55,11 +56,14 @@ export function sourceDirectorySuggestions(
   configDirectory: string,
 ): string[] {
   const ordered = candidates
-    .filter(candidate => candidate.sourceDirectory)
+    .filter(candidate => candidate.sourceDirectory || candidate.sources?.length)
     .filter(candidate => !candidate.createdFromExample && !isLegacyGeneratedExample(candidate, configDirectory))
     .sort((first, second) => recency(second) - recency(first));
 
   const directories = new Set<string>();
-  for (const candidate of ordered) directories.add(candidate.sourceDirectory!);
+  for (const candidate of ordered) {
+    if (candidate.sourceDirectory) directories.add(candidate.sourceDirectory);
+    for (const source of candidate.sources ?? []) directories.add(source.directory);
+  }
   return Array.from(directories);
 }
