@@ -739,7 +739,12 @@ export const test = base.extend<{
         payload,
         service: {
           executable: process.execPath,
-          args: ["--import", "tsx", "src/shared/app-shell/index.ts"],
+          args: [
+            // Opt-in diagnosis for native V8 background-GC crashes; assertions
+            // and parallel scenario workers remain unchanged.
+            ...(process.env.MEADOW_TEST_SINGLE_THREADED_GC === "1" ? ["--single-threaded-gc"] : []),
+            "--import", "tsx", "src/shared/app-shell/index.ts",
+          ],
           cwd: BACKEND_DIR,
           environment: {
             MEADOW_IS_DEV: "true",

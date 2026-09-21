@@ -145,6 +145,11 @@ export class StandaloneTrialRuntime implements TrialRuntime {
       payloadIdentity: `source-${perspective}-${appVersion}`,
       perspective,
     });
+    if (process.env.MEADOW_TEST_SINGLE_THREADED_GC === "1") {
+      // Match the E2E runtime diagnostic mode without changing normal launches.
+      launchSpec.service.executable = process.execPath;
+      launchSpec.service.args = ["--single-threaded-gc", "--import", "tsx", "src/shared/app-shell/index.ts"];
+    }
     launchSpec.service.environment = {
       ...launchSpec.service.environment,
       ...this.options.backendExtraEnv,
