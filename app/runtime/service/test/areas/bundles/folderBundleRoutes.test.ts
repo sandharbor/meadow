@@ -15,6 +15,8 @@ limitations under the License.
 */
 
 import express from 'express';
+import { once } from 'node:events';
+import type { Server } from 'node:http';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -25,6 +27,19 @@ import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.j
 import bundleListingRoutes from '../../../src/areas/bundles/routes/bundleListingRoutes.js';
 
 const temporaryDirectories: string[] = [];
+const servers: Server[] = [];
+
+async function createTestServer(): Promise<Server> {
+  const app = express();
+  app.use(express.json());
+  app.use('/api', bundleListingRoutes);
+  // Supertest connects over IPv4. On macOS a wildcard IPv6 listener can share
+  // its port with an unrelated IPv4 listener, sending the test to that server.
+  const server = app.listen(0, '127.0.0.1');
+  servers.push(server);
+  await once(server, 'listening');
+  return server;
+}
 
 function makeHome(): string {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-folder-bundle-routes-'));
@@ -38,7 +53,10 @@ function makeHome(): string {
   return home;
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await Promise.all(servers.splice(0).map(server => new Promise<void>((resolve, reject) => {
+    server.close(error => error ? reject(error) : resolve());
+  })));
   delete process.env.MEADOW_HOME_DIRECTORY_OVERRIDE;
   for (const directory of temporaryDirectories.splice(0)) {
     fs.rmSync(directory, { recursive: true, force: true });
@@ -55,9 +73,7 @@ describe('folder-bundle routes', () => {
     fs.mkdirSync(nested, { recursive: true });
     fs.mkdirSync(sibling);
     fs.symlinkSync(sibling, escapeLink);
-    const app = express();
-    app.use(express.json());
-    app.use('/api', bundleListingRoutes);
+    const app = await createTestServer();
 
     const result = await request(app).post('/api/bundles/folders/validate-selection').send({
       sourceDirectory,
@@ -80,9 +96,7 @@ describe('folder-bundle routes', () => {
 
   it('reports a missing root or folder without leaking filesystem errors', async () => {
     const home = makeHome();
-    const app = express();
-    app.use(express.json());
-    app.use('/api', bundleListingRoutes);
+    const app = await createTestServer();
     const missingRoot = await request(app).post('/api/bundles/folders/validate-selection').send({
       sourceDirectory: path.join(home, 'missing'), selectedFolders: [home],
     }).expect(200);
@@ -104,9 +118,7 @@ describe('folder-bundle routes', () => {
     fs.mkdirSync(path.join(sourceDirectory, 'Notes'), { recursive: true });
     fs.writeFileSync(path.join(sourceDirectory, 'Notes', 'Entry.md'), '# Entry\n', 'utf8');
 
-    const app = express();
-    app.use(express.json());
-    app.use('/api', bundleListingRoutes);
+    const app = await createTestServer();
 
     const preflightResponse = await request(app)
       .post('/api/bundles/folders/preflight')
@@ -145,9 +157,7 @@ describe('folder-bundle routes', () => {
     fs.mkdirSync(path.join(sourceDirectory, 'Notes'), { recursive: true });
     fs.writeFileSync(path.join(sourceDirectory, 'Notes', 'Entry.md'), '# Entry\n', 'utf8');
 
-    const app = express();
-    app.use(express.json());
-    app.use('/api', bundleListingRoutes);
+    const app = await createTestServer();
 
     const preflightResponse = await request(app)
       .post('/api/bundles/folders/preflight')

@@ -32,5 +32,21 @@ done
 for dir in "${REQUIRED_DIRS[@]}"; do
     [ -f "$dir/_module/scripts/quickcheck" ] \
         || echo_and_exit "❌ _module/scripts/quickcheck not found at app/runtime/$dir."
+done
+
+for dir in "native" "payload"; do
     (cd "$dir" && ./_module/scripts/quickcheck)
 done
+
+# The supervisor uses isolated test Homes and does not consume service build
+# outputs. Check both concurrently, then require both before system tests.
+(cd supervisor && ./_module/scripts/quickcheck) &
+supervisor_pid=$!
+service_status=0
+(cd service && ./_module/scripts/quickcheck) || service_status=$?
+supervisor_status=0
+wait "$supervisor_pid" || supervisor_status=$?
+[ "$service_status" -eq 0 ] || echo_and_exit "❌ Runtime service checks failed."
+[ "$supervisor_status" -eq 0 ] || echo_and_exit "❌ Runtime supervisor checks failed."
+
+(cd system_tests && ./_module/scripts/quickcheck)
