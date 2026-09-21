@@ -2,12 +2,14 @@
 import React from 'react';
 import type { Graph } from '../../../../../contracts/types/graph.js';
 import type { ExplainedTraversalRoute } from '../utils/traversalRoutes.js';
+import { traversalSourceName } from '../utils/traversalRoutes.js';
 import { traversalLinkType } from '../utils/traversalLinkType.js';
 
 interface Branch {
   id: number;
   key: string;
   title: string;
+  sourceName?: string;
   parent?: Branch;
   children: Branch[];
   routes: number[];
@@ -32,6 +34,7 @@ function branchesFor(routes: ExplainedTraversalRoute[], graph: Graph) {
       let branch = prefixes.get(signature);
       if (!branch) {
         branch = { id: branches.length, key, title: graph.getNode(key)?.bundleNodeName ?? key.split('/').pop()!,
+          sourceName: traversalSourceName(graph, key),
           parent, children: [], routes: [], level, x: 0,
           outlinks: step?.remaining_depth, inlinks: step?.remaining_inlinks_depth,
           overridden: step?.traversal_details?.outlinks_depth_overridden !== undefined || step?.traversal_details?.inlinks_depth_overridden !== undefined,
@@ -64,7 +67,7 @@ export default function TraversalRouteDiagram({ routes, graph, selected, onSelec
 }) {
   const markerId = React.useId().replace(/:/g, '');
   const { branches, columns } = branchesFor(routes, graph);
-  const nodeHeight = 96, rowHeight = 144;
+  const nodeHeight = graph.sources.length > 1 ? 116 : 96, rowHeight = nodeHeight + 48;
   const width = Math.max(columns, 1) * 252;
   const height = Math.max(...branches.map(branch => branch.level)) * rowHeight + nodeHeight + 10;
   return <div className="mb-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
@@ -96,6 +99,9 @@ export default function TraversalRouteDiagram({ routes, graph, selected, onSelec
           const usageHelpId = `${markerId}-usage-${branch.id}`;
           const content = <>
             <div className="line-clamp-2 text-center font-medium leading-tight" title={branch.key}>{branch.title}</div>
+            {branch.sourceName && <div className="mt-1 max-w-full truncate text-[11px] text-neutral-500" title={branch.sourceName}>
+              Source: {branch.sourceName}
+            </div>}
             {branch.outlinks !== undefined && <div className="mt-1 flex justify-center gap-3 text-[11px]">
               <span className="text-sky-700">out {branch.outlinks}</span><span className="text-amber-700">in {branch.inlinks}</span>
               {branch.overridden && <span className="text-violet-700">override</span>}
@@ -115,7 +121,7 @@ export default function TraversalRouteDiagram({ routes, graph, selected, onSelec
           const style = { left: branch.x * 252 + 8, top: branch.level * rowHeight + 4, height: nodeHeight };
           return <button key={branch.id} type="button" className={`${className} group/route hover:border-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-600`}
             style={style} aria-pressed={active}
-            aria-label={route ? `${route.label}: outlinks ${route.outlinks}, inlinks ${route.inlinks}` : `Route through ${branch.title}`}
+            aria-label={`${route ? `${route.label}: outlinks ${route.outlinks}, inlinks ${route.inlinks}` : `Route through ${branch.title}`}${branch.sourceName ? ` (source: ${branch.sourceName})` : ''}`}
             aria-describedby={route?.retainedForTraversal !== undefined ? usageHelpId : undefined}
             onClick={() => onSelect(active ? selected : branch.routes[0])}>{content}</button>;
         })}

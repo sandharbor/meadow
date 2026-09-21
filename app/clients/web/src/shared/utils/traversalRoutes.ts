@@ -1,6 +1,15 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 import type { IBundleNode } from '../../../../../contracts/types/IBundleNode.js';
 import type { BundleNodeTraversalPathStep } from '../../../../../contracts/types/bundleNodeGraph.js';
+import type { Graph } from '../../../../../contracts/types/graph.js';
+
+/** Use the displayed snapshot's registry, including steps absent from its node inventory. */
+export function traversalSourceName(graph: Graph, key: string): string | undefined {
+  if (graph.sources.length < 2) return undefined;
+  const sourceId = graph.getNode(key)?.sourceId
+    ?? /^(?:folder:)?\/?_mw_sources\/([a-z0-9]{12})(?:\/|$)/.exec(key)?.[1];
+  return graph.sources.find(source => source.id === sourceId)?.name;
+}
 
 /** Display summaries only: independent maxima must never become a traversal state. */
 export function remainingTraversalDepths(node: IBundleNode) {

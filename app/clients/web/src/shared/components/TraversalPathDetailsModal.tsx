@@ -17,7 +17,7 @@ limitations under the License.
 import React from 'react';
 import Modal from './Modal.js';
 import TraversalRouteDiagram from './TraversalRouteDiagram.js';
-import { explainedTraversalRoutes, defaultTraversalRoute } from '../utils/traversalRoutes.js';
+import { explainedTraversalRoutes, defaultTraversalRoute, traversalSourceName } from '../utils/traversalRoutes.js';
 import { IBundleNode } from '../../../../../contracts/types/IBundleNode';
 import { Graph } from '../../../../../contracts/types/graph';
 import { traversalLinkType, type TraversalLinkType } from '../utils/traversalLinkType.js';
@@ -46,6 +46,7 @@ interface StepInfo {
   remainingDepth: number;
   remainingInlinksDepth: number;
   effectivePolicyName?: string;
+  sourceName?: string;
   depth: number;
   isFrontierImageExtension: boolean;
   hasRouteValues: boolean;
@@ -205,6 +206,7 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
         remainingDepth: arrival.remaining_depth,
         remainingInlinksDepth: arrival.remaining_inlinks_depth ?? 0,
         effectivePolicyName,
+        sourceName: traversalSourceName(graph, bundleNodeKey),
         depth: arrival.depth,
         isFrontierImageExtension: Boolean(arrival.isFrontierImageExtension),
         // Older captures may lack route arrivals. Never substitute a different route's budgets.
@@ -270,6 +272,10 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
                     </span>}
                   </div>
                 </div>
+
+                {step.sourceName && <div className="mb-2 break-all text-xs text-neutral-500">
+                  Source: {step.sourceName}
+                </div>}
 
                 {/* Boundary embedded asset explanation */}
                 {step.hasRouteValues && step.isFrontierImageExtension && (
