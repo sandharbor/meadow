@@ -340,8 +340,8 @@
         },
         {
           "id": "node-types-filter-folder",
-          "name": "Folder Nodes",
-          "description": "Nodes with the Folder Nodes type or role.",
+          "name": "Folder",
+          "description": "Nodes with the Folder type or role.",
           "kind": "filter",
           "enabled": false,
           "applicable": true,
@@ -357,8 +357,8 @@
         },
         {
           "id": "node-types-filter-collection",
-          "name": "Bundle Homes",
-          "description": "Nodes with the Bundle Homes type or role.",
+          "name": "Bundle home",
+          "description": "Nodes with the Bundle home type or role.",
           "kind": "filter",
           "enabled": false,
           "applicable": true,
@@ -374,8 +374,8 @@
         },
         {
           "id": "node-types-filter-selected-scope-root",
-          "name": "Selected Scope Roots",
-          "description": "Nodes with the Selected Scope Roots type or role.",
+          "name": "Starting selection",
+          "description": "Nodes with the Starting selection type or role.",
           "kind": "filter",
           "enabled": false,
           "applicable": true,

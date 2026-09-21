@@ -123,19 +123,19 @@ export const NODE_TYPE_FILTER_DEFINITIONS: readonly NodeTypeFilterDefinition[] =
   fileTypeDefinition('excalidraw', 'Excalidraw', ['excalidraw']),
   {
     id: 'folder',
-    label: 'Folder Nodes',
+    label: 'Folder',
     createSelector: () => createBundleNodeKindSelector('folder'),
     selectorDescription: { type: 'bundleNodeKind', bundleNodeKind: 'folder' },
   },
   {
     id: 'collection',
-    label: 'Bundle Homes',
+    label: 'Bundle home',
     createSelector: () => createBundleNodeKindSelector('collection'),
     selectorDescription: { type: 'bundleNodeKind', bundleNodeKind: 'collection' },
   },
   {
     id: 'selected-scope-root',
-    label: 'Selected Scope Roots',
+    label: 'Starting selection',
     createSelector: createSelectedScopeRootSelector,
     selectorDescription: { type: 'selectedScopeRoot' },
   },

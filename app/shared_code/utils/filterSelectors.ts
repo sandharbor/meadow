@@ -60,7 +60,7 @@ export const createTrackedNodeSelector = (): INormalBundleNodeSelector => ({
 
 export const createBundleNodeKindSelector = (bundleNodeKind: BundleNodeKind): INormalBundleNodeSelector => ({
   id: `node-kind-${bundleNodeKind}`,
-  name: bundleNodeKind === 'collection' ? 'Bundle Homes' : `${bundleNodeKind[0].toUpperCase()}${bundleNodeKind.slice(1)} Nodes`,
+  name: bundleNodeKind === 'collection' ? 'Bundle home' : `${bundleNodeKind[0].toUpperCase()}${bundleNodeKind.slice(1)}`,
   type: 'normal',
   select: (graph: Graph) => new Set(
     graph.getAllNodes().filter(node => node.bundleNodeKind === bundleNodeKind).map(node => node.bundleNodeKey)
@@ -86,7 +86,7 @@ export const createFileTypeNodeSelector = (
 
 export const createSelectedScopeRootSelector = (): INormalBundleNodeSelector => ({
   id: 'selected-scope-roots',
-  name: 'Selected Scope Roots',
+  name: 'Starting selection',
   type: 'normal',
   select: (graph: Graph) => {
     const membershipTargets = new Set(

@@ -362,7 +362,7 @@ describe('FilterPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Expand Types' }));
     expect(screen.getByText('Markdown')).toBeInTheDocument();
     expect(screen.getByText('Excalidraw')).toBeInTheDocument();
-    expect(screen.queryByText('Folder Nodes')).not.toBeInTheDocument();
+    expect(screen.queryByText('Folder')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTitle('Solo Excalidraw'));
     expect(onFilterChange).toHaveBeenCalledWith('node-types-filter', {

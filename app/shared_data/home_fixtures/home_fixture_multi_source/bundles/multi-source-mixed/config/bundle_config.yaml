@@ -20,7 +20,7 @@ generationFolderNavigationEnabled: true
 generationTagsEnabled: false
 generationMarkdownZipEnabled: true
 generationOpenKnowledgeFormatEnabled: true
-bundleNotes: Shared source-qualified links, namesake pages, mixed starts, and source review.
+bundleNotes: Starts from both the notes/Start.md page and the research/Same folder, exploring all three sources together.
 archivedAt: null
 bundleCreatedAt: 2026-09-20T00:00:00.000Z
 bundleUpdatedAt: 2026-09-20T00:00:00.000Z

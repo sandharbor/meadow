@@ -17,7 +17,7 @@ generationFolderNavigationEnabled: true
 generationTagsEnabled: false
 generationMarkdownZipEnabled: true
 generationOpenKnowledgeFormatEnabled: true
-bundleNotes: Shared source-qualified links, namesake pages, mixed starts, and source review.
+bundleNotes: Reference is intentionally unregistered. Increase traversal depth to reveal missing-source warnings, then ignore them or register reference.
 archivedAt: null
 bundleCreatedAt: 2026-09-20T00:00:00.000Z
 bundleUpdatedAt: 2026-09-20T00:00:00.000Z
