@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { SourceDirectoryLabel } from '../../../../shared/components/SourceNames.js';
 import type { DisplayGraph, DisplayNode } from '../types/displayGraph';
 import ListNodeGlyph from './ListNodeGlyph';
 
@@ -24,6 +23,8 @@ interface StructuralTreeRowsProps {
   entryBundleNodeId?: string;
   selectedNodeKeys?: Set<string>;
   compareNodes: (left: DisplayNode, right: DisplayNode) => number;
+  sourceLabel?: (node: DisplayNode) => string;
+  directoryLabel?: (node: DisplayNode) => string;
   onNodeClick: (bundleNodeKey: string) => void;
   onNodeContextMenu?: (bundleNodeKey: string, x: number, y: number) => void;
   onGlyphMouseEnter?: (event: React.MouseEvent<SVGSVGElement>, node: DisplayNode) => void;
@@ -46,6 +47,8 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
   entryBundleNodeId,
   selectedNodeKeys,
   compareNodes,
+  sourceLabel,
+  directoryLabel = node => node.sourceGraphSubdirectory,
   onNodeClick,
   onNodeContextMenu,
   onGlyphMouseEnter,
@@ -53,6 +56,7 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
   renderInlineThumbnail,
 }) => {
   const graph = displayGraph.underlyingGraph;
+  const columnCount = sourceLabel ? 5 : 4;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const data = useMemo(() => {
     const visible = new Set(displayGraph.visibleDisplayNodes.map(node => node.bundleNodeKey));
@@ -144,7 +148,8 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
             {node.underlyingNode.effectiveBlacklistingBundleNodeId && <span className="text-xs text-red-700">Excluded by folder</span>}
           </span>
         </td>
-        <td className="border px-3 py-2 text-neutral-500"><SourceDirectoryLabel sourceId={node.sourceId} directory={node.sourceGraphSubdirectory} /></td>
+        {sourceLabel && <td className="border px-3 py-2 text-neutral-500">{sourceLabel(node) || '—'}</td>}
+        <td className="border px-3 py-2 text-neutral-500">{directoryLabel(node)}</td>
         <td className="border px-3 py-2 text-neutral-500 font-mono text-sm">{kindLabel(node)}</td>
         <td className="border px-3 py-2">{node.distance ?? 'N/A'}</td>
       </tr>
@@ -153,12 +158,12 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
 
   return (
     <>
-      <tr><th colSpan={4} className="border px-3 py-2 text-left bg-gray-100">Selected folder structure</th></tr>
+      <tr><th colSpan={columnCount} className="border px-3 py-2 text-left bg-gray-100">Selected folder structure</th></tr>
       {data.rows.map(item => row(item))}
-      <tr><th colSpan={4} className="border px-3 py-2 text-left bg-gray-100">Outside selected folders</th></tr>
+      <tr><th colSpan={columnCount} className="border px-3 py-2 text-left bg-gray-100">Outside selected folders</th></tr>
       {data.semanticOnly.length > 0
         ? data.semanticOnly.map(node => row({ node, depth: 0, hasChildren: false }, true))
-        : <tr><td colSpan={4} className="border px-3 py-3 text-sm text-gray-500">No nodes outside selected folders.</td></tr>}
+        : <tr><td colSpan={columnCount} className="border px-3 py-3 text-sm text-gray-500">No nodes outside selected folders.</td></tr>}
     </>
   );
 };

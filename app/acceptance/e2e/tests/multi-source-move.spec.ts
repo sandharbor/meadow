@@ -32,7 +32,7 @@ test('Multi-source move review preserves the accepted page identity and its cura
   const updated = parseBundleNodeConfig(fs.readFileSync(nodesFile, 'utf8')).find(node => node.bundleNodeId === original.bundleNodeId);
   expect(updated).toEqual({ ...original, sourceId: 'source000002', sourceGraphSubdirectory: 'Moved' });
   await editor.switchToListView();
-  await editor.expectListViewSourceDirectory('_mw_sources/source000002/Moved/Inside.md', 'research/Moved');
+  await editor.expectListViewLocation('_mw_sources/source000002/Moved/Inside.md', 'research', 'Moved');
   await addKeyFrame(sourceSnapshot);
   await snapshot('the moved page retains its durable identity and tracking');
   await skipMeadowHomeStateCheck();

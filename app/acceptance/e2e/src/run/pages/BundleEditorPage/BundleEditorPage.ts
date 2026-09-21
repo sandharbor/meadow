@@ -138,7 +138,8 @@ export class BundleEditorPage {
   }
 
   async getListViewNodeTypes(): Promise<string[]> {
-    return this.listViewRows.locator("td:nth-child(4)").allTextContents();
+    const column = await this.listViewColumnIndex('Type');
+    return this.listViewRows.locator(`td:nth-child(${column + 1})`).allTextContents();
   }
 
   async expectGraphViewPageCount(count: number) {
@@ -258,9 +259,30 @@ export class BundleEditorPage {
     await row.click();
   }
 
-  async expectListViewSourceDirectory(bundleNodeKey: string, directory: string) {
+  private async listViewColumnIndex(column: "Source" | "Directory" | "Type") {
+    const headers = await this.page.locator('table thead th').allTextContents();
+    const index = headers.findIndex(header => header.startsWith(column));
+    this.expect(index).toBeGreaterThanOrEqual(0);
+    return index;
+  }
+
+  async expectListViewSourceColumn(visible: boolean) {
+    await this.expect(this.page.getByRole('columnheader', { name: /^Source/ })).toBeVisible({ visible });
+  }
+
+  async expectListViewLocation(bundleNodeKey: string, source: string, directory: string) {
     const row = this.listViewRowByNodeKey(bundleNodeKey);
-    await this.expect(row.getByRole('cell', { name: directory, exact: true })).toBeVisible();
+    await this.expect(row.getByRole('cell').nth(await this.listViewColumnIndex('Source'))).toHaveText(source);
+    await this.expect(row.getByRole('cell').nth(await this.listViewColumnIndex('Directory'))).toHaveText(directory);
+  }
+
+  async expectListViewSourceOrder(sources: string[], direction: "ascending" | "descending", section?: "selected-folders" | "outside") {
+    await this.expect(this.page.getByRole('columnheader', { name: /^Source/ })).toHaveAttribute('aria-sort', direction);
+    const column = await this.listViewColumnIndex('Source');
+    const rows = section
+      ? this.page.locator(`table tbody tr[data-structure-section="${section}"]`)
+      : this.page.locator('table tbody tr[data-bundle-node-key]');
+    await this.expect(rows.locator(`td:nth-child(${column + 1})`)).toHaveText(sources);
   }
 
   async expectListViewNodeVisible(bundleNodeKey: string, visible: boolean) {
@@ -297,7 +319,7 @@ export class BundleEditorPage {
     await this.expect(this.page.getByText(/Folder scope changes:/)).toHaveCount(0);
   }
 
-  async clickListSort(column: "Title" | "Directory" | "Type" | "Distance") {
+  async clickListSort(column: "Title" | "Source" | "Directory" | "Type" | "Distance") {
     await this.page.getByRole("columnheader", { name: new RegExp(`^${column}`) }).click();
   }
 

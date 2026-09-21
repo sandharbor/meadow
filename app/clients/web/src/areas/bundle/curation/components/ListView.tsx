@@ -36,7 +36,7 @@ interface ListViewProps {
   selectedNodeKeys?: Set<string>;
 }
 
-export type SortField = 'title' | 'directory' | 'fileType' | 'depth';
+export type SortField = 'title' | 'source' | 'directory' | 'fileType' | 'depth';
 type SortDirection = 'asc' | 'desc';
 type ViewMode = 'flat' | 'grouped';
 
@@ -46,12 +46,18 @@ export function compareListNodes(
   sortField: SortField,
   sortDirection: SortDirection,
   directoryLabel: (node: DisplayNode) => string = node => node.sourceGraphSubdirectory,
+  sourceLabel: (node: DisplayNode) => string = () => '',
 ): number {
   let comparison = 0;
 
   switch (sortField) {
     case 'title': {
       comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
+      break;
+    }
+    case 'source': {
+      comparison = sourceLabel(a).localeCompare(sourceLabel(b));
+      if (comparison === 0) comparison = a.bundleNodeName.localeCompare(b.bundleNodeName);
       break;
     }
     case 'directory': {
@@ -87,7 +93,16 @@ const ListView: React.FC<ListViewProps> = ({
   selectedNodeKeys,
 }) => {
   const formatSourcePath = useSourcePathFormatter();
-  const directoryLabel = React.useCallback((node: DisplayNode) => formatSourcePath(sourceGraphPath(node.sourceId, node.sourceGraphSubdirectory)), [formatSourcePath]);
+  const sources = displayGraph.underlyingGraph.sources;
+  const showSourceColumn = sources.length > 1;
+  const sourceLabel = React.useCallback((node: DisplayNode) => (
+    sources.find(source => source.id === node.sourceId)?.name ?? ''
+  ), [sources]);
+  const directoryLabel = React.useCallback((node: DisplayNode) => (
+    showSourceColumn
+      ? (node.bundleNodeKind === 'collection' ? '' : node.sourceGraphSubdirectory || '/')
+      : formatSourcePath(sourceGraphPath(node.sourceId, node.sourceGraphSubdirectory))
+  ), [formatSourcePath, showSourceColumn]);
   const [sortField, setSortField] = useState<SortField>('depth');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -110,9 +125,16 @@ const ListView: React.FC<ListViewProps> = ({
     sessionStorage.setItem('listViewMode', viewMode);
   }, [viewMode]);
 
+  useEffect(() => {
+    if (!showSourceColumn && sortField === 'source') {
+      setSortField('depth');
+      setSortDirection('asc');
+    }
+  }, [showSourceColumn, sortField]);
+
   const compareNodes = React.useCallback(
-    (a: DisplayNode, b: DisplayNode) => compareListNodes(a, b, sortField, sortDirection, directoryLabel),
-    [sortDirection, sortField, directoryLabel],
+    (a: DisplayNode, b: DisplayNode) => compareListNodes(a, b, sortField, sortDirection, directoryLabel, sourceLabel),
+    [sortDirection, sortField, directoryLabel, sourceLabel],
   );
 
   const sortedNodes = useMemo(
@@ -269,6 +291,15 @@ const ListView: React.FC<ListViewProps> = ({
               >
                 Title<SortIndicator field="title" />
               </th>
+              {showSourceColumn && (
+                <th
+                  onClick={() => handleHeaderClick('source')}
+                  aria-sort={sortField === 'source' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  className="border px-4 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                >
+                  Source<SortIndicator field="source" />
+                </th>
+              )}
               <th 
                 onClick={() => handleHeaderClick('directory')}
                 className="border px-4 py-2 bg-gray-50 cursor-pointer hover:bg-gray-100"
@@ -321,6 +352,11 @@ const ListView: React.FC<ListViewProps> = ({
                       {page.bundleNodeKind === 'file' && renderInlineThumbnail(page)}
                     </div>
                   </td>
+                  {showSourceColumn && (
+                    <td className="border px-4 py-2 text-neutral-500">
+                      {sourceLabel(page) || '—'}
+                    </td>
+                  )}
                   <td className="border px-4 py-2 text-neutral-500">
                     {directoryLabel(page)}
                   </td>
@@ -338,6 +374,8 @@ const ListView: React.FC<ListViewProps> = ({
                 entryBundleNodeId={entryBundleNodeId}
                 selectedNodeKeys={selectedNodeKeys}
                 compareNodes={compareNodes}
+                sourceLabel={showSourceColumn ? sourceLabel : undefined}
+                directoryLabel={directoryLabel}
                 onNodeClick={onPageClick}
                 onNodeContextMenu={onBundleNodeContextMenu}
                 onGlyphMouseEnter={(event, node) => handleHighlightMouseEnter(event, node.bundleNodeName, node.highlights)}

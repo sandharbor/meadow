@@ -48,7 +48,9 @@ test("previews a configured bundle from one recursively scanned folder", async (
   await snapshot("single folder graph with two linked depth rows");
   await addKeyFrame(folderBundles);
   await editor.switchToListView();
+  await editor.expectListViewSourceColumn(false);
   await editor.switchToStructuralListView();
+  await editor.expectListViewSourceColumn(false);
   await editor.expectStructuralListHasNoTrackingLabels();
   await editor.expectListViewRowByExactNamePresent("Alpha note");
   await editor.expectListViewRowByExactNamePresent("Visual map");

@@ -57,6 +57,6 @@ test('Multi-source relocation preserves captured pages and accepts the repaired 
   await editor.waitForLoad('multi-source-page');
   await editor.waitForSourceCheck();
   await editor.switchToListView();
-  await editor.expectListViewSourceDirectory('_mw_sources/source000002/Overview.md', 'research/');
+  await editor.expectListViewLocation('_mw_sources/source000002/Overview.md', 'research', '/');
   await skipMeadowHomeStateCheck();
 });

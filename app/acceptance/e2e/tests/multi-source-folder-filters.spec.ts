@@ -16,8 +16,8 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   await editor.waitForLoad('multi-source-page');
   await editor.waitForSourceCheck();
   await editor.switchToListView();
-  await editor.expectListViewSourceDirectory('_mw_sources/source000001/Overview.md', 'notes/');
-  await editor.expectListViewSourceDirectory('_mw_sources/source000002/Overview.md', 'research/');
+  await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notes', '/');
+  await editor.expectListViewLocation('_mw_sources/source000002/Overview.md', 'research', '/');
   const filters = new FilterPanelComponent(page, expect);
   await filters.expandFilterGroup('Folders');
   await filters.expectFolderCount('notes', 5);
@@ -40,7 +40,7 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   await editor.sourceReview.accept();
   await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', false);
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
-  await editor.expectListViewSourceDirectory('_mw_sources/source000001/Overview.md', 'notebook/');
+  await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notebook', '/');
   await filters.expectFolderVisible('notebook/Same');
   await addKeyFrame(folderFilter);
   await snapshot('the folder setting survives a source rename and leaves research visible');
