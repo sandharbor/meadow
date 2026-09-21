@@ -143,7 +143,7 @@ fn route_step(
         depth: step.depth as i32,
         remaining_depth: step.remaining_outlinks as i32,
         remaining_inlinks_depth: step.remaining_inlinks as i32,
-        retained_for_traversal: step.retained_for_traversal,
+        retained_for_traversal: Some(step.retained_for_traversal),
         traversal_details: Some(TraversalDetails {
             outlinks_depth_set_first_time: initial.then_some(depths.outlinks as i32),
             outlinks_depth_inherited: step
@@ -477,11 +477,9 @@ fn main() -> anyhow::Result<()> {
             .get(path)
             .map(|file| logical(file))
             .unwrap_or_else(|| {
-                if registry.sources.is_some() {
-                    return registry.graph_path(path).unwrap_or_else(|_| path.into());
-                }
+                let path = registry.graph_path(path).unwrap_or_else(|_| path.into());
                 if path.contains('/') {
-                    path.into()
+                    path
                 } else {
                     format!("/{path}")
                 }
@@ -904,7 +902,11 @@ fn main() -> anyhow::Result<()> {
                         .target
                         .as_ref()
                         .map(|target| logical_path(target).trim_start_matches('/').to_string())
-                        .unwrap_or_else(|| link.link_resolved_target_path.clone());
+                        .unwrap_or_else(|| {
+                            registry
+                                .graph_path(&link.link_resolved_target_path)
+                                .unwrap_or_else(|_| link.link_resolved_target_path.clone())
+                        });
                     (
                         link.link_original_text.clone(),
                         LinkResolvedInfo {

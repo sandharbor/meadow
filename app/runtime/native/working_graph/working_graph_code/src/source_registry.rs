@@ -55,21 +55,23 @@ impl SourceRegistry {
         Ok(Self { sources })
     }
 
-    pub fn open(&self, legacy_root: &Path, options: &IndexOptions) -> Result<Graph> {
-        match &self.sources {
-            None => Graph::open(legacy_root, options),
-            Some(sources) => Graph::open_sources(
-                &sources
-                    .iter()
-                    .map(|source| Source {
-                        name: source.name.clone(),
-                        directory: source.directory.clone(),
-                        aliases: source.aliases.clone(),
-                    })
-                    .collect::<Vec<_>>(),
-                options,
-            ),
-        }
+    pub fn open(&self, root: &Path, options: &IndexOptions) -> Result<Graph> {
+        let sources = match &self.sources {
+            None => vec![Source {
+                name: "source".into(),
+                directory: root.into(),
+                aliases: Vec::new(),
+            }],
+            Some(sources) => sources
+                .iter()
+                .map(|source| Source {
+                    name: source.name.clone(),
+                    directory: source.directory.clone(),
+                    aliases: source.aliases.clone(),
+                })
+                .collect(),
+        };
+        Graph::open(&sources, options)
     }
 
     pub fn project_configs(&self, configs: &mut [BundleNodeConfig]) -> Result<()> {
@@ -92,10 +94,14 @@ impl SourceRegistry {
 
     /// Convert canonical Linkrange paths to stable graph and captured-file identities.
     pub fn graph_path(&self, path: &str) -> Result<String> {
-        let Some(sources) = &self.sources else {
-            return Ok(path.into());
-        };
         let (name, relative) = parse_source_locator(path)?;
+        let Some(sources) = &self.sources else {
+            anyhow::ensure!(
+                name == "source",
+                "Linkrange returned an unknown canonical source"
+            );
+            return Ok(relative);
+        };
         let source = sources
             .iter()
             .find(|source| source.name == name)
@@ -122,7 +128,7 @@ impl SourceRegistry {
 
     pub fn linkrange_path(&self, graph_path: &str) -> Option<String> {
         if self.sources.is_none() {
-            return Some(graph_path.trim_start_matches('/').into());
+            return Some(source_locator("source", graph_path.trim_start_matches('/')));
         }
         self.parts(graph_path)
             .map(|(source, path)| source_locator(&source.name, path))
