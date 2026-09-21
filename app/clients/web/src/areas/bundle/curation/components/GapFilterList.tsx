@@ -39,32 +39,8 @@ const GapFilterList: React.FC<GapFilterListProps> = ({
   onFilterChange,
   onThresholdChange,
 }) => {
-  const hasActiveSettings = filters.some(filter => filter.enabled);
-
-  const reset = () => {
-    filters.forEach(filter => onFilterChange(filter.id, {
-      enabled: false,
-      isSolo: false,
-      isHidden: false,
-      actions: filter.actions.filter(action => action.type !== 'show_titles'),
-    }));
-  };
-
   return (
     <div className="overflow-hidden rounded border border-gray-200 bg-white">
-      <div className="flex h-8 items-center justify-between border-b border-gray-100 bg-gray-50 px-2">
-        <span className="text-[11px] text-gray-500">Gap types</span>
-        {hasActiveSettings && (
-          <button
-            type="button"
-            onClick={reset}
-            className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
-            title="Reset gap filters"
-          >
-            Reset
-          </button>
-        )}
-      </div>
       <div className="py-1" data-testid="gap-filter-list">
         {filters.map(filter => {
           const direction = gapDirection(filter);

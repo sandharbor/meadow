@@ -38,7 +38,6 @@ const isActive = (state: INodeTypeFilterState | undefined): boolean => Boolean(
 const NodeTypeFilterList: React.FC<NodeTypeFilterListProps> = ({ filter, graph, onFilterChange }) => {
   const presentTypes = getPresentNodeTypeFilters(graph);
   const typeStates = filter.nodeTypeStates || {};
-  const hasActiveSettings = Object.values(typeStates).some(isActive);
 
   const updateTypeState = (id: NodeTypeFilterId, key: keyof INodeTypeFilterState) => {
     const current = typeStates[id] || EMPTY_TYPE_STATE;
@@ -53,19 +52,6 @@ const NodeTypeFilterList: React.FC<NodeTypeFilterListProps> = ({ filter, graph, 
 
   return (
     <div className="overflow-hidden rounded border border-gray-200 bg-white">
-      <div className="flex h-8 items-center justify-between border-b border-gray-100 bg-gray-50 px-2">
-        <span className="text-[11px] text-gray-500">Graph types</span>
-        {hasActiveSettings && (
-          <button
-            type="button"
-            onClick={() => onFilterChange(filter.id, { nodeTypeStates: {} })}
-            className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
-            title="Reset type filters"
-          >
-            Reset
-          </button>
-        )}
-      </div>
       <div className="py-1" data-testid="node-type-filter-list">
         {presentTypes.map(type => {
           const state = typeStates[type.id] || EMPTY_TYPE_STATE;

@@ -45,7 +45,6 @@ const FolderFilterTree: React.FC<FolderFilterTreeProps> = ({ filter, pages, sour
   const folderStates = Object.fromEntries(Object.entries(filter.folderStates || {}).map(([key, value]) => [
     sources?.some(source => source.id === 'source000001') && !key.startsWith('source:') ? `source:source000001/folders/${key}` : key, value,
   ]));
-  const hasActiveSettings = Object.values(folderStates).some(isActive);
 
   const toggleExpanded = (path: string) => {
     setExpandedFolders(previous => {
@@ -191,19 +190,6 @@ const FolderFilterTree: React.FC<FolderFilterTreeProps> = ({ filter, pages, sour
 
   return (
     <div className="overflow-hidden rounded border border-gray-200 bg-white">
-      <div className="flex h-8 items-center justify-between border-b border-gray-100 bg-gray-50 px-2">
-        <span className="text-[11px] text-gray-500">Page folders</span>
-        {hasActiveSettings && (
-          <button
-            type="button"
-            onClick={() => onFilterChange(filter.id, { folderStates: {} })}
-            className="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
-            title="Reset folder filters"
-          >
-            Reset
-          </button>
-        )}
-      </div>
       <div className="max-h-64 overflow-y-auto py-1" data-testid="folder-filter-tree">
         {nodes.map(node => renderNode(node, 0))}
       </div>

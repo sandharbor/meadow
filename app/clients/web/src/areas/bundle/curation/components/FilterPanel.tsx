@@ -327,6 +327,17 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     return false;
   };
 
+  const resetFilterGroup = (filter: IFilter) => {
+    if (filter.isFolderFilter) onFilterChange(filter.id, { folderStates: {} });
+    else if (filter.isNodeTypeFilter) onFilterChange(filter.id, { nodeTypeStates: {} });
+    else if (filter.isGapFilter) gapFilters.forEach(gapFilter => onFilterChange(gapFilter.id, {
+      enabled: false,
+      isSolo: false,
+      isHidden: false,
+      actions: gapFilter.actions.filter(action => action.type !== 'show_titles'),
+    }));
+  };
+
   return (
     <div
       className="flex flex-col space-y-4"
@@ -506,6 +517,16 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                     </span>
                   )}
                 </div>
+                {isExpanded && hasActiveGroupSettings && (
+                  <button
+                    type="button"
+                    onClick={() => resetFilterGroup(filter)}
+                    className="ml-2 flex-shrink-0 rounded bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 hover:bg-blue-100"
+                    title={`Reset ${filter.isFolderFilter ? 'folder' : filter.isNodeTypeFilter ? 'type' : 'gap'} filters`}
+                  >
+                    Reset
+                  </button>
+                )}
                 {filter.enabled && !isExpandableFilter && (
                   <div className="flex space-x-1 flex-shrink-0 ml-2">
                     {filter.id.startsWith('custom-') && (
