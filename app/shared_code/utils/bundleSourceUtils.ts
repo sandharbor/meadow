@@ -8,6 +8,11 @@ const SOURCE_PATH_PREFIX = '_mw_sources/';
 const SOURCE_NAME_PATTERN = /^[a-z][a-z0-9_-]{0,63}$/;
 const SOURCE_ID_PATTERN = /^[a-z0-9]{12}$/;
 
+/** Human-readable source location, distinct from a filesystem or published path. */
+export function sourceLocationLabel(sourceName: string, relativePath = ''): string {
+  return `${sourceName}://${relativePath}`;
+}
+
 export function validateSourceName(name: string): void {
   if (!SOURCE_NAME_PATTERN.test(name)) throw new Error('Source names must start with a lowercase letter and contain only lowercase letters, numbers, hyphens, or underscores (up to 64 characters).');
 }

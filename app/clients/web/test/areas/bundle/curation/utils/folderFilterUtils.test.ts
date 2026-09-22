@@ -81,7 +81,8 @@ it('groups all configured sources and keeps equal folder controls independent ac
   const notes = { ...page('notes-page', 'Same'), sourceId: 'source000001' } as IBundleNode;
   const research = { ...page('research-page', 'Same'), sourceId: 'source000002' } as IBundleNode;
   const tree = buildFolderTree([notes, research], sources);
-  expect(tree.map(row => [row.name, row.nodeCount, row.sourceRow])).toEqual([['notes', 1, true], ['research', 1, true], ['reference', 0, true]]);
+  expect(tree.map(row => [row.name, row.nodeCount, row.sourceRow])).toEqual([['notes://', 1, true], ['research://', 1, true], ['reference://', 0, true]]);
+  expect(tree[0].children[0].displayPath).toBe('notes://Same');
   const key = tree[0].children[0].path;
   expect(nodeMatchesFolderState(notes, key)).toBe(true);
   expect(nodeMatchesFolderState(research, key)).toBe(false);
@@ -91,5 +92,6 @@ it('groups all configured sources and keeps equal folder controls independent ac
   const single = buildFolderTree([notes], [sources[0]]);
   expect(single[0].sourceRow).toBeUndefined();
   expect(single[0].name).toBe('Same');
+  expect(single[0].displayPath).toBe('Same');
   expect(single[0].path).toBe(key);
 });

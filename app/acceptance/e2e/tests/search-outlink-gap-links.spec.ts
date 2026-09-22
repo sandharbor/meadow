@@ -68,6 +68,7 @@ test("sourceGraphSearch for outlink gap page, inspect links, and navigate via in
   const selectedPageRoot = editor.getSelectedPageRoot();
   const detail = new SelectedPageDetailComponent(selectedPageRoot, expect);
   await detail.openDetails();
+  await detail.expectFolder('t021');
   await page.waitForTimeout(250);
   await snapshot("details opened for outlink gap page");
 

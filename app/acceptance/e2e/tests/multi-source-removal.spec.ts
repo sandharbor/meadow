@@ -54,7 +54,7 @@ test('Multi-source removal reviews orphans and ignored source names stay quiet u
   await sources.expectNotice();
   expect(YAML.parse(fs.readFileSync(configFile, 'utf8')).ignoredSourceNames).toContain('reference');
   await sources.open();
-  await sources.expectReferences('reference', ['notes/Start', 'notes/Frontier']);
+  await sources.expectReferences('reference', ['notes://Start', 'notes://Frontier']);
   await addKeyFrame(bundleSource);
   await snapshot('the saved ignored name also suppresses a newly captured reference');
   await sources.setIgnored('reference', false);

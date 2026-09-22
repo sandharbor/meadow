@@ -279,7 +279,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
                   <legend className="px-1">Page identity</legend>
                   {moves.map(move => <div key={move.newPath} className="space-y-2">
                     <label className="flex cursor-pointer items-start gap-2 text-sm"><input className="mt-1 accent-main-600" type="radio" name={`move-${id}`} checked={selected === move.newPath} onChange={() => setResolutions(previous => ({ ...previous, [id]: move.newPath }))} />
-                      <span>Same page <span className="text-neutral-500">— keep its identity and settings</span>{moves.length > 1 && <span className="mt-1 block text-xs [overflow-wrap:anywhere]">{move.newPath}</span>}</span>
+                      <span>Same page <span className="text-neutral-500">— keep its identity and settings</span>{moves.length > 1 && <span className="mt-1 block text-xs [overflow-wrap:anywhere]"><SourcePath value={move.newPath} /></span>}</span>
                     </label>
                     <p className="pl-5">{move.evidence.join(' · ')}</p>
                     <MoveTraversal move={move} graphs={traversal.graphs} onDetails={traversal.show} />

@@ -410,13 +410,15 @@ export class FilterPanelComponent {
   async expandFolder(folderPath: string) {
     const button = this.page.getByTitle(`Expand folder ${folderPath || 'Root'}`);
     await this.expect(button).toBeVisible();
-    await button.click();
+    await button.getByTitle(folderPath || 'Root', { exact: true }).click();
+    await this.expect(this.page.getByTitle(`Collapse folder ${folderPath || 'Root'}`)).toHaveAttribute('aria-expanded', 'true');
   }
 
   async collapseFolder(folderPath: string) {
     const button = this.page.getByTitle(`Collapse folder ${folderPath || 'Root'}`);
     await this.expect(button).toBeVisible();
-    await button.click();
+    await button.getByTitle(folderPath || 'Root', { exact: true }).click();
+    await this.expect(this.page.getByTitle(`Expand folder ${folderPath || 'Root'}`)).toHaveAttribute('aria-expanded', 'false');
   }
 
   async soloFolder(folderPath: string) {

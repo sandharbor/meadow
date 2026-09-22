@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
 import type { Graph } from '../../../../../../../contracts/types/graph.js';
+import { sourceLocationLabel } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import Modal from '../../../../shared/components/Modal.js';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
 
@@ -30,7 +31,9 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
       if (diagnostic.code !== 'unregisteredSource') continue;
       const node = graph.getNode(diagnostic.path) ?? graph.getNode(`/${diagnostic.path}`);
       if (!node) continue;
-      const label = node.sourceId ? `${graph.sources.find(source => source.id === node.sourceId)?.name ?? 'Source'}/${node.sourceGraphSubdirectory ? `${node.sourceGraphSubdirectory}/` : ''}${node.bundleNodeName}` : node.bundleNodeName;
+      const source = graph.sources.find(source => source.id === node.sourceId);
+      const relativePath = `${node.sourceGraphSubdirectory ? `${node.sourceGraphSubdirectory}/` : ''}${node.bundleNodeName}`;
+      const label = source ? sourceLocationLabel(source.name, relativePath) : relativePath;
       const group = groups.get(diagnostic.requestedSource) ?? new Set<string>();
       group.add(label);
       groups.set(diagnostic.requestedSource, group);

@@ -84,6 +84,11 @@ const FolderFilterTree: React.FC<FolderFilterTreeProps> = ({ filter, pages, sour
     const descendantState = node.path ? descendantActivity(node.path) : EMPTY_FOLDER_STATE;
     const hasDescendantActivity = isActive(descendantState);
     const displayName = node.displayPath ?? folderDisplayName(node.path);
+    const folderName = (
+      <span className="min-w-0 flex-1 truncate text-xs text-gray-700" title={displayName}>
+        {node.name}
+      </span>
+    );
 
     return (
       <React.Fragment key={node.path || '__root__'}>
@@ -97,25 +102,29 @@ const FolderFilterTree: React.FC<FolderFilterTreeProps> = ({ filter, pages, sour
             <button
               type="button"
               onClick={() => toggleExpanded(node.path)}
-              className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+              className="flex h-6 min-w-0 flex-1 items-center gap-1 rounded text-left text-gray-500 hover:bg-gray-200 hover:text-gray-700"
               title={`${expanded ? 'Collapse' : 'Expand'} folder ${displayName}`}
               aria-label={`${expanded ? 'Collapse' : 'Expand'} folder ${displayName}`}
+              aria-expanded={expanded}
             >
-              <svg
-                className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
-                viewBox="0 0 16 16"
-                fill="currentColor"
-              >
-                <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
-              </svg>
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                <svg
+                  className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
+                </svg>
+              </span>
+              {folderName}
             </button>
           ) : (
-            <span className="h-5 w-5 flex-shrink-0" />
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              <span className="h-5 w-5 flex-shrink-0" />
+              {folderName}
+            </div>
           )}
-
-          <span className="min-w-0 flex-1 truncate text-xs text-gray-700" title={displayName}>
-            {node.name}
-          </span>
           <span
             className="flex-shrink-0 whitespace-nowrap text-[10px] tabular-nums text-gray-400"
             title={`${node.nodeCount} ${node.nodeCount === 1 ? 'page' : 'pages'} in ${displayName}`}

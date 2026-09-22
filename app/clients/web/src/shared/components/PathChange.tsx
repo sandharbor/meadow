@@ -1,6 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { useSourcePath } from './SourceNames.js';
+import { splitSourcePathLabel, useSourcePath } from './SourceNames.js';
 
 /** Preserve whole words and path segments so common text can recede without hiding the change. */
 export function splitPathChange(before: string, after: string) {
@@ -26,14 +26,9 @@ function Highlight({ before, after, side }: { before: string; after: string; sid
     : <ins className="rounded bg-main-50 px-0.5 text-main-900 no-underline">{changed}</ins>)}{delta.suffix}</>;
 }
 
-function parts(value: string) {
-  const separator = value.lastIndexOf('/');
-  return { directory: value.slice(0, separator < 0 ? 0 : separator), filename: value.slice(separator + 1) };
-}
-
 export function PathChange({ before, after }: { before: string; after: string }) {
   before = useSourcePath(before); after = useSourcePath(after);
-  const old = parts(before); const next = parts(after);
+  const old = splitSourcePathLabel(before); const next = splitSourcePathLabel(after);
   const moved = old.directory !== next.directory;
   const renamed = old.filename !== next.filename;
   const kind = moved && renamed ? 'Moved and renamed' : moved ? 'Moved' : renamed ? 'Renamed' : 'Unchanged';
@@ -44,7 +39,7 @@ export function PathChange({ before, after }: { before: string; after: string })
         return <span key={side} className="contents">
           {side === 'after' && <span className="text-amber-500">→</span>}
           <span data-testid={`source-path-${side}`} className="min-w-0 max-w-full [overflow-wrap:anywhere]">
-            <span className="text-neutral-500"><Highlight before={old.directory} after={next.directory} side={side} />{value.directory && <span className="mx-1 text-neutral-400">/</span>}</span><span className="font-medium text-neutral-700"><Highlight before={old.filename} after={next.filename} side={side} /></span>
+            <span className="text-neutral-500"><Highlight before={old.directory} after={next.directory} side={side} />{value.separator && <span className="mx-1 text-neutral-400">{value.separator}</span>}</span><span className="font-medium text-neutral-700"><Highlight before={old.filename} after={next.filename} side={side} /></span>
           </span>
         </span>;
       })}

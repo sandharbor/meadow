@@ -127,6 +127,10 @@ export class SelectedPageDetailComponent {
     await btn.click();
   }
 
+  async expectFolder(location: string) {
+    await this.expect(this.root.getByTestId('selected-node-folder').getByRole('definition')).toHaveText(location);
+  }
+
   async clickShowLinks() {
     const btn = this.root.locator("button", { hasText: "Show Links" });
     await this.expect(btn).toBeVisible();

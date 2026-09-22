@@ -16,6 +16,7 @@ limitations under the License.
 
 import type { BundleSource } from '../../contracts/types/bundleConfig.js';
 import { IBundleNode } from '../../contracts/types/IBundleNode.js';
+import { sourceLocationLabel } from './bundleSourceUtils.js';
 
 export const ROOT_FOLDER_LABEL = 'Root';
 
@@ -73,13 +74,14 @@ export const nodeMatchesFolderState = (node: IBundleNode, key: string): boolean 
 export const buildFolderTree = (nodes: IBundleNode[], sources?: readonly BundleSource[]): FolderTreeNode[] => {
   if (sources?.length) {
     const qualify = (node: FolderTreeNode, source: BundleSource): FolderTreeNode => ({ ...node,
-      path: `source:${source.id}/folders/${node.path}`, displayPath: `${source.name}/${node.path || ROOT_FOLDER_LABEL}`,
+      path: `source:${source.id}/folders/${node.path}`,
+      displayPath: sources.length > 1 ? sourceLocationLabel(source.name, node.path) : node.path || ROOT_FOLDER_LABEL,
       children: node.children.map(child => qualify(child, source)),
     });
     return sources.flatMap(source => {
       const members = nodes.filter(node => node.bundleNodeKind !== 'collection' && node.sourceId === source.id);
       const folders = buildFolderTree(members).map(node => qualify(node, source));
-      return sources.length === 1 ? folders : [{ name: source.name, path: `source:${source.id}`, displayPath: source.name,
+      return sources.length === 1 ? folders : [{ name: sourceLocationLabel(source.name), path: `source:${source.id}`, displayPath: sourceLocationLabel(source.name),
         sourceRow: true, nodeCount: members.length, directNodeCount: 0, children: folders }];
     });
   }

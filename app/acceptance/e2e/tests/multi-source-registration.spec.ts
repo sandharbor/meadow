@@ -39,7 +39,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   await sources.expectNotice(['reference']);
   await filters.disableFilter('Frontier');
   await sources.reviewMissing();
-  await sources.expectReferences('reference', ['notes/Frontier', 'research/Report']);
+  await sources.expectReferences('reference', ['notes://Frontier', 'research://Report']);
   await expect(page.getByTestId('source-reference-unrelated')).not.toBeVisible();
   await addKeyFrame(bundleSource);
   await snapshot('newly admitted referrers group their missing-source references');
@@ -54,7 +54,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'config/bundle_config.yaml'), 'utf8')) as BundleConfig;
   const referenceId = config.sources!.find(source => source.name === 'reference')!.id;
   await filters.expandFilterGroup('Folders');
-  await filters.expectFolderCount('reference', 0);
+  await filters.expectFolderCount('reference://', 0);
   await filters.enableFilter('Frontier');
   await editor.clickListViewRowByNodeKey(`_mw_sources/${referenceId}/Study.md`);
   await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Frontier);

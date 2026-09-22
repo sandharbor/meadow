@@ -27,6 +27,7 @@ const LAUNCH_MODE_KEY = 'dev_tools_launch_mode';
 
 const FIXTURE_ROW_IDS = [
   ['home_fixture_big_and_small', 'home_fixture_example'],
+  ['home_fixture_multi_source'],
   ['home_fixture_folder_structure_single', 'home_fixture_folder_structure_multiple'],
   ['home_fixture_hooks', 'home_fixture_nested', 'home_fixture_srs'],
 ] as const;
@@ -267,12 +268,6 @@ const ConfigManager: React.FC = () => {
           isActive ? option.activeColorClass : ''
         }`}
       >
-        <div className="text-center mb-3">
-          <div className={`text-sm font-semibold ${isActive ? 'text-neutral-900' : 'text-neutral-600'}`}>
-            {option.label}
-          </div>
-        </div>
-
         <div className="flex gap-2">
           <button
             onClick={async () => {
@@ -297,7 +292,7 @@ const ConfigManager: React.FC = () => {
             disabled={!!actionLoading}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:bg-neutral-300 ${option.buttonColorClass}`}
           >
-            {actionLoading === `${option.endpoint}-restart` ? 'Working...' : 'Start'}
+            {actionLoading === `${option.endpoint}-restart` ? 'Working...' : option.label}
           </button>
 
           <div className="relative">

@@ -47,7 +47,7 @@ test('Multi-source list view sorts canonical source names in flat and structural
 
   const filters = new FilterPanelComponent(page, expect);
   await filters.expandFilterGroup('Folders');
-  await filters.soloFolder('notes');
+  await filters.soloFolder('notes://');
   await editor.expectListViewSourceColumn(true);
   await editor.expectListViewSourceOrder(Array<string>(5).fill('notes'), 'ascending');
   await skipMeadowHomeStateCheck();

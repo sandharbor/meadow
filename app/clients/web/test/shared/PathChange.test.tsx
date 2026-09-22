@@ -3,8 +3,24 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PathChange, splitPathChange } from '../../src/shared/components/PathChange.js';
+import { SourceNamesProvider, splitSourcePathLabel } from '../../src/shared/components/SourceNames.js';
 
 describe('source path changes', () => {
+  it('keeps the source delimiter attached when showing a file at the source root', () => {
+    expect(splitSourcePathLabel('notes://Inside.md')).toEqual({ directory: 'notes://', filename: 'Inside.md', separator: '' });
+    expect(splitSourcePathLabel('notes://Same/Inside.md')).toEqual({ directory: 'notes://Same', filename: 'Inside.md', separator: '/' });
+    expect(splitSourcePathLabel('Inside.md')).toEqual({ directory: '', filename: 'Inside.md', separator: '' });
+  });
+
+  it('distinguishes a cross-source move from a folder move', () => {
+    render(<SourceNamesProvider sources={[{ id: 'source000001', name: 'notes' }, { id: 'source000002', name: 'research' }]}>
+      <PathChange before="_mw_sources/source000001/Same/Inside.md" after="_mw_sources/source000002/Moved/Inside.md" />
+    </SourceNamesProvider>);
+    expect(screen.getByRole('group', { name: 'Moved: notes://Same/Inside.md → research://Moved/Inside.md' })).toBeInTheDocument();
+    expect(screen.getByTestId('source-path-before')).toHaveTextContent('notes://Same/Inside.md');
+    expect(screen.getByTestId('source-path-after')).toHaveTextContent('research://Moved/Inside.md');
+  });
+
   it.each([
     ['docs/Company overview.md', 'docs/Company background.md', 'Renamed', 'overview', 'background'],
     ['docs/archive/Page.md', 'docs/current/Page.md', 'Moved', 'archive', 'current'],

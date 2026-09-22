@@ -26,6 +26,7 @@ import TraversalPathDetailsModal from '../../../../shared/components/TraversalPa
 import BundleNodeLinksModal from './BundleNodeLinksModal';
 import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
+import { NodeFolderDetails } from './NodeFolderDetails.js';
 
 interface BundleNodeSelectionSidebarProps {
   selectedNodeKeys: Set<string>;
@@ -513,7 +514,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                   </div>
                 )}
 
-                {/* Collapsed details: path + depth overrides */}
+                {/* Collapsed details: folder, path, and depth overrides */}
                 <div className="mt-2">
                   <button
                     onClick={() => toggleDetailsForPage(page!.bundleNodeKey)}
@@ -538,6 +539,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
 
                   {openDetailsBundleNodeKeys.has(page!.bundleNodeKey) && (
                     <div className="mt-2 p-2 bg-neutral-50 border border-neutral-200 rounded space-y-2">
+                      <NodeFolderDetails node={page!} sources={graph.sources} />
                       {/* Path - only show for non-initial pages */}
                       {page!.depth !== 0 && Array.isArray(page!.path) && page!.path.length > 0 && (
                         <div style={{ position: 'relative' }}>

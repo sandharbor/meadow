@@ -25,7 +25,6 @@ import { ExcalidrawThumbnail } from './ExcalidrawThumbnail';
 import BundleNodeHoverCard from './BundleNodeHoverCard';
 import StructuralTreeRows from './StructuralTreeRows';
 import ListNodeGlyph from './ListNodeGlyph';
-import { useSourcePathFormatter } from '../../../../shared/components/SourceNames.js';
 
 interface ListViewProps {
   displayGraph: DisplayGraph;
@@ -92,17 +91,14 @@ const ListView: React.FC<ListViewProps> = ({
   onBundleNodeContextMenu,
   selectedNodeKeys,
 }) => {
-  const formatSourcePath = useSourcePathFormatter();
   const sources = displayGraph.underlyingGraph.sources;
   const showSourceColumn = sources.length > 1;
   const sourceLabel = React.useCallback((node: DisplayNode) => (
     sources.find(source => source.id === node.sourceId)?.name ?? ''
   ), [sources]);
   const directoryLabel = React.useCallback((node: DisplayNode) => (
-    showSourceColumn
-      ? (node.bundleNodeKind === 'collection' ? '' : node.sourceGraphSubdirectory || '/')
-      : formatSourcePath(sourceGraphPath(node.sourceId, node.sourceGraphSubdirectory))
-  ), [formatSourcePath, showSourceColumn]);
+    node.bundleNodeKind === 'collection' ? '' : node.sourceGraphSubdirectory || '/'
+  ), []);
   const [sortField, setSortField] = useState<SortField>('depth');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {

@@ -20,17 +20,17 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   await editor.expectListViewLocation('_mw_sources/source000002/Overview.md', 'research', '/');
   const filters = new FilterPanelComponent(page, expect);
   await filters.expandFilterGroup('Folders');
-  await filters.expectFolderCount('notes', 5);
-  await filters.expectFolderCount('research', 5);
-  await filters.expectFolderCount('reference', 2);
-  await filters.expandFolder('notes');
-  await filters.expandFolder('research');
-  await filters.expectFolderCount('notes/Same', 1);
-  await filters.expectFolderCount('research/Same', 1);
+  await filters.expectFolderCount('notes://', 5);
+  await filters.expectFolderCount('research://', 5);
+  await filters.expectFolderCount('reference://', 2);
+  await filters.expandFolder('notes://');
+  await filters.expandFolder('research://');
+  await filters.expectFolderCount('notes://Same', 1);
+  await filters.expectFolderCount('research://Same', 1);
   await addKeyFrame(bundleSource, folderFilter);
   await snapshot('namesake pages and folders display their canonical source');
 
-  await filters.hideFolder('notes/Same');
+  await filters.hideFolder('notes://Same');
   await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', false);
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
   const sources = new SourcesControl(page, expect);
@@ -41,7 +41,7 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', false);
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
   await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notebook', '/');
-  await filters.expectFolderVisible('notebook/Same');
+  await filters.expectFolderVisible('notebook://Same');
   await addKeyFrame(folderFilter);
   await snapshot('the folder setting survives a source rename and leaves research visible');
   await filters.resetFolderFilters();
