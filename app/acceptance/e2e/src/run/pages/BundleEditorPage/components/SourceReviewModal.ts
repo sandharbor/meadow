@@ -86,6 +86,25 @@ export class SourceReviewModal {
     await this.expect(row.getByText('Modified', { exact: true })).toBeVisible();
   }
 
+  async previewImage(path: string, route: string[]) {
+    await this.dialog.getByRole('button', { name: `Preview ${path}`, exact: true }).hover();
+    const tooltip = this.page.getByRole('tooltip');
+    await this.expect(tooltip.getByRole('img', { name: path, exact: true })).toBeVisible();
+    await this.expect(tooltip).toContainText('Reached through · Candidate source');
+    for (const filename of route) await this.expect(tooltip.getByTestId('source-file-pill').filter({ hasText: filename })).toBeVisible();
+  }
+
+  async expectImageComparison(path: string) {
+    const comparison = await this.comparison(path);
+    const previous = comparison.getByRole('img', { name: `Previous image: ${path}`, exact: true });
+    const next = comparison.getByRole('img', { name: `New image: ${path}`, exact: true });
+    await this.expect(previous).toBeVisible();
+    await this.expect(next).toBeVisible();
+    // Verify both pictures loaded, not just their wrappers or alt text.
+    for (const image of [previous, next]) await this.expect.poll(() => image.evaluate(element => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    this.expect(await previous.getAttribute('src')).not.toBe(await next.getAttribute('src'));
+  }
+
   async expectNoLongerIncluded(path: string) {
     const row = this.changeDisclosure(path);
     await this.expect(row.getByText('No longer included', { exact: true })).toBeVisible();
@@ -144,6 +163,17 @@ export class SourceReviewModal {
     const id = await row.getAttribute('data-testid');
     this.expect(id).toBeTruthy();
     return new SourceMoveReview(this.dialog.getByTestId(id!), this.expect);
+  }
+
+  async moveForNode(id: string) {
+    const row = this.dialog.getByTestId(`source-move-${id}`);
+    await this.expect(row).toBeVisible();
+    return new SourceMoveReview(row, this.expect);
+  }
+
+  async expectIdentityChoiceRequired() {
+    await this.expect(this.dialog.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled();
+    await this.expect(this.dialog.getByRole('status')).toContainText('Decide before accepting');
   }
 
   async keepRenameSeparate(originalPath: string) {

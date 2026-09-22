@@ -13,7 +13,11 @@ export type SourceChangeOperation =
 export interface SourceChangeDefinition {
   id: string;
   label: string;
-  description: string;
+  action: string;
+  check: string;
+  /** The single acceptance scenario responsible for verifying this change. */
+  e2e: string;
+  /** The first tag is the scenario's home in the development UI. */
   categories: SourceChangeCategory[];
   sourceGraph: string;
   operations: SourceChangeOperation[];
@@ -22,6 +26,7 @@ export interface SourceChangeDefinition {
 export interface SourceChangeStatus extends SourceChangeDefinition {
   state: 'available' | 'applied' | 'conflict';
   reason?: string;
+  latestE2e?: { runId: string; scenario: string; url: string };
 }
 
 export interface SourceChangeResult {

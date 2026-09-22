@@ -286,6 +286,8 @@ it('retains ambiguity for competing cross-source moves and allows them to remain
   const matches = review.moves.filter(move => move.bundleNodeId === 'research0001');
   expect(matches).toHaveLength(2);
   expect(matches.every(move => move.competing)).toBe(true);
+  await expect(acceptSourceSnapshot(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages: false })).rejects.toThrow('Choose how to resolve competing source moves');
+  expect(loadSourceNodeConfigs(bundle).find(node => node.bundleNodeId === 'research0001')?.sourceId).toBe('source000002');
   await acceptSourceSnapshot(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: { research0001: null }, trackNewPages: false });
   expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeId === 'research0001')).toBe(false);
 });

@@ -1,7 +1,8 @@
 id: rename-page-with-links
 label: Rename a page and update its incoming link
-description: Rename the section page and update its incoming wiki link, as a
-  note editor would.
+action: "Rename the section page and update its incoming wiki link."
+check: "Review proposes the rename and preserves the page identity after acceptance."
+e2e: sourcing-rename.spec.ts
 categories: [rename]
 sourceGraph: meadow-test-bundles-data
 operations:

@@ -1,7 +1,8 @@
 id: move-between-sources
 label: Move a page from notes to research
-description: Move the notebook Inside page into research and update its incoming
-  link. Review the cross-source move and retain its identity and settings.
+action: "Move `notes://Same/Inside.md` to `research://Moved/Inside.md` and update its incoming link."
+check: "Review proposes a cross-source move and retains its identity and settings after acceptance."
+e2e: multi-source-move.spec.ts
 categories:
   - move
 operations:

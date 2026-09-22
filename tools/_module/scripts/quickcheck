@@ -6,7 +6,7 @@ REQUIRED_DIRS=(
 )
 REQUIRED_FILES=(
 )
-OK_FILES=(".DS_Store" "apply-copyright" "dev" "sim_meadow_cloud_extraction" "stress_test" "test_in_worktree" "run_agent_task.sh" ".gitignore")
+OK_FILES=(".DS_Store" "apply-copyright" "dev" "dev-and-packet" "packet" "sim_meadow_cloud_extraction" "stress_test" "test_in_worktree" "run_agent_task.sh" ".gitignore")
 OK_DIRS=("afk" "agent_task" "logs" "_module" "verify_extended_syntax")
 
 echo_and_exit() {

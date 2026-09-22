@@ -1,7 +1,8 @@
 id: replace-section-page
 label: Replace a page with a complete revision
-description: Replace the section page with a complete Markdown file. Its
-  unconditional NodeSpec remains authoring metadata.
+action: "Replace the section page with a complete Markdown revision."
+check: "Generated content stays on the accepted version until the source change is accepted."
+e2e: sourcing-generation.spec.ts
 categories: [modify]
 sourceGraph: meadow-test-bundles-data
 operations:

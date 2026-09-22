@@ -1,6 +1,8 @@
 id: add-direct-sensitive-pages
 label: Add safe and direct-sensitive pages
-description: Accept all new source pages while curation skips sensitive additions during bulk tracking.
+action: "Add one public page and two pages marked sensitive, linked from the main page."
+check: "Acceptance includes all three pages; bulk tracking skips the two sensitive pages."
+e2e: sourcing-track-direct-sensitive-additions.spec.ts
 categories: [add]
 sourceGraph: meadow-test-bundles-data
 operations:

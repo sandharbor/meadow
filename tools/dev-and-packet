@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Bring up the paired development and E2E review surfaces.
+set -euo pipefail
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OPEN_SURFACE=dev
+if [ "$#" -gt 0 ]; then
+  if [ "$#" -ne 2 ] || [ "$1" != --open ] || { [ "$2" != dev ] && [ "$2" != packet ]; }; then
+    echo "Usage: tools/dev-and-packet [--open dev|packet]" >&2
+    exit 2
+  fi
+  OPEN_SURFACE="$2"
+fi
+
+export MEADOW_REPORT_VIEWER_URL="http://localhost:${REPORT_VIEWER_CLIENT_PORT:-5175}"
+if [ "$OPEN_SURFACE" = packet ]; then export MEADOW_DEV_NO_OPEN=1; fi
+"${MEADOW_DEV_LAUNCHER:-$REPO_ROOT/tools/dev}"
+if [ "$OPEN_SURFACE" = dev ]; then export MEADOW_PACKET_NO_OPEN=1; fi
+"$REPO_ROOT/tools/packet" --ensure

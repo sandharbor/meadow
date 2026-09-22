@@ -1,8 +1,8 @@
 id: competing-cross-source-moves
 label: Create competing cross-source move candidates
-description: Replace the notebook Inside page with two identical, reachable
-  files in different sources. Review must not silently assign either one the old
-  identity.
+action: "Replace `notes://Same/Inside.md` with two identical, reachable files in different sources."
+check: "Review must not silently assign either one the old identity."
+e2e: multi-source-competing-moves.spec.ts
 categories:
   - move
   - add

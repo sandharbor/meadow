@@ -29,6 +29,14 @@ export class SourceMoveReview {
     await this.expect(this.row.getByRole('radio', { name: /Same page/ })).toBeChecked();
   }
 
+  async expectUnresolved(destinations: string[]) {
+    await this.expect(this.row.getByText('Choose page identity', { exact: true })).toBeVisible();
+    await this.expect(this.row.getByRole('radio', { checked: true })).toHaveCount(0);
+    const choices = this.row.getByRole('radio', { name: /Same page/ });
+    await this.expect(choices).toHaveCount(destinations.length);
+    for (const destination of destinations) await this.expect(this.row.getByRole('radio', { name: new RegExp(destination.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
+  }
+
   async keepSeparate() {
     await this.row.getByRole('radio', { name: /Different pages/ }).check();
     await this.expectSeparateSelected();

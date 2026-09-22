@@ -1,6 +1,8 @@
 id: move-nested-group
 label: Move several related pages
-description: Move all three t001 child pages together. Name-only links remain unchanged.
+action: "Move all three t001 child pages together, leaving name-only links unchanged."
+check: "Review proposes the three moves, and existing name-only links still resolve."
+e2e: sourcing-move-group.spec.ts
 categories: [move]
 sourceGraph: meadow-test-bundles-data
 operations:

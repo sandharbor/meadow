@@ -1,7 +1,8 @@
 id: delete-nested-page
 label: Delete a tracked leaf page
-description: Remove child 2 from the source while retaining its incoming link
-  and bundle configuration.
+action: "Delete child 2 while retaining its incoming link and bundle configuration."
+check: "Review identifies the missing page and offers its orphaned configuration for cleanup."
+e2e: sourcing-delete-page.spec.ts
 categories: [remove]
 sourceGraph: meadow-test-bundles-data
 operations:

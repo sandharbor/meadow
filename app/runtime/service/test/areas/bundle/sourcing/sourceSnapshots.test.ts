@@ -555,7 +555,7 @@ describe('source snapshots with the shared big graph', () => {
     expect(accepted.trackingRequest?.nodeKeys).toContain(newName);
   });
 
-  it('accepts the highest-ranked proposal when identical contents have more than one destination', async () => {
+  it('requires an explicit choice when identical contents have more than one destination', async () => {
     await initializeSourcing(bundle);
     change('rename-page-with-links');
     fs.copyFileSync(path.join(source, newName), path.join(source, 'duplicate section.md'));
@@ -564,8 +564,12 @@ describe('source snapshots with the shared big graph', () => {
     const matches = pending.moves.filter(move => move.oldPath === oldName);
     expect(matches).toHaveLength(2);
     expect(matches.every(move => move.competing)).toBe(true);
+    const nodesBefore = loadSourceNodeConfigs(bundle);
+    await expect(acceptSourceSnapshot(bundle, { candidateId: pending.candidate!.id,
+      reviewToken: pending.reviewToken, resolutions: {} })).rejects.toThrow('Choose how to resolve competing source moves');
+    expect(loadSourceNodeConfigs(bundle)).toEqual(nodesBefore);
     const result = await acceptSourceSnapshot(bundle, { candidateId: pending.candidate!.id,
-      reviewToken: pending.reviewToken, resolutions: {} });
+      reviewToken: pending.reviewToken, resolutions: { [matches[0].bundleNodeId]: matches[0].newPath } });
     expect(result.candidate).toBeUndefined();
     expect(loadSourceNodeConfigs(bundle).find(node => node.bundleNodeId === matches[0].bundleNodeId)?.bundleNodeName).toBe(path.basename(matches[0].newPath, '.md'));
     expect(loadSourceNodeConfigs(bundle).some(node => nodeSourcePath(node) === 'duplicate section.md')).toBe(false);

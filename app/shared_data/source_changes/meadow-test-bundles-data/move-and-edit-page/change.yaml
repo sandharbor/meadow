@@ -1,7 +1,8 @@
 id: move-and-edit-page
 label: Move a page and edit one block
-description: Move the Markdown links page and change one paragraph while keeping
-  its other blocks intact.
+action: "Move the Markdown links page and change one paragraph, keeping its other blocks intact."
+check: "Review proposes a move and offers a content comparison showing the edited paragraph."
+e2e: sourcing-move-content.spec.ts
 categories: [move, modify]
 sourceGraph: meadow-test-bundles-data
 operations:

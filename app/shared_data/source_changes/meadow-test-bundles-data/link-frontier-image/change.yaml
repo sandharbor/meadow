@@ -1,6 +1,8 @@
 id: link-frontier-image
 label: Change an embedded frontier image to an ordinary link
-description: The image remains in the live source graph but no longer qualifies as a required embedded asset.
+action: "Change the frontier image embed to an ordinary link."
+check: "The image no longer qualifies as a required embedded asset."
+e2e: sourcing-frontier-linked-image.spec.ts
 categories: [modify]
 sourceGraph: meadow-test-bundles-data
 operations:

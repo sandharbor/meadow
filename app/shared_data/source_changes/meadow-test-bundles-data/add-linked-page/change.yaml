@@ -1,6 +1,8 @@
 id: add-linked-page
 label: Add a linked Markdown page
-description: A new note becomes reachable from the main page, with its inclusion route available in review.
+action: "Add a Markdown page and link to it from the main page."
+check: "Review shows the new page and its inclusion route."
+e2e: sourcing-track-new-pages.spec.ts
 categories: [add]
 sourceGraph: meadow-test-bundles-data
 operations:

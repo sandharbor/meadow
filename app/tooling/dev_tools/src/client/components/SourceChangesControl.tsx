@@ -2,24 +2,38 @@
 
 import { useCallback, useEffect, useId, useState } from 'react';
 import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory, type SourceChangeStatus } from '../../../../../shared_code/shared_dev/sourceChangesTypes.js';
+import type { FixtureSourceLocation } from '../../../../../shared_code/shared_dev/fixtureSourceLocation.js';
+import { displaySourceChangeOperations } from './sourceChangePresentation.js';
+
+function descriptionText(value: string) {
+  return value.split(/(`[^`]+`)/g).map((part, index) => part.startsWith('`') ? <code key={index}>{part.slice(1, -1)}</code> : part);
+}
 
 export function SourceChangesControl({ fixtureName, active, launchMode, onStarted }: { fixtureName: string; active: boolean; launchMode: 'app' | 'browser'; onStarted: () => Promise<void> }) {
   const [category, setCategory] = useState<SourceChangeCategory>('add');
   const tabsId = useId();
   const [open, setOpen] = useState(false);
   const [changes, setChanges] = useState<SourceChangeStatus[]>([]);
+  const [sourceLocations, setSourceLocations] = useState<FixtureSourceLocation[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const endpoint = `/api/config/fixtures/${encodeURIComponent(fixtureName)}/source-changes`;
+  const availableCategories = SOURCE_CHANGE_CATEGORIES.filter(item => changes.some(change => change.categories[0] === item));
+  const selectedCategory = availableCategories.includes(category) ? category : availableCategories[0];
 
   const load = useCallback(async () => {
     const response = await fetch(endpoint);
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Could not load source changes');
     setChanges(result.changes);
+    setSourceLocations(result.sourceLocations);
   }, [endpoint]);
   useEffect(() => {
-    if (open) void load().catch(err => setError(err instanceof Error ? err.message : String(err)));
+    if (!open) return;
+    const refresh = () => { void load().catch(err => setError(err instanceof Error ? err.message : String(err))); };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
   }, [open, active, load]);
 
   const apply = async (change: SourceChangeStatus) => {
@@ -66,26 +80,31 @@ export function SourceChangesControl({ fixtureName, active, launchMode, onStarte
     {open && <div className="mt-3 space-y-3" data-testid="source-changes-control" aria-busy={busy !== null}>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div role="tablist" aria-label="Source change categories" className="flex gap-0.5 overflow-x-auto border-b border-neutral-200">
-        {SOURCE_CHANGE_CATEGORIES.map((item, index) => <button key={item} id={`${tabsId}-${item}`} role="tab" aria-selected={category === item} aria-controls={`${tabsId}-panel`} tabIndex={category === item ? 0 : -1} className={`shrink-0 border-b-2 px-2 py-2 text-sm capitalize ${category === item ? 'border-info-600 font-semibold text-info-800' : 'border-transparent text-neutral-500 hover:text-neutral-800'}`} onClick={() => setCategory(item)} onKeyDown={event => {
-          const next = event.key === 'ArrowRight' ? (index + 1) % SOURCE_CHANGE_CATEGORIES.length
-            : event.key === 'ArrowLeft' ? (index + SOURCE_CHANGE_CATEGORIES.length - 1) % SOURCE_CHANGE_CATEGORIES.length
-            : event.key === 'Home' ? 0 : event.key === 'End' ? SOURCE_CHANGE_CATEGORIES.length - 1 : undefined;
+        {SOURCE_CHANGE_CATEGORIES.map(item => <button key={item} id={`${tabsId}-${item}`} role="tab" disabled={!availableCategories.includes(item)} aria-selected={selectedCategory === item} aria-controls={`${tabsId}-panel`} tabIndex={selectedCategory === item ? 0 : -1} className={`shrink-0 border-b-2 px-2 py-2 text-sm capitalize disabled:cursor-not-allowed disabled:text-neutral-300 ${selectedCategory === item ? 'border-info-600 font-semibold text-info-800' : 'border-transparent text-neutral-500 hover:text-neutral-800'}`} onClick={() => setCategory(item)} onKeyDown={event => {
+          const index = availableCategories.indexOf(item);
+          const next = event.key === 'ArrowRight' ? (index + 1) % availableCategories.length
+            : event.key === 'ArrowLeft' ? (index + availableCategories.length - 1) % availableCategories.length
+            : event.key === 'Home' ? 0 : event.key === 'End' ? availableCategories.length - 1 : undefined;
           if (next === undefined) return;
-          event.preventDefault(); setCategory(SOURCE_CHANGE_CATEGORIES[next]);
-          event.currentTarget.parentElement?.querySelectorAll('button')[next]?.focus();
+          event.preventDefault(); setCategory(availableCategories[next]);
+          event.currentTarget.parentElement?.querySelectorAll('button')[SOURCE_CHANGE_CATEGORIES.indexOf(availableCategories[next])]?.focus();
         }}>{item}</button>)}
       </div>
-      <div role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${category}`} className="space-y-2">
-        {changes.filter(change => change.categories.includes(category)).map(change => <article data-testid={`source-change-${change.id}`} key={`${change.sourceGraph}:${change.id}`} className={`flex items-start gap-2 rounded border border-neutral-200 p-3 ${active && change.state !== 'available' ? 'bg-neutral-100 text-neutral-500 opacity-60' : 'bg-white'}`}>
+      <div role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={selectedCategory ? `${tabsId}-${selectedCategory}` : undefined} className="space-y-2">
+        {changes.filter(change => change.categories[0] === selectedCategory).map(change => <article data-testid={`source-change-${change.id}`} key={`${change.sourceGraph}:${change.id}`} className={`flex items-start gap-2 rounded border border-neutral-200 p-3 ${active && change.state !== 'available' ? 'bg-neutral-100 text-neutral-500 opacity-60' : 'bg-white'}`}>
           <details className="min-w-0 flex-1">
             <summary className="cursor-pointer text-sm font-semibold">{change.label}</summary>
             <div className="mt-3 space-y-2 text-xs text-neutral-600">
-              <p>{change.description}</p>
-              <p>Start resets the fixture and opens source review or repair. Apply only changes the files in the running fixture.</p>
-              {change.state === 'applied' && <p>Applied to the current fixture.</p>}
-              {change.reason && <p>{change.reason}</p>}
+              <dl className="space-y-2">
+                <div><dt className="inline font-semibold">Action:</dt>{' '}<dd className="inline">{descriptionText(change.action)}</dd></div>
+                <div><dt className="inline font-semibold">Check:</dt>{' '}<dd className="inline">{descriptionText(change.check)}</dd></div>
+                <div><dt className="inline font-semibold">E2E:</dt>{' '}<dd className="inline">{change.latestE2e
+                  ? <><time>{change.latestE2e.runId.slice(0, 19).replace('_', ' ').replace(/(\d{2})-(\d{2})-(\d{2})$/, '$1:$2:$3')}</time>{' — '}<a className="text-info-700 underline hover:text-info-900" href={change.latestE2e.url} target="_blank" rel="noreferrer">{change.latestE2e.scenario}</a></>
+                  : <span>No recorded run yet ({change.e2e.replace('.spec.ts', '')})</span>}</dd></div>
+              </dl>
+              {active && change.state === 'conflict' && change.reason && <p>{change.reason}</p>}
               <h4 className="font-medium">Files & operations</h4>
-              <pre className="overflow-auto whitespace-pre-wrap break-words">{JSON.stringify(change.operations, null, 2)}</pre>
+              <pre className="overflow-auto whitespace-pre-wrap break-words">{JSON.stringify(displaySourceChangeOperations(change, sourceLocations), null, 2)}</pre>
             </div>
           </details>
           {['home_fixture_big_and_small', 'home_fixture_multi_source'].includes(fixtureName) && <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={busy !== null} onClick={() => void start(change)}>Start</button>}

@@ -1,7 +1,8 @@
 id: rename-page-without-links
 label: Rename a page without updating links
-description: Leave the old link behind. The source identity may be preserved
-  even though the page becomes unreachable.
+action: "Rename the section page without updating its incoming link."
+check: "Review shows the unreachable page as an orphan without silently assigning its identity to the renamed file."
+e2e: sourcing-unreachable-rename.spec.ts
 categories: [rename]
 sourceGraph: meadow-test-bundles-data
 operations:

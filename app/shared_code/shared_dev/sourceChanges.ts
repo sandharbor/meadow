@@ -5,7 +5,7 @@ import { Buffer } from 'node:buffer';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import YAML from 'yaml';
-import { fixtureSourceLocation } from './fixtureSourceLocation.js';
+import { fixtureSourceLocation, type FixtureSourceLocation } from './fixtureSourceLocation.js';
 import { textDocumentCodec, writeDurableDocument } from '../utils/durableDocument.js';
 import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory } from './sourceChangesTypes.js';
 import type { SourceChangeDefinition, SourceChangeOperation, SourceChangeResult, SourceChangeStatus } from './sourceChangesTypes.js';
@@ -186,13 +186,15 @@ function parseOperation(input: unknown): SourceChangeOperation {
 
 function loadDefinition(directory: string, sourceGraph: string): SourceChangeDefinition {
   const value = record(YAML.parse(fs.readFileSync(safePath(directory, 'change.yaml'), 'utf8')));
-  fields(value, ['id', 'label', 'description', 'categories', 'sourceGraph', 'operations']);
+  fields(value, ['id', 'label', 'action', 'check', 'e2e', 'categories', 'sourceGraph', 'operations']);
   const id = text(value.id);
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) || id !== path.basename(directory)) throw new Error('Source-change id must match its directory');
   if (value.sourceGraph !== sourceGraph) throw new Error('Source-change graph must match its directory');
+  const e2e = text(value.e2e);
+  if (!/^[a-z0-9-]+\.spec\.ts$/.test(e2e)) throw new Error('Source change needs an E2E spec filename');
   if (!Array.isArray(value.operations) || value.operations.length === 0) throw new Error('Source change needs operations');
   if (!Array.isArray(value.categories) || value.categories.length === 0 || value.categories.some(category => !SOURCE_CHANGE_CATEGORIES.includes(category as SourceChangeCategory))) throw new Error('Source change needs valid categories');
-  return { id, label: text(value.label), description: text(value.description), categories: [...new Set(value.categories as SourceChangeCategory[])], sourceGraph, operations: value.operations.map(parseOperation) };
+  return { id, label: text(value.label), action: text(value.action), check: text(value.check), e2e, categories: [...new Set(value.categories as SourceChangeCategory[])], sourceGraph, operations: value.operations.map(parseOperation) };
 }
 
 export function loadSourceChanges(projectRoot: string, sourceGraph: string): SourceChangeDefinition[] {
@@ -379,12 +381,17 @@ export function applySourceChange(options: {
 import type { ParticipatesIn, sourceChange } from '../../concepts/index.js';
 export type SourceChangeMeadowConceptParticipations = [ParticipatesIn<typeof sourceChange, "apply", typeof applySourceChange>];
 
-export function fixtureSourceGraphs(projectRoot: string, fixtureName: string): string[] {
+export function fixtureSourceLocations(projectRoot: string, fixtureName: string): FixtureSourceLocation[] {
   if (!/^home_fixture_[a-z0-9_]+$/.test(fixtureName)) throw new Error('Invalid fixture name');
   const bundles = path.join(projectRoot, 'app/shared_data/home_fixtures', fixtureName, 'bundles');
   if (!fs.existsSync(bundles)) return [];
-  return [...new Set(fs.readdirSync(bundles, { withFileTypes: true }).filter(entry => entry.isDirectory()).flatMap(entry => {
-    const config = YAML.parse(fs.readFileSync(path.join(bundles, entry.name, 'config/bundle_config.yaml'), 'utf8')) as { sourceDirectory?: string; sources?: { directory: string }[] };
-    return (config.sources?.map(source => source.directory) ?? [config.sourceDirectory!]).map(directory => fixtureSourceLocation(directory).graph);
-  }))];
+  const locations = fs.readdirSync(bundles, { withFileTypes: true }).filter(entry => entry.isDirectory()).flatMap(entry => {
+    const config = YAML.parse(fs.readFileSync(path.join(bundles, entry.name, 'config/bundle_config.yaml'), 'utf8')) as { sourceDirectory?: string; sources?: { directory: string; name?: string }[] };
+    return (config.sources ?? [{ directory: config.sourceDirectory! }]).map(source => ({ ...fixtureSourceLocation(source.directory), name: source.name }));
+  });
+  return [...new Map(locations.map(location => [JSON.stringify(location), location])).values()];
+}
+
+export function fixtureSourceGraphs(projectRoot: string, fixtureName: string): string[] {
+  return [...new Set(fixtureSourceLocations(projectRoot, fixtureName).map(location => location.graph))];
 }

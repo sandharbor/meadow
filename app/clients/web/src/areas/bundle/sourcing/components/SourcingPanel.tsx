@@ -229,6 +229,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const backgroundProgress = backgroundBusy && <span aria-hidden="true" data-testid="source-background-progress" className="absolute bottom-0 left-0 h-0.5 w-1/3 bg-current motion-safe:animate-[source-update-sweep_1.2s_ease-in-out_infinite_alternate] motion-reduce:w-full" />;
   const imageUrl: SourceImageUrl = (filename, side) => `bundles/${encodeURIComponent(bundleSlug)}/sourcing/image?${new URLSearchParams({ snapshotId: (side === 'before' ? review?.accepted.id : review?.candidate?.id) ?? '', path: filename })}`;
   const proposedResolutions = proposedSourceMoveResolutions(review?.moves ?? [], resolutions);
+  const unresolvedMoves = [...groups.keys()].some(id => !Object.prototype.hasOwnProperty.call(proposedResolutions, id));
   const orderedChanges = [...(review?.changes ?? [])].sort((left, right) => Number(right.kind === 'added') - Number(left.kind === 'added'));
   const hasAddedPages = orderedChanges.some(change => change.kind === 'added');
 
@@ -249,10 +250,10 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     {open && createPortal(<SourceNamesProvider sources={[...(review?.accepted.sourceNames ?? []), ...(review?.candidate?.sourceNames ?? [])]}><Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus={!traversal.details} className="w-full max-w-3xl" footer={
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button className="text-xs text-main-700 hover:underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void scan(true)}>{busy || backgroundBusy ? 'Checking…' : 'Check again'}</button>
-        <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.' : ''}</p>
+        <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.' : unresolvedMoves ? 'Decide before accepting: choose an identity for each competing move.' : ''}</p>
         {review?.candidate && <button className="text-sm text-neutral-600 underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void cancelCandidate()}>Discard candidate</button>}
         <button className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50" onClick={closeReview}>Later</button>
-        {(review?.candidate || orphanRemovals.size > 0) && <button className="rounded bg-btn-confirm-normal px-4 py-2 text-sm text-btn-confirm-text hover:bg-btn-confirm-hover disabled:opacity-50" disabled={busy || backgroundBusy || hasDraftChanges || review?.sourceChanges?.stale} onClick={() => void accept()}>Accept source changes</button>}
+        {(review?.candidate || orphanRemovals.size > 0) && <button className="rounded bg-btn-confirm-normal px-4 py-2 text-sm text-btn-confirm-text hover:bg-btn-confirm-hover disabled:opacity-50" disabled={busy || backgroundBusy || hasDraftChanges || unresolvedMoves || review?.sourceChanges?.stale} onClick={() => void accept()}>Accept source changes</button>}
       </div>
     }>
       <div className="space-y-5 text-neutral-800">
@@ -273,7 +274,9 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
             return <article key={id} className="min-w-0 border-b border-neutral-100 pb-3 last:border-0 last:pb-0" data-testid={`source-move-${id}`}>
               <details className="text-xs text-neutral-500">
                 <summary className="ml-3 cursor-pointer rounded hover:bg-neutral-50 [list-style-position:outside]" aria-label={`Details ${displayed.oldPath} → ${displayed.newPath}`}>
-                  {selected !== null ? <PathChange before={displayed.oldPath} after={displayed.newPath} /> : <span className="space-y-1 text-sm"><span className="block font-medium text-neutral-600">Separate pages</span><span className="block"><SourcePath value={displayed.oldPath} /></span><span className="block"><SourcePath value={displayed.newPath} /></span></span>}
+                  {selected === undefined
+                    ? <span className="space-y-1 text-sm"><span className="block font-medium text-amber-800">Choose page identity</span><span className="block"><SourcePath value={displayed.oldPath} /></span><span className="block text-xs">{moves.length} competing {moves.length === 1 ? 'match' : 'matches'} — expand to review</span></span>
+                    : selected !== null ? <PathChange before={displayed.oldPath} after={displayed.newPath} /> : <span className="space-y-1 text-sm"><span className="block font-medium text-neutral-600">Separate pages</span><span className="block"><SourcePath value={displayed.oldPath} /></span>{moves.map(move => <span key={move.newPath} className="block"><SourcePath value={move.newPath} /></span>)}</span>}
                 </summary>
                 <fieldset className="mt-3 space-y-3 rounded border border-neutral-200 p-3" disabled={busy || backgroundBusy}>
                   <legend className="px-1">Page identity</legend>
@@ -286,7 +289,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
                     {move.contentChanged && <button className="ml-5 text-main-700 hover:underline" onClick={() => void inspect(move.oldPath, move.newPath)}>Compare content{moves.length > 1 && <span className="sr-only">: {move.newPath}</span>}</button>}
                     {comparison?.beforePath === move.oldPath && comparison.afterPath === move.newPath && <ContentComparison comparison={comparison} imageUrl={imageUrl} />}
                   </div>)}
-                  <label className="flex cursor-pointer items-start gap-2 border-t border-neutral-100 pt-3 text-sm"><input className="mt-1 accent-main-600" type="radio" name={`move-${id}`} checked={selected === null} onChange={() => setResolutions(previous => ({ ...previous, [id]: null }))} /><span>Different pages <span className="text-neutral-500">— remove the old configuration; the new page is untracked</span></span></label>
+                  <label className="flex cursor-pointer items-start gap-2 border-t border-neutral-100 pt-3 text-sm"><input className="mt-1 accent-main-600" type="radio" name={`move-${id}`} checked={selected === null} onChange={() => setResolutions(previous => ({ ...previous, [id]: null }))} /><span>Different pages <span className="text-neutral-500">— remove the old configuration; {moves.length > 1 ? 'the new pages are' : 'the new page is'} untracked</span></span></label>
                 </fieldset>
               </details>
             </article>;

@@ -330,12 +330,15 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
     const candidateIds = new Set(review.moves.map(move => move.bundleNodeId));
     for (const id of Object.keys(request.resolutions)) if (!candidateIds.has(id)) throw new SourcingError('Unexpected source move resolution', 400);
     const resolutions = proposedSourceMoveResolutions(review.moves, request.resolutions);
+    if ([...candidateIds].some(id => !Object.prototype.hasOwnProperty.call(resolutions, id))) {
+      throw new SourcingError('Choose how to resolve competing source moves before accepting.', 400);
+    }
     const destinations = new Set<string>();
     const relinked = configs.map(node => {
       if (!candidateIds.has(node.bundleNodeId)) return node;
       const destination = resolutions[node.bundleNodeId];
       if (destination === null) return node;
-      if (node.bundleNodeKind === 'collection' || !review.moves.some(move => move.bundleNodeId === node.bundleNodeId && move.newPath === destination)) throw new SourcingError('Invalid source move choice', 400);
+      if (typeof destination !== 'string' || node.bundleNodeKind === 'collection' || !review.moves.some(move => move.bundleNodeId === node.bundleNodeId && move.newPath === destination)) throw new SourcingError('Invalid source move choice', 400);
       if (destinations.has(destination)) throw new SourcingError('Two configured pages cannot be assigned to the same source file.');
       destinations.add(destination);
       return relinkSourceNode(node, destination, candidate.sources);

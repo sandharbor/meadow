@@ -1,13 +1,13 @@
 # /dev — Start Dev Servers
 
-Start all dev servers (backend, frontend, dev-tools) in a tmux session. If a session is already running, it kills it and starts fresh.
+Start Dev Tools and the E2E report viewer together. Dev Tools restarts its tmux session; a healthy report viewer is reused. The application runtime starts on demand from Dev Tools.
 
 ## Instructions
 
 Run the dev script and report the result:
 
 ```bash
-./tools/dev
+./tools/dev-and-packet
 ```
 
 Report the session name, URLs, and attach/kill commands from the output.

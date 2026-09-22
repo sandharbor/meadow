@@ -43,7 +43,18 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
   const hadBackup = fs.existsSync(backup);
   fs.writeFileSync(marker, 'home_fixture_big_and_small');
   fs.mkdirSync(backup, { recursive: true });
-  const env = { ...process.env, MEADOW_HOME_DIRECTORY_OVERRIDE: testServer.configDir, PORT: String(serverPort), VITE_DEV_TOOLS_CLIENT_PORT: String(clientPort) };
+  const reports = path.join(testInfo.outputDir, 'source-change-reports');
+  for (const [run, slug, spec, title] of [
+    ['2026-09-20_10-00-00', 'old-move', 'sourcing-move-page.spec.ts', 'Older move scenario'],
+    ['2026-09-21_10-00-00', 'shared-move', 'sourcing-move-page.spec.ts', 'Shared move regression'],
+    ['2026-09-22_10-00-00', 'unrelated', 'unrelated.spec.ts', 'Unrelated latest scenario'],
+  ]) {
+    const directory = path.join(reports, run, slug);
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, 'test-file.txt'), path.join(projectRoot, 'app/acceptance/e2e/tests', spec));
+    fs.writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify({ testName: title }));
+  }
+  const env = { ...process.env, MEADOW_HOME_DIRECTORY_OVERRIDE: testServer.configDir, PORT: String(serverPort), VITE_DEV_TOOLS_CLIENT_PORT: String(clientPort), MEADOW_E2E_RUNS_DIRECTORY: reports, MEADOW_REPORT_VIEWER_URL: 'http://localhost:5175' };
   let logs = '';
   const start = (args: string[]) => {
     const child = spawn(process.execPath, args, { cwd: devDirectory, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -70,14 +81,56 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     await expect(fixture.getByRole('tab', { name: 'add', exact: true })).toHaveAttribute('aria-selected', 'true');
     await fixture.getByRole('tab', { name: 'move', exact: true }).click();
     const move = fixture.getByTestId('source-change-move-nested-page');
+    await controls.expandChange('move-nested-page',
+      'Move child 2 to a new directory, preserving its filename and content.',
+      'Review proposes a move, and existing name-only links still resolve.');
+    await controls.expectE2eRun('move-nested-page', 'Shared move regression', 'http://localhost:5175/2026-09-21_10-00-00/shared-move');
     await expect(move.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled();
     await Promise.all([page.waitForResponse('**/source-changes/move-nested-page'), move.getByRole('button', { name: 'Apply', exact: true }).click()]);
     await expect(fixture.getByTestId('source-changes-control')).toHaveAttribute('aria-busy', 'false');
     await expect(move.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
+    await expect(move).not.toContainText('Applied to the current fixture');
     expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data/t001/deeper/t001 ---- child 2.md'))).toBe(false);
     await addKeyFrame(sourceChange);
     await snapshot('dev controls apply a real source move to the isolated big graph');
     await expect(sourceChanges.apply('move-nested-page')).rejects.toThrow(/already applied/);
+
+    const multiFixture = page.getByTestId('fixture-card-home_fixture_multi_source');
+    const multiControls = new DevSourceChangesControl(multiFixture, expect);
+    await multiControls.open();
+    await expect(multiFixture.getByRole('tab', { name: 'add', exact: true })).toBeDisabled();
+    await expect(multiFixture.getByRole('tab', { name: 'rename', exact: true })).toBeDisabled();
+    const moveTab = multiFixture.getByRole('tab', { name: 'move', exact: true });
+    await expect(moveTab).toHaveAttribute('aria-selected', 'true');
+    await moveTab.press('ArrowRight');
+    await expect(multiFixture.getByRole('tab', { name: 'modify', exact: true })).toBeFocused();
+    await multiFixture.getByRole('tab', { name: 'modify', exact: true }).press('ArrowRight');
+    await expect(multiFixture.getByTestId('source-change-competing-cross-source-moves')).toHaveCount(0);
+    await multiFixture.getByRole('tab', { name: 'remove', exact: true }).press('Home');
+    await expect(moveTab).toBeFocused();
+    const competing = await multiControls.expandChange('competing-cross-source-moves',
+      'Replace notes://Same/Inside.md with two identical, reachable files in different sources.',
+      'Review must not silently assign either one the old identity.');
+    await expect(competing).toContainText('No recorded run yet (multi-source-competing-moves)');
+    await multiControls.expectOperations('competing-cross-source-moves', [
+      { delete: 'notes://Same/Inside.md' },
+      { write: { path: 'research://Moved/Inside.md', contentFile: 'Inside.md' } },
+      { write: { path: 'reference://Moved/Inside.md', contentFile: 'Inside.md' } },
+      { replaceText: { path: 'notes://Start.md', before: '[[Same/Inside]]', after: '[[Moved/Inside::research]] and [[Moved/Inside::reference]]', count: 1 } },
+    ]);
+    await competing.scrollIntoViewIfNeeded();
+    await addKeyFrame(sourceChange);
+    await snapshot('multi-source changes have one category home and readable source-qualified operations');
+    for (const fixtureName of ['nested', 'srs']) {
+      const sharedFixture = page.getByTestId(`fixture-card-home_fixture_${fixtureName}`);
+      const sharedControls = new DevSourceChangesControl(sharedFixture, expect);
+      await sharedControls.open();
+      await sharedFixture.getByRole('tab', { name: 'move', exact: true }).click();
+      await sharedControls.expandChange('move-nested-page',
+        'Move child 2 to a new directory, preserving its filename and content.',
+        'Review proposes a move, and existing name-only links still resolve.');
+      await sharedControls.expectE2eRun('move-nested-page', 'Shared move regression', 'http://localhost:5175/2026-09-21_10-00-00/shared-move');
+    }
     await new Workflows(page, expect).navigateToBigBundle();
     const review = new BundleEditorPage(page, expect).sourceReview;
     await review.open();

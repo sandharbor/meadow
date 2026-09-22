@@ -1,6 +1,8 @@
 id: delete-linked-section
 label: Delete a page linked by section
-description: Delete the tracked section page while leaving its incoming section link intact.
+action: "Delete the tracked section page while leaving its incoming section link intact."
+check: "Review identifies the deleted page and explains the surviving section link."
+e2e: sourcing-deleted-target.spec.ts
 categories: [remove]
 sourceGraph: meadow-test-bundles-data
 operations:

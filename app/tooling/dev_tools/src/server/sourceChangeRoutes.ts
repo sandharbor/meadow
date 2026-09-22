@@ -2,7 +2,8 @@
 
 import express from 'express';
 import path from 'node:path';
-import { applySourceChange, listSourceChangeStatus, loadSourceChanges, fixtureSourceGraphs } from '../../../../shared_code/shared_dev/sourceChanges.js';
+import { applySourceChange, listSourceChangeStatus, loadSourceChanges, fixtureSourceGraphs, fixtureSourceLocations } from '../../../../shared_code/shared_dev/sourceChanges.js';
+import { latestSourceChangeRuns } from './sourceChangeReports.js';
 
 export function createSourceChangeRoutes(options: {
   projectRoot: string; configDir: string; getActiveFixture: () => string | null;
@@ -12,11 +13,13 @@ export function createSourceChangeRoutes(options: {
   router.get('/config/fixtures/:fixtureName/source-changes', (req, res) => {
     try {
       const active = options.getActiveFixture() === req.params.fixtureName;
-      const graphs = fixtureSourceGraphs(options.projectRoot, req.params.fixtureName);
+      const sourceLocations = fixtureSourceLocations(options.projectRoot, req.params.fixtureName);
+      const graphs = [...new Set(sourceLocations.map(location => location.graph))];
       const changes = graphs.flatMap(graph => active
         ? listSourceChangeStatus(options.projectRoot, sourceGraphsDir, graph)
         : loadSourceChanges(options.projectRoot, graph).map(change => ({ ...change, state: 'conflict' as const, reason: 'Start this fixture to apply source changes.' })));
-      res.json({ active, changes });
+      const reports = latestSourceChangeRuns(changes.map(change => change.e2e));
+      res.json({ active, changes: changes.map(change => ({ ...change, latestE2e: reports.get(change.e2e) })), sourceLocations });
     } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : String(error) }); }
   });
   router.post('/config/fixtures/:fixtureName/source-changes/:changeId', (req, res) => {

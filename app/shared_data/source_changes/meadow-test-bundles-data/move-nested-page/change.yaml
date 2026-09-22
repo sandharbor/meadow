@@ -1,7 +1,8 @@
 id: move-nested-page
 label: Move a tracked nested page
-description: Move child 2 to a new directory, preserving its filename and
-  content. Existing name-only links still resolve.
+action: "Move child 2 to a new directory, preserving its filename and content."
+check: "Review proposes a move, and existing name-only links still resolve."
+e2e: sourcing-move-page.spec.ts
 categories: [move]
 sourceGraph: meadow-test-bundles-data
 operations:

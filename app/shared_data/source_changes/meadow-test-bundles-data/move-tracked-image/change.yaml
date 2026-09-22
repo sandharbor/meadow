@@ -1,7 +1,8 @@
 id: move-tracked-image
 label: Move a tracked image
-description: Move the image used by the Markdown links page and update that
-  relative image link.
+action: "Move the image used by the Markdown links page and update its relative image link."
+check: "Review proposes the image move and preserves its tracking after acceptance."
+e2e: sourcing-move-image.spec.ts
 categories: [move]
 sourceGraph: meadow-test-bundles-data
 operations:

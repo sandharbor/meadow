@@ -87,7 +87,7 @@ export interface SourceSnapshotAcceptance {
   trackNewPages?: boolean;
   candidateId: string;
   reviewToken: string;
-  /** Overrides to the proposed matches. Omitted nodes use their proposed rename; null keeps pages separate. */
+  /** Uncontested matches may be omitted. Competing matches require a destination or null to keep pages separate. */
   resolutions: Record<string, string | null>;
   /** Explicit exceptions to default orphan cleanup. Source files are retained. */
   orphanKeeps?: string[];

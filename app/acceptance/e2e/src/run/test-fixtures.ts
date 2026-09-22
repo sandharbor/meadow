@@ -1,4 +1,4 @@
-import { materializeSourceGraph, applySourceChange } from '../../../../shared_code/shared_dev/sourceChanges.js';
+import { materializeSourceGraph, applySourceChange, fixtureSourceGraphs, loadSourceChanges } from '../../../../shared_code/shared_dev/sourceChanges.js';
 import type { SourceChangeResult } from '../../../../shared_code/shared_dev/sourceChangesTypes.js';
 /*
 Copyright 2026 Sand Harbor Software, LLC
@@ -594,15 +594,24 @@ export const test = base.extend<{
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   isolateSourceGraphs: [false, { option: true }],
   includeOversizedImage: [false, { option: true }],
-  sourceChanges: async ({ testServer, isolateSourceGraphs }, use, testInfo) => {
+  sourceChanges: async ({ testServer, isolateSourceGraphs, fixtureHome }, use, testInfo) => {
+    const applied = new Set<string>();
     await use({ apply: async (changeId, sourceGraph = 'meadow-test-bundles-data') => {
       if (!isolateSourceGraphs) throw new Error('Source changes require isolateSourceGraphs: true');
       return await test.step(`Apply source change: ${changeId}`, async () => {
         const result = applySourceChange({ projectRoot: REPO_ROOT, sourceGraphsDir: testServer.sourceGraphsDir, sourceGraph, changeId });
+        applied.add(`${sourceGraph}/${changeId}`);
         await testInfo.attach(`source-change-${changeId}`, { body: JSON.stringify(result, null, 2), contentType: 'application/json' });
         return result;
       });
     } });
+    if (testInfo.status === 'passed') {
+      const designated = fixtureSourceGraphs(REPO_ROOT, fixtureHome).flatMap(graph => loadSourceChanges(REPO_ROOT, graph))
+        .find(change => change.e2e === path.basename(testInfo.file));
+      if (designated && !applied.has(`${designated.sourceGraph}/${designated.id}`)) {
+        throw new Error(`Designated source-change scenario did not successfully apply ${designated.id}`);
+      }
+    }
   },
   trackBigBundleExcalidrawPages: [false, { option: true }],
   recordVideo: [true, { option: true }],

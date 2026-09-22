@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Start the report viewer; --ensure reuses a healthy viewer.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+"$REPO_ROOT/_module/scripts/require-node-version"
+CLIENT_PORT="${REPORT_VIEWER_CLIENT_PORT:-5175}"
+SERVER_PORT="${REPORT_VIEWER_PORT:-3456}"
+PACKET_URL="http://localhost:$CLIENT_PORT"
+RUNS_URL="http://localhost:$SERVER_PORT/api/runs"
+SESSION="meadow_packet_$CLIENT_PORT"
+if [ "$CLIENT_PORT" = 5175 ]; then SESSION=meadow_packet; fi
+
+if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != --ensure ]; }; then
+  echo "Usage: tools/packet [--ensure]" >&2
+  exit 2
+fi
+
+viewer_is_running() {
+  curl --fail --silent --show-error --max-time 2 "$PACKET_URL" >/dev/null 2>&1 \
+    && curl --fail --silent --show-error --max-time 2 "$RUNS_URL" >/dev/null 2>&1
+}
+
+if [ "${1:-}" = --ensure ] && viewer_is_running; then
+  echo "Reusing report viewer at $PACKET_URL"
+else
+  if tmux has-session -t "$SESSION" 2>/dev/null; then
+    tmux kill-session -t "$SESSION"
+  fi
+  for port in "$CLIENT_PORT" "$SERVER_PORT"; do
+    while IFS= read -r pid; do
+      if [ -n "$pid" ]; then kill -9 "$pid" 2>/dev/null || true; fi
+    done < <(lsof -ti:"$port" 2>/dev/null || true)
+  done
+  tmux new-session -d -s "$SESSION" -c "$REPO_ROOT/app/acceptance/report_viewer" \
+    "REPORT_VIEWER_CLIENT_PORT='$CLIENT_PORT' REPORT_VIEWER_PORT='$SERVER_PORT' exec npm start"
+  ready=false
+  for _attempt in {1..60}; do
+    if viewer_is_running; then ready=true; break; fi
+    sleep 0.5
+  done
+  if [ "$ready" != true ]; then
+    echo "Report viewer failed to become ready:" >&2
+    tmux capture-pane -p -t "$SESSION" >&2 2>/dev/null || true
+    exit 1
+  fi
+  echo "Report viewer session: tmux attach -t $SESSION"
+fi
+
+if [ "${MEADOW_PACKET_NO_OPEN:-}" != 1 ]; then open "$PACKET_URL"; fi
+viewer_is_running
+echo "Verified review packet at $PACKET_URL"

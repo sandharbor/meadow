@@ -116,7 +116,7 @@ tmux new-window -t "$SESSION" -n browser -c "$FRONTEND_DIR"
 tmux set-option -w -t "$SESSION:browser" remain-on-exit on
 
 tmux new-window -t "$SESSION" -n dev-tools -c "$DEV_TOOLS_DIR" \
-  "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_DEV_TMUX_SESSION='$SESSION' MEADOW_BUILD_PERSPECTIVE='$BUILD_PERSPECTIVE' npm start; read"
+  "PORT='$DEV_TOOLS_SERVER_PORT' VITE_DEV_TOOLS_CLIENT_PORT='$DEV_TOOLS_PORT' MEADOW_HOME_DIRECTORY_OVERRIDE='$CONFIG_DIR' MEADOW_DEV_TMUX_SESSION='$SESSION' MEADOW_BUILD_PERSPECTIVE='$BUILD_PERSPECTIVE' MEADOW_REPORT_VIEWER_URL='${MEADOW_REPORT_VIEWER_URL:-http://localhost:5175}' npm start; read"
 
 # --- 6. Wait for the replacement Dev Tools processes, verify their ports,
 # then open the browser and verify they survived the open. ---

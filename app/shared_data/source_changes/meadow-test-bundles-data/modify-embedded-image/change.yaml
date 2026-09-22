@@ -1,6 +1,8 @@
 id: modify-embedded-image
 label: Replace an embedded image
-description: Replace the meadow image with a sunflower to compare accepted and candidate image contents.
+action: "Replace the meadow image with a sunflower."
+check: "Review compares the accepted and candidate image contents."
+e2e: sourcing-replace-image.spec.ts
 categories: [modify]
 sourceGraph: meadow-test-bundles-data
 operations:
