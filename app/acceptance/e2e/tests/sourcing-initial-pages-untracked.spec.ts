@@ -9,7 +9,12 @@ import { sourceSnapshot } from '../../../concepts/index.js';
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Capture a source for the first time. Candidate pages should be visible without being
+ * automatically tracked.
+ */
 test('Sourcing initial capture leaves candidate pages untracked', async ({ page, testServer, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   const list = new BundleListPage(page, expect);
   const create = new CreateAndEditBundleModal(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -27,7 +32,12 @@ test('Sourcing initial capture leaves candidate pages untracked', async ({ page,
   await detail.expectPill(Pill.NotTracked);
   await addKeyFrame(sourceSnapshot);
   await snapshot('initially captured candidate page remains untracked');
+
+  // --- Test start ---
+  // Compare the tracked starting page.
   await editor.clickListViewRowByExactName('t001 - deeply nested');
   await detail.expectPill(Pill.Tracked);
+  await snapshot("initial source capture leaves ordinary pages untracked and the starting page tracked");
+
   await skipMeadowHomeStateCheck();
 });

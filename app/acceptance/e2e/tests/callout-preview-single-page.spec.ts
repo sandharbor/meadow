@@ -24,6 +24,10 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "none" });
 
+/*
+ * Create a bundle with only its starting page tracked, then preview it. Check that the
+ * single-page warning explains how to include more pages.
+ */
 test("Callout warns when previewing with only one tracked page", async ({
   page,
   testServer,
@@ -31,6 +35,7 @@ test("Callout warns when previewing with only one tracked page", async ({
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
   await bundleList.expectCalloutVisible("Turn your notes into bundles");
@@ -50,18 +55,23 @@ test("Callout warns when previewing with only one tracked page", async ({
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("main-page");
 
+  await snapshot("the new bundle contains only its tracked initial page");
+
+  // --- Test start ---
+  // Preview the single-page bundle.
   // Click Preview — should trigger single-page warning modal
   await editor.clickPreview();
   await editor.expectSinglePagePreviewWarningVisible();
   await addKeyFrame(callout);
   await snapshot("single page preview warning shown");
 
-  // Click "Track more" to dismiss the warning
+  // Return to tracking pages.
   await editor.clickGoBackAndTrackMorePages();
 
   // Verify we're back on the graph view (modal closed, not navigated to preview)
   await editor.expectGraphViewButtonVisible();
   await snapshot("back on graph view after dismissing warning");
+
   void customBundle;
 
   await assertMeadowHomeState();

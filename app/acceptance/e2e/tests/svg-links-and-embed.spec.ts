@@ -22,12 +22,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Preview a directed SVG embed, open it fullscreen, and follow one of its links. The
+ * drawing and its link targets should work in the generated bundle.
+ */
 test("SVG links work in a directed embed", async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
@@ -37,6 +42,10 @@ test("SVG links work in a directed embed", async ({
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
 
+  await snapshot("the generated bundle preview is ready");
+
+  // --- Test start ---
+  // Inspect the directed SVG embed.
   await generatedBundle.clickPageLink("t006 - embedded media");
   await generatedBundle.expectHeading("t006 - embedded media");
 
@@ -52,19 +61,22 @@ test("SVG links work in a directed embed", async ({
     "../t006%20-%20embedded%20media.html",
   );
   await generatedBundle.svg.expectDirectedStandaloneLinkAbsent();
-  await snapshot("directed SVG embed rendered with live links");
   await addKeyFrame(svg);
+  await snapshot("directed SVG embed rendered with live links");
 
+  // Open the SVG fullscreen.
   await generatedBundle.svg.openDirectedFullscreen();
   await snapshot("directed SVG embed fullscreen open");
+
+  // Follow an SVG link.
   await generatedBundle.svg.closeDirectedFullscreen();
 
   await generatedBundle.svg.clickDirectedLink(textLink);
   await generatedBundle.expectHeading(
     "t006 --- page that embeds Excalidraw in another directory",
   );
-  await snapshot("directed SVG embed link opened target");
   await addKeyFrame(svg);
+  await snapshot("directed SVG embed link opened target");
 
   void bigBundle;
   await assertMeadowHomeState({

@@ -40,6 +40,10 @@ test.use({ fixtureHome: Fixture.None });
  * nesting the source graph one level deeper shouldn't change anything the
  * graph builder cares about.
  */
+/*
+ * Set the starting page's incoming-link depth to zero in a nested source directory. Its
+ * depth-one outgoing media should remain visible.
+ */
 test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible (nested source dir)", async ({
   page,
   testServer,
@@ -48,6 +52,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   addKeyFrame,
   expectLogErrors,
 }) => {
+  // --- Setup ---
   // Same Excalidraw worker fallback warning as the unwrapped variant.
   const releaseWorkerWarning = expectLogErrors(
     /Failed to use workers for subsetting, falling back to the main thread/,
@@ -89,6 +94,8 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
     await editor.waitForLoad("t006-embedded-media");
     await snapshot("editor loaded with t006 - embedded media as initial page");
 
+    // --- Test start ---
+    // Select the initial page.
     // Use list view to reliably pick the initial-page row, then return to
     // graph view so the recorded video shows the visual change when inlink
     // depth is reduced.
@@ -98,15 +105,16 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
     await page.waitForTimeout(250);
     await editor.switchToGraphView();
     await page.waitForTimeout(250);
-    await snapshot("initial node selected in graph view, inlinks visible");
     await addKeyFrame(initialPage);
+    await snapshot("initial node selected in graph view, inlinks visible");
 
-    // Set Inlink Depth to 0 on the initial page.
+    // Remove incoming traversal.
     const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
     await detail.setInlinksDepth(0);
     await page.waitForTimeout(1000);
     await snapshot("after setting inlink depth to 0");
 
+    // Check the outgoing media.
     // The depth-1 outlink media should still be present — switch to list view
     // and assert each file type the user cares about is still in the graph.
     // Titles in list view drop the extension (the file type lives in its own

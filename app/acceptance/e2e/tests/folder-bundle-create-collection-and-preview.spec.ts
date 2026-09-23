@@ -28,12 +28,17 @@ test.use({ bundleMode: "multiple-folders" });
 
 test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 
+/*
+ * Generate a bundle assembled from several folders. The preview should preserve the
+ * collection's home page, folder order, and contents.
+ */
 test("previews a configured multiple-folder collection bundle", async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
@@ -42,8 +47,11 @@ test("previews a configured multiple-folder collection bundle", async ({
   await bundleList.clickBundle(Bundle.FolderStructureMultiple);
   await editor.waitForLoad(Bundle.FolderStructureMultiple);
   await editor.expectGraphViewHasPages();
-  await snapshot("multiple folder graph with two linked depth rows");
   await addKeyFrame(folderBundles);
+  await snapshot("multiple folder graph with two linked depth rows");
+
+  // --- Test start ---
+  // Inspect the ordered structure.
   await editor.switchToListView();
   await editor.switchToStructuralListView();
   await editor.expectStructuralListHasNoSelectionColumn();
@@ -62,6 +70,7 @@ test("previews a configured multiple-folder collection bundle", async ({
   await editor.expectListViewRowByExactNamePresent("Frontier image");
   await snapshot("ordered folder structure in the editor");
 
+  // Preview the collection home.
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
   await previewModal.generatedBundle.expectSingleHeading("Ordered Folders", 60_000);
@@ -85,14 +94,17 @@ test("previews a configured multiple-folder collection bundle", async ({
   ]);
   await previewModal.generatedBundle.expectStructuralChildNames(["Beta", "Alpha"]);
   await folderNavigation.close();
-  await snapshot("ordered collection generated home");
   await addKeyFrame(htmlGeneration);
+  await snapshot("ordered collection generated home");
+
+  // Open a page in a selected folder.
   await folderNavigation.open();
   await folderNavigation.clickFile("Alpha", "Alpha note.html");
   await previewModal.generatedBundle.expectSingleHeading("Alpha note");
   await folderNavigation.expectSelectedFile("Alpha note.html");
   await folderNavigation.open();
   await snapshot("ordered collection selected folder page");
+
   void customBundle;
 
   await assertMeadowHomeState({

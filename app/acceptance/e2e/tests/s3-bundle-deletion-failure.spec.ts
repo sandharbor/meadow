@@ -23,6 +23,10 @@ import { Bundle, Workflows } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Publish two revisions, remove S3 credentials, and try deleting the bundle. Failed
+ * cleanup must preserve local files; restoring credentials should make the retry complete.
+ */
 test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and retry completes", async ({
   page,
   snapshot,
@@ -31,6 +35,7 @@ test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and 
   testServer,
   expectLogErrors,
 }) => {
+  // --- Setup ---
   await testServer.activateS3Provider();
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundleShareTab();
@@ -54,6 +59,10 @@ test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and 
   await minioS3.expectHasFiles(`${publishSlug}-${firstVersionId}/`);
   await minioS3.expectHasFiles(`${publishSlug}-${secondVersionId}/`);
 
+  await snapshot("two published revisions have remote files");
+
+  // --- Test start ---
+  // Remove credentials and try deleting the bundle.
   const bundleDirectory = path.join(testServer.configDir, "bundles", Bundle.Big);
   const sentinelConfig = fs.readFileSync(path.join(bundleDirectory, "config", "bundle_config.yaml"));
   const secretsPath = path.join(
@@ -85,6 +94,7 @@ test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and 
   await minioS3.expectHasFiles(`${publishSlug}-`);
   await snapshot("provider cleanup failure preserves every local bundle file");
 
+  // Restore credentials and retry deletion.
   fs.writeFileSync(secretsPath, originalSecrets);
   await list.confirmDelete();
   await list.waitForBundleGone(Bundle.Big);

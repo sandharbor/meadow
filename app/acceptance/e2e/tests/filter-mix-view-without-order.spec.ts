@@ -22,18 +22,27 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Build a filter expression with two exclusions and drag one onto the other. The
+ * expression should preserve the intended ordering and result.
+ */
 test("without mix terms can be reordered by dropping one directly on the other", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigBundle();
 
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
+  await snapshot("the bundle is ready to combine filters");
+
+  // --- Test start ---
+  // Build a selection without untracked pages.
   await editor.clickSelectAll();
   await editor.clickSoloSelection();
   await filterPanel.enableAndSoloFilter("Untracked");
@@ -45,15 +54,18 @@ test("without mix terms can be reordered by dropping one directly on the other",
   await editor.expectGraphViewHasPages();
   await snapshot("selection without untracked pages");
 
+  // Reverse the filter order.
   await filterPanel.openMixFilters();
   await filterPanel.dragMixTermOnto("Selection Solo", "Untracked");
   await filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]);
   await addKeyFrame(filters);
   await snapshot("without terms reordered directly");
 
+  // Check the reversed result.
   await filterPanel.closeMixFilters();
   await editor.expectGraphViewPageCount(0);
   await snapshot("untracked without the selected pages is empty");
+
   void bigBundle;
 
   await assertMeadowHomeState();

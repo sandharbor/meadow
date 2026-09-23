@@ -27,6 +27,11 @@ function recursiveFiles(directory: string): string[] {
     .filter(relativePath => fs.statSync(path.join(directory, relativePath)).isFile());
 }
 
+/*
+ * Export one saved version and then all versions. Dirty current files should block their
+ * own export, while deleted local versions should remain in the inventory without
+ * misleading output folders.
+ */
 test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombstone boundaries", async ({
   page,
   artifactDir,
@@ -34,6 +39,7 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   skipMeadowHomeStateCheck,
   testServer,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundleShareTab();
   const bundleApi = `/api/bundles/${encodeURIComponent(Bundle.Big)}`;
@@ -60,6 +66,8 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   await modal.expectShareVersionSelected(secondVersionId);
   await snapshot("local export offers the selected saved version and All Versions");
 
+  // --- Test start ---
+  // Export the selected versions.
   const exportTo = async (destinationPath: string, body: Record<string, unknown>) => {
     fs.mkdirSync(destinationPath, { recursive: true });
     return page.request.post(`${bundleApi}/sharing/copy-to-directory`, {
@@ -83,7 +91,9 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   expect(allManifestText).not.toContain("private editorial note");
   expect(allManifestText).not.toContain(testServer.sourceGraphsDir);
 
-  // Dirty current blocks current and All Versions, while the frozen version remains exportable.
+  await snapshot("selected and all-version exports contain only shareable data");
+
+  // Modify the current generated files.
   const currentDirectory = path.join(
     testServer.configDir,
     "bundles",
@@ -102,8 +112,9 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   expect((await exportTo(path.join(artifactDir, "dirty-all-export"), { allVersions: true })).status()).toBe(409);
   expect((await exportTo(path.join(artifactDir, "frozen-while-current-dirty"), { versionId: firstVersionId })).ok()).toBe(true);
 
-  // Restore current bytes, tombstone the frozen local files, and prove the
-  // inventory retains the identity without creating a misleading directory.
+  await snapshot("dirty current files block their export while frozen files remain exportable");
+
+  // Restore current files and delete the frozen version.
   fs.writeFileSync(currentHtmlPath, savedBytes);
   const deleteLocalResponse = await page.request.delete(`${bundleApi}/review/versions/${firstVersionId}`);
   expect(deleteLocalResponse.ok()).toBe(true);

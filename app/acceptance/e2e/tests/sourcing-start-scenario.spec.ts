@@ -30,7 +30,13 @@ async function stop(child: ChildProcess): Promise<void> {
 
 test.use({ bundleMode: 'single-file' });
 
-test('Sourcing Start scenario resets the fixture and hands over directly in source review', async ({ page, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+/*
+ * Start a source-change scenario from Dev Tools twice. Each start should reset
+ * exploration, preserve the original home, and open the application directly in source
+ * review.
+ */
+test('Sourcing Start scenario resets the fixture and hands over directly in source review', async ({ page, addKeyFrame, skipMeadowHomeStateCheck, snapshot }, testInfo) => {
+  // --- Setup ---
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-dev-scenario-')));
   const home = path.join(root, 'MeadowHome');
   fs.mkdirSync(home);
@@ -67,16 +73,25 @@ test('Sourcing Start scenario resets the fixture and hands over directly in sour
     const change = fixture.getByTestId('source-change-delete-linked-section');
     await expect(change.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
     await addKeyFrame(sourceChange);
+    await snapshot('source changes are available before starting the fixture');
+
+    // --- Test start ---
+    // Start the selected source change.
     await Promise.all([page.waitForResponse('**/api/app/open-browser', { timeout: 120000 }), change.getByRole('button', { name: 'Start', exact: true }).click()]);
     await expect(fixture.getByTestId('source-changes-control')).toHaveAttribute('aria-busy', 'false', { timeout: 120000 });
     await expect(fixture.getByTestId('source-changes-control').getByRole('status')).toHaveCount(0);
-    // Starting again must reset the modified fixture rather than trying to apply twice.
+    await snapshot('starting the scenario resets and applies its source change');
+
+    // Start again after exploring.
     fs.writeFileSync(path.join(home, 'exploration.txt'), 'An earlier exploration');
     await Promise.all([page.waitForResponse('**/api/app/open-browser', { timeout: 120000 }), change.getByRole('button', { name: 'Start', exact: true }).click()]);
     await expect(fixture.getByTestId('source-changes-control')).toHaveAttribute('aria-busy', 'false', { timeout: 120000 });
     expect(fs.existsSync(path.join(home, 'exploration.txt'))).toBe(false);
     expect(destination).toBe('/bundle/meadow-test-bundle-big?sourceReview=1');
     expect(fs.readFileSync(path.join(root, 'MeadowHome_normal/original-home.txt'), 'utf8')).toBe('Preserve the original home');
+    await snapshot("starting again resets exploration and preserves the original home");
+
+    // Inspect the source review handoff.
     const descriptor = readRuntimeSessionDescriptor(getRuntimePaths(home).sessionDescriptor);
     const launchUrl = await createBrowserLaunchUrl(descriptor, destination);
     await page.goto(launchUrl);
@@ -87,6 +102,8 @@ test('Sourcing Start scenario resets the fixture and hands over directly in sour
     await orphans.showExplanation('t003 ---- page with section to link to');
     await orphans.expectMissingLinkedFile('t003 ---- page with section to link to', 't003 - link to section.md', 't003 ---- page with section to link to.md');
     await addKeyFrame(sourceChange);
+    await snapshot('the handoff opens the missing linked page explanation');
+
   } finally {
     await page.goto('about:blank');
     const sessionPath = getRuntimePaths(home).sessionDescriptor;

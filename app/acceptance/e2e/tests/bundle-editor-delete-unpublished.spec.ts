@@ -22,12 +22,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Delete an unpublished bundle from its editor. Confirm that it disappears from the list
+ * and its local files are removed.
+ */
 test("Delete unpublished bundle from within bundle editor", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
 
@@ -36,6 +41,10 @@ test("Delete unpublished bundle from within bundle editor", async ({
   // Finish the initial fixture review before exercising bundle deletion.
   await editor.waitForSourceCheck();
 
+  await snapshot("the unpublished bundle is ready for deletion");
+
+  // --- Test start ---
+  // Open the deletion confirmation.
   // Open bundle options menu and click Delete bundle
   await editor.clickBundleOptionsMenu();
   await editor.clickDeleteBundleOption();
@@ -46,7 +55,7 @@ test("Delete unpublished bundle from within bundle editor", async ({
   await addKeyFrame(deletion);
   await snapshot("delete confirmation for unpublished bundle");
 
-  // Confirm deletion
+  // Confirm the deletion.
   await deleteModal.confirmDelete();
 
   // Should navigate back to bundle list automatically
@@ -54,6 +63,7 @@ test("Delete unpublished bundle from within bundle editor", async ({
   await bundleList.expectHeadingVisible();
   await bundleList.expectBundleNotVisible(Bundle.Big);
   await snapshot("bundle list after deletion - bundle gone");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

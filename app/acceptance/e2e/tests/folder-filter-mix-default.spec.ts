@@ -22,12 +22,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Hide one folder and solo another. The default filter mix should combine those choices
+ * and show only the expected pages.
+ */
 test("hidden folders are intersected with soloed folders by default", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -37,6 +42,10 @@ test("hidden folders are intersected with soloed folders by default", async ({
   await filterPanel.expectFolderCount("t024", 4);
   await filterPanel.expectFolderCount("t023", 4);
 
+  await snapshot("the folder counts are visible before filtering");
+
+  // --- Test start ---
+  // Hide and solo folders.
   await filterPanel.hideFolder("t024");
   await filterPanel.soloFolder("t023");
   await editor.expectGraphViewPageCount(4);
@@ -54,11 +63,14 @@ test("hidden folders are intersected with soloed folders by default", async ({
   await addKeyFrame(filters);
   await addKeyFrame(folderFilter);
   await snapshot("hidden and soloed folders use the default grouped mix");
+
+  // Check the resulting list.
   await filterPanel.closeMixFilters();
 
   await editor.switchToListView();
   expect(await editor.getListViewPageCount()).toBe(4);
   await snapshot("only the soloed folder remains visible");
+
   void bigBundle;
 
   await assertMeadowHomeState();

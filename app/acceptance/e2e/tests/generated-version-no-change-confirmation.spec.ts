@@ -26,6 +26,10 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 test.use({ bundleMode: "single-file" });
 test.use({ serialGroup: "generated-bundle-versioning" });
 
+/*
+ * Request another version when generated files have not changed. Creation should require
+ * explicit confirmation and produce a complete, correlated operation log.
+ */
 test("V07 L01 generated version no-change creation requires confirmation and correlated logs", async ({
   page,
   snapshot,
@@ -33,6 +37,7 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigBundlePreview();
 
@@ -47,11 +52,17 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
   await modal.clickChangesTab();
   await changesTab.expectNoChangedFiles();
 
+  await snapshot("the saved version has no generated changes");
+
+  // --- Test start ---
+  // Request another version.
   await modal.openCreateNewVersionDialog();
   await modal.expectReaderConnectionCopy();
   await modal.expectNoChangeVersionConfirmationRequired();
   await addKeyFrame(versioning);
   await snapshot("no-change version requires explicit confirmation");
+
+  // Confirm the intentional duplicate.
   await modal.confirmNoChangeVersionCreation();
   await modal.submitConfirmedNoChangeVersion("No-change checkpoint");
   await modal.expectVersionsTabActive();
@@ -71,10 +82,13 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
   await expect(page.getByText("Unsaved", { exact: true })).toBeVisible();
   await snapshot("confirmed no-change version created");
 
+  // Check the recorded version operation.
   const logPath = path.join(testServer.configDir, "logs", "meadow.log");
   await expect.poll(() => fs.readFileSync(logPath, "utf8"))
     .toMatch(/\[operation ([0-9a-f-]+)] \[version-create] Started[\s\S]*\[operation \1] \[version-create] Created version/);
 
   void bigBundle;
+  await snapshot("the confirmed duplicate version has a complete operation log");
+
   await skipMeadowHomeStateCheck();
 });

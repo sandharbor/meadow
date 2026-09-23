@@ -24,9 +24,14 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Apply the Overrides filter to the example bundle. The initial page's required depths
+ * should not count as a custom override.
+ */
 test("overrides filter on example bundle does not include the initial page", async ({
   page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -37,12 +42,13 @@ test("overrides filter on example bundle does not include the initial page", asy
   await editor.waitForLoad("example-bundle");
   await snapshot("example bundle loaded");
 
-  // Enable the Overrides filter
+  // --- Test start ---
+  // Enable the override filter.
   await filterPanel.enableFilter("Depth Override");
   await addKeyFrame(filters);
   await snapshot("overrides filter enabled");
 
-  // Solo the Overrides filter so only override pages are visible
+  // Solo the overridden pages.
   await filterPanel.clickSoloOnFilter("Depth Override");
   await page.waitForTimeout(250);
 

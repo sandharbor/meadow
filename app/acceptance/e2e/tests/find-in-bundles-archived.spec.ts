@@ -22,12 +22,17 @@ import { bigBundle, smallBundle, exampleBundle } from "../src/bundle-docs/index.
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Find a page that also belongs to an archived bundle. The search should identify the
+ * archived match and open it through the archived list.
+ */
 test("find in bundles shows archived match indicator and archived tab", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -41,13 +46,14 @@ test("find in bundles shows archived match indicator and archived tab", async ({
   await bundleList.expectBundleVisible(Bundle.Example);
   await snapshot("bundle list with example bundle added");
 
-  // Archive the big bundle
+  // --- Test start ---
+  // Archive the big bundle.
   await bundleList.archiveBundle(Bundle.Big);
   await page.waitForTimeout(500);
   await bundleList.expectBundleNotVisible(Bundle.Big);
   await snapshot("big bundle archived");
 
-  // Navigate to the small bundle
+  // Find the shared page from the small bundle.
   await bundleList.clickBundle(Bundle.Small);
   await editor.waitForLoad(Bundle.Small);
 
@@ -73,22 +79,24 @@ test("find in bundles shows archived match indicator and archived tab", async ({
   await addKeyFrame(multiBundle);
   await snapshot("current tab shows only small bundle");
 
-  // The archived tab should show a badge indicating 1 match
+  // Check the archived match count.
   await bundleList.expectArchivedTabBadge(1);
   await snapshot("archived tab badge shows 1 match");
 
-  // Click on the archived tab — big bundle should be visible there
+  // Open the archived matches.
   await bundleList.clickArchivedTab();
   await page.waitForTimeout(250);
   await bundleList.expectBundleVisible(Bundle.Big);
   await addKeyFrame(archived);
   await snapshot("archived tab shows big bundle match");
 
+  // Clear the page filter.
   // Clearing Find in Bundles ends the mode instead of offering to apply the
   // same filter a second time.
   await bundleList.clearFindInBundlesFilter("t001 - deeply nested");
   await bundleList.expectFindInBundlesFilterCleared("t001 - deeply nested");
   await snapshot("find in bundles cleared");
+
   void bigBundle;
   void smallBundle;
   void exampleBundle;

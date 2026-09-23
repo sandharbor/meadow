@@ -25,9 +25,14 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Create the example bundle and inspect MeadowHome's Git repository. It should be a normal
+ * working repository with the expected saved files.
+ */
 test("MeadowHome is a real (non-bare) git repo after creating the example bundle", async ({
   page, snapshot, assertMeadowHomeState, addKeyFrame, testServer,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
 
@@ -36,10 +41,13 @@ test("MeadowHome is a real (non-bare) git repo after creating the example bundle
   await bundleList.goto();
   await snapshot("empty bundle list");
 
+  // --- Test start ---
+  // Add the example bundle.
   await bundleList.clickAddExampleBundleLink();
   await editor.waitForLoad("example-bundle");
   await snapshot("example bundle editor loaded");
 
+  // Inspect the repository with system Git.
   // Use the system `git` CLI (not fast_git_ops) to confirm MeadowHome is
   // a normal repo with a working tree. fast_git_ops initializes the repo
   // via `gix::init_bare`, which sets core.bare=true and makes plain
@@ -83,6 +91,7 @@ test("MeadowHome is a real (non-bare) git repo after creating the example bundle
 
   await addKeyFrame(git);
   await snapshot("MeadowHome clean via real git status");
+
   void exampleBundle;
 
   await assertMeadowHomeState();

@@ -22,23 +22,29 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Hover over the sensitive filter's help icon. Its callout should explain which pages the
+ * filter includes.
+ */
 test("Callout tooltip shown when hovering sensitive filter question mark", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
   await snapshot("bundle editor loaded");
 
-  // Enable the sensitive filter so the question mark icon appears
+  // --- Test start ---
+  // Enable the sensitive filter.
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.enableFilter("Sensitive");
   await page.waitForTimeout(250);
   await snapshot("sensitive filter enabled");
 
-  // Hover over the question mark icon next to the sensitive filter
+  // Read the filter explanation.
   await filterPanel.hoverFilterQuestionIcon("Sensitive");
   await page.waitForTimeout(300);
 
@@ -52,6 +58,7 @@ test("Callout tooltip shown when hovering sensitive filter question mark", async
   await addKeyFrame(callout);
   await addKeyFrame(sensitive);
   await snapshot("sensitive filter callout tooltip visible");
+
   void bigBundle;
 
   await assertMeadowHomeState();

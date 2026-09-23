@@ -128,6 +128,7 @@ export default [
         Buffer: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        HTMLVideoElement: 'readonly',
       }
     },
     plugins: {

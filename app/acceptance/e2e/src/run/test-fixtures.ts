@@ -492,6 +492,7 @@ export interface TickCaptureRegistry {
   handlers: TickCaptureHandler[];
   latestData: Record<string, unknown>;
   captureNow: () => Promise<void>;
+  captureSnapshot: (message: string) => void;
 }
 
 /**
@@ -1276,6 +1277,10 @@ export const test = base.extend<{
         return additionalTickCapturePromise;
       };
       _tickCaptureRegistry.captureNow = captureAdditionalTickData;
+      _tickCaptureRegistry.captureSnapshot = message => {
+        writeFileSync(snapshotMarkerPath, message);
+        captureTickSync();
+      };
       await captureAdditionalTickData(); // establish extension baselines before tick 0
       const additionalTickTimer = setInterval(
         captureAdditionalTickData,
@@ -1498,10 +1503,11 @@ export const test = base.extend<{
       handlers: [],
       latestData: {},
       captureNow: async () => {},
+      captureSnapshot: () => {},
     });
   },
 
-  snapshot: async ({ artifactDir, testServer, minioS3, _additionalSnapshotHandlers }, use) => {
+  snapshot: async ({ artifactDir, testServer, minioS3, _additionalSnapshotHandlers, _tickCaptureRegistry }, use) => {
     // --- Setup: init repos ---
 
     const { minioEndpoint, configDir } = testServer;
@@ -1585,9 +1591,9 @@ export const test = base.extend<{
         await handler(message);
       }
 
-      // Write snapshot marker so the tick system picks it up on the next tick
-      const markerPath = path.join(artifactDir, "snapshot-marker.txt");
-      writeFileSync(markerPath, message);
+      // Record this boundary before the next phase can change state or replace
+      // its marker. Short phases may complete between periodic ticks.
+      _tickCaptureRegistry.captureSnapshot(message);
     };
 
     await use(snapshotFn);

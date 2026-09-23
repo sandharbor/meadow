@@ -22,31 +22,43 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Enable the outgoing-link gap filter. Check its calculated threshold and the pages
+ * selected by that threshold.
+ */
 test("outlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
   await snapshot("bundle editor loaded");
 
+  // --- Test start ---
+  // Enable the outlink-gap filter.
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.enableFilter("Outlink Gap");
   await page.waitForTimeout(250);
   await snapshot("outlink gap filter enabled");
 
+  // Check the automatic threshold.
   const threshold = await filterPanel.getFilterThresholdValue("Outlink Gap");
   expect(threshold).toBe(9);
   await addKeyFrame(linkGap);
   await snapshot("outlink gap threshold is 9");
 
+  // Solo the matching pages.
   await filterPanel.clickSoloOnFilter("Outlink Gap");
   await snapshot("outlink gap filter soloed");
 
+  // Select the visible pages.
   await editor.clickSelectAll();
   await snapshot("all visible pages selected");
 
+  // Check the selection.
   const titles = await editor.getSelectedPageTitles();
   expect(titles.length).toBeGreaterThanOrEqual(1);
   await snapshot("verified pages selected with outlink gap");
+
   void bigBundle;
 
   await assertMeadowHomeState();

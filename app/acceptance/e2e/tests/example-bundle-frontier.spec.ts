@@ -24,9 +24,14 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Open the example bundle and enable the frontier filter. Check that pages beyond the
+ * normal traversal boundary appear in the graph.
+ */
 test("example bundle frontier pages show in graph view with frontier filter", async ({
   page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -37,13 +42,14 @@ test("example bundle frontier pages show in graph view with frontier filter", as
   await editor.waitForLoad("example-bundle");
   await snapshot("example bundle editor loaded");
 
-  // Enable the Frontier filter (always visible in the filter panel)
+  // --- Test start ---
+  // Enable frontier pages.
   await filterPanel.enableFilter("Frontier");
   await page.waitForTimeout(500);
   await addKeyFrame(frontier);
   await snapshot("frontier filter visible");
 
-  // Solo the frontier filter — should show frontier pages
+  // Solo the frontier.
   await filterPanel.clickSoloOnFilter("Frontier");
   await page.waitForTimeout(250);
 
@@ -54,6 +60,7 @@ test("example bundle frontier pages show in graph view with frontier filter", as
   expect(frontierPageCount).toBeGreaterThan(1);
   await addKeyFrame(filters);
   await snapshot("frontier filter soloed with multiple pages");
+
   void exampleBundle;
 
   await assertMeadowHomeState();

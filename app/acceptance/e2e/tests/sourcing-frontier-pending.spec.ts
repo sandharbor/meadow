@@ -7,7 +7,12 @@ import { frontier, frontierPendingSources, frontierDismissal, frontierLiveDiscov
 test.use({ bundleMode: 'single-file' });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Leave source changes awaiting review and inspect the frontier notice. The frontier
+ * should stay hidden; acknowledging the notice should only turn off its filter.
+ */
 test('pending source changes hide the frontier and acknowledging the notice only disables its filter', async ({ page, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   const filters = new FilterPanelComponent(page, expect);
   await filters.enableFilter('Frontier');
@@ -17,6 +22,9 @@ test('pending source changes hide the frontier and acknowledging the notice only
   await expect(notice).not.toBeVisible();
   await addKeyFrame(frontier, frontierLiveDiscovery);
   await snapshot('live frontier exploration remains available despite orphan cleanup entries');
+
+  // --- Test start ---
+  // Rename the page and its links.
   await sourceChanges.apply('rename-page-with-links');
   const review = editor.sourceReview;
   await review.open();
@@ -27,12 +35,18 @@ test('pending source changes hide the frontier and acknowledging the notice only
   await editor.expectGraphNodeNotPresent('/t016 ---- level 5.md');
   await addKeyFrame(frontierPendingSources);
   await snapshot('pending source changes replace live frontier pages with an explanation');
+
+  // Acknowledge the frontier notice.
   await page.getByRole('button', { name: 'Okay', exact: true }).click();
   await expect(notice).not.toBeVisible();
   await expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).toBeVisible();
   await addKeyFrame(frontierDismissal);
   await snapshot('acknowledging the notice leaves the source update waiting for review');
+
+  // Try frontier exploration again.
   await filters.enableFilter('Frontier');
   await expect(notice).toBeVisible();
+  await snapshot('reopening the frontier reminds the user that source review is still pending');
+
   await skipMeadowHomeStateCheck();
 });

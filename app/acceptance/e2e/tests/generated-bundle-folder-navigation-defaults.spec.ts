@@ -22,9 +22,14 @@ import { bigBundle, smallBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Set global and per-bundle folder navigation defaults. Reader choices should persist for
+ * each bundle without leaking into another bundle on the same host.
+ */
 test("folder navigation defaults can be global or per bundle and reader choices stay isolated on one host", async ({
   page, browser, snapshot, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   const modal = new PreviewPublishModal(page, expect);
   const options = new CustomizeTab(page, expect).generationOptions;
@@ -46,7 +51,8 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   await navigation.expectOpen();
   await snapshot('small bundle remembers the reader opening navigation');
 
-  // This bundle shares an origin with the first but has no reader preference.
+  // --- Test start ---
+  // Check another bundle with no reader preference.
   await workflows.navigateToBigBundlePreview();
   await modal.openCustomizeSidebar();
   await options.enableFolderNavigation();
@@ -60,6 +66,7 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   await navigation.close();
   await snapshot('big bundle override opens navigation without borrowing the small bundle preference');
 
+  // Reopen the first bundle.
   await workflows.navigateToSmallBundlePreview();
   await navigation.expectOpen();
   const smallUrl = await modal.generatedBundle.getUrl();
@@ -76,6 +83,7 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   await addKeyFrame(htmlGeneration);
   await snapshot('returning reader choice takes precedence over the new closed default');
 
+  // Check a new reader session.
   const newVisitor = await browser.newContext();
   try {
     // Local previews require read-only access cookies. Leave local storage
@@ -104,5 +112,7 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   }
   void bigBundle;
   void smallBundle;
+  await snapshot("a new reader receives the bundle default while returning readers retain their choice");
+
   await skipMeadowHomeStateCheck();
 });

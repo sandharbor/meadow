@@ -24,16 +24,26 @@ test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
+/*
+ * Read the available filters through the CLI, then query nodes with default and explicit
+ * combinations. Each JSON result should match the expected set of pages.
+ */
 test("CLI lists filters and applies default and explicit set operations as exact JSON", async ({
   assertMeadowHomeState,
   meadowCli,
+  snapshot,
 }) => {
+  // --- Test start ---
+  // Inspect available filters.
   const filters = await meadowCli.run(
     ["bundle", "filters", "meadow-test-bundle-big"],
     { artifactName: "big-bundle-filters" },
   );
   expect(filters).toBe(readCliFixture("big-bundle-filters.json"));
 
+  await snapshot("available filters match the expected definitions");
+
+  // Apply the default combination.
   const defaultFilteredNodes = await meadowCli.run(
     [
       "bundle", "nodes", "meadow-test-bundle-big", "--scope", "all",
@@ -44,6 +54,9 @@ test("CLI lists filters and applies default and explicit set operations as exact
   );
   expect(defaultFilteredNodes).toBe(readCliFixture("big-bundle-default-filtered-nodes.json"));
 
+  await snapshot("default filters return the expected nodes");
+
+  // Apply an explicit intersection.
   const explicitlyFilteredNodes = await meadowCli.run(
     [
       "bundle", "nodes", "meadow-test-bundle-big", "--scope", "all",
@@ -58,5 +71,7 @@ test("CLI lists filters and applies default and explicit set operations as exact
   void cli;
   void bundles;
   void bigBundle;
+  await snapshot("explicit intersection returns the expected nodes");
+
   await assertMeadowHomeState();
 });

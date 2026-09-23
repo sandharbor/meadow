@@ -24,16 +24,26 @@ test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
+/*
+ * Request both the working graph and final graph through the CLI. Compare their JSON
+ * output with the expected node inventories.
+ */
 test("CLI describes all and final nodes in the big bundle as exact JSON", async ({
   assertMeadowHomeState,
   meadowCli,
+  snapshot,
 }) => {
+  // --- Test start ---
+  // Inspect the working graph.
   const allNodes = await meadowCli.run(
     ["bundle", "nodes", "meadow-test-bundle-big", "--scope", "all"],
     { artifactName: "big-bundle-all-nodes" },
   );
   expect(allNodes).toBe(readCliFixture("big-bundle-all-nodes.json"));
 
+  await snapshot("all nodes match the expected graph");
+
+  // Inspect the final graph.
   const finalNodes = await meadowCli.run(
     ["bundle", "nodes", "meadow-test-bundle-big", "--scope", "final"],
     { artifactName: "big-bundle-final-nodes" },
@@ -43,5 +53,7 @@ test("CLI describes all and final nodes in the big bundle as exact JSON", async 
   void cli;
   void bundles;
   void bigBundle;
+  await snapshot("final nodes match the expected export");
+
   await assertMeadowHomeState();
 });

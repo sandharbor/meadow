@@ -41,6 +41,10 @@ test.use({
   },
 });
 
+/*
+ * Enable Open Knowledge Format and review its reserved-name changes. Save, export a ZIP,
+ * and browse the resulting bundle index.
+ */
 test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and browse bundle index", async ({
   page,
   snapshot,
@@ -48,12 +52,15 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const generatedBundle = modal.generatedBundle;
   await snapshot("preview loaded");
 
+  // --- Test start ---
+  // Configure sources and knowledge exports.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   await customizeTab.generationOptions.enableSourcesExport();
@@ -61,10 +68,13 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await okf.expectAutomaticLog(rootLogPageName, "root");
   await okf.chooseGeneratedIndex();
   await snapshot("okf settings default to root log");
+
+  // Save the export settings.
   await okf.save();
   await addKeyFrame(customize);
   await snapshot("sources zip and okf enabled");
 
+  // Wait for package generation.
   const changesTab = new ChangesTab(page, expect);
   await changesTab.waitForRegenerationComplete();
   await addKeyFrame(sourcesExport);
@@ -72,6 +82,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await addKeyFrame(openKnowledgeFormat);
   await snapshot("okf generation complete with reserved rename indicator");
 
+  // Inspect reserved-name handling.
   await customizeTab.generationOptions.openOpenKnowledgeFormatRenameDetails(2);
   await modal.expectOkfRenameDetails([
     "index.md",
@@ -80,6 +91,8 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
     "t001/log-original.md",
   ]);
   await snapshot("okf reserved rename details");
+
+  // Review the generated files.
   await modal.closeOkfRenameDetails();
 
   await modal.clickChangesTab();
@@ -90,11 +103,13 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await addKeyFrame(changesTabDoc);
   await snapshot("changes include okf files");
 
+  // Save the generated version.
   await modal.clickBundlePreviewTab();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
   await snapshot("save completed");
 
+  // Open the reader download menu.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const meadowGit = new MeadowHomeGit(testServer.configDir, expect);
   await meadowGit.expectDirFullyCommitted(bundleDir);
@@ -108,12 +123,14 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await generatedBundle.sources.openOkfMenu();
   await snapshot("okf website package menu open");
 
+  // Download the knowledge package.
   const download = await generatedBundle.sources.downloadOkfZip();
   expect(download.suggestedFilename()).toBe("meadow-test-bundle-big-okf.zip");
   const okfZipPath = await download.path();
   expect(okfZipPath).toBeTruthy();
   await snapshot("okf zip downloaded from website button");
 
+  // Inspect and browse the package.
   const zipContents = execFileSync("unzip", ["-l", okfZipPath!], { encoding: "utf8" });
   expect(zipContents).toContain("meadow-test-bundle-big/index.md");
   expect(zipContents).toContain("meadow-test-bundle-big/index-original.md");
@@ -123,6 +140,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await generatedBundle.sources.openOkfBundleIndex();
   await modal.expectPreviewIframeUrlContains("_mw_assets/cust/okf/bundle/index.md");
   await snapshot("okf bundle index browsed from website button");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

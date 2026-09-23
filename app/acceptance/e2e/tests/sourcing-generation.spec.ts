@@ -16,13 +16,22 @@ const originalTitle = 't003 ---- page with section to link to';
 test.use({ bundleMode: "single-file" });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Replace a source page while a saved generation exists. Generated material should remain
+ * unchanged until the source replacement is accepted and regenerated.
+ */
 test('Sourcing keeps generated material stable until a full-page source replacement is accepted', async ({ page, sourceChanges, testServer, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
   await wf.navigateToBigBundlePreview();
   const retainedPath = path.join(testServer.configDir, 'bundles', slug, 'raw/tracked_page_content', `${originalTitle}.md`);
   const before = fs.readFileSync(retainedPath, 'utf8');
+  await snapshot('the accepted source state is established before changing files');
+
+  // --- Test start ---
+  // Replace the source page.
   await sourceChanges.apply('replace-section-page');
   // Reopening preview exercises the public generation path with changed live bytes.
   await previewModal.closeModal();
@@ -31,9 +40,14 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   expect(fs.readFileSync(retainedPath, 'utf8')).toBe(before);
   await addKeyFrame(sourceSnapshot);
   await snapshot('generation continues using the accepted snapshot while live source differs');
+
+  // Accept the update and regenerate.
   await previewModal.closeModal();
   await editor.checkSourceChanges();
   await editor.sourceReview.open();
+  await snapshot('the replacement is ready for source review');
+
+  // Accept and regenerate.
   await editor.sourceReview.accept();
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
@@ -57,5 +71,6 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   expect(extractFooterBacklinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
   await addKeyFrame(sourceSnapshot);
   await snapshot('generation adopts replaced source only after snapshot acceptance');
+
   await skipMeadowHomeStateCheck();
 });

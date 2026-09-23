@@ -21,12 +21,17 @@ import { expect, test } from '../src/run/test-fixtures.js';
 test.use({ fixtureHome: 'none' });
 test.use({ bundleMode: 'single-file' });
 
+/*
+ * Trigger an unknown startup failure. The branded recovery screen should provide useful
+ * guidance while keeping technical details behind disclosure.
+ */
 test('Unknown startup failures use branded progressive disclosure', async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   await page.setContent(renderStartupRecoveryHtml({
     schemaVersion: 1,
     category: 'startup-failure',
@@ -44,13 +49,15 @@ test('Unknown startup failures use branded progressive disclosure', async ({
     checkpointAvailable: false,
   }));
 
+  // --- Test start ---
+  // Inspect the recovery guidance and hidden details.
   await expect(page.getByRole('banner').getByText('Meadow', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Meadow didn’t open' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByText('Selected Meadow Home')).toBeHidden();
   await expect(page.getByText('Running app')).toBeHidden();
-  await snapshot('unknown startup failure');
   await addKeyFrame(startupRecovery, callout);
+  await snapshot('unknown startup failure');
 
   await assertMeadowHomeState();
 });

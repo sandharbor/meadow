@@ -20,6 +20,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync,
 import { execSync } from "child_process";
 import os from "os";
 import path from "path";
+import { testSourceLocations } from '../testSourceLocations.ts';
 import {
   acceptanceConcepts,
   acceptanceConceptView,
@@ -1058,6 +1059,7 @@ app.get("/api/:runId/:testSlug/test-source", (req, res) => {
   res.json({
     file: manifest.testSourceFile || "",
     source: manifest.testSource || "",
+    locations: testSourceLocations(manifest.testSource || ""),
     fixtures: extractReferencedCliFixtureReferences(manifest.testSource || ""),
   });
 });

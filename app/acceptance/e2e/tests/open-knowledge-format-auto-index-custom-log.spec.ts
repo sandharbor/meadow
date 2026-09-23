@@ -39,6 +39,10 @@ test.use({
   },
 });
 
+/*
+ * Use a source index page and choose another tracked page as the Open Knowledge Format
+ * log. Check that the export uses both selections correctly.
+ */
 test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", async ({
   page,
   snapshot,
@@ -46,6 +50,7 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const optionsUrl = `/api/bundles/${Bundle.Big}/generation/open-knowledge-format/log-page-options?query=OKF&limit=200`;
@@ -61,6 +66,8 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
   const modal = new PreviewPublishModal(page, expect);
   await snapshot("preview loaded");
 
+  // --- Test start ---
+  // Choose the index and log pages.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
@@ -70,6 +77,8 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
   await okf.chooseLogPage(chosenLogPageName);
   await addKeyFrame(customize);
   await snapshot("auto index and custom log selected");
+
+  // Generate the knowledge package.
   await okf.save();
 
   const changesTab = new ChangesTab(page, expect);
@@ -77,12 +86,15 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
   await addKeyFrame(openKnowledgeFormat);
   await snapshot("okf generation complete with auto index and custom log");
 
+  // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
   await okfBundle.expectFileToContain("index.md", "Auto OKF index source page.");
   await okfBundle.expectFileToContain("log.md", "Chosen OKF log substitute.");
   okfBundle.expectFileToBeAbsent("index-original.md");
   void bigBundle;
+
+  await snapshot("the package contains the automatic index and the selected custom log");
 
   await skipMeadowHomeStateCheck();
 });

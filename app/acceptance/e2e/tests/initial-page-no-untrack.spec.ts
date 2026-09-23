@@ -24,9 +24,14 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Select the bundle's starting page and inspect tracking actions. Meadow should prevent
+ * untracking the page that anchors the bundle.
+ */
 test("a publisher should not be able to untrack the initial page", async ({
   page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
 
@@ -43,7 +48,8 @@ test("a publisher should not be able to untrack the initial page", async ({
   await addKeyFrame(initialPage);
   await snapshot("initial page untrack is grayed out");
 
-  // Close the menu by pressing Escape
+  // --- Test start ---
+  // Compare a regular tracked page.
   await page.keyboard.press("Escape");
 
   // Right-click a non-initial tracked page — Untrack should be enabled

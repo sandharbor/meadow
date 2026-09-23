@@ -21,33 +21,42 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Inspect pages beyond the traversal boundary and change the traversal depth. The frontier
+ * should update as pages enter or leave the working graph.
+ */
 test("frontier nodes show filtered pages and respond to depth changes", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
   await snapshot("bundle list loaded");
 
+  // --- Test start ---
+  // Open the big bundle.
   await bundleList.clickBundle("meadow-test-bundle-big");
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-bundle-big");
   await snapshot("bundle editor loaded");
 
-  // Enable the Frontier filter and solo it
+  // Enable frontier pages.
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.enableFilter("Frontier");
   await page.waitForTimeout(250);
   await snapshot("frontier pages shown");
 
+  // Solo the frontier.
   await filterPanel.clickSoloOnFilter("Frontier");
   await addKeyFrame(frontier);
   await snapshot("frontier filter soloed");
 
-  // Switch to list view and verify 4 bundle pages
+  // Inspect the nearby frontier pages.
   await editor.switchToListView();
   await page.waitForTimeout(250);
   const countAtDepth1 = await editor.getListViewPageCount();
   expect(countAtDepth1).toBe(7);
   await snapshot("list view with 7 frontier pages at depth 1");
 
+  // Extend the frontier depth.
   // Increase frontier depth to 2 and verify 10 bundle pages
   // Wait longer than the 300ms debounce in FilterPanel + API fetch time
   await filterPanel.setFilterThresholdValue("Frontier", 2);
@@ -56,7 +65,7 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
   expect(countAtDepth2).toBe(10);
   await snapshot("list view with 10 frontier pages at depth 2");
 
-  // Select an untracked frontier page (deeper pages are untracked)
+  // Inspect a distant frontier page.
   await editor.clickListViewRow(9);
   await page.waitForTimeout(250);
 
@@ -75,11 +84,12 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
   await detail.expectNoPill(Pill.Tracked);
   await snapshot("frontier page details with disabled track and blacklist");
 
-  // Switch to graph view and unsolo the frontier filter
+  // Return to the full graph.
   await editor.switchToGraphView();
   await page.waitForTimeout(250);
   await filterPanel.clickSoloOnFilter("Frontier");
   await snapshot("frontier depth 2 with all nodes showing");
+
   void bigBundle;
 
   await assertMeadowHomeState();

@@ -22,12 +22,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Expand the folder filter and inspect recursive counts. Soloing a nested folder should
+ * show only its pages.
+ */
 test("folder filter expands recursive counts and solos a nested folder", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -43,6 +48,8 @@ test("folder filter expands recursive counts and solos a nested folder", async (
   await addKeyFrame(folderFilter);
   await snapshot("folder tree expanded with recursive counts");
 
+  // --- Test start ---
+  // Solo the nested folder.
   await filterPanel.soloFolder("t024/deeper");
   await page.waitForTimeout(250);
   await editor.switchToListView();
@@ -50,6 +57,7 @@ test("folder filter expands recursive counts and solos a nested folder", async (
   await addKeyFrame(filters);
   await addKeyFrame(folderFilter);
   await snapshot("nested folder soloed");
+
   void bigBundle;
 
   await assertMeadowHomeState();

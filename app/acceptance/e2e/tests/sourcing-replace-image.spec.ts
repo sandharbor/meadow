@@ -8,10 +8,19 @@ import { sourceSnapshot } from '../../../concepts/index.js';
 test.use({ bundleMode: 'single-file' });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Replace an accepted image with a different picture. Compare both images in review before
+ * accepting the replacement.
+ */
 test('Sourcing compares accepted and replacement images before accepting the new picture', async ({ page, sourceChanges, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForSourceCheck();
+  await snapshot('the accepted source state is established before changing files');
+
+  // --- Test start ---
+  // Replace the image content.
   await sourceChanges.apply('modify-embedded-image');
   await editor.checkSourceChanges();
   await editor.sourceReview.open();
@@ -21,8 +30,12 @@ test('Sourcing compares accepted and replacement images before accepting the new
   await editor.sourceReview.expectImageComparison(filename);
   await addKeyFrame(sourceSnapshot);
   await snapshot('both snapshots render their different image bytes for review');
+
+  // Accept the source update.
   await editor.sourceReview.accept();
   await editor.checkSourceChanges();
   await expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).not.toBeVisible();
+  await snapshot('the replacement image is accepted and a fresh scan stays clear');
+
   await skipMeadowHomeStateCheck();
 });

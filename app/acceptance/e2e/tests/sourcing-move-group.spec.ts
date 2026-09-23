@@ -1,23 +1,30 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { sourceMove, sourceSnapshot } from '../../../concepts/index.js';
-import { parseBundleNodeConfig } from '../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Move a nested group whose links use page names. Accept the move and verify that all
+ * three page identities survive.
+ */
 test('Sourcing moves a nested group while unchanged name-only links retain all three identities', async ({ page, testServer, sourceChanges, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForSourceCheck();
-  const config = path.join(testServer.configDir, 'bundles/meadow-test-bundle-big/config/bundle_node_config.yaml');
-  const original = parseBundleNodeConfig(fs.readFileSync(config, 'utf8')).filter(node => node.bundleNodeName.startsWith('t001 ---- child'));
+  const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'meadow-test-bundle-big', expect);
+  const original = bundleConfig.readNodes().filter(node => node.bundleNodeName.startsWith('t001 ---- child'));
   expect(original).toHaveLength(3);
+  await snapshot('the accepted source state is established before changing files');
+
+  // --- Test start ---
+  // Move the nested group.
   await sourceChanges.apply('move-nested-group');
   await editor.checkSourceChanges();
   await editor.sourceReview.open();
@@ -28,8 +35,10 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
   }
   await addKeyFrame(sourceMove);
   await snapshot('all three reachable pages are proposed as moves');
+
+  // Accept the source update.
   await editor.sourceReview.accept();
-  const updated = parseBundleNodeConfig(fs.readFileSync(config, 'utf8'));
+  const updated = bundleConfig.readNodes();
   await editor.switchToListView();
   for (const node of original) {
     const directory = node.bundleNodeName === 't001 ---- child 2' ? 'source-changes/nested/deeper' : 'source-changes/nested';
@@ -38,5 +47,6 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
   }
   await addKeyFrame(sourceSnapshot);
   await snapshot('unchanged links reach the relocated group after acceptance');
+
   await skipMeadowHomeStateCheck();
 });

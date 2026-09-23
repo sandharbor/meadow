@@ -51,6 +51,10 @@ const test = baseTest.extend({
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Start Meadow with a test migration installed. Verify that startup applies the migration
+ * and records its result.
+ */
 test("Migration runner applies an E2E-only migration at startup", async ({
   page,
   snapshot,
@@ -58,7 +62,11 @@ test("Migration runner applies an E2E-only migration at startup", async ({
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   const migrations = new MeadowHomeMigrations(testServer.configDir, expect);
+
+  // --- Test start ---
+  // Verify the startup migration and open the app.
   await migrations.expectCompleted(MIGRATION_ID);
 
   const markerPath = path.join(testServer.configDir, "migration-system-e2e.yaml");
@@ -74,6 +82,7 @@ test("Migration runner applies an E2E-only migration at startup", async ({
   await bundleList.expectHeadingVisible();
   await addKeyFrame(migration);
   await snapshot("app ready after E2E-only startup migration");
+
   void bigBundle;
   void bundles;
 

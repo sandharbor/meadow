@@ -22,7 +22,12 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Save a generated bundle and customize its HTML output. The section-change filter should
+ * distinguish the resulting changes from the saved baseline.
+ */
 test("HTML section changes filter correctly reflects changes after save and customization", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
+  // --- Setup ---
   // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
@@ -30,53 +35,55 @@ test("HTML section changes filter correctly reflects changes after save and cust
   const changesTab = new ChangesTab(page, expect);
   await snapshot("step 1 - preview loaded");
 
-  // Changes tab indicator should show a positive number (initial preview has changes)
+  // --- Test start ---
+  // Check the initial change count.
   await changesTab.expectBadgeVisible();
   await snapshot("changes tab has positive badge");
 
-  // Click "Save Changes" — saves and auto-navigates to step 2 (Share)
+  // Save the generated version.
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
   await snapshot("save completed - on step 2");
 
-  // Go back to step 1 (Review)
+  // Return to review.
   await modal.clickStep1Review();
   await snapshot("back on step 1");
 
-  // Changes tab indicator should have no number (changes were saved)
+  // Check that the changes are cleared.
   await changesTab.expectNoBadge();
   await addKeyFrame(htmlGeneration);
   await snapshot("changes tab has no badge after save");
 
-  // Go to Customize tab and disable breadcrumbs at bundle level
+  // Disable breadcrumbs.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   await customizeTab.generationOptions.disableBreadcrumbs();
   await snapshot("breadcrumbs disabled at bundle level");
 
-  // Wait for preview regeneration to complete
+  // Wait for the regenerated output.
   await changesTab.waitForRegenerationComplete();
 
   // Changes tab indicator should show a positive number again
   await changesTab.expectBadgeVisible();
   await snapshot("changes tab has badge after customization change");
 
-  // Go to changes tab
+  // Inspect the modified files.
   await modal.clickChangesTab();
 
   // Only modified files should be shown (no new or deleted)
   await changesTab.expectOnlyModifiedFiles();
   await snapshot("only modified files in changes tab");
 
-  // Open the HTML section changes filter
+  // Open the section filter.
   await changesTab.openHtmlSectionChangesFilter();
   await snapshot("html section changes filter opened");
 
-  // Only the header section should have changes (breadcrumbs are in the header)
+  // Check which section changed.
   await changesTab.expectOnlySectionsWithChanges(["<header>"]);
   await addKeyFrame(customize);
   await addKeyFrame(changesTabDoc);
   await snapshot("only header section has changes");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

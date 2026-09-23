@@ -31,15 +31,22 @@ async function applyGenerationOptionAndWait(page: Page, action: () => Promise<vo
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Enable and save a source ZIP export, then disable it. The saved export should become
+ * unavailable while generated HTML changes remain reviewable.
+ */
 test("Sources export ZIP: saved export can be disabled without hiding changed HTML", async ({
   page, snapshot, skipMeadowHomeStateCheck, addKeyFrame, testServer,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const editor = new BundleEditorPage(page, expect);
   await snapshot("preview loaded");
 
+  // --- Test start ---
+  // Enable source export.
   // Use the wrapped generated-page layout that exposed the section-diff bug,
   // then enable Sources ZIP at bundle level.
   await modal.openCustomizeSidebar();
@@ -50,17 +57,16 @@ test("Sources export ZIP: saved export can be disabled without hiding changed HT
   await applyGenerationOptionAndWait(page, () => customizeTab.generationOptions.enableSourcesExport());
   await changesTab.waitForRegenerationComplete();
   await addKeyFrame(customize);
-  await snapshot("sources zip enabled");
-
   await addKeyFrame(sourcesExport);
   await snapshot("regeneration complete with sources export");
 
-  // Save changes — commits generated files (HTML + sources ZIP) to MeadowHome
+  // Save the generated version.
   await modal.clickBundlePreviewTab();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
   await snapshot("save completed");
 
+  // Check the committed files.
   // Verify the bundle directory in MeadowHome is fully committed — no untracked
   // or uncommitted files under the bundle (including build/sources_export/).
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
@@ -69,6 +75,7 @@ test("Sources export ZIP: saved export can be disabled without hiding changed HT
   await addKeyFrame(git);
   await snapshot("bundle directory fully committed");
 
+  // Disable source export and inspect the diff.
   // Reopen Review, disable the saved Sources ZIP setting, and inspect the
   // resulting HTML changes through the filter dropdown.
   await modal.closeModal();
@@ -91,6 +98,7 @@ test("Sources export ZIP: saved export can be disabled without hiding changed HT
   await addKeyFrame(changesTabDoc);
   await addKeyFrame(filters);
   await snapshot("all sources zip HTML changes remain visible");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

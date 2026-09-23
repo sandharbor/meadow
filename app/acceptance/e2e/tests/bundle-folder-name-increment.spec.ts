@@ -23,12 +23,17 @@ import { bundles } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Create two bundles from the same source page. The second should receive a distinct
+ * folder name without overwriting the first.
+ */
 test("creating a second bundle from the same source page auto-increments the folder name", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -42,6 +47,10 @@ test("creating a second bundle from the same source page auto-increments the fol
   await editor.clickFindInBundles();
   await page.waitForTimeout(500);
 
+  await snapshot("the source page is selected for bundle creation");
+
+  // --- Test start ---
+  // Create the first bundle.
   // Bundle list with find-in-bundles filter active — create first bundle
   await bundleList.expectFindInBundlesFilterActive("t001 - deeply nested");
   await bundleList.clickCreateBundleForPage();
@@ -51,7 +60,7 @@ test("creating a second bundle from the same source page auto-increments the fol
   await editor.waitForLoad("t001-deeply-nested");
   await snapshot("first bundle created");
 
-  // Go back to bundles, do find-in-bundles again for the same page
+  // Create another bundle from the same page.
   await editor.clickBackToBundles();
   await bundleList.expectHeadingVisible();
   await bundleList.clickBundle(Bundle.Big);
@@ -70,24 +79,20 @@ test("creating a second bundle from the same source page auto-increments the fol
   // Verify the slug is already unique (t001-deeply-nested-1)
   const slugText = await createModal.getSlugDisplayText();
   expect(slugText).toBe("t001-deeply-nested-1");
+  await addKeyFrame(bundleConfig);
   await snapshot("second create modal shows incremented slug");
 
-  // Keyframe: modal showing the auto-incremented directory name
-  await addKeyFrame(bundleConfig);
-
-  // Try editing slug to remove the "-1" suffix (conflict)
+  // Try the occupied folder name.
   await createModal.clickEditSlug();
   await createModal.fillSlug("t001-deeply-nested");
 
   // Should show a conflict error and disable the Create Bundle button
   await createModal.expectSlugConflictError('already exists');
   await createModal.expectCreateBundleDisabled();
+  await addKeyFrame(callout);
   await snapshot("slug conflict error shown");
 
-  // Keyframe: callout showing directory already taken
-  await addKeyFrame(callout);
-
-  // Cancel the edit by restoring the incremented slug
+  // Restore the available name and create.
   await createModal.fillSlug("t001-deeply-nested-1");
   await page.waitForTimeout(100);
 
@@ -95,6 +100,7 @@ test("creating a second bundle from the same source page auto-increments the fol
   await createModal.clickCreateBundle();
   await editor.waitForLoad("t001-deeply-nested-1");
   await snapshot("second bundle created with incremented folder name");
+
   void bigBundle;
   void bundles;
 

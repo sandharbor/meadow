@@ -22,7 +22,12 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Create and validate an HTML post-processing hook, then save it. Review the generated
+ * diff to confirm that the hook changed the output.
+ */
 test("HTML post-processing hook: create, validate, save, and verify diff", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
+  // --- Setup ---
   // Navigate to big bundle preview
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
@@ -30,23 +35,24 @@ test("HTML post-processing hook: create, validate, save, and verify diff", async
   const changesTab = new ChangesTab(page, expect);
   await snapshot("preview loaded");
 
-  // Save baseline so changes tab is clean
+  // --- Test start ---
+  // Save the baseline.
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
   await snapshot("baseline saved");
 
-  // Go back to Review, then to Customize tab
+  // Open customization.
   await modal.clickStep1Review();
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   await snapshot("customize tab open");
 
-  // Create the HTML post-processing hook (opens floating editor with default template)
+  // Create an HTML hook.
   const htmlHook = customizeTab.hooks.getHook("HTML");
   await htmlHook.clickCreate();
   await snapshot("hook editor opened with template");
 
-  // Verify no changes badge before save
+  // Save the hook.
   await changesTab.expectNoBadge();
 
   // Save the hook (triggers preview regeneration), then close the floating editor
@@ -55,7 +61,7 @@ test("HTML post-processing hook: create, validate, save, and verify diff", async
   await changesTab.waitForRegenerationComplete();
   await snapshot("hook saved and regeneration complete");
 
-  // Verify changes badge appeared
+  // Review the generated diff.
   await changesTab.expectBadgeVisible();
 
   // Go to Changes tab and inspect the diff
@@ -67,6 +73,7 @@ test("HTML post-processing hook: create, validate, save, and verify diff", async
   await addKeyFrame(hooks);
   await addKeyFrame(customize);
   await snapshot("diff shows Hello from Meadow");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

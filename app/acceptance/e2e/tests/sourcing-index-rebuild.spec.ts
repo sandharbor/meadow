@@ -13,7 +13,12 @@ import { sourceSnapshot } from '../../../concepts/index.js';
 test.use({ bundleMode: "single-file" });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Change source content, then rebuild the source index. A full scan should discover the
+ * update and present it for review.
+ */
 test('Sourcing rechecks all source files through a real Rust index rebuild and reviews the resulting update', async ({ page, sourceChanges, testServer, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForSourceCheck();
@@ -38,6 +43,10 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   await editor.reviewSourceHistory();
   const recheck = page.getByRole('dialog', { name: 'Source snapshots', exact: true }).getByRole('button', { name: 'Recheck all source files', exact: true });
   await addKeyFrame(sourceSnapshot);
+  await snapshot('source history exposes a full recheck of the populated index');
+
+  // --- Test start ---
+  // Rebuild the source index.
   await Promise.all([
     page.waitForResponse(response => response.url().endsWith('/sourcing/scan') && response.request().postDataJSON()?.rebuildIndex === true && response.ok()),
     recheck.click(),
@@ -52,6 +61,7 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   await addKeyFrame(sourceSnapshot);
   await snapshot('a thorough source check rebuilds the populated index without accepting source material');
 
+  // Rebuild again after a source edit.
   await editor.sourceReview.defer();
   await editor.reviewSourceHistory();
   await sourceChanges.apply('replace-section-page');
@@ -67,6 +77,8 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   expect(readState().candidateId).toBeTruthy();
   await addKeyFrame(sourceSnapshot);
   await snapshot('the full rebuild presents modified content for normal source review');
+
+  // Accept the source update.
   await editor.sourceReview.accept();
   expect(readState().acceptedId).not.toBe(acceptedId);
   expect(readState().candidateId).toBeUndefined();
@@ -74,5 +86,6 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   expect(execFileSync('git', ['ls-files', '--', 'cache/source-index'], { cwd: testServer.configDir, encoding: 'utf8' }).trim()).toBe('');
   await addKeyFrame(sourceSnapshot);
   await snapshot('acceptance installs the reviewed source snapshot while the local index stays untracked');
+
   await skipMeadowHomeStateCheck();
 });

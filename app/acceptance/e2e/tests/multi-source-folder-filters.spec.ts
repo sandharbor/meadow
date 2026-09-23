@@ -8,7 +8,12 @@ import { bundleSource, folderFilter } from '../../../concepts/index.js';
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
 
+/*
+ * Hide one of two equally named folders in different sources, then rename that source. The
+ * filter should keep affecting only the original source and remain resettable.
+ */
 test('Multi-source folder filters distinguish equal folder names and retain independent settings', async ({ page, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
   await list.clickBundle('multi-source-page');
@@ -30,9 +35,14 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   await addKeyFrame(bundleSource, folderFilter);
   await snapshot('namesake pages and folders display their canonical source');
 
+  // --- Test start ---
+  // Change the source-folder filters.
   await filters.hideFolder('notes://Same');
   await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', false);
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
+  await snapshot("hiding one namesake folder leaves the other source visible");
+
+  // Rename the filtered source.
   const sources = new SourcesControl(page, expect);
   await sources.open();
   await sources.rename('notes', 'notebook');
@@ -43,9 +53,13 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notebook', '/');
   await filters.expectFolderVisible('notebook://Same');
   await addKeyFrame(folderFilter);
-  await snapshot('the folder setting survives a source rename and leaves research visible');
+  await snapshot("the renamed source retains its folder filter");
+
+  // Reset the folder filters.
   await filters.resetFolderFilters();
   await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', true);
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
+  await snapshot("resetting the folder filter restores both namesake pages");
+
   await skipMeadowHomeStateCheck();
 });

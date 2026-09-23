@@ -67,12 +67,17 @@ async function navigateWithFolderNavigationHydrationPaused(
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Browse generated pages through the folder navigation. Check normalized filenames and
+ * persistence of the reader's navigation settings.
+ */
 test("generated-bundle folder navigation uses normalized filenames and persists its UI state", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigBundlePreview();
 
@@ -119,6 +124,9 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
   await folderNavigation.expectNoBreadcrumbs();
   await addKeyFrame(customize);
   await snapshot("mobile generated bundle header without breadcrumbs");
+
+  // --- Test start ---
+  // Open and inspect the folder tree.
   await modal.closeCustomizeSidebar();
 
   // Direct files in each folder are sorted by their
@@ -133,6 +141,7 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
   ]);
   await snapshot("normalized folder navigation open and sorted");
 
+  // Navigate before the folder tree finishes loading.
   // Hold the deferred data script during navigation. The external controller
   // has already applied persisted state, but DOM hydration cannot start yet.
   await navigateWithFolderNavigationHydrationPaused(
@@ -151,18 +160,21 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
   await addKeyFrame(htmlGeneration);
   await snapshot("folder navigation selected page");
 
-  // Expanded folders and the selected page survive a generated-page refresh.
+  // Reload the selected page.
   await folderNavigation.reload();
   await folderNavigation.expectOpen();
   await folderNavigation.expectFolderOpen("t001");
   await folderNavigation.expectSelectedFile("normalized t001 ---- child 1.html");
   await snapshot("folder and sidebar remain open after refresh");
 
+  // Close the navigation panel.
   // An explicit close is also applied before hydration on the next generated
   // page, then remains durable across refreshes.
   await folderNavigation.close();
   await folderNavigation.expectDesktopTriggerFixedAtViewportEdge();
   await snapshot("desktop folder navigation trigger at viewport edge");
+
+  // Navigate with the panel closed.
   await navigateWithFolderNavigationHydrationPaused(
     page,
     () => folderNavigation.clickFile(
@@ -188,6 +200,7 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
   );
   await snapshot("folder navigation remains closed after refresh");
 
+  // Check the mobile header.
   // Reopen the Customize panel to exercise the mobile layout on a child page.
   // The controls share one row, breadcrumbs sit beneath without overlap, and
   // selecting a page closes the overlay before the next page loads.
@@ -195,6 +208,8 @@ test("generated-bundle folder navigation uses normalized filenames and persists 
   await folderNavigation.expectMobileHeaderControlsAligned();
   await folderNavigation.expectBreadcrumbsBelowHeaderControls();
   await snapshot("mobile generated bundle header with breadcrumbs");
+
+  // Select a page from mobile navigation.
   await folderNavigation.open();
   await folderNavigation.openFolder("t001");
   await folderNavigation.clickFile(

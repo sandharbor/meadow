@@ -23,14 +23,22 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "none" });
 
+/*
+ * Open an empty MeadowHome. The welcome callout should explain how to turn notes into a
+ * bundle.
+ */
 test("Callout turn your notes into bundles shown on empty state", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
   await snapshot("empty bundle list loaded");
 
+  // --- Test start ---
+  // Check the invitation to create a bundle.
   await bundleList.expectCalloutVisible("Turn your notes into bundles");
   await addKeyFrame(callout);
   await snapshot("turn your notes into bundles callout visible");
+
   void bundles;
 
   await assertMeadowHomeState();

@@ -28,12 +28,17 @@ test.use({ bundleMode: "single-folder" });
 
 test.use({ fixtureHome: Fixture.FolderStructureSingle });
 
+/*
+ * Open a bundle rooted at a recursively scanned folder and generate it. Check that its
+ * pages and folder structure appear in the preview.
+ */
 test("previews a configured bundle from one recursively scanned folder", async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
@@ -45,8 +50,11 @@ test("previews a configured bundle from one recursively scanned folder", async (
   await editor.expectGraphEdgeKindControlsVisible();
   await editor.expectGraphTextIsNotSelectable();
   await editor.expectFolderScopeChangesBannerNotVisible();
-  await snapshot("single folder graph with two linked depth rows");
   await addKeyFrame(folderBundles);
+  await snapshot("single folder graph with two linked depth rows");
+
+  // --- Test start ---
+  // Inspect the folder structure.
   await editor.switchToListView();
   await editor.expectListViewSourceColumn(false);
   await editor.switchToStructuralListView();
@@ -91,6 +99,7 @@ test("previews a configured bundle from one recursively scanned folder", async (
   await page.mouse.move(0, 0);
   await snapshot("single folder recursive structure in the editor");
 
+  // Preview the folder home.
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
   await previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000);
@@ -117,14 +126,17 @@ test("previews a configured bundle from one recursively scanned folder", async (
   ]);
   await previewModal.generatedBundle.expectStructuralImagePreview("Visual map");
   await folderNavigation.close();
-  await snapshot("single folder generated home");
   await addKeyFrame(htmlGeneration);
+  await snapshot("single folder generated home");
+
+  // Open a linked page outside the folder.
   await folderNavigation.open();
   await folderNavigation.clickFile("Outside", "Outside note.html");
   await previewModal.generatedBundle.expectSingleHeading("Outside note");
   await folderNavigation.expectSelectedFile("Outside note.html");
   await folderNavigation.open();
   await snapshot("single folder linked page in folder navigation");
+
   void customBundle;
 
   await assertMeadowHomeState({

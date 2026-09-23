@@ -12,7 +12,12 @@ import type { BundleConfig } from '../../../contracts/types/bundleConfig.js';
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
 
+/*
+ * Register another source containing a frontier reference. That page should enter the
+ * bundle only when normal traversal reaches it within the configured boundary.
+ */
 test('Multi-source registration admits a frontier reference only after its page enters the normal boundary', async ({ page, testServer, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   const slug = 'multi-source-omitted';
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -29,6 +34,8 @@ test('Multi-source registration admits a frontier reference only after its page 
   await addKeyFrame(frontier, bundleSource);
   await snapshot('frontier references and unrelated indexed pages do not prompt source registration');
 
+  // --- Test start ---
+  // Expand the normal traversal boundary.
   await editor.switchToListView();
   await editor.clickListViewRowByNodeKey('_mw_sources/source000001/Start.md');
   await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).setOutlinksDepth(1);
@@ -44,11 +51,14 @@ test('Multi-source registration admits a frontier reference only after its page 
   await addKeyFrame(bundleSource);
   await snapshot('newly admitted referrers group their missing-source references');
 
+  // Register the newly referenced source.
   await sources.addReferencedSource('reference', path.join(testServer.sourceGraphsDir, 'multi-source/reference'));
   await sources.stage();
   await editor.sourceReview.expectReadyToAccept();
   await addKeyFrame(sourceSnapshot);
   await snapshot('registering the source stages an explicit candidate');
+
+  // Accept the source registration.
   await editor.sourceReview.accept();
   await sources.expectNotice();
   const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'config/bundle_config.yaml'), 'utf8')) as BundleConfig;
@@ -61,5 +71,6 @@ test('Multi-source registration admits a frontier reference only after its page 
   await sources.expectNotice();
   await addKeyFrame(bundleSource, frontier);
   await snapshot('resolved reference pages retain the remaining traversal budget after acceptance');
+
   await skipMeadowHomeStateCheck();
 });

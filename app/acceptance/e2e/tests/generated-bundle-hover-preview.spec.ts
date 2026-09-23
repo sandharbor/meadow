@@ -25,12 +25,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Open a nested generated page and hover over a link to a root page. Links inside the
+ * preview should resolve against that root page and navigate correctly.
+ */
 test("generated-bundle hover preview links navigate from nested pages", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigBundlePreview();
 
@@ -49,6 +54,10 @@ test("generated-bundle hover preview links navigate from nested pages", async ({
   await addKeyFrame(customize);
   await modal.closeCustomizeSidebar();
 
+  await snapshot("the generated bundle has hover previews enabled");
+
+  // --- Test start ---
+  // Inspect a root backlink from a nested page.
   await generatedBundle.clickPageLink("t001 - deeply nested");
   await generatedBundle.expectHeading("t001 - deeply nested");
   await generatedBundle.clickPageLink("t001 ---- child 1");
@@ -66,9 +75,10 @@ test("generated-bundle hover preview links navigate from nested pages", async ({
     "t001 ---- child 2",
     "t001 - deeply nested",
   );
-  await snapshot("hover preview exposes a navigable nested-page link");
   await addKeyFrame(htmlGeneration);
+  await snapshot("hover preview exposes a navigable nested-page link");
 
+  // Follow the link in the hover preview.
   await generatedBundle.hoverPreview.clickLink("t001 ---- child 2");
   await generatedBundle.expectHeading("t001 ---- child 2");
   await snapshot("navigated through hover preview link");

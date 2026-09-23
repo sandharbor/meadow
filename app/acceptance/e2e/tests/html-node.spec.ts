@@ -29,6 +29,10 @@ import { Fixture } from "../src/run/workflows.js";
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Track a native HTML page and explore its linked graph. Generate the bundle and verify
+ * that the HTML content is browsable.
+ */
 test("tracks and browses a native HTML node graph", async ({
   page,
   testServer,
@@ -36,6 +40,7 @@ test("tracks and browses a native HTML node graph", async ({
   addKeyFrame,
   skipMeadowHomeStateCheck,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const createModal = new CreateAndEditBundleModal(page, expect);
@@ -65,8 +70,11 @@ test("tracks and browses a native HTML node graph", async ({
   await page.waitForTimeout(500);
   await editor.clickDeselectSensitivePagesIfVisible();
   await page.waitForTimeout(250);
-  await snapshot("HTML node - source graph nodes selected");
   await addKeyFrame(htmlNode);
+  await snapshot("HTML node - source graph nodes selected");
+
+  // --- Test start ---
+  // Track and preview the HTML pages.
   await editor.clickTrackAll();
   await editor.clickPreview();
   await previewModal.waitForPreviewCompleteAllTracked();
@@ -78,20 +86,22 @@ test("tracks and browses a native HTML node graph", async ({
   await generatedBundle.expectNativeHtmlCardColor("rgb(251, 249, 255)");
   await generatedBundle.expectNativeHtmlSharedImageVisible();
   await generatedBundle.expectNativeHtmlSharedScriptLoaded();
-  await snapshot("HTML node - first generated page");
   await addKeyFrame(htmlNode);
+  await snapshot("HTML node - first generated page");
 
+  // Follow the link to the second HTML page.
   await generatedBundle.clickPageLink("Continue to the second HTML page");
   await generatedBundle.expectHeading("Second HTML page");
   await generatedBundle.expectNativeHtmlCardColor("rgb(245, 239, 255)");
   await generatedBundle.expectNativeHtmlSharedScriptLoaded();
-  await snapshot("HTML node - second generated page");
   await addKeyFrame(htmlNode);
+  await snapshot("HTML node - second generated page");
 
+  // Follow the link into Markdown.
   await generatedBundle.clickPageLink("Open the nested Markdown note");
   await generatedBundle.expectHeading("t026 ---- nested markdown");
-  await snapshot("HTML node - nested Markdown reached from HTML");
   await addKeyFrame(htmlNode);
+  await snapshot("HTML node - nested Markdown reached from HTML");
 
   void customBundle;
   await skipMeadowHomeStateCheck();

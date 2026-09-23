@@ -32,7 +32,12 @@ async function stop(child: ChildProcess): Promise<void> {
 test.use({ bundleMode: "single-file" });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Apply a shared source-change scenario from Dev Tools to a running fixture. The
+ * application should review the same move used by the automated test.
+ */
 test('Sourcing dev controls apply the same shared move to the running application', async ({ page, testServer, sourceChanges, snapshot, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+  // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   await new BundleEditorPage(page, expect).waitForSourceCheck();
   const devDirectory = path.join(projectRoot, 'app/tooling/dev_tools');
@@ -77,6 +82,10 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     const fixture = page.getByTestId('fixture-card-home_fixture_big_and_small');
     const controls = new DevSourceChangesControl(fixture, expect);
     await controls.checkHelpWhileClosed();
+    await snapshot('dev controls are ready on the running fixture');
+
+    // --- Test start ---
+    // Apply the shared move.
     await controls.open();
     await expect(fixture.getByRole('tab', { name: 'add', exact: true })).toHaveAttribute('aria-selected', 'true');
     await fixture.getByRole('tab', { name: 'move', exact: true }).click();
@@ -92,9 +101,10 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     await expect(move).not.toContainText('Applied to the current fixture');
     expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data/t001/deeper/t001 ---- child 2.md'))).toBe(false);
     await addKeyFrame(sourceChange);
-    await snapshot('dev controls apply a real source move to the isolated big graph');
     await expect(sourceChanges.apply('move-nested-page')).rejects.toThrow(/already applied/);
+    await snapshot('dev controls apply a real source move to the isolated big graph');
 
+    // Inspect multi-source actions.
     const multiFixture = page.getByTestId('fixture-card-home_fixture_multi_source');
     const multiControls = new DevSourceChangesControl(multiFixture, expect);
     await multiControls.open();
@@ -121,6 +131,8 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     await competing.scrollIntoViewIfNeeded();
     await addKeyFrame(sourceChange);
     await snapshot('multi-source changes have one category home and readable source-qualified operations');
+
+    // Check the shared fixture menus.
     for (const fixtureName of ['nested', 'srs']) {
       const sharedFixture = page.getByTestId(`fixture-card-home_fixture_${fixtureName}`);
       const sharedControls = new DevSourceChangesControl(sharedFixture, expect);
@@ -131,6 +143,9 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
         'Review proposes a move, and existing name-only links still resolve.');
       await sharedControls.expectE2eRun('move-nested-page', 'Shared move regression', 'http://localhost:5175/2026-09-21_10-00-00/shared-move');
     }
+    await snapshot('nested and SRS expose the same source-change coverage');
+
+    // Review the move in the application.
     await new Workflows(page, expect).navigateToBigBundle();
     const review = new BundleEditorPage(page, expect).sourceReview;
     await review.open();

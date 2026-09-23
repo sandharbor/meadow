@@ -23,10 +23,12 @@ import 'prismjs/components/prism-yaml'
 import 'prismjs/components/prism-json'
 import 'prismjs/themes/prism.css'
 import { marked } from 'marked'
+import type { TestSourceLocations } from '../../testSourceLocations.ts'
 import {
   DEFAULT_PLAYBACK_SPEED_PERCENT,
   MAX_PLAYBACK_SPEED_PERCENT,
   MIN_PLAYBACK_SPEED_PERCENT,
+  adjacentVideoFrameTime,
   computeHealthData,
   computeStateRepoRecordDiffs,
   diffHighlight,
@@ -539,6 +541,7 @@ export default function ScenarioViewer() {
   const [prevS3Objects, setPrevS3Objects] = useState<Record<string, string>>({})
   const [s3DiffMode, setS3DiffMode] = useState(true)
   const [testSource, setTestSource] = useState('')
+  const [sourceLocations, setSourceLocations] = useState<TestSourceLocations>({ testLine: null, snapshots: [] })
   const [testSourceFixtureReferences, setTestSourceFixtureReferences] = useState<TestSourceFixtureReference[]>([])
   const [testSourceFixtureModal, setTestSourceFixtureModal] = useState<TestSourceFixtureModalState | null>(null)
   const [telemetryEvents, setTelemetryEvents] = useState<TelemetryEvent[]>([])
@@ -557,7 +560,6 @@ export default function ScenarioViewer() {
   const telemetryEntriesRef = useRef<HTMLDivElement>(null)
   const testCodeRef = useRef<HTMLPreElement>(null)
   const autoFollowRef = useRef(true)
-  const lastHighlightRef = useRef<string | null>(null)
   const scrubTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const timelineBarRef = useRef<HTMLDivElement>(null)
   const levelDropdownRef = useRef<HTMLDivElement>(null)
@@ -753,6 +755,7 @@ export default function ScenarioViewer() {
       const s3Data: Snapshot[] = await s3Res.json()
       const testSourceData = await testSourceRes.json() as {
         source?: string
+        locations?: TestSourceLocations
         fixtures?: TestSourceFixtureReference[]
       }
       const uncommittedData: UncommittedEntry[] = await uncommittedRes.json()
@@ -774,6 +777,7 @@ export default function ScenarioViewer() {
       setStateSnapshots(stateData)
       setS3Snapshots(s3Data)
       setTestSource(testSourceData.source || '')
+      setSourceLocations(testSourceData.locations ?? { testLine: null, snapshots: [] })
       setTestSourceFixtureReferences(
         Array.isArray(testSourceData.fixtures)
           ? testSourceData.fixtures.filter((fixture) => (
@@ -1052,54 +1056,21 @@ export default function ScenarioViewer() {
     scrubTimerRef.current = setTimeout(() => syncToVideoTime(), 100)
   }, [syncToVideoTime])
 
-  // --- Test code highlight ---
+  // The selected snapshot owns the highlight, even beside the end of the video.
+  const highlightedSourceLine = useMemo(() => {
+    const message = timelineSnapshotMessages[currentMessageIndex]?.message
+    if (!message) return sourceLocations.testLine
+    const matches = sourceLocations.snapshots.filter(location => location.message === message)
+    const occurrence = timelineSnapshotMessages.slice(0, currentMessageIndex)
+      .filter(snapshot => snapshot.message === message).length
+    return matches[Math.min(occurrence, matches.length - 1)]?.line ?? null
+  }, [currentMessageIndex, timelineSnapshotMessages, sourceLocations])
 
   useEffect(() => {
-    if (!testCodeRef.current || !testSource) return
-    const video = videoRef.current
-    const nearEnd = video && video.duration && (video.duration - video.currentTime < 1)
-
-    let searchText: string
-    if (nearEnd) {
-      searchText = '__END__'
-    } else if (currentMessageIndex >= 0 && timelineSnapshotMessages[currentMessageIndex]) {
-      searchText = timelineSnapshotMessages[currentMessageIndex].message
-    } else {
-      searchText = '__START__'
-    }
-
-    if (searchText === lastHighlightRef.current) return
-    lastHighlightRef.current = searchText
-
-    const lines = testCodeRef.current.querySelectorAll('.code-line')
-    lines.forEach((l) => l.classList.remove('bg-orange-100'))
-
-    if (searchText === '__START__') {
-      for (const line of lines) {
-        if (line.textContent?.includes('test(')) {
-          line.classList.add('bg-orange-100')
-          line.scrollIntoView({ block: 'center', behavior: 'smooth' })
-          return
-        }
-      }
-    } else if (searchText === '__END__') {
-      for (let i = lines.length - 1; i >= 0; i--) {
-        if (lines[i].textContent?.trim().match(/^\}\);?$/)) {
-          lines[i].classList.add('bg-orange-100')
-          lines[i].scrollIntoView({ block: 'center', behavior: 'smooth' })
-          return
-        }
-      }
-    } else {
-      for (const line of lines) {
-        if (line.textContent?.includes(`"${searchText}"`)) {
-          line.classList.add('bg-orange-100')
-          line.scrollIntoView({ block: 'center', behavior: 'smooth' })
-          return
-        }
-      }
-    }
-  }, [currentMessageIndex, timelineSnapshotMessages, testSource])
+    if (activeTab !== 'test-code' || highlightedSourceLine === null) return
+    testCodeRef.current?.querySelector(`[data-source-line="${highlightedSourceLine}"]`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [highlightedSourceLine, activeTab, testSource])
 
   const openTestSourceFixture = useCallback(async (name: string) => {
     setTestSourceFixtureModal({ name, content: null, error: null })
@@ -1551,6 +1522,14 @@ export default function ScenarioViewer() {
   // --- Keyboard shortcuts ---
 
   useEffect(() => {
+    const navigateFrame = (direction: -1 | 1) => {
+      const video = videoRef.current
+      if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return
+      video.pause()
+      explicitTickJumpRef.current = null
+      video.currentTime = adjacentVideoFrameTime(video.currentTime, video.duration, direction)
+    }
+
     const navigateSnapshot = (direction: number) => {
       const video = videoRef.current
       if (!video || !video.duration) return
@@ -1580,6 +1559,8 @@ export default function ScenarioViewer() {
     }
 
     const handler = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')) return
       if (e.code === 'Space' && e.target === document.body) {
         e.preventDefault()
         const video = videoRef.current
@@ -1589,11 +1570,13 @@ export default function ScenarioViewer() {
         }
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault()
-        if (hasTicks) navigateTick(-1)
+        if (e.shiftKey) navigateFrame(-1)
+        else if (hasTicks) navigateTick(-1)
         else navigateSnapshot(-1)
       } else if (e.code === 'ArrowRight') {
         e.preventDefault()
-        if (hasTicks) navigateTick(1)
+        if (e.shiftKey) navigateFrame(1)
+        else if (hasTicks) navigateTick(1)
         else navigateSnapshot(1)
       }
     }
@@ -2593,7 +2576,11 @@ export default function ScenarioViewer() {
                     const fixtureReferences = testSourceFixturesByLine.get(i) ?? []
                     return (
                       <div key={i}>
-                        <div className="code-line px-3 font-mono" dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />
+                        <div
+                          data-source-line={i + 1}
+                          className={`code-line px-3 font-mono ${highlightedSourceLine === i + 1 ? 'bg-orange-100' : ''}`}
+                          dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }}
+                        />
                         {fixtureReferences.map((fixture) => (
                           <button
                             key={fixture.name}
@@ -3196,7 +3183,10 @@ export default function ScenarioViewer() {
       <div className="fixed bottom-2 right-2 text-[11px] text-neutral-400">
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">Space</kbd> play/pause{' '}
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&larr;</kbd>
-        <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&rarr;</kbd> prev/next
+        <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&rarr;</kbd> prev/next {hasTicks ? 'tick' : 'snapshot'}{' '}
+        <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">Shift</kbd>{' '}
+        <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&larr;</kbd>
+        <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&rarr;</kbd> frame
       </div>
 
       {testSourceFixtureModal && (

@@ -37,6 +37,10 @@ test.use({
   },
 });
 
+/*
+ * Choose a tracked page as the Open Knowledge Format log through the settings search.
+ * Generate the bundle and verify that the chosen page becomes the log.
+ */
 test("OKF: choose a custom tracked log page from the settings typeahead", async ({
   page,
   snapshot,
@@ -44,6 +48,7 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   let delayedInitialOptions = false;
   await page.route("**/generation/open-knowledge-format/log-page-options?*", async route => {
     const requestUrl = new URL(route.request().url());
@@ -59,6 +64,8 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   const modal = new PreviewPublishModal(page, expect);
   await snapshot("preview loaded");
 
+  // --- Test start ---
+  // Choose a custom log page.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
@@ -66,6 +73,8 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   await okf.chooseLogPage(releaseNotesPageName);
   await addKeyFrame(customize);
   await snapshot("custom okf log page selected");
+
+  // Generate the knowledge package.
   await okf.save();
 
   const changesTab = new ChangesTab(page, expect);
@@ -73,10 +82,13 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   await addKeyFrame(openKnowledgeFormat);
   await snapshot("okf generation complete with custom log page");
 
+  // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
   await okfBundle.expectFileToContain("log.md", "Custom OKF release notes.");
   void bigBundle;
+
+  await snapshot("the selected log becomes the package log page");
 
   await skipMeadowHomeStateCheck();
 });

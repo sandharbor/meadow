@@ -22,12 +22,17 @@ import { bigBundle, smallBundle, exampleBundle } from "../src/bundle-docs/index.
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Find a page shared by the small and big bundles. Opening the other match should select
+ * that page in the destination bundle.
+ */
 test("find in bundles navigates from small bundle to big bundle with page auto-selected", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -41,18 +46,19 @@ test("find in bundles navigates from small bundle to big bundle with page auto-s
   await bundleList.expectBundleVisible(Bundle.Example);
   await snapshot("bundle list with example bundle added");
 
-  // Navigate to the small bundle
+  // --- Test start ---
+  // Open the small bundle.
   await bundleList.clickBundle(Bundle.Small);
   await editor.waitForLoad(Bundle.Small);
   await snapshot("small bundle loaded");
 
-  // Switch to list view and right-click the initial page "t001 - deeply nested"
+  // Open the shared page menu.
   await editor.switchToListView();
   await page.waitForTimeout(250);
   await editor.rightClickRow("t001 - deeply nested");
   await snapshot("context menu open on t001");
 
-  // Click "Find in Bundles" from the context menu
+  // Find the page in other bundles.
   await editor.clickFindInBundles();
   await page.waitForTimeout(500);
 
@@ -61,6 +67,7 @@ test("find in bundles navigates from small bundle to big bundle with page auto-s
   await bundleList.expectFindInBundlesFilterActive("t001 - deeply nested");
   await snapshot("bundle list with find in bundles filter active");
 
+  // Check the matching bundles.
   // Both Big and Small should be visible (both track this page),
   // but the example bundle should be filtered out
   await bundleList.expectBundleVisible(Bundle.Big);
@@ -75,7 +82,7 @@ test("find in bundles navigates from small bundle to big bundle with page auto-s
   await page.waitForTimeout(500);
   await snapshot("big bundle loaded with auto-selected page");
 
-  // The page "t001 - deeply nested" should be auto-selected
+  // Check the automatic selection.
   const selectedTitles = await editor.getSelectedPageTitles();
   expect(selectedTitles).toContain("t001 - deeply nested");
 
@@ -84,12 +91,13 @@ test("find in bundles navigates from small bundle to big bundle with page auto-s
   await page.waitForTimeout(250);
   await snapshot("solo mode with found page");
 
-  // Switch to list view and verify only the auto-selected page is visible
+  // Inspect the found page in list view.
   await editor.switchToListView();
   await page.waitForTimeout(250);
   const listCount = await editor.getListViewPageCount();
   expect(listCount).toBe(1);
   await snapshot("list view showing only the found page");
+
   void bigBundle;
   void smallBundle;
   void exampleBundle;

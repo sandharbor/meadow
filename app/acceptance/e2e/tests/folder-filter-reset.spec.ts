@@ -22,12 +22,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Hide a nested folder and collapse its parent. The parent should indicate the hidden
+ * activity, and Reset should restore every page.
+ */
 test("folder filter exposes collapsed activity and reset restores all pages", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -38,6 +43,10 @@ test("folder filter exposes collapsed activity and reset restores all pages", as
   const initialPageCount = await editor.getListViewPageCount();
   expect(initialPageCount).toBeGreaterThan(1);
 
+  await snapshot("the unfiltered list is ready");
+
+  // --- Test start ---
+  // Hide a nested folder.
   await filterPanel.expandFolder("t024");
   await filterPanel.hideFolder("t024/deeper");
   await expect.poll(() => editor.getListViewPageCount()).toBe(initialPageCount - 1);
@@ -47,11 +56,13 @@ test("folder filter exposes collapsed activity and reset restores all pages", as
   await addKeyFrame(folderFilter);
   await snapshot("collapsed folder shows nested hide activity");
 
+  // Reset the folder filters.
   await filterPanel.resetFolderFilters();
   await expect.poll(() => editor.getListViewPageCount()).toBe(initialPageCount);
   await filterPanel.expectNoDescendantActivity("t024");
   await filterPanel.expectFolderResetHidden();
   await snapshot("folder filters reset");
+
   void bigBundle;
 
   await assertMeadowHomeState();

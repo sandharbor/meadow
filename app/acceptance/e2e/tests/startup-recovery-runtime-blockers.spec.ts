@@ -36,12 +36,17 @@ const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 's
   checkpointAvailable: false,
 };
 
+/*
+ * Start with known Runtime session blockers. The recovery screen should explain the active
+ * session and offer the appropriate direct recovery action.
+ */
 test('Known Runtime blockers explain the active session and offer direct recovery', async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const show = async (diagnostic: StartupFailureDiagnostic): Promise<void> => {
     await page.setContent(renderStartupRecoveryHtml(diagnostic));
     await expect(page.getByRole('banner').getByText('Meadow', { exact: true })).toBeVisible();
@@ -68,9 +73,11 @@ test('Known Runtime blockers explain the active session and offer direct recover
   await expect(page.getByText('Meadow 0.5.40 · 1 browser window')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open here instead' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Return to browser' })).toBeVisible();
-  await snapshot('browser session blocks a Runtime handoff');
   await addKeyFrame(startupRecovery, callout);
+  await snapshot('browser session blocks a Runtime handoff');
 
+  // --- Test start ---
+  // Check a running-operation blocker.
   await show({
     ...commonDiagnostic,
     category: 'runtime-busy',
@@ -90,9 +97,10 @@ test('Known Runtime blockers explain the active session and offer direct recover
   await expect(page.getByText('Background operation', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Stop other session and open here' })).toBeVisible();
-  await snapshot('active operation blocks a Runtime handoff');
   await addKeyFrame(startupRecovery, callout);
+  await snapshot('active operation blocks a Runtime handoff');
 
+  // Check delayed ownership release.
   await show({
     ...commonDiagnostic,
     category: 'runtime-unavailable',
@@ -111,8 +119,8 @@ test('Known Runtime blockers explain the active session and offer direct recover
   });
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open here instead' })).toHaveCount(0);
-  await snapshot('previous Runtime is still releasing Home ownership');
   await addKeyFrame(startupRecovery, callout);
+  await snapshot('previous Runtime is still releasing Home ownership');
 
   await assertMeadowHomeState();
 });

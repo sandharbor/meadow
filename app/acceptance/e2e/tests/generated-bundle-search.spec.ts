@@ -29,6 +29,10 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Search generated page titles and content, then follow a result. Disable search and
+ * verify that the generated bundle removes the search controls.
+ */
 test("generated bundle search finds titles and contents, navigates, and can be disabled", async ({
   page,
   snapshot,
@@ -36,6 +40,7 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
@@ -47,6 +52,8 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   await generatedBundle.search.expectSameHeightAsSources();
   await snapshot("generated bundle search and sources controls align");
 
+  // --- Test start ---
+  // Search by page title.
   await generatedBundle.search.open();
   await generatedBundle.search.search("t021");
   await generatedBundle.search.expectTitleResults([
@@ -57,6 +64,7 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   await addKeyFrame(generatedBundleSearch);
   await snapshot("generated bundle title search results");
 
+  // Follow the title result and search content.
   await generatedBundle.search.clickResult("title", "t021 ---- outlink gap");
   await generatedBundle.expectHeading("t021 ---- outlink gap");
 
@@ -68,10 +76,12 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   );
   await snapshot("generated bundle content search results");
 
+  // Follow the content result.
   await generatedBundle.search.clickResult("content", "t006 - embedded media");
   await generatedBundle.expectHeading("t006 - embedded media");
   await snapshot("navigated from generated bundle search");
 
+  // Check search when opened from disk.
   // The same script-shard loader works when the self-contained HTML is opened
   // directly from disk, without an HTTP server.
   const localPage = await page.context().newPage();
@@ -120,6 +130,7 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   await generatedBundle.search.expectUnavailable();
   await addKeyFrame(customize);
   await snapshot("generated bundle search disabled");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

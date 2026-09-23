@@ -21,21 +21,30 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Preview a bundle with untracked pages. Inspect the warning that prompts the user to
+ * review those pages before publishing.
+ */
 test("Callout preview warns about untracked pages", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
   await snapshot("bundle list loaded");
 
+  // --- Test start ---
+  // Open the big bundle.
   await bundleList.clickBundle("meadow-test-bundle-big");
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-bundle-big");
   await snapshot("bundle editor loaded");
 
+  // Preview the bundle.
   await editor.clickPreview();
   const modal = new PreviewPublishModal(page, expect);
   await modal.waitForPreviewComplete();
   await addKeyFrame(callout);
   await snapshot("preview shows untracked warning");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

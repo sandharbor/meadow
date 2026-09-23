@@ -35,6 +35,10 @@ test.use({
   },
 });
 
+/*
+ * Enable Open Knowledge Format for a source with an index but no log page. The index
+ * should be detected automatically and no log should be invented.
+ */
 test("OKF: auto-detect index.md and omit log.md when no log page exists", async ({
   page,
   snapshot,
@@ -42,11 +46,14 @@ test("OKF: auto-detect index.md and omit log.md when no log page exists", async 
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   await snapshot("preview loaded");
 
+  // --- Test start ---
+  // Choose automatic index detection.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
@@ -55,6 +62,8 @@ test("OKF: auto-detect index.md and omit log.md when no log page exists", async 
   await okf.chooseNoLog();
   await addKeyFrame(customize);
   await snapshot("auto index and no log selected");
+
+  // Generate the knowledge package.
   await okf.save();
 
   const changesTab = new ChangesTab(page, expect);
@@ -62,12 +71,15 @@ test("OKF: auto-detect index.md and omit log.md when no log page exists", async 
   await addKeyFrame(openKnowledgeFormat);
   await snapshot("okf generation complete with auto index and no log");
 
+  // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
   await okfBundle.expectFileToContain("index.md", "Auto OKF index source page.");
   okfBundle.expectFileToBeAbsent("log.md");
   okfBundle.expectFileToBeAbsent("index-original.md");
   void bigBundle;
+
+  await snapshot("the package contains the automatic index and no log page");
 
   await skipMeadowHomeStateCheck();
 });

@@ -59,6 +59,18 @@ export function setMediaPlaybackSpeed(
   }
 }
 
+// Playwright's WebM recorder produces a fixed 25 frames per second.
+const RECORDING_FRAMES_PER_SECOND = 25
+
+export function adjacentVideoFrameTime(currentTime: number, duration: number, direction: -1 | 1): number {
+  if (!Number.isFinite(duration) || duration <= 0) return currentTime
+  const lastFrame = Math.max(0, Math.ceil(duration * RECORDING_FRAMES_PER_SECOND) - 1)
+  // Avoid rounding a frame boundary down after repeated floating-point seeks.
+  const currentFrame = Math.min(lastFrame, Math.floor(currentTime * RECORDING_FRAMES_PER_SECOND + 1e-7))
+  const nextFrame = Math.max(0, Math.min(lastFrame, currentFrame + direction))
+  return nextFrame / RECORDING_FRAMES_PER_SECOND
+}
+
 export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')

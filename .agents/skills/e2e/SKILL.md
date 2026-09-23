@@ -8,6 +8,46 @@ description: Run the end-to-end test suite, automatically diagnose and fix failu
 Run the end-to-end tests. If any test fails, immediately investigate and fix
 the failure — that's the whole point of running inside an agent.
 
+## Scenario phases and snapshots
+
+Put a short plain-English block comment immediately above each scenario. Explain
+what happens and what the scenario verifies so a reader can skim it without
+following every test statement. Describe the behavior, rather than repeating the
+test title or listing implementation details.
+
+If the first section establishes the starting state, label it
+`// --- Setup ---`. After the setup checkpoint and a blank line, mark the first
+test phase with `// --- Test start ---`, followed immediately by a short comment
+explaining its action. Later phases only need their short action comments. If a
+scenario needs no setup, begin with the Test start banner and its action comment.
+
+Write scenarios as short, readable phases: establish the starting state, make a
+change, review its effect, and accept or reject it. When a meaningful phase is
+complete, assert its outcome and end it with `await snapshot('...')`. Capture the
+established setup before the first action as well as intermediate review states;
+do not reserve snapshots for the end of the test.
+
+After a phase-ending snapshot, leave a blank line and start the next phase with
+a very short comment explaining what happens next:
+
+```ts
+// --- Setup ---
+// Establish the starting state here.
+await snapshot('the accepted page identity is established');
+
+// --- Test start ---
+// Review the competing destinations.
+await sourceChanges.apply('competing-cross-source-moves', 'multi-source');
+```
+
+Use judgment about phase size. A snapshot should mark a useful point to inspect
+while stepping through the report, not every click or assertion. Give each one a
+distinct message describing the state reached. `addKeyFrame(...)` captures a
+review image and can accompany a snapshot; it does not replace the phase boundary.
+Keep the final `assertMeadowHomeState()` or `skipMeadowHomeStateCheck()` after the
+last snapshot. This is scenario-writing guidance, not a rule to enforce with
+custom linting.
+
 ## Step 0: Determine run notes
 
 Before running the tests, decide on a short note describing **why** this run

@@ -25,32 +25,34 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Follow the preview warning's Check Them link and track more pages. Reopening preview
+ * should return to Review so the new output can be inspected.
+ */
 test("Preview reopens on Review step after tracking pages via Check Them link", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const modal = new PreviewPublishModal(page, expect);
 
-  // ── Navigate to big bundle preview → save → share tab ──
-
   await wf.navigateToBigBundleShareTab();
   await snapshot("share tab with untracked warning");
 
-  // ── Click "Check them" to close modal and filter to untracked pages ──
-
+  // --- Test start ---
+  // Inspect the untracked pages.
   await modal.clickCheckUntrackedPages();
   await page.waitForTimeout(500);
   await addKeyFrame(callout);
   await snapshot("modal closed - untracked filter active");
 
-  // ── Track untracked pages (Select All → deselect sensitive → Track All) ──
+  // Track the safe pages.
   // This leaves sensitive pages untracked so the "untracked page" warning
   // still appears when we reopen the preview modal.
-
   await editor.clickSelectAll();
   await page.waitForTimeout(500);
 
@@ -61,12 +63,12 @@ test("Preview reopens on Review step after tracking pages via Check Them link", 
   await addKeyFrame(tracking);
   await snapshot("non-sensitive untracked pages tracked");
 
-  // ── Reopen preview and verify it lands on step 1 (Review), not step 2 (Share) ──
-
+  // Reopen the preview.
   await editor.clickPreview();
   await modal.waitForPreviewComplete();
   await modal.expectOnReviewStep();
   await snapshot("preview reopens on review step not share step");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

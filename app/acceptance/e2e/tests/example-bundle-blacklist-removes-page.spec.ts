@@ -31,12 +31,17 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Blacklist a page in the example bundle and regenerate it. The rendered bundle should
+ * omit that page.
+ */
 test("blacklisting a single page removes it from the rendered preview", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
@@ -57,6 +62,9 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await previewModal.expectPreviewLinkVisible("Occam's%20Razor.html");
   await previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html");
   await snapshot("example bundle preview — Razors link present");
+
+  // --- Test start ---
+  // Blacklist the linked page.
   await previewModal.closeModal();
 
   // Blacklist "Razors" via the right-click context menu. Blacklisting a
@@ -75,6 +83,7 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await addKeyFrame(bundleConfig);
   await snapshot("Razors blacklisted — no save button");
 
+  // Preview the changed links.
   // Preview again: the link to Razors must be gone from the rendered initial
   // page. "Occam's Razor" and "Hanlon's Razor" remain — they are tracked and
   // still reachable directly from the initial page, so blacklisting "Razors"
@@ -86,6 +95,7 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await previewModal.expectPreviewLinkVisible("Occam's%20Razor.html");
   await previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html");
   await snapshot("post-blacklist preview — Razors link removed");
+
   void exampleBundle;
 
   await skipMeadowHomeStateCheck();

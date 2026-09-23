@@ -21,21 +21,28 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Solo a filter that matches no pages. The empty-graph callout should explain why the
+ * pages are hidden and help restore them.
+ */
 test("empty solo callout appears when solo filter hides all pages", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
   await snapshot("bundle list loaded");
 
+  // --- Test start ---
+  // Open the big bundle.
   await bundleList.clickBundle("meadow-test-bundle-big");
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-bundle-big");
   await snapshot("bundle editor loaded");
 
-  // Switch to list view for easier interaction
+  // Switch to the list.
   await editor.switchToListView();
   await snapshot("list view");
 
-  // Create a custom filter that matches no pages, then solo it
+  // Create a filter that matches nothing.
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.clickAddCustomFilter();
   await filterPanel.fillAndSaveCustomFilter({
@@ -47,25 +54,27 @@ test("empty solo callout appears when solo filter hides all pages", async ({ pag
   await page.waitForTimeout(250);
   await snapshot("custom filter created");
 
+  // Solo the empty filter.
   await filterPanel.enableAndSoloFilter("no match");
   await page.waitForTimeout(250);
   await snapshot("custom filter soloed with no matching pages");
 
-  // The callout should now be visible since no pages match
+  // Check the empty-view explanation.
   await editor.expectEmptySoloCalloutVisible();
   await addKeyFrame(callout);
   await snapshot("empty solo callout visible");
 
-  // Click "Turn off solos" to restore the view
+  // Turn off solos.
   await editor.clickTurnOffSolos();
   await page.waitForTimeout(250);
   await snapshot("solos turned off");
 
-  // Callout should be gone and pages should be visible
+  // Check the restored pages.
   await editor.expectEmptySoloCalloutNotVisible();
   const pageCount = await editor.getListViewPageCount();
   expect(pageCount).toBeGreaterThan(0);
   await snapshot("pages visible again");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();

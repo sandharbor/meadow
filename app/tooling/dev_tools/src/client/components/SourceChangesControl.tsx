@@ -9,7 +9,7 @@ function descriptionText(value: string) {
   return value.split(/(`[^`]+`)/g).map((part, index) => part.startsWith('`') ? <code key={index}>{part.slice(1, -1)}</code> : part);
 }
 
-export function SourceChangesControl({ fixtureName, active, launchMode, onStarted }: { fixtureName: string; active: boolean; launchMode: 'app' | 'browser'; onStarted: () => Promise<void> }) {
+export function SourceChangesControl({ fixtureName, active, fixtureActionPending, launchMode, onStarted }: { fixtureName: string; active: boolean; fixtureActionPending: boolean; launchMode: 'app' | 'browser'; onStarted: () => Promise<void> }) {
   const [category, setCategory] = useState<SourceChangeCategory>('add');
   const tabsId = useId();
   const [open, setOpen] = useState(false);
@@ -29,12 +29,12 @@ export function SourceChangesControl({ fixtureName, active, launchMode, onStarte
     setSourceLocations(result.sourceLocations);
   }, [endpoint]);
   useEffect(() => {
-    if (!open) return;
+    if (!open || fixtureActionPending) return;
     const refresh = () => { void load().catch(err => setError(err instanceof Error ? err.message : String(err))); };
     refresh();
     window.addEventListener('focus', refresh);
     return () => window.removeEventListener('focus', refresh);
-  }, [open, active, load]);
+  }, [open, active, fixtureActionPending, load]);
 
   const apply = async (change: SourceChangeStatus) => {
     setBusy(change.id); setError(null);
@@ -77,7 +77,7 @@ export function SourceChangesControl({ fixtureName, active, launchMode, onStarte
         </span>
       </span>
     </summary>
-    {open && <div className="mt-3 space-y-3" data-testid="source-changes-control" aria-busy={busy !== null}>
+    {open && <div className="mt-3 space-y-3" data-testid="source-changes-control" aria-busy={fixtureActionPending || busy !== null}>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div role="tablist" aria-label="Source change categories" className="flex gap-0.5 overflow-x-auto border-b border-neutral-200">
         {SOURCE_CHANGE_CATEGORIES.map(item => <button key={item} id={`${tabsId}-${item}`} role="tab" disabled={!availableCategories.includes(item)} aria-selected={selectedCategory === item} aria-controls={`${tabsId}-panel`} tabIndex={selectedCategory === item ? 0 : -1} className={`shrink-0 border-b-2 px-2 py-2 text-sm capitalize disabled:cursor-not-allowed disabled:text-neutral-300 ${selectedCategory === item ? 'border-info-600 font-semibold text-info-800' : 'border-transparent text-neutral-500 hover:text-neutral-800'}`} onClick={() => setCategory(item)} onKeyDown={event => {
@@ -107,8 +107,8 @@ export function SourceChangesControl({ fixtureName, active, launchMode, onStarte
               <pre className="overflow-auto whitespace-pre-wrap break-words">{JSON.stringify(displaySourceChangeOperations(change, sourceLocations), null, 2)}</pre>
             </div>
           </details>
-          {['home_fixture_big_and_small', 'home_fixture_multi_source'].includes(fixtureName) && <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={busy !== null} onClick={() => void start(change)}>Start</button>}
-          <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:bg-neutral-200 disabled:text-neutral-600" disabled={!active || busy !== null || change.state !== 'available'} onClick={() => void apply(change)}>Apply</button>
+          {['home_fixture_big_and_small', 'home_fixture_multi_source'].includes(fixtureName) && <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={fixtureActionPending || busy !== null} onClick={() => void start(change)}>Start</button>}
+          <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:bg-neutral-200 disabled:text-neutral-600" disabled={!active || fixtureActionPending || busy !== null || change.state !== 'available'} onClick={() => void apply(change)}>Apply</button>
         </article>)}
       </div>
     </div>}

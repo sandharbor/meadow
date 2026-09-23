@@ -16,6 +16,7 @@ limitations under the License.
 
 import { describe, it, expect } from 'vitest';
 import {
+  adjacentVideoFrameTime,
   computeHealthData,
   diffHighlight,
   escapeHtml,
@@ -28,6 +29,39 @@ import {
   setMediaPlaybackSpeed,
   videoTimeToReal,
 } from './helpers'
+
+describe('video frame navigation', () => {
+  it('steps from a paused time to the neighboring recorded frame', () => {
+    expect(adjacentVideoFrameTime(1.01, 5, 1)).toBe(1.04)
+    expect(adjacentVideoFrameTime(1.01, 5, -1)).toBe(0.96)
+    expect(adjacentVideoFrameTime(1.04, 5, -1)).toBe(1)
+  })
+
+  it('stays on the first and last frames, including after playback ends', () => {
+    expect(adjacentVideoFrameTime(0, 5, -1)).toBe(0)
+    expect(adjacentVideoFrameTime(4.96, 5, 1)).toBe(4.96)
+    expect(adjacentVideoFrameTime(5, 5, -1)).toBe(4.92)
+    expect(adjacentVideoFrameTime(0, 0.02, 1)).toBe(0)
+  })
+
+  it('does not lose frames during repeated forward and backward steps', () => {
+    let time = 0
+    for (let i = 1; i <= 100; i++) {
+      time = adjacentVideoFrameTime(time, 5, 1)
+      expect(time).toBe(i / 25)
+    }
+    for (let i = 99; i >= 0; i--) {
+      time = adjacentVideoFrameTime(time, 5, -1)
+      expect(time).toBe(i / 25)
+    }
+  })
+
+  it('waits for finite video metadata', () => {
+    for (const duration of [0, NaN, Infinity]) {
+      expect(adjacentVideoFrameTime(0, duration, 1)).toBe(0)
+    }
+  })
+})
 
 describe('formatTime', () => {
   it('formats zero seconds', () => {

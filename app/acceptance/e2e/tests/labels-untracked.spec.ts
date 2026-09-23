@@ -22,17 +22,23 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Enable title labels for untracked pages. Their names should appear in the graph without
+ * changing tracking state.
+ */
 test("enabling show titles on untracked filter displays page title labels", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
   await snapshot("bundle editor loaded");
 
-  // Enable the Untracked filter
+  // --- Test start ---
+  // Enable untracked pages.
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.enableFilter("Untracked");
   await snapshot("untracked filter enabled");
 
-  // Turn on show titles for the Untracked filter
+  // Show their titles.
   await filterPanel.clickShowTitlesOnFilter("Untracked");
   await page.waitForTimeout(300);
 
@@ -41,7 +47,7 @@ test("enabling show titles on untracked filter displays page title labels", asyn
   await editor.expectLabelVisible("t012 - custom filters");
   await snapshot("titles shown for untracked pages");
 
-  // Take keyframe with titles visible
+  // Solo untracked pages.
   await addKeyFrame(labels);
 
   // Solo the untracked filter

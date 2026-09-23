@@ -22,12 +22,17 @@ import { Bundle, Fixture } from "../src/run/workflows.js";
 test.use({ bundleMode: "multiple-folders" });
 test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 
+/*
+ * Select a folder's direct children, then its deeper paths. Confirm that structural
+ * descendants and linked pages are selected in the list and graph.
+ */
 test("folder context selections include structural children and deeper paths", async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
 
@@ -35,6 +40,10 @@ test("folder context selections include structural children and deeper paths", a
   await bundleList.clickBundle(Bundle.FolderStructureMultiple);
   await editor.waitForLoad(Bundle.FolderStructureMultiple);
   await editor.switchToListView();
+  await snapshot("the folder graph is ready for structural selection");
+
+  // --- Test start ---
+  // Select direct children.
   await editor.rightClickListViewRowByNodeKey("folder:Alpha");
   await editor.clickContextMenuItem("Select Children");
 
@@ -47,6 +56,7 @@ test("folder context selections include structural children and deeper paths", a
   await addKeyFrame(folderBundles);
   await snapshot("Select Children includes every direct Alpha child");
 
+  // Select all deeper paths.
   await editor.rightClickListViewRowByNodeKey("folder:Alpha");
   await editor.clickContextMenuItem("Select Deeper Paths from Here");
 
@@ -64,6 +74,7 @@ test("folder context selections include structural children and deeper paths", a
   await editor.expectGraphViewActive();
   await addKeyFrame(paths);
   await snapshot("Select Deeper Paths highlights structural and linked descendants in the graph");
+
   await assertMeadowHomeState({
     allowedUntracked: [
       "bundles/ordered-folders/raw/folder_scope_snapshot.json",

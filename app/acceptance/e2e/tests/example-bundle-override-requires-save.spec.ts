@@ -32,12 +32,17 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Add a depth override to a child page. Unlike simple tracking changes, the override
+ * should remain pending until explicitly saved.
+ */
 test("adding a depth override on a child page requires an explicit save", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -48,7 +53,8 @@ test("adding a depth override on a child page requires an explicit save", async 
   await editor.waitForLoad("example-bundle");
   await snapshot("example bundle loaded");
 
-  // Start clean: no draft changes, no Save/Undo buttons visible
+  // --- Test start ---
+  // Select a page without an override.
   await editor.expectUndoNotVisible();
 
   // Select a non-initial child page that has no existing override
@@ -65,6 +71,7 @@ test("adding a depth override on a child page requires an explicit save", async 
   await detail.openDetails();
   await snapshot("child page selected with details open");
 
+  // Add a traversal override.
   // Adding a depth override is a "complex op" — it should NOT auto-save. The
   // change should land in draft state and surface the Save / Undo buttons.
   await detail.addOutlinksDepthOverride(0);
@@ -73,12 +80,13 @@ test("adding a depth override on a child page requires an explicit save", async 
   await addKeyFrame(bundleConfig);
   await snapshot("override set - draft state, save button visible");
 
-  // Click Save to commit the draft. Save/Undo should disappear.
+  // Save the override.
   await editor.clickSave();
   await page.waitForTimeout(1000);
   await editor.expectUndoNotVisible();
   await snapshot("override saved - draft cleared");
 
+  // Find the page using the override filter.
   // Verify the override persisted: the Depth Override filter should now
   // include "First Principles Thinking".
   await filterPanel.enableFilter("Depth Override");
@@ -90,6 +98,7 @@ test("adding a depth override on a child page requires an explicit save", async 
   await editor.expectListViewRowByExactNamePresent("First Principles Thinking");
   await addKeyFrame(overrides);
   await snapshot("override page appears under Depth Override filter");
+
   void exampleBundle;
 
   await assertMeadowHomeState();

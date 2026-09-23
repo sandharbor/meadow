@@ -30,12 +30,17 @@ import { customBundle } from "../src/bundle-docs/index.js";
 test.use({ bundleMode: "single-folder" });
 test.use({ fixtureHome: Fixture.FolderStructureSingle });
 
+/*
+ * Find an image beyond a folder bundle's normal traversal boundary and track it. The
+ * tracked image should become part of the generated bundle.
+ */
 test("tracks a depth-three frontier image in a folder-derived bundle", async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
@@ -56,17 +61,21 @@ test("tracks a depth-three frontier image in a folder-derived bundle", async ({
   await addKeyFrame(frontier);
   await snapshot("depth-three frontier image is available to track");
 
+  // --- Test start ---
+  // Track the frontier image.
   await detail.clickAction(ActionButton.Track, page);
   await detail.expectPill(Pill.FrontierImage);
   await detail.expectPill(Pill.Tracked);
   await addKeyFrame(tracking);
   await snapshot("depth-three frontier image tracked in the folder bundle");
 
+  // Preview the tracked image.
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
   await previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000);
-  await snapshot("folder preview succeeds with the tracked frontier image");
   await addKeyFrame(htmlGeneration);
+  await snapshot("folder preview succeeds with the tracked frontier image");
+
   void customBundle;
 
   await assertMeadowHomeState({

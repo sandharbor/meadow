@@ -24,6 +24,10 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "none" });
 
+/*
+ * Create bundles with different traversal depths. Each should use the chosen depths
+ * without showing the introductory depth callout.
+ */
 test("new bundle uses chosen depths without the introductory depth callout", async ({
   page,
   testServer,
@@ -31,11 +35,16 @@ test("new bundle uses chosen depths without the introductory depth callout", asy
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const createModal = new CreateAndEditBundleModal(page, expect);
   const editor = new BundleEditorPage(page, expect);
   await bundleList.goto();
 
+  await snapshot("the empty bundle list is ready for creation");
+
+  // --- Test start ---
+  // Create bundles with different traversal depths.
   for (const outlinksDepth of [2, 4]) {
     const slug = `main-page-depth-${outlinksDepth}`;
     await bundleList.clickCreateNewBundle();
@@ -55,11 +64,14 @@ test("new bundle uses chosen depths without the introductory depth callout", asy
     await addKeyFrame(bundleConfig);
     await snapshot(`new bundle with chosen traversal depth ${outlinksDepth}`);
 
+    // Reopen the bundle.
     await editor.clickBackToBundles();
     await bundleList.clickBundle(slug);
     await editor.waitForLoad(slug);
     await editor.expectDepthCalloutNotVisible();
     await snapshot(`depth ${outlinksDepth} bundle reopened without introductory callout`);
+
+    // Return to the list for the next depth.
     await editor.clickBackToBundles();
   }
   void customBundle;

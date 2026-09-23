@@ -22,12 +22,17 @@ import { Bundle, Fixture } from "../src/run/workflows.js";
 test.use({ bundleMode: "multiple-folders" });
 test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 
+/*
+ * Blacklist one folder in a collection and inspect the reduced graph. Removing the
+ * blacklist should restore its descendants and reachable pages.
+ */
 test("a collection member folder can be blacklisted and restored", async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
 
@@ -37,6 +42,10 @@ test("a collection member folder can be blacklisted and restored", async ({
   await editor.switchToListView();
   await expect.poll(() => editor.getListViewPageCount()).toBe(11);
 
+  await snapshot("the full folder graph contains eleven pages");
+
+  // --- Test start ---
+  // Blacklist the Alpha folder.
   await editor.clickListViewRowByNodeKey("folder:Alpha");
   await editor.expectSelectedPageBadge("folder:Alpha", "Tracked");
   await editor.rightClickListViewRowByNodeKey("folder:Alpha");
@@ -68,6 +77,7 @@ test("a collection member folder can be blacklisted and restored", async ({
   await addKeyFrame(blacklist);
   await snapshot("Alpha folder blacklist hides its working-graph subtree");
 
+  // Restore the folder.
   await editor.rightClickListViewRowByNodeKey("folder:Alpha");
   await editor.clickContextMenuItemAndAwaitAutoSaveAndGraphReload("Remove from Blacklist");
 
@@ -85,6 +95,7 @@ test("a collection member folder can be blacklisted and restored", async ({
     await editor.expectListViewRowByExactNamePresent(restoredTitle);
   }
   await snapshot("removing the Alpha folder blacklist restores its descendants");
+
   await assertMeadowHomeState({
     allowedUntracked: ["bundles/ordered-folders/raw/"],
   });

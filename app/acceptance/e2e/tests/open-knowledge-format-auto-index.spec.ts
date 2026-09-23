@@ -35,6 +35,10 @@ test.use({
   },
 });
 
+/*
+ * Enable Open Knowledge Format with an existing source index page. Meadow should use it
+ * directly without treating it as a reserved-name rename.
+ */
 test("OKF: auto-detect a source index page without reserved rename", async ({
   page,
   snapshot,
@@ -42,17 +46,22 @@ test("OKF: auto-detect a source index page without reserved rename", async ({
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   await snapshot("preview loaded");
 
+  // --- Test start ---
+  // Enable automatic index detection.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
   await okf.expectSelectedIndex(sourceIndexPageName, "root");
   await addKeyFrame(customize);
   await snapshot("auto okf index page selected");
+
+  // Generate the knowledge package.
   await okf.save();
 
   const changesTab = new ChangesTab(page, expect);
@@ -60,11 +69,14 @@ test("OKF: auto-detect a source index page without reserved rename", async ({
   await addKeyFrame(openKnowledgeFormat);
   await snapshot("okf generation complete with source index page");
 
+  // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
   const okfBundle = new OpenKnowledgeFormatBundle(bundleDir, expect);
   await okfBundle.expectFileToContain("index.md", "Reserved index source page.");
   okfBundle.expectFileToBeAbsent("index-original.md");
   void bigBundle;
+
+  await snapshot("the source index becomes the package entry page");
 
   await skipMeadowHomeStateCheck();
 });

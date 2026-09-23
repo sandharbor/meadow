@@ -33,10 +33,17 @@ test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
+/*
+ * Archive a bundle through the CLI and inspect the current and archived lists. Restore it
+ * and check that command help describes the supported operations.
+ */
 test("CLI archives and lists current and archived bundles as JSON", async ({
   assertMeadowHomeState,
   meadowCli,
+  snapshot,
 }) => {
+  // --- Test start ---
+  // Archive the small bundle.
   const archived = await meadowCli.runJson<BundleMutationResult>(
     ["bundles", "archive", "meadow-test-bundle-small"],
     { artifactName: "archive-small-bundle" },
@@ -55,6 +62,9 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
     archivedAt: expect.any(String),
   });
 
+  await snapshot("the small bundle is archived");
+
+  // Inspect both bundle lists.
   const currentBundles = await meadowCli.runJson<BundleSummary[]>(
     ["bundles", "list"],
     { artifactName: "current-bundles" },
@@ -69,6 +79,9 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
   expect(archivedBundles.map((bundle) => bundle.slug)).toEqual(["meadow-test-bundle-small"]);
   expect(archivedBundles[0].archivedAt).toEqual(expect.any(String));
 
+  await snapshot("current and archived lists contain the expected bundles");
+
+  // Restore the small bundle.
   const unarchived = await meadowCli.runJson<BundleMutationResult>(
     ["bundles", "unarchive", "meadow-test-bundle-small"],
     { artifactName: "unarchive-small-bundle" },
@@ -96,6 +109,9 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
     "meadow-test-bundle-small",
   ]);
 
+  await snapshot("the restored bundle returns to the current list");
+
+  // Check command help.
   const help = await meadowCli.run(
     ["--help"],
     { artifactName: "cli-help" },
@@ -112,6 +128,8 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
   expect(help).toContain("meadow providers list");
   void cli;
   void bundles;
+
+  await snapshot("help documents bundle and history commands");
 
   await assertMeadowHomeState();
 });

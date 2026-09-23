@@ -9,7 +9,12 @@ import { sourceSnapshot } from '../../../concepts/index.js';
 test.use({ bundleMode: "single-file" });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Change source files and let the background check discover them. The count should update
+ * quietly while the toolbar keeps its normal review action.
+ */
 test('Sourcing quietly checks every thirty seconds and updates the change count without replacing the toolbar button', async ({ page, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   await page.clock.install();
   await new Workflows(page, expect).navigateToBigBundle();
   const status = page.getByTestId('sourcing-status');
@@ -32,6 +37,10 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
     await route.fulfill({ response });
   });
 
+  await snapshot('automatic source checks are isolated and the bundle has no pending changes');
+
+  // --- Test start ---
+  // Check automatic scanning during preview.
   await editor.clickPreview();
   const preview = new PreviewPublishModal(page, expect);
   await preview.waitForPreviewComplete();
@@ -39,13 +48,17 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   expect(scans).toBe(0);
   await addKeyFrame(sourceSnapshot);
   await snapshot('automatic source checks pause while preview is open');
+
+  // Check automatic scanning during history review.
   await preview.closeModal();
 
   const history = await editor.reviewSourceHistory();
   await page.clock.fastForward(60000);
   expect(scans).toBe(0);
   await history.close();
+  await snapshot('source history also pauses automatic checks');
 
+  // Let the automatic scan run.
   await page.clock.fastForward(30000);
   await expect(update.getByTestId('source-background-progress')).toBeVisible();
   await expect(update).toHaveText('Refresh sources');
@@ -57,6 +70,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await expect(status.getByText('No changes', { exact: true })).not.toBeVisible();
   await snapshot('an automatic no-change check only animates the button underline');
 
+  // Rename the page and its links.
   await sourceChanges.apply('rename-page-with-links');
   gate = new Promise<void>(resolve => { release = resolve; });
   await page.clock.fastForward(30000);
@@ -67,6 +81,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await addKeyFrame(sourceSnapshot);
   await snapshot('one move and its updated incoming link count as two source changes');
 
+  // Delete the nested page.
   await sourceChanges.apply('delete-nested-page');
   gate = new Promise<void>(resolve => { release = resolve; });
   await page.clock.fastForward(30000);
@@ -79,6 +94,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await addKeyFrame(sourceSnapshot);
   await snapshot('a later background check preserves the review button while updating its count');
 
+  // Check scanning while review is open.
   await sourceReview.open();
   const rename = await sourceReview.moveFrom('t003 ---- page with section to link to.md');
   await rename.expandDetails();
@@ -91,6 +107,8 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await rename.expectSeparateSelected();
   await expect(review).toHaveText('3 source changes available – Review');
   await snapshot('source review pauses automatic checks and preserves its decisions');
+
+  // Resume manual and automatic scanning.
   release();
   await sourceReview.checkAgain();
   expect(scans).toBe(4);
@@ -99,5 +117,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   await expect.poll(() => scans).toBe(5);
   await expect(status.getByTestId('source-background-progress')).not.toBeVisible();
   await page.clock.resume();
+  await snapshot('manual rechecking and later automatic checks resume after review closes');
+
   await skipMeadowHomeStateCheck();
 });

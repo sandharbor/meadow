@@ -9,10 +9,19 @@ import { sourceChange, orphan } from '../../../concepts/index.js';
 test.use({ bundleMode: "single-file" });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Remove a source link and review the broken route. The accepted bundle should stay
+ * unchanged until the user accepts the proposed change.
+ */
 test('Sourcing accepts a shared link deletion only when requested and explains its broken route', async ({ page, sourceChanges, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForSourceCheck();
+  await snapshot('the accepted source state is established before changing files');
+
+  // --- Test start ---
+  // Remove the incoming link.
   await sourceChanges.apply('remove-incoming-link');
   await editor.checkSourceChanges();
   const review = editor.sourceReview;
@@ -27,6 +36,8 @@ test('Sourcing accepts a shared link deletion only when requested and explains i
   });
   await addKeyFrame(sourceChange);
   await snapshot('link deletion is reviewed as a source edit');
+
+  // Inspect the resulting orphan.
   await review.collapseDetails(modifiedPath);
   await review.expandDetails(modifiedPath, 'keyboard');
   await review.expectNoMissingEntry('t001/deeper/t001 ---- child 2.md');
@@ -35,11 +46,14 @@ test('Sourcing accepts a shared link deletion only when requested and explains i
   await orphans.expectExplanation('t001 ---- child 2', 'no longer links to');
   await addKeyFrame(orphan);
   await snapshot('orphan details identify the removed connection before acceptance');
+
+  // Accept the source update.
   await review.accept();
   await editor.expectSourceOrphanCount(0);
   await editor.checkSourceChanges();
   await editor.expectSourceOrphanCount(0);
   await expect(page.getByRole('button', { name: 'Refresh sources', exact: true })).toBeVisible();
   await snapshot('acceptance removes orphaned configuration and a fresh scan stays clear');
+
   await skipMeadowHomeStateCheck();
 });

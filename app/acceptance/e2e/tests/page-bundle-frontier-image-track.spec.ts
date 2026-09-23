@@ -27,12 +27,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Find and track a frontier image in a page-rooted bundle. The image should be included
+ * when the bundle is generated.
+ */
 test("tracks a frontier image in a page-derived bundle", async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const imageTitle = "t016 ---- level 5 - frontier image";
@@ -51,11 +56,14 @@ test("tracks a frontier image in a page-derived bundle", async ({
   await addKeyFrame(frontier, frontierEmbeddedAssets);
   await snapshot("page-derived frontier image is available to track");
 
+  // --- Test start ---
+  // Track the frontier image.
   await detail.clickAction(ActionButton.Track, page);
   await detail.expectPill(Pill.FrontierImage);
   await detail.expectPill(Pill.Tracked);
   await addKeyFrame(tracking);
   await snapshot("frontier image tracked in the page-derived bundle");
+
   void bigBundle;
 
   await assertMeadowHomeState();

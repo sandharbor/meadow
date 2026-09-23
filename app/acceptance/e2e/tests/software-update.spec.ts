@@ -19,6 +19,10 @@ import { expect, test } from '../src/run/test-fixtures.js';
 
 test.use({ bundleMode: 'single-file' });
 
+/*
+ * Open the software update dialog after a checksum failure. The error should explain that
+ * the installed app was preserved and offer retry without offering installation.
+ */
 test('Verified update failure remains retryable without offering installation', async ({
   page,
   testServer,
@@ -26,6 +30,7 @@ test('Verified update failure remains retryable without offering installation', 
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   const backendConnection = testServer.getBackendConnectionForRendererTest();
@@ -68,6 +73,10 @@ test('Verified update failure remains retryable without offering installation', 
     )),
     pageErrors,
   })).toEqual({ registered: true, pageErrors: [] });
+  await snapshot("the update callback is registered without renderer errors");
+
+  // --- Test start ---
+  // Open the failed update details.
   await page.evaluate(() => {
     (window as unknown as { openUpdateModalForTest?: () => void }).openUpdateModalForTest?.();
   });
@@ -78,7 +87,8 @@ test('Verified update failure remains retryable without offering installation', 
   await expect(page.getByText(/installed Meadow app was preserved/i)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Restart to Update' })).toHaveCount(0);
-  await snapshot('verified update checksum failure preserved installed app');
   await addKeyFrame(softwareUpdate);
+  await snapshot('verified update checksum failure preserved installed app');
+
   await assertMeadowHomeState();
 });

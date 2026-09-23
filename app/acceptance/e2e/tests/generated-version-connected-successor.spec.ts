@@ -24,12 +24,18 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 test.use({ bundleMode: "single-file" });
 test.use({ serialGroup: "generated-bundle-versioning" });
 
+/*
+ * Change a saved generation and create a connected successor. The predecessor should
+ * freeze, comparison should remain available, and sharing should warn when an older
+ * version is selected.
+ */
 test("V06 generated version connected successor freezes its predecessor and supports comparison", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigBundlePreview();
 
@@ -42,11 +48,16 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await modal.waitForSaveComplete();
   await modal.clickStep1Review();
 
+  await snapshot("the initial generated version is saved");
+
+  // --- Test start ---
+  // Change the generation options.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   await customizeTab.generationOptions.disableBreadcrumbs();
   await snapshot("breadcrumbs disabled for successor");
 
+  // Review the changed output.
   await changesTab.waitForRegenerationComplete();
   await changesTab.expectBadgeVisible();
   await modal.clickChangesTab();
@@ -59,6 +70,7 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await addKeyFrame(changesTabDoc);
   await snapshot("pending successor contains modified files");
 
+  // Create a connected version.
   await modal.openCreateNewVersionDialog();
   await modal.createConnectedVersion("Breadcrumb-free reader version");
   await modal.expectVersionsTabActive();
@@ -85,6 +97,7 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await addKeyFrame(versioning);
   await snapshot("connected successor created and compared");
 
+  // Compare sharing the old and new versions.
   await modal.clickChangesTab();
   await changesTab.expectOnlyNewFiles();
   await modal.clickSaveChanges();
@@ -96,8 +109,12 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await modal.expectOlderShareVersionWarning("v1", "v2");
   await addKeyFrame(versioning);
   await snapshot("publish identifies the selected generated version and warns before using an older one");
+
+  // Return to the new version.
   await modal.selectShareVersion(successor.versionId);
 
   void bigBundle;
+  await snapshot("the connected successor is selected for sharing");
+
   await skipMeadowHomeStateCheck();
 });

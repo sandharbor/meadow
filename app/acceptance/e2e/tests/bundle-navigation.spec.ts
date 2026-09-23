@@ -21,17 +21,25 @@ import { bundles } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Open a bundle from the list and inspect its graph. The editor should show the bundle's
+ * pages and navigation controls.
+ */
 test("navigate from bundle list to bundle and see graph view", async ({ page, snapshot, assertMeadowHomeState }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
   await snapshot("bundle list loaded");
 
+  // --- Test start ---
+  // Open the big bundle.
   await bundleList.clickBundle("meadow-test-bundle-big");
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-bundle-big");
 
   await editor.expectGraphViewActive();
   await snapshot("graph view visible");
+
   void bigBundle;
   void bundles;
 

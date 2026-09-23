@@ -50,11 +50,18 @@ test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
 test.use({ recordVideo: false });
 
+/*
+ * Create and save generated versions through the CLI. Edit notes, cancel a temporary
+ * successor, restore damaged frozen files, and delete local files while retaining version
+ * history.
+ */
 test("CLI manages generated versions through create read update restore cancel and delete", async ({
   assertMeadowHomeState,
   meadowCli,
   testServer,
+  snapshot,
 }) => {
+  // --- Setup ---
   await meadowCli.runJson(["bundle", "nodes", Bundle.Big, "--scope", "all"], {
     artifactName: "capture-fixture-source-before-generation",
   });
@@ -72,6 +79,10 @@ test("CLI manages generated versions through create read update restore cancel a
   const originalVersionId = initial.versions[0].versionId;
   expect(originalVersionId).toBe(generated.versionId);
 
+  await snapshot("the initial generation is saved");
+
+  // --- Test start ---
+  // Edit version notes.
   const updated = await meadowCli.runJson<{ operation: string; notes: string }>([
     "bundle", "versions", "update", Bundle.Big, originalVersionId,
     "--notes", "Original CLI-managed generation",
@@ -89,6 +100,9 @@ test("CLI manages generated versions through create read update restore cancel a
     localFilesState: "present",
   });
 
+  await snapshot("version notes persist");
+
+  // Create and cancel a temporary successor.
   const firstSuccessor = await meadowCli.runJson<{ operation: string; versionId: string }>([
     "bundle", "versions", "create", Bundle.Big,
     "--notes", "Disposable successor",
@@ -104,6 +118,9 @@ test("CLI manages generated versions through create read update restore cancel a
     currentVersionId: originalVersionId,
   });
 
+  await snapshot("cancellation restores the original version");
+
+  // Save a durable successor.
   const successor = await meadowCli.runJson<{ operation: string; versionId: string }>([
     "bundle", "versions", "create", Bundle.Big,
     "--notes", "Durable CLI successor",
@@ -113,6 +130,9 @@ test("CLI manages generated versions through create read update restore cancel a
     "bundle", "save-generation", Bundle.Big, "--version", successor.versionId,
   ], { artifactName: "versions-save-successor" });
 
+  await snapshot("the successor is saved");
+
+  // Damage and restore the frozen version.
   const frozenVersionDirectory = path.join(
     testServer.configDir,
     "bundles",
@@ -131,6 +151,9 @@ test("CLI manages generated versions through create read update restore cancel a
   expect(restored).toMatchObject({ operation: "bundle.versions.restore", success: true });
   expect(fs.readFileSync(frozenIndexPath, "utf8")).toBe(frozenIndex);
 
+  await snapshot("restoration recovers the original content");
+
+  // Delete the frozen local files.
   const deleted = await meadowCli.runJson<{ operation: string; success: boolean }>([
     "bundle", "versions", "delete", Bundle.Big, originalVersionId,
   ], { artifactName: "versions-delete-frozen" });
@@ -145,6 +168,9 @@ test("CLI manages generated versions through create read update restore cancel a
   });
   expect(fs.existsSync(frozenVersionDirectory)).toBe(false);
 
+  await snapshot("local deletion retains version history");
+
+  // Check version command help.
   const help = await meadowCli.run(
     ["bundle", "versions", "--help"],
     { artifactName: "versions-help" },
@@ -154,5 +180,7 @@ test("CLI manages generated versions through create read update restore cancel a
   expect(help).toContain("Local deletion never deletes publication records");
   void cli;
   void versioning;
+  await snapshot("help explains version creation cancellation and deletion");
+
   await assertMeadowHomeState();
 });

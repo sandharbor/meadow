@@ -25,9 +25,14 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Add the example bundle to an empty MeadowHome and generate its preview. The example
+ * should open with its expected content.
+ */
 test("add example bundle from empty state and preview it", async ({
   page, snapshot, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const previewModal = new PreviewPublishModal(page, expect);
@@ -36,19 +41,20 @@ test("add example bundle from empty state and preview it", async ({
   await bundleList.goto();
   await snapshot("empty bundle list");
 
-  // Click the "add the example bundle" link in the empty state
+  // --- Test start ---
+  // Add the example bundle.
   await bundleList.clickAddExampleBundleLink();
 
   // Wait for navigation into the example bundle editor
   await editor.waitForLoad("example-bundle");
   await snapshot("example bundle editor loaded");
 
-  // Click Preview and wait for it to complete
+  // Preview the bundle.
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
   await snapshot("preview complete");
 
-  // Verify the preview iframe shows the example bundle content
+  // Check the generated home page.
   await previewModal.expectPreviewIframeHeading("Notable Mental Models");
   await addKeyFrame(htmlGeneration);
   await snapshot("example bundle preview visible");

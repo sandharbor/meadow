@@ -27,12 +27,17 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Select all untracked pages in the example bundle and track them. The operation should
+ * save automatically without an extra Save click.
+ */
 test("Track All on example bundle untracked pages auto-saves without a save click", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
 
@@ -42,7 +47,8 @@ test("Track All on example bundle untracked pages auto-saves without a save clic
   await editor.waitForLoad("example-bundle");
   await snapshot("example bundle loaded");
 
-  // Baseline: no pending changes, so no Save / Undo buttons visible.
+  // --- Test start ---
+  // Select the safe pages.
   await editor.expectUndoNotVisible();
 
   // Select all pages — this opens the selection sidebar and reveals the
@@ -58,6 +64,7 @@ test("Track All on example bundle untracked pages auto-saves without a save clic
   await addKeyFrame(sensitive);
   await snapshot("sensitive pages deselected");
 
+  // Track the selected pages.
   // Track All is a "simple op": it auto-saves the config and commits in a
   // single request. The Save/Undo buttons must never appear — tracking a
   // batch of pages shouldn't feel like "make-work" to the user.
@@ -65,6 +72,7 @@ test("Track All on example bundle untracked pages auto-saves without a save clic
   await editor.expectUndoNotVisible();
   await addKeyFrame(tracking);
   await snapshot("track all applied — no save button");
+
   void exampleBundle;
 
   await assertMeadowHomeState();

@@ -30,6 +30,10 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Create a bundle whose starting page is an Excalidraw drawing. Generate its preview and
+ * follow a drawing link to another page.
+ */
 test("create a custom bundle with an excalidraw initial page and follow a drawing link", async ({
   page,
   testServer,
@@ -38,6 +42,7 @@ test("create a custom bundle with an excalidraw initial page and follow a drawin
   addKeyFrame,
   expectLogErrors,
 }) => {
+  // --- Setup ---
   const releaseWorkerWarning = expectLogErrors(
     /Failed to use workers for subsetting, falling back to the main thread/,
   );
@@ -59,10 +64,12 @@ test("create a custom bundle with an excalidraw initial page and follow a drawin
   await createModal.clickCreateBundle();
 
   await editor.waitForLoad("t006-meadow-flower");
-  await snapshot("graph view loaded with excalidraw initial page");
   await addKeyFrame(initialPage);
   await addKeyFrame(excalidraw);
+  await snapshot("graph view loaded with excalidraw initial page");
 
+  // --- Test start ---
+  // Inspect and preview the drawing.
   await editor.switchToListView();
   await editor.expectListViewRowByTitleAndFileTypePresent(
     "t006 --- meadow-flower",
@@ -79,9 +86,10 @@ test("create a custom bundle with an excalidraw initial page and follow a drawin
 
   await generatedBundle.expectHeading("t006 --- meadow-flower", 30_000);
   await generatedBundle.excalidraw.expectStandaloneDrawingVisible();
-  await snapshot("preview shows excalidraw initial page");
   await addKeyFrame(excalidraw);
+  await snapshot("preview shows excalidraw initial page");
 
+  // Follow a link inside the drawing.
   const firstDrawingLinkHref =
     "t006%20---%20linked-from-excalidraw.html";
   await generatedBundle.excalidraw.expectStandaloneDrawingLink(
@@ -90,8 +98,8 @@ test("create a custom bundle with an excalidraw initial page and follow a drawin
   await generatedBundle.excalidraw.clickStandaloneDrawingLink(firstDrawingLinkHref);
 
   await generatedBundle.expectHeading("t006 --- linked-from-excalidraw");
-  await snapshot("preview after clicking first excalidraw link");
   await addKeyFrame(excalidraw);
+  await snapshot("preview after clicking first excalidraw link");
 
   void customBundle;
 

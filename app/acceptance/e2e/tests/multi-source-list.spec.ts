@@ -7,7 +7,12 @@ import { bundleSource, folderBundles } from '../../../concepts/index.js';
 test.use({ bundleMode: 'mixed-starts' });
 test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
 
-test('Multi-source list view sorts canonical source names in flat and structural views', async ({ page, addKeyFrame, skipMeadowHomeStateCheck }) => {
+/*
+ * Sort a multi-source bundle by its Source column in flat and structural lists. Source
+ * names should remain separate from folders and stay visible when filtering to one source.
+ */
+test('Multi-source list view sorts canonical source names in flat and structural views', async ({ page, addKeyFrame, skipMeadowHomeStateCheck, snapshot }) => {
+  // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
   await list.clickBundle('multi-source-mixed');
@@ -19,6 +24,10 @@ test('Multi-source list view sorts canonical source names in flat and structural
   await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notes', '/');
   await editor.expectListViewLocation('_mw_sources/source000002/Overview.md', 'research', '/');
   await editor.expectListViewLocation('_mw_sources/source000002/Same/Inside.md', 'research', 'Same');
+  await snapshot("the flat list identifies each source separately from its folder");
+
+  // --- Test start ---
+  // Sort sources in the flat list.
   const ascendingSources = [
     '—',
     ...Array<string>(5).fill('notes'),
@@ -28,9 +37,15 @@ test('Multi-source list view sorts canonical source names in flat and structural
   await editor.clickListSort('Source');
   await editor.expectListViewSourceOrder(ascendingSources, 'ascending');
   await addKeyFrame(bundleSource);
+  await snapshot("flat rows are sorted by ascending source name");
+
+  // Reverse the source order.
   await editor.clickListSort('Source');
   await editor.expectListViewSourceOrder([...ascendingSources].reverse(), 'descending');
 
+  await snapshot("flat rows are sorted by descending source name");
+
+  // Check the structural list.
   await editor.switchToStructuralListView();
   await editor.expectListViewLocation('_mw_sources/source000002/Same/Inside.md', 'research', 'Same');
   await editor.expectListViewSourceOrder(['—', 'research', 'research', 'notes'], 'descending', 'selected-folders');
@@ -45,10 +60,15 @@ test('Multi-source list view sorts canonical source names in flat and structural
   await editor.expectListViewSourceOrder(outsideSources, 'ascending', 'outside');
   await addKeyFrame(bundleSource, folderBundles);
 
+  await snapshot("both structural groups sort by canonical source name");
+
+  // Filter to one source.
   const filters = new FilterPanelComponent(page, expect);
   await filters.expandFilterGroup('Folders');
   await filters.soloFolder('notes://');
   await editor.expectListViewSourceColumn(true);
   await editor.expectListViewSourceOrder(Array<string>(5).fill('notes'), 'ascending');
+  await snapshot("the source column stays visible when filtering a multi-source bundle");
+
   await skipMeadowHomeStateCheck();
 });

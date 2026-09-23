@@ -38,6 +38,10 @@ test.use({ fixtureHome: Fixture.None });
  * (png, svg, excalidraw) should still appear — only the inlink-side traversal
  * should collapse.
  */
+/*
+ * Set the starting page's incoming-link depth to zero. Its depth-one outgoing media should
+ * remain visible.
+ */
 test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible", async ({
   page,
   testServer,
@@ -46,6 +50,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   addKeyFrame,
   expectLogErrors,
 }) => {
+  // --- Setup ---
   // The Excalidraw thumbnail rendered for the embedded `.excalidraw` page
   // tries to use a Web Worker for font subsetting; our vendor bundle has no
   // Worker URL configured, so the renderer logs and falls back to the main
@@ -75,6 +80,8 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   await editor.waitForLoad("t006-embedded-media");
   await snapshot("editor loaded with t006 - embedded media as initial page");
 
+  // --- Test start ---
+  // Select the initial page.
   // Use list view to reliably pick the initial-page row, then return to
   // graph view so the recorded video shows the visual change when inlink
   // depth is reduced.
@@ -84,15 +91,16 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   await page.waitForTimeout(250);
   await editor.switchToGraphView();
   await page.waitForTimeout(250);
-  await snapshot("initial node selected in graph view, inlinks visible");
   await addKeyFrame(initialPage);
+  await snapshot("initial node selected in graph view, inlinks visible");
 
-  // Set Inlink Depth to 0 on the initial page.
+  // Remove incoming traversal.
   const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
   await detail.setInlinksDepth(0);
   await page.waitForTimeout(1000);
   await snapshot("after setting inlink depth to 0");
 
+  // Check the outgoing media.
   // The depth-1 outlink media should still be present — switch to list view
   // and assert each file type the user cares about is still in the graph.
   // Titles in list view drop the extension (the file type lives in its own

@@ -23,44 +23,53 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: "home_fixture_hooks" });
 
+/*
+ * Preview a page-title hook, edit it, and preview again. The generated title should follow
+ * the updated hook.
+ */
 test("Hooks preview shows normalized title and editing hook updates it", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
+  // --- Setup ---
   // Navigate to bundle list and click the hooks test bundle
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
   await snapshot("bundle list loaded");
 
+  // --- Test start ---
+  // Open the hooks bundle.
   await bundleList.clickBundle("meadow-test-bundle-for-hooks");
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-bundle-for-hooks");
   await snapshot("bundle editor loaded - graph view, nothing untracked");
 
-  // Click Preview and wait for it to complete
+  // Preview the bundle.
   await editor.clickPreview();
   const modal = new PreviewPublishModal(page, expect);
   await modal.waitForPreviewCompleteAllTracked();
   await snapshot("preview completed");
 
+  // Check the hook-generated title.
   // Verify the preview iframe shows the page title normalized by the hook:
   // "V Dwarkesh and Anthropic CEO in 2023" → "video - Dwarkesh and Anthropic CEO in 2023"
   await modal.expectPreviewIframeHeading("video - Dwarkesh and Anthropic CEO in 2023");
   await addKeyFrame(htmlGeneration);
   await snapshot("verified page title with video hook");
 
-  // Open Customize sidebar, scroll to Hooks, switch to Global scope
+  // Open the global hooks.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   await customizeTab.hooks.switchScopeToGlobal();
   await snapshot("hooks panel in global scope");
 
-  // Edit the global Page Title hook
+  // Edit the page-title hook.
   const pageTitleHook = customizeTab.hooks.getHook("Page Title");
   await pageTitleHook.clickEdit();
   await snapshot("hook editor opened");
 
-  // Modify the hook: change 'video' to 'vulkan'
+  // Change the title wording.
   await pageTitleHook.modifyContent("'video'", "'vulkan'");
   await snapshot("hook content modified");
 
+  // Save and regenerate.
   // Save the hook — this triggers preview regeneration via SSE stream.
   // Response headers mark the start of generation. The updated heading can
   // appear while output is still staging, so also wait for regeneration to
@@ -73,10 +82,12 @@ test("Hooks preview shows normalized title and editing hook updates it", async (
   await new ChangesTab(page, expect).waitForRegenerationComplete();
   await snapshot("hook saved - preview regenerated");
 
+  // Check the updated title.
   // Verify the updated heading (sidebar is alongside the preview, iframe is already visible)
   await modal.expectPreviewIframeHeading("vulkan - Dwarkesh and Anthropic CEO in 2023");
   await addKeyFrame(hooks);
   await snapshot("verified updated page title with vulkan hook");
+
   void hooksBundle;
 
   await skipMeadowHomeStateCheck();

@@ -36,12 +36,17 @@ const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 's
   checkpointAvailable: false,
 };
 
+/*
+ * Exercise startup failure and recovery states. The screens should offer actionable
+ * choices without exposing secrets.
+ */
 test('Startup recovery surfaces remain actionable and secret-free', async ({
   page,
   snapshot,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
+  // --- Setup ---
   const show = async (diagnostic: StartupFailureDiagnostic): Promise<void> => {
     await page.setContent(renderStartupRecoveryHtml(diagnostic));
     await expect(page.getByRole('banner').getByText('Meadow', { exact: true })).toBeVisible();
@@ -61,11 +66,13 @@ test('Startup recovery surfaces remain actionable and secret-free', async ({
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0);
-  await snapshot('invalid bootstrap recovery screen');
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await addKeyFrame(startupRecovery, callout);
+  await snapshot('invalid bootstrap recovery screen');
 
+  // --- Test start ---
+  // Check an unsupported Home format.
   await show({
     ...commonDiagnostic,
     category: 'unsupported-home-format',
@@ -75,11 +82,12 @@ test('Startup recovery surfaces remain actionable and secret-free', async ({
   });
   await expect(page.getByRole('button', { name: 'Choose another Home…' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Show this Home' })).toBeVisible();
-  await snapshot('unsupported Home recovery screen');
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await addKeyFrame(startupRecovery, callout);
+  await snapshot('unsupported Home recovery screen');
 
+  // Check an incomplete migration.
   await show({
     ...commonDiagnostic,
     category: 'incomplete-migration',
@@ -95,10 +103,10 @@ test('Startup recovery surfaces remain actionable and secret-free', async ({
   await expect(page.getByText('Pre-migration Git commit', { exact: true })).toBeHidden();
   await expect(page.getByText('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Restore verified checkpoint' })).toHaveCount(0);
-  await snapshot('incomplete migration recovery screen');
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await addKeyFrame(startupRecovery, callout);
+  await snapshot('incomplete migration recovery screen');
 
   await assertMeadowHomeState();
 });

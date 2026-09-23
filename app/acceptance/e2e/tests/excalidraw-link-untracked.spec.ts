@@ -29,6 +29,10 @@ test.use({ trackBigBundleExcalidrawPages: true });
  * not whitelisted on the bundle renders as a non-clickable "link not tracked"
  * label, matching the affordance regular pages already use.
  */
+/*
+ * Leave a drawing's target page untracked and generate the bundle. Its link should explain
+ * that the target is not tracked.
+ */
 test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
   page,
   snapshot,
@@ -36,6 +40,7 @@ test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
   addKeyFrame,
   expectLogErrors,
 }) => {
+  // --- Setup ---
   const releaseWorkerWarning = expectLogErrors(
     /Failed to use workers for subsetting, falling back to the main thread/,
   );
@@ -56,6 +61,8 @@ test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
   await modal.waitForPreviewComplete();
   await snapshot("preview completed");
 
+  // --- Test start ---
+  // Inspect an untracked drawing link.
   await generatedBundle.clickPageLink("t006 - embedded media");
   await generatedBundle.expectHeading("t006 - embedded media");
 
@@ -76,9 +83,10 @@ test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
 
   // The replacement text shows up in the rendered SVG.
   await generatedBundle.excalidraw.expectStandaloneDrawingText("link not tracked");
-  await snapshot("excalidraw untracked link rendered as 'link not tracked'");
   await addKeyFrame(excalidraw);
+  await snapshot("excalidraw untracked link rendered as 'link not tracked'");
 
+  // Finish the expected-warning check.
   releaseWorkerWarning();
   releaseFontWarning();
   void bigBundle;

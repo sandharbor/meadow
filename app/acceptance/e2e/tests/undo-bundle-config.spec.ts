@@ -22,12 +22,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Change page configuration within a bundle, then use Undo. The editor should restore the
+ * saved configuration without leaving the bundle.
+ */
 test("Undo reverts bundle page config changes without leaving the bundle", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
 
@@ -40,12 +45,13 @@ test("Undo reverts bundle page config changes without leaving the bundle", async
   expect(originalCount).toBeGreaterThan(10);
   await snapshot("list view - original page count");
 
-  // Select the initial node ("main page") — details auto-open for depth-0 pages
+  // --- Test start ---
+  // Select the initial page.
   await editor.clickListViewRowByExactName("main page");
   await page.waitForTimeout(500);
   await snapshot("main page selected - details auto-opened");
 
-  // Set outlinks depth to 1 via the Out-link Depth input — many pages should disappear
+  // Reduce its outgoing traversal.
   const selectedPageRoot = editor.getSelectedPageRoot();
   const detail = new SelectedPageDetailComponent(selectedPageRoot, expect);
   await detail.setOutlinksDepth(1);
@@ -54,7 +60,7 @@ test("Undo reverts bundle page config changes without leaving the bundle", async
   expect(reducedCount).toBeLessThan(originalCount);
   await snapshot("outlinks depth set to 1 - fewer pages");
 
-  // The Undo button should now be visible (draft changes exist)
+  // Undo the traversal change.
   await editor.expectUndoVisible();
 
   // Click Undo — pages should re-appear without leaving the bundle
@@ -73,6 +79,7 @@ test("Undo reverts bundle page config changes without leaving the bundle", async
 
   await addKeyFrame(bundleConfig);
   await snapshot("after undo - page count and depth restored");
+
   void bigBundle;
 
   await assertMeadowHomeState();

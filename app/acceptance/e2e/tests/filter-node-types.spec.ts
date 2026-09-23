@@ -22,12 +22,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Inspect the available concrete file types and solo Markdown. The graph should retain
+ * only pages of that type.
+ */
 test("type filter lists concrete file types and solos Markdown", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -42,6 +47,8 @@ test("type filter lists concrete file types and solos Markdown", async ({
   }
   await snapshot("type filters expanded");
 
+  // --- Test start ---
+  // Solo Markdown pages.
   await filterPanel.soloNodeType("Markdown");
   await editor.switchToListView();
   await expect.poll(() => editor.getListViewPageCount()).toBe(markdownNodeCount);
@@ -51,6 +58,7 @@ test("type filter lists concrete file types and solos Markdown", async ({
   expect(visibleTypes.every(type => type.trim() === ".md")).toBe(true);
   await addKeyFrame(filters);
   await snapshot("Markdown nodes soloed");
+
   void bigBundle;
 
   await assertMeadowHomeState();

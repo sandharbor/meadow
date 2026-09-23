@@ -32,12 +32,17 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
+/*
+ * Untrack a page from a saved bundle and regenerate, then track it again. Review should
+ * first show its removal and then its return before each save.
+ */
 test("untracking a saved page deletes it from the next preview and retracking adds it back", async ({
   page,
   snapshot,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const modal = new PreviewPublishModal(page, expect);
@@ -52,14 +57,17 @@ test("untracking a saved page deletes it from the next preview and retracking ad
   await modal.waitForSaveComplete();
   await modal.closeModal();
 
-  // Untracking is a simple operation: it auto-saves the configuration without
-  // presenting the editor's Save/Undo controls.
+  await snapshot("the tracked page is included in a saved generation");
+
+  // --- Test start ---
+  // Untrack the page.
   await editor.switchToListView();
   await editor.rightClickRow(pageTitle);
   await editor.clickContextMenuItemAndAwaitAutoSave("Untrack");
   await editor.expectUndoNotVisible();
   await snapshot("tracked page untracked and auto-saved");
 
+  // Preview the removed page.
   // The next preview must remove the page's generated HTML and modify other
   // generated files that previously linked to it.
   await editor.clickPreview();
@@ -74,6 +82,7 @@ test("untracking a saved page deletes it from the next preview and retracking ad
   await addKeyFrame(htmlGeneration);
   await snapshot("preview deletes the untracked page");
 
+  // Save and track the page again.
   await modal.clickBundlePreviewTab();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
@@ -97,10 +106,13 @@ test("untracking a saved page deletes it from the next preview and retracking ad
   await changesTab.expectFileInChanges(generatedFilename);
   await snapshot("preview adds the retracked page back");
 
+  // Save the restored page.
   await modal.clickBundlePreviewTab();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
   void bigBundle;
+
+  await snapshot("the restored page is saved in the generated version");
 
   await assertMeadowHomeState();
 });

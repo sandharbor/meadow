@@ -26,6 +26,10 @@ import { smallBundle } from "../src/bundle-docs/index.js";
 test.use({ bundleMode: "single-file" });
 test.use({ serialGroup: "generated-bundle-versioning" });
 
+/*
+ * Modify a frozen version's files outside Meadow. Restore them from Git, then cancel the
+ * unsaved successor and return to the original current version.
+ */
 test("V08 G05 generated version frozen integrity is recoverable before canceling an unsaved successor", async ({
   page,
   snapshot,
@@ -33,6 +37,7 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   addKeyFrame,
   testServer,
 }) => {
+  // --- Setup ---
   const workflows = new Workflows(page, expect);
   await workflows.navigateToSmallBundlePreview();
 
@@ -55,6 +60,10 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   await modal.expectVersionCreatedMessageHidden();
 
   const [, successor] = await versions.waitForCount(2);
+  await snapshot("a successor exists alongside its frozen predecessor");
+
+  // --- Test start ---
+  // Modify the frozen files outside Meadow.
   const frozenDirectory = path.join(
     testServer.configDir,
     "bundles",
@@ -79,10 +88,14 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   await addKeyFrame(versioning);
   await snapshot("frozen integrity problem blocks version workflow");
 
+  // Restore the frozen version.
   await page.getByRole("button", { name: "Restore Frozen Version from Git" }).click();
   await expect(page.getByText("Integrity Problem", { exact: true })).toHaveCount(0);
   expect(fs.readFileSync(frozenHtmlFile, "utf8")).not.toContain("injected frozen edit");
 
+  await snapshot("restoring from Git removes the frozen integrity problem");
+
+  // Cancel the unsaved successor.
   await modal.cancelCurrentVersion();
   await expect(page.getByText(successor.versionId, { exact: true })).toHaveCount(0, { timeout: 30_000 });
   await modal.expectSingleVersionExplanation();

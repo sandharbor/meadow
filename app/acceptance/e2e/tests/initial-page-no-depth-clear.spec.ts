@@ -25,9 +25,14 @@ test.use({ bundleMode: "single-file" });
 
 test.use({ fixtureHome: Fixture.None });
 
+/*
+ * Select the starting page and inspect its depth controls. Its required traversal depths
+ * should not be removable.
+ */
 test("a publisher should not be able to remove the depth on the initial page", async ({
   page, snapshot, assertMeadowHomeState, addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
 
@@ -48,7 +53,8 @@ test("a publisher should not be able to remove the depth on the initial page", a
   await addKeyFrame(initialPage);
   await snapshot("initial page depth has no remove override button");
 
-  // Click a non-initial page that has a depth override
+  // --- Test start ---
+  // Compare a regular page override.
   await editor.clickListViewRowByExactName("Cognitive Biases");
   await page.waitForTimeout(250);
 

@@ -24,6 +24,10 @@ import { customBundle } from "../src/bundle-docs/index.js";
 test.use({ bundleMode: "single-folder" });
 test.use({ fixtureHome: Fixture.FolderStructureSingle });
 
+/*
+ * Select folders before naming a bundle and its home page. Check invalid source roots, an
+ * independently chosen slug, and the resulting preview title.
+ */
 test("choose folders before naming a bundle and its published home page", async ({
   page,
   testServer,
@@ -31,6 +35,7 @@ test("choose folders before naming a bundle and its published home page", async 
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   const createModal = new CreateAndEditBundleModal(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -46,6 +51,10 @@ test("choose folders before naming a bundle and its published home page", async 
   await createModal.expectFolderSelectionValid();
   await addKeyFrame(folderBundles);
 
+  await snapshot("the selected folder supplies the initial name");
+
+  // --- Test start ---
+  // Try a source root outside the selected folder.
   await createModal.changeSourceDirectory(path.join(sourceDir, "Beta"));
   await createModal.expectFolderOutsideRoot(path.join(sourceDir, "Alpha"));
   await addKeyFrame(folderBundles);
@@ -54,17 +63,24 @@ test("choose folders before naming a bundle and its published home page", async 
   await createModal.changeSourceDirectory(sourceDir);
   await createModal.expectFolderSelectionValid();
 
+  await snapshot("restoring the source root makes the selection valid");
+
+  // Name a bundle with two folders.
   await createModal.addFolders([path.join(sourceDir, "Beta")]);
   await createModal.fillFolderHomePageTitle("Collected Notes");
   expect(await createModal.getSlugDisplayText()).toBe("collected-notes");
   await createModal.clickEditSlug();
   await createModal.fillSlug("reading-room");
   await addKeyFrame(bundleSlug);
+  await snapshot("the home title and bundle slug are chosen independently");
+
+  // Create the folder bundle.
   await createModal.clickCreateBundle();
   await editor.waitForLoad("reading-room");
   await editor.expectGraphViewHasPages();
   await snapshot("folder bundle created with a separate list name and home title");
 
+  // Reopen and preview the named bundle.
   await editor.clickBackToBundles();
   await bundleList.clickBundle("reading-room");
   await editor.waitForLoad("reading-room");
@@ -74,6 +90,7 @@ test("choose folders before naming a bundle and its published home page", async 
   await previewModal.generatedBundle.expectStructuralChildNames(["Alpha", "Beta"]);
   await addKeyFrame(folderBundles);
   await snapshot("published home uses the chosen title and folder order");
+
   void customBundle;
 
   await assertMeadowHomeState({

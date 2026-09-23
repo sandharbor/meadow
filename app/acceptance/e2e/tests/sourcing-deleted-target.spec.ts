@@ -8,7 +8,12 @@ import { orphan } from '../../../concepts/index.js';
 test.use({ bundleMode: 'single-file' });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Delete a file while leaving a section link that points to it. Review should identify the
+ * missing file and optionally show the previously accepted route.
+ */
 test('Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route', async ({ page, meadowCli, sourceChanges, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+  // --- Setup ---
   let command = 0;
   const destination = await prepareSourceScenario(
     args => meadowCli.run(args, { artifactName: `source-setup-${++command}` }),
@@ -33,6 +38,10 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
   const review = editor.sourceReview;
   await expect(page.getByRole('dialog', { name: 'Source changes' })).toBeVisible();
   await editor.expectSourceOrphanCount(1);
+  await snapshot('the prepared deletion opens directly in source review');
+
+  // --- Test start ---
+  // Inspect the missing target.
   const orphans = await review.reviewOrphans();
   const title = 't003 ---- page with section to link to';
   await orphans.expectSummaryCount(1);
@@ -49,11 +58,17 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
   await addKeyFrame(orphan);
   expect(navigationMutations).toEqual([]);
   await snapshot('a surviving section link explains the missing file without showing the full route');
+
+  // Show the previous route.
   await orphans.showPreviousRoute(title);
   await orphans.expectExplanation(title, 'main page.md');
   await addKeyFrame(orphan);
   await snapshot('the previous route is available when requested');
+
+  // Accept the source update.
   await review.accept();
   await editor.expectSourceOrphanCount(0);
+  await snapshot('acceptance removes the deleted target configuration');
+
   await skipMeadowHomeStateCheck();
 });

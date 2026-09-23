@@ -23,16 +23,23 @@ import { bigBundle } from "../src/bundle-docs/index.js";
 test.use({ bundleMode: "single-file" });
 test.use({ isolateSourceGraphs: true });
 
+/*
+ * Mark a page as sensitive for the first time. Check that the introductory callout
+ * explains the source change and can be dismissed.
+ */
 test("callout for marking source node sensitive the first time", async ({
   page,
   snapshot,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
+  // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
   await snapshot("bundle editor loaded");
 
+  // --- Test start ---
+  // Mark the first page sensitive.
   const editor = new BundleEditorPage(page, expect);
 
   // Switch to list view so we can reliably target a specific non-sensitive page
@@ -50,12 +57,12 @@ test("callout for marking source node sensitive the first time", async ({
   await addKeyFrame(callout);
   await snapshot("consent modal visible for first sensitive marking");
 
-  // Agree to it
+  // Accept the explanation.
   await editor.clickConsentProceed();
   await page.waitForTimeout(500);
   await snapshot("first page marked sensitive");
 
-  // Right-click on another non-sensitive page
+  // Mark another page sensitive.
   await editor.rightClickRow("t005 - in and out links");
 
   // Choose "Mark Sensitive" again
@@ -66,7 +73,7 @@ test("callout for marking source node sensitive the first time", async ({
   await editor.expectConsentModalNotVisible();
   await snapshot("second page marked sensitive without consent modal");
 
-  // Live source edits take effect in curation only after acceptance.
+  // Accept and inspect the sensitive pages.
   await editor.sourceReview.open();
   await editor.sourceReview.accept();
 
@@ -83,11 +90,12 @@ test("callout for marking source node sensitive the first time", async ({
   expect(selectedTitles.length).toBe(3);
   await snapshot("3 sensitive pages selected after solo");
 
-  // Remove the solo
+  // Remove the solo.
   await filterPanel.clickSoloOnFilter("Sensitive");
   await page.waitForTimeout(250);
   await snapshot("solo removed");
 
+  // Remove both sensitivity markings.
   // Now mark those two pages as not sensitive via right-click
   // First page
   await editor.rightClickRow("t002 - dup pages and images");
@@ -100,6 +108,7 @@ test("callout for marking source node sensitive the first time", async ({
   await page.waitForTimeout(500);
   await snapshot("two pages unmarked as sensitive");
 
+  // Accept the edits and inspect the remaining page.
   await editor.sourceReview.open();
   await editor.sourceReview.accept();
 
@@ -111,6 +120,7 @@ test("callout for marking source node sensitive the first time", async ({
   const selectedTitlesAfter = await editor.getSelectedPageTitles();
   expect(selectedTitlesAfter.length).toBe(1);
   await snapshot("1 sensitive page remaining after unmarking two");
+
   void bigBundle;
 
   await skipMeadowHomeStateCheck();
