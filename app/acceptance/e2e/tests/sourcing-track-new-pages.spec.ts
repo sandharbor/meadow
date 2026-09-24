@@ -24,6 +24,7 @@ test('Sourcing acceptance tracks new pages by default', async ({ page, sourceCha
   await sourceChanges.apply('add-linked-page');
   await editor.checkSourceChanges();
   await editor.sourceReview.open();
+  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: /Discard|Cancel source/ })).toHaveCount(0);
   await editor.sourceReview.expectTrackNewPages(true);
   await addKeyFrame(sourceSnapshot);
   await snapshot('added page is selected for tracking by default');

@@ -1242,7 +1242,7 @@ const BundleEditor: React.FC = () => {
         directories={directories}
       />
 
-      <ManageSources bundleSlug={slug || ''} graph={graph} isOpen={isManageSourcesOpen} onOpen={() => setIsManageSourcesOpen(true)} onClose={() => setIsManageSourcesOpen(false)} onChanged={reloadWorkingGraph} onStaged={() => { setSourceReviewTrigger(value => value + 1); }} />
+      <ManageSources bundleSlug={slug || ''} graph={graph} isOpen={isManageSourcesOpen} onOpen={() => setIsManageSourcesOpen(true)} onClose={() => setIsManageSourcesOpen(false)} onChanged={() => { refreshBundleNodeConfigs(); reloadWorkingGraph(); setSourceChangeTrigger(value => value + 1); }} onStaged={() => { setSourceReviewTrigger(value => value + 1); }} />
       {viewFrontierEnabled && (pendingSourceChanges || frontierUnavailable) && <div role="status" className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-neutral-50 px-5 py-2 text-sm text-neutral-600">
         <span>{pendingSourceChanges ? 'The frontier can’t be shown while source changes are waiting for review.' : frontierUnavailable}</span>
         <button className="rounded border border-neutral-300 bg-white px-3 py-1 hover:bg-neutral-100" onClick={() => { setFilters(filters.map(filter => filter.id === 'frontier-filter' ? { ...filter, enabled: false } : filter)); setFrontierUnavailable(null); }}>Okay</button>

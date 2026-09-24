@@ -252,6 +252,7 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
     },
     ...(candidate?.sourceProposal && { sourceChanges: {
       before: bundleSources(loadSourceBundleConfig(bundleDirectory)), after: candidate.sourceProposal.sources,
+      startingSelectionsChanged: candidate.sourceProposal.startingSelectionsChanged,
       stale: candidate.sourceProposal.baseConfigFingerprint !== fingerprint,
       outputPathsChange: candidate.sourceProposal.sourceOutputLayout !== loadSourceBundleConfig(bundleDirectory).sourceOutputLayout
         || candidate.sourceProposal.sources.some(source => bundleSources(loadSourceBundleConfig(bundleDirectory)).some(before => before.id === source.id && before.name !== source.name)),

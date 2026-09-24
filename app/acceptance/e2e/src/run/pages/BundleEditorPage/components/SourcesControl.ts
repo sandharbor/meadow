@@ -13,7 +13,7 @@ export class SourcesControl {
     await this.page.getByTitle('Bundle options', { exact: true }).click();
     await this.page.getByRole('button', { name: 'Manage sources…', exact: true }).click();
     await this.expect(this.dialog).toBeVisible();
-    await this.expect(this.dialog.getByRole('button', { name: 'Review source changes', exact: true })).toBeEnabled();
+    await this.expect(this.dialog.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
   }
 
   async expectNotice(names: string[] = []) {
@@ -67,8 +67,15 @@ export class SourcesControl {
   }
 
   async stage() {
-    await this.dialog.getByRole('button', { name: 'Review source changes', exact: true }).click();
+    await this.dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await this.expect(this.page.getByRole('dialog', { name: 'Source changes', exact: true })).toBeVisible();
+  }
+
+  async saveWithoutMaterialChanges() {
+    await this.dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await this.expect(this.dialog).not.toBeVisible();
+    await this.expect(this.page.getByRole('status').filter({ hasText: 'Sources updated' })).toBeVisible();
+    await this.expect(this.page.getByRole('dialog', { name: 'Source changes', exact: true })).not.toBeVisible();
   }
 
   async setIgnored(name: string, ignored: boolean) {
@@ -77,7 +84,9 @@ export class SourcesControl {
   }
 
   async expectDisconnected(sourceId: string) {
-    await this.expect(this.dialog.getByTestId(`source-${sourceId}`)).toContainText('Disconnected. Captured pages remain available.');
+    const source = this.dialog.getByTestId(`source-${sourceId}`);
+    await source.scrollIntoViewIfNeeded();
+    await this.expect(source).toContainText('Disconnected. Captured pages remain available.');
   }
 
   async close() {

@@ -46,8 +46,7 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   const sources = new SourcesControl(page, expect);
   await sources.open();
   await sources.rename('notes', 'notebook');
-  await sources.stage();
-  await editor.sourceReview.accept();
+  await sources.saveWithoutMaterialChanges();
   await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', false);
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
   await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notebook', '/');

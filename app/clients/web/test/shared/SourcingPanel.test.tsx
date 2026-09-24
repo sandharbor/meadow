@@ -77,6 +77,7 @@ describe('tracking source additions', () => {
     await act(async () => { pending.resolve(response({ ...review, trackNewPages: savedPreference,
       candidate: { ...review.accepted, id: 'b'.repeat(32) }, changes: [{ kind: 'added', path: 'New page.md' }] })); });
     fireEvent.click(screen.getByRole('button', { name: '1 source change available – Review' }));
+    expect(screen.queryByRole('button', { name: /Discard|Cancel source/ })).not.toBeInTheDocument();
     const checkbox = screen.getByRole('checkbox', { name: 'Track non-sensitive added pages' });
     expect(checkbox).toHaveProperty('checked', savedPreference);
     fireEvent.click(checkbox);
@@ -84,6 +85,35 @@ describe('tracking source additions', () => {
     const [url, options] = vi.mocked(apiRequest).mock.calls.at(-1)!;
     expect(url).toBe('bundles/example/sourcing/accept');
     expect(JSON.parse(options!.body as string).trackNewPages).toBe(!savedPreference);
+  });
+});
+
+describe('cancelling source settings', () => {
+  it('does not offer settings cancellation for an unchanged registry with pending file edits', async () => {
+    const sources = [{ id: 'notes', name: 'notes', directory: '/notes' }];
+    vi.mocked(apiRequest).mockResolvedValueOnce(response({ ...review,
+      candidate: { ...review.accepted, id: 'b'.repeat(32) }, changes: [{ kind: 'modified', path: 'Study.md' }],
+      sourceChanges: { before: sources, after: sources, outputPathsChange: false, stale: false },
+    }));
+    render(<SourcingPanel bundleSlug="example" initialReview hasDraftChanges={false} onAccepted={() => {}} />);
+    expect(await screen.findByRole('button', { name: 'Accept source changes' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /Discard|Cancel source/ })).not.toBeInTheDocument();
+  });
+
+  it.each(['removal', 'location'])('explains cancellation of a source %s and closes after cancelling', async operation => {
+    const before = [{ id: 'notes', name: 'notes', directory: '/notes' }, { id: 'reference', name: 'reference', directory: '/reference' }];
+    const after = operation === 'removal' ? before.slice(0, 1) : [before[0], { ...before[1], directory: '/reference-relocated' }];
+    vi.mocked(apiRequest).mockResolvedValueOnce(response({ ...review,
+      candidate: { ...review.accepted, id: 'b'.repeat(32) }, changes: [{ kind: 'missing', path: 'Study.md' }],
+      sourceChanges: { before, after, outputPathsChange: false, stale: false },
+    })).mockResolvedValueOnce(response(review));
+    render(<SourcingPanel bundleSlug="example" initialReview hasDraftChanges={false} onAccepted={() => {}} />);
+    const button = await screen.findByRole('button', { name: operation === 'removal' ? 'Cancel source removal' : 'Cancel source settings changes' });
+    expect(button).toHaveAccessibleDescription('Keep your current sources and included material. Your source files won’t be changed.');
+    expect(screen.getByRole('button', { name: 'About cancelling source settings' })).toHaveAccessibleDescription('Keep your current sources and included material. Your source files won’t be changed.');
+    await act(async () => { fireEvent.click(button); });
+    expect(apiRequest).toHaveBeenLastCalledWith('bundles/example/sourcing/cancel', expect.objectContaining({ method: 'POST', body: '{}' }));
+    expect(screen.queryByRole('dialog', { name: 'Source changes' })).not.toBeInTheDocument();
   });
 });
 

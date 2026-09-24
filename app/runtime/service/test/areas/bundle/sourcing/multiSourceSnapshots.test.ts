@@ -17,7 +17,8 @@ import { loadSourceBundleConfig, loadSourceNodeConfigs } from '../../../../src/s
 import { trackBundleNodes } from '../../../../src/areas/bundle/curation/services/bundleTrackingOperations.js';
 import { loadWorkingGraph } from '../../../../src/shared/bundle-graph/workingGraphService.js';
 import { captureSourceSnapshot, initializeSourcing, loadSourceSnapshot, loadSourcingState, snapshotGraph, snapshotSourceRoot, sourceConfigFingerprint } from '../../../../src/shared/source-snapshot/sourceSnapshots.js';
-import { stageSourceRegistry, cancelSourceCandidate, setIgnoredSource } from '../../../../src/areas/bundle/sourcing/services/sourceRegistryReview.js';
+import { stageSourceRegistry, cancelSourceCandidate, setIgnoredSource, sourceRegistryStatus } from '../../../../src/areas/bundle/sourcing/services/sourceRegistryReview.js';
+import { saveSourceRegistry } from '../../../../src/areas/bundle/sourcing/services/saveSourceRegistry.js';
 import { acceptSourceSnapshot, sourcingReview, scanSourceChanges } from '../../../../src/areas/bundle/sourcing/services/sourceReview.js';
 
 vi.mock('../../../../src/shared/utils/configDirectory/gitUtils/gitStatusUtils.js', async importOriginal => ({ ...await importOriginal<typeof import('../../../../src/shared/utils/configDirectory/gitUtils/gitStatusUtils.js')>(), commitChangesNative: vi.fn(async () => undefined) }));
@@ -99,6 +100,78 @@ describe('multi-source snapshots with the shared fixture', () => {
   });
 });
 
+
+describe('saving source settings', () => {
+  it('reconnects unchanged material and preserves the historical registry and curation', async () => {
+    const state = await initializeSourcing(bundle);
+    const accepted = loadSourceSnapshot(bundle, state.acceptedId);
+    const beforeNodes = loadSourceNodeConfigs(bundle);
+    const relocated = path.join(source, 'research-relocated');
+    fs.renameSync(path.join(source, 'research'), relocated);
+    await saveSourceRegistry(bundle, config.sources!.map(item => item.name === 'research' ? { ...item, directory: relocated } : item));
+    const saved = loadSourcingState(bundle)!;
+    expect(saved.candidateId).toBeUndefined();
+    expect(loadSourceBundleConfig(bundle).sources?.[1].directory).toBe(relocated);
+    expect(loadSourceNodeConfigs(bundle)).toEqual(beforeNodes);
+    expect(loadSourceSnapshot(bundle, saved.acceptedId).files).toEqual(accepted.files);
+    expect(loadSourceSnapshot(bundle, state.acceptedId).sources).toEqual(config.sources);
+    expect((await scanSourceChanges(bundle, true)).candidate).toBeUndefined();
+  });
+
+  it('adds and removes a source without review when none of its files enter the material', async () => {
+    config.defaultOutlinksDepth = 0; config.defaultInlinksDepth = 0;
+    fs.writeFileSync(path.join(bundle, 'config/bundle_config.yaml'), YAML.stringify(config));
+    const state = await initializeSourcing(bundle);
+    const accepted = loadSourceSnapshot(bundle, state.acceptedId);
+    const reference = { id: 'source000003', name: 'reference', directory: path.join(source, 'reference') };
+    await saveSourceRegistry(bundle, [...config.sources!, reference]);
+    expect(loadSourceBundleConfig(bundle).sources).toContainEqual({ ...reference, aliases: [] });
+    expect(loadSourcingState(bundle)?.candidateId).toBeUndefined();
+    expect(loadSourceSnapshot(bundle, loadSourcingState(bundle)!.acceptedId).files).toEqual(accepted.files);
+    await saveSourceRegistry(bundle, config.sources!);
+    expect(loadSourceBundleConfig(bundle).sources).toHaveLength(2);
+    expect(loadSourcingState(bundle)?.candidateId).toBeUndefined();
+    expect(loadSourceSnapshot(bundle, loadSourcingState(bundle)!.acceptedId).files).toEqual(accepted.files);
+  });
+
+  it('keeps source removal and its material changes pending for review', async () => {
+    const state = await initializeSourcing(bundle);
+    const beforeNodes = loadSourceNodeConfigs(bundle);
+    await saveSourceRegistry(bundle, [config.sources![0]]);
+    const review = await sourcingReview(bundle);
+    expect(review.candidate).toBeDefined();
+    expect(review.changes.some(change => change.kind === 'missing' && change.path.includes('source000002'))).toBe(true);
+    expect(review.sourceChanges?.after).toHaveLength(1);
+    expect(loadSourcingState(bundle)?.acceptedId).toBe(state.acceptedId);
+    expect(loadSourceBundleConfig(bundle).sources).toEqual(config.sources);
+    const pending = loadSourcingState(bundle);
+    expect(sourceRegistryStatus(bundle)).toMatchObject({
+      pendingChanges: true, sources: [{ ...config.sources![0], aliases: [] }],
+      startingSelections: [{ sourceId: 'source000001', kind: 'file', path: 'Start.md' }],
+    });
+    expect(loadSourcingState(bundle)).toEqual(pending);
+    expect(loadSourceNodeConfigs(bundle)).toEqual(beforeNodes);
+    await cancelSourceCandidate(bundle);
+    expect(sourceRegistryStatus(bundle)).toMatchObject({ pendingChanges: false, sources: config.sources });
+    expect(loadSourcingState(bundle)?.acceptedId).toBe(state.acceptedId);
+    expect(loadSourceNodeConfigs(bundle)).toEqual(beforeNodes);
+  });
+
+  it('does not accept pending file edits when saving a source location', async () => {
+    const state = await initializeSourcing(bundle);
+    fs.appendFileSync(path.join(source, 'notes/Start.md'), '\nUnreviewed source edit.\n');
+    await scanSourceChanges(bundle, true);
+    expect(sourceRegistryStatus(bundle)).toMatchObject({ pendingChanges: true, sources: config.sources });
+    const relocated = path.join(source, 'research-relocated');
+    fs.renameSync(path.join(source, 'research'), relocated);
+    await saveSourceRegistry(bundle, config.sources!.map(item => item.name === 'research' ? { ...item, directory: relocated } : item));
+    const review = await sourcingReview(bundle);
+    expect(review.changes).toContainEqual(expect.objectContaining({ kind: 'modified', path: '_mw_sources/source000001/Start.md' }));
+    expect(review.candidate).toBeDefined();
+    expect(loadSourcingState(bundle)?.acceptedId).toBe(state.acceptedId);
+    expect(loadSourceBundleConfig(bundle).sources).toEqual(config.sources);
+  });
+});
 
 describe('registry review acceptance', () => {
   const registry = () => YAML.parse(fs.readFileSync(path.join(bundle, 'config/bundle_config.yaml'), 'utf8')) as BundleConfig;
@@ -224,6 +297,15 @@ it('adds a mixed starting selection without replacing the original page, includi
   const collection = first.sourceProposal!.nodes.find(node => node.bundleNodeKind === 'collection')!;
   expect(collection.bundleNodeKind === 'collection' && collection.memberBundleNodeIds[0]).toBe('start0000001');
   expect(loadSourceBundleConfig(bundle).entryBundleNodeId).toBe('start0000001');
+  const reopened = sourceRegistryStatus(bundle);
+  expect(reopened.startingSelections).toEqual([
+    { sourceId: 'source000001', kind: 'file', path: 'Start.md' },
+    { sourceId: 'source000002', kind: 'folder', path: 'Same' },
+  ]);
+  // A subsequent source edit must retain pending selections even when the form does not resubmit them.
+  await stageSourceRegistry(bundle, reopened.sources.map(item => item.name === 'research' ? { ...item, name: 'library' } : item));
+  expect(sourceRegistryStatus(bundle).startingSelections).toEqual(reopened.startingSelections);
+  expect(loadSourceSnapshot(bundle, loadSourcingState(bundle)!.candidateId!).sourceProposal!.entryBundleNodeId).toBe(collection.bundleNodeId);
   await setIgnoredSource(bundle, 'unrelated', true);
   await scanSourceChanges(bundle, true);
   const refreshed = loadSourceSnapshot(bundle, loadSourcingState(bundle)!.candidateId!);

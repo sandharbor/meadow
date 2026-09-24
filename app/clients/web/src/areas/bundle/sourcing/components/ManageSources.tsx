@@ -9,20 +9,26 @@ import type { Graph } from '../../../../../../../contracts/types/graph.js';
 import { sourceLocationLabel } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import Modal from '../../../../shared/components/Modal.js';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
-
-interface SourceStatus { startingSelections: StartingSelection[]; sources: BundleSource[]; disconnectedIds: string[]; ignoredSourceNames: string[]; }
+import type { SourceRegistryStatus, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
+import { SourceOutputPathsNotice } from './SourceRegistryChanges.js';
 
 export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onStaged, onChanged }: {
   bundleSlug: string; graph: Graph; isOpen: boolean; onClose: () => void; onOpen: () => void;
   onStaged: () => void; onChanged: () => void;
 }) {
-  const [status, setStatus] = useState<SourceStatus>();
+  const [status, setStatus] = useState<SourceRegistryStatus>();
   const [selections, setSelections] = useState<StartingSelection[]>([]);
   const [editingSelections, setEditingSelections] = useState(false);
   const [sources, setSources] = useState<BundleSource[]>([]);
   const [reviewReferences, setReviewReferences] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    if (!saved) return;
+    const timer = window.setTimeout(() => setSaved(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [saved]);
   const [ignored, setIgnored] = useState(graph.ignoredSourceNames);
   useEffect(() => setIgnored(graph.ignoredSourceNames), [graph.ignoredSourceNames]);
   const references = useMemo(() => {
@@ -49,10 +55,12 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
 
   useEffect(() => {
     if (!open) return;
+    setSaved(false);
+    setStatus(undefined);
     let cancelled = false;
     setError('');
     void apiRequest(`bundles/${encodeURIComponent(bundleSlug)}/sourcing/sources`).then(async response => {
-      const value = await response.json() as SourceStatus & { error?: string };
+      const value = await response.json() as SourceRegistryStatus & { error?: string };
       if (!response.ok) throw new Error(value.error ?? 'Could not load sources');
       if (!cancelled) { setStatus(value); setSources(value.sources); setSelections(value.startingSelections); setEditingSelections(false); setIgnored(value.ignoredSourceNames); }
     }).catch(error => { if (!cancelled) setError(String(error)); });
@@ -65,10 +73,16 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
     });
     const value = await response.json();
     if (!response.ok) throw new Error(value.error ?? 'Source operation failed');
+    return value;
   };
   const stage = async () => {
     setBusy(true); setError('');
-    try { await request('sources', { sources, ...(editingSelections && { startingSelections: selections }) }); setReviewReferences(false); onClose(); onStaged(); }
+    try {
+      const review = await request('sources', { sources, ...(editingSelections && { startingSelections: selections }) }) as SourcingReview;
+      setReviewReferences(false); onClose();
+      if (review.candidate) onStaged();
+      else { setSaved(true); onChanged(); }
+    }
     catch (error) { setError(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
   };
@@ -90,21 +104,28 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
   };
   const update = (id: string, field: 'name' | 'directory', value: string) => setSources(previous => previous.map(source => source.id === id ? { ...source, [field]: value } : source));
   const referenceNames = [...new Set([...references.keys(), ...ignored])].sort();
+  const hasEdits = status && (JSON.stringify(sources) !== JSON.stringify(status.sources)
+    || JSON.stringify(selections) !== JSON.stringify(status.startingSelections));
 
   return <>
+    {saved && <div role="status" className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded border border-main-200 bg-white px-4 py-2 text-sm text-main-900 shadow">Sources updated</div>}
     {notices.length > 0 && <div role="status" className="flex items-center justify-between gap-4 border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm" data-testid="missing-source-callout">
       <span>Pages refer to sources that aren’t registered: {notices.join(', ')}.</span>
       <button className="shrink-0 rounded border border-amber-300 bg-white px-3 py-1 font-medium" onClick={() => setReviewReferences(true)}>Review sources</button>
     </div>}
     {open && createPortal(<Modal isOpen onClose={close} closeLabel="Close source management" title={reviewReferences ? 'Review sources' : 'Manage sources'} className="w-full max-w-3xl" footer={<div className="flex justify-end gap-3">
       <button disabled={busy} className="rounded border px-4 py-2" onClick={close}>Close</button>
-      {!reviewReferences && <button disabled={busy || !sources.length} className="rounded bg-btn-confirm-normal px-4 py-2 text-btn-confirm-text disabled:opacity-50" onClick={() => void stage()}>{busy ? 'Discovering sources…' : 'Review source changes'}</button>}
+      {!reviewReferences && <button disabled={busy || !status || !sources.length} className="rounded bg-btn-confirm-normal px-4 py-2 text-btn-confirm-text disabled:opacity-50" onClick={() => void stage()}>{busy ? 'Saving sources…' : 'Save'}</button>}
     </div>}>
       <div className="space-y-5 text-sm text-neutral-700">
         <p>Sources belong to this bundle. Adding a source lets existing links reach it; starting selections stay the same.</p>
+        {status?.pendingChanges && <div className="flex flex-wrap items-center gap-2">
+          <button type="button" disabled={busy || hasEdits} className="rounded bg-blue-100 px-3 py-1 text-sm font-medium text-blue-900 disabled:opacity-50" onClick={() => { setReviewReferences(false); onClose(); onStaged(); }}>Changes awaiting review</button>
+          {hasEdits && <span className="text-xs text-neutral-500">Save your edits to update the review.</span>}
+        </div>}
         {error && <p role="alert" className="rounded bg-red-50 p-3 text-red-800">{error}</p>}
         {!reviewReferences && <>
-          {sources.map(source => <fieldset key={source.id} disabled={busy} className="space-y-3 rounded border border-neutral-200 p-4" data-testid={`source-${source.id}`}>
+          {sources.map(source => <fieldset key={source.id} disabled={busy || !status} className="space-y-3 rounded border border-neutral-200 p-4" data-testid={`source-${source.id}`}>
             <div className="flex items-center justify-between gap-3"><label className="flex-1">Source name<input aria-label={`Source name ${source.name || 'new'}`} className="mt-1 block w-full rounded border px-3 py-2" value={source.name} onChange={event => update(source.id, 'name', event.target.value)} /></label>
               <button className="mt-5 text-red-700 underline" onClick={() => setSources(previous => previous.filter(item => item.id !== source.id))}>Remove source</button></div>
             <label className="block">Directory<input aria-label={`Directory for ${source.name || 'new source'}`} className="mt-1 block w-full rounded border px-3 py-2" placeholder="/path/to/source" value={source.directory} onChange={event => update(source.id, 'directory', event.target.value)} /></label>
@@ -112,9 +133,10 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
             {status?.disconnectedIds.includes(source.id) && <p role="status" className="text-amber-800">Disconnected. Captured pages remain available. Reconnect this directory or choose its new location.</p>}
             {source.aliases?.length ? <p className="text-xs text-neutral-500">Aliases: {source.aliases.join(', ')}</p> : null}
           </fieldset>)}
-          <button disabled={busy} className="rounded border px-3 py-2" onClick={() => add()}>Add source</button>
-          {editingSelections ? <StartingSelectionsFields sources={sources} selections={selections} onChange={setSelections} disabled={busy} /> : <button disabled={busy} className="ml-3 rounded border px-3 py-2" onClick={() => setEditingSelections(true)}>Edit starting selections</button>}
-          <p className="text-xs text-neutral-500">Renaming keeps the old name as an alias. Source files are untouched. Changes take effect after you accept the candidate snapshot.</p>
+          <button disabled={busy || !status} className="rounded border px-3 py-2" onClick={() => add()}>Add source</button>
+          {editingSelections ? <StartingSelectionsFields sources={sources} selections={selections} onChange={setSelections} disabled={busy || !status} /> : <button disabled={busy || !status} className="ml-3 rounded border px-3 py-2" onClick={() => setEditingSelections(true)}>Edit starting selections</button>}
+          <p className="text-xs text-neutral-500">Renaming keeps the old name as an alias. Source files are untouched. Changes to included material will open for review.</p>
+          {sources.some(source => status?.sources.some(before => before.id === source.id && before.name !== source.name)) && <SourceOutputPathsNotice />}
         </>}
         {referenceNames.length > 0 && <section aria-label="Source references" className="space-y-3">
           <h3 className="font-semibold">Source references</h3>

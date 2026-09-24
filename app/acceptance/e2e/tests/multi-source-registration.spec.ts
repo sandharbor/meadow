@@ -53,13 +53,11 @@ test('Multi-source registration admits a frontier reference only after its page 
 
   // Register the newly referenced source.
   await sources.addReferencedSource('reference', path.join(testServer.sourceGraphsDir, 'multi-source/reference'));
-  await sources.stage();
-  await editor.sourceReview.expectReadyToAccept();
+  await sources.saveWithoutMaterialChanges();
   await addKeyFrame(sourceSnapshot);
-  await snapshot('registering the source stages an explicit candidate');
+  await snapshot('registering a source with only frontier references saves without material review');
 
-  // Accept the source registration.
-  await editor.sourceReview.accept();
+  // Inspect the saved source registration.
   await sources.expectNotice();
   const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'config/bundle_config.yaml'), 'utf8')) as BundleConfig;
   const referenceId = config.sources!.find(source => source.name === 'reference')!.id;

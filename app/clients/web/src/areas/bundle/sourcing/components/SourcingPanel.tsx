@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import Modal from '../../../../shared/components/Modal.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 import { SourceSnapshotsModal } from './SourceSnapshotsModal.js';
+import { SourceRegistryChanges, sourceRegistryEdits } from './SourceRegistryChanges.js';
 import { MoveTraversal } from './MoveTraversal.js';
 import { OrphanReview } from './OrphanReview.js';
 import { FileRoute } from './SourceFileRoute.js';
@@ -106,6 +107,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const [showAllChanges, setShowAllChanges] = useState(false);
   const [trackNewPages, setTrackNewPages] = useState(true);
   const trackNewPagesHintId = useId();
+  const cancelSettingsHintId = useId();
   const closeTraversal = traversal.close;
   const closeReview = useCallback(() => { closeTraversal(); setOpen(false); }, [closeTraversal]);
   const endpoint = `bundles/${encodeURIComponent(bundleSlug)}/sourcing`;
@@ -232,6 +234,10 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const unresolvedMoves = [...groups.keys()].some(id => !Object.prototype.hasOwnProperty.call(proposedResolutions, id));
   const orderedChanges = [...(review?.changes ?? [])].sort((left, right) => Number(right.kind === 'added') - Number(left.kind === 'added'));
   const hasAddedPages = orderedChanges.some(change => change.kind === 'added');
+  const registryEdits = review?.sourceChanges ? sourceRegistryEdits(review.sourceChanges) : [];
+  const hasSourceSettingsChanges = registryEdits.length > 0 || review?.sourceChanges?.startingSelectionsChanged || review?.sourceChanges?.outputPathsChange;
+  const cancelSettingsLabel = registryEdits.length === 1 && !registryEdits[0].after
+    ? 'Cancel source removal' : 'Cancel source settings changes';
 
   return <>
     <SourceSnapshotsModal isOpen={snapshotsOpen} bundleSlug={bundleSlug} onClose={() => onCloseSnapshots?.()}
@@ -251,7 +257,13 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button className="text-xs text-main-700 hover:underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void scan(true)}>{busy || backgroundBusy ? 'Checking…' : 'Check again'}</button>
         <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.' : unresolvedMoves ? 'Decide before accepting: choose an identity for each competing move.' : ''}</p>
-        {review?.candidate && <button className="text-sm text-neutral-600 underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void cancelCandidate()}>Discard candidate</button>}
+        {review?.candidate && hasSourceSettingsChanges && <span className="inline-flex items-center gap-2">
+          <button className="text-sm text-neutral-600 underline disabled:opacity-50" aria-describedby={cancelSettingsHintId} disabled={busy || backgroundBusy} onClick={() => void cancelCandidate()}>{cancelSettingsLabel}</button>
+          <span className="group relative inline-flex">
+            <button type="button" aria-label="About cancelling source settings" aria-describedby={cancelSettingsHintId} className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-neutral-400 text-[10px] text-neutral-500">?</button>
+            <span id={cancelSettingsHintId} role="tooltip" className="pointer-events-none invisible absolute bottom-full right-0 z-[9999] mb-2 w-80 max-w-[calc(100vw-3rem)] rounded border border-neutral-200 bg-white p-3 text-xs font-normal text-neutral-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">Keep your current sources and included material. Your source files won’t be changed.</span>
+          </span>
+        </span>}
         <button className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50" onClick={closeReview}>Later</button>
         {(review?.candidate || orphanRemovals.size > 0) && <button className="rounded bg-btn-confirm-normal px-4 py-2 text-sm text-btn-confirm-text hover:bg-btn-confirm-hover disabled:opacity-50" disabled={busy || backgroundBusy || hasDraftChanges || unresolvedMoves || review?.sourceChanges?.stale} onClick={() => void accept()}>Accept source changes</button>}
       </div>
@@ -259,13 +271,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
       <div className="space-y-5 text-neutral-800">
         {!review?.candidate && !review?.orphans.length && <p className="text-xs text-neutral-500">{busy ? 'Checking sources…' : 'No source changes are waiting.'}</p>}
         {error && <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-        {review?.sourceChanges && <section aria-label="Source registry changes" className="space-y-3 rounded border border-neutral-200 p-4 text-sm">
-          <h3 className="font-semibold">Sources after acceptance</h3>
-          {review.sourceChanges.after.map(source => <p key={source.id}><strong>{source.name}</strong> · {source.directory}{source.aliases?.length ? ` · aliases: ${source.aliases.join(', ')}` : ''}</p>)}
-          {review.sourceChanges.before.filter(source => !review.sourceChanges!.after.some(after => after.id === source.id)).map(source => <p key={source.id}>Remove <strong>{source.name}</strong> from this bundle.</p>)}
-          {review.sourceChanges.stale && <p role="alert" className="text-amber-800">Bundle settings changed. Choose Check again before accepting this proposal.</p>}
-          {review.sourceChanges.outputPathsChange && <p className="rounded bg-amber-50 p-3 text-amber-900">Generated page paths will change. For a published bundle, we recommend creating a new generated version, publishing a connected revision, and retaining the prior publication. Readers can use Open the newer version to reach the same pages at their new paths. You can keep working without publishing.</p>}
-        </section>}
+        {review?.sourceChanges && <SourceRegistryChanges changes={review.sourceChanges} />}
         {groups.size > 0 && <section className="space-y-3">
           <h3 className="text-sm font-semibold">Renames and moves<SourceChangeCount count={groups.size} /></h3>
           {[...groups].map(([id, moves]) => {

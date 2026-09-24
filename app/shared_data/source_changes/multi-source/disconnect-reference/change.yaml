@@ -1,7 +1,7 @@
 id: disconnect-reference
 label: Disconnect the reference source
 action: "Move `reference://` out of its registered filesystem location to `reference-disconnected`."
-check: "Review reports the disconnected source; reconnect it at the new location or remove it explicitly."
+check: "In Manage sources, remove disconnected `reference://` and Save. Review shows only the removed source and its affected pages; accepted material stays intact until acceptance."
 e2e: multi-source-disconnect.spec.ts
 categories:
   - move

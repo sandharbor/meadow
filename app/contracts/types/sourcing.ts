@@ -1,9 +1,18 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import type { BundleSource } from './bundleConfig.js';
+import type { StartingSelection } from './startingSelection.js';
 import type { SerializableBundleNode } from './IBundleNode.js';
 import type { IEdge } from './graph.js';
 import type { SnapshotTrackingRequest, SnapshotTrackingOutcome, TrackingSensitivity } from './curationTracking.js';
+
+export interface SourceRegistryStatus {
+  sources: BundleSource[];
+  startingSelections: StartingSelection[];
+  disconnectedIds: string[];
+  ignoredSourceNames: string[];
+  pendingChanges: boolean;
+}
 
 /** Only the nodes and connections needed to explain this review's routes. */
 export interface SourceTraversalGraph {
@@ -61,7 +70,7 @@ export interface SourceOrphanExplanation {
 }
 
 export interface SourcingReview {
-  sourceChanges?: { before: BundleSource[]; after: BundleSource[]; outputPathsChange: boolean; stale: boolean };
+  sourceChanges?: { before: BundleSource[]; after: BundleSource[]; outputPathsChange: boolean; stale: boolean; startingSelectionsChanged?: boolean };
   /** Curation's assessment of reviewed additions; informational, not a tracking decision. */
   trackingSensitivity?: Record<string, TrackingSensitivity>;
   /** Traversals evaluated separately against each snapshot, using the reviewed configuration. */

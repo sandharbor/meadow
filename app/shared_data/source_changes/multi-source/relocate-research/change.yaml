@@ -1,7 +1,7 @@
 id: relocate-research
 label: Relocate the research source
 action: "Move the entire `research://` directory to the filesystem location `research-relocated`."
-check: "Accepted pages remain available; use Manage sources to reconnect `research://` at the new location."
+check: "Reconnect `research://` at the new location in Manage sources and Save. The modal closes with Sources updated; unchanged material needs no review."
 e2e: multi-source-relocation.spec.ts
 categories:
   - move

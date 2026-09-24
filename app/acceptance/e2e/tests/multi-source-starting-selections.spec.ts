@@ -39,9 +39,8 @@ test('Multi-source starting selections preserve the page start when adding a fol
   await addKeyFrame(startingSelection);
   await snapshot('the original file stays first when a source folder is added');
 
-  // Accept the starting selections.
-  await sources.stage();
-  await editor.sourceReview.accept();
+  // Save the starting selections; these files are already included.
+  await sources.saveWithoutMaterialChanges();
   const afterConfig = bundleConfig.read();
   const afterNodes = bundleConfig.readNodes();
   const collection = afterNodes.find(node => node.bundleNodeId === afterConfig.entryBundleNodeId)!;

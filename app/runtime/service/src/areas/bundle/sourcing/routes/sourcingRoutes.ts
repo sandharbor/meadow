@@ -1,16 +1,14 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import express from 'express';
-import fs from 'node:fs';
 import type { StartingSelection } from '../../../../../../../contracts/types/startingSelection.js';
-import { bundleStartingSelections } from '../../../../../../../shared_code/utils/startingSelectionUtils.js';
-import { bundleSources } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
-import { cancelSourceCandidate, setIgnoredSource, stageSourceRegistry } from '../services/sourceRegistryReview.js';
+import { cancelSourceCandidate, setIgnoredSource, sourceRegistryStatus } from '../services/sourceRegistryReview.js';
+import { saveSourceRegistry } from '../services/saveSourceRegistry.js';
 import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
 import { reviewWithTrackingAssessment, scanWithTrackingAssessment } from '../services/reviewWithTrackingAssessment.js';
 import { getBundleDirectory } from '../../../../shared/bundle-config/bundleConfigPaths.js';
 import { sourceComparison, sourceSnapshotImage, sourceSnapshotHistory } from '../services/sourceReview.js';
-import { loadSourceBundleConfig, loadSourceNodeConfigs, SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
+import { SourcingError } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 import type { SourceSnapshotAcceptance, SourceSnapshotAcceptanceResult } from '../../../../../../../contracts/types/sourcing.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
@@ -38,19 +36,12 @@ export function createSourcingRoutes(workflow: {
 }) {
   const router = express.Router();
   router.get('/bundles/:bundleSlug/sourcing', handle(req => reviewWithTrackingAssessment(directory(req))));
-  router.get('/bundles/:bundleSlug/sourcing/sources', handle(req => {
-    const config = loadSourceBundleConfig(directory(req));
-    const sources = bundleSources(config);
-    const disconnectedIds = sources.filter(source => {
-      try { return !fs.statSync(source.directory).isDirectory(); } catch { return true; }
-    }).map(source => source.id);
-    return { sources, startingSelections: bundleStartingSelections(config, loadSourceNodeConfigs(directory(req))), disconnectedIds, ignoredSourceNames: config.ignoredSourceNames ?? [] };
-  }));
+  router.get('/bundles/:bundleSlug/sourcing/sources', handle(req => sourceRegistryStatus(directory(req))));
   router.post('/bundles/:bundleSlug/sourcing/sources', handle(async req => {
     const body = req.body as { sources?: unknown; startingSelections?: unknown };
     if (!Array.isArray(body?.sources)) throw new SourcingError('Expected a source registry', 400);
     if (body.startingSelections !== undefined && !Array.isArray(body.startingSelections)) throw new SourcingError('Expected starting selections', 400);
-    await stageSourceRegistry(directory(req), body.sources as BundleSource[], body.startingSelections as StartingSelection[] | undefined);
+    await saveSourceRegistry(directory(req), body.sources as BundleSource[], body.startingSelections as StartingSelection[] | undefined);
     return reviewWithTrackingAssessment(directory(req));
   }));
   router.post('/bundles/:bundleSlug/sourcing/cancel', handle(async req => {

@@ -5,16 +5,17 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/BundleEditorPage/components/SourcesControl.js';
-import { bundleSource, sourceSnapshot } from '../../../concepts/index.js';
+import { bundleSource } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
 
 /*
  * Move a source directory and repair its registered location. Captured pages should
- * survive the missing directory and change only after explicit acceptance.
+ * survive the missing directory. Saving the repaired location should close source
+ * management with a success message and no material review.
  */
-test('Multi-source relocation preserves captured pages and accepts the repaired location explicitly', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source relocation saves the repaired location without reviewing unchanged material', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -24,7 +25,6 @@ test('Multi-source relocation preserves captured pages and accepts the repaired 
   await editor.waitForSourceCheck();
   const sources = new SourcesControl(page, expect);
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
-  const beforeConfig = bundleConfig.readText();
   const beforeNodes = bundleConfig.readNodesText();
   await snapshot('the accepted source state is established before changing files');
 
@@ -43,22 +43,18 @@ test('Multi-source relocation preserves captured pages and accepts the repaired 
   await sources.open();
   const relocated = path.join(testServer.sourceGraphsDir, 'multi-source/research-relocated');
   await sources.setDirectory('research', relocated);
-  await sources.stage();
-  await editor.sourceReview.expectReadyToAccept();
-  expect(bundleConfig.readText()).toBe(beforeConfig);
-  expect(bundleConfig.readNodesText()).toBe(beforeNodes);
-  await addKeyFrame(sourceSnapshot);
-  await snapshot('location repair is staged while accepted configuration remains intact');
-
-  // Accept and reload the repaired location.
   const [draftStatus] = await Promise.all([
     page.waitForResponse(response => response.url().endsWith('/curation/bundle-config-draft-status') && response.ok()),
     page.waitForResponse(response => response.url().includes('/curation/bundle-config') && response.ok()),
     page.waitForResponse(response => response.url().includes('/obsidian-info') && response.ok()),
-    editor.sourceReview.accept(),
+    sources.saveWithoutMaterialChanges(),
   ]);
   expect(bundleConfig.read().sources?.find(source => source.id === 'source000002')?.directory).toBe(relocated);
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
+  await addKeyFrame(bundleSource);
+  await snapshot('reconnecting the source closes management with Sources updated and no material review');
+
+  // Reload the repaired location.
   // The graph's configuration read starts a dependent draft-status request.
   // Finish that request before reload; networkidle may still describe the
   // earlier document load when this request has only just been scheduled.

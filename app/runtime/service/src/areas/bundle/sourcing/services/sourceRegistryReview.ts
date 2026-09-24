@@ -2,10 +2,11 @@
 
 import fs from 'node:fs';
 import type { StartingSelection } from '../../../../../../../contracts/types/startingSelection.js';
-import { applyStartingSelections } from '../../../../../../../shared_code/utils/startingSelectionUtils.js';
+import { applyStartingSelections, bundleStartingSelections } from '../../../../../../../shared_code/utils/startingSelectionUtils.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { SourceRegistryStatus } from '../../../../../../../contracts/types/sourcing.js';
 import { assignLegacySourceIdentity, bundleSources, validateBundleSources, validateSourceName } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { textDocumentCodec, writeDurableDocument } from '../../../../../../../shared_code/utils/durableDocument.js';
 import { sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
@@ -52,12 +53,28 @@ export function registryProposal(bundleDirectory: string, requested: BundleSourc
     entryBundleNodeId, defaultTraversalBundleNodeId };
 }
 
+/** Continue pending source edits without changing the accepted bundle or refreshing material. */
+export function sourceRegistryStatus(bundleDirectory: string): SourceRegistryStatus {
+  const state = loadSourcingState(bundleDirectory);
+  const candidate = state?.candidateId ? loadSourceSnapshot(bundleDirectory, state.candidateId) : undefined;
+  const { config, nodes } = sourceProposalContext(loadSourceBundleConfig(bundleDirectory), loadSourceNodeConfigs(bundleDirectory), candidate);
+  const sources = bundleSources(config);
+  const disconnectedIds = sources.filter(source => {
+    try { return !fs.statSync(source.directory).isDirectory(); } catch { return true; }
+  }).map(source => source.id);
+  return { sources, startingSelections: bundleStartingSelections(config, nodes), disconnectedIds,
+    ignoredSourceNames: config.ignoredSourceNames ?? [], pendingChanges: Boolean(candidate) };
+}
+
 export async function stageSourceRegistry(bundleDirectory: string, sources: BundleSource[], selections?: StartingSelection[]): Promise<void> {
   await initializeSourcing(bundleDirectory);
   await withSourcingLock(bundleDirectory, async () => {
     if (fs.existsSync(path.join(bundleDirectory, 'config/draft_bundle_node_config.yaml'))) throw new SourcingError('Save or undo curation changes before changing sources.');
     const state = loadSourcingState(bundleDirectory)!;
-    const proposal = registryProposal(bundleDirectory, sources, selections);
+    const pending = state.candidateId ? loadSourceSnapshot(bundleDirectory, state.candidateId).sourceProposal : undefined;
+    const retained = pending?.startingSelectionsChanged ? pending : undefined;
+    const proposal = registryProposal(bundleDirectory, sources,
+      selections ?? (retained && bundleStartingSelections(retained, retained.nodes)), retained);
     const context = sourceProposalContext(loadSourceBundleConfig(bundleDirectory), [], { sourceProposal: proposal } as SourceSnapshot);
     let captured: SourceSnapshot | undefined;
     try {

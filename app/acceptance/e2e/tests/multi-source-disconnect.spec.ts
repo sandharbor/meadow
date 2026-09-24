@@ -47,10 +47,74 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   await sources.open();
   await sources.remove('source000003');
   await sources.stage();
+  const registryChanges = page.getByRole('region', { name: 'Source registry changes', exact: true });
+  await expect(registryChanges).toContainText('Removed source reference');
+  await expect(registryChanges.getByTestId('source-registry-change-source000001')).toHaveCount(0);
+  await expect(registryChanges.getByTestId('source-registry-change-source000002')).toHaveCount(0);
+  expect(bundleConfig.read().sources?.map(source => source.id)).toContain('source000003');
+  expect(bundleConfig.readNodesText()).toBe(beforeNodes);
   await editor.sourceReview.orphans.expectOrphanListed('Study');
   await editor.sourceReview.orphans.expectOrphanListed('Appendix');
   await addKeyFrame(sourceSnapshot);
-  await snapshot('deliberate removal offers orphan cleanup for the disconnected source');
+  await snapshot('review shows only the removed source and affected pages while accepted material stays intact');
+
+  // Inspect cancellation help without adding a permanent explanation to the footer.
+  const cancellationHelp = page.getByRole('button', { name: 'About cancelling source settings', exact: true });
+  const cancellationTooltip = page.getByRole('tooltip').filter({ hasText: 'Keep your current sources and included material.' });
+  await expect(cancellationTooltip).not.toBeVisible();
+  await cancellationHelp.hover();
+  await expect(cancellationTooltip).toBeVisible();
+  await expect(cancellationTooltip).toHaveCSS('opacity', '1');
+  await expect(cancellationTooltip).toContainText('Your source files won’t be changed.');
+  await addKeyFrame(sourceSnapshot);
+  await snapshot('the question mark explains cancellation on hover');
+  await page.getByRole('heading', { name: 'Source changes', exact: true }).hover();
+  await expect(cancellationTooltip).not.toBeVisible();
+  await cancellationHelp.focus();
+  await expect(cancellationTooltip).toBeVisible();
+  await expect(cancellationTooltip).toHaveCSS('opacity', '1');
+
+  // Later retains the proposed registry across reloads, with a direct route back to its review.
+  await editor.sourceReview.defer();
+  await page.reload();
+  await editor.waitForLoad('multi-source-page');
+  await editor.waitForSourceCheck();
+  await sources.open();
+  const manageSources = page.getByRole('dialog', { name: 'Manage sources', exact: true });
+  const pendingChanges = manageSources.getByRole('button', { name: 'Changes awaiting review', exact: true });
+  await expect(pendingChanges).toBeEnabled();
+  await expect(manageSources.getByTestId('source-source000003')).toHaveCount(0);
+  await expect(manageSources.getByRole('textbox', { name: 'Source name notes', exact: true })).toHaveValue('notes');
+  await expect(manageSources.getByRole('textbox', { name: 'Source name research', exact: true })).toHaveValue('research');
+  expect(bundleConfig.read().sources?.map(source => source.id)).toContain('source000003');
+  expect(bundleConfig.readNodesText()).toBe(beforeNodes);
+  await addKeyFrame(bundleSource);
+  await snapshot('Manage sources restores the pending removal after Later and reload while accepted material is retained');
+  await pendingChanges.click();
+  await expect(manageSources).not.toBeVisible();
+  await expect(registryChanges).toContainText('Removed source reference');
+  await editor.sourceReview.orphans.expectOrphanListed('Study');
+  await editor.sourceReview.orphans.expectOrphanListed('Appendix');
+  expect(bundleConfig.readNodesText()).toBe(beforeNodes);
+  await addKeyFrame(sourceSnapshot);
+  await snapshot('the pending changes indicator returns directly to the source and material review');
+
+  // Cancel the proposed removal without altering the source files or accepted material.
+  await page.getByRole('button', { name: 'Cancel source removal', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true })).not.toBeVisible();
+  expect(bundleConfig.read().sources?.map(source => source.id)).toContain('source000003');
+  expect(bundleConfig.readNodesText()).toBe(beforeNodes);
+  expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'multi-source/reference-disconnected/Study.md'))).toBe(true);
+  await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', true);
+  await sources.open();
+  await sources.expectDisconnected('source000003');
+  await expect(pendingChanges).toHaveCount(0);
+  await addKeyFrame(bundleSource);
+  await snapshot('cancelling source removal retains the registry, captured pages, and source files');
+
+  // Propose the removal again.
+  await sources.remove('source000003');
+  await sources.stage();
 
   // Accept the source update.
   await editor.sourceReview.accept();

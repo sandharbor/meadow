@@ -55,14 +55,13 @@ test('Multi-source publication retains old pages and connects their stable ident
   const sources = new SourcesControl(page, expect);
   await sources.open();
   await sources.rename('notes', 'notebook');
-  await sources.stage();
-  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true })).toContainText('we recommend creating a new generated version');
-  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true })).toContainText('You can keep working without publishing.');
+  await expect(page.getByRole('dialog', { name: 'Manage sources', exact: true })).toContainText('we recommend creating a new generated version');
+  await expect(page.getByRole('dialog', { name: 'Manage sources', exact: true })).toContainText('You can keep working without publishing.');
   await addKeyFrame(bundleSource);
-  await snapshot('route-impact guidance recommends connected publication while acceptance stays optional');
+  await snapshot('source settings explain publication path changes before saving the rename');
 
   // Open the old published page.
-  await editor.sourceReview.accept();
+  await sources.saveWithoutMaterialChanges();
   expect(fs.readFileSync(authored, 'utf8')).toBe(originalContent);
   const config = YAML.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles', slug, 'config/bundle_config.yaml'), 'utf8'));
   expect(config.sources.find((source: { id: string }) => source.id === 'source000001')).toMatchObject({ name: 'notebook', aliases: ['notes'] });
