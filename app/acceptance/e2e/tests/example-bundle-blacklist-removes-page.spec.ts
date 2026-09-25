@@ -29,7 +29,7 @@ import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Blacklist a page in the example bundle and regenerate it. The rendered bundle should
@@ -37,7 +37,7 @@ test.use({ fixtureHome: Fixture.None });
  */
 test("blacklisting a single page removes it from the rendered preview", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
@@ -61,7 +61,7 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await previewModal.expectPreviewLinkVisible("Razors.html");
   await previewModal.expectPreviewLinkVisible("Occam's%20Razor.html");
   await previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html");
-  await snapshot("example bundle preview — Razors link present");
+  await checkpoint("example bundle preview — Razors link present");
 
   // --- Test start ---
   // Blacklist the linked page.
@@ -81,7 +81,7 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await editor.expectUndoNotVisible();
   await addKeyFrame(blacklist);
   await addKeyFrame(bundleConfig);
-  await snapshot("Razors blacklisted — no save button");
+  await checkpoint("Razors blacklisted — no save button");
 
   // Preview the changed links.
   // Preview again: the link to Razors must be gone from the rendered initial
@@ -94,7 +94,7 @@ test("blacklisting a single page removes it from the rendered preview", async ({
   await previewModal.expectPreviewLinkNotVisible("Razors.html");
   await previewModal.expectPreviewLinkVisible("Occam's%20Razor.html");
   await previewModal.expectPreviewLinkVisible("Hanlon's%20Razor.html");
-  await snapshot("post-blacklist preview — Razors link removed");
+  await checkpoint("post-blacklist preview — Razors link removed");
 
   void exampleBundle;
 

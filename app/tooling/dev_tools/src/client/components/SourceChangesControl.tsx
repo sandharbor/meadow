@@ -3,17 +3,29 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory, type SourceChangeStatus } from '../../../../../shared_code/shared_dev/sourceChangesTypes.js';
 import type { FixtureSourceLocation } from '../../../../../shared_code/shared_dev/fixtureSourceLocation.js';
+import type { OpenSavedState, ServiceTarget } from '../../shared/types';
 import { displaySourceChangeOperations } from './sourceChangePresentation.js';
+import { openSavedStateRequest, requestJson, type LaunchMode } from './SavedStatesManager.js';
+import { SplitOpenButton } from './SplitOpenButton.js';
 
 function descriptionText(value: string) {
   return value.split(/(`[^`]+`)/g).map((part, index) => part.startsWith('`') ? <code key={index}>{part.slice(1, -1)}</code> : part);
 }
 
-export function SourceChangesControl({ fixtureName, active, fixtureActionPending, launchMode, onStarted }: { fixtureName: string; active: boolean; fixtureActionPending: boolean; launchMode: 'app' | 'browser'; onStarted: () => Promise<void> }) {
+export function SourceChangesControl({ fixtureName, pending, launchMode, openStateId, onOpened }: {
+  fixtureName: string;
+  pending: boolean;
+  launchMode: LaunchMode;
+  /** Reload statuses whenever a different saved state is opened. */
+  openStateId: string | null;
+  onOpened: (state: OpenSavedState) => void;
+}) {
+  const fixtureActionPending = pending;
   const [category, setCategory] = useState<SourceChangeCategory>('add');
   const tabsId = useId();
   const [open, setOpen] = useState(false);
   const [changes, setChanges] = useState<SourceChangeStatus[]>([]);
+  const [active, setActive] = useState(false);
   const [sourceLocations, setSourceLocations] = useState<FixtureSourceLocation[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +38,7 @@ export function SourceChangesControl({ fixtureName, active, fixtureActionPending
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Could not load source changes');
     setChanges(result.changes);
+    setActive(result.active);
     setSourceLocations(result.sourceLocations);
   }, [endpoint]);
   useEffect(() => {
@@ -34,7 +47,7 @@ export function SourceChangesControl({ fixtureName, active, fixtureActionPending
     refresh();
     window.addEventListener('focus', refresh);
     return () => window.removeEventListener('focus', refresh);
-  }, [open, active, fixtureActionPending, load]);
+  }, [open, openStateId, fixtureActionPending, load]);
 
   const apply = async (change: SourceChangeStatus) => {
     setBusy(change.id); setError(null);
@@ -49,19 +62,25 @@ export function SourceChangesControl({ fixtureName, active, fixtureActionPending
     finally { setBusy(null); }
   };
 
-  const start = async (change: SourceChangeStatus) => {
+  const start = async (change: SourceChangeStatus, serviceTarget: ServiceTarget) => {
     setBusy(change.id); setError(null);
     try {
-      const response = await fetch(`/api/config/fixtures/${encodeURIComponent(fixtureName)}/source-scenarios/${encodeURIComponent(change.id)}/start`, { method: 'POST' });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Could not start scenario');
-      const launched = await fetch(launchMode === 'app' ? '/api/app/launch-dev' : '/api/app/open-browser', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(launchMode === 'app' ? { targetPath: result.targetPath } : { url: `http://localhost${result.targetPath}` }),
+      await requestJson(`/api/source-scenarios/${encodeURIComponent(change.id)}/start`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ launch: launchMode, serviceTarget }),
       });
-      const launchResult = await launched.json();
-      if (!launched.ok) throw new Error(launchResult.error || 'Scenario prepared, but the app could not open');
-      await onStarted();
+      onOpened((await requestJson<{ current: OpenSavedState }>('/api/saved-states')).current);
+      await load();
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+    finally { setBusy(null); }
+  };
+
+  const openCheckpoint = async (change: SourceChangeStatus, index: number, serviceTarget: ServiceTarget) => {
+    const latest = change.latestE2e;
+    if (!latest?.slug) return;
+    setBusy(`${change.id}:${index}`); setError(null);
+    try {
+      const result = await openSavedStateRequest({ kind: 'checkpoint', runId: latest.runId, scenario: latest.slug, checkpoint: index }, serviceTarget, launchMode);
+      onOpened(result.state);
       await load();
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     finally { setBusy(null); }
@@ -73,7 +92,7 @@ export function SourceChangesControl({ fixtureName, active, fixtureActionPending
       <span className="group relative ml-2 inline-flex">
         <button type="button" aria-label="About source changes" aria-describedby={`${tabsId}-help`} onClick={event => event.preventDefault()} className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-neutral-400 text-[10px] text-neutral-500">?</button>
         <span id={`${tabsId}-help`} role="tooltip" className="pointer-events-none invisible fixed z-[9999] ml-2 w-80 max-w-[calc(100vw-2rem)] rounded border border-neutral-200 bg-white p-3 text-xs font-normal text-neutral-700 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-          Start scenario resets this fixture and opens the selected change for review or source repair. Apply change only modifies files in the running fixture.
+          Start opens the change&apos;s designated scenario fixture, accepts its baseline, applies the change, and opens review or source repair. Apply changes only the files of the open saved state. Each recorded checkpoint opens exactly what the E2E scenario saw.
         </span>
       </span>
     </summary>
@@ -102,12 +121,33 @@ export function SourceChangesControl({ fixtureName, active, fixtureActionPending
                   ? <><time>{change.latestE2e.runId.slice(0, 19).replace('_', ' ').replace(/(\d{2})-(\d{2})-(\d{2})$/, '$1:$2:$3')}</time>{' — '}<a className="text-info-700 underline hover:text-info-900" href={change.latestE2e.url} target="_blank" rel="noreferrer">{change.latestE2e.scenario}</a></>
                   : <span>No recorded run yet ({change.e2e.replace('.spec.ts', '')})</span>}</dd></div>
               </dl>
+              {change.latestE2e?.checkpoints && change.latestE2e.checkpoints.length > 0 && <div data-testid={`source-change-checkpoints-${change.id}`}>
+                <h4 className="font-medium">Checkpoints</h4>
+                <ol className="mt-1 space-y-1">
+                  {change.latestE2e.checkpoints.map(checkpoint => <li key={checkpoint.index} className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1">{checkpoint.index}. {checkpoint.message}</span>
+                    <div className="w-40 shrink-0">
+                      <SplitOpenButton
+                        label="Open"
+                        testId={`open-checkpoint-${change.id}-${checkpoint.index}`}
+                        targets={{
+                          local: { available: checkpoint.openable, reason: checkpoint.unavailableReason },
+                          hosted: { available: checkpoint.hostedAvailable, reason: checkpoint.unavailableReason ?? checkpoint.hostedUnavailableReason },
+                        }}
+                        busy={busy === `${change.id}:${checkpoint.index}`}
+                        disabled={fixtureActionPending || (busy !== null && busy !== `${change.id}:${checkpoint.index}`)}
+                        onOpen={target => void openCheckpoint(change, checkpoint.index, target)}
+                      />
+                    </div>
+                  </li>)}
+                </ol>
+              </div>}
               {active && change.state === 'conflict' && change.reason && <p>{change.reason}</p>}
               <h4 className="font-medium">Files & operations</h4>
               <pre className="overflow-auto whitespace-pre-wrap break-words">{JSON.stringify(displaySourceChangeOperations(change, sourceLocations), null, 2)}</pre>
             </div>
           </details>
-          {['home_fixture_big_and_small', 'home_fixture_multi_source'].includes(fixtureName) && <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={fixtureActionPending || busy !== null} onClick={() => void start(change)}>Start</button>}
+          <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={fixtureActionPending || busy !== null} onClick={() => void start(change, 'local')}>Start</button>
           <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:bg-neutral-200 disabled:text-neutral-600" disabled={!active || fixtureActionPending || busy !== null || change.state !== 'available'} onClick={() => void apply(change)}>Apply</button>
         </article>)}
       </div>

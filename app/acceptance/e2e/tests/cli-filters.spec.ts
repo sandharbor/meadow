@@ -31,7 +31,7 @@ test.use({ recordVideo: false });
 test("CLI lists filters and applies default and explicit set operations as exact JSON", async ({
   assertMeadowHomeState,
   meadowCli,
-  snapshot,
+  checkpoint,
 }) => {
   // --- Test start ---
   // Inspect available filters.
@@ -41,7 +41,7 @@ test("CLI lists filters and applies default and explicit set operations as exact
   );
   expect(filters).toBe(readCliFixture("big-bundle-filters.json"));
 
-  await snapshot("available filters match the expected definitions");
+  await checkpoint("available filters match the expected definitions");
 
   // Apply the default combination.
   const defaultFilteredNodes = await meadowCli.run(
@@ -54,7 +54,7 @@ test("CLI lists filters and applies default and explicit set operations as exact
   );
   expect(defaultFilteredNodes).toBe(readCliFixture("big-bundle-default-filtered-nodes.json"));
 
-  await snapshot("default filters return the expected nodes");
+  await checkpoint("default filters return the expected nodes");
 
   // Apply an explicit intersection.
   const explicitlyFilteredNodes = await meadowCli.run(
@@ -71,7 +71,7 @@ test("CLI lists filters and applies default and explicit set operations as exact
   void cli;
   void bundles;
   void bigBundle;
-  await snapshot("explicit intersection returns the expected nodes");
+  await checkpoint("explicit intersection returns the expected nodes");
 
   await assertMeadowHomeState();
 });

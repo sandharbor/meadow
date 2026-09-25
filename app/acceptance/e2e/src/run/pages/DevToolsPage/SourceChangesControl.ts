@@ -16,7 +16,7 @@ export class DevSourceChangesControl {
 
   async checkHelpWhileClosed() {
     await this.fixture.getByRole('button', { name: 'About source changes' }).click();
-    await this.expect(this.fixture.getByRole('tooltip')).toContainText('Start scenario resets this fixture');
+    await this.expect(this.fixture.getByRole('tooltip')).toContainText("Start opens the change's designated scenario fixture");
     await this.expect(this.disclosure.locator('..')).not.toHaveAttribute('open', '');
   }
 

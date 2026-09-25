@@ -10,13 +10,13 @@ import { bundleSource, frontier, sourceSnapshot } from '../../../concepts/index.
 import type { BundleConfig } from '../../../contracts/types/bundleConfig.js';
 
 test.use({ bundleMode: "single-file" });
-test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+test.use({ fixtureHome: 'home_fixture_multi_source' });
 
 /*
  * Register another source containing a frontier reference. That page should enter the
  * bundle only when normal traversal reaches it within the configured boundary.
  */
-test('Multi-source registration admits a frontier reference only after its page enters the normal boundary', async ({ page, testServer, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source registration admits a frontier reference only after its page enters the normal boundary', async ({ page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const slug = 'multi-source-omitted';
   const list = new BundleListPage(page, expect);
@@ -32,7 +32,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   await editor.expectGraphNodePresent('_mw_sources/source000001/Frontier.md');
   await sources.expectNotice();
   await addKeyFrame(frontier, bundleSource);
-  await snapshot('frontier references and unrelated indexed pages do not prompt source registration');
+  await checkpoint('frontier references and unrelated indexed pages do not prompt source registration');
 
   // --- Test start ---
   // Expand the normal traversal boundary.
@@ -49,13 +49,13 @@ test('Multi-source registration admits a frontier reference only after its page 
   await sources.expectReferences('reference', ['notes://Frontier', 'research://Report']);
   await expect(page.getByTestId('source-reference-unrelated')).not.toBeVisible();
   await addKeyFrame(bundleSource);
-  await snapshot('newly admitted referrers group their missing-source references');
+  await checkpoint('newly admitted referrers group their missing-source references');
 
   // Register the newly referenced source.
   await sources.addReferencedSource('reference', path.join(testServer.sourceGraphsDir, 'multi-source/reference'));
   await sources.saveWithoutMaterialChanges();
   await addKeyFrame(sourceSnapshot);
-  await snapshot('registering a source with only frontier references saves without material review');
+  await checkpoint('registering a source with only frontier references saves without material review');
 
   // Inspect the saved source registration.
   await sources.expectNotice();
@@ -68,7 +68,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Frontier);
   await sources.expectNotice();
   await addKeyFrame(bundleSource, frontier);
-  await snapshot('resolved reference pages retain the remaining traversal budget after acceptance');
+  await checkpoint('resolved reference pages retain the remaining traversal budget after acceptance');
 
   await skipMeadowHomeStateCheck();
 });

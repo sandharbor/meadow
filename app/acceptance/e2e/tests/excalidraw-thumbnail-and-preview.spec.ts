@@ -40,7 +40,7 @@ test.use({ trackBigBundleExcalidrawPages: true });
  */
 test("excalidraw thumbnail in list view, embedded in preview, and standalone page", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   expectLogErrors,
@@ -68,7 +68,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
 
   await wf.navigateToBigBundle();
   await editor.switchToListView();
-  await snapshot("list view loaded");
+  await checkpoint("list view loaded");
 
   // --- Test start ---
   // Inspect the drawing thumbnail.
@@ -82,7 +82,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
     "t006 --- meadow-flower",
     "excalidraw",
   );
-  await snapshot("excalidraw thumbnail rendered inline in list view");
+  await checkpoint("excalidraw thumbnail rendered inline in list view");
 
   // Open the hover preview.
   // Hover the thumbnail to trigger the hover-preview popup. The popup is a
@@ -91,7 +91,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   await editor.hoverListViewThumbnail("t006 --- meadow-flower", "excalidraw");
   await page.waitForTimeout(750);
   await addKeyFrame(excalidraw);
-  await snapshot("excalidraw hover preview visible");
+  await checkpoint("excalidraw hover preview visible");
 
   // Preview the bundle.
   await page.mouse.move(0, 0);
@@ -99,7 +99,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   // Open the bundle preview.
   await editor.clickPreview();
   await modal.waitForPreviewComplete();
-  await snapshot("preview modal opened");
+  await checkpoint("preview modal opened");
 
   // Open the page containing the drawing.
   await generatedBundle.clickPageLink("t006 - embedded media");
@@ -130,7 +130,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   // Wait for the SVG to land inside the embed placeholder.
   await generatedBundle.excalidraw.expectEmbedVisible();
   await addKeyFrame(excalidraw);
-  await snapshot("excalidraw drawing rendered inline in preview page");
+  await checkpoint("excalidraw drawing rendered inline in preview page");
 
   // Inspect the directed drawing links.
   const directedDrawingHref =
@@ -145,13 +145,13 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   await generatedBundle.excalidraw.expectDirectedDrawingLink(directedSunflowerHref);
   await generatedBundle.excalidraw.expectDirectedStandaloneLinkAbsent();
   await addKeyFrame(excalidraw);
-  await snapshot("directed excalidraw embed rendered with live links");
+  await checkpoint("directed excalidraw embed rendered with live links");
 
   // Open the drawing fullscreen.
   await generatedBundle.excalidraw.openDirectedFullscreen();
   await page.waitForTimeout(750);
   await addKeyFrame(excalidraw);
-  await snapshot("directed excalidraw embed fullscreen open");
+  await checkpoint("directed excalidraw embed fullscreen open");
 
   // Follow a directed drawing link.
   await generatedBundle.excalidraw.closeDirectedFullscreen();
@@ -159,7 +159,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   await generatedBundle.excalidraw.clickDirectedDrawingLink(directedDrawingHref);
   await generatedBundle.expectHeading("t006 --- linked-from-excalidraw");
   await addKeyFrame(excalidraw);
-  await snapshot("directed excalidraw embed link opened target");
+  await checkpoint("directed excalidraw embed link opened target");
 
   // Open the standalone drawing.
   await generatedBundle.clickPageLink("t006 - embedded media");
@@ -172,7 +172,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   // Wait for the standalone page's drawing to render.
   await generatedBundle.excalidraw.expectStandaloneDrawingVisible();
   await addKeyFrame(excalidraw);
-  await snapshot("standalone excalidraw page with full drawing");
+  await checkpoint("standalone excalidraw page with full drawing");
 
   // Follow the tracked image link.
   const standaloneDrawingHref =
@@ -195,7 +195,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
     "page linked from tracked sunflower image in Excalidraw",
   );
   await addKeyFrame(excalidraw);
-  await snapshot("standalone excalidraw tracked image link opened target");
+  await checkpoint("standalone excalidraw tracked image link opened target");
 
   // Check drawing links in new tabs.
   await generatedBundle.clickPageLink("t006 --- meadow-flower");
@@ -231,7 +231,7 @@ test("excalidraw thumbnail in list view, embedded in preview, and standalone pag
   releaseFontWarning();
   void bigBundle;
 
-  await snapshot("drawing links open the expected pages in both the same tab and new tabs");
+  await checkpoint("drawing links open the expected pages in both the same tab and new tabs");
 
   await skipMeadowHomeStateCheck();
 });

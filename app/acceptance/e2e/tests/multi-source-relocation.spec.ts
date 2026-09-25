@@ -8,14 +8,14 @@ import { SourcesControl } from '../src/run/pages/BundleEditorPage/components/Sou
 import { bundleSource } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+test.use({ fixtureHome: 'home_fixture_multi_source' });
 
 /*
  * Move a source directory and repair its registered location. Captured pages should
  * survive the missing directory. Saving the repaired location should close source
  * management with a success message and no material review.
  */
-test('Multi-source relocation saves the repaired location without reviewing unchanged material', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source relocation saves the repaired location without reviewing unchanged material', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -26,7 +26,7 @@ test('Multi-source relocation saves the repaired location without reviewing unch
   const sources = new SourcesControl(page, expect);
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
   const beforeNodes = bundleConfig.readNodesText();
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Relocate the research source.
@@ -34,7 +34,7 @@ test('Multi-source relocation saves the repaired location without reviewing unch
   await sources.open();
   await sources.expectDisconnected('source000002');
   await addKeyFrame(bundleSource);
-  await snapshot('the disconnected source keeps its accepted captured pages');
+  await checkpoint('the disconnected source keeps its accepted captured pages');
 
   // Verify the captured pages and repair the source.
   await sources.close();
@@ -52,7 +52,7 @@ test('Multi-source relocation saves the repaired location without reviewing unch
   expect(bundleConfig.read().sources?.find(source => source.id === 'source000002')?.directory).toBe(relocated);
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
   await addKeyFrame(bundleSource);
-  await snapshot('reconnecting the source closes management with Sources updated and no material review');
+  await checkpoint('reconnecting the source closes management with Sources updated and no material review');
 
   // Reload the repaired location.
   // The graph's configuration read starts a dependent draft-status request.
@@ -64,7 +64,7 @@ test('Multi-source relocation saves the repaired location without reviewing unch
   await editor.waitForSourceCheck();
   await editor.switchToListView();
   await editor.expectListViewLocation('_mw_sources/source000002/Overview.md', 'research', '/');
-  await snapshot('the accepted source location survives reloading the bundle');
+  await checkpoint('the accepted source location survives reloading the bundle');
 
   await skipMeadowHomeStateCheck();
 });

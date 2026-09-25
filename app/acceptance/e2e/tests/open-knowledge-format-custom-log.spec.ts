@@ -43,7 +43,7 @@ test.use({
  */
 test("OKF: choose a custom tracked log page from the settings typeahead", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
@@ -62,7 +62,7 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
-  await snapshot("preview loaded");
+  await checkpoint("preview loaded");
 
   // --- Test start ---
   // Choose a custom log page.
@@ -72,7 +72,7 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   await okf.expectLogPageNotSuggested(orphanLogChoicePageName, "orphan");
   await okf.chooseLogPage(releaseNotesPageName);
   await addKeyFrame(customize);
-  await snapshot("custom okf log page selected");
+  await checkpoint("custom okf log page selected");
 
   // Generate the knowledge package.
   await okf.save();
@@ -80,7 +80,7 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   const changesTab = new ChangesTab(page, expect);
   await changesTab.waitForRegenerationComplete();
   await addKeyFrame(openKnowledgeFormat);
-  await snapshot("okf generation complete with custom log page");
+  await checkpoint("okf generation complete with custom log page");
 
   // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
@@ -88,7 +88,7 @@ test("OKF: choose a custom tracked log page from the settings typeahead", async 
   await okfBundle.expectFileToContain("log.md", "Custom OKF release notes.");
   void bigBundle;
 
-  await snapshot("the selected log becomes the package log page");
+  await checkpoint("the selected log becomes the package log page");
 
   await skipMeadowHomeStateCheck();
 });

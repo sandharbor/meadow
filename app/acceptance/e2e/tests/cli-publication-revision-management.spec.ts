@@ -54,7 +54,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
   minioS3,
   skipMeadowHomeStateCheck,
   testServer,
-  snapshot,
+  checkpoint,
 }) => {
   // --- Setup ---
   await testServer.activateS3Provider();
@@ -85,7 +85,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
   const firstSlug = `${Bundle.Big}-cli-s3`;
   const secondSlug = `${firstSlug}-moved`;
 
-  await snapshot("the initial generation is ready for S3");
+  await checkpoint("the initial generation is ready for S3");
 
   // --- Test start ---
   // Publish the first revision.
@@ -112,7 +112,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
   ], { artifactName: "publication-list-initial" });
   expect(initialState.state.revisions).toHaveLength(1);
   const initialRevisionId = initialState.state.revisions[0].publicationRevisionId;
-  await snapshot("the first S3 revision is published");
+  await checkpoint("the first S3 revision is published");
 
   // Plan a new publication slug.
   await meadowCli.runJson([
@@ -137,7 +137,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
     remoteState: "pending",
   });
 
-  await snapshot("the pending revision connects readers and schedules cleanup");
+  await checkpoint("the pending revision connects readers and schedules cleanup");
 
   // Cancel the pending revision.
   const cancelled = await meadowCli.runJson<{ operation: string; publishSlug: string }>([
@@ -154,7 +154,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
   ], { artifactName: "publication-list-after-cancel" });
   expect(afterCancellation.state.pendingRevisionId).toBeNull();
   expect(afterCancellation.state.revisions).toHaveLength(1);
-  await snapshot("cancellation restores the original publication slug");
+  await checkpoint("cancellation restores the original publication slug");
 
   // Plan the successor again.
   await meadowCli.runJson([
@@ -171,7 +171,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
   ], { artifactName: "publication-list-replanned" });
   const replannedRevisionId = replanned.state.pendingRevisionId!;
 
-  await snapshot("a replacement pending revision is ready");
+  await checkpoint("a replacement pending revision is ready");
 
   // Change reader and cleanup choices.
   const updatedPlan = await meadowCli.runJson<{ pendingRevisionId: string }>([
@@ -190,7 +190,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
     readerConnectionToPredecessor: "disconnected",
     predecessorCleanupPolicy: "keep",
   });
-  await snapshot("reader connection and cleanup choices update independently");
+  await checkpoint("reader connection and cleanup choices update independently");
 
   // Publish with predecessor cleanup.
   await meadowCli.runJson([
@@ -217,7 +217,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
   await minioS3.expectEmpty(`${firstSlug}-${versionId}/`);
   await minioS3.expectHasHtmlFiles(`${secondSlug}-${versionId}/`);
 
-  await snapshot("the successor is published and predecessor files are removed");
+  await checkpoint("the successor is published and predecessor files are removed");
 
   // Delete the current publication.
   const deleted = await meadowCli.runJson<{ operation: string; alreadyAbsent: boolean }>([
@@ -237,7 +237,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
   expect(deletedRecord.revision.remoteState).toBe("deleted");
   await minioS3.expectEmpty(`${secondSlug}-${versionId}/`);
 
-  await snapshot("repeated deletion retains the deleted revision record");
+  await checkpoint("repeated deletion retains the deleted revision record");
 
   // Check publication command help.
   const help = await meadowCli.run(
@@ -250,7 +250,7 @@ test("CLI manages S3 publication revisions including a same-generation slug chan
   void publicationRevision;
   void publishing;
   void s3;
-  await snapshot("help explains reader connections and retained history");
+  await checkpoint("help explains reader connections and retained history");
 
   await skipMeadowHomeStateCheck();
 });

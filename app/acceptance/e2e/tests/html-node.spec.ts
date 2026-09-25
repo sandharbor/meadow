@@ -27,7 +27,7 @@ import { htmlNode } from "../../../concepts/index.js";
 import { Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "single-file" });
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Track a native HTML page and explore its linked graph. Generate the bundle and verify
@@ -36,7 +36,7 @@ test.use({ fixtureHome: Fixture.None });
 test("tracks and browses a native HTML node graph", async ({
   page,
   testServer,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   skipMeadowHomeStateCheck,
 }) => {
@@ -71,7 +71,7 @@ test("tracks and browses a native HTML node graph", async ({
   await editor.clickDeselectSensitivePagesIfVisible();
   await page.waitForTimeout(250);
   await addKeyFrame(htmlNode);
-  await snapshot("HTML node - source graph nodes selected");
+  await checkpoint("HTML node - source graph nodes selected");
 
   // --- Test start ---
   // Track and preview the HTML pages.
@@ -87,7 +87,7 @@ test("tracks and browses a native HTML node graph", async ({
   await generatedBundle.expectNativeHtmlSharedImageVisible();
   await generatedBundle.expectNativeHtmlSharedScriptLoaded();
   await addKeyFrame(htmlNode);
-  await snapshot("HTML node - first generated page");
+  await checkpoint("HTML node - first generated page");
 
   // Follow the link to the second HTML page.
   await generatedBundle.clickPageLink("Continue to the second HTML page");
@@ -95,13 +95,13 @@ test("tracks and browses a native HTML node graph", async ({
   await generatedBundle.expectNativeHtmlCardColor("rgb(245, 239, 255)");
   await generatedBundle.expectNativeHtmlSharedScriptLoaded();
   await addKeyFrame(htmlNode);
-  await snapshot("HTML node - second generated page");
+  await checkpoint("HTML node - second generated page");
 
   // Follow the link into Markdown.
   await generatedBundle.clickPageLink("Open the nested Markdown note");
   await generatedBundle.expectHeading("t026 ---- nested markdown");
   await addKeyFrame(htmlNode);
-  await snapshot("HTML node - nested Markdown reached from HTML");
+  await checkpoint("HTML node - nested Markdown reached from HTML");
 
   void customBundle;
   await skipMeadowHomeStateCheck();

@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("Undo reverts bundle page config changes without leaving the bundle", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -43,13 +43,13 @@ test("Undo reverts bundle page config changes without leaving the bundle", async
   await page.waitForTimeout(250);
   const originalCount = await editor.getListViewPageCount();
   expect(originalCount).toBeGreaterThan(10);
-  await snapshot("list view - original page count");
+  await checkpoint("list view - original page count");
 
   // --- Test start ---
   // Select the initial page.
   await editor.clickListViewRowByExactName("main page");
   await page.waitForTimeout(500);
-  await snapshot("main page selected - details auto-opened");
+  await checkpoint("main page selected - details auto-opened");
 
   // Reduce its outgoing traversal.
   const selectedPageRoot = editor.getSelectedPageRoot();
@@ -58,7 +58,7 @@ test("Undo reverts bundle page config changes without leaving the bundle", async
   await page.waitForTimeout(500);
   const reducedCount = await editor.getListViewPageCount();
   expect(reducedCount).toBeLessThan(originalCount);
-  await snapshot("outlinks depth set to 1 - fewer pages");
+  await checkpoint("outlinks depth set to 1 - fewer pages");
 
   // Undo the traversal change.
   await editor.expectUndoVisible();
@@ -78,7 +78,7 @@ test("Undo reverts bundle page config changes without leaving the bundle", async
   await restoredDetail.expectOutlinksDepthInputValue("4");
 
   await addKeyFrame(bundleConfig);
-  await snapshot("after undo - page count and depth restored");
+  await checkpoint("after undo - page count and depth restored");
 
   void bigBundle;
 

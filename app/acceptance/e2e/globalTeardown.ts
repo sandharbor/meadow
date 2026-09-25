@@ -14,8 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { cleanupSharedServices } from "./src/run/scripts/shared_services.js";
+import { releaseLocalServices } from "../../tooling/local_services/src/index.js";
+import { e2eLocalServicesHolder } from "./src/run/localServicePartitions.js";
 
-export default function globalTeardown() {
-  cleanupSharedServices({ e2eDir: import.meta.dirname });
+export default async function globalTeardown(): Promise<void> {
+  await releaseLocalServices(e2eLocalServicesHolder());
 }

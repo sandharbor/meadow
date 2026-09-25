@@ -33,7 +33,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("tracks a frontier image in a page-derived bundle", async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -54,7 +54,7 @@ test("tracks a frontier image in a page-derived bundle", async ({
   await detail.expectNoPill(Pill.Tracked);
   await detail.expectButtonEnabled(ActionButton.Track);
   await addKeyFrame(frontier, frontierEmbeddedAssets);
-  await snapshot("page-derived frontier image is available to track");
+  await checkpoint("page-derived frontier image is available to track");
 
   // --- Test start ---
   // Track the frontier image.
@@ -62,7 +62,7 @@ test("tracks a frontier image in a page-derived bundle", async ({
   await detail.expectPill(Pill.FrontierImage);
   await detail.expectPill(Pill.Tracked);
   await addKeyFrame(tracking);
-  await snapshot("frontier image tracked in the page-derived bundle");
+  await checkpoint("frontier image tracked in the page-derived bundle");
 
   void bigBundle;
 

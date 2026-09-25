@@ -35,7 +35,7 @@ function recursiveFiles(directory: string): string[] {
 test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombstone boundaries", async ({
   page,
   artifactDir,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   testServer,
 }) => {
@@ -64,7 +64,7 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   await expect(page.getByText("All Versions (Rendered Bundle only)", { exact: true })).toBeVisible();
   await modal.expectShareVersionPurpose("export");
   await modal.expectShareVersionSelected(secondVersionId);
-  await snapshot("local export offers the selected saved version and All Versions");
+  await checkpoint("local export offers the selected saved version and All Versions");
 
   // --- Test start ---
   // Export the selected versions.
@@ -91,7 +91,7 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   expect(allManifestText).not.toContain("private editorial note");
   expect(allManifestText).not.toContain(testServer.sourceGraphsDir);
 
-  await snapshot("selected and all-version exports contain only shareable data");
+  await checkpoint("selected and all-version exports contain only shareable data");
 
   // Modify the current generated files.
   const currentDirectory = path.join(
@@ -112,7 +112,7 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   expect((await exportTo(path.join(artifactDir, "dirty-all-export"), { allVersions: true })).status()).toBe(409);
   expect((await exportTo(path.join(artifactDir, "frozen-while-current-dirty"), { versionId: firstVersionId })).ok()).toBe(true);
 
-  await snapshot("dirty current files block their export while frozen files remain exportable");
+  await checkpoint("dirty current files block their export while frozen files remain exportable");
 
   // Restore current files and delete the frozen version.
   fs.writeFileSync(currentHtmlPath, savedBytes);
@@ -130,7 +130,7 @@ test("D01 E01 E02 E03 selected and All Versions exports enforce saved and tombst
   await modal.clickStep1Review();
   await modal.clickVersionsTab();
   await expect(page.getByText("Locally Deleted", { exact: true })).toBeVisible();
-  await snapshot("local tombstone retained in version history");
+  await checkpoint("local tombstone retained in version history");
 
   await skipMeadowHomeStateCheck();
 });

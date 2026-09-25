@@ -11,13 +11,12 @@ const originalTitle = 't003 ---- page with section to link to';
 const renamedTitle = 't003 ---- renamed section page';
 
 test.use({ bundleMode: "single-file" });
-test.use({ isolateSourceGraphs: true });
 
 /*
  * Rename a source page that already has curation settings. Review should preserve those
  * settings and retain the page's identity after acceptance.
  */
-test('Sourcing reviews a shared rename without disrupting curation and preserves page identity', async ({ page, sourceChanges, testServer, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing reviews a shared rename without disrupting curation and preserves page identity', async ({ page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
@@ -26,7 +25,7 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   const original = bundleConfig.requireNode({ bundleNodeName: originalTitle });
   await editor.waitForSourceCheck();
   await editor.expectSourceOrphanCount(13);
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Rename the page and its links.
@@ -36,7 +35,7 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   await editor.sourceReview.expectClosed();
   await editor.expectSourceOrphanCount(13);
   await addKeyFrame(sourceSnapshot);
-  await snapshot('candidate waits while accepted curation remains stable');
+  await checkpoint('candidate waits while accepted curation remains stable');
 
   // Open source review.
   const review = editor.sourceReview;
@@ -47,7 +46,7 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   const rename = await review.moveFrom(`${originalTitle}.md`);
   await rename.expectDetailsCollapsed();
   await addKeyFrame(sourceMove);
-  await snapshot('proposed rename is ready to accept with choices and evidence collapsed');
+  await checkpoint('proposed rename is ready to accept with choices and evidence collapsed');
 
   // Inspect the unchanged traversal route.
   await rename.expandDetails();
@@ -57,7 +56,7 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   await rename.expectNoContentComparison();
   await rename.expectSingleRoute(['main page.md', 't003 - link to section.md']);
   await addKeyFrame(sourceMove);
-  await snapshot('an unchanged traversal route uses file pills without repeating the renamed endpoint');
+  await checkpoint('an unchanged traversal route uses file pills without repeating the renamed endpoint');
 
   // Reopen review and inspect the link edit.
   await review.closeWithEscape();
@@ -66,7 +65,7 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   await review.expandDetails('t003 - link to section.md');
   await review.expectInlineChanges('t003 - link to section.md', ['page with section to link to'], ['renamed section page']);
   await addKeyFrame(sourceChange);
-  await snapshot('renamed link text uses readable replacement phrases');
+  await checkpoint('renamed link text uses readable replacement phrases');
 
   // Accept the source update.
   await review.accept();
@@ -75,7 +74,7 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   await editor.switchToListView();
   await expect(page.getByText(renamedTitle, { exact: true }).first()).toBeVisible();
   await addKeyFrame(sourceSnapshot);
-  await snapshot('accepted rename keeps the existing tracked page identity');
+  await checkpoint('accepted rename keeps the existing tracked page identity');
 
   await skipMeadowHomeStateCheck();
 });

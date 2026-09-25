@@ -25,23 +25,23 @@ test.use({ bundleMode: "single-file" });
  * Create a custom filter using part of an incoming page title. Verify that it selects the
  * expected linked pages.
  */
-test("filter custom inlink title substring selects expected pages", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("filter custom inlink title substring selects expected pages", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
-  await snapshot("bundle list loaded");
+  await checkpoint("bundle list loaded");
 
   // --- Test start ---
   // Open the big bundle.
   await bundleList.clickBundle("meadow-test-bundle-big");
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-bundle-big");
-  await snapshot("bundle editor loaded");
+  await checkpoint("bundle editor loaded");
 
   // Create a custom filter.
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.clickAddCustomFilter();
-  await snapshot("custom filter modal open");
+  await checkpoint("custom filter modal open");
 
   // Match titles containing inlink.
   await filterPanel.fillAndSaveCustomFilter({
@@ -50,18 +50,18 @@ test("filter custom inlink title substring selects expected pages", async ({ pag
     matchType: "substring",
     value: "inlink",
   });
-  await snapshot("custom filter saved");
+  await checkpoint("custom filter saved");
 
   // Solo the matching pages.
   await page.waitForTimeout(250);
 
   await filterPanel.clickSoloOnFilter("inlink in title");
   await addKeyFrame(filters);
-  await snapshot("filter soloed");
+  await checkpoint("filter soloed");
 
   // Select the visible pages.
   await editor.clickSelectAll();
-  await snapshot("all visible pages selected");
+  await checkpoint("all visible pages selected");
 
   // Check their titles.
   const titles = await editor.getSelectedPageTitles();
@@ -69,7 +69,7 @@ test("filter custom inlink title substring selects expected pages", async ({ pag
   for (const title of titles) {
     expect(title.toLowerCase()).toContain("inlink");
   }
-  await snapshot("verified selected page titles");
+  await checkpoint("verified selected page titles");
 
   void bigBundle;
 

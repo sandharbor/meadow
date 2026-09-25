@@ -28,7 +28,7 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
  */
 test("folder context selections include structural children and deeper paths", async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -40,7 +40,7 @@ test("folder context selections include structural children and deeper paths", a
   await bundleList.clickBundle(Bundle.FolderStructureMultiple);
   await editor.waitForLoad(Bundle.FolderStructureMultiple);
   await editor.switchToListView();
-  await snapshot("the folder graph is ready for structural selection");
+  await checkpoint("the folder graph is ready for structural selection");
 
   // --- Test start ---
   // Select direct children.
@@ -54,7 +54,7 @@ test("folder context selections include structural children and deeper paths", a
     "Visual map",
   ].sort());
   await addKeyFrame(folderBundles);
-  await snapshot("Select Children includes every direct Alpha child");
+  await checkpoint("Select Children includes every direct Alpha child");
 
   // Select all deeper paths.
   await editor.rightClickListViewRowByNodeKey("folder:Alpha");
@@ -73,7 +73,7 @@ test("folder context selections include structural children and deeper paths", a
   await editor.switchToGraphView();
   await editor.expectGraphViewActive();
   await addKeyFrame(paths);
-  await snapshot("Select Deeper Paths highlights structural and linked descendants in the graph");
+  await checkpoint("Select Deeper Paths highlights structural and linked descendants in the graph");
 
   await assertMeadowHomeState({
     allowedUntracked: [

@@ -28,7 +28,7 @@ import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /**
  * Build a fresh bundle against meadow-test-bundles-data with "t006 - embedded
@@ -45,7 +45,7 @@ test.use({ fixtureHome: Fixture.None });
 test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible", async ({
   page,
   testServer,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   expectLogErrors,
@@ -78,7 +78,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
 
   // Slug is derived from the title via lowercase → spaces+dashes collapse.
   await editor.waitForLoad("t006-embedded-media");
-  await snapshot("editor loaded with t006 - embedded media as initial page");
+  await checkpoint("editor loaded with t006 - embedded media as initial page");
 
   // --- Test start ---
   // Select the initial page.
@@ -92,13 +92,13 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   await editor.switchToGraphView();
   await page.waitForTimeout(250);
   await addKeyFrame(initialPage);
-  await snapshot("initial node selected in graph view, inlinks visible");
+  await checkpoint("initial node selected in graph view, inlinks visible");
 
   // Remove incoming traversal.
   const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
   await detail.setInlinksDepth(0);
   await page.waitForTimeout(1000);
-  await snapshot("after setting inlink depth to 0");
+  await checkpoint("after setting inlink depth to 0");
 
   // Check the outgoing media.
   // The depth-1 outlink media should still be present — switch to list view
@@ -112,7 +112,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   await editor.expectListViewRowByTitleAndFileTypePresent("t006 --- meadow-flower", "excalidraw");
   await addKeyFrame(images);
   await addKeyFrame(excalidraw);
-  await snapshot("depth-1 outlink media still present in list view");
+  await checkpoint("depth-1 outlink media still present in list view");
 
   void customBundle;
 

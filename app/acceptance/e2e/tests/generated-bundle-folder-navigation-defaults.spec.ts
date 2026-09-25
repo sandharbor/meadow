@@ -27,7 +27,7 @@ test.use({ bundleMode: "single-file" });
  * each bundle without leaking into another bundle on the same host.
  */
 test("folder navigation defaults can be global or per bundle and reader choices stay isolated on one host", async ({
-  page, browser, snapshot, skipMeadowHomeStateCheck, addKeyFrame,
+  page, browser, checkpoint, skipMeadowHomeStateCheck, addKeyFrame,
 }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
@@ -49,7 +49,7 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   await navigation.open();
   await navigation.reload();
   await navigation.expectOpen();
-  await snapshot('small bundle remembers the reader opening navigation');
+  await checkpoint('small bundle remembers the reader opening navigation');
 
   // --- Test start ---
   // Check another bundle with no reader preference.
@@ -64,7 +64,7 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   await navigation.expectOpen();
   const bigUrl = await modal.generatedBundle.getUrl();
   await navigation.close();
-  await snapshot('big bundle override opens navigation without borrowing the small bundle preference');
+  await checkpoint('big bundle override opens navigation without borrowing the small bundle preference');
 
   // Reopen the first bundle.
   await workflows.navigateToSmallBundlePreview();
@@ -81,7 +81,7 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   await options.expectFolderNavigationDefaults('open', 'closed');
   await options.cancelFolderNavigationSettings();
   await addKeyFrame(htmlGeneration);
-  await snapshot('returning reader choice takes precedence over the new closed default');
+  await checkpoint('returning reader choice takes precedence over the new closed default');
 
   // Check a new reader session.
   const newVisitor = await browser.newContext();
@@ -112,7 +112,7 @@ test("folder navigation defaults can be global or per bundle and reader choices 
   }
   void bigBundle;
   void smallBundle;
-  await snapshot("a new reader receives the bundle default while returning readers retain their choice");
+  await checkpoint("a new reader receives the bundle default while returning readers retain their choice");
 
   await skipMeadowHomeStateCheck();
 });

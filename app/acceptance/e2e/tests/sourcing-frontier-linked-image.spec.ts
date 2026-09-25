@@ -5,16 +5,15 @@ import { ActionButton, BundleEditorPage, FilterPanelComponent, Pill, SelectedPag
 import { frontierEmbeddedAssets } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ isolateSourceGraphs: true });
 
 /*
  * Add a plain link to an image beyond the traversal boundary. The live frontier should
  * show it without allowing it to be tracked there.
  */
-test('a plain link to an image beyond the boundary stays untrackable in the live frontier', async ({ page, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('a plain link to an image beyond the boundary stays untrackable in the live frontier', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Replace the image embed with a plain link.
@@ -25,7 +24,7 @@ test('a plain link to an image beyond the boundary stays untrackable in the live
   await editor.sourceReview.expectNoLongerIncluded('t016 ---- level 5 - frontier image.png');
   await editor.sourceReview.orphans.expectNotListed('t016 ---- level 5 - frontier image');
   await addKeyFrame(frontierEmbeddedAssets);
-  await snapshot('the formerly embedded image is no longer included, without orphaned configuration');
+  await checkpoint('the formerly embedded image is no longer included, without orphaned configuration');
 
   // Accept the source update.
   await editor.sourceReview.accept();
@@ -37,7 +36,7 @@ test('a plain link to an image beyond the boundary stays untrackable in the live
   await detail.expectNoPill(Pill.FrontierImage);
   await detail.expectButtonDisabled(ActionButton.Track);
   await addKeyFrame(frontierEmbeddedAssets);
-  await snapshot('an ordinary image link has the same frontier restrictions as a linked note');
+  await checkpoint('an ordinary image link has the same frontier restrictions as a linked note');
 
   await skipMeadowHomeStateCheck();
 });

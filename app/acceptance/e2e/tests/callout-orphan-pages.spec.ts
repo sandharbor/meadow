@@ -21,7 +21,6 @@ import { orphan, sourceSnapshot } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const EXPECTED_ORPHAN_COUNT = 13;
-test.use({ isolateSourceGraphs: true });
 
 const CHILD_OF_BLACKLISTED = "t007 ---- child of blacklisted page";
 
@@ -34,21 +33,21 @@ test.use({ bundleMode: "single-file" });
 test("Sourcing reviews existing and candidate orphans with removal on acceptance", async ({
   page,
   sourceChanges,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
-  await snapshot("bundle editor loaded");
+  await checkpoint("bundle editor loaded");
 
   // --- Test start ---
   // Inspect the orphan summary.
   const editor = new BundleEditorPage(page, expect);
   await editor.expectSourceOrphanCount(EXPECTED_ORPHAN_COUNT);
   await addKeyFrame(sourceSnapshot);
-  await snapshot("source toolbar counts existing orphans without a separate banner");
+  await checkpoint("source toolbar counts existing orphans without a separate banner");
 
   // Open source review.
   const review = editor.sourceReview;
@@ -56,7 +55,7 @@ test("Sourcing reviews existing and candidate orphans with removal on acceptance
   await orphansModal.expectOrphanCount(EXPECTED_ORPHAN_COUNT);
   await orphansModal.expectOrphanListed(CHILD_OF_BLACKLISTED);
   await addKeyFrame(orphan);
-  await snapshot("orphans review modal lists unreachable config pages");
+  await checkpoint("orphans review modal lists unreachable config pages");
 
   // Defer, then accept the orphan cleanup.
   await review.defer();
@@ -65,7 +64,7 @@ test("Sourcing reviews existing and candidate orphans with removal on acceptance
   await addKeyFrame(orphan);
   await review.applyOrphanRemovals();
   await editor.expectSourceOrphanCount(0);
-  await snapshot("source review applies all configuration removals");
+  await checkpoint("source review applies all configuration removals");
 
   // Remove the incoming link.
   await sourceChanges.apply('remove-incoming-link');
@@ -76,12 +75,12 @@ test("Sourcing reviews existing and candidate orphans with removal on acceptance
   await orphansModal.expectExplanation('t001 ---- child 2', 'no longer links to');
   await review.expectNoMissingEntry('t001/deeper/t001 ---- child 2.md');
   await addKeyFrame(orphan);
-  await snapshot('candidate orphan is listed once and removed by default with its broken link');
+  await checkpoint('candidate orphan is listed once and removed by default with its broken link');
 
   // Accept the source update.
   await review.accept();
   await editor.expectSourceOrphanCount(0);
-  await snapshot('acceptance removes the newly orphaned page');
+  await checkpoint('acceptance removes the newly orphaned page');
 
   void bigBundle;
 

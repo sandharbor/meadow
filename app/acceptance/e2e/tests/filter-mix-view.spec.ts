@@ -28,14 +28,14 @@ test.use({ bundleMode: "single-file" });
  */
 test("mix filters intersects soloed untracked and sensitive filters in graph and list views", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
   // --- Setup ---
   const workflows = new Workflows(page, expect);
   await workflows.navigateToBigBundle();
-  await snapshot("big bundle loaded");
+  await checkpoint("big bundle loaded");
 
   // --- Test start ---
   // Solo untracked pages.
@@ -45,7 +45,7 @@ test("mix filters intersects soloed untracked and sensitive filters in graph and
   await filterPanel.enableAndSoloFilter("Untracked");
   await editor.expectGraphViewPageCount(10);
   await filterPanel.expectMixFiltersHidden();
-  await snapshot("untracked filter soloed without mix filters");
+  await checkpoint("untracked filter soloed without mix filters");
 
   // Add sensitive pages to the mix.
   await filterPanel.clickSoloOnFilter("Sensitive");
@@ -53,27 +53,27 @@ test("mix filters intersects soloed untracked and sensitive filters in graph and
   await filterPanel.openMixFilters();
   await filterPanel.moveMixFiltersBy(80, 50);
   await addKeyFrame(filters);
-  await snapshot("mix filters defaults to any and can move aside");
+  await checkpoint("mix filters defaults to any and can move aside");
 
   // Intersect the two filters.
   await filterPanel.chooseMixOperator("All");
   await filterPanel.closeMixFilters();
   await filterPanel.expectMixFiltersCustomized(true);
   await editor.expectGraphViewPageCount(1);
-  await snapshot("graph view shows sensitive untracked intersection");
+  await checkpoint("graph view shows sensitive untracked intersection");
 
   // Compare the list view.
   await editor.switchToListView();
   expect(await editor.getListViewPageCount()).toBe(1);
   await addKeyFrame(filters);
-  await snapshot("list view shows the same intersection");
+  await checkpoint("list view shows the same intersection");
 
   // Reset the filter mix.
   await filterPanel.openMixFilters();
   await filterPanel.resetMixFilters();
   await filterPanel.expectMixFiltersCustomized(false);
   await filterPanel.closeMixFilters();
-  await snapshot("reset mix restores the default view");
+  await checkpoint("reset mix restores the default view");
 
   void bigBundle;
 

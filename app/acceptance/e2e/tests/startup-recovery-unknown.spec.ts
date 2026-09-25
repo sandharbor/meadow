@@ -18,7 +18,7 @@ import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRec
 import { callout, startupRecovery } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
-test.use({ fixtureHome: 'none' });
+test.use({ fixtureHome: 'home_fixture_minimal' });
 test.use({ bundleMode: 'single-file' });
 
 /*
@@ -27,7 +27,7 @@ test.use({ bundleMode: 'single-file' });
  */
 test('Unknown startup failures use branded progressive disclosure', async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -57,7 +57,7 @@ test('Unknown startup failures use branded progressive disclosure', async ({
   await expect(page.getByText('Selected Meadow Home')).toBeHidden();
   await expect(page.getByText('Running app')).toBeHidden();
   await addKeyFrame(startupRecovery, callout);
-  await snapshot('unknown startup failure');
+  await checkpoint('unknown startup failure');
 
   await assertMeadowHomeState();
 });

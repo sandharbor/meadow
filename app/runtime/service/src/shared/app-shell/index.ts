@@ -201,7 +201,7 @@ export async function startRuntimeService(): Promise<void> {
     // A format-current Home can have no migrations or default patches to
     // trigger a later commit. Capture its initial state immediately so the
     // repository is clean on the very first public-format launch as well.
-    await startupGit.commitDirs(['.'], 'initial Meadow Home snapshot');
+    await startupGit.commitDirs(['.'], 'initial Meadow Home commit');
   }
 
   await runMigrationsOnStartup();

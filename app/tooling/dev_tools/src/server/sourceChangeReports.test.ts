@@ -26,7 +26,7 @@ test('each source change links its latest assembled scenario, including failures
   fs.writeFileSync(path.join(movedDirectory, 'report-meta.json'), JSON.stringify({ scenarioInfo: { testName: 'move-new' } }));
   fs.writeFileSync(path.join(movedDirectory, 'manifest.json'), JSON.stringify({ testName: 'move-new', testSource: "test('New move title', async () => {});" }));
   const runs = latestSourceChangeRuns(['move.spec.ts', 'add.spec.ts', 'missing.spec.ts'], { artifactsRoot, viewerUrl: 'http://localhost:9876/' });
-  assert.deepEqual(runs.get('move.spec.ts'), { runId: '2026-09-21_10-00-00', scenario: 'New move title', url: 'http://localhost:9876/2026-09-21_10-00-00/move-new' });
+  assert.deepEqual(runs.get('move.spec.ts'), { runId: '2026-09-21_10-00-00', scenario: 'New move title', slug: 'move-new', url: 'http://localhost:9876/2026-09-21_10-00-00/move-new' });
   assert.equal(runs.get('add.spec.ts')?.runId, '2026-09-20_10-00-00');
   assert.equal(runs.has('missing.spec.ts'), false);
   assert.equal(latestSourceChangeRuns(['move.spec.ts'], { artifactsRoot: path.join(artifactsRoot, 'absent') }).size, 0);

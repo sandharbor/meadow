@@ -19,9 +19,9 @@ import baseConfig from "./playwright.config.js";
 
 // Playwright config that runs only tests outside tests/meadow-extension/.
 // Used to verify the base suite stays green independently of any optional
-// extension layer. The shared playwright.config.ts only starts extension
-// backing services when the extension's global_setup.ts is mounted in,
-// so this config also verifies the framework boots cleanly without them.
+// extension layer. Local Services only start extension parts when the
+// extension's localServices.ts is mounted in, so this config also verifies
+// the framework boots cleanly without them.
 export default defineConfig({
   ...baseConfig,
   testIgnore: "meadow-extension/**",

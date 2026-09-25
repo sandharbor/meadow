@@ -178,7 +178,7 @@ function runStatus(statusRunId: string): never {
   };
 
   // Also check individual status.txt files to catch tests that failed outright
-  const dirs = readdirSync(runDir).filter((d) => statSync(path.join(runDir, d)).isDirectory());
+  const dirs = readdirSync(runDir).filter((d) => !d.startsWith("__") && statSync(path.join(runDir, d)).isDirectory());
   const failedTests: string[] = [];
   const issueTests: string[] = [];
 
@@ -483,7 +483,7 @@ const artifactsDir = path.join(ARTIFACTS_BASE, runId);
 const testsDir = path.join(E2E_DIR, "tests");
 const specCount = countSpecFiles(testsDir);
 const artifactCount = existsSync(artifactsDir)
-  ? readdirSync(artifactsDir).filter((d) => statSync(path.join(artifactsDir, d)).isDirectory()).length
+  ? readdirSync(artifactsDir).filter((d) => !d.startsWith("__") && statSync(path.join(artifactsDir, d)).isDirectory()).length
   : 0;
 
 if (!grep && !specs && !scenarios && !appAreas && specCount !== artifactCount) {
@@ -516,7 +516,7 @@ if (highlightedBasenames && existsSync(artifactsDir)) {
 // Step 5: Print report viewer URL and timing summary
 if (existsSync(artifactsDir)) {
   const subDirs = readdirSync(artifactsDir).filter((d) =>
-    statSync(path.join(artifactsDir, d)).isDirectory()
+    !d.startsWith("__") && statSync(path.join(artifactsDir, d)).isDirectory()
   );
   if (subDirs.length > 0) {
     console.log(`\nLaunch report viewer: npm start --prefix ../report_viewer`);
@@ -539,9 +539,6 @@ try {
     force: true,
   });
 } catch { /* ignore */ }
-for (const f of [".minio-container", ".minio-endpoint"]) {
-  try { unlinkSync(path.join(E2E_DIR, f)); } catch { /* ignore */ }
-}
 
 // Propagate Playwright exit code
 if (playwrightExitCode !== 0) {

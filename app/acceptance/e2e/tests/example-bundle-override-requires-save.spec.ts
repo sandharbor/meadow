@@ -30,7 +30,7 @@ import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Add a depth override to a child page. Unlike simple tracking changes, the override
@@ -38,7 +38,7 @@ test.use({ fixtureHome: Fixture.None });
  */
 test("adding a depth override on a child page requires an explicit save", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -51,7 +51,7 @@ test("adding a depth override on a child page requires an explicit save", async 
   await bundleList.goto();
   await bundleList.clickAddExampleBundleLink();
   await editor.waitForLoad("example-bundle");
-  await snapshot("example bundle loaded");
+  await checkpoint("example bundle loaded");
 
   // --- Test start ---
   // Select a page without an override.
@@ -69,7 +69,7 @@ test("adding a depth override on a child page requires an explicit save", async 
     expect,
   );
   await detail.openDetails();
-  await snapshot("child page selected with details open");
+  await checkpoint("child page selected with details open");
 
   // Add a traversal override.
   // Adding a depth override is a "complex op" — it should NOT auto-save. The
@@ -78,13 +78,13 @@ test("adding a depth override on a child page requires an explicit save", async 
   await page.waitForTimeout(500);
   await editor.expectUndoVisible();
   await addKeyFrame(bundleConfig);
-  await snapshot("override set - draft state, save button visible");
+  await checkpoint("override set - draft state, save button visible");
 
   // Save the override.
   await editor.clickSave();
   await page.waitForTimeout(1000);
   await editor.expectUndoNotVisible();
-  await snapshot("override saved - draft cleared");
+  await checkpoint("override saved - draft cleared");
 
   // Find the page using the override filter.
   // Verify the override persisted: the Depth Override filter should now
@@ -97,7 +97,7 @@ test("adding a depth override on a child page requires an explicit save", async 
 
   await editor.expectListViewRowByExactNamePresent("First Principles Thinking");
   await addKeyFrame(overrides);
-  await snapshot("override page appears under Depth Override filter");
+  await checkpoint("override page appears under Depth Override filter");
 
   void exampleBundle;
 

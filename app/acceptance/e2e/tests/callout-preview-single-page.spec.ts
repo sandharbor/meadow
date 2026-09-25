@@ -22,7 +22,7 @@ import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: "none" });
+test.use({ fixtureHome: "home_fixture_minimal" });
 
 /*
  * Create a bundle with only its starting page tracked, then preview it. Check that the
@@ -31,7 +31,7 @@ test.use({ fixtureHome: "none" });
 test("Callout warns when previewing with only one tracked page", async ({
   page,
   testServer,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -55,7 +55,7 @@ test("Callout warns when previewing with only one tracked page", async ({
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("main-page");
 
-  await snapshot("the new bundle contains only its tracked initial page");
+  await checkpoint("the new bundle contains only its tracked initial page");
 
   // --- Test start ---
   // Preview the single-page bundle.
@@ -63,14 +63,14 @@ test("Callout warns when previewing with only one tracked page", async ({
   await editor.clickPreview();
   await editor.expectSinglePagePreviewWarningVisible();
   await addKeyFrame(callout);
-  await snapshot("single page preview warning shown");
+  await checkpoint("single page preview warning shown");
 
   // Return to tracking pages.
   await editor.clickGoBackAndTrackMorePages();
 
   // Verify we're back on the graph view (modal closed, not navigated to preview)
   await editor.expectGraphViewButtonVisible();
-  await snapshot("back on graph view after dismissing warning");
+  await checkpoint("back on graph view after dismissing warning");
 
   void customBundle;
 

@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("Delete unpublished bundle from within bundle editor", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
@@ -41,7 +41,7 @@ test("Delete unpublished bundle from within bundle editor", async ({
   // Finish the initial fixture review before exercising bundle deletion.
   await editor.waitForSourceCheck();
 
-  await snapshot("the unpublished bundle is ready for deletion");
+  await checkpoint("the unpublished bundle is ready for deletion");
 
   // --- Test start ---
   // Open the deletion confirmation.
@@ -53,7 +53,7 @@ test("Delete unpublished bundle from within bundle editor", async ({
   await deleteModal.expectVisible();
   await addKeyFrame(callout);
   await addKeyFrame(deletion);
-  await snapshot("delete confirmation for unpublished bundle");
+  await checkpoint("delete confirmation for unpublished bundle");
 
   // Confirm the deletion.
   await deleteModal.confirmDelete();
@@ -62,7 +62,7 @@ test("Delete unpublished bundle from within bundle editor", async ({
   const bundleList = new BundleListPage(page, expect);
   await bundleList.expectHeadingVisible();
   await bundleList.expectBundleNotVisible(Bundle.Big);
-  await snapshot("bundle list after deletion - bundle gone");
+  await checkpoint("bundle list after deletion - bundle gone");
 
   void bigBundle;
 

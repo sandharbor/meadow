@@ -18,12 +18,6 @@ limitations under the License.
  * Shared types for dev_tools_app client and server
  */
 
-export enum ConfigMode {
-  Normal = "normal",
-  MissingConf = "missing-conf",
-  TestFixture = "test-fixture",
-}
-
 export interface ConfigFixture {
   /** The full folder name (e.g., "home_fixture_big_and_small") */
   folderName: string;
@@ -38,3 +32,10 @@ export interface PublishingProviderConfProfile {
   /** ProviderClassName subfolders this profile would write into MeadowHome */
   providerClassNames: string[];
 }
+
+export type {
+  OpenSavedState,
+  SavedStateOrigin,
+  ServiceTarget,
+} from "../server/savedStateSession.js";
+export type { CheckpointOption } from "../server/checkpointCatalog.js";

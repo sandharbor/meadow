@@ -23,14 +23,14 @@ import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Create the example bundle and inspect MeadowHome's Git repository. It should be a normal
  * working repository with the expected saved files.
  */
 test("MeadowHome is a real (non-bare) git repo after creating the example bundle", async ({
-  page, snapshot, assertMeadowHomeState, addKeyFrame, testServer,
+  page, checkpoint, assertMeadowHomeState, addKeyFrame, testServer,
 }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
@@ -39,13 +39,13 @@ test("MeadowHome is a real (non-bare) git repo after creating the example bundle
   // Empty-state path: no fixture, click the "add the example bundle" link
   // in the empty bundle list, then land in the editor for example-bundle.
   await bundleList.goto();
-  await snapshot("empty bundle list");
+  await checkpoint("empty bundle list");
 
   // --- Test start ---
   // Add the example bundle.
   await bundleList.clickAddExampleBundleLink();
   await editor.waitForLoad("example-bundle");
-  await snapshot("example bundle editor loaded");
+  await checkpoint("example bundle editor loaded");
 
   // Inspect the repository with system Git.
   // Use the system `git` CLI (not fast_git_ops) to confirm MeadowHome is
@@ -90,7 +90,7 @@ test("MeadowHome is a real (non-bare) git repo after creating the example bundle
   ).toBe("");
 
   await addKeyFrame(git);
-  await snapshot("MeadowHome clean via real git status");
+  await checkpoint("MeadowHome clean via real git status");
 
   void exampleBundle;
 

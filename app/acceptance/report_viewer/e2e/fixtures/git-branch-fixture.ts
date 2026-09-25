@@ -27,8 +27,8 @@ export function createGitBranchFixture(directory: string) {
   git(['update-ref', `refs/meadow-e2e/observed/${first}`, first]);
   const start = Date.now() + 2000;
   const ticks = [null, first, second].map((head, tickIndex) => ({
-    timestamp: new Date(start + tickIndex * 1000).toISOString(), tickIndex, isSnapshot: true,
-    snapshotMessage: ['Before sourcing', 'First candidate observed', 'Candidate replaced'][tickIndex],
+    timestamp: new Date(start + tickIndex * 1000).toISOString(), tickIndex, isCheckpoint: true,
+    checkpointMessage: ['Before sourcing', 'First candidate observed', 'Candidate replaced'][tickIndex],
     gitHeadSha: main, gitBranchHeads: { 'refs/heads/main': main, ...(head ? { [branch]: accepted, [candidate]: head } : {}) },
     fileCount: 1, uncommittedCount: 0, uncommittedFiles: [], uncommittedFileContents: {}, ignoredFiles: [],
     addedFiles: [], removedFiles: [], changedUncommitted: false, changedGitHead: tickIndex === 0,

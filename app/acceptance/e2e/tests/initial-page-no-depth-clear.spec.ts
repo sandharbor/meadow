@@ -23,14 +23,14 @@ import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Select the starting page and inspect its depth controls. Its required traversal depths
  * should not be removable.
  */
 test("a publisher should not be able to remove the depth on the initial page", async ({
-  page, snapshot, assertMeadowHomeState, addKeyFrame,
+  page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
@@ -51,7 +51,7 @@ test("a publisher should not be able to remove the depth on the initial page", a
   const initialDetail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
   await initialDetail.expectRemoveOutlinksDepthNotVisible();
   await addKeyFrame(initialPage);
-  await snapshot("initial page depth has no remove override button");
+  await checkpoint("initial page depth has no remove override button");
 
   // --- Test start ---
   // Compare a regular page override.
@@ -64,7 +64,7 @@ test("a publisher should not be able to remove the depth on the initial page", a
   await page.waitForTimeout(250);
   await overrideDetail.expectRemoveOutlinksDepthVisible();
   await addKeyFrame(bundleConfig);
-  await snapshot("non-initial page depth has remove override button");
+  await checkpoint("non-initial page depth has remove override button");
 
   void exampleBundle;
 

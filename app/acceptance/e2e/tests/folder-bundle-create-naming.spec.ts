@@ -31,7 +31,7 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
 test("choose folders before naming a bundle and its published home page", async ({
   page,
   testServer,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -51,7 +51,7 @@ test("choose folders before naming a bundle and its published home page", async 
   await createModal.expectFolderSelectionValid();
   await addKeyFrame(folderBundles);
 
-  await snapshot("the selected folder supplies the initial name");
+  await checkpoint("the selected folder supplies the initial name");
 
   // --- Test start ---
   // Try a source root outside the selected folder.
@@ -63,7 +63,7 @@ test("choose folders before naming a bundle and its published home page", async 
   await createModal.changeSourceDirectory(sourceDir);
   await createModal.expectFolderSelectionValid();
 
-  await snapshot("restoring the source root makes the selection valid");
+  await checkpoint("restoring the source root makes the selection valid");
 
   // Name a bundle with two folders.
   await createModal.addFolders([path.join(sourceDir, "Beta")]);
@@ -72,13 +72,13 @@ test("choose folders before naming a bundle and its published home page", async 
   await createModal.clickEditSlug();
   await createModal.fillSlug("reading-room");
   await addKeyFrame(bundleSlug);
-  await snapshot("the home title and bundle slug are chosen independently");
+  await checkpoint("the home title and bundle slug are chosen independently");
 
   // Create the folder bundle.
   await createModal.clickCreateBundle();
   await editor.waitForLoad("reading-room");
   await editor.expectGraphViewHasPages();
-  await snapshot("folder bundle created with a separate list name and home title");
+  await checkpoint("folder bundle created with a separate list name and home title");
 
   // Reopen and preview the named bundle.
   await editor.clickBackToBundles();
@@ -89,7 +89,7 @@ test("choose folders before naming a bundle and its published home page", async 
   await previewModal.generatedBundle.expectSingleHeading("Collected Notes", 60_000);
   await previewModal.generatedBundle.expectStructuralChildNames(["Alpha", "Beta"]);
   await addKeyFrame(folderBundles);
-  await snapshot("published home uses the chosen title and folder order");
+  await checkpoint("published home uses the chosen title and folder order");
 
   void customBundle;
 

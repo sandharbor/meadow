@@ -1,53 +1,30 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import net from 'node:net';
-import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '../src/run/test-fixtures.js';
+import { startDevTools } from '../src/run/devTools.js';
 import { DevSourceChangesControl } from '../src/run/pages/DevToolsPage/SourceChangesControl.js';
+import { DevSavedStatesPage } from '../src/run/pages/DevToolsPage/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourceChange, sourceSnapshot } from '../../../concepts/index.js';
+import { sourceChange, sourceSnapshot, savedState } from '../../../concepts/index.js';
 
 const projectRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 
-async function availablePort(): Promise<number> {
-  const server = net.createServer();
-  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address();
-  if (!address || typeof address === 'string') throw new Error('Could not allocate a dev-tool test port');
-  await new Promise<void>(resolve => server.close(() => resolve()));
-  return address.port;
-}
-
-async function stop(child: ChildProcess): Promise<void> {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  const done = new Promise<void>(resolve => child.once('exit', () => resolve()));
-  child.kill('SIGTERM');
-  await done;
-}
-
 test.use({ bundleMode: "single-file" });
-test.use({ isolateSourceGraphs: true });
 
 /*
- * Apply a shared source-change scenario from Dev Tools to a running fixture. The
- * application should review the same move used by the automated test.
+ * Apply a shared source change from Dev Tools to the open saved state, which is
+ * this scenario's own running home. The application should review the same move
+ * used by the automated test, and fixture menus that share the graph agree.
  */
-test('Sourcing dev controls apply the same shared move to the running application', async ({ page, testServer, sourceChanges, snapshot, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
+test('Sourcing dev controls apply the same shared move to the running application', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   await new BundleEditorPage(page, expect).waitForSourceCheck();
-  const devDirectory = path.join(projectRoot, 'app/tooling/dev_tools');
-  const [serverPort, clientPort] = await Promise.all([availablePort(), availablePort()]);
-  const marker = path.join(path.dirname(testServer.configDir), 'meadow_active_fixture');
-  const backup = path.join(path.dirname(testServer.configDir), 'MeadowHome_normal');
-  const markerBefore = fs.existsSync(marker) ? fs.readFileSync(marker) : null;
-  const hadBackup = fs.existsSync(backup);
-  fs.writeFileSync(marker, 'home_fixture_big_and_small');
-  fs.mkdirSync(backup, { recursive: true });
   const reports = path.join(testInfo.outputDir, 'source-change-reports');
   for (const [run, slug, spec, title] of [
     ['2026-09-20_10-00-00', 'old-move', 'sourcing-move-page.spec.ts', 'Older move scenario'],
@@ -59,30 +36,33 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     fs.writeFileSync(path.join(directory, 'test-file.txt'), path.join(projectRoot, 'app/acceptance/e2e/tests', spec));
     fs.writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify({ testName: title }));
   }
-  const env = { ...process.env, MEADOW_HOME_DIRECTORY_OVERRIDE: testServer.configDir, PORT: String(serverPort), VITE_DEV_TOOLS_CLIENT_PORT: String(clientPort), MEADOW_E2E_RUNS_DIRECTORY: reports, MEADOW_REPORT_VIEWER_URL: 'http://localhost:5175' };
-  let logs = '';
-  const start = (args: string[]) => {
-    const child = spawn(process.execPath, args, { cwd: devDirectory, env, stdio: ['ignore', 'pipe', 'pipe'] });
-    child.stdout?.on('data', bytes => { logs += String(bytes); });
-    child.stderr?.on('data', bytes => { logs += String(bytes); });
-    return child;
-  };
-  const server = start(['--import', 'tsx', 'src/server/index.ts']);
-  const client = start(['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--strictPort']);
+  // Dev Tools adopts this scenario's running home as its open saved state.
+  const devHomes = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-dev-homes-'));
+  fs.writeFileSync(path.join(devHomes, 'current.json'), JSON.stringify({
+    id: 'e2e-scenario-home',
+    origin: { kind: 'fixture', fixture: 'home_fixture_big_and_small' },
+    label: 'big_and_small',
+    homeDirectory: testServer.configDir,
+    logsDirectory: testServer.logsDirectory,
+    serviceTarget: 'hosted',
+    openedAt: new Date().toISOString(),
+    currentCode: { revision: 'unknown', uncommitted: false },
+    serviceEnvironment: {},
+  }));
+  const devTools = await startDevTools(expect, {
+    MEADOW_HOME_DIRECTORY_OVERRIDE: path.join(devHomes, 'normal-home'),
+    MEADOW_DEV_HOMES_DIRECTORY: devHomes,
+    MEADOW_E2E_RUNS_DIRECTORY: reports,
+    MEADOW_REPORT_VIEWER_URL: 'http://localhost:5175',
+  });
   try {
-    await expect.poll(async () => {
-      try { return (await fetch(`http://127.0.0.1:${serverPort}/api/config/fixtures`)).ok; }
-      catch { return false; }
-    }).toBe(true);
-    await expect.poll(async () => {
-      try { return (await fetch(`http://127.0.0.1:${clientPort}`)).ok; }
-      catch { return false; }
-    }).toBe(true);
-    await page.goto(`http://127.0.0.1:${clientPort}`);
+    await page.goto(devTools.clientUrl);
+    await new DevSavedStatesPage(page, expect).expectOpen({ origin: 'Home fixture big_and_small', services: 'Hosted Development' });
+    await addKeyFrame(savedState);
     const fixture = page.getByTestId('fixture-card-home_fixture_big_and_small');
     const controls = new DevSourceChangesControl(fixture, expect);
     await controls.checkHelpWhileClosed();
-    await snapshot('dev controls are ready on the running fixture');
+    await checkpoint('dev controls are ready on the open saved state');
 
     // --- Test start ---
     // Apply the shared move.
@@ -102,7 +82,7 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'meadow-test-bundles-data/t001/deeper/t001 ---- child 2.md'))).toBe(false);
     await addKeyFrame(sourceChange);
     await expect(sourceChanges.apply('move-nested-page')).rejects.toThrow(/already applied/);
-    await snapshot('dev controls apply a real source move to the isolated big graph');
+    await checkpoint('dev controls apply a real source move to the isolated big graph');
 
     // Inspect multi-source actions.
     const multiFixture = page.getByTestId('fixture-card-home_fixture_multi_source');
@@ -130,7 +110,7 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     ]);
     await competing.scrollIntoViewIfNeeded();
     await addKeyFrame(sourceChange);
-    await snapshot('multi-source changes have one category home and readable source-qualified operations');
+    await checkpoint('multi-source changes have one category home and readable source-qualified operations');
 
     // Check the shared fixture menus.
     for (const fixtureName of ['nested', 'srs']) {
@@ -143,7 +123,7 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
         'Review proposes a move, and existing name-only links still resolve.');
       await sharedControls.expectE2eRun('move-nested-page', 'Shared move regression', 'http://localhost:5175/2026-09-21_10-00-00/shared-move');
     }
-    await snapshot('nested and SRS expose the same source-change coverage');
+    await checkpoint('nested and SRS expose the same source-change coverage');
 
     // Review the move in the application.
     await new Workflows(page, expect).navigateToBigBundle();
@@ -151,13 +131,11 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     await review.open();
     await review.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md');
     await addKeyFrame(sourceSnapshot);
-    await snapshot('the running application discovers the move made through dev controls');
+    await checkpoint('the running application discovers the move made through dev controls');
   } finally {
-    await stop(client);
-    await stop(server);
-    if (markerBefore) fs.writeFileSync(marker, markerBefore); else fs.rmSync(marker, { force: true });
-    if (!hadBackup) fs.rmSync(backup, { recursive: true, force: true });
-    await testInfo.attach('dev-tools-processes.log', { body: logs, contentType: 'text/plain' });
+    await devTools.stop();
+    await testInfo.attach('dev-tools-processes.log', { body: devTools.logs(), contentType: 'text/plain' });
+    fs.rmSync(devHomes, { recursive: true, force: true });
   }
   await skipMeadowHomeStateCheck();
 });

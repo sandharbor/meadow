@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("find in bundles navigates from small bundle to big bundle with page auto-selected", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -44,19 +44,19 @@ test("find in bundles navigates from small bundle to big bundle with page auto-s
   await page.waitForTimeout(2000);
   await bundleList.goto();
   await bundleList.expectBundleVisible(Bundle.Example);
-  await snapshot("bundle list with example bundle added");
+  await checkpoint("bundle list with example bundle added");
 
   // --- Test start ---
   // Open the small bundle.
   await bundleList.clickBundle(Bundle.Small);
   await editor.waitForLoad(Bundle.Small);
-  await snapshot("small bundle loaded");
+  await checkpoint("small bundle loaded");
 
   // Open the shared page menu.
   await editor.switchToListView();
   await page.waitForTimeout(250);
   await editor.rightClickRow("t001 - deeply nested");
-  await snapshot("context menu open on t001");
+  await checkpoint("context menu open on t001");
 
   // Find the page in other bundles.
   await editor.clickFindInBundles();
@@ -65,7 +65,7 @@ test("find in bundles navigates from small bundle to big bundle with page auto-s
   // Should be back at bundle list with find-in-bundles filter active
   await bundleList.expectHeadingVisible();
   await bundleList.expectFindInBundlesFilterActive("t001 - deeply nested");
-  await snapshot("bundle list with find in bundles filter active");
+  await checkpoint("bundle list with find in bundles filter active");
 
   // Check the matching bundles.
   // Both Big and Small should be visible (both track this page),
@@ -80,7 +80,7 @@ test("find in bundles navigates from small bundle to big bundle with page auto-s
   await bundleList.clickBundle(Bundle.Big);
   await editor.waitForLoad(Bundle.Big);
   await page.waitForTimeout(500);
-  await snapshot("big bundle loaded with auto-selected page");
+  await checkpoint("big bundle loaded with auto-selected page");
 
   // Check the automatic selection.
   const selectedTitles = await editor.getSelectedPageTitles();
@@ -89,14 +89,14 @@ test("find in bundles navigates from small bundle to big bundle with page auto-s
   // Solo the selected pages to isolate the found page
   await editor.clickSoloSelection();
   await page.waitForTimeout(250);
-  await snapshot("solo mode with found page");
+  await checkpoint("solo mode with found page");
 
   // Inspect the found page in list view.
   await editor.switchToListView();
   await page.waitForTimeout(250);
   const listCount = await editor.getListViewPageCount();
   expect(listCount).toBe(1);
-  await snapshot("list view showing only the found page");
+  await checkpoint("list view showing only the found page");
 
   void bigBundle;
   void smallBundle;

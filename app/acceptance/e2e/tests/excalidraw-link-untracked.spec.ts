@@ -35,7 +35,7 @@ test.use({ trackBigBundleExcalidrawPages: true });
  */
 test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   expectLogErrors,
@@ -59,7 +59,7 @@ test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
   await wf.navigateToBigBundle();
   await editor.clickPreview();
   await modal.waitForPreviewComplete();
-  await snapshot("preview completed");
+  await checkpoint("preview completed");
 
   // --- Test start ---
   // Inspect an untracked drawing link.
@@ -84,7 +84,7 @@ test("Excalidraw link to untracked page renders as 'link not tracked'", async ({
   // The replacement text shows up in the rendered SVG.
   await generatedBundle.excalidraw.expectStandaloneDrawingText("link not tracked");
   await addKeyFrame(excalidraw);
-  await snapshot("excalidraw untracked link rendered as 'link not tracked'");
+  await checkpoint("excalidraw untracked link rendered as 'link not tracked'");
 
   // Finish the expected-warning check.
   releaseWorkerWarning();

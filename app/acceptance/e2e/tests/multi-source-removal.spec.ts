@@ -9,13 +9,13 @@ import { bundleSource } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+test.use({ fixtureHome: 'home_fixture_multi_source' });
 
 /*
  * Remove a registered source and review its orphaned pages. Ignored source names should
  * stay quiet until the user chooses to reconsider them.
  */
-test('Multi-source removal reviews orphans and ignored source names stay quiet until reconsidered', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source removal reviews orphans and ignored source names stay quiet until reconsidered', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -28,7 +28,7 @@ test('Multi-source removal reviews orphans and ignored source names stay quiet u
   const study = bundleConfig.requireNode({ bundleNodeName: 'Study' });
   const referenceFile = path.join(testServer.sourceGraphsDir, 'multi-source/reference/Study.md');
   const referenceContent = fs.readFileSync(referenceFile, 'utf8');
-  await snapshot('the reference source and its original pages are connected');
+  await checkpoint('the reference source and its original pages are connected');
 
   // --- Test start ---
   // Remove the reference source.
@@ -38,7 +38,7 @@ test('Multi-source removal reviews orphans and ignored source names stay quiet u
   await editor.sourceReview.orphans.expectSummaryCount(2);
   await editor.sourceReview.orphans.keepInConfig('Study');
   await addKeyFrame(bundleSource);
-  await snapshot('deliberate removal offers orphan cleanup with optional retained configuration');
+  await checkpoint('deliberate removal offers orphan cleanup with optional retained configuration');
 
   // Accept the source update.
   await editor.sourceReview.accept();
@@ -46,7 +46,7 @@ test('Multi-source removal reviews orphans and ignored source names stay quiet u
   expect(bundleConfig.findNode({ bundleNodeName: 'Appendix' })).toBeUndefined();
   expect(fs.readFileSync(referenceFile, 'utf8')).toBe(referenceContent);
   expect(bundleConfig.read().sourceOutputLayout).toBe('multi');
-  await snapshot('source removal preserves the explicitly retained page configuration');
+  await checkpoint('source removal preserves the explicitly retained page configuration');
 
   // Ignore the missing source reminder.
   await sources.expectNotice(['reference']);
@@ -57,7 +57,7 @@ test('Multi-source removal reviews orphans and ignored source names stay quiet u
   await editor.waitForLoad('multi-source-page');
   await editor.waitForSourceCheck();
   await sources.expectNotice();
-  await snapshot('the ignored source name stays quiet after reloading');
+  await checkpoint('the ignored source name stays quiet after reloading');
 
   // Add another reference to the ignored source.
   await sourceChanges.apply('add-reference-to-start', 'multi-source');
@@ -69,7 +69,7 @@ test('Multi-source removal reviews orphans and ignored source names stay quiet u
   await sources.open();
   await sources.expectReferences('reference', ['notes://Start', 'notes://Frontier']);
   await addKeyFrame(bundleSource);
-  await snapshot('the saved ignored name also suppresses a newly captured reference');
+  await checkpoint('the saved ignored name also suppresses a newly captured reference');
 
   // Reconsider the ignored source.
   await sources.setIgnored('reference', false);
@@ -78,7 +78,7 @@ test('Multi-source removal reviews orphans and ignored source names stay quiet u
   const otherConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-mixed', expect).read();
   expect(otherConfig.sources).toHaveLength(3);
   expect(otherConfig.ignoredSourceNames ?? []).toEqual([]);
-  await snapshot('reconsidering the source restores its notice without changing the other bundle');
+  await checkpoint('reconsidering the source restores its notice without changing the other bundle');
 
   await skipMeadowHomeStateCheck();
 });

@@ -6,37 +6,37 @@ import path from 'node:path';
 import { test, expect } from '@playwright/test';
 import { ensurePublishFlowArtifact } from '../fixtures/publish-flow-fixture.js';
 
-test('arrow navigation highlights snapshot calls in both directions and after reopening Test Code', async ({ page }) => {
+test('arrow navigation highlights checkpoint calls in both directions and after reopening Test Code', async ({ page }) => {
   const base = ensurePublishFlowArtifact();
-  const runDirectory = fs.mkdtempSync(path.join(os.homedir(), 'meadow-e2e-artifacts/current/rv-snapshot-lines-'));
-  const directory = path.join(runDirectory, 'snapshot-code');
+  const runDirectory = fs.mkdtempSync(path.join(os.homedir(), 'meadow-e2e-artifacts/current/rv-checkpoint-lines-'));
+  const directory = path.join(runDirectory, 'checkpoint-code');
   fs.mkdirSync(directory);
   fs.copyFileSync(path.join(base.artifactDir, 'video.webm'), path.join(directory, 'video.webm'));
   const manifestPath = path.join(directory, 'manifest.json');
   const start = Date.parse('2026-01-01T00:00:00Z');
   const source = [
-    'test("snapshot code", async ({ snapshot }) => {',
-    "  await snapshot('setup complete');",
+    'test("checkpoint code", async ({ checkpoint }) => {',
+    "  await checkpoint('setup complete');",
     '',
     '  // Review the choices.',
-    '  await snapshot("review ready");',
+    '  await checkpoint("review ready");',
     '',
     '  // Accept the update.',
-    '  await snapshot(`accepted`);',
+    '  await checkpoint(`accepted`);',
     '});',
   ].join('\n');
-  const manifest = { testName: 'snapshot-code', startTime: new Date(start).toISOString(), logs: [], testSource: source };
+  const manifest = { testName: 'checkpoint-code', startTime: new Date(start).toISOString(), logs: [], testSource: source };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest));
   try {
-    await page.goto(`/${path.basename(runDirectory)}/snapshot-code`);
+    await page.goto(`/${path.basename(runDirectory)}/checkpoint-code`);
     const video = page.locator('video');
     await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).duration)).toBeGreaterThan(1);
     const duration = await video.evaluate(element => (element as HTMLVideoElement).duration);
     expect(Number.isFinite(duration)).toBe(true);
     const ticks = [0, duration / 2, duration - 0.4, duration - 0.2].map((seconds, tickIndex) => ({
       timestamp: new Date(start + seconds * 1000).toISOString(), tickIndex,
-      isSnapshot: tickIndex > 0,
-      snapshotMessage: ['', 'setup complete', 'review ready', 'accepted'][tickIndex],
+      isCheckpoint: tickIndex > 0,
+      checkpointMessage: ['', 'setup complete', 'review ready', 'accepted'][tickIndex],
       fileCount: 0, uncommittedCount: 0, uncommittedFiles: [], addedFiles: [], removedFiles: [],
       changedUncommitted: false, changedGitHead: false, s3KeyCount: 0,
       s3AddedKeys: [], s3ModifiedKeys: [], s3RemovedKeys: [], s3Changed: false,

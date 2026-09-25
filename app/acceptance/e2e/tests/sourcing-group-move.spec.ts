@@ -7,13 +7,12 @@ import { sourceMove, sourceSnapshot, sourceChange } from '../../../concepts/inde
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ isolateSourceGraphs: true });
 
 /*
  * Rename a linked group of pages and review it. Meadow should classify the group once and
  * avoid treating its members as unrelated orphans.
  */
-test('Sourcing classifies a renamed linked group once and keeps its pages out of orphan cleanup', async ({ page, sourceChanges, testServer, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Sourcing classifies a renamed linked group once and keeps its pages out of orphan cleanup', async ({ page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   const editor = new BundleEditorPage(page, expect);
@@ -21,7 +20,7 @@ test('Sourcing classifies a renamed linked group once and keeps its pages out of
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'meadow-test-bundle-big', expect);
   const original = bundleConfig.readNodes().filter(node => node.bundleNodeName.startsWith('t001 ---- child'));
   expect(original).toHaveLength(3);
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Rename the linked group.
@@ -38,13 +37,13 @@ test('Sourcing classifies a renamed linked group once and keeps its pages out of
   }
   await review.orphans.expectSummaryCount(13);
   await addKeyFrame(sourceMove);
-  await snapshot('three linked moves form review items while existing unrelated orphans remain separate');
+  await checkpoint('three linked moves form review items while existing unrelated orphans remain separate');
 
   // Inspect the updated links.
   await review.expandDetails('t001 - deeply nested.md');
   await review.expectInlineChanges('t001 - deeply nested.md', ['0', '0', '0'], ['1', '1', '1']);
   await addKeyFrame(sourceChange);
-  await snapshot('minor link edits highlight only the changed digits');
+  await checkpoint('minor link edits highlight only the changed digits');
 
   // Accept the source update.
   await review.accept();
@@ -54,7 +53,7 @@ test('Sourcing classifies a renamed linked group once and keeps its pages out of
     expect(updated.find(item => item.bundleNodeId === node.bundleNodeId)?.bundleNodeName).toBe(node.bundleNodeName.replace('t001', 't101'));
   }
   await addKeyFrame(sourceSnapshot);
-  await snapshot('the group preserves all three identities after accepting the source update');
+  await checkpoint('the group preserves all three identities after accepting the source update');
 
   await skipMeadowHomeStateCheck();
 });

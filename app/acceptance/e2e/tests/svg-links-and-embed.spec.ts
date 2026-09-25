@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("SVG links work in a directed embed", async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -42,7 +42,7 @@ test("SVG links work in a directed embed", async ({
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
 
-  await snapshot("the generated bundle preview is ready");
+  await checkpoint("the generated bundle preview is ready");
 
   // --- Test start ---
   // Inspect the directed SVG embed.
@@ -62,11 +62,11 @@ test("SVG links work in a directed embed", async ({
   );
   await generatedBundle.svg.expectDirectedStandaloneLinkAbsent();
   await addKeyFrame(svg);
-  await snapshot("directed SVG embed rendered with live links");
+  await checkpoint("directed SVG embed rendered with live links");
 
   // Open the SVG fullscreen.
   await generatedBundle.svg.openDirectedFullscreen();
-  await snapshot("directed SVG embed fullscreen open");
+  await checkpoint("directed SVG embed fullscreen open");
 
   // Follow an SVG link.
   await generatedBundle.svg.closeDirectedFullscreen();
@@ -76,7 +76,7 @@ test("SVG links work in a directed embed", async ({
     "t006 --- page that embeds Excalidraw in another directory",
   );
   await addKeyFrame(svg);
-  await snapshot("directed SVG embed link opened target");
+  await checkpoint("directed SVG embed link opened target");
 
   void bigBundle;
   await assertMeadowHomeState({

@@ -31,7 +31,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("generated-bundle hover preview links navigate from nested pages", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
@@ -54,7 +54,7 @@ test("generated-bundle hover preview links navigate from nested pages", async ({
   await addKeyFrame(customize);
   await modal.closeCustomizeSidebar();
 
-  await snapshot("the generated bundle has hover previews enabled");
+  await checkpoint("the generated bundle has hover previews enabled");
 
   // --- Test start ---
   // Inspect a root backlink from a nested page.
@@ -76,12 +76,12 @@ test("generated-bundle hover preview links navigate from nested pages", async ({
     "t001 - deeply nested",
   );
   await addKeyFrame(htmlGeneration);
-  await snapshot("hover preview exposes a navigable nested-page link");
+  await checkpoint("hover preview exposes a navigable nested-page link");
 
   // Follow the link in the hover preview.
   await generatedBundle.hoverPreview.clickLink("t001 ---- child 2");
   await generatedBundle.expectHeading("t001 ---- child 2");
-  await snapshot("navigated through hover preview link");
+  await checkpoint("navigated through hover preview link");
 
   void bigBundle;
   await skipMeadowHomeStateCheck();

@@ -1,4 +1,4 @@
-import { materializeSourceGraph, applySourceChange, fixtureSourceGraphs, loadSourceChanges } from '../../../../shared_code/shared_dev/sourceChanges.js';
+import { applySourceChange, fixtureSourceGraphs, loadSourceChanges } from '../../../../shared_code/shared_dev/sourceChanges.js';
 import type { SourceChangeResult } from '../../../../shared_code/shared_dev/sourceChangesTypes.js';
 /*
 Copyright 2026 Sand Harbor Software, LLC
@@ -39,7 +39,7 @@ import http from "http";
 import os from "os";
 import path from "path";
 import YAML from "yaml";
-import { fixtureSourceLocation } from '../../../../shared_code/shared_dev/fixtureSourceLocation.js';
+import { EMPTY_HOME, openHomeFixture } from '../../../../shared_code/shared_dev/savedStates.js';
 import { resolveFastGitOpsBinary } from "./utils/MeadowHomeGit.js";
 import { MeadowCli } from "./utils/MeadowCli.js";
 import { MinioS3 } from "./utils/MinioS3.js";
@@ -52,9 +52,17 @@ import { RuntimeSupervisor } from "../../../../runtime/supervisor/src/runtimeSup
 import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
 import { createBrowserLaunchUrl } from "../../../../runtime/supervisor/src/runtimeClient.js";
 import {
-  startTestWebServer,
-  stopTestWebServer,
-} from "./scripts/test_web_server_process.js";
+  CHECKPOINT_REPO_DIRECTORY,
+  captureCheckpoint,
+  minioBucketName,
+  readLocalServices,
+  seedS3Provider,
+  startWebServer,
+  stopWebServer,
+  type LocalServiceContainer,
+  type LocalServicePart,
+} from "../../../../tooling/local_services/src/index.js";
+import { e2eWorkerPartition } from "./localServicePartitions.js";
 // assembleTestArtifacts is called in assembleRun() post-run, not during fixture teardown
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../..");
@@ -62,7 +70,6 @@ const BACKEND_DIR = path.join(REPO_ROOT, "app", "runtime", "service");
 const FRONTEND_DIR = path.join(REPO_ROOT, "app", "clients", "web");
 const E2E_DIR = path.join(import.meta.dirname, "../..");
 
-const MINIO_BUCKET_PREFIX = "meadow-e2e-test";
 export const E2E_S3_ACCESS_KEY_ID = "FAKE-E2E-MINIO-ACCESS-KEY";
 export const E2E_S3_SECRET_ACCESS_KEY = "FAKE-E2E-MINIO-SECRET-KEY";
 const MAX_TICK_UNCOMMITTED_CONTENT_BYTES = 256 * 1024;
@@ -220,96 +227,29 @@ async function acquireSerialGroupLock(group: string): Promise<() => void> {
   }
 }
 
-function populateConfigDir(
-  configDir: string,
-  fixtureName = "home_fixture_big_and_small",
-  isolateSourceGraphs = false,
-  includeOversizedImage = false,
-): string {
-  const appDir = path.join(configDir, "app");
-  const sharedSourceGraphsDir = path.join(REPO_ROOT, "app", "shared_data", "source_graphs");
-  // Filtering needs a private copy so the checked-in fixture stays complete.
-  const copySourceGraphs = isolateSourceGraphs || !includeOversizedImage;
-  const sourceGraphsDir = copySourceGraphs
-    ? path.join(configDir, "source_graphs")
-    : sharedSourceGraphsDir;
-  mkdirSync(appDir, { recursive: true });
-  const prepareSourceGraph = (sourceGraph: string) => {
-    if (copySourceGraphs) {
-      materializeSourceGraph({
-        projectRoot: REPO_ROOT,
-        sourceGraphsDir,
-        sourceGraph,
-        excludeRelativePaths: !includeOversizedImage && sourceGraph === "meadow-test-bundles-data"
-          ? ["t006/t006 --- too-big.png"]
-          : [],
-      });
-    }
-    return path.join(sourceGraphsDir, sourceGraph);
-  };
-
-  if (fixtureName === "none") {
-    // Empty-home scenarios can still create bundles from the big source fixture.
-    prepareSourceGraph("meadow-test-bundles-data");
-    writeFileSync(path.join(appDir, "app_config.yaml"), "version: 1.0.0\n", "utf8");
-    return sourceGraphsDir;
-  }
-
-  const fixtureDir = path.join(
-    REPO_ROOT, "app", "shared_data", "home_fixtures", fixtureName
-  );
-  // Copy app/app_config.yaml
-  const srcAppConfig = path.join(fixtureDir, "app", "app_config.yaml");
-  if (existsSync(srcAppConfig)) {
-    const content = readFileSync(srcAppConfig, "utf8");
-    writeFileSync(path.join(appDir, "app_config.yaml"), content, "utf8");
-  }
-
-  // Copy app/hooks if present
-  const srcHooksDir = path.join(fixtureDir, "app", "hooks");
-  if (existsSync(srcHooksDir)) {
-    const destHooksDir = path.join(appDir, "hooks");
-    cpSync(srcHooksDir, destHooksDir, {
-      recursive: true,
-      filter: (src: string) => !src.includes(".DS_Store"),
-    });
-  }
-
-  // Copy bundle directories and rewrite sourceDirectory paths
-  const bundlesDir = path.join(configDir, "bundles");
-  mkdirSync(bundlesDir, { recursive: true });
-
-  const fixtureBundlesDir = path.join(fixtureDir, "bundles");
-  for (const bundleName of readdirSync(fixtureBundlesDir)) {
-    const srcBundleDir = path.join(fixtureBundlesDir, bundleName);
-    if (!statSync(srcBundleDir).isDirectory()) continue;
-
-    const destBundleDir = path.join(bundlesDir, bundleName);
-    cpSync(srcBundleDir, destBundleDir, {
-      recursive: true,
-      filter: (src) => !src.includes(".DS_Store"),
-    });
-
-    const bundleConfigPath = path.join(destBundleDir, "config", "bundle_config.yaml");
-    if (existsSync(bundleConfigPath)) {
-      const yamlContent = readFileSync(bundleConfigPath, "utf8");
-      const config = YAML.parse(yamlContent) as Record<string, unknown>;
-
-      if (Array.isArray(config.sources)) {
-        config.sources = config.sources.map((source: { directory: string }) => {
-          const { graph, subdirectory } = fixtureSourceLocation(source.directory);
-          return { ...source, directory: path.join(prepareSourceGraph(graph), subdirectory) };
-        });
-      } else if (config.sourceDirectory && typeof config.sourceDirectory === "string") {
-        const sourceFolder = path.basename(config.sourceDirectory);
-        config.sourceDirectory = prepareSourceGraph(sourceFolder);
-      }
-
-      writeFileSync(bundleConfigPath, YAML.stringify(config), "utf8");
-    }
-  }
-
-  return sourceGraphsDir;
+/**
+ * Open the scenario's saved state through the same shared opener Dev Tools
+ * uses. The Empty Home lives beside its logs because the application must
+ * create the home folder itself.
+ */
+function openScenarioHome(
+  baseDir: string,
+  fixtureName: string,
+  includeOversizedImage: boolean,
+): { configDir: string; logsDirectory: string; sourceGraphsDir: string } {
+  const logsDirectory = path.join(baseDir, "logs");
+  const configDir = fixtureName === EMPTY_HOME ? path.join(baseDir, "home") : baseDir;
+  const opened = openHomeFixture({
+    projectRoot: REPO_ROOT,
+    fixtureName,
+    homeDirectory: configDir,
+    // The checked-in fixture stays complete; only scenarios that exercise
+    // image size limits receive the oversized image.
+    sourceGraphExclusions: includeOversizedImage
+      ? {}
+      : { "meadow-test-bundles-data": ["t006/t006 --- too-big.png"] },
+  });
+  return { configDir, logsDirectory, sourceGraphsDir: opened.sourceGraphsDirectory };
 }
 
 function trackBigBundleExcalidrawPages(configDir: string) {
@@ -383,7 +323,7 @@ function listFilesRecursive(dir: string, excludeDirs: string[]): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Git helpers for snapshot fixture (exported for extension snapshot layers)
+// Git helpers for the checkpoint fixture (exported for extension checkpoint layers)
 // ---------------------------------------------------------------------------
 
 export function initGitRepo(repoDir: string, name: string) {
@@ -429,6 +369,8 @@ export function gitCommitIfChanged(repoDir: string, message: string, timelinePat
 
 export interface TestServer {
   configDir: string;
+  /** Backend and supervisor logs. Outside the home for the Empty Home. */
+  logsDirectory: string;
   runtimeSessionPath: string;
   sourceGraphsDir: string;
   backendPort: number;
@@ -437,6 +379,17 @@ export interface TestServer {
   webServerPort: number;
   minioEndpoint: string;
   minioBucket: string;
+  /** This worker's Local Services partition and the shared containers. */
+  localServices: {
+    partition: string;
+    parts: LocalServicePart[];
+    containers: Record<string, LocalServiceContainer>;
+  };
+  /**
+   * Ports recorded with each checkpoint so a restored fork can reuse them.
+   * Fixture layers add the ports of the processes they start.
+   */
+  checkpointPorts: Record<string, number>;
   /** Return the authenticated renderer connection without exposing it to logs. */
   getBackendConnectionForRendererTest: () => { baseUrl: string; capability: string };
   /**
@@ -474,12 +427,12 @@ export interface TestServer {
 }
 
 /**
- * Extension point used by fixture layers to attach additional snapshot
- * capture logic (e.g. a structured backing-store snapshot). The base
- * `snapshot` fixture calls every registered handler after its own
+ * Extension point used by fixture layers to attach additional checkpoint
+ * capture logic (e.g. a structured backing-store capture). The base
+ * `checkpoint` fixture calls every registered handler after its own
  * minio+uncommitted capture.
  */
-export type SnapshotHandler = (message: string) => Promise<void>;
+export type CheckpointHandler = (message: string) => Promise<void>;
 
 /**
  * Extension point used by fixture layers to attach additional per-tick data
@@ -492,7 +445,7 @@ export interface TickCaptureRegistry {
   handlers: TickCaptureHandler[];
   latestData: Record<string, unknown>;
   captureNow: () => Promise<void>;
-  captureSnapshot: (message: string) => void;
+  captureCheckpoint: (message: string) => void;
 }
 
 /**
@@ -520,9 +473,8 @@ export const test = base.extend<{
   executionSurface: ExecutionSurface;
   /** Keep resource-intensive specs in the same named group from running concurrently. */
   serialGroup: string | null;
+  /** A home fixture folder name, or "empty" for a fresh install. */
   fixtureHome: string;
-  /** Copy configured source graphs into the test's temporary home before launch. */
-  isolateSourceGraphs: boolean;
   /** Include the large PNG fixture only for scenarios that exercise image size limits. */
   includeOversizedImage: boolean;
   trackBigBundleExcalidrawPages: boolean;
@@ -530,14 +482,14 @@ export const test = base.extend<{
   testServer: TestServer;
   sourceChanges: { apply: (changeId: string, sourceGraph?: string) => Promise<SourceChangeResult> };
   artifactDir: string;
-  snapshot: (message: string) => Promise<void>;
+  checkpoint: (message: string) => Promise<void>;
   /**
    * Assert that the MeadowHome configDir git repo is clean except for the
    * explicitly allowed paths. Untracked entries (`??`) and modified entries
    * (anything else: `M`/`A`/`D`/`R`/...) are checked separately. Each
    * allow-list is matched by exact relative path (no globs).
    *
-   * Every spec must call this at least once, after its last `snapshot()` call —
+   * Every spec must call this at least once, after its last `checkpoint()` call —
    * the `_module/scripts/lint-final-assertion` linter enforces that. To
    * deliberately not check the final state, use `skipMeadowHomeStateCheck()`
    * instead — both satisfy the linter, but only one of them actually asserts.
@@ -565,12 +517,12 @@ export const test = base.extend<{
   /** Internal: shared expected error windows, used by artifactDir guardrail. */
   _expectedErrorWindows: { pattern: RegExp; startTime: string; endTime: string | null }[];
   /**
-   * Internal extension point: additional snapshot handlers contributed by a
+   * Internal extension point: additional checkpoint handlers contributed by a
    * fixture layer (e.g. a layer that captures backing-store state). Base
    * exports an empty array; overriding layers extend this fixture to
    * return handlers.
    */
-  _additionalSnapshotHandlers: SnapshotHandler[];
+  _additionalCheckpointHandlers: CheckpointHandler[];
   /** Internal: mutable registry of extension-contributed tick capture hooks. */
   _tickCaptureRegistry: TickCaptureRegistry;
   /**
@@ -593,12 +545,10 @@ export const test = base.extend<{
   executionSurface: ["browser", { option: true }],
   serialGroup: [null, { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
-  isolateSourceGraphs: [false, { option: true }],
   includeOversizedImage: [false, { option: true }],
-  sourceChanges: async ({ testServer, isolateSourceGraphs, fixtureHome }, use, testInfo) => {
+  sourceChanges: async ({ testServer, fixtureHome }, use, testInfo) => {
     const applied = new Set<string>();
     await use({ apply: async (changeId, sourceGraph = 'meadow-test-bundles-data') => {
-      if (!isolateSourceGraphs) throw new Error('Source changes require isolateSourceGraphs: true');
       return await test.step(`Apply source change: ${changeId}`, async () => {
         const result = applySourceChange({ projectRoot: REPO_ROOT, sourceGraphsDir: testServer.sourceGraphsDir, sourceGraph, changeId });
         applied.add(`${sourceGraph}/${changeId}`);
@@ -606,7 +556,7 @@ export const test = base.extend<{
         return result;
       });
     } });
-    if (testInfo.status === 'passed') {
+    if (testInfo.status === 'passed' && fixtureHome !== EMPTY_HOME) {
       const designated = fixtureSourceGraphs(REPO_ROOT, fixtureHome).flatMap(graph => loadSourceChanges(REPO_ROOT, graph))
         .find(change => change.e2e === path.basename(testInfo.file));
       if (designated && !applied.has(`${designated.sourceGraph}/${designated.id}`)) {
@@ -665,19 +615,22 @@ export const test = base.extend<{
   },
 
   testServer: [
-    async ({ fixtureHome, isolateSourceGraphs, includeOversizedImage, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
-      const workerIndex = testInfo.parallelIndex;
-      const minioBucket = `${MINIO_BUCKET_PREFIX}-${workerIndex}`;
+    async ({ fixtureHome, includeOversizedImage, trackBigBundleExcalidrawPages: shouldTrackBigBundleExcalidrawPages, _backendExtraEnv, _preSpawnSeed, _serialGroupLock: _lock }, use, testInfo) => {
+      const partition = e2eWorkerPartition(testInfo.parallelIndex);
+      const { parts, containers } = await readLocalServices();
+      const minioBucket = minioBucketName(partition);
 
-      // 1. Create fresh CONFIG_DIR
-      const configDir = execSync("npx tsx src/shared/scripts/setup_worktree_resources_config.ts", {
+      // 1. Create a fresh per-scenario directory with machine-local runtime
+      // resources (ports and log location).
+      const baseDir = execSync("npx tsx src/shared/scripts/setup_worktree_resources_config.ts", {
         cwd: BACKEND_DIR,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       }).trim();
 
-      // 2. Populate fixture data
-      const sourceGraphsDir = populateConfigDir(configDir, fixtureHome, isolateSourceGraphs, includeOversizedImage);
+      // 2. Open the saved state. Tooling only writes files; the application
+      // establishes Git and the home's first commit at startup.
+      const { configDir, logsDirectory, sourceGraphsDir } = openScenarioHome(baseDir, fixtureHome, includeOversizedImage);
       if (shouldTrackBigBundleExcalidrawPages) {
         trackBigBundleExcalidrawPages(configDir);
       }
@@ -694,21 +647,16 @@ export const test = base.extend<{
         perspective,
       } as const;
 
-      // 4. Read shared container endpoint from marker file
-      const minioEndpoint = readFileSync(path.join(E2E_DIR, ".minio-endpoint"), "utf8").trim();
-
-      // 4b. Clear MinIO bucket so tests start with a clean slate
-      {
-        const tempS3 = new MinioS3(minioEndpoint, minioBucket, expect);
-        await tempS3.deleteAll();
-        tempS3.destroy();
-      }
+      // 4. Prepare this worker's partition of every Local Services part so
+      // the test starts with a clean slate and its checkpoints capture only
+      // its own state.
+      const minioEndpoint = containers.minio.endpoint;
+      await Promise.all(parts.map(part => part.preparePartition(containers[part.id], partition)));
 
       // 5. Let the child bind port 0 so the OS chooses and reserves its port
       // atomically. Probing a free port and launching later races with every
       // other Playwright worker doing the same thing.
-      const startedWebServer = await startTestWebServer({
-        e2eDir: E2E_DIR,
+      const startedWebServer = await startWebServer({
         minioEndpoint,
         minioBucket,
       });
@@ -732,8 +680,8 @@ export const test = base.extend<{
       // (backend crash traces, proxy `ECONNREFUSED`/`ECONNRESET` errors)
       // is silently discarded and flakes are nearly impossible to
       // root-cause.
-      const backendStderrPath = path.join(configDir, "logs", "backend-stderr.log");
-      const frontendStderrPath = path.join(configDir, "logs", "frontend-stderr.log");
+      const backendStderrPath = path.join(logsDirectory, "backend-stderr.log");
+      const frontendStderrPath = path.join(logsDirectory, "frontend-stderr.log");
       backendStderrFd = openSync(backendStderrPath, "a");
       frontendStderrFd = openSync(frontendStderrPath, "a");
 
@@ -758,6 +706,7 @@ export const test = base.extend<{
           cwd: BACKEND_DIR,
           environment: {
             MEADOW_IS_DEV: "true",
+            MEADOW_LOG_DIRECTORY_OVERRIDE: logsDirectory,
             ..._backendExtraEnv,
           },
         },
@@ -778,7 +727,7 @@ export const test = base.extend<{
           "ignore",
           kind === "service" ? backendStderrFd! : frontendStderrFd!,
         ],
-        ownershipLogPath: path.join(configDir, "logs", "meadow.log"),
+        ownershipLogPath: path.join(logsDirectory, "meadow.log"),
       });
       runtimeSupervisor.leases.acquire("client", leaseId, process.pid);
       leaseAcquired = true;
@@ -804,6 +753,7 @@ export const test = base.extend<{
       frontendStderrFd = undefined;
       const server: TestServer = {
         configDir,
+        logsDirectory,
         runtimeSessionPath,
         sourceGraphsDir,
         backendPort,
@@ -812,75 +762,21 @@ export const test = base.extend<{
         webServerPort,
         minioEndpoint,
         minioBucket,
+        localServices: { partition, parts, containers },
+        checkpointPorts: { webServer: webServerPort },
         getBackendConnectionForRendererTest: () => ({
           baseUrl: `http://127.0.0.1:${backendPort}/api`,
           capability: apiCapability,
         }),
         activateS3Provider: async () => {
-          // Deactivate every publishing provider mounted in the source tree
-          // and activate S3 specifically, then wire S3 resources to MinIO.
-          // Discovering providers here keeps the base fixture provider-agnostic
-          // — any extension layer that mounts an additional provider gets it
-          // turned off automatically.
-          const writePpConfig = (providerId: string, patch: Record<string, unknown>) => {
-            const dir = path.join(configDir, "app", "publishing_providers", providerId);
-            const file = path.join(dir, "pp_config.yaml");
-            const existing = existsSync(file)
-              ? YAML.parse(readFileSync(file, "utf8")) as Record<string, unknown>
-              : {};
-            mkdirSync(dir, { recursive: true });
-            writeFileSync(file, YAML.stringify({ ...existing, ...patch }), "utf8");
-          };
-          const providersSourceDir = path.join(REPO_ROOT, "app", "publishing_providers");
-          for (const name of readdirSync(providersSourceDir)) {
-            if (name === "_module" || name.startsWith(".") || name === "package.json") continue;
-            let isDir = false;
-            try {
-              isDir = statSync(path.join(providersSourceDir, name)).isDirectory();
-            } catch {
-              continue;
-            }
-            if (!isDir) continue;
-            if (name === "S3PublishingProvider") continue;
-            writePpConfig(name, { isActive: false });
-          }
-          writePpConfig("S3PublishingProvider", { isActive: true });
-
-          const s3ProviderDir = path.join(
-            configDir,
-            "app",
-            "publishing_providers",
-            "S3PublishingProvider",
-          );
-          mkdirSync(s3ProviderDir, { recursive: true });
-
-          const s3ResLocalPath = path.join(s3ProviderDir, "pp_resources.local.yaml");
-          const existingRes = existsSync(s3ResLocalPath)
-            ? YAML.parse(readFileSync(s3ResLocalPath, "utf8")) as Record<string, unknown>
-            : {};
-          const mergedRes = {
-            ...existingRes,
-            s3Endpoint: minioEndpoint,
-            s3ForcePathStyle: true,
-            s3BucketName: minioBucket,
-            s3Region: "us-east-1",
+          // Activate S3 and deactivate every other provider mounted in the
+          // source tree, then wire S3 to this worker's MinIO partition. Any
+          // extension layer that mounts another provider gets it turned off.
+          seedS3Provider(configDir, {
+            minioEndpoint,
+            minioBucket,
             webBaseUrl: `http://localhost:${webServerPort}`,
-          };
-          writeFileSync(s3ResLocalPath, YAML.stringify(mergedRes), "utf8");
-
-          const s3SecretsPath = path.join(s3ProviderDir, "pp_secrets.yaml");
-          const existingSecrets = existsSync(s3SecretsPath)
-            ? YAML.parse(readFileSync(s3SecretsPath, "utf8")) as Record<string, unknown>
-            : {};
-          const mergedSecrets = {
-            ...existingSecrets,
-            s3AccessKeyId: E2E_S3_ACCESS_KEY_ID,
-            s3SecretAccessKey: E2E_S3_SECRET_ACCESS_KEY,
-          };
-          writeFileSync(s3SecretsPath, YAML.stringify(mergedSecrets), {
-            encoding: "utf8",
-            mode: 0o600,
-          });
+          }, { activate: true });
         },
         getAppConfig: async (pg) => {
           const res = await pg.request.get(`http://localhost:${backendPort}/api/app-config`, {
@@ -947,7 +843,7 @@ export const test = base.extend<{
             // The descriptor may already have been closed during readiness.
           }
         }
-        await stopTestWebServer(webServerProc);
+        await stopWebServer(webServerProc);
         if (runtimeSupervisor) {
           if (leaseAcquired) {
             runtimeSupervisor.leases.release("client", leaseId);
@@ -989,7 +885,7 @@ export const test = base.extend<{
 
       // --- Tick recording ---
       const tickLogPath = path.join(artifactDir, "ticks.jsonl");
-      const snapshotMarkerPath = path.join(artifactDir, "snapshot-marker.txt");
+      const checkpointMarkerPath = path.join(artifactDir, "checkpoint-marker.txt");
       const tickIntervalMs = parseInt(process.env.E2E_TICK_INTERVAL_MS || "500", 10);
       const additionalTickIntervalMs = parseInt(
         process.env.E2E_ADDITIONAL_TICK_INTERVAL_MS || "1000",
@@ -1101,16 +997,16 @@ export const test = base.extend<{
             }
           }
 
-          // Check for snapshot marker before deciding whether to capture
+          // Check for checkpoint marker before deciding whether to capture
           // content bytes. File listings and statuses are cheap enough to
           // record every tick; generated preview contents can be several MB
           // and often stay identical across many adjacent ticks.
-          let isSnapshot = false;
-          let snapshotMessage: string | undefined;
-          if (existsSync(snapshotMarkerPath)) {
-            snapshotMessage = readFileSync(snapshotMarkerPath, "utf8");
-            isSnapshot = true;
-            unlinkSync(snapshotMarkerPath);
+          let isCheckpoint = false;
+          let checkpointMessage: string | undefined;
+          if (existsSync(checkpointMarkerPath)) {
+            checkpointMessage = readFileSync(checkpointMarkerPath, "utf8");
+            isCheckpoint = true;
+            unlinkSync(checkpointMarkerPath);
           }
 
           const forceContent = options.forceContent === true;
@@ -1212,7 +1108,7 @@ export const test = base.extend<{
           const additionalTickData = _tickCaptureRegistry.latestData;
           const additionalTickDataKey = JSON.stringify(additionalTickData);
           const shouldCaptureAdditionalTickData =
-            isSnapshot ||
+            isCheckpoint ||
             forceContent ||
             additionalTickDataKey !== lastAdditionalTickDataKey;
           if (shouldCaptureAdditionalTickData) {
@@ -1222,8 +1118,8 @@ export const test = base.extend<{
           const entry = {
             timestamp: new Date().toISOString(),
             tickIndex: tickIndex++,
-            isSnapshot,
-            ...(snapshotMessage !== undefined && { snapshotMessage }),
+            isCheckpoint,
+            ...(checkpointMessage !== undefined && { checkpointMessage }),
             files,
             uncommittedFiles,
             ignoredFiles,
@@ -1277,8 +1173,8 @@ export const test = base.extend<{
         return additionalTickCapturePromise;
       };
       _tickCaptureRegistry.captureNow = captureAdditionalTickData;
-      _tickCaptureRegistry.captureSnapshot = message => {
-        writeFileSync(snapshotMarkerPath, message);
+      _tickCaptureRegistry.captureCheckpoint = message => {
+        writeFileSync(checkpointMarkerPath, message);
         captureTickSync();
       };
       await captureAdditionalTickData(); // establish extension baselines before tick 0
@@ -1336,14 +1232,15 @@ export const test = base.extend<{
       );
 
       // Copy backend log
-      const backendLog = path.join(configDir, "logs", "meadow.log");
+      const { logsDirectory } = testServer;
+      const backendLog = path.join(logsDirectory, "meadow.log");
       if (existsSync(backendLog)) {
         copyFileSync(backendLog, path.join(artifactDir, "backend.log"));
       }
 
       // Copy structured backend telemetry separately from prose logs. The
       // perf wrapper converts this JSONL file into VictoriaMetrics series.
-      const backendTelemetry = path.join(configDir, "logs", "telemetry.jsonl");
+      const backendTelemetry = path.join(logsDirectory, "telemetry.jsonl");
       if (existsSync(backendTelemetry) && statSync(backendTelemetry).size > 0) {
         copyFileSync(backendTelemetry, path.join(artifactDir, "backend-telemetry.jsonl"));
       }
@@ -1354,7 +1251,7 @@ export const test = base.extend<{
       // (Extension fixtures that spawn their own processes, e.g. a
       // cloudServer fixture, copy their own stderr logs separately.)
       for (const name of ["backend-stderr.log", "frontend-stderr.log"]) {
-        const src = path.join(configDir, "logs", name);
+        const src = path.join(logsDirectory, name);
         if (existsSync(src) && statSync(src).size > 0) {
           copyFileSync(src, path.join(artifactDir, name));
         }
@@ -1385,10 +1282,12 @@ export const test = base.extend<{
 
       // Guardrail: fail tests whose body time drifts well past the expected
       // envelope. Stress runs may relax this without changing normal defaults.
+      // Every checkpoint captures a restorable saved state inside the body,
+      // which costs noticeable time under full-suite parallel load.
       const startTimeStr = readFileSync(path.join(artifactDir, "start-time.txt"), "utf8").trim();
       const durationMs = endTime.getTime() - new Date(startTimeStr).getTime();
       const MAX_TEST_DURATION_MS =
-        parseInt(process.env.E2E_MAX_TEST_BODY_DURATION_MS || "", 10) || 45_000;
+        parseInt(process.env.E2E_MAX_TEST_BODY_DURATION_MS || "", 10) || 60_000;
       if (durationMs > MAX_TEST_DURATION_MS) {
         guardrailErrors.push(
           new Error(`Test body took ${(durationMs / 1000).toFixed(1)}s — exceeds the ${MAX_TEST_DURATION_MS / 1000}s limit`)
@@ -1494,7 +1393,7 @@ export const test = base.extend<{
     await use(fn);
   },
 
-  _additionalSnapshotHandlers: async ({}, use) => {
+  _additionalCheckpointHandlers: async ({}, use) => {
     await use([]);
   },
 
@@ -1503,14 +1402,16 @@ export const test = base.extend<{
       handlers: [],
       latestData: {},
       captureNow: async () => {},
-      captureSnapshot: () => {},
+      captureCheckpoint: () => {},
     });
   },
 
-  snapshot: async ({ artifactDir, testServer, minioS3, _additionalSnapshotHandlers, _tickCaptureRegistry }, use) => {
+  checkpoint: async ({ artifactDir, testServer, minioS3, fixtureHome, _additionalCheckpointHandlers, _tickCaptureRegistry }, use, testInfo) => {
     // --- Setup: init repos ---
 
     const { minioEndpoint, configDir } = testServer;
+    const codeRevision = execSync("git rev-parse HEAD", { cwd: REPO_ROOT, encoding: "utf8" }).trim();
+    const uncommittedCode = Boolean(execSync("git status --porcelain", { cwd: REPO_ROOT, encoding: "utf8" }).trim());
     const uncommittedLogPath = path.join(artifactDir, "meadowHome-uncommitted.jsonl");
 
     let minioStateRepo: string | null = null;
@@ -1521,13 +1422,13 @@ export const test = base.extend<{
       minioTimelinePath = path.join(minioStateRepo, "timeline.jsonl");
       const objectsDir = path.join(minioStateRepo, "objects");
       mkdirSync(objectsDir, { recursive: true });
-      initGitRepo(minioStateRepo, "minio-snapshot");
+      initGitRepo(minioStateRepo, "minio-checkpoint");
     }
 
-    // --- The snapshot function ---
+    // --- The checkpoint function ---
 
-    const snapshotFn = async (message: string) => {
-      // MinIO snapshot
+    const checkpointFn = async (message: string) => {
+      // MinIO capture
       if (minioStateRepo && minioTimelinePath) {
         try {
           const objectsDir = path.join(minioStateRepo, "objects");
@@ -1556,7 +1457,7 @@ export const test = base.extend<{
           }
           gitCommitIfChanged(minioStateRepo, message, minioTimelinePath);
         } catch (err) {
-          console.error("minio snapshot error:", err);
+          console.error("minio checkpoint error:", err);
         }
       }
 
@@ -1586,17 +1487,34 @@ export const test = base.extend<{
         }
       }
 
-      // Let layered fixtures contribute their own snapshot capture.
-      for (const handler of _additionalSnapshotHandlers) {
+      // Let layered fixtures contribute their own checkpoint capture.
+      for (const handler of _additionalCheckpointHandlers) {
         await handler(message);
       }
 
+      // Capture a restorable saved state: the whole home plus every Local
+      // Services partition, so Dev Tools can open (fork) this exact moment.
+      await captureCheckpoint({
+        repo: path.join(artifactDir, CHECKPOINT_REPO_DIRECTORY),
+        homeDirectory: configDir,
+        parts: testServer.localServices.parts,
+        containers: testServer.localServices.containers,
+        partition: testServer.localServices.partition,
+        message,
+        codeRevision,
+        uncommittedCode,
+        ports: testServer.checkpointPorts,
+        fixtureHome,
+        scenario: testInfo.title,
+        sharedObjectsDirectory: path.join(path.dirname(artifactDir), "__checkpoint-objects"),
+      });
+
       // Record this boundary before the next phase can change state or replace
       // its marker. Short phases may complete between periodic ticks.
-      _tickCaptureRegistry.captureSnapshot(message);
+      _tickCaptureRegistry.captureCheckpoint(message);
     };
 
-    await use(snapshotFn);
+    await use(checkpointFn);
   },
 
   assertMeadowHomeState: async ({ testServer, artifactDir }, use) => {

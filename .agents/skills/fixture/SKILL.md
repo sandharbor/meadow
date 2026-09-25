@@ -69,7 +69,7 @@ holds a fake epoch (currently `2026-01-01T12:00:00.000Z`), an offset in
 ms, and a monotonically-increasing tick index. Every timestamp the
 artifact contains comes from the ticker — log lines, git commit dates
 (via `GIT_AUTHOR_DATE` / `GIT_COMMITTER_DATE` env vars in
-`StateRepoBase.commit()`), `ticks.jsonl` rows, snapshot times.
+`StateRepoBase.commit()`), `ticks.jsonl` rows, checkpoint times.
 
 This means generation runs in real-time as fast as Node + git allows,
 but the artifact *describes* whatever fictional duration the scenario
@@ -88,12 +88,12 @@ Each `b.advance(N); // begin T_n` line:
   *end* of T_n (after all of T_n's operations have run)
 
 Implementation detail: `CanonicalScenarioBuilder` defers the tick row
-write until the next `advance()`, the next `snapshot()`, or
+write until the next `advance()`, the next `checkpoint()`, or
 `finalize()`. This is why a file added at T2 shows up correctly in T2's
 row. **Do not** write the row eagerly inside `advance()`; that
 re-introduces a bug where events get attributed to the wrong tick.
 
-Snapshots replace any pending non-snapshot row at the same tick — there
+Checkpoints replace any pending non-checkpoint row at the same tick — there
 is exactly one row per tick.
 
 ## Self-documenting stamps
@@ -106,7 +106,7 @@ Every observable item carries the tick that produced it:
   `# created at T<n> (<ISO>)`
 - Line appended to a tracked file: trailing `// appended at T<n>`
 - MeadowHome commit message: `C<n>: <message>`
-- Snapshot label: `S<n>: <message>` (also propagated as the commit
+- Checkpoint label: `CP<n>: <message>` (also propagated as the commit
   message on the MinIO and State repos at that moment)
 - Object key in MinIO: `T<n>-<key>`
 - State record file: `T<n>-<recordId>.yaml`
@@ -139,10 +139,10 @@ b.appendMeadowLine("T_m-notes.md", "another line");
 b.advance(100); // begin T_n
 b.commitMeadowHome("save notes");
 
-// Take a snapshot — labels itself "S<n>: <msg>"
+// Record a checkpoint — labels itself "CP<n>: <msg>"
 b.advance(100); // begin T_n
 b.addKeyFrame("notes-saved", "keyframe-notes-saved.png");
-b.snapshot("notes saved");
+b.checkpoint("notes saved");
 
 // Drop an S3 object
 b.advance(100); // begin T_n
@@ -193,10 +193,10 @@ cd app/acceptance/report_viewer
 rm -rf ~/meadow-e2e-artifacts/current/__fixture
 npx tsx -e "import('./src/server/fixture-scenario/index.ts').then((m) => m.generateFixtureScenario())"
 head -13 ~/meadow-e2e-artifacts/current/__fixture/canonical/ticks.jsonl | \
-  jq -c '{i: .tickIndex, snap: .isSnapshot, files, uncomm: (.uncommittedFiles|map(.status+" "+.path)), head: (.gitHeadSha[0:8])}'
+  jq -c '{i: .tickIndex, checkpoint: .isCheckpoint, files, uncomm: (.uncommittedFiles|map(.status+" "+.path)), head: (.gitHeadSha[0:8])}'
 
-# See what the snapshot pane will show
-jq '.snapshotMeta | map({h: (.commitHash[0:8]), msg: .commitMessage, files: (.changedFiles|length)})' \
+# See the home commits the Files pane steps through
+jq '.homeCommitMeta | map({h: (.commitHash[0:8]), msg: .commitMessage, files: (.changedFiles|length)})' \
   ~/meadow-e2e-artifacts/current/__fixture/canonical/manifest.json
 
 # Confirm the State tab will be labeled generically
@@ -210,8 +210,8 @@ jq . ~/meadow-e2e-artifacts/current/__fixture/canonical/fixture-state-repo/_meta
    `Math.random()`. The fake clock is the only time source.
 2. **Tick rows reflect end-of-tick state.** Don't write a tick row
    inside `advance()`; defer until the next transition.
-3. **One row per tick.** A snapshot row replaces any pending
-   non-snapshot row at the same tick.
+3. **One row per tick.** A checkpoint row replaces any pending
+   non-checkpoint row at the same tick.
 4. **No phantom uncommitted files.** Anything written into a state
    repo's working tree that isn't real "state" must be in
    `.git/info/exclude` (see how `timeline.jsonl` is handled in

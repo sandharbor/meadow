@@ -6,13 +6,12 @@ import { BundleEditorPage } from '../src/run/pages/index.js';
 import { orphan } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ isolateSourceGraphs: true });
 
 /*
  * Delete a file while leaving a section link that points to it. Review should identify the
  * missing file and optionally show the previously accepted route.
  */
-test('Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route', async ({ page, meadowCli, sourceChanges, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route', async ({ page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let command = 0;
   const destination = await prepareSourceScenario(
@@ -38,7 +37,7 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
   const review = editor.sourceReview;
   await expect(page.getByRole('dialog', { name: 'Source changes' })).toBeVisible();
   await editor.expectSourceOrphanCount(1);
-  await snapshot('the prepared deletion opens directly in source review');
+  await checkpoint('the prepared deletion opens directly in source review');
 
   // --- Test start ---
   // Inspect the missing target.
@@ -57,18 +56,18 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
   await review.expectNoMissingEntry(`${title}.md`);
   await addKeyFrame(orphan);
   expect(navigationMutations).toEqual([]);
-  await snapshot('a surviving section link explains the missing file without showing the full route');
+  await checkpoint('a surviving section link explains the missing file without showing the full route');
 
   // Show the previous route.
   await orphans.showPreviousRoute(title);
   await orphans.expectExplanation(title, 'main page.md');
   await addKeyFrame(orphan);
-  await snapshot('the previous route is available when requested');
+  await checkpoint('the previous route is available when requested');
 
   // Accept the source update.
   await review.accept();
   await editor.expectSourceOrphanCount(0);
-  await snapshot('acceptance removes the deleted target configuration');
+  await checkpoint('acceptance removes the deleted target configuration');
 
   await skipMeadowHomeStateCheck();
 });

@@ -29,7 +29,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("creating a second bundle from the same source page auto-increments the folder name", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -47,7 +47,7 @@ test("creating a second bundle from the same source page auto-increments the fol
   await editor.clickFindInBundles();
   await page.waitForTimeout(500);
 
-  await snapshot("the source page is selected for bundle creation");
+  await checkpoint("the source page is selected for bundle creation");
 
   // --- Test start ---
   // Create the first bundle.
@@ -58,7 +58,7 @@ test("creating a second bundle from the same source page auto-increments the fol
 
   // Should navigate to the new bundle editor (slug: t001-deeply-nested)
   await editor.waitForLoad("t001-deeply-nested");
-  await snapshot("first bundle created");
+  await checkpoint("first bundle created");
 
   // Create another bundle from the same page.
   await editor.clickBackToBundles();
@@ -80,7 +80,7 @@ test("creating a second bundle from the same source page auto-increments the fol
   const slugText = await createModal.getSlugDisplayText();
   expect(slugText).toBe("t001-deeply-nested-1");
   await addKeyFrame(bundleConfig);
-  await snapshot("second create modal shows incremented slug");
+  await checkpoint("second create modal shows incremented slug");
 
   // Try the occupied folder name.
   await createModal.clickEditSlug();
@@ -90,7 +90,7 @@ test("creating a second bundle from the same source page auto-increments the fol
   await createModal.expectSlugConflictError('already exists');
   await createModal.expectCreateBundleDisabled();
   await addKeyFrame(callout);
-  await snapshot("slug conflict error shown");
+  await checkpoint("slug conflict error shown");
 
   // Restore the available name and create.
   await createModal.fillSlug("t001-deeply-nested-1");
@@ -99,7 +99,7 @@ test("creating a second bundle from the same source page auto-increments the fol
   // Create the second bundle — should succeed with the incremented slug
   await createModal.clickCreateBundle();
   await editor.waitForLoad("t001-deeply-nested-1");
-  await snapshot("second bundle created with incremented folder name");
+  await checkpoint("second bundle created with incremented folder name");
 
   void bigBundle;
   void bundles;

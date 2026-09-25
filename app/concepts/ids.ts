@@ -95,6 +95,14 @@ export const coreConceptIds = {
   heartbeat: "heartbeat",
   compatibilityNegotiation: "compatibility-negotiation",
   cooperativeHandoff: "cooperative-handoff",
+
+  savedState: "saved-state",
+  homeFixture: "home-fixture",
+  emptyHome: "empty-home",
+  checkpoint: "checkpoint",
+  homeCommit: "home-commit",
+  localServices: "local-services",
+  serviceTarget: "service-target",
 } as const;
 
 export type CoreConceptId = typeof coreConceptIds[keyof typeof coreConceptIds];

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-REQUIRED_DIRS=("dev_tools")
+REQUIRED_DIRS=("dev_tools" "local_services")
 OK_DIRS=("_module")
 OK_FILES=(".DS_Store")
 

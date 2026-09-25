@@ -31,7 +31,7 @@ test.use({ recordVideo: false });
 test("CLI describes all and final nodes in the big bundle as exact JSON", async ({
   assertMeadowHomeState,
   meadowCli,
-  snapshot,
+  checkpoint,
 }) => {
   // --- Test start ---
   // Inspect the working graph.
@@ -41,7 +41,7 @@ test("CLI describes all and final nodes in the big bundle as exact JSON", async 
   );
   expect(allNodes).toBe(readCliFixture("big-bundle-all-nodes.json"));
 
-  await snapshot("all nodes match the expected graph");
+  await checkpoint("all nodes match the expected graph");
 
   // Inspect the final graph.
   const finalNodes = await meadowCli.run(
@@ -53,7 +53,7 @@ test("CLI describes all and final nodes in the big bundle as exact JSON", async 
   void cli;
   void bundles;
   void bigBundle;
-  await snapshot("final nodes match the expected export");
+  await checkpoint("final nodes match the expected export");
 
   await assertMeadowHomeState();
 });

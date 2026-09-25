@@ -26,17 +26,17 @@ test.use({ bundleMode: "single-file" });
  * Enable title labels for untracked pages. Their names should appear in the graph without
  * changing tracking state.
  */
-test("enabling show titles on untracked filter displays page title labels", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+test("enabling show titles on untracked filter displays page title labels", async ({ page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
-  await snapshot("bundle editor loaded");
+  await checkpoint("bundle editor loaded");
 
   // --- Test start ---
   // Enable untracked pages.
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.enableFilter("Untracked");
-  await snapshot("untracked filter enabled");
+  await checkpoint("untracked filter enabled");
 
   // Show their titles.
   await filterPanel.clickShowTitlesOnFilter("Untracked");
@@ -45,7 +45,7 @@ test("enabling show titles on untracked filter displays page title labels", asyn
   // Verify that a known untracked page title is visible as a label
   const editor = new BundleEditorPage(page, expect);
   await editor.expectLabelVisible("t012 - custom filters");
-  await snapshot("titles shown for untracked pages");
+  await checkpoint("titles shown for untracked pages");
 
   // Solo untracked pages.
   await addKeyFrame(labels);
@@ -53,7 +53,7 @@ test("enabling show titles on untracked filter displays page title labels", asyn
   // Solo the untracked filter
   await filterPanel.clickSoloOnFilter("Untracked");
   await page.waitForTimeout(300);
-  await snapshot("untracked filter soloed with titles");
+  await checkpoint("untracked filter soloed with titles");
 
   // Take another keyframe in solo mode
   await addKeyFrame(labels);

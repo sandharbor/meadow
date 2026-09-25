@@ -36,7 +36,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader awareness lifecycle", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   artifactDir,
@@ -61,7 +61,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   await expect(page.getByText(/saved values cannot be shown/i)).toBeVisible();
   expect(await page.content()).not.toContain(E2E_S3_ACCESS_KEY_ID);
   expect(await page.content()).not.toContain(E2E_S3_SECRET_ACCESS_KEY);
-  await snapshot('saved S3 credentials represented only by presence');
+  await checkpoint('saved S3 credentials represented only by presence');
 
   // --- Test start ---
   // Choose a publication slug.
@@ -71,7 +71,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
 
   const publishSlug = `${Bundle.Big}-s3`;
   await publishPage.setPublishSlug(publishSlug);
-  await snapshot("S3 publish slug saved");
+  await checkpoint("S3 publish slug saved");
 
   // Publish to S3.
   await minioS3.expectEmpty(`${publishSlug}-`);
@@ -81,7 +81,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   await publishPage.expectNoError();
   await addKeyFrame(publishing);
   await addKeyFrame(s3);
-  await snapshot("S3 publish succeeded");
+  await checkpoint("S3 publish succeeded");
 
   // Inspect and browse the publication.
   expect(publishedUrl.startsWith("http://localhost")).toBe(true);
@@ -147,7 +147,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   await publishedBundle.goto(publishedUrl);
   await publishedBundle.expectMainHeadingVisible();
   await publishedBundle.expectNoNewerVersionNotice();
-  await snapshot("browsed S3-published bundle");
+  await checkpoint("browsed S3-published bundle");
 
   // Publish a connected successor.
   const createSuccessorResponse = await page.request.post(
@@ -175,7 +175,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
 
   await publishedBundle.goto(publishedUrl);
   await publishedBundle.expectNewerPageLink(successorUrl);
-  await snapshot("older page links to its connected successor");
+  await checkpoint("older page links to its connected successor");
 
   // Check the successor route mapping.
   // Remove the stable identity from the successor route index: the old page
@@ -208,7 +208,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   const movedUrl = new URL(movedPath, successorUrl).toString();
   await publishedBundle.goto(publishedUrl);
   await publishedBundle.expectNewerPageLink(movedUrl);
-  await snapshot("stable page identity follows a moved successor route");
+  await checkpoint("stable page identity follows a moved successor route");
 
   // Remove the matching successor page.
   await minioS3.putObjectContent(successorRouteKey, JSON.stringify({
@@ -217,7 +217,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
   }));
   await publishedBundle.goto(publishedUrl);
   await publishedBundle.expectMissingPageNotice(successorUrl);
-  await snapshot("missing-page reader callout links only to successor entry");
+  await checkpoint("missing-page reader callout links only to successor entry");
 
   // Delete the successor publication.
   await readerPage.screenshot({
@@ -270,12 +270,12 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
 
   await publishPage.openSettingsDropdown();
   await publishPage.clickDeletePublished();
-  await snapshot("S3 delete confirm shown");
+  await checkpoint("S3 delete confirm shown");
 
   // Confirm remote deletion.
   await publishPage.confirmDelete();
   await addKeyFrame(deletion);
-  await snapshot("S3 published files deleted");
+  await checkpoint("S3 published files deleted");
 
   // Check the retained history.
   await minioS3.expectEmpty(`${successorNamespace}/`);
@@ -307,7 +307,7 @@ test("R02 R04 R05 R06 R07 R08 P02 P06 D02 L01 S3 version publication and reader 
     .toMatch(/\[operation ([0-9a-f-]+)] \[s3-publish] Started[\s\S]*\[operation \1] \[s3-publish] Published version/);
   void bigBundle;
 
-  await snapshot("the deleted successor retains its history and the older publication survives");
+  await checkpoint("the deleted successor retains its history and the older publication survives");
 
   await skipMeadowHomeStateCheck();
 });

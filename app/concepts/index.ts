@@ -29,6 +29,7 @@ export * from "./bundle/review/concepts.js";
 export * from "./bundle/sharing/concepts.js";
 export * from "./application/concepts.js";
 export * from "./runtime/concepts.js";
+export * from "./development/concepts.js";
 
 import { applicationConcepts } from "./application/concepts.js";
 import { appAreaConcepts } from "./bundle/appAreas.js";
@@ -40,6 +41,7 @@ import { reviewConcepts } from "./bundle/review/concepts.js";
 import { sharingConcepts } from "./bundle/sharing/concepts.js";
 import { assertConceptRegistry } from "./registry.js";
 import { runtimeOwnershipConcepts } from "./runtime/concepts.js";
+import { developmentConcepts } from "./development/concepts.js";
 import type { AnyMeadowConcept } from "./types.js";
 
 export const acceptanceConcepts = [
@@ -50,6 +52,7 @@ export const acceptanceConcepts = [
   ...reviewConcepts,
   ...sharingConcepts,
   ...applicationConcepts,
+  ...developmentConcepts,
 ] as const satisfies readonly AnyMeadowConcept[];
 
 export const allCoreConcepts = [

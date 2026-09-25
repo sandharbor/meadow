@@ -35,7 +35,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("generated bundle search finds titles and contents, navigates, and can be disabled", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
@@ -50,7 +50,7 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   await modal.openCustomizeSidebar();
   await customizeTab.generationOptions.enableSourcesExport();
   await generatedBundle.search.expectSameHeightAsSources();
-  await snapshot("generated bundle search and sources controls align");
+  await checkpoint("generated bundle search and sources controls align");
 
   // --- Test start ---
   // Search by page title.
@@ -62,7 +62,7 @@ test("generated bundle search finds titles and contents, navigates, and can be d
     "t021 ---- outlink gap",
   ]);
   await addKeyFrame(generatedBundleSearch);
-  await snapshot("generated bundle title search results");
+  await checkpoint("generated bundle title search results");
 
   // Follow the title result and search content.
   await generatedBundle.search.clickResult("title", "t021 ---- outlink gap");
@@ -74,12 +74,12 @@ test("generated bundle search finds titles and contents, navigates, and can be d
     "t006 - embedded media",
     "Animated GIF",
   );
-  await snapshot("generated bundle content search results");
+  await checkpoint("generated bundle content search results");
 
   // Follow the content result.
   await generatedBundle.search.clickResult("content", "t006 - embedded media");
   await generatedBundle.expectHeading("t006 - embedded media");
-  await snapshot("navigated from generated bundle search");
+  await checkpoint("navigated from generated bundle search");
 
   // Check search when opened from disk.
   // The same script-shard loader works when the self-contained HTML is opened
@@ -129,7 +129,7 @@ test("generated bundle search finds titles and contents, navigates, and can be d
   await changesTab.waitForRegenerationComplete();
   await generatedBundle.search.expectUnavailable();
   await addKeyFrame(customize);
-  await snapshot("generated bundle search disabled");
+  await checkpoint("generated bundle search disabled");
 
   void bigBundle;
 

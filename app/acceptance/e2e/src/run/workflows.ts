@@ -33,7 +33,8 @@ export enum Fixture {
   Hooks = "home_fixture_hooks",
   Nested = "home_fixture_nested",
   MultiSource = "home_fixture_multi_source",
-  None = "none",
+  Minimal = "home_fixture_minimal",
+  Empty = "empty",
 }
 
 /** Bundle names available in fixtures. */

@@ -45,7 +45,7 @@ test.use({
  */
 test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
@@ -64,7 +64,7 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
     expect(options.pages.map(candidate => candidate.title)).not.toContain(orphanLogSubstitutePageName);
   }
   const modal = new PreviewPublishModal(page, expect);
-  await snapshot("preview loaded");
+  await checkpoint("preview loaded");
 
   // --- Test start ---
   // Choose the index and log pages.
@@ -76,7 +76,7 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
   await okf.expectLogPageNotSuggested(orphanLogSubstitutePageName, "orphan");
   await okf.chooseLogPage(chosenLogPageName);
   await addKeyFrame(customize);
-  await snapshot("auto index and custom log selected");
+  await checkpoint("auto index and custom log selected");
 
   // Generate the knowledge package.
   await okf.save();
@@ -84,7 +84,7 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
   const changesTab = new ChangesTab(page, expect);
   await changesTab.waitForRegenerationComplete();
   await addKeyFrame(openKnowledgeFormat);
-  await snapshot("okf generation complete with auto index and custom log");
+  await checkpoint("okf generation complete with auto index and custom log");
 
   // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
@@ -94,7 +94,7 @@ test("OKF: auto-detect index.md and choose a tracked non-log page as log.md", as
   okfBundle.expectFileToBeAbsent("index-original.md");
   void bigBundle;
 
-  await snapshot("the package contains the automatic index and the selected custom log");
+  await checkpoint("the package contains the automatic index and the selected custom log");
 
   await skipMeadowHomeStateCheck();
 });

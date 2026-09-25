@@ -6,13 +6,13 @@ import { sourceSnapshot, sourceMove } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+test.use({ fixtureHome: 'home_fixture_multi_source' });
 
 /*
  * Move a captured page into another source and review the proposed match. Accepting the
  * move should preserve its stable identity and curation.
  */
-test('Multi-source move review preserves the accepted page identity and its curation', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source move review preserves the accepted page identity and its curation', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -22,7 +22,7 @@ test('Multi-source move review preserves the accepted page identity and its cura
   await editor.waitForSourceCheck();
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
   const original = bundleConfig.requireNode({ sourceId: 'source000001', bundleNodeName: 'Inside' });
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Move the page into another source.
@@ -34,7 +34,7 @@ test('Multi-source move review preserves the accepted page identity and its cura
   await editor.sourceReview.expectMove('Moved', 'notes://Same/Inside.md', 'research://Moved/Inside.md');
   await editor.sourceReview.orphans.expectNotListed('Inside');
   await addKeyFrame(sourceMove);
-  await snapshot('content and link context support a move into another source');
+  await checkpoint('content and link context support a move into another source');
 
   // Accept the source update.
   await editor.sourceReview.accept();
@@ -48,7 +48,7 @@ test('Multi-source move review preserves the accepted page identity and its cura
   await details.openDetails();
   await details.expectFolder('research://Moved');
   await addKeyFrame(sourceSnapshot);
-  await snapshot('the moved page retains its durable identity and tracking');
+  await checkpoint('the moved page retains its durable identity and tracking');
 
   await skipMeadowHomeStateCheck();
 });

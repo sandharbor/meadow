@@ -36,7 +36,7 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
  */
 test("tracks a depth-three frontier image in a folder-derived bundle", async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -59,7 +59,7 @@ test("tracks a depth-three frontier image in a folder-derived bundle", async ({
   await detail.expectNoPill(Pill.Tracked);
   await detail.expectButtonEnabled(ActionButton.Track);
   await addKeyFrame(frontier);
-  await snapshot("depth-three frontier image is available to track");
+  await checkpoint("depth-three frontier image is available to track");
 
   // --- Test start ---
   // Track the frontier image.
@@ -67,14 +67,14 @@ test("tracks a depth-three frontier image in a folder-derived bundle", async ({
   await detail.expectPill(Pill.FrontierImage);
   await detail.expectPill(Pill.Tracked);
   await addKeyFrame(tracking);
-  await snapshot("depth-three frontier image tracked in the folder bundle");
+  await checkpoint("depth-three frontier image tracked in the folder bundle");
 
   // Preview the tracked image.
   await editor.clickPreview();
   await previewModal.waitForPreviewComplete();
   await previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000);
   await addKeyFrame(htmlGeneration);
-  await snapshot("folder preview succeeds with the tracked frontier image");
+  await checkpoint("folder preview succeeds with the tracked frontier image");
 
   void customBundle;
 

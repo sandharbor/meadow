@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("without mix terms can be reordered by dropping one directly on the other", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -39,7 +39,7 @@ test("without mix terms can be reordered by dropping one directly on the other",
   const editor = new BundleEditorPage(page, expect);
   const filterPanel = new FilterPanelComponent(page, expect);
 
-  await snapshot("the bundle is ready to combine filters");
+  await checkpoint("the bundle is ready to combine filters");
 
   // --- Test start ---
   // Build a selection without untracked pages.
@@ -52,19 +52,19 @@ test("without mix terms can be reordered by dropping one directly on the other",
   await filterPanel.chooseMixOperator("Without");
   await filterPanel.closeMixFilters();
   await editor.expectGraphViewHasPages();
-  await snapshot("selection without untracked pages");
+  await checkpoint("selection without untracked pages");
 
   // Reverse the filter order.
   await filterPanel.openMixFilters();
   await filterPanel.dragMixTermOnto("Selection Solo", "Untracked");
   await filterPanel.expectMixTermOrder(["Untracked", "Selection Solo"]);
   await addKeyFrame(filters);
-  await snapshot("without terms reordered directly");
+  await checkpoint("without terms reordered directly");
 
   // Check the reversed result.
   await filterPanel.closeMixFilters();
   await editor.expectGraphViewPageCount(0);
-  await snapshot("untracked without the selected pages is empty");
+  await checkpoint("untracked without the selected pages is empty");
 
   void bigBundle;
 

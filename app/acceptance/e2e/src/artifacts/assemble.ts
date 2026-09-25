@@ -119,14 +119,14 @@ function extractBundleDocIds(testSource: string): string[] {
     .filter((id): id is string => !!id);
 }
 
-interface Snapshot {
+interface StateCommit {
   timestamp: string;
   commitHash: string;
   commitMessage: string;
   changedFiles: string[];
 }
 
-interface SnapshotMeta {
+interface StateCommitMeta {
   timestamp: string;
   commitHash: string;
   commitMessage: string;
@@ -165,8 +165,8 @@ interface FinalMeadowHomeStateCheck {
 interface RawTickEntry {
   timestamp: string;
   tickIndex: number;
-  isSnapshot: boolean;
-  snapshotMessage?: string;
+  isCheckpoint: boolean;
+  checkpointMessage?: string;
   files: string[];
   uncommittedFiles: { path: string; status: string }[];
   uncommittedFileContents?: Record<string, string>;
@@ -182,8 +182,8 @@ interface RawTickEntry {
 interface ProcessedTick {
   timestamp: string;
   tickIndex: number;
-  isSnapshot: boolean;
-  snapshotMessage?: string;
+  isCheckpoint: boolean;
+  checkpointMessage?: string;
   fileCount: number;
   uncommittedCount: number;
   uncommittedFiles: { path: string; status: string }[];
@@ -232,15 +232,15 @@ interface Manifest {
   status: string;
   startTime: string;
   endTime: string;
-  snapshots: Snapshot[];
-  snapshotMeta: SnapshotMeta[];
-  minioSnapshotMeta: SnapshotMeta[];
+  homeCommits: StateCommit[];
+  homeCommitMeta: StateCommitMeta[];
+  minioCommitMeta: StateCommitMeta[];
   /**
-   * Snapshot metadata for any extension-contributed state repos found in
+   * Commit metadata for any extension-contributed state repos found in
    * the test artifact dir, keyed by repo basename. Empty in the
    * standalone base suite.
    */
-  extensionSnapshotMeta: Record<string, SnapshotMeta[]>;
+  extensionCommitMeta: Record<string, StateCommitMeta[]>;
   logs: LogEntry[];
   uncommittedEntries: UncommittedEntry[];
   testSourceFile: string;
@@ -396,11 +396,11 @@ const E2E_DIR = path.join(import.meta.dirname, "../..");
 const ARTIFACTS_BASE = path.join(os.homedir(), "meadow-e2e-artifacts", "current");
 const TEST_RESULTS_DIR = path.join(E2E_DIR, "test-results");
 
-function extractSnapshots(
+function extractHomeCommits(
   stateRepo: string,
   timingSteps?: AssemblyTimingStep[],
-  stepPrefix = "snapshots"
-): Snapshot[] {
+  stepPrefix = "home commits"
+): StateCommit[] {
   if (!existsSync(stateRepo)) return [];
   const time = <T>(name: string, fn: () => T): T =>
     timingSteps ? measured(timingSteps, `${stepPrefix}:${name}`, fn) : fn();
@@ -420,7 +420,7 @@ function extractSnapshots(
   if (!logOutput) return [];
 
   const lines = logOutput.split("\n");
-  const snapshots: Snapshot[] = [];
+  const homeCommits: StateCommit[] = [];
   let prevHash: string | null = null;
 
   for (const line of lines) {
@@ -454,11 +454,11 @@ function extractSnapshots(
       );
     }
 
-    snapshots.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
+    homeCommits.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
     prevHash = hash;
   }
 
-  return snapshots;
+  return homeCommits;
 }
 
 /**
@@ -498,7 +498,7 @@ function readStateRepoMeta(repoPath: string): StateRepoMeta {
   }
 }
 
-function extractSnapshotMeta(stateRepo: string, pathPrefix = "home/"): SnapshotMeta[] {
+function extractStateCommitMeta(stateRepo: string, pathPrefix = "home/"): StateCommitMeta[] {
   if (!existsSync(stateRepo)) return [];
 
   let logOutput: string;
@@ -516,7 +516,7 @@ function extractSnapshotMeta(stateRepo: string, pathPrefix = "home/"): SnapshotM
   if (!logOutput) return [];
 
   const lines = logOutput.split("\n");
-  const metas: SnapshotMeta[] = [];
+  const metas: StateCommitMeta[] = [];
   let prevHash: string | null = null;
 
   for (const line of lines) {
@@ -839,8 +839,8 @@ function processTickLog(testDir: string): TickData {
     processedTicks.push({
       timestamp: raw.timestamp,
       tickIndex: raw.tickIndex,
-      isSnapshot: raw.isSnapshot,
-      ...(raw.snapshotMessage !== undefined && { snapshotMessage: raw.snapshotMessage }),
+      isCheckpoint: raw.isCheckpoint,
+      ...(raw.checkpointMessage !== undefined && { checkpointMessage: raw.checkpointMessage }),
       fileCount: raw.files.length,
       uncommittedCount: raw.uncommittedFiles.length,
       uncommittedFiles: raw.uncommittedFiles,
@@ -892,7 +892,7 @@ function processTickLog(testDir: string): TickData {
       t.changedGitBranches ||
       t.s3Changed ||
       t.stateChanged ||
-      t.isSnapshot;
+      t.isCheckpoint;
 
     if (!hasChange) {
       if (groupStart === null) groupStart = i;
@@ -1052,9 +1052,9 @@ function computeScenarioReportMeta(
     hasUncommittedAtEnd && finalMeadowHomeStateCheck?.accepted !== true;
   const hasIssues = totalErrorCount > 0 || totalWarnCount > 0 || hasUnacceptedUncommittedAtEnd;
 
-  // Build snapshot timestamps from minio + any extension state repos'
+  // Build checkpoint timestamps from minio + any extension state repos'
   // timeline.jsonl (same as server health endpoint).
-  const snapshotTimestamps: string[] = [];
+  const checkpointTimestamps: string[] = [];
   const seenMessages = new Set<string>();
 
   const repoNamesForHealth = ["minio-state-repo", ...listExtensionStateRepos(testDir)];
@@ -1075,20 +1075,20 @@ function computeScenarioReportMeta(
         if (seenMessages.has(commitMessage)) continue;
         seenMessages.add(commitMessage);
         const timelineEntry = timelineMap.get(hash);
-        snapshotTimestamps.push(timelineEntry?.timestamp ?? gitTimestamp);
+        checkpointTimestamps.push(timelineEntry?.timestamp ?? gitTimestamp);
       }
     } catch {
       // skip
     }
   }
 
-  snapshotTimestamps.sort();
+  checkpointTimestamps.sort();
 
   const startMs = new Date(startTime).getTime();
   const endMs = new Date(endTime).getTime();
   const durationMs = endMs - startMs;
 
-  if (snapshotTimestamps.length === 0 || durationMs <= 0) {
+  if (checkpointTimestamps.length === 0 || durationMs <= 0) {
     return {
       version: 1,
       scenarioInfo,
@@ -1101,7 +1101,7 @@ function computeScenarioReportMeta(
   const points: ReportMetaHealthPoint[] = [];
   let prevTimeMs = startMs;
 
-  for (const ts of snapshotTimestamps) {
+  for (const ts of checkpointTimestamps) {
     const snapMs = new Date(ts).getTime();
     const pct = Math.min(100, Math.max(0, ((snapMs - startMs) / durationMs) * 100));
 
@@ -1184,30 +1184,30 @@ export function assembleTestArtifacts(testDir: string): void {
       : "unknown",
   }));
 
-  // Extract snapshots from git repo
+  // Extract homeCommits from git repo
   const meadowHomeStateRepo = path.join(testDir, "meadowHome-state-repo");
-  const snapshots = extractSnapshots(meadowHomeStateRepo, assemblySteps, "meadowHome snapshots");
-  const snapshotMeta = measured(assemblySteps, "meadowHome snapshot meta", () =>
-    extractSnapshotMeta(meadowHomeStateRepo, "")
+  const homeCommits = extractHomeCommits(meadowHomeStateRepo, assemblySteps, "meadowHome home commits");
+  const homeCommitMeta = measured(assemblySteps, "meadowHome home commit meta", () =>
+    extractStateCommitMeta(meadowHomeStateRepo, "")
   );
 
-  // Extract MinIO S3 snapshot metadata
+  // Extract MinIO commit metadata
   const minioStateRepo = path.join(testDir, "minio-state-repo");
-  const minioSnapshotMeta = measured(assemblySteps, "minio snapshot meta", () =>
-    extractSnapshotMeta(minioStateRepo, "objects/")
+  const minioCommitMeta = measured(assemblySteps, "minio commit meta", () =>
+    extractStateCommitMeta(minioStateRepo, "objects/")
   );
 
-  // Extract snapshot metadata for any extension-contributed state repos.
+  // Extract commit metadata for any extension-contributed state repos.
   // Each repo's optional _meta.json declares the path prefix under which
   // its tracked records live; missing or unreadable meta defaults to "".
-  const extensionSnapshotMeta: Record<string, SnapshotMeta[]> = {};
+  const extensionCommitMeta: Record<string, StateCommitMeta[]> = {};
   for (const repoName of listExtensionStateRepos(testDir)) {
     const repoPath = path.join(testDir, repoName);
     const repoMeta = readStateRepoMeta(repoPath);
-    extensionSnapshotMeta[repoName] = measured(
+    extensionCommitMeta[repoName] = measured(
       assemblySteps,
-      `extension snapshot meta:${repoName}`,
-      () => extractSnapshotMeta(repoPath, repoMeta.pathPrefix ?? "")
+      `extension commit meta:${repoName}`,
+      () => extractStateCommitMeta(repoPath, repoMeta.pathPrefix ?? "")
     );
   }
 
@@ -1320,14 +1320,14 @@ export function assembleTestArtifacts(testDir: string): void {
   );
 
   // Write manifest
-  const manifest: Manifest = { testName, status, startTime, endTime, snapshots, snapshotMeta, minioSnapshotMeta, extensionSnapshotMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { testName, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
   const manifestJson = measured(assemblySteps, "manifest stringify", () =>
     JSON.stringify(manifest, null, 2)
   );
   measured(assemblySteps, "manifest write", () => {
     writeFileSync(path.join(testDir, "manifest.json"), manifestJson);
   });
-  console.log(`  Manifest: ${snapshots.length} snapshots, ${logs.length} log entries, ${tickData.ticks.length} ticks`);
+  console.log(`  Manifest: ${homeCommits.length} home commits, ${logs.length} log entries, ${tickData.ticks.length} ticks`);
 
   // Pre-compute report metadata for fast viewer loading
   let reportMetaBytes: number | null = null;
@@ -1371,9 +1371,9 @@ export function assembleTestArtifacts(testDir: string): void {
       tickLogBytes: fileSizeOrNull(path.join(testDir, "ticks.jsonl")),
       frontendLogBytes: fileSizeOrNull(path.join(testDir, "frontend.log")),
       backendLogBytes: fileSizeOrNull(path.join(testDir, "backend.log")),
-      meadowHomeSnapshotCount: snapshots.length,
-      minioSnapshotMetaCount: minioSnapshotMeta.length,
-      extensionStateRepoCount: Object.keys(extensionSnapshotMeta).length,
+      meadowHomeCommitCount: homeCommits.length,
+      minioCommitMetaCount: minioCommitMeta.length,
+      extensionStateRepoCount: Object.keys(extensionCommitMeta).length,
       tickCount: tickData.ticks.length,
       consolidatedTickGroupCount: tickData.consolidatedTicks.length,
       logEntryCount: logs.length,
@@ -1398,8 +1398,9 @@ export async function assembleRun(runId: string): Promise<void> {
     return;
   }
 
+  // "__" entries hold run-level data, such as shared checkpoint objects.
   const dirs = readdirSync(runDir).filter((d) =>
-    statSync(path.join(runDir, d)).isDirectory()
+    !d.startsWith("__") && statSync(path.join(runDir, d)).isDirectory()
   );
 
   if (dirs.length === 0) {

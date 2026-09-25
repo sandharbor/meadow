@@ -26,7 +26,15 @@ export interface SourceChangeDefinition {
 export interface SourceChangeStatus extends SourceChangeDefinition {
   state: 'available' | 'applied' | 'conflict';
   reason?: string;
-  latestE2e?: { runId: string; scenario: string; url: string };
+  latestE2e?: {
+    runId: string;
+    scenario: string;
+    url: string;
+    /** The scenario's artifact directory name inside the run. */
+    slug?: string;
+    /** Checkpoints of that run, each openable as a saved state. */
+    checkpoints?: SourceChangeCheckpoint[];
+  };
 }
 
 export interface SourceChangeResult {
@@ -34,4 +42,14 @@ export interface SourceChangeResult {
   sourceGraph: string;
   appliedAt: string;
   files: Array<{ path: string; beforeDigest: string | null; afterDigest: string | null }>;
+}
+
+/** A checkpoint listed beside a source change, in presentation form. */
+export interface SourceChangeCheckpoint {
+  index: number;
+  message: string;
+  openable: boolean;
+  unavailableReason?: string;
+  hostedAvailable: boolean;
+  hostedUnavailableReason?: string;
 }

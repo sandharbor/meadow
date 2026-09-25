@@ -25,7 +25,7 @@ import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Select all untracked pages in the example bundle and track them. The operation should
@@ -33,7 +33,7 @@ test.use({ fixtureHome: Fixture.None });
  */
 test("Track All on example bundle untracked pages auto-saves without a save click", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -45,7 +45,7 @@ test("Track All on example bundle untracked pages auto-saves without a save clic
   await bundleList.goto();
   await bundleList.clickAddExampleBundleLink();
   await editor.waitForLoad("example-bundle");
-  await snapshot("example bundle loaded");
+  await checkpoint("example bundle loaded");
 
   // --- Test start ---
   // Select the safe pages.
@@ -62,7 +62,7 @@ test("Track All on example bundle untracked pages auto-saves without a save clic
   await editor.clickDeselectSensitivePagesIfVisible();
   await page.waitForTimeout(250);
   await addKeyFrame(sensitive);
-  await snapshot("sensitive pages deselected");
+  await checkpoint("sensitive pages deselected");
 
   // Track the selected pages.
   // Track All is a "simple op": it auto-saves the config and commits in a
@@ -71,7 +71,7 @@ test("Track All on example bundle untracked pages auto-saves without a save clic
   await editor.clickTrackAll();
   await editor.expectUndoNotVisible();
   await addKeyFrame(tracking);
-  await snapshot("track all applied — no save button");
+  await checkpoint("track all applied — no save button");
 
   void exampleBundle;
 

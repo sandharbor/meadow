@@ -40,7 +40,7 @@ test.use({ recordVideo: false });
 test("CLI archives and lists current and archived bundles as JSON", async ({
   assertMeadowHomeState,
   meadowCli,
-  snapshot,
+  checkpoint,
 }) => {
   // --- Test start ---
   // Archive the small bundle.
@@ -62,7 +62,7 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
     archivedAt: expect.any(String),
   });
 
-  await snapshot("the small bundle is archived");
+  await checkpoint("the small bundle is archived");
 
   // Inspect both bundle lists.
   const currentBundles = await meadowCli.runJson<BundleSummary[]>(
@@ -79,7 +79,7 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
   expect(archivedBundles.map((bundle) => bundle.slug)).toEqual(["meadow-test-bundle-small"]);
   expect(archivedBundles[0].archivedAt).toEqual(expect.any(String));
 
-  await snapshot("current and archived lists contain the expected bundles");
+  await checkpoint("current and archived lists contain the expected bundles");
 
   // Restore the small bundle.
   const unarchived = await meadowCli.runJson<BundleMutationResult>(
@@ -109,7 +109,7 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
     "meadow-test-bundle-small",
   ]);
 
-  await snapshot("the restored bundle returns to the current list");
+  await checkpoint("the restored bundle returns to the current list");
 
   // Check command help.
   const help = await meadowCli.run(
@@ -129,7 +129,7 @@ test("CLI archives and lists current and archived bundles as JSON", async ({
   void cli;
   void bundles;
 
-  await snapshot("help documents bundle and history commands");
+  await checkpoint("help documents bundle and history commands");
 
   await assertMeadowHomeState();
 });

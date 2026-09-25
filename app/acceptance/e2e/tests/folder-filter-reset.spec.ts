@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("folder filter exposes collapsed activity and reset restores all pages", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -43,7 +43,7 @@ test("folder filter exposes collapsed activity and reset restores all pages", as
   const initialPageCount = await editor.getListViewPageCount();
   expect(initialPageCount).toBeGreaterThan(1);
 
-  await snapshot("the unfiltered list is ready");
+  await checkpoint("the unfiltered list is ready");
 
   // --- Test start ---
   // Hide a nested folder.
@@ -54,14 +54,14 @@ test("folder filter exposes collapsed activity and reset restores all pages", as
   await filterPanel.expectDescendantActivity("t024");
   await addKeyFrame(filters);
   await addKeyFrame(folderFilter);
-  await snapshot("collapsed folder shows nested hide activity");
+  await checkpoint("collapsed folder shows nested hide activity");
 
   // Reset the folder filters.
   await filterPanel.resetFolderFilters();
   await expect.poll(() => editor.getListViewPageCount()).toBe(initialPageCount);
   await filterPanel.expectNoDescendantActivity("t024");
   await filterPanel.expectFolderResetHidden();
-  await snapshot("folder filters reset");
+  await checkpoint("folder filters reset");
 
   void bigBundle;
 

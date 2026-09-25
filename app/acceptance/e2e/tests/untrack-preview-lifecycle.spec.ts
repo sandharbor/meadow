@@ -38,7 +38,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("untracking a saved page deletes it from the next preview and retracking adds it back", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -57,7 +57,7 @@ test("untracking a saved page deletes it from the next preview and retracking ad
   await modal.waitForSaveComplete();
   await modal.closeModal();
 
-  await snapshot("the tracked page is included in a saved generation");
+  await checkpoint("the tracked page is included in a saved generation");
 
   // --- Test start ---
   // Untrack the page.
@@ -65,7 +65,7 @@ test("untracking a saved page deletes it from the next preview and retracking ad
   await editor.rightClickRow(pageTitle);
   await editor.clickContextMenuItemAndAwaitAutoSave("Untrack");
   await editor.expectUndoNotVisible();
-  await snapshot("tracked page untracked and auto-saved");
+  await checkpoint("tracked page untracked and auto-saved");
 
   // Preview the removed page.
   // The next preview must remove the page's generated HTML and modify other
@@ -80,7 +80,7 @@ test("untracking a saved page deletes it from the next preview and retracking ad
   await addKeyFrame(tracking);
   await addKeyFrame(changesTabDoc);
   await addKeyFrame(htmlGeneration);
-  await snapshot("preview deletes the untracked page");
+  await checkpoint("preview deletes the untracked page");
 
   // Save and track the page again.
   await modal.clickBundlePreviewTab();
@@ -104,7 +104,7 @@ test("untracking a saved page deletes it from the next preview and retracking ad
   expect(await changesTab.getChangeTypeCount("Added")).toBeGreaterThan(0);
   expect(await changesTab.getChangeTypeCount("Modified")).toBeGreaterThan(0);
   await changesTab.expectFileInChanges(generatedFilename);
-  await snapshot("preview adds the retracked page back");
+  await checkpoint("preview adds the retracked page back");
 
   // Save the restored page.
   await modal.clickBundlePreviewTab();
@@ -112,7 +112,7 @@ test("untracking a saved page deletes it from the next preview and retracking ad
   await modal.waitForSaveComplete();
   void bigBundle;
 
-  await snapshot("the restored page is saved in the generated version");
+  await checkpoint("the restored page is saved in the generated version");
 
   await assertMeadowHomeState();
 });

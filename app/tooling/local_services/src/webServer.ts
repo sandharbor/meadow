@@ -20,17 +20,20 @@ import {
 } from "node:child_process";
 import path from "node:path";
 
-export interface TestWebServerProcess {
+const MODULE_DIR = path.resolve(import.meta.dirname, "..");
+
+export interface WebServerProcess {
   process: ChildProcessWithoutNullStreams;
   port: number;
   url: string;
   diagnostics: () => string;
 }
 
-export interface StartTestWebServerOptions {
-  e2eDir: string;
+export interface StartWebServerOptions {
   minioEndpoint: string;
   minioBucket: string;
+  /** Bind this port; 0 lets the operating system choose atomically. */
+  port?: number;
   timeoutMs?: number;
 }
 
@@ -41,26 +44,38 @@ function formatExit(
 ): Error {
   const details = stderr.trim();
   return new Error(
-    `Test web server exited before readiness (code=${code}, signal=${signal})` +
+    `Local web server exited before readiness (code=${code}, signal=${signal})` +
     (details ? `\n${details}` : ""),
   );
 }
 
-export function startTestWebServer({
-  e2eDir,
+/**
+ * Serve a partition's bucket over HTTP, as CloudFront serves S3 in production.
+ * A requested port that is already taken falls back to an OS-chosen port.
+ */
+export async function startWebServer(options: StartWebServerOptions): Promise<WebServerProcess> {
+  if (options.port) {
+    try {
+      return await spawnWebServer({ ...options, port: options.port });
+    } catch {
+      // The preferred port is busy; any port serves the same bucket.
+    }
+  }
+  return await spawnWebServer({ ...options, port: 0 });
+}
+
+function spawnWebServer({
   minioEndpoint,
   minioBucket,
+  port = 0,
   timeoutMs = 15_000,
-}: StartTestWebServerOptions): Promise<TestWebServerProcess> {
-  const scriptPath = path.join(
-    e2eDir,
-    "src/run/scripts/start_web_server.ts",
-  );
+}: StartWebServerOptions): Promise<WebServerProcess> {
+  const scriptPath = path.join(MODULE_DIR, "scripts/start_web_server.ts");
   const proc = spawn(
     process.execPath,
-    ["--import", "tsx", scriptPath, "0"],
+    ["--import", "tsx", scriptPath, String(port)],
     {
-      cwd: e2eDir,
+      cwd: MODULE_DIR,
       env: {
         ...process.env,
         MINIO_ENDPOINT: minioEndpoint,
@@ -129,7 +144,7 @@ export function startTestWebServer({
       } catch (error) {
         finish(
           new Error(
-            `Test web server emitted invalid readiness output: ${String(error)}` +
+            `Local web server emitted invalid readiness output: ${String(error)}` +
             (stderr.trim() ? `\n${stderr.trim()}` : ""),
           ),
         );
@@ -146,7 +161,7 @@ export function startTestWebServer({
     const timeout = setTimeout(() => {
       finish(
         new Error(
-          `Timed out waiting ${timeoutMs}ms for test web server readiness` +
+          `Timed out waiting ${timeoutMs}ms for local web server readiness` +
           (stderr.trim() ? `\n${stderr.trim()}` : ""),
         ),
       );
@@ -157,7 +172,7 @@ export function startTestWebServer({
   });
 }
 
-export async function stopTestWebServer(
+export async function stopWebServer(
   proc: ChildProcessWithoutNullStreams,
   timeoutMs = 3_000,
 ): Promise<void> {

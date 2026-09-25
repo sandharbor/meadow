@@ -57,7 +57,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("Migration runner applies an E2E-only migration at startup", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
   testServer,
@@ -81,7 +81,7 @@ test("Migration runner applies an E2E-only migration at startup", async ({
   await bundleList.goto();
   await bundleList.expectHeadingVisible();
   await addKeyFrame(migration);
-  await snapshot("app ready after E2E-only startup migration");
+  await checkpoint("app ready after E2E-only startup migration");
 
   void bigBundle;
   void bundles;

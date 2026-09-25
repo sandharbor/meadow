@@ -36,14 +36,14 @@ test.use({ bundleMode: "single-file" });
  * unavailable while generated HTML changes remain reviewable.
  */
 test("Sources export ZIP: saved export can be disabled without hiding changed HTML", async ({
-  page, snapshot, skipMeadowHomeStateCheck, addKeyFrame, testServer,
+  page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame, testServer,
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const editor = new BundleEditorPage(page, expect);
-  await snapshot("preview loaded");
+  await checkpoint("preview loaded");
 
   // --- Test start ---
   // Enable source export.
@@ -58,13 +58,13 @@ test("Sources export ZIP: saved export can be disabled without hiding changed HT
   await changesTab.waitForRegenerationComplete();
   await addKeyFrame(customize);
   await addKeyFrame(sourcesExport);
-  await snapshot("regeneration complete with sources export");
+  await checkpoint("regeneration complete with sources export");
 
   // Save the generated version.
   await modal.clickBundlePreviewTab();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
-  await snapshot("save completed");
+  await checkpoint("save completed");
 
   // Check the committed files.
   // Verify the bundle directory in MeadowHome is fully committed — no untracked
@@ -73,7 +73,7 @@ test("Sources export ZIP: saved export can be disabled without hiding changed HT
   const meadowGit = new MeadowHomeGit(testServer.configDir, expect);
   await meadowGit.expectDirFullyCommitted(bundleDir);
   await addKeyFrame(git);
-  await snapshot("bundle directory fully committed");
+  await checkpoint("bundle directory fully committed");
 
   // Disable source export and inspect the diff.
   // Reopen Review, disable the saved Sources ZIP setting, and inspect the
@@ -97,7 +97,7 @@ test("Sources export ZIP: saved export can be disabled without hiding changed HT
   await changesTab.expectNoHiddenFilesByFilter();
   await addKeyFrame(changesTabDoc);
   await addKeyFrame(filters);
-  await snapshot("all sources zip HTML changes remain visible");
+  await checkpoint("all sources zip HTML changes remain visible");
 
   void bigBundle;
 

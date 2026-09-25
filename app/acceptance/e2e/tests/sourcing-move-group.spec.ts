@@ -7,13 +7,12 @@ import { sourceMove, sourceSnapshot } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ isolateSourceGraphs: true });
 
 /*
  * Move a nested group whose links use page names. Accept the move and verify that all
  * three page identities survive.
  */
-test('Sourcing moves a nested group while unchanged name-only links retain all three identities', async ({ page, testServer, sourceChanges, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing moves a nested group while unchanged name-only links retain all three identities', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   const editor = new BundleEditorPage(page, expect);
@@ -21,7 +20,7 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'meadow-test-bundle-big', expect);
   const original = bundleConfig.readNodes().filter(node => node.bundleNodeName.startsWith('t001 ---- child'));
   expect(original).toHaveLength(3);
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Move the nested group.
@@ -34,7 +33,7 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
     await editor.sourceReview.orphans.expectNotListed(node.bundleNodeName);
   }
   await addKeyFrame(sourceMove);
-  await snapshot('all three reachable pages are proposed as moves');
+  await checkpoint('all three reachable pages are proposed as moves');
 
   // Accept the source update.
   await editor.sourceReview.accept();
@@ -46,7 +45,7 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
     await editor.expectListViewNodeVisible(`${directory}/${node.bundleNodeName}.md`, true);
   }
   await addKeyFrame(sourceSnapshot);
-  await snapshot('unchanged links reach the relocated group after acceptance');
+  await checkpoint('unchanged links reach the relocated group after acceptance');
 
   await skipMeadowHomeStateCheck();
 });

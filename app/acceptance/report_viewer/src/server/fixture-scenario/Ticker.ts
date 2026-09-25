@@ -10,7 +10,7 @@ You may obtain a copy of the License at
 
 // Ticker hands out monotonically-increasing tick indices paired with ISO
 // timestamps from a fake clock. Every artifact item in the fixture scenario
-// (logs, file contents, commit messages, snapshot labels) is stamped with
+// (logs, file contents, commit messages, checkpoint labels) is stamped with
 // the tickIndex returned here, so the report viewer's timeline cross-checks
 // itself by eye: scrub to T<n> and every related item should say T<n>.
 

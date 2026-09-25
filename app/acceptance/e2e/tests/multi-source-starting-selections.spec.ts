@@ -7,13 +7,13 @@ import { bundleSource, startingSelection, sourceSnapshot } from '../../../concep
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'mixed-starts' });
-test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+test.use({ fixtureHome: 'home_fixture_multi_source' });
 
 /*
  * Add a folder to a bundle that already starts from a page. Preserve the page selection
  * and require explicit repair when a starting selection becomes invalid.
  */
-test('Multi-source starting selections preserve the page start when adding a folder and require explicit repair', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source starting selections preserve the page start when adding a folder and require explicit repair', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -26,7 +26,7 @@ test('Multi-source starting selections preserve the page start when adding a fol
   const beforeConfig = bundleConfig.read();
   const originalOverview = bundleConfig.requireNode({ sourceId: 'source000001', bundleNodeName: 'Overview' });
   const originalStart = bundleConfig.requireNode({ bundleNodeId: beforeConfig.entryBundleNodeId });
-  await snapshot('the original page start and its source identities are established');
+  await checkpoint('the original page start and its source identities are established');
 
   // --- Test start ---
   // Add a folder start.
@@ -37,7 +37,7 @@ test('Multi-source starting selections preserve the page start when adding a fol
   await sources.addStartingSelection();
   await sources.setStartingSelection(2, 'research', 'folder', 'Same');
   await addKeyFrame(startingSelection);
-  await snapshot('the original file stays first when a source folder is added');
+  await checkpoint('the original file stays first when a source folder is added');
 
   // Save the starting selections; these files are already included.
   await sources.saveWithoutMaterialChanges();
@@ -52,7 +52,7 @@ test('Multi-source starting selections preserve the page start when adding a fol
   await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', true);
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
   const acceptedConfig = bundleConfig.readText();
-  await snapshot('the accepted collection retains the original page and adds the folder start');
+  await checkpoint('the accepted collection retains the original page and adds the folder start');
 
   // Remove the required page start.
   await sourceChanges.apply('remove-required-start', 'multi-source');
@@ -60,12 +60,12 @@ test('Multi-source starting selections preserve the page start when adding a fol
   await sources.editStartingSelections();
   await expect(page.getByRole('textbox', { name: 'Path for starting selection 1', exact: true })).toHaveValue('Start.md');
   expect(bundleConfig.readText()).toBe(acceptedConfig);
-  await snapshot('the missing start remains selected until the user chooses its replacement');
+  await checkpoint('the missing start remains selected until the user chooses its replacement');
 
   // Choose a replacement start.
   await sources.setStartingSelection(1, 'notes', 'file', 'Overview.md');
   await addKeyFrame(bundleSource, startingSelection);
-  await snapshot('the replacement start is selected and ready to accept');
+  await checkpoint('the replacement start is selected and ready to accept');
 
   // Accept the starting selections.
   await sources.stage();
@@ -78,7 +78,7 @@ test('Multi-source starting selections preserve the page start when adding a fol
   ]);
   expect(repairedNodes.some(node => node.bundleNodeId === originalStart.bundleNodeId)).toBe(false);
   await addKeyFrame(sourceSnapshot);
-  await snapshot('the repaired collection retains its identity and surviving folder selection');
+  await checkpoint('the repaired collection retains its identity and surviving folder selection');
 
   await skipMeadowHomeStateCheck();
 });

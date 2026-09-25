@@ -22,7 +22,7 @@ import type { Page, Expect } from "@playwright/test";
  * (Files, structured-state, S3, Test Code) is currently active.
  *
  * Note: the header dropdown only lists "interesting" ticks (ones with
- * file / state-repo / s3 changes or snapshot markers). Trying to
+ * file / state-repo / s3 changes or checkpoint markers). Trying to
  * navigate to an uninteresting tick via this component will fail with
  * a clear error. That's intentional — if a test cares about an
  * uninteresting tick, the test is probably looking at the wrong layer.

@@ -24,7 +24,7 @@ import { TickStamp, Ticker } from "./Ticker.js";
 // for live test runs.
 //
 // Authoring style: call `advance(ms)` to move time forward, then use the
-// scoped helpers (frontendLog, addMeadowFile, snapshot, etc.) which all
+// scoped helpers (frontendLog, addMeadowFile, checkpoint, etc.) which all
 // stamp the current tick into whatever they emit. The caller should never
 // need to hold a TickStamp directly unless they want fine-grained control.
 
@@ -43,7 +43,7 @@ export class CanonicalScenarioBuilder {
   // tick they describe — events landing at T_n need to be visible in
   // T_n's row, which means we can't write the row at advance() time
   // (state hasn't been touched yet at that moment). The row is flushed
-  // when the next tick begins, when a snapshot is taken, or via
+  // when the next tick begins, when a checkpoint is taken, or via
   // finalize() at the end of the scenario.
   private pendingRowTick: TickStamp | null = null;
 
@@ -146,18 +146,18 @@ export class CanonicalScenarioBuilder {
     this.state.deleteRecord(recordPath);
   }
 
-  // ---- Snapshots ----
+  // ---- Checkpoints ----
 
-  // Record a snapshot at the current tick: emit a tick row with
-  // isSnapshot=true and snapshotMessage; append to the uncommitted log;
+  // Record a checkpoint at the current tick: emit a tick row with
+  // isCheckpoint=true and checkpointMessage; append to the uncommitted log;
   // commit MinIO and the State repo with a tick-stamped label so their
-  // git timelines mirror the snapshot moments.
+  // git timelines mirror the checkpoint moments.
   //
-  // The snapshot row supersedes any pending non-snapshot row at the same
+  // The checkpoint row supersedes any pending non-checkpoint row at the same
   // tick — we don't want two rows for one tick.
-  snapshot(message: string): void {
+  checkpoint(message: string): void {
     const tick = this.current();
-    const stamped = `S${tick.tickIndex}: ${message}`;
+    const stamped = `CP${tick.tickIndex}: ${message}`;
 
     if (this.pendingRowTick && this.pendingRowTick.tickIndex === tick.tickIndex) {
       this.pendingRowTick = null;
@@ -208,8 +208,8 @@ export class CanonicalScenarioBuilder {
 
   private appendTickRow(
     tick: TickStamp,
-    isSnapshot: boolean,
-    snapshotMessage?: string
+    isCheckpoint: boolean,
+    checkpointMessage?: string
   ): void {
     const tracked = this.meadowHome.trackedFiles();
     const ignoredFiles = this.meadowHome.ignoredFiles();
@@ -221,7 +221,7 @@ export class CanonicalScenarioBuilder {
     const row: Record<string, unknown> = {
       timestamp: tick.atIso,
       tickIndex: tick.tickIndex,
-      isSnapshot,
+      isCheckpoint,
       files,
       uncommittedFiles: this.meadowHome.uncommittedFiles(),
       uncommittedFileContents: this.meadowHome.uncommittedFileContents(),
@@ -232,8 +232,8 @@ export class CanonicalScenarioBuilder {
       s3ObjectContents: this.minio.objectContents(),
       stateRecordContents: this.state.recordContents(),
     };
-    if (isSnapshot && snapshotMessage !== undefined) {
-      row.snapshotMessage = snapshotMessage;
+    if (isCheckpoint && checkpointMessage !== undefined) {
+      row.checkpointMessage = checkpointMessage;
     }
     appendFileSync(this.ticksJsonlPath, JSON.stringify(row) + "\n");
   }

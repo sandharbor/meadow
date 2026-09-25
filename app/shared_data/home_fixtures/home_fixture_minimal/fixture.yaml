@@ -1,0 +1,4 @@
+# A home with application configuration but no bundles. Scenarios create their
+# bundles from this source graph.
+sourceGraphs:
+  - meadow-test-bundles-data

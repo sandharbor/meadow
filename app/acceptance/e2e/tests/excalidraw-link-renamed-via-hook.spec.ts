@@ -46,7 +46,7 @@ const PREFIX_HOOK_SOURCE = `function pageTitleNormalization(bundleSlug: string, 
  */
 test("Excalidraw embed and in-drawing links pick up page-title hook prefix", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   expectLogErrors,
@@ -70,7 +70,7 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   await wf.navigateToBigBundle();
   await editor.clickPreview();
   await modal.waitForPreviewComplete();
-  await snapshot("preview completed before hook installed");
+  await checkpoint("preview completed before hook installed");
 
   // --- Test start ---
   // Open the page-title hook.
@@ -79,11 +79,11 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   await customizeTab.hooks.switchScopeToGlobal();
   const pageTitleHook = customizeTab.hooks.getHook("Page Title");
   await pageTitleHook.clickEdit();
-  await snapshot("global Page Title editor opened");
+  await checkpoint("global Page Title editor opened");
 
   // Change the title prefix.
   await pageTitleHook.setContent(PREFIX_HOOK_SOURCE);
-  await snapshot("hook content replaced with myprefix hook");
+  await checkpoint("hook content replaced with myprefix hook");
 
   // Save and regenerate the preview.
   const previewStreamDone = page.waitForResponse((resp) =>
@@ -92,7 +92,7 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   await pageTitleHook.save();
   await previewStreamDone;
   await addKeyFrame(hooks);
-  await snapshot("hook saved - preview regenerated");
+  await checkpoint("hook saved - preview regenerated");
 
   // Inspect the renamed embedding page.
   // Close the floating hook editor so it stops intercepting clicks on the
@@ -105,7 +105,7 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
 
   await generatedBundle.clickPageLink("myprefix t006 - embedded media");
   await generatedBundle.expectHeading("myprefix t006 - embedded media");
-  await snapshot("embedding page rendered with myprefix heading");
+  await checkpoint("embedding page rendered with myprefix heading");
 
   // Open the standalone drawing.
   // Click the embed thumbnail. The embed `<a>` href must use the normalized
@@ -114,7 +114,7 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   await generatedBundle.excalidraw.clickEmbed();
   await generatedBundle.expectHeading("myprefix t006 --- meadow-flower");
   await addKeyFrame(excalidraw);
-  await snapshot("standalone excalidraw page rendered with myprefix heading");
+  await checkpoint("standalone excalidraw page rendered with myprefix heading");
 
   // Inspect the renamed drawing links.
   await generatedBundle.excalidraw.expectStandaloneDrawingVisible();
@@ -130,7 +130,7 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   );
   await addKeyFrame(excalidraw);
   await addKeyFrame(hooks);
-  await snapshot("in-drawing link reflects myprefix in both text and href");
+  await checkpoint("in-drawing link reflects myprefix in both text and href");
 
   // Follow the renamed link.
   await generatedBundle.excalidraw.expectNoStandaloneDrawingLink(
@@ -142,7 +142,7 @@ test("Excalidraw embed and in-drawing links pick up page-title hook prefix", asy
   await generatedBundle.expectHeading(
     "myprefix t006 --- linked-from-excalidraw",
   );
-  await snapshot("navigated to renamed link target page");
+  await checkpoint("navigated to renamed link target page");
 
   // Finish the expected-warning check.
   releaseWorkerWarning();

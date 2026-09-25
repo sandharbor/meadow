@@ -28,21 +28,21 @@ test.use({ bundleMode: "single-file" });
  */
 test("Callout tooltip shown when hovering sensitive filter question mark", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
-  await snapshot("bundle editor loaded");
+  await checkpoint("bundle editor loaded");
 
   // --- Test start ---
   // Enable the sensitive filter.
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.enableFilter("Sensitive");
   await page.waitForTimeout(250);
-  await snapshot("sensitive filter enabled");
+  await checkpoint("sensitive filter enabled");
 
   // Read the filter explanation.
   await filterPanel.hoverFilterQuestionIcon("Sensitive");
@@ -57,7 +57,7 @@ test("Callout tooltip shown when hovering sensitive filter question mark", async
 
   await addKeyFrame(callout);
   await addKeyFrame(sensitive);
-  await snapshot("sensitive filter callout tooltip visible");
+  await checkpoint("sensitive filter callout tooltip visible");
 
   void bigBundle;
 

@@ -12,14 +12,14 @@ import { CanonicalScenarioBuilder } from "./CanonicalScenarioBuilder.js";
 
 // The canonical fixture scenario: a deterministic 5-second story that
 // exercises every report-viewer surface (logs at all levels, MeadowHome
-// adds/edits/commits, S3 puts, State records, multiple snapshots,
+// adds/edits/commits, S3 puts, State records, multiple checkpoints,
 // keyframes).
 //
 // Authoring rule: every observable item is stamped with the tick it
 // belongs to. Scrubbing to T<n> in the viewer should reveal log lines
 // prefixed `T<n>:`, files named `T<n>-...`, line annotations
-// `// appended at T<n>`, commits `C<n>: ...`, and snapshot labels
-// `S<n>: ...` — all coherent at a glance.
+// `// appended at T<n>`, commits `C<n>: ...`, and checkpoint labels
+// `CP<n>: ...` — all coherent at a glance.
 //
 // Reading the structure: each `b.advance(N); // begin T_n` line moves
 // the clock forward by N ms and *opens* tick T_n. Every operation
@@ -60,7 +60,7 @@ export function buildCanonicalScenario(b: CanonicalScenarioBuilder): void {
 
   b.advance(150); // begin T6
   b.addKeyFrame("bundles-list", "keyframe-bundles-list.png");
-  b.snapshot("bundles list rendered with one bookmark");
+  b.checkpoint("bundles list rendered with one bookmark");
 
   // ── Phase 2: user creates and publishes a bundle ──────────────────────
 
@@ -118,14 +118,14 @@ export function buildCanonicalScenario(b: CanonicalScenarioBuilder): void {
 
   b.advance(100); // begin T15
   b.addKeyFrame("publish-complete", "keyframe-publish-complete.png");
-  b.snapshot("bundle published");
+  b.checkpoint("bundle published");
 
   b.advance(100); // begin T16
   // No operations: this quiet tick lets the State/S3 commits created by
-  // the publish snapshot become visible in tick-captured state.
+  // the publish checkpoint become visible in tick-captured state.
 
   b.advance(100); // begin T17
-  b.snapshot("snapshot with nothing changed");
+  b.checkpoint("checkpoint with nothing changed");
 
   b.advance(150); // begin T18
   b.updateObject(
@@ -160,7 +160,7 @@ export function buildCanonicalScenario(b: CanonicalScenarioBuilder): void {
   );
   b.appendMeadowLine(todoFile, "- update launch notes");
 
-  b.advance(200); // begin T23 — uncommitted edit dangles into the next snapshot
+  b.advance(200); // begin T23 — uncommitted edit dangles into the next checkpoint
   b.frontendLog("info", "User saved subtitle");
   b.addMeadowFile("bundle/pages/changelog.md", "# Changelog\n- Bundle created\n");
 
@@ -182,9 +182,9 @@ export function buildCanonicalScenario(b: CanonicalScenarioBuilder): void {
 
   b.advance(200); // begin T26
   b.frontendLog("info", "All clear");
-  b.snapshot("post-edit, all changes saved");
+  b.checkpoint("post-edit, all changes saved");
 
   // Final settle — give the timeline a tail so the scrubber doesn't snap
-  // straight to the last snapshot. The fake clock should land near 5000ms.
+  // straight to the last checkpoint. The fake clock should land near 5000ms.
   b.advance(150); // begin T27
 }

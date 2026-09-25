@@ -19,7 +19,7 @@ import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRec
 import { callout, startupRecovery } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
-test.use({ fixtureHome: 'none' });
+test.use({ fixtureHome: 'home_fixture_minimal' });
 test.use({ bundleMode: 'single-file' });
 
 const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 'summary'> = {
@@ -42,7 +42,7 @@ const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 's
  */
 test('Known Runtime blockers explain the active session and offer direct recovery', async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -74,7 +74,7 @@ test('Known Runtime blockers explain the active session and offer direct recover
   await expect(page.getByRole('button', { name: 'Open here instead' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Return to browser' })).toBeVisible();
   await addKeyFrame(startupRecovery, callout);
-  await snapshot('browser session blocks a Runtime handoff');
+  await checkpoint('browser session blocks a Runtime handoff');
 
   // --- Test start ---
   // Check a running-operation blocker.
@@ -98,7 +98,7 @@ test('Known Runtime blockers explain the active session and offer direct recover
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Stop other session and open here' })).toBeVisible();
   await addKeyFrame(startupRecovery, callout);
-  await snapshot('active operation blocks a Runtime handoff');
+  await checkpoint('active operation blocks a Runtime handoff');
 
   // Check delayed ownership release.
   await show({
@@ -120,7 +120,7 @@ test('Known Runtime blockers explain the active session and offer direct recover
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open here instead' })).toHaveCount(0);
   await addKeyFrame(startupRecovery, callout);
-  await snapshot('previous Runtime is still releasing Home ownership');
+  await checkpoint('previous Runtime is still releasing Home ownership');
 
   await assertMeadowHomeState();
 });

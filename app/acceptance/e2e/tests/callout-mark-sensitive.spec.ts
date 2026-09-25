@@ -21,7 +21,6 @@ import { callout } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
-test.use({ isolateSourceGraphs: true });
 
 /*
  * Mark a page as sensitive for the first time. Check that the introductory callout
@@ -29,14 +28,14 @@ test.use({ isolateSourceGraphs: true });
  */
 test("callout for marking source node sensitive the first time", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundle();
-  await snapshot("bundle editor loaded");
+  await checkpoint("bundle editor loaded");
 
   // --- Test start ---
   // Mark the first page sensitive.
@@ -55,12 +54,12 @@ test("callout for marking source node sensitive the first time", async ({
   // Should see the consent modal ("Heads Up") since this is the first time
   await editor.expectConsentModalVisible();
   await addKeyFrame(callout);
-  await snapshot("consent modal visible for first sensitive marking");
+  await checkpoint("consent modal visible for first sensitive marking");
 
   // Accept the explanation.
   await editor.clickConsentProceed();
   await page.waitForTimeout(500);
-  await snapshot("first page marked sensitive");
+  await checkpoint("first page marked sensitive");
 
   // Mark another page sensitive.
   await editor.rightClickRow("t005 - in and out links");
@@ -71,7 +70,7 @@ test("callout for marking source node sensitive the first time", async ({
 
   // No consent modal this time - the dismissal persisted
   await editor.expectConsentModalNotVisible();
-  await snapshot("second page marked sensitive without consent modal");
+  await checkpoint("second page marked sensitive without consent modal");
 
   // Accept and inspect the sensitive pages.
   await editor.sourceReview.open();
@@ -88,12 +87,12 @@ test("callout for marking source node sensitive the first time", async ({
   await page.waitForTimeout(250);
   const selectedTitles = await editor.getSelectedPageTitles();
   expect(selectedTitles.length).toBe(3);
-  await snapshot("3 sensitive pages selected after solo");
+  await checkpoint("3 sensitive pages selected after solo");
 
   // Remove the solo.
   await filterPanel.clickSoloOnFilter("Sensitive");
   await page.waitForTimeout(250);
-  await snapshot("solo removed");
+  await checkpoint("solo removed");
 
   // Remove both sensitivity markings.
   // Now mark those two pages as not sensitive via right-click
@@ -106,7 +105,7 @@ test("callout for marking source node sensitive the first time", async ({
   await editor.rightClickRow("t005 - in and out links");
   await editor.clickMarkNotSensitive();
   await page.waitForTimeout(500);
-  await snapshot("two pages unmarked as sensitive");
+  await checkpoint("two pages unmarked as sensitive");
 
   // Accept the edits and inspect the remaining page.
   await editor.sourceReview.open();
@@ -119,7 +118,7 @@ test("callout for marking source node sensitive the first time", async ({
   await page.waitForTimeout(250);
   const selectedTitlesAfter = await editor.getSelectedPageTitles();
   expect(selectedTitlesAfter.length).toBe(1);
-  await snapshot("1 sensitive page remaining after unmarking two");
+  await checkpoint("1 sensitive page remaining after unmarking two");
 
   void bigBundle;
 

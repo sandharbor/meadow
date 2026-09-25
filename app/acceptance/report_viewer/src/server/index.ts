@@ -557,6 +557,8 @@ app.get("/api/runs", (_req, res) => {
 
     const scenarios = readdirSync(runDir)
       .filter((name) => {
+        // "__" entries hold run-level data, such as shared checkpoint objects.
+        if (name.startsWith("__")) return false;
         const full = path.join(runDir, name);
         return statSync(full).isDirectory();
       })
@@ -669,6 +671,7 @@ app.get("/api/runs/:runId", (req, res) => {
 
   const scenarios = readdirSync(runDir)
     .filter((name) => {
+      if (name.startsWith("__")) return false;
       const full = path.join(runDir, name);
       return statSync(full).isDirectory();
     })
@@ -826,6 +829,7 @@ app.get("/api/runs/:runId/health", (req, res) => {
   > = {};
 
   const slugs = readdirSync(runDir).filter((name) => {
+    if (name.startsWith("__")) return false;
     const full = path.join(runDir, name);
     return statSync(full).isDirectory();
   });
@@ -864,9 +868,9 @@ app.get("/api/runs/:runId/health", (req, res) => {
         uncommittedFiles: { status: string; path: string }[];
       }[] = manifest.uncommittedEntries || [];
 
-      // Build snapshot timestamps from minio + any extension state repos'
+      // Build checkpoint timestamps from minio + any extension state repos'
       // timeline.jsonl.
-      const snapshotTimestamps: string[] = [];
+      const checkpointTimestamps: string[] = [];
       const seenMessages = new Set<string>();
 
       const repoNamesForHealth = [
@@ -891,16 +895,16 @@ app.get("/api/runs/:runId/health", (req, res) => {
             if (seenMessages.has(commitMessage)) continue;
             seenMessages.add(commitMessage);
             const timelineEntry = timelineMap.get(hash);
-            snapshotTimestamps.push(timelineEntry?.timestamp ?? gitTimestamp);
+            checkpointTimestamps.push(timelineEntry?.timestamp ?? gitTimestamp);
           }
         } catch {
           // skip
         }
       }
 
-      snapshotTimestamps.sort();
+      checkpointTimestamps.sort();
 
-      if (snapshotTimestamps.length === 0) continue;
+      if (checkpointTimestamps.length === 0) continue;
 
       // Compute health data (same logic as client-side computeHealthData)
       const points: {
@@ -914,7 +918,7 @@ app.get("/api/runs/:runId/health", (req, res) => {
       }[] = [];
       let prevTimeMs = startMs;
 
-      for (const ts of snapshotTimestamps) {
+      for (const ts of checkpointTimestamps) {
         const snapMs = new Date(ts).getTime();
         const pct = Math.min(
           100,
@@ -1023,6 +1027,32 @@ app.post("/api/runs/:runId/archive-and-below", (req, res) => {
   res.json({ archived: toArchive, destinationRunIds });
 });
 
+// Runs assembled before the checkpoint rename recorded tick boundaries as
+// isSnapshot/snapshotMessage. Present them with the current field names.
+function normalizeLegacyManifest(manifest: Record<string, unknown>): Record<string, unknown> {
+  const normalizeTicks = (ticks: unknown) => Array.isArray(ticks)
+    ? ticks.map((tick: Record<string, unknown>) => {
+        if (!("isSnapshot" in tick) && !("snapshotMessage" in tick)) return tick;
+        const { isSnapshot, snapshotMessage, ...rest } = tick;
+        return {
+          ...rest,
+          isCheckpoint: rest.isCheckpoint ?? isSnapshot,
+          ...(snapshotMessage !== undefined && rest.checkpointMessage === undefined && { checkpointMessage: snapshotMessage }),
+        };
+      })
+    : ticks;
+  return {
+    ...manifest,
+    ...(manifest.ticks !== undefined && { ticks: normalizeTicks(manifest.ticks) }),
+    ...(manifest.consolidatedTicks !== undefined && { consolidatedTicks: normalizeTicks(manifest.consolidatedTicks) }),
+  };
+}
+
+// Checkpoints open in Dev Tools, which owns saved states and Local Services.
+app.get("/api/dev-tools", (_req, res) => {
+  res.json({ url: (process.env.MEADOW_DEV_TOOLS_URL ?? "http://localhost:5174").replace(/\/$/, "") });
+});
+
 // --- Per-scenario APIs (prefixed with /:runId/:testSlug) ---
 
 // API: manifest
@@ -1033,7 +1063,7 @@ app.get("/api/:runId/:testSlug/manifest", (req, res) => {
   const manifestPath = path.join(dir, "manifest.json");
   if (existsSync(manifestPath)) {
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    res.json(manifest);
+    res.json(normalizeLegacyManifest(manifest));
   } else {
     res.status(404).json({ error: "No manifest found" });
   }
@@ -1197,8 +1227,8 @@ app.get("/api/:runId/:testSlug/git-branches", (req, res) => {
   } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : String(error) }); }
 });
 
-// API: list file snapshots
-app.get("/api/:runId/:testSlug/snapshots", (req, res) => {
+// API: list file commits
+app.get("/api/:runId/:testSlug/home-commits", (req, res) => {
   const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
   if (!dir) return res.json([]);
 
@@ -1215,7 +1245,7 @@ app.get("/api/:runId/:testSlug/snapshots", (req, res) => {
     if (!logOutput) return res.json([]);
 
     const lines = logOutput.split("\n");
-    const snapshots: {
+    const commits: {
       timestamp: string;
       commitHash: string;
       commitMessage: string;
@@ -1248,17 +1278,17 @@ app.get("/api/:runId/:testSlug/snapshots", (req, res) => {
           .filter(Boolean);
       }
 
-      snapshots.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
+      commits.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
       prevHash = hash;
     }
-    res.json(snapshots);
+    res.json(commits);
   } catch {
     res.json([]);
   }
 });
 
 // API: file tree at a specific commit
-app.get("/api/:runId/:testSlug/snapshot/:hash", (req, res) => {
+app.get("/api/:runId/:testSlug/home-commit/:hash", (req, res) => {
   const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
   if (!dir) return res.status(404).json({ error: "Scenario not found" });
 
@@ -1281,7 +1311,7 @@ app.get("/api/:runId/:testSlug/snapshot/:hash", (req, res) => {
 });
 
 // API: file content at a specific commit
-app.get("/api/:runId/:testSlug/snapshot/:hash/file/*", (req, res) => {
+app.get("/api/:runId/:testSlug/home-commit/:hash/file/*", (req, res) => {
   const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
   if (!dir) return res.status(404).send("Scenario not found");
 
@@ -1349,8 +1379,8 @@ app.get("/api/:runId/:testSlug/state-repos", (req, res) => {
   res.json(repos);
 });
 
-// API: list snapshots for a named extension state repo
-app.get("/api/:runId/:testSlug/state-snapshots/:repoName", (req, res) => {
+// API: list commits for a named extension state repo
+app.get("/api/:runId/:testSlug/state-commits/:repoName", (req, res) => {
   const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
   if (!dir) return res.json([]);
 
@@ -1374,7 +1404,7 @@ app.get("/api/:runId/:testSlug/state-snapshots/:repoName", (req, res) => {
     if (!logOutput) return res.json([]);
 
     const lines = logOutput.split("\n");
-    const snapshots: {
+    const commits: {
       timestamp: string;
       commitHash: string;
       commitMessage: string;
@@ -1399,17 +1429,17 @@ app.get("/api/:runId/:testSlug/state-snapshots/:repoName", (req, res) => {
         ? rawFiles.filter((f) => f.startsWith(pathPrefix)).map((f) => f.slice(pathPrefix.length))
         : rawFiles;
 
-      snapshots.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
+      commits.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
       prevHash = hash;
     }
-    res.json(snapshots);
+    res.json(commits);
   } catch {
     res.json([]);
   }
 });
 
 // API: all table YAMLs at a state-repo commit
-app.get("/api/:runId/:testSlug/state-snapshot/:repoName/:hash", (req, res) => {
+app.get("/api/:runId/:testSlug/state-commit/:repoName/:hash", (req, res) => {
   const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
   if (!dir) return res.status(404).json({ error: "Scenario not found" });
 
@@ -1452,8 +1482,8 @@ app.get("/api/:runId/:testSlug/state-snapshot/:repoName/:hash", (req, res) => {
   }
 });
 
-// API: list minio snapshots
-app.get("/api/:runId/:testSlug/minio-snapshots", (req, res) => {
+// API: list minio commits
+app.get("/api/:runId/:testSlug/minio-commits", (req, res) => {
   const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
   if (!dir) return res.json([]);
 
@@ -1472,7 +1502,7 @@ app.get("/api/:runId/:testSlug/minio-snapshots", (req, res) => {
     if (!logOutput) return res.json([]);
 
     const lines = logOutput.split("\n");
-    const snapshots: {
+    const commits: {
       timestamp: string;
       commitHash: string;
       commitMessage: string;
@@ -1509,17 +1539,17 @@ app.get("/api/:runId/:testSlug/minio-snapshots", (req, res) => {
           .map((f) => f.slice("objects/".length));
       }
 
-      snapshots.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
+      commits.push({ timestamp, commitHash: hash, commitMessage, changedFiles });
       prevHash = hash;
     }
-    res.json(snapshots);
+    res.json(commits);
   } catch {
     res.json([]);
   }
 });
 
 // API: all objects at a minio commit
-app.get("/api/:runId/:testSlug/minio-snapshot/:hash", (req, res) => {
+app.get("/api/:runId/:testSlug/minio-commit/:hash", (req, res) => {
   const dir = safeScenarioDir(req.params.runId, req.params.testSlug);
   if (!dir) return res.status(404).json({ error: "Scenario not found" });
 

@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("hidden folders are intersected with soloed folders by default", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -42,7 +42,7 @@ test("hidden folders are intersected with soloed folders by default", async ({
   await filterPanel.expectFolderCount("t024", 4);
   await filterPanel.expectFolderCount("t023", 4);
 
-  await snapshot("the folder counts are visible before filtering");
+  await checkpoint("the folder counts are visible before filtering");
 
   // --- Test start ---
   // Hide and solo folders.
@@ -62,14 +62,14 @@ test("hidden folders are intersected with soloed folders by default", async ({
   });
   await addKeyFrame(filters);
   await addKeyFrame(folderFilter);
-  await snapshot("hidden and soloed folders use the default grouped mix");
+  await checkpoint("hidden and soloed folders use the default grouped mix");
 
   // Check the resulting list.
   await filterPanel.closeMixFilters();
 
   await editor.switchToListView();
   expect(await editor.getListViewPageCount()).toBe(4);
-  await snapshot("only the soloed folder remains visible");
+  await checkpoint("only the soloed folder remains visible");
 
   void bigBundle;
 

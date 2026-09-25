@@ -34,7 +34,7 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
  */
 test("previews a configured multiple-folder collection bundle", async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -48,7 +48,7 @@ test("previews a configured multiple-folder collection bundle", async ({
   await editor.waitForLoad(Bundle.FolderStructureMultiple);
   await editor.expectGraphViewHasPages();
   await addKeyFrame(folderBundles);
-  await snapshot("multiple folder graph with two linked depth rows");
+  await checkpoint("multiple folder graph with two linked depth rows");
 
   // --- Test start ---
   // Inspect the ordered structure.
@@ -68,7 +68,7 @@ test("previews a configured multiple-folder collection bundle", async ({
   await editor.expectListViewRowByExactNamePresent("Outside note");
   await editor.expectListViewRowByExactNamePresent("Beyond outside");
   await editor.expectListViewRowByExactNamePresent("Frontier image");
-  await snapshot("ordered folder structure in the editor");
+  await checkpoint("ordered folder structure in the editor");
 
   // Preview the collection home.
   await editor.clickPreview();
@@ -95,7 +95,7 @@ test("previews a configured multiple-folder collection bundle", async ({
   await previewModal.generatedBundle.expectStructuralChildNames(["Beta", "Alpha"]);
   await folderNavigation.close();
   await addKeyFrame(htmlGeneration);
-  await snapshot("ordered collection generated home");
+  await checkpoint("ordered collection generated home");
 
   // Open a page in a selected folder.
   await folderNavigation.open();
@@ -103,7 +103,7 @@ test("previews a configured multiple-folder collection bundle", async ({
   await previewModal.generatedBundle.expectSingleHeading("Alpha note");
   await folderNavigation.expectSelectedFile("Alpha note.html");
   await folderNavigation.open();
-  await snapshot("ordered collection selected folder page");
+  await checkpoint("ordered collection selected folder page");
 
   void customBundle;
 

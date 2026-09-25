@@ -1,0 +1,18 @@
+{
+  "name": "meadow-local-services",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.999.0",
+    "yaml": "^2.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

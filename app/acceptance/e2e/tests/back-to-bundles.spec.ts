@@ -26,20 +26,20 @@ test.use({ bundleMode: "single-file" });
  * Open the big bundle, then return to the bundle list. The list should show the available
  * bundles again.
  */
-test("navigate back to bundles list from big bundle view", async ({ page, snapshot, assertMeadowHomeState }) => {
+test("navigate back to bundles list from big bundle view", async ({ page, checkpoint, assertMeadowHomeState }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   const bundleList = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
 
   await wf.navigateToBigBundle();
-  await snapshot("big bundle loaded");
+  await checkpoint("big bundle loaded");
 
   // --- Test start ---
   // Return to the bundle list.
   await editor.clickBackToBundles();
   await bundleList.expectHeadingVisible();
-  await snapshot("back at bundles list");
+  await checkpoint("back at bundles list");
 
   void bigBundle;
   void bundles;

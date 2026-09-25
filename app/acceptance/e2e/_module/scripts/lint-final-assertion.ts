@@ -1,6 +1,6 @@
 // Linter: every Playwright spec under tests/ (recursively) must call either
 // assertMeadowHomeState() or skipMeadowHomeStateCheck() at least once,
-// somewhere after its last snapshot() call. If a spec has no snapshot() call,
+// somewhere after its last checkpoint() call. If a spec has no checkpoint() call,
 // the call must still appear at least once. Either function is accepted —
 // assertMeadowHomeState performs the real check; skipMeadowHomeStateCheck is
 // a no-op that exists so a spec author can deliberately opt out without
@@ -18,7 +18,7 @@ const TEST_RUNNER_DIR = path.resolve(SCRIPT_DIR, "../..");
 const TESTS_DIR = path.join(TEST_RUNNER_DIR, "tests");
 
 const FINAL_CALL_NAMES = ["assertMeadowHomeState", "skipMeadowHomeStateCheck"] as const;
-const SNAPSHOT_NAME = "snapshot";
+const CHECKPOINT_NAME = "checkpoint";
 
 interface Issue {
   file: string;
@@ -76,8 +76,8 @@ function checkSpec(filePath: string): Issue[] {
     const body = getTestBody(call);
     if (!body) continue;
 
-    const snapshotCalls: ts.CallExpression[] = [];
-    findCallsByName(body, [SNAPSHOT_NAME], snapshotCalls);
+    const checkpointCalls: ts.CallExpression[] = [];
+    findCallsByName(body, [CHECKPOINT_NAME], checkpointCalls);
     const finalCalls: ts.CallExpression[] = [];
     findCallsByName(body, FINAL_CALL_NAMES, finalCalls);
 
@@ -86,21 +86,21 @@ function checkSpec(filePath: string): Issue[] {
       issues.push({
         file: filePath,
         testTitle: title,
-        message: `must call ${required} at least once (after the last snapshot())`,
+        message: `must call ${required} at least once (after the last checkpoint())`,
       });
       continue;
     }
 
-    if (snapshotCalls.length === 0) continue;
+    if (checkpointCalls.length === 0) continue;
 
-    const lastSnapshot = snapshotCalls[snapshotCalls.length - 1];
+    const lastCheckpoint = checkpointCalls[checkpointCalls.length - 1];
     const lastFinalCall = finalCalls[finalCalls.length - 1];
-    if (lastFinalCall.getStart() < lastSnapshot.getEnd()) {
-      const { line } = sourceFile.getLineAndCharacterOfPosition(lastSnapshot.getStart());
+    if (lastFinalCall.getStart() < lastCheckpoint.getEnd()) {
+      const { line } = sourceFile.getLineAndCharacterOfPosition(lastCheckpoint.getStart());
       issues.push({
         file: filePath,
         testTitle: title,
-        message: `last ${required} must appear after the last snapshot() call (last snapshot at line ${line + 1})`,
+        message: `last ${required} must appear after the last checkpoint() call (last checkpoint at line ${line + 1})`,
       });
     }
   }
@@ -112,7 +112,7 @@ const HOW_TO_FIX = `
 How to fix
 ----------
 
-Every spec must end (somewhere after its last snapshot() call) with one of
+Every spec must end (somewhere after its last checkpoint() call) with one of
 these calls. Pick whichever describes your intent — the linter accepts
 either, and the second one is the deliberate opt-out:
 
@@ -135,9 +135,9 @@ either, and the second one is the deliberate opt-out:
       // test genuinely doesn't care about final MeadowHome state.
 
 Wiring it up:
-  1. Destructure the fixture in the test signature, next to \`snapshot\`:
-       async ({ page, snapshot, assertMeadowHomeState }) => { ... }
-  2. Call it at the end of the test body, AFTER the last \`await snapshot(...)\`.
+  1. Destructure the fixture in the test signature, next to \`checkpoint\`:
+       async ({ page, checkpoint, assertMeadowHomeState }) => { ... }
+  2. Call it at the end of the test body, AFTER the last \`await checkpoint(...)\`.
 
 If you don't know which to use, run the test and read the assertion's error
 message — it lists the unexpected paths and prints the exact allow-list
@@ -157,7 +157,7 @@ function main(): void {
 
   const required = FINAL_CALL_NAMES.map((n) => `${n}()`).join(" or ");
   if (allIssues.length === 0) {
-    console.log(`✅ ${specs.length} spec(s): all tests call ${required} after the last snapshot().`);
+    console.log(`✅ ${specs.length} spec(s): all tests call ${required} after the last checkpoint().`);
     return;
   }
 

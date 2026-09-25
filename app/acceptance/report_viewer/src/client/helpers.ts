@@ -146,13 +146,13 @@ export interface HealthSummary {
 }
 
 export function computeHealthData(
-  snapshotTimestamps: string[],
+  checkpointTimestamps: string[],
   logs: { timestamp?: string; level: string }[],
   uncommittedEntries: { timestamp: string; uncommittedFiles: { status: string; path: string }[] }[],
   startTimeMs: number,
   durationMs: number
 ): HealthSummary {
-  if (snapshotTimestamps.length === 0 || durationMs <= 0) {
+  if (checkpointTimestamps.length === 0 || durationMs <= 0) {
     const hasUncommittedAtEnd = uncommittedEntries.length > 0 &&
       uncommittedEntries[uncommittedEntries.length - 1].uncommittedFiles.length > 0
     return { points: [], hasUncommittedAtEnd, hasAnyData: false }
@@ -161,11 +161,11 @@ export function computeHealthData(
   const points: HealthDataPoint[] = []
   let prevTimeMs = startTimeMs
 
-  for (let i = 0; i < snapshotTimestamps.length; i++) {
-    const snapMs = new Date(snapshotTimestamps[i]).getTime()
+  for (let i = 0; i < checkpointTimestamps.length; i++) {
+    const snapMs = new Date(checkpointTimestamps[i]).getTime()
     const pct = Math.min(100, Math.max(0, ((snapMs - startTimeMs) / durationMs) * 100))
 
-    // Count errors and warnings between previous snapshot and this one
+    // Count errors and warnings between the previous checkpoint and this one
     let errorCount = 0
     let warnCount = 0
     for (const log of logs) {
@@ -177,7 +177,7 @@ export function computeHealthData(
       }
     }
 
-    // Find latest uncommitted entry at or before this snapshot
+    // Find latest uncommitted entry at or before this checkpoint
     let uncommittedTrackedFiles = 0
     let uncommittedTrackedFolders = 0
     let uncommittedUntrackedFiles = 0
@@ -219,7 +219,7 @@ export function computeHealthData(
 
 // --- State-repo record helpers ---
 // Generic over any extension-contributed state repo (a YAML-per-table
-// snapshot tree). The repo's _meta.json declares how to label records;
+// commit tree). The repo's _meta.json declares how to label records;
 // none of this code knows what the records mean.
 
 import YAML from 'yaml'

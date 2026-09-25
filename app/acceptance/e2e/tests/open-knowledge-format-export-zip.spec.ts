@@ -47,7 +47,7 @@ test.use({
  */
 test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and browse bundle index", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
@@ -57,7 +57,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
   const generatedBundle = modal.generatedBundle;
-  await snapshot("preview loaded");
+  await checkpoint("preview loaded");
 
   // --- Test start ---
   // Configure sources and knowledge exports.
@@ -67,12 +67,12 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   const okf = await customizeTab.generationOptions.openOpenKnowledgeFormatSettings();
   await okf.expectAutomaticLog(rootLogPageName, "root");
   await okf.chooseGeneratedIndex();
-  await snapshot("okf settings default to root log");
+  await checkpoint("okf settings default to root log");
 
   // Save the export settings.
   await okf.save();
   await addKeyFrame(customize);
-  await snapshot("sources zip and okf enabled");
+  await checkpoint("sources zip and okf enabled");
 
   // Wait for package generation.
   const changesTab = new ChangesTab(page, expect);
@@ -80,7 +80,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await addKeyFrame(sourcesExport);
   await customizeTab.generationOptions.expectOpenKnowledgeFormatRenameIndicatorVisible(2);
   await addKeyFrame(openKnowledgeFormat);
-  await snapshot("okf generation complete with reserved rename indicator");
+  await checkpoint("okf generation complete with reserved rename indicator");
 
   // Inspect reserved-name handling.
   await customizeTab.generationOptions.openOpenKnowledgeFormatRenameDetails(2);
@@ -90,7 +90,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
     "t001/log.md",
     "t001/log-original.md",
   ]);
-  await snapshot("okf reserved rename details");
+  await checkpoint("okf reserved rename details");
 
   // Review the generated files.
   await modal.closeOkfRenameDetails();
@@ -101,13 +101,13 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await changesTab.expectFileInChanges("okf-download-manifest.json");
   await changesTab.expectFileInChanges("index-original.md");
   await addKeyFrame(changesTabDoc);
-  await snapshot("changes include okf files");
+  await checkpoint("changes include okf files");
 
   // Save the generated version.
   await modal.clickBundlePreviewTab();
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
-  await snapshot("save completed");
+  await checkpoint("save completed");
 
   // Open the reader download menu.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
@@ -121,14 +121,14 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
   await generatedBundle.sources.openOkfMenuWithoutShiftingPage();
   await generatedBundle.sources.dismissOkfMenu();
   await generatedBundle.sources.openOkfMenu();
-  await snapshot("okf website package menu open");
+  await checkpoint("okf website package menu open");
 
   // Download the knowledge package.
   const download = await generatedBundle.sources.downloadOkfZip();
   expect(download.suggestedFilename()).toBe("meadow-test-bundle-big-okf.zip");
   const okfZipPath = await download.path();
   expect(okfZipPath).toBeTruthy();
-  await snapshot("okf zip downloaded from website button");
+  await checkpoint("okf zip downloaded from website button");
 
   // Inspect and browse the package.
   const zipContents = execFileSync("unzip", ["-l", okfZipPath!], { encoding: "utf8" });
@@ -139,7 +139,7 @@ test("OKF: enable, inspect reserved rename indicator, save, export ZIP, and brow
 
   await generatedBundle.sources.openOkfBundleIndex();
   await modal.expectPreviewIframeUrlContains("_mw_assets/cust/okf/bundle/index.md");
-  await snapshot("okf bundle index browsed from website button");
+  await checkpoint("okf bundle index browsed from website button");
 
   void bigBundle;
 

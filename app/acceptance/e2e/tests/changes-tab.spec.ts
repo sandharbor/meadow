@@ -28,7 +28,7 @@ test.use({ serialGroup: "generated-bundle-versioning" });
  * Generate a bundle's first version and inspect its changes before saving. After saving,
  * the same review should show no outstanding changes.
  */
-test("V03 first generated version is reviewable before and after save", async ({ page, snapshot, skipMeadowHomeStateCheck, addKeyFrame }) => {
+test("V03 first generated version is reviewable before and after save", async ({ page, checkpoint, skipMeadowHomeStateCheck, addKeyFrame }) => {
   // --- Setup ---
   // Navigate to big bundle preview (starts on step 1 — Review)
   const wf = new Workflows(page, expect);
@@ -36,7 +36,7 @@ test("V03 first generated version is reviewable before and after save", async ({
   const modal = new PreviewPublishModal(page, expect);
   const changesTab = new ChangesTab(page, expect);
   const versions = new GeneratedBundleVersions(page, expect, Bundle.Big);
-  await snapshot("step 1 - preview loaded");
+  await checkpoint("step 1 - preview loaded");
 
   // --- Test start ---
   // Inspect the initial generated version.
@@ -54,7 +54,7 @@ test("V03 first generated version is reviewable before and after save", async ({
   await modal.expectSingleVersionExplanation();
   await expect(page.getByText(versionId, { exact: true })).toHaveCount(0);
   await addKeyFrame(versioning);
-  await snapshot("first generated version shown as unsaved");
+  await checkpoint("first generated version shown as unsaved");
 
   // Review the new files.
   await modal.clickChangesTab();
@@ -71,7 +71,7 @@ test("V03 first generated version is reviewable before and after save", async ({
   await changesTab.expandFolder("_mw_assets");
   await changesTab.expectFolderCollapsed("index");
   await changesTab.expectSelectedFile("t001 ---- child 2.html");
-  await snapshot("only new files in changes tab");
+  await checkpoint("only new files in changes tab");
 
   // Read the file diff.
   await changesTab.fileDetails.ensureOnDiffTab();
@@ -79,17 +79,17 @@ test("V03 first generated version is reviewable before and after save", async ({
   await changesTab.fileDetails.expectNewFileHeader();
   await addKeyFrame(htmlGeneration);
   await addKeyFrame(changesTabDoc);
-  await snapshot("new file diff header shown");
+  await checkpoint("new file diff header shown");
 
   // Save the generated version.
   await modal.clickSaveChanges();
   await modal.waitForSaveComplete();
   await modal.expectShareVersionSelectorHidden();
-  await snapshot("save completed - on step 2");
+  await checkpoint("save completed - on step 2");
 
   // Return to review.
   await modal.clickStep1Review();
-  await snapshot("back on step 1 after save");
+  await checkpoint("back on step 1 after save");
 
   // Verify the saved version has no changes.
   await changesTab.expectNoBadge();
@@ -108,7 +108,7 @@ test("V03 first generated version is reviewable before and after save", async ({
   // Go to Changes tab — assert "No changed files"
   await changesTab.expectNoChangedFiles();
   expect((await hooksReloaded).ok()).toBe(true);
-  await snapshot("no changed files after save");
+  await checkpoint("no changed files after save");
 
   void bigBundle;
 

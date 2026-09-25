@@ -7,13 +7,13 @@ import { bundleSource, startingSelection } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'mixed-starts' });
-test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+test.use({ fixtureHome: 'home_fixture_multi_source' });
 
 /*
  * Create a bundle from ordered page and folder selections across sources. The initial
  * capture should preserve that order without asking for another acceptance step.
  */
-test('Multi-source initial creation captures ordered mixed selections without an extra acceptance step', async ({ page, testServer, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source initial creation captures ordered mixed selections without an extra acceptance step', async ({ page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -34,7 +34,7 @@ test('Multi-source initial creation captures ordered mixed selections without an
   await dialog.getByRole('spinbutton', { name: 'Default outlink depth', exact: true }).fill('2');
   await dialog.getByRole('spinbutton', { name: 'Default inlink depth', exact: true }).fill('1');
   await addKeyFrame(bundleSource, startingSelection);
-  await snapshot('sources define admission while ordered files and folders define the starts');
+  await checkpoint('sources define admission while ordered files and folders define the starts');
 
   // --- Test start ---
   // Create the bundle.
@@ -63,7 +63,7 @@ test('Multi-source initial creation captures ordered mixed selections without an
   expect(await lookup('notes')).toBe(true);
   expect(await lookup('research')).toBe(false);
   await addKeyFrame(startingSelection);
-  await snapshot('initial creation captures the sources and preserves initial tracking rules');
+  await checkpoint('initial creation captures the sources and preserves initial tracking rules');
 
   await skipMeadowHomeStateCheck();
 });

@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+stamp="node_modules/.quickcheck_install_stamp"
+if [ ! -f "$stamp" ] || [ ! -d "node_modules" ] || [ "package-lock.json" -nt "$stamp" ]; then
+    npm install 2>&1
+    touch "$stamp"
+fi
+
+echo "Type checking local services..."
+npx tsc --noEmit --project tsconfig.json
+
+echo "Testing local services..."
+npm test

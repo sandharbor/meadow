@@ -31,7 +31,7 @@ test.use({ serialGroup: "generated-bundle-versioning" });
  */
 test("V06 generated version connected successor freezes its predecessor and supports comparison", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
@@ -48,14 +48,14 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await modal.waitForSaveComplete();
   await modal.clickStep1Review();
 
-  await snapshot("the initial generated version is saved");
+  await checkpoint("the initial generated version is saved");
 
   // --- Test start ---
   // Change the generation options.
   await modal.openCustomizeSidebar();
   const customizeTab = new CustomizeTab(page, expect);
   await customizeTab.generationOptions.disableBreadcrumbs();
-  await snapshot("breadcrumbs disabled for successor");
+  await checkpoint("breadcrumbs disabled for successor");
 
   // Review the changed output.
   await changesTab.waitForRegenerationComplete();
@@ -68,7 +68,7 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await changesTab.fileDetails.expectChangesHeader();
   await addKeyFrame(customize);
   await addKeyFrame(changesTabDoc);
-  await snapshot("pending successor contains modified files");
+  await checkpoint("pending successor contains modified files");
 
   // Create a connected version.
   await modal.openCreateNewVersionDialog();
@@ -95,7 +95,7 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await expect(page.getByRole("heading", { name: "Compare generated files" })).toBeVisible();
   await expect(page.getByText("modified", { exact: true }).first()).toBeVisible();
   await addKeyFrame(versioning);
-  await snapshot("connected successor created and compared");
+  await checkpoint("connected successor created and compared");
 
   // Compare sharing the old and new versions.
   await modal.clickChangesTab();
@@ -108,13 +108,13 @@ test("V06 generated version connected successor freezes its predecessor and supp
   await modal.selectShareVersion(predecessor.versionId);
   await modal.expectOlderShareVersionWarning("v1", "v2");
   await addKeyFrame(versioning);
-  await snapshot("publish identifies the selected generated version and warns before using an older one");
+  await checkpoint("publish identifies the selected generated version and warns before using an older one");
 
   // Return to the new version.
   await modal.selectShareVersion(successor.versionId);
 
   void bigBundle;
-  await snapshot("the connected successor is selected for sharing");
+  await checkpoint("the connected successor is selected for sharing");
 
   await skipMeadowHomeStateCheck();
 });

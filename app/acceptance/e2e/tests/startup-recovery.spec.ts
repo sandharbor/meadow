@@ -19,7 +19,7 @@ import { renderStartupRecoveryHtml } from '../../../shared_code/utils/startupRec
 import { callout, startupRecovery } from '../../../concepts/index.js';
 import { expect, test } from '../src/run/test-fixtures.js';
 
-test.use({ fixtureHome: 'none' });
+test.use({ fixtureHome: 'home_fixture_minimal' });
 test.use({ bundleMode: 'single-file' });
 
 const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 'summary'> = {
@@ -42,7 +42,7 @@ const commonDiagnostic: Omit<StartupFailureDiagnostic, 'category' | 'title' | 's
  */
 test('Startup recovery surfaces remain actionable and secret-free', async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -69,7 +69,7 @@ test('Startup recovery surfaces remain actionable and secret-free', async ({
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await addKeyFrame(startupRecovery, callout);
-  await snapshot('invalid bootstrap recovery screen');
+  await checkpoint('invalid bootstrap recovery screen');
 
   // --- Test start ---
   // Check an unsupported Home format.
@@ -85,7 +85,7 @@ test('Startup recovery surfaces remain actionable and secret-free', async ({
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await addKeyFrame(startupRecovery, callout);
-  await snapshot('unsupported Home recovery screen');
+  await checkpoint('unsupported Home recovery screen');
 
   // Check an incomplete migration.
   await show({
@@ -106,7 +106,7 @@ test('Startup recovery surfaces remain actionable and secret-free', async ({
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await addKeyFrame(startupRecovery, callout);
-  await snapshot('incomplete migration recovery screen');
+  await checkpoint('incomplete migration recovery screen');
 
   await assertMeadowHomeState();
 });

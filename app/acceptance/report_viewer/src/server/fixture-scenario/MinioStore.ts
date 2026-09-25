@@ -13,7 +13,7 @@ import path from "path";
 import { StateRepoBase } from "./StateRepoBase.js";
 import { TickStamp } from "./Ticker.js";
 
-// MinioStore mirrors the live snapshot fixture's "minio-state-repo": every
+// MinioStore mirrors the live checkpoint fixture's "minio-state-repo": every
 // S3 object is a file under objects/<key>, committed in git as the test
 // progresses. Object keys are stamped with the tick that created them so
 // the S3 pane is self-documenting.
@@ -45,7 +45,7 @@ export class MinioStore extends StateRepoBase {
 
   // Return current object keys, including uncommitted working-tree changes.
   // This mirrors live captureTickSync, which reads the bucket state directly
-  // rather than waiting for a manual snapshot commit.
+  // rather than waiting for a manual checkpoint commit.
   listObjectKeys(): string[] {
     return this.listObjectFiles().map(({ key }) => key).sort();
   }

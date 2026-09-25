@@ -22,14 +22,14 @@ import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Apply the Overrides filter to the example bundle. The initial page's required depths
  * should not count as a custom override.
  */
 test("overrides filter on example bundle does not include the initial page", async ({
-  page, snapshot, assertMeadowHomeState, addKeyFrame,
+  page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
@@ -40,13 +40,13 @@ test("overrides filter on example bundle does not include the initial page", asy
   await bundleList.goto();
   await bundleList.clickAddExampleBundleLink();
   await editor.waitForLoad("example-bundle");
-  await snapshot("example bundle loaded");
+  await checkpoint("example bundle loaded");
 
   // --- Test start ---
   // Enable the override filter.
   await filterPanel.enableFilter("Depth Override");
   await addKeyFrame(filters);
-  await snapshot("overrides filter enabled");
+  await checkpoint("overrides filter enabled");
 
   // Solo the overridden pages.
   await filterPanel.clickSoloOnFilter("Depth Override");
@@ -64,7 +64,7 @@ test("overrides filter on example bundle does not include the initial page", asy
   await editor.expectListViewRowByExactNameNotPresent(exampleBundleInitialPageTitle);
   await addKeyFrame(overrides);
   await addKeyFrame(initialPage);
-  await snapshot("overrides soloed without initial page");
+  await checkpoint("overrides soloed without initial page");
 
   void exampleBundle;
 

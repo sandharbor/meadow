@@ -32,6 +32,8 @@ export interface DevRuntimeManagerOptions {
   projectRoot: string;
   configDirectory: string;
   appVersion: string;
+  /** Extra Runtime service environment, such as Local Services stand-ins. */
+  serviceEnvironment?: Record<string, string>;
   ensure?: (options: EnsureRuntimeOptions) => Promise<RuntimeClientLease>;
   postControl?: typeof postRuntimeControl;
   waitForRelease?: typeof waitForRuntimeHomeRelease;
@@ -59,6 +61,7 @@ export class DevRuntimeManager {
   private readonly projectRoot: string;
   private readonly configDirectory: string;
   private readonly appVersion: string;
+  private readonly serviceEnvironment: Record<string, string>;
   private readonly ensure: (options: EnsureRuntimeOptions) => Promise<RuntimeClientLease>;
   private readonly postControl: typeof postRuntimeControl;
   private readonly waitForRelease: typeof waitForRuntimeHomeRelease;
@@ -69,6 +72,7 @@ export class DevRuntimeManager {
     this.projectRoot = options.projectRoot;
     this.configDirectory = options.configDirectory;
     this.appVersion = options.appVersion;
+    this.serviceEnvironment = options.serviceEnvironment ?? {};
     this.ensure = options.ensure ?? ensureRuntime;
     this.postControl = options.postControl ?? postRuntimeControl;
     this.waitForRelease = options.waitForRelease ?? waitForRuntimeHomeRelease;
@@ -90,6 +94,7 @@ export class DevRuntimeManager {
       appVersion: this.appVersion,
       payloadIdentity,
       perspective,
+      serviceEnvironment: this.serviceEnvironment,
     });
     const lease = await this.ensure({
       homeDirectory: this.configDirectory,

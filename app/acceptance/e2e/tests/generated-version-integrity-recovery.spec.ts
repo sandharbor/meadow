@@ -32,7 +32,7 @@ test.use({ serialGroup: "generated-bundle-versioning" });
  */
 test("V08 G05 generated version frozen integrity is recoverable before canceling an unsaved successor", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
@@ -60,7 +60,7 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   await modal.expectVersionCreatedMessageHidden();
 
   const [, successor] = await versions.waitForCount(2);
-  await snapshot("a successor exists alongside its frozen predecessor");
+  await checkpoint("a successor exists alongside its frozen predecessor");
 
   // --- Test start ---
   // Modify the frozen files outside Meadow.
@@ -86,14 +86,14 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
   await expect(page.getByText("Integrity Problem", { exact: true })).toBeVisible();
   await expect(page.getByText("Frozen version modified locally", { exact: true })).toBeVisible();
   await addKeyFrame(versioning);
-  await snapshot("frozen integrity problem blocks version workflow");
+  await checkpoint("frozen integrity problem blocks version workflow");
 
   // Restore the frozen version.
   await page.getByRole("button", { name: "Restore Frozen Version from Git" }).click();
   await expect(page.getByText("Integrity Problem", { exact: true })).toHaveCount(0);
   expect(fs.readFileSync(frozenHtmlFile, "utf8")).not.toContain("injected frozen edit");
 
-  await snapshot("restoring from Git removes the frozen integrity problem");
+  await checkpoint("restoring from Git removes the frozen integrity problem");
 
   // Cancel the unsaved successor.
   await modal.cancelCurrentVersion();
@@ -105,7 +105,7 @@ test("V08 G05 generated version frozen integrity is recoverable before canceling
     versionId: initialVersion.versionId,
     displayState: "current",
   });
-  await snapshot("unsaved successor canceled after integrity recovery");
+  await checkpoint("unsaved successor canceled after integrity recovery");
 
   void smallBundle;
   await skipMeadowHomeStateCheck();

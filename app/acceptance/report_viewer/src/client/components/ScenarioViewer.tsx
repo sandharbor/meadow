@@ -42,6 +42,7 @@ import {
   videoTimeToReal,
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
+import { CheckpointOpenControl } from './CheckpointOpenControl.tsx'
 import { bundleModeLabel, type BundleMode } from '../../bundleModes.ts'
 
 // --- Types ---
@@ -72,14 +73,14 @@ interface LogEntry {
   message: string
 }
 
-interface Snapshot {
+interface StateCommit {
   timestamp: string
   commitHash: string
   commitMessage: string
   changedFiles: string[]
 }
 
-interface SnapshotMessage {
+interface CheckpointMessage {
   timestamp: string
   message: string
 }
@@ -127,8 +128,8 @@ interface StateRepoMeta {
 interface ProcessedTick {
   timestamp: string
   tickIndex: number
-  isSnapshot: boolean
-  snapshotMessage?: string
+  isCheckpoint: boolean
+  checkpointMessage?: string
   fileCount: number
   uncommittedCount: number
   uncommittedFiles: { path: string; status: string }[]
@@ -157,7 +158,7 @@ interface ProcessedTick {
 
 type FileChangeLens = 'tick' | 'git'
 type ChangeView = 'all' | 'custom'
-type ChangeTone = 'added' | 'modified' | 'removed' | 'tick' | 'git' | 'uncommitted' | 'snapshot' | 'neutral' | 'state' | 's3'
+type ChangeTone = 'added' | 'modified' | 'removed' | 'tick' | 'git' | 'uncommitted' | 'checkpoint' | 'neutral' | 'state' | 's3'
 
 interface FileDelta {
   added: string[]
@@ -395,7 +396,7 @@ const SUMMARY_TONE_CLASSES: Record<ChangeTone, string> = {
   tick: 'bg-purple-50 text-purple-700 border-purple-200',
   git: 'bg-brand-50 text-brand-700 border-brand-300',
   uncommitted: 'bg-amber-50 text-amber-800 border-amber-200',
-  snapshot: 'bg-orange-50 text-orange-700 border-orange-200',
+  checkpoint: 'bg-orange-50 text-orange-700 border-orange-200',
   neutral: 'bg-neutral-50 text-neutral-500 border-neutral-200',
   state: 'bg-amber-50 text-amber-700 border-amber-200',
   s3: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -436,37 +437,37 @@ function SummaryChip({ item }: { item: SummaryItem }) {
 function TickSummaryLine({
   tickNumber,
   items,
-  isSnapshot = false,
-  snapshotMessage,
+  isCheckpoint = false,
+  checkpointMessage,
   emptyText = 'no changes',
 }: {
   tickNumber: number
   items: SummaryItem[]
-  isSnapshot?: boolean
-  snapshotMessage?: string
+  isCheckpoint?: boolean
+  checkpointMessage?: string
   emptyText?: string
 }) {
   const visibleItems = items.length > 0
     ? items
     : [{ key: 'empty', text: emptyText, tone: 'neutral', italic: true } satisfies SummaryItem]
-  const showSnapshotMarker = isSnapshot || Boolean(snapshotMessage)
+  const showCheckpointMarker = isCheckpoint || Boolean(checkpointMessage)
 
   return (
     <span className="flex items-center gap-1.5 min-w-0 overflow-hidden text-[11px] font-normal">
       <span className="rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 font-bold text-purple-700 whitespace-nowrap">
         tick {tickNumber}
-        {showSnapshotMarker && (
+        {showCheckpointMarker && (
           <span className="ml-1 rounded-full border border-orange-200 bg-orange-100 px-1 text-[9px] leading-3 font-black text-orange-700 align-middle">
             S
           </span>
         )}
         :
       </span>
-      {showSnapshotMarker && (
+      {showCheckpointMarker && (
         <>
-          {snapshotMessage && (
+          {checkpointMessage && (
             <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 font-bold text-orange-700">
-              {snapshotMessage}
+              {checkpointMessage}
             </span>
           )}
         </>
@@ -492,23 +493,23 @@ export default function ScenarioViewer() {
 
   // Core state
   const [manifest, setManifest] = useState<Manifest | null>(null)
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([])
-  const [stateSnapshots, setStateSnapshots] = useState<Snapshot[]>([])
+  const [homeCommits, setHomeCommits] = useState<StateCommit[]>([])
+  const [stateCommits, setStateCommits] = useState<StateCommit[]>([])
   const [stateRepoMeta, setStateRepoMeta] = useState<StateRepoMeta | null>(null)
-  const [s3Snapshots, setS3Snapshots] = useState<Snapshot[]>([])
-  const [snapshotMessages, setSnapshotMessages] = useState<SnapshotMessage[]>([])
+  const [s3Commits, setS3Commits] = useState<StateCommit[]>([])
+  const [checkpointMessages, setCheckpointMessages] = useState<CheckpointMessage[]>([])
   const [uncommittedEntries, setUncommittedEntries] = useState<UncommittedEntry[]>([])
   const [concepts, setConcepts] = useState<ConceptView[]>([])
 
   // Index states
-  const [currentSnapshotIndex, setCurrentSnapshotIndex] = useState(-1)
+  const [currentHomeCommitIndex, setCurrentHomeCommitIndex] = useState(-1)
   const [currentStateIndex, setCurrentStateIndex] = useState(-1)
   const [currentS3Index, setCurrentS3Index] = useState(-1)
   const [currentMessageIndex, setCurrentMessageIndex] = useState(-1)
 
   // UI state
   const [activeTab, setActiveTab] = useState<ActiveTab>('test-code')
-  const [snapshotDropdownOpen, setSnapshotDropdownOpen] = useState(false)
+  const [checkpointDropdownOpen, setCheckpointDropdownOpen] = useState(false)
   const [logFilter, setLogFilter] = useState<'all' | 'backend' | 'frontend'>('all')
   const [levelFilter, setLevelFilter] = useState<Set<string>>(() => new Set(['DEBUG', 'INFO', 'WARN', 'ERROR', 'LOG']))
   const [levelDropdownOpen, setLevelDropdownOpen] = useState(false)
@@ -534,14 +535,14 @@ export default function ScenarioViewer() {
   const [appAreas, setAppAreas] = useState<AppAreaView[]>([])
   const [stateTables, setStateTables] = useState<Record<string, string>>({})
   const [prevStateTables, setPrevStateTables] = useState<Record<string, string>>({})
-  const [stateSnapshotDeltas, setStateSnapshotDeltas] = useState<Record<number, FileDelta>>({})
+  const [stateCommitDeltas, setStateCommitDeltas] = useState<Record<number, FileDelta>>({})
   const [currentStateRecordPath, setCurrentStateRecordPath] = useState<string | null>(null)
   const [stateDiffMode, setStateDiffMode] = useState(true)
   const [s3Objects, setS3Objects] = useState<Record<string, string>>({})
   const [prevS3Objects, setPrevS3Objects] = useState<Record<string, string>>({})
   const [s3DiffMode, setS3DiffMode] = useState(true)
   const [testSource, setTestSource] = useState('')
-  const [sourceLocations, setSourceLocations] = useState<TestSourceLocations>({ testLine: null, snapshots: [] })
+  const [sourceLocations, setSourceLocations] = useState<TestSourceLocations>({ testLine: null, checkpoints: [] })
   const [testSourceFixtureReferences, setTestSourceFixtureReferences] = useState<TestSourceFixtureReference[]>([])
   const [testSourceFixtureModal, setTestSourceFixtureModal] = useState<TestSourceFixtureModalState | null>(null)
   const [telemetryEvents, setTelemetryEvents] = useState<TelemetryEvent[]>([])
@@ -567,8 +568,8 @@ export default function ScenarioViewer() {
   const [timelineBarWidth, setTimelineBarWidth] = useState(0)
 
   // Caches
-  const snapshotFileCacheRef = useRef(new Map<string, string[]>())
-  const snapshotContentCacheRef = useRef(new Map<string, string>())
+  const homeCommitFileCacheRef = useRef(new Map<string, string[]>())
+  const homeCommitContentCacheRef = useRef(new Map<string, string>())
   const stateContentCacheRef = useRef(new Map<string, Record<string, string>>())
   const s3ContentCacheRef = useRef(new Map<string, Record<string, string>>())
 
@@ -615,9 +616,9 @@ export default function ScenarioViewer() {
   // --- Data fetching ---
 
   const fetchFileList = useCallback(async (hash: string): Promise<string[]> => {
-    const cache = snapshotFileCacheRef.current
+    const cache = homeCommitFileCacheRef.current
     if (cache.has(hash)) return cache.get(hash)!
-    const res = await fetch(`${API}/snapshot/${hash}`)
+    const res = await fetch(`${API}/home-commit/${hash}`)
     const files: string[] = await res.json()
     cache.set(hash, files)
     return files
@@ -625,9 +626,9 @@ export default function ScenarioViewer() {
 
   const fetchFileContent = useCallback(async (hash: string, filePath: string): Promise<string> => {
     const key = `${hash}:${filePath}`
-    const cache = snapshotContentCacheRef.current
+    const cache = homeCommitContentCacheRef.current
     if (cache.has(key)) return cache.get(key)!
-    const res = await fetch(`${API}/snapshot/${hash}/file/${encodeURIComponent(filePath)}`)
+    const res = await fetch(`${API}/home-commit/${hash}/file/${encodeURIComponent(filePath)}`)
     if (!res.ok) throw new Error(`File not found at ${hash}: ${filePath}`)
     const content = await res.text()
     cache.set(key, content)
@@ -639,7 +640,7 @@ export default function ScenarioViewer() {
     const cache = stateContentCacheRef.current
     const cacheKey = `${stateRepoName}:${hash}`
     if (cache.has(cacheKey)) return cache.get(cacheKey)!
-    const res = await fetch(`${API}/state-snapshot/${stateRepoName}/${hash}`)
+    const res = await fetch(`${API}/state-commit/${stateRepoName}/${hash}`)
     const data: Record<string, string> = await res.json()
     cache.set(cacheKey, data)
     return data
@@ -648,7 +649,7 @@ export default function ScenarioViewer() {
   const fetchS3Data = useCallback(async (hash: string): Promise<Record<string, string>> => {
     const cache = s3ContentCacheRef.current
     if (cache.has(hash)) return cache.get(hash)!
-    const res = await fetch(`${API}/minio-snapshot/${hash}`)
+    const res = await fetch(`${API}/minio-commit/${hash}`)
     const data: Record<string, string> = await res.json()
     cache.set(hash, data)
     return data
@@ -685,16 +686,16 @@ export default function ScenarioViewer() {
     tableNameSuffixRegex: stateRepoMeta?.tableNameSuffixRegex,
   }), [stateRepoMeta])
 
-  const getSnapshotIndexAtOrBefore = useCallback((snapshotsToSearch: Snapshot[], realTime: number): number => {
-    let snapshotIndex = -1
-    for (let i = 0; i < snapshotsToSearch.length; i++) {
-      if (new Date(snapshotsToSearch[i].timestamp).getTime() <= realTime) snapshotIndex = i
+  const getCommitIndexAtOrBefore = useCallback((commitsToSearch: StateCommit[], realTime: number): number => {
+    let commitIndex = -1
+    for (let i = 0; i < commitsToSearch.length; i++) {
+      if (new Date(commitsToSearch[i].timestamp).getTime() <= realTime) commitIndex = i
       else break
     }
-    return snapshotIndex
+    return commitIndex
   }, [])
 
-  const getSnapshotMessageIndexAtOrBefore = useCallback((messages: SnapshotMessage[], realTime: number): number => {
+  const getCheckpointMessageIndexAtOrBefore = useCallback((messages: CheckpointMessage[], realTime: number): number => {
     let messageIndex = -1
     for (let i = 0; i < messages.length; i++) {
       if (new Date(messages[i].timestamp).getTime() <= realTime) messageIndex = i
@@ -703,32 +704,32 @@ export default function ScenarioViewer() {
     return messageIndex
   }, [])
 
-  const timelineSnapshotMessages = useMemo(() => {
-    const tickSnapshots = ticks
-      .filter((tick) => tick.isSnapshot && tick.snapshotMessage)
+  const timelineCheckpointMessages = useMemo(() => {
+    const tickCheckpoints = ticks
+      .filter((tick) => tick.isCheckpoint && tick.checkpointMessage)
       .map((tick) => ({
         timestamp: tick.timestamp,
-        message: tick.snapshotMessage!,
+        message: tick.checkpointMessage!,
       }))
 
-    return tickSnapshots.length > 0 ? tickSnapshots : snapshotMessages
-  }, [snapshotMessages, ticks])
+    return tickCheckpoints.length > 0 ? tickCheckpoints : checkpointMessages
+  }, [checkpointMessages, ticks])
 
-  const getS3SnapshotIndexForTick = useCallback((tick: ProcessedTick, fallbackIndex: number): number => {
-    if (!tick.s3Changed || s3Snapshots.length === 0) return fallbackIndex
+  const getS3CommitIndexForTick = useCallback((tick: ProcessedTick, fallbackIndex: number): number => {
+    if (!tick.s3Changed || s3Commits.length === 0) return fallbackIndex
 
     const changedKeys = sortedUnion(tick.s3AddedKeys || [], tick.s3ModifiedKeys || [], tick.s3RemovedKeys || [])
     if (changedKeys.length === 0) return fallbackIndex
 
     const changedSet = new Set(changedKeys)
     const tickTime = new Date(tick.timestamp).getTime()
-    const matchingIndex = s3Snapshots.findIndex((snapshot) => (
-      new Date(snapshot.timestamp).getTime() >= tickTime &&
-      snapshot.changedFiles.some((filePath) => changedSet.has(filePath))
+    const matchingIndex = s3Commits.findIndex((commit) => (
+      new Date(commit.timestamp).getTime() >= tickTime &&
+      commit.changedFiles.some((filePath) => changedSet.has(filePath))
     ))
 
     return matchingIndex >= 0 ? matchingIndex : fallbackIndex
-  }, [s3Snapshots])
+  }, [s3Commits])
 
   // --- Initialize ---
 
@@ -736,11 +737,11 @@ export default function ScenarioViewer() {
     let mounted = true
 
     async function init() {
-      const [manifestRes, snapshotsRes, stateReposRes, s3Res, testSourceRes, uncommittedRes, telemetryRes, notesRes] = await Promise.all([
+      const [manifestRes, homeCommitsRes, stateReposRes, s3Res, testSourceRes, uncommittedRes, telemetryRes, notesRes] = await Promise.all([
         fetch(`${API}/manifest`),
-        fetch(`${API}/snapshots`),
+        fetch(`${API}/home-commits`),
         fetch(`${API}/state-repos`),
-        fetch(`${API}/minio-snapshots`),
+        fetch(`${API}/minio-commits`),
         fetch(`${API}/test-source`),
         fetch(`${API}/uncommitted`),
         fetch(`${API}/backend-telemetry`),
@@ -750,9 +751,9 @@ export default function ScenarioViewer() {
       if (!mounted) return
 
       const manifestData: Manifest = await manifestRes.json()
-      const snapshotsData: Snapshot[] = await snapshotsRes.json()
+      const homeCommitsData: StateCommit[] = await homeCommitsRes.json()
       const stateRepos: StateRepoMeta[] = await stateReposRes.json()
-      const s3Data: Snapshot[] = await s3Res.json()
+      const s3Data: StateCommit[] = await s3Res.json()
       const testSourceData = await testSourceRes.json() as {
         source?: string
         locations?: TestSourceLocations
@@ -765,19 +766,19 @@ export default function ScenarioViewer() {
       // Pick the first extension state repo (if any) as the source for
       // the structured-state tab. Multi-repo support can come later.
       const firstRepo = stateRepos[0] ?? null
-      let stateData: Snapshot[] = []
+      let stateData: StateCommit[] = []
       if (firstRepo) {
-        const r = await fetch(`${API}/state-snapshots/${firstRepo.name}`)
+        const r = await fetch(`${API}/state-commits/${firstRepo.name}`)
         stateData = await r.json()
       }
 
       setManifest(manifestData)
-      setSnapshots(snapshotsData)
+      setHomeCommits(homeCommitsData)
       setStateRepoMeta(firstRepo)
-      setStateSnapshots(stateData)
-      setS3Snapshots(s3Data)
+      setStateCommits(stateData)
+      setS3Commits(s3Data)
       setTestSource(testSourceData.source || '')
-      setSourceLocations(testSourceData.locations ?? { testLine: null, snapshots: [] })
+      setSourceLocations(testSourceData.locations ?? { testLine: null, checkpoints: [] })
       setTestSourceFixtureReferences(
         Array.isArray(testSourceData.fixtures)
           ? testSourceData.fixtures.filter((fixture) => (
@@ -796,9 +797,9 @@ export default function ScenarioViewer() {
       if (rawManifest.tickFileListing) setTickFileListing(rawManifest.tickFileListing as Record<number, string[]>)
       if (rawManifest.s3KeyListing) setS3KeyListing(rawManifest.s3KeyListing as Record<number, string[]>)
 
-      // Build snapshot messages
+      // Build checkpoint messages
       const seenMessages = new Set<string>()
-      const msgs: SnapshotMessage[] = []
+      const msgs: CheckpointMessage[] = []
       for (const meta of [...stateData, ...s3Data]) {
         if (meta.commitMessage && !seenMessages.has(meta.commitMessage)) {
           seenMessages.add(meta.commitMessage)
@@ -806,14 +807,14 @@ export default function ScenarioViewer() {
         }
       }
       msgs.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
-      setSnapshotMessages(msgs)
+      setCheckpointMessages(msgs)
 
       const hasTickData = rawManifest.ticks && (rawManifest.ticks as unknown[]).length > 0
       // When tick data is available, let video sync set the indices at the
       // right time. Before the first commit, the active commit index must stay
       // at -1 so the UI can show "no commit yet" instead of leaking commit 0.
-      if (snapshotsData.length > 0 && !hasTickData) setCurrentSnapshotIndex(0)
-      else setCurrentSnapshotIndex(-1)
+      if (homeCommitsData.length > 0 && !hasTickData) setCurrentHomeCommitIndex(0)
+      else setCurrentHomeCommitIndex(-1)
       if (stateData.length > 0 && !hasTickData) setCurrentStateIndex(0)
       else setCurrentStateIndex(-1)
       if (s3Data.length > 0 && !hasTickData) setCurrentS3Index(0)
@@ -824,60 +825,60 @@ export default function ScenarioViewer() {
     return () => { mounted = false }
   }, [API, runId])
 
-  // --- Update file display when snapshot index changes ---
+  // --- Update file display when commit index changes ---
 
   useEffect(() => {
-    if (currentSnapshotIndex < 0 || snapshots.length === 0) {
+    if (currentHomeCommitIndex < 0 || homeCommits.length === 0) {
       setFileList([])
       return
     }
 
-    const snap = snapshots[currentSnapshotIndex]
+    const snap = homeCommits[currentHomeCommitIndex]
 
     fetchFileList(snap.commitHash).then((files) => {
       setFileList(files)
     }).catch(() => setFileList([]))
-  }, [currentSnapshotIndex, snapshots, fetchFileList])
+  }, [currentHomeCommitIndex, homeCommits, fetchFileList])
 
   // --- Update state-repo display ---
 
   useEffect(() => {
-    if (currentStateIndex < 0 || stateSnapshots.length === 0) {
+    if (currentStateIndex < 0 || stateCommits.length === 0) {
       setStateTables({})
       setPrevStateTables({})
       return
     }
 
-    const snap = stateSnapshots[currentStateIndex]
+    const snap = stateCommits[currentStateIndex]
     fetchStateData(snap.commitHash)
       .then((tables) => setStateTables(tables))
       .catch(() => setStateTables({}))
 
-    // Fetch previous snapshot for diffing
+    // Fetch previous commit for diffing
     if (currentStateIndex > 0) {
-      const prevSnap = stateSnapshots[currentStateIndex - 1]
+      const prevSnap = stateCommits[currentStateIndex - 1]
       fetchStateData(prevSnap.commitHash)
         .then((tables) => setPrevStateTables(tables))
         .catch(() => setPrevStateTables({}))
     } else {
       setPrevStateTables({})
     }
-  }, [currentStateIndex, stateSnapshots, fetchStateData])
+  }, [currentStateIndex, stateCommits, fetchStateData])
 
   useEffect(() => {
     let cancelled = false
 
-    async function loadStateSnapshotDeltas() {
-      if (!stateRepoName || stateSnapshots.length === 0) {
-        setStateSnapshotDeltas({})
+    async function loadStateCommitDeltas() {
+      if (!stateRepoName || stateCommits.length === 0) {
+        setStateCommitDeltas({})
         return
       }
 
-      const deltas = await Promise.all(stateSnapshots.map(async (snapshot, index) => {
-        const currentTables = await fetchStateData(snapshot.commitHash)
+      const deltas = await Promise.all(stateCommits.map(async (commit, index) => {
+        const currentTables = await fetchStateData(commit.commitHash)
         const currentParsed = parseStateRepoAsFiles(currentTables, parseOptions)
         const previousParsed = index > 0
-          ? parseStateRepoAsFiles(await fetchStateData(stateSnapshots[index - 1].commitHash), parseOptions)
+          ? parseStateRepoAsFiles(await fetchStateData(stateCommits[index - 1].commitHash), parseOptions)
           : { paths: [], contents: {} }
         return [index, computeStateRepoRecordDiffs(
           currentParsed.paths,
@@ -887,26 +888,26 @@ export default function ScenarioViewer() {
         )] as const
       }))
 
-      if (!cancelled) setStateSnapshotDeltas(Object.fromEntries(deltas))
+      if (!cancelled) setStateCommitDeltas(Object.fromEntries(deltas))
     }
 
-    loadStateSnapshotDeltas().catch(() => {
-      if (!cancelled) setStateSnapshotDeltas({})
+    loadStateCommitDeltas().catch(() => {
+      if (!cancelled) setStateCommitDeltas({})
     })
 
     return () => { cancelled = true }
-  }, [fetchStateData, parseOptions, stateRepoName, stateSnapshots])
+  }, [fetchStateData, parseOptions, stateRepoName, stateCommits])
 
   // --- Update S3 display ---
 
   useEffect(() => {
-    if (currentS3Index < 0 || s3Snapshots.length === 0) {
+    if (currentS3Index < 0 || s3Commits.length === 0) {
       setS3Objects({})
       setPrevS3Objects({})
       return
     }
 
-    const snap = s3Snapshots[currentS3Index]
+    const snap = s3Commits[currentS3Index]
     fetchS3Data(snap.commitHash)
       .then((objects) => {
         setS3Objects(objects)
@@ -914,16 +915,16 @@ export default function ScenarioViewer() {
       })
       .catch(() => setS3Objects({}))
 
-    // Fetch previous snapshot for diffing
+    // Fetch previous commit for diffing
     if (currentS3Index > 0) {
-      const prevSnap = s3Snapshots[currentS3Index - 1]
+      const prevSnap = s3Commits[currentS3Index - 1]
       fetchS3Data(prevSnap.commitHash)
         .then((objects) => setPrevS3Objects(objects))
         .catch(() => setPrevS3Objects({}))
     } else {
       setPrevS3Objects({})
     }
-  }, [currentS3Index, s3Snapshots, fetchS3Data])
+  }, [currentS3Index, s3Commits, fetchS3Data])
 
   useEffect(() => {
     setS3DiffMode(true)
@@ -933,37 +934,37 @@ export default function ScenarioViewer() {
     setStateDiffMode(true)
   }, [currentStateRecordPath, currentTickIndex])
 
-  // --- Sync repo snapshot indices when tick changes ---
+  // --- Sync repo commit indices when tick changes ---
   // This ensures navigating to a tick (e.g. clicking in the tick list) updates
-  // the snapshot-based data even when the video is paused and timeupdate won't fire.
+  // the commit-based data even when the video is paused and timeupdate won't fire.
 
   useEffect(() => {
     if (currentTickIndex < 0 || currentTickIndex >= ticks.length) return
     const tickTime = new Date(ticks[currentTickIndex].timestamp).getTime()
 
-    // Sync MeadowHome file snapshot index
-    if (snapshots.length > 0) {
-      const fileIdx = getSnapshotIndexAtOrBefore(snapshots, tickTime)
-      setCurrentSnapshotIndex((current) => current === fileIdx ? current : fileIdx)
+    // Sync MeadowHome file commit index
+    if (homeCommits.length > 0) {
+      const fileIdx = getCommitIndexAtOrBefore(homeCommits, tickTime)
+      setCurrentHomeCommitIndex((current) => current === fileIdx ? current : fileIdx)
     }
 
-    // Sync state-repo snapshot index
-    if (stateSnapshots.length > 0) {
-      const dynIdx = getSnapshotIndexAtOrBefore(stateSnapshots, tickTime)
+    // Sync state-repo commit index
+    if (stateCommits.length > 0) {
+      const dynIdx = getCommitIndexAtOrBefore(stateCommits, tickTime)
       if (dynIdx !== currentStateIndex) setCurrentStateIndex(dynIdx)
     }
 
-    // Sync S3 snapshot index
-    if (s3Snapshots.length > 0) {
+    // Sync S3 commit index
+    if (s3Commits.length > 0) {
       const tick = ticks[currentTickIndex]
-      let s3Idx = getSnapshotIndexAtOrBefore(s3Snapshots, tickTime)
-      s3Idx = getS3SnapshotIndexForTick(tick, s3Idx)
+      let s3Idx = getCommitIndexAtOrBefore(s3Commits, tickTime)
+      s3Idx = getS3CommitIndexForTick(tick, s3Idx)
       if (s3Idx !== currentS3Index) setCurrentS3Index(s3Idx)
     }
 
-    const messageIdx = getSnapshotMessageIndexAtOrBefore(timelineSnapshotMessages, tickTime)
+    const messageIdx = getCheckpointMessageIndexAtOrBefore(timelineCheckpointMessages, tickTime)
     setCurrentMessageIndex((current) => current === messageIdx ? current : messageIdx)
-  }, [currentTickIndex, ticks, snapshots, stateSnapshots, s3Snapshots, currentStateIndex, currentS3Index, timelineSnapshotMessages, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick, getSnapshotMessageIndexAtOrBefore])
+  }, [currentTickIndex, ticks, homeCommits, stateCommits, s3Commits, currentStateIndex, currentS3Index, timelineCheckpointMessages, getCommitIndexAtOrBefore, getS3CommitIndexForTick, getCheckpointMessageIndexAtOrBefore])
 
   // --- Video sync ---
 
@@ -988,29 +989,29 @@ export default function ScenarioViewer() {
       }
     }
 
-    // Find matching file snapshot
-    const snapIdx = getSnapshotIndexAtOrBefore(snapshots, realTime)
-    if (snapIdx !== currentSnapshotIndex) {
-      setCurrentSnapshotIndex(snapIdx)
+    // Find matching file commit
+    const snapIdx = getCommitIndexAtOrBefore(homeCommits, realTime)
+    if (snapIdx !== currentHomeCommitIndex) {
+      setCurrentHomeCommitIndex(snapIdx)
     }
 
-    // Find matching state-repo snapshot
-    const stateIdx = getSnapshotIndexAtOrBefore(stateSnapshots, realTime)
+    // Find matching state-repo commit
+    const stateIdx = getCommitIndexAtOrBefore(stateCommits, realTime)
     if (stateIdx !== currentStateIndex) {
       setCurrentStateIndex(stateIdx)
     }
 
-    // Find matching S3 snapshot
-    let s3Idx = getSnapshotIndexAtOrBefore(s3Snapshots, realTime)
+    // Find matching S3 commit
+    let s3Idx = getCommitIndexAtOrBefore(s3Commits, realTime)
     if (tickIdx >= 0) {
-      s3Idx = getS3SnapshotIndexForTick(ticks[tickIdx], s3Idx)
+      s3Idx = getS3CommitIndexForTick(ticks[tickIdx], s3Idx)
     }
     if (s3Idx !== currentS3Index) {
       setCurrentS3Index(s3Idx)
     }
 
-    // Update snapshot indicator
-    const msgIdx = getSnapshotMessageIndexAtOrBefore(timelineSnapshotMessages, realTime)
+    // Update checkpoint indicator
+    const msgIdx = getCheckpointMessageIndexAtOrBefore(timelineCheckpointMessages, realTime)
     setCurrentMessageIndex(msgIdx)
 
     // Update tick index
@@ -1040,7 +1041,7 @@ export default function ScenarioViewer() {
       }
       setHighlightedLogIndex(closest)
     }
-  }, [manifest, snapshots, stateSnapshots, s3Snapshots, timelineSnapshotMessages, ticks, chronologicalTelemetryEvents, toRealTime, logFilter, levelFilter, currentSnapshotIndex, currentStateIndex, currentS3Index, currentTickIndex, getSnapshotIndexAtOrBefore, getS3SnapshotIndexForTick, getSnapshotMessageIndexAtOrBefore])
+  }, [manifest, homeCommits, stateCommits, s3Commits, timelineCheckpointMessages, ticks, chronologicalTelemetryEvents, toRealTime, logFilter, levelFilter, currentHomeCommitIndex, currentStateIndex, currentS3Index, currentTickIndex, getCommitIndexAtOrBefore, getS3CommitIndexForTick, getCheckpointMessageIndexAtOrBefore])
 
   // Video timeupdate handler
   const handleTimeUpdate = useCallback(() => {
@@ -1056,15 +1057,15 @@ export default function ScenarioViewer() {
     scrubTimerRef.current = setTimeout(() => syncToVideoTime(), 100)
   }, [syncToVideoTime])
 
-  // The selected snapshot owns the highlight, even beside the end of the video.
+  // The selected checkpoint owns the highlight, even beside the end of the video.
   const highlightedSourceLine = useMemo(() => {
-    const message = timelineSnapshotMessages[currentMessageIndex]?.message
+    const message = timelineCheckpointMessages[currentMessageIndex]?.message
     if (!message) return sourceLocations.testLine
-    const matches = sourceLocations.snapshots.filter(location => location.message === message)
-    const occurrence = timelineSnapshotMessages.slice(0, currentMessageIndex)
-      .filter(snapshot => snapshot.message === message).length
+    const matches = sourceLocations.checkpoints.filter(location => location.message === message)
+    const occurrence = timelineCheckpointMessages.slice(0, currentMessageIndex)
+      .filter(checkpoint => checkpoint.message === message).length
     return matches[Math.min(occurrence, matches.length - 1)]?.line ?? null
-  }, [currentMessageIndex, timelineSnapshotMessages, sourceLocations])
+  }, [currentMessageIndex, timelineCheckpointMessages, sourceLocations])
 
   useEffect(() => {
     if (activeTab !== 'test-code' || highlightedSourceLine === null) return
@@ -1132,19 +1133,19 @@ export default function ScenarioViewer() {
   // --- Tick helpers ---
 
   const hasTicks = ticks.length > 0
-  const snapshotIndexByHash = useMemo(() => {
+  const homeCommitIndexByHash = useMemo(() => {
     const byHash = new Map<string, number>()
-    snapshots.forEach((snap, index) => byHash.set(snap.commitHash, index))
+    homeCommits.forEach((snap, index) => byHash.set(snap.commitHash, index))
     return byHash
-  }, [snapshots])
-  const getSnapshotIndexForGitHead = useCallback((gitHeadSha?: string): number => {
+  }, [homeCommits])
+  const getHomeCommitIndexForGitHead = useCallback((gitHeadSha?: string): number => {
     if (!gitHeadSha) return -1
-    return snapshotIndexByHash.get(gitHeadSha) ?? -1
-  }, [snapshotIndexByHash])
+    return homeCommitIndexByHash.get(gitHeadSha) ?? -1
+  }, [homeCommitIndexByHash])
 
   // Compute per-tick changes across all state types (Files, structured state, S3)
   const tickStateChanges = useMemo(() => {
-    const changes: Record<number, { files: boolean; state: boolean; s3: boolean; snapshot: boolean; snapshotMessage?: string }> = {}
+    const changes: Record<number, { files: boolean; state: boolean; s3: boolean; checkpoint: boolean; checkpointMessage?: string }> = {}
     const hasTickStateDataLocal = ticks.some((tick) => tick.stateRecordContents !== undefined)
     for (let i = 0; i < ticks.length; i++) {
       const tick = ticks[i]
@@ -1158,34 +1159,34 @@ export default function ScenarioViewer() {
       let stateChanged = false
       if (hasTickStateDataLocal && tick.stateChanged !== undefined) {
         stateChanged = Boolean(tick.stateChanged)
-      } else if (stateSnapshots.length > 0) {
+      } else if (stateCommits.length > 0) {
         const getStateIdx = (ts: number) => {
           let idx = -1
-          for (let j = 0; j < stateSnapshots.length; j++) {
-            if (new Date(stateSnapshots[j].timestamp).getTime() <= ts) idx = j
+          for (let j = 0; j < stateCommits.length; j++) {
+            if (new Date(stateCommits[j].timestamp).getTime() <= ts) idx = j
             else break
           }
           return idx
         }
         const currentStateIdxLocal = getStateIdx(tickTime)
         if (i === 0) {
-          stateChanged = currentStateIdxLocal >= 0 && stateSnapshots[currentStateIdxLocal]?.changedFiles?.length > 0
+          stateChanged = currentStateIdxLocal >= 0 && stateCommits[currentStateIdxLocal]?.changedFiles?.length > 0
         } else {
           const prevTickTime = new Date(ticks[i - 1].timestamp).getTime()
           const prevStateIdxLocal = getStateIdx(prevTickTime)
-          stateChanged = currentStateIdxLocal !== prevStateIdxLocal && currentStateIdxLocal >= 0 && stateSnapshots[currentStateIdxLocal]?.changedFiles?.length > 0
+          stateChanged = currentStateIdxLocal !== prevStateIdxLocal && currentStateIdxLocal >= 0 && stateCommits[currentStateIdxLocal]?.changedFiles?.length > 0
         }
       }
 
-      // S3 changed? Use tick-level data if available, fallback to snapshot-based
+      // S3 changed? Use tick-level data if available, fallback to commit-based
       let s3Changed = false
       if (tick.s3Changed !== undefined) {
         s3Changed = tick.s3Changed
-      } else if (s3Snapshots.length > 0) {
+      } else if (s3Commits.length > 0) {
         const getS3Idx = (ts: number) => {
           let idx = -1
-          for (let j = 0; j < s3Snapshots.length; j++) {
-            if (new Date(s3Snapshots[j].timestamp).getTime() <= ts) idx = j
+          for (let j = 0; j < s3Commits.length; j++) {
+            if (new Date(s3Commits[j].timestamp).getTime() <= ts) idx = j
             else break
           }
           return idx
@@ -1203,18 +1204,28 @@ export default function ScenarioViewer() {
         files: filesChanged,
         state: stateChanged,
         s3: s3Changed,
-        snapshot: tick.isSnapshot,
-        snapshotMessage: tick.snapshotMessage,
+        checkpoint: tick.isCheckpoint,
+        checkpointMessage: tick.checkpointMessage,
       }
     }
     return changes
-  }, [ticks, stateSnapshots, s3Snapshots])
+  }, [ticks, stateCommits, s3Commits])
+
+  // Checkpoints are numbered in call order, matching the saved states that
+  // Dev Tools can open for this scenario.
+  const currentCheckpointNumber = useMemo((): number | null => {
+    if (ticks.length === 0) return currentMessageIndex >= 0 ? currentMessageIndex + 1 : null
+    if (currentTickIndex < 0 || !tickStateChanges[currentTickIndex]?.checkpoint) return null
+    let number = 0
+    for (let i = 0; i <= currentTickIndex; i++) if (tickStateChanges[i]?.checkpoint) number++
+    return number
+  }, [ticks.length, currentMessageIndex, currentTickIndex, tickStateChanges])
 
   const interestingTickIndices = useMemo(() =>
     ticks
       .filter((_, i) => {
         const c = tickStateChanges[i]
-        return c && (c.files || c.state || c.s3 || c.snapshot)
+        return c && (c.files || c.state || c.s3 || c.checkpoint)
       })
       .map(t => t.tickIndex),
     [ticks, tickStateChanges]
@@ -1353,11 +1364,11 @@ export default function ScenarioViewer() {
     [ticks]
   )
 
-  const getStateSnapshotIndexForTick = useCallback((idx: number): number => {
+  const getStateCommitIndexForTick = useCallback((idx: number): number => {
     if (idx < 0 || idx >= ticks.length) return -1
     const tickTime = new Date(ticks[idx].timestamp).getTime()
-    return getSnapshotIndexAtOrBefore(stateSnapshots, tickTime)
-  }, [getSnapshotIndexAtOrBefore, stateSnapshots, ticks])
+    return getCommitIndexAtOrBefore(stateCommits, tickTime)
+  }, [getCommitIndexAtOrBefore, stateCommits, ticks])
 
   const getTickStateRecordContentsAtIndex = useCallback((idx: number): Record<string, string> | null => {
     for (let i = idx; i >= 0; i--) {
@@ -1377,19 +1388,19 @@ export default function ScenarioViewer() {
     }
   }, [ticks])
 
-  const getStateSnapshotDeltaForTick = useCallback((idx: number): FileDelta => {
-    const snapshotIndex = getStateSnapshotIndexForTick(idx)
-    return snapshotIndex >= 0
-      ? stateSnapshotDeltas[snapshotIndex] ?? { added: [], modified: [], removed: [] }
+  const getStateCommitDeltaForTick = useCallback((idx: number): FileDelta => {
+    const commitIndex = getStateCommitIndexForTick(idx)
+    return commitIndex >= 0
+      ? stateCommitDeltas[commitIndex] ?? { added: [], modified: [], removed: [] }
       : { added: [], modified: [], removed: [] }
-  }, [getStateSnapshotIndexForTick, stateSnapshotDeltas])
+  }, [getStateCommitIndexForTick, stateCommitDeltas])
 
   const getStateSummaryItems = useCallback((tickArrayIndex: number, keyPrefix = 'state'): SummaryItem[] => {
     if (hasTickStateData) {
       return deltaSummaryItems(getTickStateRecordDelta(tickArrayIndex), keyPrefix, 'record')
     }
-    return deltaSummaryItems(getStateSnapshotDeltaForTick(tickArrayIndex), keyPrefix, 'record')
-  }, [getStateSnapshotDeltaForTick, getTickStateRecordDelta, hasTickStateData])
+    return deltaSummaryItems(getStateCommitDeltaForTick(tickArrayIndex), keyPrefix, 'record')
+  }, [getStateCommitDeltaForTick, getTickStateRecordDelta, hasTickStateData])
 
   const getTickFileSummaryItems = useCallback((tickArrayIndex: number, keyPrefix = 'tick'): SummaryItem[] => (
     deltaSummaryItems(getTickFileDelta(tickArrayIndex), keyPrefix)
@@ -1403,8 +1414,8 @@ export default function ScenarioViewer() {
       return revision && gitBranches.changedAt(tickArrayIndex) ? [{ key: 'git-commit', text: `commit ${revision.commitHash.slice(0, 7)} — ${revision.commitMessage}`, tone: 'git', strong: true }] : []
     }
     if (tick.changedGitHead) {
-      const snapIndex = getSnapshotIndexForGitHead(tick.gitHeadSha)
-      const snap = snapIndex >= 0 ? snapshots[snapIndex] : null
+      const snapIndex = getHomeCommitIndexForGitHead(tick.gitHeadSha)
+      const snap = snapIndex >= 0 ? homeCommits[snapIndex] : null
       return [{
         key: 'git-commit',
         text: snap ? `commit ${snap.commitHash.slice(0, 7)} — ${snap.commitMessage || '(no message)'}` : 'new commit',
@@ -1427,7 +1438,7 @@ export default function ScenarioViewer() {
       ]
     }
     return []
-  }, [getGitUncommittedDelta, getSnapshotIndexForGitHead, snapshots, ticks, gitBranches])
+  }, [getGitUncommittedDelta, getHomeCommitIndexForGitHead, homeCommits, ticks, gitBranches])
 
   const getFileModeSummaryItems = useCallback((mode: FileChangeLens, tickArrayIndex: number, keyPrefix: string = mode): SummaryItem[] => {
     if (tickArrayIndex < 0 || tickArrayIndex >= ticks.length) return []
@@ -1461,7 +1472,7 @@ export default function ScenarioViewer() {
   const getFileModeTimelineItems = useCallback((mode: FileChangeLens): FileTimelineItem[] => {
     return ticks.flatMap((tick, tickArrayIndex) => {
       const items = getFileModeSummaryItems(mode, tickArrayIndex, `${mode}-history-${tickArrayIndex}`)
-      if (items.length === 0 && !tick.isSnapshot) return []
+      if (items.length === 0 && !tick.isCheckpoint) return []
       return [{
         tickArrayIndex,
         items,
@@ -1530,12 +1541,12 @@ export default function ScenarioViewer() {
       video.currentTime = adjacentVideoFrameTime(video.currentTime, video.duration, direction)
     }
 
-    const navigateSnapshot = (direction: number) => {
+    const navigateCheckpoint = (direction: number) => {
       const video = videoRef.current
       if (!video || !video.duration) return
 
       const navPoints = [0]
-      for (const snap of timelineSnapshotMessages) {
+      for (const snap of timelineCheckpointMessages) {
         const videoSec = toVideoTime(new Date(snap.timestamp).getTime())
         if (videoSec > 0 && videoSec < video.duration) {
           navPoints.push(videoSec)
@@ -1572,18 +1583,18 @@ export default function ScenarioViewer() {
         e.preventDefault()
         if (e.shiftKey) navigateFrame(-1)
         else if (hasTicks) navigateTick(-1)
-        else navigateSnapshot(-1)
+        else navigateCheckpoint(-1)
       } else if (e.code === 'ArrowRight') {
         e.preventDefault()
         if (e.shiftKey) navigateFrame(1)
         else if (hasTicks) navigateTick(1)
-        else navigateSnapshot(1)
+        else navigateCheckpoint(1)
       }
     }
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [timelineSnapshotMessages, toVideoTime, hasTicks, navigateTick])
+  }, [timelineCheckpointMessages, toVideoTime, hasTicks, navigateTick])
 
   // --- Close level dropdown on outside click ---
 
@@ -1615,19 +1626,19 @@ export default function ScenarioViewer() {
   // --- Health data ---
 
   const healthData = useMemo(() => {
-    if (!manifest?.startTime || !manifest?.endTime || timelineSnapshotMessages.length === 0) {
+    if (!manifest?.startTime || !manifest?.endTime || timelineCheckpointMessages.length === 0) {
       return computeHealthData([], [], [], 0, 0)
     }
     const startMs = new Date(manifest.startTime).getTime()
     const endMs = new Date(manifest.endTime).getTime()
     return computeHealthData(
-      timelineSnapshotMessages.map(s => s.timestamp),
+      timelineCheckpointMessages.map(s => s.timestamp),
       manifest.logs,
       uncommittedEntries,
       startMs,
       endMs - startMs
     )
-  }, [manifest, timelineSnapshotMessages, uncommittedEntries])
+  }, [manifest, timelineCheckpointMessages, uncommittedEntries])
 
   const handleHealthClick = useCallback((pct: number) => {
     const video = videoRef.current
@@ -1647,7 +1658,7 @@ export default function ScenarioViewer() {
     for (let i = 0; i < ticks.length; i++) {
       const tick = ticks[i]
       const changes = tickStateChanges[i]
-      if (!changes || tick.isSnapshot) continue
+      if (!changes || tick.isCheckpoint) continue
       const types: { color: string; key: string }[] = []
       if (changes.files) types.push({ color: 'bg-brand-400', key: 'f' })
       if (changes.s3) types.push({ color: 'bg-emerald-400', key: 's' })
@@ -1685,9 +1696,9 @@ export default function ScenarioViewer() {
       }
     }
 
-    // Snapshot markers (larger, darker)
-    for (let i = 0; i < timelineSnapshotMessages.length; i++) {
-      const snapTime = new Date(timelineSnapshotMessages[i].timestamp).getTime()
+    // Checkpoint markers (larger, darker)
+    for (let i = 0; i < timelineCheckpointMessages.length; i++) {
+      const snapTime = new Date(timelineCheckpointMessages[i].timestamp).getTime()
       const videoSec = toVideoTime(snapTime)
       const pct = (videoSec / video.duration) * 100
       if (pct >= 0 && pct <= 100) {
@@ -1727,9 +1738,9 @@ export default function ScenarioViewer() {
   })()
 
   const currentTick = hasTicks && currentTickIndex >= 0 ? ticks[currentTickIndex] : null
-  const currentTickSnapshotIndex = currentTick ? getSnapshotIndexForGitHead(currentTick.gitHeadSha) : -1
-  const currentFileSnapshotIndex = currentTick ? currentTickSnapshotIndex : currentSnapshotIndex
-  const currentSnap = currentFileSnapshotIndex >= 0 ? snapshots[currentFileSnapshotIndex] : null
+  const currentTickHomeCommitIndex = currentTick ? getHomeCommitIndexForGitHead(currentTick.gitHeadSha) : -1
+  const currentFileHomeCommitIndex = currentTick ? currentTickHomeCommitIndex : currentHomeCommitIndex
+  const currentSnap = currentFileHomeCommitIndex >= 0 ? homeCommits[currentFileHomeCommitIndex] : null
   const activeFileModes = activeLenses(fileChangeView, fileChangeLenses, FILE_CHANGE_LENSES)
 
   return (
@@ -1816,7 +1827,7 @@ export default function ScenarioViewer() {
                   className="absolute top-0 bottom-0 z-10 bg-blue-500/70 transition-[left] duration-100"
                   style={{ left: `${timelinePercent}%`, width: '2px' }}
                 />
-                {/* Dots and snapshot markers (z-20, on top) */}
+                {/* Dots and checkpoint markers (z-20, on top) */}
                 <div className="absolute inset-0 z-20 pointer-events-none">
                   {timelineMarkers}
                 </div>
@@ -1933,11 +1944,11 @@ export default function ScenarioViewer() {
           })()}
         </div>
 
-        {/* Snapshot indicator with dropdown */}
+        {/* Checkpoint indicator with dropdown */}
         <div className="relative flex items-center gap-2 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200 text-xs">
           <button
             className="flex items-center gap-1.5 cursor-pointer hover:bg-neutral-100 rounded px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors"
-            onClick={() => setSnapshotDropdownOpen(prev => !prev)}
+            onClick={() => setCheckpointDropdownOpen(prev => !prev)}
           >
             {hasTicks ? (currentTickIndex >= 0 ? (() => {
               const changes = tickStateChanges[currentTickIndex]
@@ -1976,8 +1987,8 @@ export default function ScenarioViewer() {
                   <TickSummaryLine
                     tickNumber={currentTickIndex + 1}
                     items={summaryItems}
-                    isSnapshot={Boolean(changes?.snapshot)}
-                    snapshotMessage={changes?.snapshot ? changes.snapshotMessage : undefined}
+                    isCheckpoint={Boolean(changes?.checkpoint)}
+                    checkpointMessage={changes?.checkpoint ? changes.checkpointMessage : undefined}
                     emptyText="no changes"
                   />
                   <span className="text-neutral-400">of {ticks.length}</span>
@@ -1987,26 +1998,29 @@ export default function ScenarioViewer() {
               <span className="text-neutral-400">Tick: --</span>
             )) : (
               <>
-                <span className="text-neutral-400">Snapshot:</span>
+                <span className="text-neutral-400">Checkpoint:</span>
                 <span className="text-brand-500 font-bold">
-                  {currentMessageIndex >= 0 && timelineSnapshotMessages[currentMessageIndex]
-                    ? timelineSnapshotMessages[currentMessageIndex].message
+                  {currentMessageIndex >= 0 && timelineCheckpointMessages[currentMessageIndex]
+                    ? timelineCheckpointMessages[currentMessageIndex].message
                     : '--'}
                 </span>
               </>
             )}
-            <svg className={`w-3 h-3 text-neutral-400 transition-transform ${snapshotDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className={`w-3 h-3 text-neutral-400 transition-transform ${checkpointDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          {snapshotDropdownOpen && hasTicks && (
+          {runId && testSlug && currentCheckpointNumber !== null && (
+            <CheckpointOpenControl runId={runId} scenario={testSlug} index={currentCheckpointNumber} />
+          )}
+          {checkpointDropdownOpen && hasTicks && (
             <div className="absolute top-full left-0 right-0 z-20 bg-white border border-neutral-200 shadow-lg rounded-b overflow-hidden max-h-[300px] overflow-y-auto">
               {(() => {
                 const items: React.ReactNode[] = []
                 let i = 0
                 while (i < ticks.length) {
                   const changes = tickStateChanges[i]
-                  const hasChange = changes && (changes.files || changes.state || changes.s3 || changes.snapshot)
+                  const hasChange = changes && (changes.files || changes.state || changes.s3 || changes.checkpoint)
                   if (hasChange) {
                     const idx = i
                     const tick = ticks[i]
@@ -2019,14 +2033,14 @@ export default function ScenarioViewer() {
                         }`}
                         onClick={() => {
                           selectTickIndex(idx)
-                          setSnapshotDropdownOpen(false)
+                          setCheckpointDropdownOpen(false)
                         }}
                       >
                         <span className="rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 whitespace-nowrap">
                           tick {idx + 1}
-                          {changes.snapshot && (
+                          {changes.checkpoint && (
                             <span className="ml-1 rounded-full border border-orange-200 bg-orange-100 px-1 text-[9px] leading-3 font-black text-orange-700 align-middle">
-                              S
+                              CP
                             </span>
                           )}
                           :
@@ -2039,17 +2053,17 @@ export default function ScenarioViewer() {
                               tone: 'git',
                               strong: true,
                               fileModeMarkers: getChangedFileModes(idx),
-                              onClick: (e) => { e.stopPropagation(); setActiveTab('files'); selectTickIndex(idx); setSnapshotDropdownOpen(false) },
+                              onClick: (e) => { e.stopPropagation(); setActiveTab('files'); selectTickIndex(idx); setCheckpointDropdownOpen(false) },
                             }} />
                           )}
-                          {changes.state && <span className="px-1 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium cursor-pointer hover:bg-amber-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('state'); selectTickIndex(idx); setSnapshotDropdownOpen(false) }}>{stateDisplayName}</span>}
-                          {changes.s3 && <span className="px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-medium cursor-pointer hover:bg-emerald-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('s3'); selectTickIndex(idx); setSnapshotDropdownOpen(false) }}>S3</span>}
+                          {changes.state && <span className="px-1 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium cursor-pointer hover:bg-amber-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('state'); selectTickIndex(idx); setCheckpointDropdownOpen(false) }}>{stateDisplayName}</span>}
+                          {changes.s3 && <span className="px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-medium cursor-pointer hover:bg-emerald-200 transition-colors" onClick={(e) => { e.stopPropagation(); setActiveTab('s3'); selectTickIndex(idx); setCheckpointDropdownOpen(false) }}>S3</span>}
                         </span>
-                        {changes.snapshot ? (
+                        {changes.checkpoint ? (
                           <span className="flex min-w-0 items-center gap-1">
-                            {changes.snapshotMessage && (
+                            {changes.checkpointMessage && (
                               <span className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-700 ${idx === currentTickIndex ? 'font-bold' : 'font-medium'}`}>
-                                {changes.snapshotMessage}
+                                {changes.checkpointMessage}
                               </span>
                             )}
                           </span>
@@ -2061,7 +2075,7 @@ export default function ScenarioViewer() {
                     const groupStart = i
                     while (i < ticks.length) {
                       const c = tickStateChanges[i]
-                      if (c && (c.files || c.state || c.s3 || c.snapshot)) break
+                      if (c && (c.files || c.state || c.s3 || c.checkpoint)) break
                       i++
                     }
                     const count = i - groupStart
@@ -2081,9 +2095,9 @@ export default function ScenarioViewer() {
               })()}
             </div>
           )}
-          {snapshotDropdownOpen && !hasTicks && timelineSnapshotMessages.length > 0 && (
+          {checkpointDropdownOpen && !hasTicks && timelineCheckpointMessages.length > 0 && (
             <div className="absolute top-full left-0 right-0 z-20 bg-white border border-neutral-200 shadow-lg rounded-b overflow-hidden">
-              {timelineSnapshotMessages.map((snap, i) => (
+              {timelineCheckpointMessages.map((snap, i) => (
                 <button
                   key={i}
                   className={`w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-brand-50 transition-colors cursor-pointer ${
@@ -2093,7 +2107,7 @@ export default function ScenarioViewer() {
                     const snapTime = new Date(snap.timestamp).getTime()
                     const video = videoRef.current
                     if (video) video.currentTime = Math.max(0, toVideoTime(snapTime))
-                    setSnapshotDropdownOpen(false)
+                    setCheckpointDropdownOpen(false)
                   }}
                 >
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -2340,8 +2354,8 @@ export default function ScenarioViewer() {
                     <TickSummaryLine
                       tickNumber={currentTickIndex + 1}
                       items={getFileModeOverviewItems(currentTickIndex, activeFileModes)}
-                      isSnapshot={Boolean(ticks[currentTickIndex]?.isSnapshot)}
-                      snapshotMessage={ticks[currentTickIndex]?.isSnapshot ? ticks[currentTickIndex].snapshotMessage : undefined}
+                      isCheckpoint={Boolean(ticks[currentTickIndex]?.isCheckpoint)}
+                      checkpointMessage={ticks[currentTickIndex]?.isCheckpoint ? ticks[currentTickIndex].checkpointMessage : undefined}
                       emptyText="no changes"
                     />
                   )}
@@ -2358,7 +2372,7 @@ export default function ScenarioViewer() {
                   {(() => {
                     const overviewItems = ticks.flatMap((tick, tickArrayIndex) => {
                       const items = getFileModeOverviewItems(tickArrayIndex, activeFileModes)
-                      if (items.length === 0 && !tick.isSnapshot) return []
+                      if (items.length === 0 && !tick.isCheckpoint) return []
                       return [{ tick, tickArrayIndex, items }]
                     })
                     if (overviewItems.length === 0) {
@@ -2380,8 +2394,8 @@ export default function ScenarioViewer() {
                           <TickSummaryLine
                             tickNumber={tickArrayIndex + 1}
                             items={items}
-                            isSnapshot={tick.isSnapshot}
-                            snapshotMessage={tick.isSnapshot ? tick.snapshotMessage : undefined}
+                            isCheckpoint={tick.isCheckpoint}
+                            checkpointMessage={tick.isCheckpoint ? tick.checkpointMessage : undefined}
                           />
                           <span className="ml-auto text-neutral-400 text-[11px] whitespace-nowrap">{time}</span>
                         </button>
@@ -2550,8 +2564,8 @@ export default function ScenarioViewer() {
                             API={API}
                             currentTickIndex={currentTickIndex}
                             ticks={ticks}
-                            currentSnapshotIndex={currentFileSnapshotIndex}
-                            snapshots={snapshots}
+                            currentHomeCommitIndex={currentFileHomeCommitIndex}
+                            homeCommits={homeCommits}
                             fetchFileContent={fetchFileContent}
                           />
                         </React.Fragment>
@@ -2774,16 +2788,16 @@ export default function ScenarioViewer() {
                         <TickSummaryLine
                           tickNumber={currentTickIndex + 1}
                           items={summaryItems}
-                          isSnapshot={currentTick.isSnapshot}
-                          snapshotMessage={currentTick.isSnapshot ? currentTick.snapshotMessage : undefined}
+                          isCheckpoint={currentTick.isCheckpoint}
+                          checkpointMessage={currentTick.isCheckpoint ? currentTick.checkpointMessage : undefined}
                           emptyText="no changes"
                         />
-                      ) : stateSnapshots.length > 0 ? (
+                      ) : stateCommits.length > 0 ? (
                         <span className="text-amber-600 overflow-hidden text-ellipsis whitespace-nowrap">
-                          snapshot {currentStateIndex + 1}/{stateSnapshots.length}
+                          commit {currentStateIndex + 1}/{stateCommits.length}
                         </span>
                       ) : (
-                        <span className="text-neutral-400 italic">no snapshots</span>
+                        <span className="text-neutral-400 italic">no home commits</span>
                       )}
                     </span>
                   )
@@ -2799,7 +2813,7 @@ export default function ScenarioViewer() {
                     let i = 0
                     while (i < ticks.length) {
                       const changes = tickStateChanges[i]
-                      const hasStateChange = changes?.state || ticks[i].isSnapshot
+                      const hasStateChange = changes?.state || ticks[i].isCheckpoint
                       if (hasStateChange) {
                         const idx = i
                         const tick = ticks[i]
@@ -2817,7 +2831,7 @@ export default function ScenarioViewer() {
                           >
                             <span className="rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 whitespace-nowrap">
                               tick {idx + 1}
-                              {tick.isSnapshot && (
+                              {tick.isCheckpoint && (
                                 <span className="ml-1 rounded-full border border-orange-200 bg-orange-100 px-1 text-[9px] leading-3 font-black text-orange-700 align-middle">
                                   S
                                 </span>
@@ -2825,15 +2839,15 @@ export default function ScenarioViewer() {
                               :
                             </span>
                             <span className="flex flex-1 min-w-0 items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-600">
-                              {tick.isSnapshot && tick.snapshotMessage && (
+                              {tick.isCheckpoint && tick.checkpointMessage && (
                                 <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 font-medium text-orange-700">
-                                  {tick.snapshotMessage}
+                                  {tick.checkpointMessage}
                                 </span>
                               )}
                               {changes?.state && (() => {
                                 const delta = hasTickStateData
                                   ? getTickStateRecordDelta(idx)
-                                  : getStateSnapshotDeltaForTick(idx)
+                                  : getStateCommitDeltaForTick(idx)
                                 return (
                                   <span className="flex items-center gap-1">
                                     {delta.added.length > 0 && <span className="text-blue-500">+{delta.added.length} added</span>}
@@ -2845,7 +2859,7 @@ export default function ScenarioViewer() {
                                   </span>
                                 )
                               })()}
-                              {tick.isSnapshot && !changes?.state && (
+                              {tick.isCheckpoint && !changes?.state && (
                                 <span className="text-neutral-400 italic">no changes</span>
                               )}
                             </span>
@@ -2857,7 +2871,7 @@ export default function ScenarioViewer() {
                         const groupStart = i
                         while (i < ticks.length) {
                           const c = tickStateChanges[i]
-                          if (c?.state || ticks[i].isSnapshot) break
+                          if (c?.state || ticks[i].isCheckpoint) break
                           i++
                         }
                         const count = i - groupStart
@@ -2978,8 +2992,8 @@ export default function ScenarioViewer() {
                         <TickSummaryLine
                           tickNumber={currentTickIndex + 1}
                           items={summaryItems}
-                          isSnapshot={currentTick.isSnapshot}
-                          snapshotMessage={currentTick.isSnapshot ? currentTick.snapshotMessage : undefined}
+                          isCheckpoint={currentTick.isCheckpoint}
+                          checkpointMessage={currentTick.isCheckpoint ? currentTick.checkpointMessage : undefined}
                           emptyText="no changes"
                         />
                       ) : (
@@ -2999,7 +3013,7 @@ export default function ScenarioViewer() {
                     let i = 0
                     while (i < ticks.length) {
                       const tick = ticks[i]
-                      const hasS3Change = tick.s3Changed || tick.isSnapshot
+                      const hasS3Change = tick.s3Changed || tick.isCheckpoint
                       if (hasS3Change) {
                         const idx = i
                         const time = new Date(tick.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -3016,7 +3030,7 @@ export default function ScenarioViewer() {
                           >
                             <span className="rounded-full border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 whitespace-nowrap">
                               tick {idx + 1}
-                              {tick.isSnapshot && (
+                              {tick.isCheckpoint && (
                                 <span className="ml-1 rounded-full border border-orange-200 bg-orange-100 px-1 text-[9px] leading-3 font-black text-orange-700 align-middle">
                                   S
                                 </span>
@@ -3024,9 +3038,9 @@ export default function ScenarioViewer() {
                               :
                             </span>
                             <span className="flex flex-1 min-w-0 items-center gap-1 overflow-hidden text-ellipsis whitespace-nowrap text-neutral-600">
-                              {tick.isSnapshot && tick.snapshotMessage && (
+                              {tick.isCheckpoint && tick.checkpointMessage && (
                                 <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-orange-200 bg-orange-50 px-1.5 py-0.5 font-medium text-orange-700">
-                                  {tick.snapshotMessage}
+                                  {tick.checkpointMessage}
                                 </span>
                               )}
                               {tick.s3Changed && (
@@ -3036,7 +3050,7 @@ export default function ScenarioViewer() {
                                   {tick.s3RemovedKeys?.length > 0 && <span className="text-red-500">-{tick.s3RemovedKeys.length} removed</span>}
                                 </span>
                               )}
-                              {tick.isSnapshot && !tick.s3Changed && (
+                              {tick.isCheckpoint && !tick.s3Changed && (
                                 <span className="text-neutral-400 italic">no changes</span>
                               )}
                             </span>
@@ -3047,7 +3061,7 @@ export default function ScenarioViewer() {
                         i++
                       } else {
                         const groupStart = i
-                        while (i < ticks.length && !(ticks[i].s3Changed || ticks[i].isSnapshot)) {
+                        while (i < ticks.length && !(ticks[i].s3Changed || ticks[i].isCheckpoint)) {
                           i++
                         }
                         const count = i - groupStart
@@ -3079,7 +3093,7 @@ export default function ScenarioViewer() {
                   const previousS3Objects = getS3ObjectContentsAtIndex(currentTickIndex - 1) ?? prevS3Objects
 
                   // Prefer tick-captured modified keys when present; fall back to
-                  // snapshot content comparison for older artifacts.
+                  // commit content comparison for older artifacts.
                   const s3ModifiedSet = new Set<string>(tick.s3ModifiedKeys || [])
                   for (const key of allKeys) {
                     if (key in previousS3Objects && key in currentS3Objects && previousS3Objects[key] !== currentS3Objects[key]) {
@@ -3138,12 +3152,12 @@ export default function ScenarioViewer() {
                   )
                 }
 
-                // Snapshot-based fallback (no tick data)
+                // commit-based fallback (no tick data)
                 return (
                   <div className="flex flex-col flex-1 min-h-0">
                     <div className="flex-[0_0_40%] overflow-y-auto border-b border-neutral-200 py-1 text-xs">
                       {Object.keys(s3Objects).length === 0 ? (
-                        <div className="p-10 text-center text-neutral-400">No S3 snapshots</div>
+                        <div className="p-10 text-center text-neutral-400">No S3 commits</div>
                       ) : (
                         Object.keys(s3Objects).sort().map((key) => (
                           <div
@@ -3183,7 +3197,7 @@ export default function ScenarioViewer() {
       <div className="fixed bottom-2 right-2 text-[11px] text-neutral-400">
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">Space</kbd> play/pause{' '}
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&larr;</kbd>
-        <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&rarr;</kbd> prev/next {hasTicks ? 'tick' : 'snapshot'}{' '}
+        <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&rarr;</kbd> prev/next {hasTicks ? 'tick' : 'home commit'}{' '}
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">Shift</kbd>{' '}
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&larr;</kbd>
         <kbd className="bg-neutral-100 px-1 py-0.5 rounded border border-neutral-300 text-[10px]">&rarr;</kbd> frame
@@ -3562,8 +3576,8 @@ function ResourceChangePane({
             <TickSummaryLine
               tickNumber={currentTickIndex + 1}
               items={currentSummaryItems}
-              isSnapshot={Boolean(ticks[currentTickIndex]?.isSnapshot)}
-              snapshotMessage={ticks[currentTickIndex]?.isSnapshot ? ticks[currentTickIndex].snapshotMessage : undefined}
+              isCheckpoint={Boolean(ticks[currentTickIndex]?.isCheckpoint)}
+              checkpointMessage={ticks[currentTickIndex]?.isCheckpoint ? ticks[currentTickIndex].checkpointMessage : undefined}
               emptyText={summaryEmptyText}
             />
           ) : (
@@ -3594,8 +3608,8 @@ function ResourceChangePane({
               <TickSummaryLine
                 tickNumber={item.tickArrayIndex + 1}
                 items={item.items}
-                isSnapshot={Boolean(ticks[item.tickArrayIndex]?.isSnapshot)}
-                snapshotMessage={ticks[item.tickArrayIndex]?.isSnapshot ? ticks[item.tickArrayIndex].snapshotMessage : undefined}
+                isCheckpoint={Boolean(ticks[item.tickArrayIndex]?.isCheckpoint)}
+                checkpointMessage={ticks[item.tickArrayIndex]?.isCheckpoint ? ticks[item.tickArrayIndex].checkpointMessage : undefined}
               />
               {item.meta && <span className="ml-auto text-neutral-400 text-[11px] whitespace-nowrap">{item.meta}</span>}
             </button>
@@ -3682,8 +3696,8 @@ interface MeadowFileModePaneProps {
   API: string
   currentTickIndex: number
   ticks: ProcessedTick[]
-  currentSnapshotIndex: number
-  snapshots: Snapshot[]
+  currentHomeCommitIndex: number
+  homeCommits: StateCommit[]
   fetchFileContent: (hash: string, filePath: string) => Promise<string>
 }
 
@@ -3710,8 +3724,8 @@ function MeadowFileModePane({
   API,
   currentTickIndex,
   ticks,
-  currentSnapshotIndex,
-  snapshots,
+  currentHomeCommitIndex,
+  homeCommits,
   fetchFileContent,
 }: MeadowFileModePaneProps) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
@@ -3732,7 +3746,7 @@ function MeadowFileModePane({
 
   useEffect(() => {
     setDiffMode(true)
-  }, [currentSnapshotIndex, currentTickIndex, mode, selectedFile])
+  }, [currentHomeCommitIndex, currentTickIndex, mode, selectedFile])
 
   useEffect(() => {
     let current = true
@@ -3837,9 +3851,9 @@ function MeadowFileModePane({
       }
 
       let committedContent = ''
-      if (currentSnapshotIndex >= 0 && snapshots[currentSnapshotIndex]) {
+      if (currentHomeCommitIndex >= 0 && homeCommits[currentHomeCommitIndex]) {
         try {
-          committedContent = await fetchFileContent(snapshots[currentSnapshotIndex].commitHash, filePath)
+          committedContent = await fetchFileContent(homeCommits[currentHomeCommitIndex].commitHash, filePath)
         } catch {
           // New uncommitted files have no committed baseline.
         }
@@ -3919,19 +3933,19 @@ function MeadowFileModePane({
 
       if (await loadGitUncommittedContent(selectedFile)) return
 
-      if (currentSnapshotIndex >= 0 && snapshots[currentSnapshotIndex]) {
+      if (currentHomeCommitIndex >= 0 && homeCommits[currentHomeCommitIndex]) {
         try {
-          const snap = snapshots[currentSnapshotIndex]
+          const snap = homeCommits[currentHomeCommitIndex]
           const content = await fetchFileContent(snap.commitHash, selectedFile)
           const selectedStatus = fileStatuses.get(selectedFile)
           const shouldShowCommitDiff = mode === 'git' && selectedStatus === 'just-committed'
-          if (shouldShowCommitDiff && currentSnapshotIndex > 0) {
-            const prevSnap = snapshots[currentSnapshotIndex - 1]
+          if (shouldShowCommitDiff && currentHomeCommitIndex > 0) {
+            const prevSnap = homeCommits[currentHomeCommitIndex - 1]
             let prevContent = ''
             try {
               prevContent = await fetchFileContent(prevSnap.commitHash, selectedFile)
             } catch {
-              // New file in this snapshot.
+              // New file in this commit.
             }
             publishContent(buildResourceContentView({
               selectedPath: selectedFile,
@@ -3966,7 +3980,7 @@ function MeadowFileModePane({
 
     load()
     return () => { current = false }
-  }, [branchRevision, API, currentSnapshotIndex, currentTickIndex, fetchFileContent, fileStatuses, mode, selectedFile, snapshots, ticks])
+  }, [branchRevision, API, currentHomeCommitIndex, currentTickIndex, fetchFileContent, fileStatuses, mode, selectedFile, homeCommits, ticks])
 
   return (
     <ResourceChangePane
@@ -4182,7 +4196,7 @@ function TreeNodeView({ node, prefix, depth, changedSet, addedSet, removedSet, f
             )
           }
 
-          // Fallback: snapshot mode or no statuses
+          // Fallback: commit mode or no statuses
           return (
             <div
               key={fullPath}

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import YAML from 'yaml';
 import { fixtureSourceLocation, type FixtureSourceLocation } from './fixtureSourceLocation.js';
+import { readHomeFixtureMetadata } from './savedStates.js';
 import { textDocumentCodec, writeDurableDocument } from '../utils/durableDocument.js';
 import { SOURCE_CHANGE_CATEGORIES, type SourceChangeCategory } from './sourceChangesTypes.js';
 import type { SourceChangeDefinition, SourceChangeOperation, SourceChangeResult, SourceChangeStatus } from './sourceChangesTypes.js';
@@ -393,5 +394,8 @@ export function fixtureSourceLocations(projectRoot: string, fixtureName: string)
 }
 
 export function fixtureSourceGraphs(projectRoot: string, fixtureName: string): string[] {
-  return [...new Set(fixtureSourceLocations(projectRoot, fixtureName).map(location => location.graph))];
+  return [...new Set([
+    ...readHomeFixtureMetadata(projectRoot, fixtureName).sourceGraphs,
+    ...fixtureSourceLocations(projectRoot, fixtureName).map(location => location.graph),
+  ])];
 }

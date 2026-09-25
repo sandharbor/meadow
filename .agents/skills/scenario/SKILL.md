@@ -22,7 +22,7 @@ conventions:
 - `app/acceptance/e2e/src/run/workflows.ts` — composable navigation helpers (use these first!)
 - `app/acceptance/e2e/src/run/pages/` — page object models
 - `app/concepts/` — canonical Meadow concepts and app areas
-- `app/acceptance/e2e/src/run/test-fixtures.ts` — custom fixtures (`artifactDir`, `snapshot`, `addKeyFrame`)
+- `app/acceptance/e2e/src/run/test-fixtures.ts` — custom fixtures (`artifactDir`, `checkpoint`, `addKeyFrame`)
 
 ## Step 3: Create the scenario
 
@@ -89,7 +89,7 @@ import { publishing, s3 } from "../../../concepts/index.js";
 import { Workflows } from "../src/run/workflows.js";
 
 test("Bundle publishes to S3", async ({
-  page, snapshot, addKeyFrame, testServer,
+  page, checkpoint, addKeyFrame, testServer,
 }) => {
   await testServer.activateS3Provider();
 
@@ -98,7 +98,7 @@ test("Bundle publishes to S3", async ({
   // ... test-specific interactions ...
   await addKeyFrame(publishing);
   await addKeyFrame(s3);
-  await snapshot("bundle published to S3");
+  await checkpoint("bundle published to S3");
 });
 ```
 
@@ -135,5 +135,5 @@ verify compliance. Report pass/fail for each item.
 8. **Keyframes captured** — The test calls `await addKeyFrame(concept)` at least once per imported acceptance concept, at a meaningful moment for that area.
 9. **`addKeyFrame` fixture destructured** — The test destructures `addKeyFrame` from the test function argument.
 10. **Page objects reused** — The test reuses existing page objects from `app/acceptance/e2e/src/run/pages/` where applicable.
-11. **Snapshots taken** — The test calls `await snapshot(...)` at key assertion points.
+11. **Checkpoints taken** — The test calls `await checkpoint(...)` at the end of each phase. Every checkpoint captures a restorable saved state that Dev Tools can open.
 12. **Tests pass** — Run `/e2e` and confirm all tests pass, including the new one.

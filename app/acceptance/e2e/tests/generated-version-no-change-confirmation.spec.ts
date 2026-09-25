@@ -32,7 +32,7 @@ test.use({ serialGroup: "generated-bundle-versioning" });
  */
 test("V07 L01 generated version no-change creation requires confirmation and correlated logs", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
@@ -52,7 +52,7 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
   await modal.clickChangesTab();
   await changesTab.expectNoChangedFiles();
 
-  await snapshot("the saved version has no generated changes");
+  await checkpoint("the saved version has no generated changes");
 
   // --- Test start ---
   // Request another version.
@@ -60,7 +60,7 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
   await modal.expectReaderConnectionCopy();
   await modal.expectNoChangeVersionConfirmationRequired();
   await addKeyFrame(versioning);
-  await snapshot("no-change version requires explicit confirmation");
+  await checkpoint("no-change version requires explicit confirmation");
 
   // Confirm the intentional duplicate.
   await modal.confirmNoChangeVersionCreation();
@@ -80,7 +80,7 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
 
   await expect(page.getByText("No-change checkpoint", { exact: true })).toBeVisible();
   await expect(page.getByText("Unsaved", { exact: true })).toBeVisible();
-  await snapshot("confirmed no-change version created");
+  await checkpoint("confirmed no-change version created");
 
   // Check the recorded version operation.
   const logPath = path.join(testServer.configDir, "logs", "meadow.log");
@@ -88,7 +88,7 @@ test("V07 L01 generated version no-change creation requires confirmation and cor
     .toMatch(/\[operation ([0-9a-f-]+)] \[version-create] Started[\s\S]*\[operation \1] \[version-create] Created version/);
 
   void bigBundle;
-  await snapshot("the confirmed duplicate version has a complete operation log");
+  await checkpoint("the confirmed duplicate version has a complete operation log");
 
   await skipMeadowHomeStateCheck();
 });

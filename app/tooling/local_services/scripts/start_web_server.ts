@@ -20,7 +20,7 @@ limitations under the License.
  * replicating the CloudFront → S3 path used in production.
  *
  * Usage:
- *   MINIO_ENDPOINT=http://localhost:9000 MINIO_BUCKET=meadow-e2e-test \
+ *   MINIO_ENDPOINT=http://localhost:9000 MINIO_BUCKET=meadow-local-dev-fixture \
  *     npx tsx start_web_server.ts <port>
  *
  * Pass 0 to have the operating system choose and reserve an available port

@@ -34,7 +34,7 @@ fall into several categories:
 - **Directory structures** — e.g. ASCII trees showing project layout
 - **Command names and flags** — e.g. `./app/acceptance/e2e/_module/scripts/slowcheck`, `./app/acceptance/e2e/dev-e2e`
 - **Script behavior descriptions** — e.g. "starts MinIO in Docker", "allocates free ports"
-- **Code patterns** — e.g. fixture APIs like `snapshot(message)`, function signatures
+- **Code patterns** — e.g. fixture APIs like `checkpoint(message)`, function signatures
 - **Architecture details** — e.g. port numbers, API routes, file formats
 - **Configuration** — e.g. backing-store table names, Docker container names
 

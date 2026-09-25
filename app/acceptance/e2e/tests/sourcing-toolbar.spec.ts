@@ -6,13 +6,12 @@ import { Workflows } from '../src/run/workflows.js';
 import { sourceSnapshot } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
-test.use({ isolateSourceGraphs: true });
 
 /*
  * Open a bundle, request source checks, and introduce a change. The toolbar should briefly
  * report no changes when appropriate and retain access to pending review.
  */
-test('Sourcing toolbar checks on entry and request, briefly shows no changes, and retains the review action', async ({ page, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Sourcing toolbar checks on entry and request, briefly shows no changes, and retains the review action', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   let release!: () => void;
   let gate = new Promise<void>(resolve => { release = resolve; });
@@ -31,7 +30,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   const sourceReview = editor.sourceReview;
   await editor.expectSourceUpdateInToolbar();
   await addKeyFrame(sourceSnapshot);
-  await snapshot('source check occupies the bundle toolbar without an extra heading row');
+  await checkpoint('source check occupies the bundle toolbar without an extra heading row');
 
   // --- Test start ---
   // Complete the initial check.
@@ -59,7 +58,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await expect(update).toBeVisible();
   expect(scans).toBe(2);
   await addKeyFrame(sourceSnapshot);
-  await snapshot('no changes becomes an update button after two seconds');
+  await checkpoint('no changes becomes an update button after two seconds');
 
   // Inspect the accepted history.
   const initialHistory = await editor.reviewSourceHistory();
@@ -67,7 +66,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   expect(scans).toBe(2);
   await addKeyFrame(sourceSnapshot);
   await initialHistory.close();
-  await snapshot('initial history contains only the accepted snapshot');
+  await checkpoint('initial history contains only the accepted checkpoint');
 
   // Rename the page and its links.
   await sourceChanges.apply('rename-page-with-links');
@@ -78,7 +77,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await expect(review).toBeVisible();
   await sourceReview.expectClosed();
   await addKeyFrame(sourceSnapshot);
-  await snapshot('available changes keep an explicit review action in the toolbar');
+  await checkpoint('available changes keep an explicit review action in the toolbar');
 
   // Compare pending and accepted history.
   const pendingHistory = await editor.reviewSourceHistory();
@@ -90,7 +89,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   const acceptedHistory = await editor.reviewSourceHistory();
   await acceptedHistory.expectSnapshotCount(2);
   await addKeyFrame(sourceSnapshot);
-  await snapshot('accepted history lists the current snapshot and excludes pending source changes');
+  await checkpoint('accepted history lists the current checkpoint and excludes pending source changes');
 
   // Open another bundle.
   await acceptedHistory.close();
@@ -98,7 +97,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await new Workflows(page, expect).navigateToSmallBundle();
   await expect(page.getByRole('button', { name: 'Refresh sources', exact: true })).toBeVisible();
   await sourceReview.expectClosed();
-  await snapshot('opening another bundle leaves source review closed');
+  await checkpoint('opening another bundle leaves source review closed');
 
   await skipMeadowHomeStateCheck();
 });

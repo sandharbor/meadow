@@ -29,7 +29,7 @@ import {
 // First sanity test for the report viewer's own e2e suite. Proves the
 // fixture plumbing works end-to-end: the cached publish-flow artifact
 // loads into the report viewer and contains multiple ticks AND multiple
-// snapshots. This is intentionally minimal — future tests will exercise
+// home commits. This is intentionally minimal — future tests will exercise
 // specific tabs and behaviors.
 
 let fixture: PublishFlowFixture;
@@ -42,7 +42,7 @@ test.beforeAll(() => {
   agentEvalFixture = ensureAgentEvalArtifact();
 });
 
-test("cached publish-flow artifact has multiple ticks and multiple snapshots", async ({
+test("cached publish-flow artifact has multiple ticks and multiple home commits", async ({
   page,
   request,
 }) => {
@@ -58,14 +58,14 @@ test("cached publish-flow artifact has multiple ticks and multiple snapshots", a
     "manifest should contain multiple ticks"
   ).toBeGreaterThan(1);
 
-  const snapshotsRes = await request.get(
-    `/api/${runId}/${testSlug}/snapshots`
+  const homeCommitsRes = await request.get(
+    `/api/${runId}/${testSlug}/home-commits`
   );
-  expect(snapshotsRes.ok()).toBe(true);
-  const snapshots = (await snapshotsRes.json()) as unknown[];
+  expect(homeCommitsRes.ok()).toBe(true);
+  const homeCommits = (await homeCommitsRes.json()) as unknown[];
   expect(
-    snapshots.length,
-    "scenario should have multiple MeadowHome snapshots"
+    homeCommits.length,
+    "scenario should have multiple MeadowHome home commits"
   ).toBeGreaterThan(1);
 
   // 2. UI-level sanity: load the scenario page and confirm it renders

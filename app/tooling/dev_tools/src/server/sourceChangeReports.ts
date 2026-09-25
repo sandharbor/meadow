@@ -59,7 +59,7 @@ export function latestSourceChangeRuns(specs: string[], options: {
         }
       } catch { continue; } // An artifact being assembled is not ready to link.
       if (typeof scenario !== 'string' || !scenario) continue;
-      result.set(spec, { runId, scenario, url: `${viewerUrl.replace(/\/$/, '')}/${encodeURIComponent(runId)}/${encodeURIComponent(entry.name)}` });
+      result.set(spec, { runId, scenario, slug: entry.name, url: `${viewerUrl.replace(/\/$/, '')}/${encodeURIComponent(runId)}/${encodeURIComponent(entry.name)}` });
       pending.delete(spec);
     }
     if (pending.size === 0) break;

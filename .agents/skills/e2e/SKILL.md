@@ -8,7 +8,7 @@ description: Run the end-to-end test suite, automatically diagnose and fix failu
 Run the end-to-end tests. If any test fails, immediately investigate and fix
 the failure — that's the whole point of running inside an agent.
 
-## Scenario phases and snapshots
+## Scenario phases and checkpoints
 
 Put a short plain-English block comment immediately above each scenario. Explain
 what happens and what the scenario verifies so a reader can skim it without
@@ -23,29 +23,31 @@ scenario needs no setup, begin with the Test start banner and its action comment
 
 Write scenarios as short, readable phases: establish the starting state, make a
 change, review its effect, and accept or reject it. When a meaningful phase is
-complete, assert its outcome and end it with `await snapshot('...')`. Capture the
+complete, assert its outcome and end it with `await checkpoint('...')`. Capture the
 established setup before the first action as well as intermediate review states;
-do not reserve snapshots for the end of the test.
+do not reserve checkpoints for the end of the test.
 
-After a phase-ending snapshot, leave a blank line and start the next phase with
+After a phase-ending checkpoint, leave a blank line and start the next phase with
 a very short comment explaining what happens next:
 
 ```ts
 // --- Setup ---
 // Establish the starting state here.
-await snapshot('the accepted page identity is established');
+await checkpoint('the accepted page identity is established');
 
 // --- Test start ---
 // Review the competing destinations.
 await sourceChanges.apply('competing-cross-source-moves', 'multi-source');
 ```
 
-Use judgment about phase size. A snapshot should mark a useful point to inspect
-while stepping through the report, not every click or assertion. Give each one a
+Use judgment about phase size. A checkpoint should mark a useful point to inspect
+while stepping through the report, not every click or assertion. Every checkpoint
+is also a restorable saved state: the report viewer can open it in Dev Tools,
+so a checkpoint is where a person can fork the scenario and QA by hand. Give each one a
 distinct message describing the state reached. `addKeyFrame(...)` captures a
-review image and can accompany a snapshot; it does not replace the phase boundary.
+review image and can accompany a checkpoint; it does not replace the phase boundary.
 Keep the final `assertMeadowHomeState()` or `skipMeadowHomeStateCheck()` after the
-last snapshot. This is scenario-writing guidance, not a rule to enforce with
+last checkpoint. This is scenario-writing guidance, not a rule to enforce with
 custom linting.
 
 ## Step 0: Determine run notes
@@ -181,10 +183,10 @@ whenever you see intermittent failures — do not hand-wave them away.
 ### Key files for debugging
 
 - `app/acceptance/e2e/tests/*.spec.ts` — test specs
-- `app/acceptance/e2e/src/run/test-fixtures.ts` — custom Playwright fixtures (`artifactDir`, `snapshot`)
+- `app/acceptance/e2e/src/run/test-fixtures.ts` — custom Playwright fixtures (`artifactDir`, `checkpoint`)
 - `app/acceptance/e2e/src/run/pages/` — page object models used by tests
 - `app/acceptance/e2e/playwright.config.ts` — test configuration, Docker container setup
-- `~/meadow-e2e-artifacts/` — test run output (videos, logs, state snapshots)
+- `~/meadow-e2e-artifacts/` — test run output (videos, logs, captured state repositories)
 
 ### Checking pass/fail after a run
 
@@ -204,6 +206,6 @@ Do NOT look for `FAILED` marker files — they don't exist. The `status.txt`
 file contains the Playwright status string (`passed`, `failed`, etc.).
 
 For failure details, check `manifest.json` in the test's artifact directory
-(it contains the test source, snapshots, and logs) and
+(it contains the test source, home commits, and logs) and
 `error-context.md` in `app/acceptance/e2e/test-results/<test-dir>/`
 (it contains the page snapshot at the time of failure).

@@ -26,7 +26,7 @@ test.use({ bundleMode: 'single-file' });
 test('Verified update failure remains retryable without offering installation', async ({
   page,
   testServer,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -73,7 +73,7 @@ test('Verified update failure remains retryable without offering installation', 
     )),
     pageErrors,
   })).toEqual({ registered: true, pageErrors: [] });
-  await snapshot("the update callback is registered without renderer errors");
+  await checkpoint("the update callback is registered without renderer errors");
 
   // --- Test start ---
   // Open the failed update details.
@@ -88,7 +88,7 @@ test('Verified update failure remains retryable without offering installation', 
   await expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Restart to Update' })).toHaveCount(0);
   await addKeyFrame(softwareUpdate);
-  await snapshot('verified update checksum failure preserved installed app');
+  await checkpoint('verified update checksum failure preserved installed app');
 
   await assertMeadowHomeState();
 });

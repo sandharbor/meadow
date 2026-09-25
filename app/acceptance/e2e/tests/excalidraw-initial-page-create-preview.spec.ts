@@ -28,7 +28,7 @@ import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Create a bundle whose starting page is an Excalidraw drawing. Generate its preview and
@@ -37,7 +37,7 @@ test.use({ fixtureHome: Fixture.None });
 test("create a custom bundle with an excalidraw initial page and follow a drawing link", async ({
   page,
   testServer,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   expectLogErrors,
@@ -66,7 +66,7 @@ test("create a custom bundle with an excalidraw initial page and follow a drawin
   await editor.waitForLoad("t006-meadow-flower");
   await addKeyFrame(initialPage);
   await addKeyFrame(excalidraw);
-  await snapshot("graph view loaded with excalidraw initial page");
+  await checkpoint("graph view loaded with excalidraw initial page");
 
   // --- Test start ---
   // Inspect and preview the drawing.
@@ -87,7 +87,7 @@ test("create a custom bundle with an excalidraw initial page and follow a drawin
   await generatedBundle.expectHeading("t006 --- meadow-flower", 30_000);
   await generatedBundle.excalidraw.expectStandaloneDrawingVisible();
   await addKeyFrame(excalidraw);
-  await snapshot("preview shows excalidraw initial page");
+  await checkpoint("preview shows excalidraw initial page");
 
   // Follow a link inside the drawing.
   const firstDrawingLinkHref =
@@ -99,7 +99,7 @@ test("create a custom bundle with an excalidraw initial page and follow a drawin
 
   await generatedBundle.expectHeading("t006 --- linked-from-excalidraw");
   await addKeyFrame(excalidraw);
-  await snapshot("preview after clicking first excalidraw link");
+  await checkpoint("preview after clicking first excalidraw link");
 
   void customBundle;
 

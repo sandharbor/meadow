@@ -35,6 +35,7 @@ ensure_dev_executable() {
 ensure_dev_executable "$BACKEND_DIR" "tsx"
 ensure_dev_executable "$FRONTEND_DIR" "vite"
 ensure_dev_executable "$DEV_TOOLS_DIR" "vite"
+ensure_dev_executable "$REPO_ROOT/app/tooling/local_services" "tsx"
 ensure_dev_executable "$SUPERVISOR_DIR" "esbuild"
 (cd "$SUPERVISOR_DIR" && npm run build)
 

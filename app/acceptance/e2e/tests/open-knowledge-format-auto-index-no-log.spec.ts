@@ -41,7 +41,7 @@ test.use({
  */
 test("OKF: auto-detect index.md and omit log.md when no log page exists", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
   testServer,
@@ -50,7 +50,7 @@ test("OKF: auto-detect index.md and omit log.md when no log page exists", async 
   const wf = new Workflows(page, expect);
   await wf.navigateToBigBundlePreview();
   const modal = new PreviewPublishModal(page, expect);
-  await snapshot("preview loaded");
+  await checkpoint("preview loaded");
 
   // --- Test start ---
   // Choose automatic index detection.
@@ -61,7 +61,7 @@ test("OKF: auto-detect index.md and omit log.md when no log page exists", async 
   await okf.expectNoReachableLogPageFound();
   await okf.chooseNoLog();
   await addKeyFrame(customize);
-  await snapshot("auto index and no log selected");
+  await checkpoint("auto index and no log selected");
 
   // Generate the knowledge package.
   await okf.save();
@@ -69,7 +69,7 @@ test("OKF: auto-detect index.md and omit log.md when no log page exists", async 
   const changesTab = new ChangesTab(page, expect);
   await changesTab.waitForRegenerationComplete();
   await addKeyFrame(openKnowledgeFormat);
-  await snapshot("okf generation complete with auto index and no log");
+  await checkpoint("okf generation complete with auto index and no log");
 
   // Inspect the generated package files.
   const bundleDir = path.join(testServer.configDir, "bundles", Bundle.Big);
@@ -79,7 +79,7 @@ test("OKF: auto-detect index.md and omit log.md when no log page exists", async 
   okfBundle.expectFileToBeAbsent("index-original.md");
   void bigBundle;
 
-  await snapshot("the package contains the automatic index and no log page");
+  await checkpoint("the package contains the automatic index and no log page");
 
   await skipMeadowHomeStateCheck();
 });

@@ -21,6 +21,9 @@ npx tsx _module/scripts/lint-single-test-per-spec.ts
 echo "Checking every source change has its own E2E scenario..."
 npx tsx _module/scripts/lint-source-change-coverage.ts
 
+echo "Checking home fixtures contain only authored files..."
+npx tsx _module/scripts/lint-home-fixtures.ts
+
 echo "Linting bundle-mode classification..."
 npx tsx _module/scripts/lint-bundle-mode.ts
 

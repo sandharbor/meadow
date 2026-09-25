@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("type filter lists concrete file types and solos Markdown", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -45,7 +45,7 @@ test("type filter lists concrete file types and solos Markdown", async ({
   for (const typeName of ["HTML", "JavaScript", "CSS", "PNG", "GIF", "SVG", "Excalidraw"]) {
     expect(await filterPanel.getNodeTypeCount(typeName)).toBeGreaterThan(0);
   }
-  await snapshot("type filters expanded");
+  await checkpoint("type filters expanded");
 
   // --- Test start ---
   // Solo Markdown pages.
@@ -57,7 +57,7 @@ test("type filter lists concrete file types and solos Markdown", async ({
   expect(visibleTypes).toHaveLength(markdownNodeCount);
   expect(visibleTypes.every(type => type.trim() === ".md")).toBe(true);
   await addKeyFrame(filters);
-  await snapshot("Markdown nodes soloed");
+  await checkpoint("Markdown nodes soloed");
 
   void bigBundle;
 

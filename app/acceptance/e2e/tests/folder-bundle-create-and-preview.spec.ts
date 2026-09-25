@@ -34,7 +34,7 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
  */
 test("previews a configured bundle from one recursively scanned folder", async ({
   page,
-  snapshot,
+  checkpoint,
   addKeyFrame,
   assertMeadowHomeState,
 }) => {
@@ -51,7 +51,7 @@ test("previews a configured bundle from one recursively scanned folder", async (
   await editor.expectGraphTextIsNotSelectable();
   await editor.expectFolderScopeChangesBannerNotVisible();
   await addKeyFrame(folderBundles);
-  await snapshot("single folder graph with two linked depth rows");
+  await checkpoint("single folder graph with two linked depth rows");
 
   // --- Test start ---
   // Inspect the folder structure.
@@ -97,7 +97,7 @@ test("previews a configured bundle from one recursively scanned folder", async (
     "Outside note",
   ]);
   await page.mouse.move(0, 0);
-  await snapshot("single folder recursive structure in the editor");
+  await checkpoint("single folder recursive structure in the editor");
 
   // Preview the folder home.
   await editor.clickPreview();
@@ -127,7 +127,7 @@ test("previews a configured bundle from one recursively scanned folder", async (
   await previewModal.generatedBundle.expectStructuralImagePreview("Visual map");
   await folderNavigation.close();
   await addKeyFrame(htmlGeneration);
-  await snapshot("single folder generated home");
+  await checkpoint("single folder generated home");
 
   // Open a linked page outside the folder.
   await folderNavigation.open();
@@ -135,7 +135,7 @@ test("previews a configured bundle from one recursively scanned folder", async (
   await previewModal.generatedBundle.expectSingleHeading("Outside note");
   await folderNavigation.expectSelectedFile("Outside note.html");
   await folderNavigation.open();
-  await snapshot("single folder linked page in folder navigation");
+  await checkpoint("single folder linked page in folder navigation");
 
   void customBundle;
 

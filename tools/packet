@@ -33,7 +33,7 @@ else
     done < <(lsof -ti:"$port" 2>/dev/null || true)
   done
   tmux new-session -d -s "$SESSION" -c "$REPO_ROOT/app/acceptance/report_viewer" \
-    "REPORT_VIEWER_CLIENT_PORT='$CLIENT_PORT' REPORT_VIEWER_PORT='$SERVER_PORT' exec npm start"
+    "REPORT_VIEWER_CLIENT_PORT='$CLIENT_PORT' REPORT_VIEWER_PORT='$SERVER_PORT' MEADOW_DEV_TOOLS_URL='${MEADOW_DEV_TOOLS_URL:-http://localhost:5174}' exec npm start"
   ready=false
   for _attempt in {1..60}; do
     if viewer_is_running; then ready=true; break; fi

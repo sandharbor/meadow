@@ -29,7 +29,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and retry completes", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   minioS3,
   testServer,
@@ -59,7 +59,7 @@ test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and 
   await minioS3.expectHasFiles(`${publishSlug}-${firstVersionId}/`);
   await minioS3.expectHasFiles(`${publishSlug}-${secondVersionId}/`);
 
-  await snapshot("two published revisions have remote files");
+  await checkpoint("two published revisions have remote files");
 
   // --- Test start ---
   // Remove credentials and try deleting the bundle.
@@ -92,7 +92,7 @@ test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and 
   expect(fs.existsSync(bundleDirectory)).toBe(true);
   expect(fs.readFileSync(path.join(bundleDirectory, "config", "bundle_config.yaml"))).toEqual(sentinelConfig);
   await minioS3.expectHasFiles(`${publishSlug}-`);
-  await snapshot("provider cleanup failure preserves every local bundle file");
+  await checkpoint("provider cleanup failure preserves every local bundle file");
 
   // Restore credentials and retry deletion.
   fs.writeFileSync(secretsPath, originalSecrets);
@@ -100,7 +100,7 @@ test("D04 D05 L02 provider cleanup failure preserves the whole local bundle and 
   await list.waitForBundleGone(Bundle.Big);
   expect(fs.existsSync(bundleDirectory)).toBe(false);
   await minioS3.expectEmpty(`${publishSlug}-`);
-  await snapshot("cleanup retry succeeds before local bundle deletion");
+  await checkpoint("cleanup retry succeeds before local bundle deletion");
 
   await skipMeadowHomeStateCheck();
 });

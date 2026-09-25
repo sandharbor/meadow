@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("find in bundles shows archived match indicator and archived tab", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
@@ -44,14 +44,14 @@ test("find in bundles shows archived match indicator and archived tab", async ({
   await page.waitForTimeout(2000);
   await bundleList.goto();
   await bundleList.expectBundleVisible(Bundle.Example);
-  await snapshot("bundle list with example bundle added");
+  await checkpoint("bundle list with example bundle added");
 
   // --- Test start ---
   // Archive the big bundle.
   await bundleList.archiveBundle(Bundle.Big);
   await page.waitForTimeout(500);
   await bundleList.expectBundleNotVisible(Bundle.Big);
-  await snapshot("big bundle archived");
+  await checkpoint("big bundle archived");
 
   // Find the shared page from the small bundle.
   await bundleList.clickBundle(Bundle.Small);
@@ -77,25 +77,25 @@ test("find in bundles shows archived match indicator and archived tab", async ({
   await bundleList.expectBundleNotVisible(Bundle.Example);
   await addKeyFrame(findInBundles);
   await addKeyFrame(multiBundle);
-  await snapshot("current tab shows only small bundle");
+  await checkpoint("current tab shows only small bundle");
 
   // Check the archived match count.
   await bundleList.expectArchivedTabBadge(1);
-  await snapshot("archived tab badge shows 1 match");
+  await checkpoint("archived tab badge shows 1 match");
 
   // Open the archived matches.
   await bundleList.clickArchivedTab();
   await page.waitForTimeout(250);
   await bundleList.expectBundleVisible(Bundle.Big);
   await addKeyFrame(archived);
-  await snapshot("archived tab shows big bundle match");
+  await checkpoint("archived tab shows big bundle match");
 
   // Clear the page filter.
   // Clearing Find in Bundles ends the mode instead of offering to apply the
   // same filter a second time.
   await bundleList.clearFindInBundlesFilter("t001 - deeply nested");
   await bundleList.expectFindInBundlesFilterCleared("t001 - deeply nested");
-  await snapshot("find in bundles cleared");
+  await checkpoint("find in bundles cleared");
 
   void bigBundle;
   void smallBundle;

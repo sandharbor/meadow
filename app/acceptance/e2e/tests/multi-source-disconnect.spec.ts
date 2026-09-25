@@ -9,13 +9,13 @@ import { bundleSource, sourceSnapshot } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+test.use({ fixtureHome: 'home_fixture_multi_source' });
 
 /*
  * Make one registered source unavailable. Captured pages should remain usable until the
  * source is explicitly removed and the removal is accepted.
  */
-test('Multi-source disconnection preserves captured pages until the source is explicitly removed', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source disconnection preserves captured pages until the source is explicitly removed', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -26,7 +26,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   const sources = new SourcesControl(page, expect);
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
   const beforeNodes = bundleConfig.readNodesText();
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Disconnect the reference source.
@@ -34,14 +34,14 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   await sources.open();
   await sources.expectDisconnected('source000003');
   await addKeyFrame(bundleSource);
-  await snapshot('a disconnected source is identified without discarding its captured material');
+  await checkpoint('a disconnected source is identified without discarding its captured material');
 
   // Verify the captured pages remain available.
   await sources.close();
   await editor.switchToListView();
   await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', true);
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
-  await snapshot('captured pages and configuration remain intact while the source is disconnected');
+  await checkpoint('captured pages and configuration remain intact while the source is disconnected');
 
   // Remove the reference source.
   await sources.open();
@@ -56,7 +56,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   await editor.sourceReview.orphans.expectOrphanListed('Study');
   await editor.sourceReview.orphans.expectOrphanListed('Appendix');
   await addKeyFrame(sourceSnapshot);
-  await snapshot('review shows only the removed source and affected pages while accepted material stays intact');
+  await checkpoint('review shows only the removed source and affected pages while accepted material stays intact');
 
   // Inspect cancellation help without adding a permanent explanation to the footer.
   const cancellationHelp = page.getByRole('button', { name: 'About cancelling source settings', exact: true });
@@ -67,7 +67,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   await expect(cancellationTooltip).toHaveCSS('opacity', '1');
   await expect(cancellationTooltip).toContainText('Your source files won’t be changed.');
   await addKeyFrame(sourceSnapshot);
-  await snapshot('the question mark explains cancellation on hover');
+  await checkpoint('the question mark explains cancellation on hover');
   await page.getByRole('heading', { name: 'Source changes', exact: true }).hover();
   await expect(cancellationTooltip).not.toBeVisible();
   await cancellationHelp.focus();
@@ -89,7 +89,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   expect(bundleConfig.read().sources?.map(source => source.id)).toContain('source000003');
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
   await addKeyFrame(bundleSource);
-  await snapshot('Manage sources restores the pending removal after Later and reload while accepted material is retained');
+  await checkpoint('Manage sources restores the pending removal after Later and reload while accepted material is retained');
   await pendingChanges.click();
   await expect(manageSources).not.toBeVisible();
   await expect(registryChanges).toContainText('Removed source reference');
@@ -97,7 +97,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   await editor.sourceReview.orphans.expectOrphanListed('Appendix');
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
   await addKeyFrame(sourceSnapshot);
-  await snapshot('the pending changes indicator returns directly to the source and material review');
+  await checkpoint('the pending changes indicator returns directly to the source and material review');
 
   // Cancel the proposed removal without altering the source files or accepted material.
   await page.getByRole('button', { name: 'Cancel source removal', exact: true }).click();
@@ -110,7 +110,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   await sources.expectDisconnected('source000003');
   await expect(pendingChanges).toHaveCount(0);
   await addKeyFrame(bundleSource);
-  await snapshot('cancelling source removal retains the registry, captured pages, and source files');
+  await checkpoint('cancelling source removal retains the registry, captured pages, and source files');
 
   // Propose the removal again.
   await sources.remove('source000003');
@@ -123,7 +123,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   expect(bundleConfig.readNodes().some(node => node.sourceId === 'source000003')).toBe(false);
   expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'multi-source/reference-disconnected/Study.md'))).toBe(true);
   await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', false);
-  await snapshot('acceptance removes the disconnected source and its orphaned configuration');
+  await checkpoint('acceptance removes the disconnected source and its orphaned configuration');
 
   await skipMeadowHomeStateCheck();
 });

@@ -35,7 +35,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("Change type filter shows correct counts and interacts with HTML section filter", async ({
   page,
-  snapshot,
+  checkpoint,
   skipMeadowHomeStateCheck,
   addKeyFrame,
 }) => {
@@ -48,7 +48,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   await changesTab.expectBadgeVisible();
   await modal.clickChangesTab();
   await changesTab.expectOnlyNewFiles();
-  await snapshot("changes tab showing only new files");
+  await checkpoint("changes tab showing only new files");
 
   // --- Test start ---
   // Inspect the change counts.
@@ -57,7 +57,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   expect(addedCount).toBeGreaterThan(0);
   await changesTab.expectChangeTypeCount("Modified", 0);
   await changesTab.expectChangeTypeCount("Deleted", 0);
-  await snapshot("filter shows only added files with positive count");
+  await checkpoint("filter shows only added files with positive count");
 
   // Hide added files.
   await changesTab.uncheckChangeType("Added");
@@ -65,7 +65,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   await changesTab.expectHiddenCount(addedCount);
   await addKeyFrame(filters);
   await addKeyFrame(changesTabDoc);
-  await snapshot("unchecked added - html sections hidden and hidden count matches");
+  await checkpoint("unchecked added - html sections hidden and hidden count matches");
 
   // Restore added files and save.
   await changesTab.checkChangeType("Added");
@@ -74,7 +74,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   await modal.waitForSaveComplete();
   await modal.clickStep1Review();
   await changesTab.expectNoBadge();
-  await snapshot("no badge after save");
+  await checkpoint("no badge after save");
 
   // Inspect the saved change counts.
   await modal.clickChangesTab();
@@ -82,7 +82,7 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   await changesTab.expectChangeTypeCount("Added", 0);
   await changesTab.expectChangeTypeCount("Modified", 0);
   await changesTab.expectChangeTypeCount("Deleted", 0);
-  await snapshot("all change type counts zero after save");
+  await checkpoint("all change type counts zero after save");
 
   // Track another page.
   await modal.closeModal();
@@ -106,12 +106,12 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   // Tracking a page is a "simple op" that auto-saves + commits — no Save click needed.
   await selectedPage.clickAction(ActionButton.Track, page);
   await addKeyFrame(tracking);
-  await snapshot("tracked sensitive page");
+  await checkpoint("tracked sensitive page");
 
   // Preview the new selection.
   await editor.clickPreview();
   await modal.waitForPreviewComplete();
-  await snapshot("second preview after tracking new page");
+  await checkpoint("second preview after tracking new page");
 
   // Inspect the mixed changes.
   await modal.clickChangesTab();
@@ -128,13 +128,13 @@ test("Change type filter shows correct counts and interacts with HTML section fi
   // Should see 2 changes in the <main> section
   await changesTab.expectSectionCount("<main>", 2);
   await addKeyFrame(htmlGeneration);
-  await snapshot("search-aware file totals and 2 main section changes");
+  await checkpoint("search-aware file totals and 2 main section changes");
 
   // Hide modified files.
   await changesTab.uncheckChangeType("Modified");
   await page.waitForTimeout(500);
   await changesTab.expectSectionCount("<main>", 1);
-  await snapshot("unchecked modified - main section drops to 1");
+  await checkpoint("unchecked modified - main section drops to 1");
 
   void bigBundle;
 

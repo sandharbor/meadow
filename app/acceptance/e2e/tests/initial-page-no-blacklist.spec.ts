@@ -22,14 +22,14 @@ import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs
 
 test.use({ bundleMode: "single-file" });
 
-test.use({ fixtureHome: Fixture.None });
+test.use({ fixtureHome: Fixture.Minimal });
 
 /*
  * Select the bundle's starting page and inspect its actions. Meadow should prevent
  * blacklisting the page that anchors the bundle.
  */
 test("a publisher should not be able to blacklist the initial page", async ({
-  page, snapshot, assertMeadowHomeState, addKeyFrame,
+  page, checkpoint, assertMeadowHomeState, addKeyFrame,
 }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
@@ -46,7 +46,7 @@ test("a publisher should not be able to blacklist the initial page", async ({
   await editor.rightClickRow(exampleBundleInitialPageTitle);
   await editor.expectContextMenuItemNotVisible("Blacklist");
   await addKeyFrame(initialPage);
-  await snapshot("initial page context menu has no blacklist");
+  await checkpoint("initial page context menu has no blacklist");
 
   // --- Test start ---
   // Compare a regular page.
@@ -55,7 +55,7 @@ test("a publisher should not be able to blacklist the initial page", async ({
   // Right-click a non-initial page — Blacklist SHOULD appear
   await editor.rightClickRow("Cognitive Biases");
   await editor.expectContextMenuItemVisible("Blacklist");
-  await snapshot("non-initial page context menu has blacklist");
+  await checkpoint("non-initial page context menu has blacklist");
 
   void exampleBundle;
 

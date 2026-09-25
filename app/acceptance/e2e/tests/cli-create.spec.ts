@@ -48,7 +48,7 @@ function listRelativeFiles(directory: string): string[] {
 
 test.use({ bundleMode: "single-file" });
 test.use({ executionSurface: "cli" });
-test.use({ fixtureHome: "none" });
+test.use({ fixtureHome: "home_fixture_minimal" });
 test.use({ recordVideo: false });
 
 /*
@@ -61,12 +61,12 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
   meadowCli,
   page,
   testServer,
-  snapshot,
+  checkpoint,
 }) => {
   // --- Setup ---
   const source = materializeCreateSafeBundleSource({ readOnly: true });
   try {
-    await snapshot("a read-only source is ready");
+    await checkpoint("a read-only source is ready");
 
     // --- Test start ---
     // Create the bundle.
@@ -100,7 +100,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       displayCommand: "meadow bundle track notable-mental-models --all-safe",
     });
 
-    await snapshot("creation tracks the entry page");
+    await checkpoint("creation tracks the entry page");
 
     // Retry creation and check slug conflicts.
     const retried = await meadowCli.runJson<CreateBundleCliResult>([
@@ -132,7 +132,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     expect(conflict.stderr).toContain("Bundle slug 'notable-mental-models' already exists");
     expect(conflict.stderr).toContain("Choose a different --slug");
 
-    await snapshot("creation retries safely and rejects conflicting slugs");
+    await checkpoint("creation retries safely and rejects conflicting slugs");
 
     // Track safe content.
     const trackedSafe = await meadowCli.runJson<TrackBundleNodesCliResult>([
@@ -181,7 +181,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     expect(retriedSafe.alreadyTracked).toHaveLength(32);
     expect(retriedSafe.sensitiveSkipped).toHaveLength(3);
 
-    await snapshot("safe tracking skips sensitive content and is repeatable");
+    await checkpoint("safe tracking skips sensitive content and is repeatable");
 
     // Generate and inspect the preview.
     const generated = await meadowCli.runJson<GenerateBundleCliResult>([
@@ -237,7 +237,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     expect(staleSave.stderr).toContain("is not the current generated version");
     expect(staleSave.stderr).toContain(`Save ${generated.versionId}`);
 
-    await snapshot("regeneration preserves identity and refuses stale saves");
+    await checkpoint("regeneration preserves identity and refuses stale saves");
 
     // Save the current generation.
     const saved = await meadowCli.runJson<SaveGenerationCliResult>([
@@ -300,7 +300,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     expect(generatedFiles.some(file => file.includes("2026-02-10"))).toBe(false);
     expect(generatedFiles.some(file => file.toLowerCase().includes("thoughts on munger"))).toBe(false);
 
-    await snapshot("saved output includes safe pages and assets");
+    await checkpoint("saved output includes safe pages and assets");
 
     // Create a copy and track selected pages.
     const explicitDuplicate = await meadowCli.runJson<CreateBundleCliResult>([
@@ -349,7 +349,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       "Warren Buffett",
     ]);
 
-    await snapshot("explicit page selection tracks only the requested pages");
+    await checkpoint("explicit page selection tracks only the requested pages");
 
     // Try to track sensitive content.
     const sensitiveRefusal = await meadowCli.runFailure([
@@ -362,7 +362,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     expect(sensitiveRefusal.stderr).toContain("Refusing to track sensitive node");
     expect(sensitiveRefusal.stderr).toContain("No sensitive-content override is available");
 
-    await snapshot("sensitive tracking is refused");
+    await checkpoint("sensitive tracking is refused");
 
     // Inspect saved configuration and content.
     const bundleConfig = YAML.parse(readFileSync(
@@ -399,7 +399,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
       "utf8",
     )).toThrow();
 
-    await snapshot("saved files agree with the accepted graph");
+    await checkpoint("saved files agree with the accepted graph");
 
     // Check command help.
     const topHelp = await meadowCli.run(["--help"], { artifactName: "top-level-create-help" });
@@ -450,7 +450,7 @@ test("CLI creates a page bundle and safely tracks its working graph", async ({
     void cli;
     void bundles;
 
-    await snapshot("help documents creation tracking generation and saving");
+    await checkpoint("help documents creation tracking generation and saving");
 
     await assertMeadowHomeState();
   } finally {

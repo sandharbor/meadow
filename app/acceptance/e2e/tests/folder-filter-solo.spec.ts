@@ -28,7 +28,7 @@ test.use({ bundleMode: "single-file" });
  */
 test("folder filter expands recursive counts and solos a nested folder", async ({
   page,
-  snapshot,
+  checkpoint,
   assertMeadowHomeState,
   addKeyFrame,
 }) => {
@@ -46,7 +46,7 @@ test("folder filter expands recursive counts and solos a nested folder", async (
   await filterPanel.expectFolderVisible("t024/deeper");
   await filterPanel.expectFolderCount("t024/deeper", 1);
   await addKeyFrame(folderFilter);
-  await snapshot("folder tree expanded with recursive counts");
+  await checkpoint("folder tree expanded with recursive counts");
 
   // --- Test start ---
   // Solo the nested folder.
@@ -56,7 +56,7 @@ test("folder filter expands recursive counts and solos a nested folder", async (
   await expect.poll(() => editor.getListViewPageCount()).toBe(1);
   await addKeyFrame(filters);
   await addKeyFrame(folderFilter);
-  await snapshot("nested folder soloed");
+  await checkpoint("nested folder soloed");
 
   void bigBundle;
 

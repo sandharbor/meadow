@@ -27,6 +27,8 @@ export interface SourceRuntimeLaunchOptions {
   payloadIdentity: string;
   perspective: RuntimeBuildPerspective;
   idleTimeoutMs?: number;
+  /** Extra service environment, such as local service stand-in endpoints. */
+  serviceEnvironment?: Record<string, string>;
 }
 
 export function createSourceRuntimeLaunchSpec(
@@ -50,6 +52,7 @@ export function createSourceRuntimeLaunchSpec(
       environment: {
         NODE_ENV: "production",
         MEADOW_IS_DEV: "true",
+        ...options.serviceEnvironment,
       },
     },
     web: {

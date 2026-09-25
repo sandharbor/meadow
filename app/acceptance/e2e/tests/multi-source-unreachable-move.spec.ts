@@ -8,13 +8,13 @@ import { sourceMove, sourceSnapshot } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
-test.use({ fixtureHome: 'home_fixture_multi_source', isolateSourceGraphs: true });
+test.use({ fixtureHome: 'home_fixture_multi_source' });
 
 /*
  * Move an accepted page to an unreachable destination in another source. Review should
  * report an orphan instead of assigning its identity to a page outside the bundle.
  */
-test('Multi-source move to an unreachable destination remains an orphan instead of an admitted move', async ({ page, testServer, sourceChanges, addKeyFrame, snapshot, skipMeadowHomeStateCheck }) => {
+test('Multi-source move to an unreachable destination remains an orphan instead of an admitted move', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -24,7 +24,7 @@ test('Multi-source move to an unreachable destination remains an orphan instead 
   await editor.waitForSourceCheck();
   const bundleConfig = new MeadowHomeBundleConfig(testServer.configDir, 'multi-source-page', expect);
   const original = bundleConfig.requireNode({ sourceId: 'source000001', bundleNodeName: 'Inside' });
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Move the page outside the reachable boundary.
@@ -35,7 +35,7 @@ test('Multi-source move to an unreachable destination remains an orphan instead 
   await editor.sourceReview.expectNoRenames();
   await editor.sourceReview.orphans.expectOrphanListed('Inside');
   await addKeyFrame(sourceMove);
-  await snapshot('an indexed but unreachable destination does not justify a move match');
+  await checkpoint('an indexed but unreachable destination does not justify a move match');
 
   // Accept the source update.
   await editor.sourceReview.accept();
@@ -44,7 +44,7 @@ test('Multi-source move to an unreachable destination remains an orphan instead 
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Unreachable/Inside.md', false);
   await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
   await addKeyFrame(sourceSnapshot);
-  await snapshot('the unrelated reachable namesake remains and the unreachable destination stays outside the bundle');
+  await checkpoint('the unrelated reachable namesake remains and the unreachable destination stays outside the bundle');
 
   await skipMeadowHomeStateCheck();
 });

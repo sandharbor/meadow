@@ -25,43 +25,43 @@ test.use({ bundleMode: "single-file" });
  * Enable the incoming-link gap filter. Check its calculated threshold and the pages
  * selected by that threshold.
  */
-test("inlink gap filter auto-calculates threshold and selects correct pages", async ({ page, snapshot, assertMeadowHomeState, addKeyFrame }) => {
+test("inlink gap filter auto-calculates threshold and selects correct pages", async ({ page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
   const bundleList = new BundleListPage(page, expect);
   await bundleList.goto();
-  await snapshot("bundle list loaded");
+  await checkpoint("bundle list loaded");
 
   // --- Test start ---
   // Open the big bundle.
   await bundleList.clickBundle("meadow-test-bundle-big");
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-bundle-big");
-  await snapshot("bundle editor loaded");
+  await checkpoint("bundle editor loaded");
 
   // Enable the inlink-gap filter.
   const filterPanel = new FilterPanelComponent(page, expect);
   await filterPanel.enableFilter("Inlink Gap");
   await page.waitForTimeout(250);
-  await snapshot("inlink gap filter enabled");
+  await checkpoint("inlink gap filter enabled");
 
   // Check the automatic threshold.
   const threshold = await filterPanel.getFilterThresholdValue("Inlink Gap");
   expect(threshold).toBe(3);
   await addKeyFrame(linkGap);
-  await snapshot("inlink gap threshold is 3");
+  await checkpoint("inlink gap threshold is 3");
 
   // Solo the matching pages.
   await filterPanel.clickSoloOnFilter("Inlink Gap");
-  await snapshot("inlink gap filter soloed");
+  await checkpoint("inlink gap filter soloed");
 
   // Select the visible pages.
   await editor.clickSelectAll();
-  await snapshot("all visible pages selected");
+  await checkpoint("all visible pages selected");
 
   // Check the selection.
   const titles = await editor.getSelectedPageTitles();
   expect(titles.length).toBe(1);
-  await snapshot("verified one page selected with inlink gap");
+  await checkpoint("verified one page selected with inlink gap");
 
   void bigBundle;
 

@@ -14,13 +14,12 @@ const slug = 'meadow-test-bundle-big';
 const originalTitle = 't003 ---- page with section to link to';
 
 test.use({ bundleMode: "single-file" });
-test.use({ isolateSourceGraphs: true });
 
 /*
  * Replace a source page while a saved generation exists. Generated material should remain
  * unchanged until the source replacement is accepted and regenerated.
  */
-test('Sourcing keeps generated material stable until a full-page source replacement is accepted', async ({ page, sourceChanges, testServer, snapshot, addKeyFrame, skipMeadowHomeStateCheck }) => {
+test('Sourcing keeps generated material stable until a full-page source replacement is accepted', async ({ page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   const wf = new Workflows(page, expect);
   const editor = new BundleEditorPage(page, expect);
@@ -28,7 +27,7 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   await wf.navigateToBigBundlePreview();
   const retainedPath = path.join(testServer.configDir, 'bundles', slug, 'raw/tracked_page_content', `${originalTitle}.md`);
   const before = fs.readFileSync(retainedPath, 'utf8');
-  await snapshot('the accepted source state is established before changing files');
+  await checkpoint('the accepted source state is established before changing files');
 
   // --- Test start ---
   // Replace the source page.
@@ -39,13 +38,13 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   await previewModal.waitForPreviewComplete();
   expect(fs.readFileSync(retainedPath, 'utf8')).toBe(before);
   await addKeyFrame(sourceSnapshot);
-  await snapshot('generation continues using the accepted snapshot while live source differs');
+  await checkpoint('generation continues using the accepted checkpoint while live source differs');
 
   // Accept the update and regenerate.
   await previewModal.closeModal();
   await editor.checkSourceChanges();
   await editor.sourceReview.open();
-  await snapshot('the replacement is ready for source review');
+  await checkpoint('the replacement is ready for source review');
 
   // Accept and regenerate.
   await editor.sourceReview.accept();
@@ -70,7 +69,7 @@ test('Sourcing keeps generated material stable until a full-page source replacem
   expect(extractMainSectionLinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.mainSectionLinks.map(link => link.relativeLinkPath).sort());
   expect(extractFooterBacklinkPaths(html).sort()).toEqual(nodeSpec.generation.htmlRenderedLinks.footerSectionBacklinks.map(link => link.relativeLinkPath).sort());
   await addKeyFrame(sourceSnapshot);
-  await snapshot('generation adopts replaced source only after snapshot acceptance');
+  await checkpoint('generation adopts replaced source only after checkpoint acceptance');
 
   await skipMeadowHomeStateCheck();
 });
