@@ -110,9 +110,9 @@ export function SourceChangesControl({ fixtureName, pending, launchMode, openSta
         }}>{item}</button>)}
       </div>
       <div role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={selectedCategory ? `${tabsId}-${selectedCategory}` : undefined} className="space-y-2">
-        {changes.filter(change => change.categories[0] === selectedCategory).map(change => <article data-testid={`source-change-${change.id}`} key={`${change.sourceGraph}:${change.id}`} className={`flex items-start gap-2 rounded border border-neutral-200 p-3 ${active && change.state !== 'available' ? 'bg-neutral-100 text-neutral-500 opacity-60' : 'bg-white'}`}>
-          <details className="min-w-0 flex-1">
-            <summary className="cursor-pointer text-sm font-semibold">{change.label}</summary>
+        {changes.filter(change => change.categories[0] === selectedCategory).map(change => <article data-testid={`source-change-${change.id}`} key={`${change.sourceGraph}:${change.id}`} className={`relative rounded border border-neutral-200 p-3 ${active && change.state !== 'available' ? 'bg-neutral-100 text-neutral-500 opacity-60' : 'bg-white'}`}>
+          <details className="min-w-0">
+            <summary className="min-h-6 cursor-pointer pr-32 text-sm font-semibold">{change.label}</summary>
             <div className="mt-3 space-y-2 text-xs text-neutral-600">
               <dl className="space-y-2">
                 <div><dt className="inline font-semibold">Action:</dt>{' '}<dd className="inline">{descriptionText(change.action)}</dd></div>
@@ -123,12 +123,13 @@ export function SourceChangesControl({ fixtureName, pending, launchMode, openSta
               </dl>
               {change.latestE2e?.checkpoints && change.latestE2e.checkpoints.length > 0 && <div data-testid={`source-change-checkpoints-${change.id}`}>
                 <h4 className="font-medium">Checkpoints</h4>
-                <ol className="mt-1 space-y-1">
+                <ol className="mt-1 space-y-2">
                   {change.latestE2e.checkpoints.map(checkpoint => <li key={checkpoint.index} className="flex items-center gap-2">
                     <span className="min-w-0 flex-1">{checkpoint.index}. {checkpoint.message}</span>
-                    <div className="w-40 shrink-0">
+                    <div className="shrink-0">
                       <SplitOpenButton
                         label="Open"
+                        compact
                         testId={`open-checkpoint-${change.id}-${checkpoint.index}`}
                         targets={{
                           local: { available: checkpoint.openable, reason: checkpoint.unavailableReason },
@@ -147,8 +148,10 @@ export function SourceChangesControl({ fixtureName, pending, launchMode, openSta
               <pre className="overflow-auto whitespace-pre-wrap break-words">{JSON.stringify(displaySourceChangeOperations(change, sourceLocations), null, 2)}</pre>
             </div>
           </details>
-          <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={fixtureActionPending || busy !== null} onClick={() => void start(change, 'local')}>Start</button>
-          <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:bg-neutral-200 disabled:text-neutral-600" disabled={!active || fixtureActionPending || busy !== null || change.state !== 'available'} onClick={() => void apply(change)}>Apply</button>
+          <div className="absolute right-3 top-3 flex gap-2">
+            <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50" disabled={fixtureActionPending || busy !== null} onClick={() => void start(change, 'local')}>Start</button>
+            <button className="shrink-0 rounded bg-info-600 px-3 py-1 text-xs font-medium text-white disabled:bg-neutral-200 disabled:text-neutral-600" disabled={!active || fixtureActionPending || busy !== null || change.state !== 'available'} onClick={() => void apply(change)}>Apply</button>
+          </div>
         </article>)}
       </div>
     </div>}

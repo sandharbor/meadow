@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
-import { SourcesControl } from '../src/run/pages/BundleEditorPage/components/SourcesControl.js';
+import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
 import { bundleSource, sourceSnapshot } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 

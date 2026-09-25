@@ -34,7 +34,13 @@ test("parent records worker death and late teardown failure with the authoritati
   writeFileSync(spec, `
     import { test } from ${JSON.stringify(fileURLToPath(import.meta.resolve("@playwright/test")))};
     import { writeFileSync } from "node:fs";
+    /* A worker dies before it can save its own artifacts. */
     test(${JSON.stringify(workerTitle)}, () => { process.kill(process.pid, "SIGKILL"); });
+    /**
+     * Finish the body successfully.
+     *
+     * A teardown failure must still be reported.
+     */
     test(${JSON.stringify(lateTitle)}, () => {
       writeFileSync(${JSON.stringify(path.join(lateDirectory, "status.txt"))}, "passed");
     });
@@ -65,4 +71,12 @@ test("parent records worker death and late teardown failure with the authoritati
     assert.ok(Number.isFinite(start) && end >= start);
   }
   assert.equal(readFileSync(path.join(getTestArtifactDirectory("subsequent test passes", artifacts), "status.txt"), "utf8"), "passed");
+  assert.equal(readFileSync(path.join(getTestArtifactDirectory(workerTitle, artifacts), "description.txt"), "utf8"),
+    "A worker dies before it can save its own artifacts.");
+  assert.equal(readFileSync(path.join(lateDirectory, "description.txt"), "utf8"),
+    "Finish the body successfully.\n\nA teardown failure must still be reported.");
+  assert.equal(readFileSync(path.join(getTestArtifactDirectory("subsequent test passes", artifacts), "description.txt"), "utf8"), "");
+  const capturedSource = readFileSync(spec, "utf8");
+  writeFileSync(spec, "// Edited after the run");
+  assert.equal(readFileSync(path.join(lateDirectory, "test-source.ts"), "utf8"), capturedSource);
 });

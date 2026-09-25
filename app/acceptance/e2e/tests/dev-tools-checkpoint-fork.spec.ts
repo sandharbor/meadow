@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { startDevTools } from '../src/run/devTools.js';
-import { DevSavedStatesPage } from '../src/run/pages/DevToolsPage/SavedStatesPage.js';
+import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
 import { checkpoint as checkpointConcept, localServices, serviceTarget } from '../../../concepts/index.js';

@@ -69,7 +69,7 @@ test("cached publish-flow artifact has multiple ticks and multiple home commits"
   ).toBeGreaterThan(1);
 
   // 2. UI-level sanity: load the scenario page and confirm it renders
-  //    the scenario. We assert the breadcrumb shows the test slug (proof
+  //    the scenario. We assert the breadcrumb shows the readable test name (proof
   //    the client-side router mounted ScenarioViewer for this artifact)
   //    and that the tick dropdown button is present (proof ScenarioViewer
   //    detected hasTicks=true from the manifest).
@@ -79,7 +79,7 @@ test("cached publish-flow artifact has multiple ticks and multiple home commits"
   //    "Tick: --"). Future specs that exercise tick navigation will
   //    assert on the counter directly.
   await page.goto(`/${runId}/${testSlug}`);
-  await expect(page.getByText(testSlug)).toBeVisible();
+  await expect(page.getByText(testSlug.replace(/-/g, ' '), { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Single file" })).toHaveAttribute(
     "href",
     `/${runId}?mode=single-file`
@@ -106,7 +106,7 @@ test("playback speed cannot reach an unsupported rate", async ({ page }) => {
     (video) => (video as unknown as { playbackRate: number }).playbackRate,
   );
   expect(playbackRate).toBeCloseTo(0.07);
-  await expect(page.getByRole("heading", { name: "E2E Report Viewer" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Reports", exact: true })).toBeVisible();
 });
 
 test("run detail filters scenarios by bundle-origin mode", async ({ page }) => {
@@ -120,7 +120,7 @@ test("run detail filters scenarios by bundle-origin mode", async ({ page }) => {
   await expect(singleFile).toBeVisible();
   await expect(singleFolder).toBeVisible();
   await expect(multipleFolders).toBeVisible();
-  const scenarioCard = page.getByText("publish-flow-uploads-files-to-minio", { exact: true }).first();
+  const scenarioCard = page.getByText("publish flow uploads files to minio", { exact: true }).first();
   await expect(scenarioCard).toBeVisible();
 
   await multipleFolders.click();
@@ -129,7 +129,7 @@ test("run detail filters scenarios by bundle-origin mode", async ({ page }) => {
   await expect(scenarioCard).toHaveCount(0);
 
   await singleFile.click();
-  await expect(page.getByText("publish-flow-uploads-files-to-minio", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("publish flow uploads files to minio", { exact: true }).first()).toBeVisible();
 });
 
 test("run detail treats browser and CLI as a primary interface choice", async ({ page }) => {

@@ -21,6 +21,7 @@ import { execSync } from "child_process";
 import os from "os";
 import path from "path";
 import { testSourceLocations } from '../testSourceLocations.ts';
+import { describeTestSourceChanges } from '../../../e2e/src/artifacts/testSourceChanges.ts';
 import {
   acceptanceConcepts,
   acceptanceConceptView,
@@ -680,6 +681,7 @@ app.get("/api/runs/:runId", (req, res) => {
       const statusFile = path.join(scenarioDir, "status.txt");
       let status = "unknown";
       let testName = slug;
+      let description = "";
       let duration: number | null = null;
       let bundleMode: BundleMode | null = null;
       let executionSurface: ExecutionSurface = "browser";
@@ -702,6 +704,7 @@ app.get("/api/runs/:runId", (req, res) => {
           const meta = JSON.parse(readFileSync(reportMetaPath, "utf8"));
           if (meta.version === 1 && meta.scenarioInfo) {
             testName = meta.scenarioInfo.testName || slug;
+            description = meta.scenarioInfo.description || "";
             duration = meta.scenarioInfo.duration ?? null;
             bundleMode = isBundleMode(meta.scenarioInfo.bundleMode)
               ? meta.scenarioInfo.bundleMode
@@ -729,6 +732,7 @@ app.get("/api/runs/:runId", (req, res) => {
           try {
             const manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
             testName = manifest.testName || slug;
+            description = manifest.description || "";
             bundleMode = isBundleMode(manifest.bundleMode) ? manifest.bundleMode : null;
             executionSurface = isExecutionSurface(manifest.executionSurface)
               ? manifest.executionSurface
@@ -771,7 +775,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, testBasename, status, duration, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { slug, testName, description, testBasename, status, duration, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read concept targeting metadata, with a fallback for historical runs.
@@ -1091,6 +1095,7 @@ app.get("/api/:runId/:testSlug/test-source", (req, res) => {
     source: manifest.testSource || "",
     locations: testSourceLocations(manifest.testSource || ""),
     fixtures: extractReferencedCliFixtureReferences(manifest.testSource || ""),
+    sourceChanges: describeTestSourceChanges(manifest.testSource || "", manifest.testSourceChanges),
   });
 });
 

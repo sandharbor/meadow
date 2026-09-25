@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useNavigate, useSearchParams, createSearchParams } from 'react-router-dom'
 import {
   DEFAULT_PLAYBACK_SPEED_PERCENT,
   HealthSummary,
@@ -23,6 +23,7 @@ import {
   MIN_PLAYBACK_SPEED_PERCENT,
   normalizePlaybackSpeedPercent,
   setMediaPlaybackSpeed,
+  scenarioDisplayName,
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
@@ -33,7 +34,8 @@ import {
   type ExecutionSurface,
 } from '../../../../e2e/src/run/executionSurface.ts'
 
-type ViewTab = 'thumbs' | 'list' | 'videos' | 'timing'
+const VIEW_TABS = ['thumbs', 'list', 'details', 'videos', 'timing'] as const
+type ViewTab = typeof VIEW_TABS[number]
 
 interface ConceptView {
   searchFacet: boolean
@@ -66,6 +68,7 @@ interface KeyFrame {
 interface Scenario {
   slug: string
   testName: string
+  description?: string
   testBasename?: string
   status: string
   duration: number | null
@@ -96,9 +99,14 @@ export default function RunDetail() {
   const [docs, setDocs] = useState<ConceptView[]>([])
   const [bundleDocs, setBundleDocs] = useState<BundleDoc[]>([])
   const [appAreas, setAppAreas] = useState<AppAreaView[]>([])
-  const [notes, setNotes] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<ViewTab>('thumbs')
+  const viewParam = searchParams.get('view')
+  const activeTab = VIEW_TABS.find(tab => tab === viewParam) ?? 'thumbs'
+  const setActiveTab = (tab: ViewTab) => {
+    const next = createSearchParams(searchParams)
+    next.set('view', tab)
+    setSearchParams(next)
+  }
   const [mediaSize, setMediaSize] = useState<0 | 1 | 2 | 3>(0)
   const [playSpeed, setPlaySpeed] = useState(DEFAULT_PLAYBACK_SPEED_PERCENT)
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map())
@@ -141,6 +149,7 @@ export default function RunDetail() {
       ? selectedExecutionSurface
       : next.executionSurface
     setSearchParams([
+      ['view', activeTab],
       ...(executionSurface ? [['surface', executionSurface] as [string, string]] : []),
       ...bundleModes.map((mode): [string, string] => ['mode', mode]),
       ...areaIds.map((id): [string, string] => ['area', id]),
@@ -193,15 +202,13 @@ export default function RunDetail() {
 
     const fetchData = async () => {
       try {
-        const [runRes, healthRes, notesRes] = await Promise.all([
+        const [runRes, healthRes] = await Promise.all([
           fetch(`/api/runs/${runId}`),
           fetch(`/api/runs/${runId}/health`),
-          fetch(`/api/${runId}/notes`),
         ])
         if (mounted) {
           if (runRes.ok) setData(await runRes.json())
           if (healthRes.ok) setHealthMap(await healthRes.json())
-          setNotes(notesRes.ok ? await notesRes.text() : null)
         }
       } catch {
         // ignore
@@ -276,9 +283,9 @@ export default function RunDetail() {
   const displayedTab: ViewTab = selectedExecutionSurface === 'cli' && (activeTab === 'thumbs' || activeTab === 'videos')
     ? 'list'
     : activeTab
-  const availableTabs: ViewTab[] = selectedExecutionSurface === 'cli'
-    ? ['list', 'timing']
-    : ['thumbs', 'list', 'videos', 'timing']
+  const availableTabs: readonly ViewTab[] = selectedExecutionSurface === 'cli'
+    ? ['list', 'details', 'timing']
+    : VIEW_TABS
 
   function getKeyFrameUrl(scenario: Scenario): string | null {
     if (!scenario.keyFrames || scenario.keyFrames.length === 0) return null
@@ -306,13 +313,9 @@ export default function RunDetail() {
 
   return (
     <div className="mx-auto p-6 max-w-[90vw]">
-      <h2 className="text-lg font-bold text-neutral-800 mb-1">
+      <h2 className="text-lg font-bold text-neutral-800 mb-4">
         Scenarios in {runId}
       </h2>
-      {notes && (
-        <p className="text-sm text-neutral-500 mb-4">{notes}</p>
-      )}
-      {!notes && <div className="mb-3" />}
 
       {/* Execution surface is the primary division within a run. */}
       <div className="mb-5 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
@@ -582,6 +585,7 @@ export default function RunDetail() {
           {availableTabs.map((tab) => (
             <button
               key={tab}
+              aria-pressed={displayedTab === tab}
               className={`px-4 py-1.5 text-xs font-bold cursor-pointer border-b-2 ${
                 displayedTab === tab
                   ? 'text-brand-500 border-brand-500'
@@ -589,7 +593,7 @@ export default function RunDetail() {
               }`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'thumbs' ? 'Thumbs' : tab === 'list' ? 'List' : tab === 'videos' ? 'Videos' : 'Timing'}
+              {tab === 'thumbs' ? 'Thumbs' : tab === 'list' ? 'List' : tab === 'details' ? 'Details' : tab === 'videos' ? 'Videos' : 'Timing'}
             </button>
           ))}
         </div>
@@ -643,7 +647,7 @@ export default function RunDetail() {
                         <div className="flex items-center gap-2 mb-2">
                           <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                           <span className="text-sm font-medium text-neutral-800 truncate">
-                            {scenario.testName}
+                            {scenarioDisplayName(scenario.testName)}
                           </span>
                         </div>
                         {scenario.failureReason && (
@@ -657,7 +661,7 @@ export default function RunDetail() {
                               <img
                                 key={url}
                                 src={url}
-                                alt={`${scenario.testName} - ${docId}`}
+                                alt={`${scenarioDisplayName(scenario.testName)} - ${docId}`}
                                 className={`${mediaSizeClass} aspect-video object-cover bg-neutral-100 rounded`}
                               />
                             ))}
@@ -700,7 +704,7 @@ export default function RunDetail() {
                             <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                             <div className="min-w-0">
                               <span className="text-sm font-medium text-neutral-800">
-                                {scenario.testName}
+                                {scenarioDisplayName(scenario.testName)}
                               </span>
                               {scenario.failureReason && (
                                 <p className="text-xs text-red-600 truncate" title={scenario.failureReason}>
@@ -730,6 +734,57 @@ export default function RunDetail() {
                       </Link>
                     )
                   })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Details tab */}
+      {displayedTab === 'details' && (
+        <div className="space-y-6">
+          {sections.map(({ key, label, color, items: scenarios }) => (
+            <div key={key}>
+              <SectionHeader label={label} count={scenarios.length} color={color} />
+              {scenarios.length === 0 ? (
+                <p className="text-xs text-neutral-400 italic ml-1">None</p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+                  <table className="w-full table-fixed text-left text-sm" aria-label={`${label} scenario details`}>
+                    <thead className="border-b border-neutral-200 bg-neutral-50 text-xs text-neutral-500">
+                      <tr>
+                        <th scope="col" className="w-[30%] px-4 py-3 font-semibold">Scenario</th>
+                        <th scope="col" className="px-4 py-3 font-semibold">Description</th>
+                        <th scope="col" className="w-24 px-4 py-3 text-right font-semibold">Duration</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-200">
+                      {scenarios.map(scenario => (
+                        <tr key={scenario.slug} className="align-top hover:bg-neutral-50">
+                          <td className="px-4 py-4">
+                            <div className="flex items-start gap-2">
+                              <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
+                              <div className="min-w-0">
+                                <Link to={`/${runId}/${scenario.slug}`} className="font-medium text-neutral-800 hover:text-brand-600 hover:underline">
+                                  {scenarioDisplayName(scenario.testName)}
+                                </Link>
+                                {scenario.failureReason && <p className="mt-1 break-words text-xs text-red-600">{scenario.failureReason}</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            {scenario.description ? (
+                              <p className="whitespace-pre-line break-words leading-relaxed text-neutral-700">{scenario.description}</p>
+                            ) : (
+                              <p className="italic text-neutral-400">No description captured in this run.</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-right text-neutral-500 tabular-nums">{scenario.duration == null ? '—' : `${scenario.duration.toFixed(1)}s`}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -776,7 +831,7 @@ export default function RunDetail() {
                         <div
                           key={scenario.slug}
                           onClick={() => navigate(`/${runId}/${scenario.slug}${playSpeed !== 100 ? `?speed=${playSpeed}` : ''}`)}
-                          title={scenario.testName}
+                          title={scenarioDisplayName(scenario.testName)}
                           className={`${cardMaxWidthClass} bg-white border border-neutral-200 rounded-lg overflow-hidden hover:border-brand-300 hover:bg-brand-50 transition-colors cursor-pointer`}
                         >
                           <video
@@ -791,7 +846,7 @@ export default function RunDetail() {
                             <div className="flex items-center gap-2 min-w-0">
                               <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                               <span className="text-sm font-medium text-neutral-800 truncate">
-                                {scenario.testName}
+                                {scenarioDisplayName(scenario.testName)}
                               </span>
                             </div>
                             {scenario.failureReason && (
@@ -834,7 +889,7 @@ export default function RunDetail() {
                     <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
                     <div className="min-w-0">
                       <span className="text-sm font-medium text-neutral-800">
-                        {scenario.testName}
+                        {scenarioDisplayName(scenario.testName)}
                       </span>
                       {scenario.failureReason && (
                         <p className="text-xs text-red-600 truncate" title={scenario.failureReason}>

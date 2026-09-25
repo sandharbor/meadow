@@ -22,14 +22,15 @@ import 'prismjs/components/prism-typescript'
 import 'prismjs/components/prism-yaml'
 import 'prismjs/components/prism-json'
 import 'prismjs/themes/prism.css'
-import { marked } from 'marked'
 import type { TestSourceLocations } from '../../testSourceLocations.ts'
+import type { TestSourceChange } from '../../../../e2e/src/artifacts/testSourceChanges.ts'
+import { TestSourceChangeModal } from './TestSourceChangeModal.tsx'
+import { CopyReferenceButton } from './CopyReferenceButton.tsx'
 import {
   DEFAULT_PLAYBACK_SPEED_PERCENT,
   MAX_PLAYBACK_SPEED_PERCENT,
   MIN_PLAYBACK_SPEED_PERCENT,
   adjacentVideoFrameTime,
-  computeHealthData,
   computeStateRepoRecordDiffs,
   diffHighlight,
   escapeHtml,
@@ -41,7 +42,6 @@ import {
   setMediaPlaybackSpeed,
   videoTimeToReal,
 } from '../helpers.ts'
-import HealthGraph from './HealthGraph.tsx'
 import { CheckpointOpenControl } from './CheckpointOpenControl.tsx'
 import { bundleModeLabel, type BundleMode } from '../../bundleModes.ts'
 
@@ -83,12 +83,6 @@ interface StateCommit {
 interface CheckpointMessage {
   timestamp: string
   message: string
-}
-
-interface UncommittedEntry {
-  timestamp: string
-  message: string
-  uncommittedFiles: { status: string; path: string }[]
 }
 
 interface ConceptView {
@@ -498,7 +492,6 @@ export default function ScenarioViewer() {
   const [stateRepoMeta, setStateRepoMeta] = useState<StateRepoMeta | null>(null)
   const [s3Commits, setS3Commits] = useState<StateCommit[]>([])
   const [checkpointMessages, setCheckpointMessages] = useState<CheckpointMessage[]>([])
-  const [uncommittedEntries, setUncommittedEntries] = useState<UncommittedEntry[]>([])
   const [concepts, setConcepts] = useState<ConceptView[]>([])
 
   // Index states
@@ -545,13 +538,13 @@ export default function ScenarioViewer() {
   const [sourceLocations, setSourceLocations] = useState<TestSourceLocations>({ testLine: null, checkpoints: [] })
   const [testSourceFixtureReferences, setTestSourceFixtureReferences] = useState<TestSourceFixtureReference[]>([])
   const [testSourceFixtureModal, setTestSourceFixtureModal] = useState<TestSourceFixtureModalState | null>(null)
+  const [testSourceChanges, setTestSourceChanges] = useState<TestSourceChange[]>([])
+  const [sourceChangeModal, setSourceChangeModal] = useState<TestSourceChange | null>(null)
   const [telemetryEvents, setTelemetryEvents] = useState<TelemetryEvent[]>([])
   const [telemetryMalformedLineCount, setTelemetryMalformedLineCount] = useState(0)
   const [highlightedTelemetryIndex, setHighlightedTelemetryIndex] = useState(-1)
   const [activeTelemetryTab, setActiveTelemetryTab] = useState<TelemetryTab>('spans')
   const [highlightedLogIndex, setHighlightedLogIndex] = useState(-1)
-  const [notes, setNotes] = useState<string | null>(null)
-  const [notesExpanded, setNotesExpanded] = useState(false)
   const [hoveredDocId, setHoveredDocId] = useState<string | null>(null)
   const [hoveredKeyFrame, setHoveredKeyFrame] = useState<{ docId: string; filename: string; x: number; y: number } | null>(null)
 
@@ -562,10 +555,8 @@ export default function ScenarioViewer() {
   const testCodeRef = useRef<HTMLPreElement>(null)
   const autoFollowRef = useRef(true)
   const scrubTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const timelineBarRef = useRef<HTMLDivElement>(null)
   const levelDropdownRef = useRef<HTMLDivElement>(null)
   const explicitTickJumpRef = useRef<{ index: number; videoTime: number } | null>(null)
-  const [timelineBarWidth, setTimelineBarWidth] = useState(0)
 
   // Caches
   const homeCommitFileCacheRef = useRef(new Map<string, string[]>())
@@ -737,15 +728,13 @@ export default function ScenarioViewer() {
     let mounted = true
 
     async function init() {
-      const [manifestRes, homeCommitsRes, stateReposRes, s3Res, testSourceRes, uncommittedRes, telemetryRes, notesRes] = await Promise.all([
+      const [manifestRes, homeCommitsRes, stateReposRes, s3Res, testSourceRes, telemetryRes] = await Promise.all([
         fetch(`${API}/manifest`),
         fetch(`${API}/home-commits`),
         fetch(`${API}/state-repos`),
         fetch(`${API}/minio-commits`),
         fetch(`${API}/test-source`),
-        fetch(`${API}/uncommitted`),
         fetch(`${API}/backend-telemetry`),
-        fetch(`/api/${runId}/notes`),
       ])
 
       if (!mounted) return
@@ -758,10 +747,9 @@ export default function ScenarioViewer() {
         source?: string
         locations?: TestSourceLocations
         fixtures?: TestSourceFixtureReference[]
+        sourceChanges?: TestSourceChange[]
       }
-      const uncommittedData: UncommittedEntry[] = await uncommittedRes.json()
       const telemetryData: TelemetryResponse = telemetryRes.ok ? await telemetryRes.json() : {}
-      const notesText = notesRes.ok ? await notesRes.text() : null
 
       // Pick the first extension state repo (if any) as the source for
       // the structured-state tab. Multi-repo support can come later.
@@ -778,6 +766,8 @@ export default function ScenarioViewer() {
       setStateCommits(stateData)
       setS3Commits(s3Data)
       setTestSource(testSourceData.source || '')
+      setTestSourceChanges(testSourceData.sourceChanges ?? [])
+      setSourceChangeModal(null)
       setSourceLocations(testSourceData.locations ?? { testLine: null, checkpoints: [] })
       setTestSourceFixtureReferences(
         Array.isArray(testSourceData.fixtures)
@@ -786,10 +776,8 @@ export default function ScenarioViewer() {
             ))
           : [],
       )
-      setUncommittedEntries(uncommittedData)
       setTelemetryEvents(Array.isArray(telemetryData.events) ? telemetryData.events : [])
       setTelemetryMalformedLineCount(telemetryData.malformedLineCount || 0)
-      setNotes(notesText)
 
       // Extract tick data from manifest
       const rawManifest = manifestData as unknown as Record<string, unknown>
@@ -1112,6 +1100,16 @@ export default function ScenarioViewer() {
     return byLine
   }, [testSourceFixtureReferences])
 
+  const testSourceChangesByLine = useMemo(() => {
+    const byLine = new Map<number, TestSourceChange[]>()
+    for (const change of testSourceChanges) {
+      const changes = byLine.get(change.line) ?? []
+      changes.push(change)
+      byLine.set(change.line, changes)
+    }
+    return byLine
+  }, [testSourceChanges])
+
   // --- Auto-scroll highlighted log ---
 
   useEffect(() => {
@@ -1220,6 +1218,10 @@ export default function ScenarioViewer() {
     for (let i = 0; i <= currentTickIndex; i++) if (tickStateChanges[i]?.checkpoint) number++
     return number
   }, [ticks.length, currentMessageIndex, currentTickIndex, tickStateChanges])
+
+  const currentCheckpointMessage = currentCheckpointNumber === null ? null
+    : ticks.length > 0 ? tickStateChanges[currentTickIndex]?.checkpointMessage
+    : timelineCheckpointMessages[currentMessageIndex]?.message
 
   const interestingTickIndices = useMemo(() =>
     ticks
@@ -1571,7 +1573,7 @@ export default function ScenarioViewer() {
 
     const handler = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return
-      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')) return
+      if (e.target instanceof HTMLElement && e.target.closest('dialog, input, textarea, select, [contenteditable="true"], [role="textbox"]')) return
       if (e.code === 'Space' && e.target === document.body) {
         e.preventDefault()
         const video = videoRef.current
@@ -1608,44 +1610,6 @@ export default function ScenarioViewer() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [levelDropdownOpen])
-
-  // --- ResizeObserver for timeline bar ---
-
-  useEffect(() => {
-    const el = timelineBarRef.current
-    if (!el) return
-    const measure = () => {
-      setTimelineBarWidth(el.getBoundingClientRect().width)
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [manifest])
-
-  // --- Health data ---
-
-  const healthData = useMemo(() => {
-    if (!manifest?.startTime || !manifest?.endTime || timelineCheckpointMessages.length === 0) {
-      return computeHealthData([], [], [], 0, 0)
-    }
-    const startMs = new Date(manifest.startTime).getTime()
-    const endMs = new Date(manifest.endTime).getTime()
-    return computeHealthData(
-      timelineCheckpointMessages.map(s => s.timestamp),
-      manifest.logs,
-      uncommittedEntries,
-      startMs,
-      endMs - startMs
-    )
-  }, [manifest, timelineCheckpointMessages, uncommittedEntries])
-
-  const handleHealthClick = useCallback((pct: number) => {
-    const video = videoRef.current
-    if (video && video.duration) {
-      video.currentTime = (pct / 100) * video.duration
-    }
-  }, [])
 
   // --- Timeline markers ---
 
@@ -1743,8 +1707,66 @@ export default function ScenarioViewer() {
   const currentSnap = currentFileHomeCommitIndex >= 0 ? homeCommits[currentFileHomeCommitIndex] : null
   const activeFileModes = activeLenses(fileChangeView, fileChangeLenses, FILE_CHANGE_LENSES)
 
+  const hasScenarioMetadata = Boolean(manifest.bundleMode || matchingAppAreas.length || matchingDocs.length)
+
   return (
-    <div className="h-full grid grid-cols-2" style={{ gridTemplateRows: '1fr' }}>
+    <div className="h-full grid grid-cols-2" style={{ gridTemplateRows: hasScenarioMetadata ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)' }}>
+      {hasScenarioMetadata && (
+        <div role="region" aria-label="Scenario metadata" className="col-span-2 flex min-w-0 items-center gap-4 overflow-x-auto whitespace-nowrap border-b border-neutral-200 bg-neutral-50 px-4 py-1.5">
+          {/* Bundle-origin mode, app area, and concept chips */}
+          {manifest?.bundleMode && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="text-[11px] text-neutral-400">Starts with:</span>
+              <Link
+                to={`/${runId}?mode=${encodeURIComponent(manifest.bundleMode)}`}
+                className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors bg-violet-100 text-violet-700 hover:bg-violet-200"
+              >
+                {bundleModeLabel(manifest.bundleMode)}
+              </Link>
+            </div>
+          )}
+          {matchingAppAreas.length > 0 && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="text-[11px] text-neutral-400">Areas:</span>
+              {matchingAppAreas.map((area) => (
+                <Link
+                  key={area.id}
+                  to={`/${runId}?area=${encodeURIComponent(area.id)}`}
+                  title={area.description}
+                  className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors bg-sky-100 text-sky-700 hover:bg-sky-200"
+                >
+                  {area.name}
+                </Link>
+              ))}
+            </div>
+          )}
+          {matchingDocs.length > 0 && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="text-[11px] text-neutral-400">Concepts:</span>
+              {matchingDocs.map((doc) => {
+                const hasKeyFrame = manifest?.keyFrames?.some(kf => kf.docId === doc.id)
+                return (
+                  <Link
+                    key={doc.id}
+                    to={`/${runId}?doc=${doc.id}`}
+                    title={doc.isContribution ? 'Contributed Meadow concept' : undefined}
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
+                      hoveredDocId === doc.id
+                        ? 'bg-brand-500 text-white'
+                        : 'bg-brand-100 text-brand-700 hover:bg-brand-200'
+                    }`}
+                    onMouseEnter={() => hasKeyFrame ? setHoveredDocId(doc.id) : undefined}
+                    onMouseLeave={() => setHoveredDocId(null)}
+                  >
+                    {doc.isContribution && <span className="mr-0.5" aria-hidden>☁</span>}
+                    {doc.name}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
       {/* Left column */}
       <div className="flex flex-col overflow-hidden border-r border-neutral-200">
         {/* Video */}
@@ -1805,7 +1827,6 @@ export default function ScenarioViewer() {
             </div>
             <div className="flex-1">
               <div
-                ref={timelineBarRef}
                 className="bg-neutral-200 rounded relative cursor-pointer" style={{ height: '24px' }}
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect()
@@ -1897,18 +1918,6 @@ export default function ScenarioViewer() {
                   </div>
                 )
               })()}
-              {healthData.hasAnyData && timelineBarWidth > 0 && (
-                <div className="mt-0.5">
-                  <HealthGraph
-                    data={healthData}
-                    width={timelineBarWidth}
-                    height={32}
-                    showEndIndicator
-                    onClick={handleHealthClick}
-                    currentTimePct={timelinePercent}
-                  />
-                </div>
-              )}
             </div>
             <span className="min-w-[80px] text-right text-neutral-500">{timeDisplay}</span>
           </div>
@@ -1947,7 +1956,7 @@ export default function ScenarioViewer() {
         {/* Checkpoint indicator with dropdown */}
         <div className="relative flex items-center gap-2 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200 text-xs">
           <button
-            className="flex items-center gap-1.5 cursor-pointer hover:bg-neutral-100 rounded px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors"
+            className="flex min-w-0 items-center gap-1.5 cursor-pointer hover:bg-neutral-100 rounded px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors"
             onClick={() => setCheckpointDropdownOpen(prev => !prev)}
           >
             {hasTicks ? (currentTickIndex >= 0 ? (() => {
@@ -1991,7 +2000,7 @@ export default function ScenarioViewer() {
                     checkpointMessage={changes?.checkpoint ? changes.checkpointMessage : undefined}
                     emptyText="no changes"
                   />
-                  <span className="text-neutral-400">of {ticks.length}</span>
+                  <span className="shrink-0 whitespace-nowrap text-neutral-400">of {ticks.length}</span>
                 </>
               )
             })() : (
@@ -2006,12 +2015,16 @@ export default function ScenarioViewer() {
                 </span>
               </>
             )}
-            <svg className={`w-3 h-3 text-neutral-400 transition-transform ${checkpointDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className={`w-3 h-3 shrink-0 text-neutral-400 transition-transform ${checkpointDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
           {runId && testSlug && currentCheckpointNumber !== null && (
             <CheckpointOpenControl runId={runId} scenario={testSlug} index={currentCheckpointNumber} />
+          )}
+          {testSlug && currentCheckpointMessage && (
+            <CopyReferenceButton text={`E2E scenario ${testSlug} at checkpoint ${currentCheckpointMessage}`}
+              label="Copy checkpoint reference" className="ml-auto" />
           )}
           {checkpointDropdownOpen && hasTicks && (
             <div className="absolute top-full left-0 right-0 z-20 bg-white border border-neutral-200 shadow-lg rounded-b overflow-hidden max-h-[300px] overflow-y-auto">
@@ -2123,80 +2136,6 @@ export default function ScenarioViewer() {
             </div>
           )}
         </div>
-
-        {/* Bundle-origin mode, app area, and concept chips */}
-        {manifest?.bundleMode && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200">
-            <span className="text-[11px] text-neutral-400">Starts with:</span>
-            <Link
-              to={`/${runId}?mode=${encodeURIComponent(manifest.bundleMode)}`}
-              className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors bg-violet-100 text-violet-700 hover:bg-violet-200"
-            >
-              {bundleModeLabel(manifest.bundleMode)}
-            </Link>
-          </div>
-        )}
-        {matchingAppAreas.length > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200">
-            <span className="text-[11px] text-neutral-400">Areas:</span>
-            {matchingAppAreas.map((area) => (
-              <Link
-                key={area.id}
-                to={`/${runId}?area=${encodeURIComponent(area.id)}`}
-                title={area.description}
-                className="px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors bg-sky-100 text-sky-700 hover:bg-sky-200"
-              >
-                {area.name}
-              </Link>
-            ))}
-          </div>
-        )}
-        {matchingDocs.length > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-50 border-b border-neutral-200">
-            <span className="text-[11px] text-neutral-400">Concepts:</span>
-            {matchingDocs.map((doc) => {
-              const hasKeyFrame = manifest?.keyFrames?.some(kf => kf.docId === doc.id)
-              return (
-                <Link
-                  key={doc.id}
-                  to={`/${runId}?doc=${doc.id}`}
-                  title={doc.isContribution ? 'Contributed Meadow concept' : undefined}
-                  className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${
-                    hoveredDocId === doc.id
-                      ? 'bg-brand-500 text-white'
-                      : 'bg-brand-100 text-brand-700 hover:bg-brand-200'
-                  }`}
-                  onMouseEnter={() => hasKeyFrame ? setHoveredDocId(doc.id) : undefined}
-                  onMouseLeave={() => setHoveredDocId(null)}
-                >
-                  {doc.isContribution && <span className="mr-0.5" aria-hidden>☁</span>}
-                  {doc.name}
-                </Link>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Notes */}
-        {notes && (() => {
-          const lines = notes.split('\n')
-          const isMultiLine = lines.length > 1
-          const displayText = notesExpanded ? notes : lines[0]
-          const html = marked.parse(displayText) as string
-          return (
-            <div className="px-3 py-2 bg-amber-50 border-b border-amber-200">
-              <div className="text-xs prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0" dangerouslySetInnerHTML={{ __html: html }} />
-              {isMultiLine && (
-                <button
-                  className="text-[11px] text-amber-700 hover:text-amber-900 font-medium cursor-pointer mt-1"
-                  onClick={() => setNotesExpanded(!notesExpanded)}
-                >
-                  {notesExpanded ? 'Less' : 'More'}
-                </button>
-              )}
-            </div>
-          )
-        })()}
 
         {/* Logs */}
         <div className="flex-1 min-h-0 flex flex-col">
@@ -2593,8 +2532,16 @@ export default function ScenarioViewer() {
                         <div
                           data-source-line={i + 1}
                           className={`code-line px-3 font-mono ${highlightedSourceLine === i + 1 ? 'bg-orange-100' : ''}`}
-                          dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }}
-                        />
+                        >
+                          <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />
+                          {(testSourceChangesByLine.get(i) ?? []).map((change, index) => (
+                            <button key={`${change.id}:${index}`} type="button"
+                              aria-label={`About source change ${change.id}`}
+                              title={change.definition ? `${change.definition.label}\n\nAction: ${change.definition.action}\nCheck: ${change.definition.check}` : 'Source change definition unavailable'}
+                              onClick={() => setSourceChangeModal(change)}
+                              className="ml-2 inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-sky-400 bg-sky-50 align-middle font-sans text-[11px] font-bold text-sky-700 hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-600">?</button>
+                          ))}
+                        </div>
                         {fixtureReferences.map((fixture) => (
                           <button
                             key={fixture.name}
@@ -3209,6 +3156,7 @@ export default function ScenarioViewer() {
           onClose={() => setTestSourceFixtureModal(null)}
         />
       )}
+      {sourceChangeModal && <TestSourceChangeModal change={sourceChangeModal} onClose={() => setSourceChangeModal(null)} />}
     </div>
   )
 }

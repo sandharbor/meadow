@@ -111,31 +111,36 @@ single instance, rather than hard-coding a method per instance
 
 ## Page object folder structure
 
-Only two top-level items in `src/run/pages/` are actual pages in the UI:
-**BundleListPage** and **BundleEditorPage**. Everything else is a component (panel,
-modal, tab, etc.) that lives inside one of those pages.
-
-The folder structure reflects this hierarchy:
+Page objects follow the same app-area partitioning as the app's source code:
+`shared/` for cross-cutting UI and `areas/<area>/` for UI owned by one area.
+Place a page object in the area that owns the behavior it exercises, not in the
+page where it happens to appear.
 
 ```
 src/run/pages/
-├── index.ts                          # barrel — re-exports everything
-├── shared/                           # components used by multiple pages
-│   ├── CreateAndEditBundleModal.ts
-│   └── PublishedBundlePage.ts
-├── BundleListPage/
-│   └── BundleListPage.ts
-└── BundleEditorPage/
-    ├── BundleEditorPage.ts
-    └── components/
-        ├── FilterPanelComponent.ts
-        ├── SelectedPageDetailComponent.ts
-        ├── LinksModal.ts
-        └── PreviewPublishModal/
-            ├── PreviewPublishModal.ts
-            └── components/
-                └── PublishToProviderTab.ts
+├── index.ts                          # barrel — re-exports page objects
+├── shared/                           # app shell and cross-area UI
+│   ├── BundleEditorPage.ts
+│   ├── PreviewPublishModal.ts
+│   ├── GeneratedBundle.ts
+│   ├── AppPlace.ts
+│   └── DeleteBundleModal.ts
+├── areas/
+│   ├── bundles/                      # the bundle list and bundle creation
+│   │   ├── BundleListPage.ts
+│   │   └── CreateAndEditBundleModal.ts
+│   └── bundle/
+│       ├── sourcing/                 # sources, source review, tracking notice
+│       ├── curation/                 # filters, selection, page details, links
+│       ├── generation/               # customization and output formats
+│       ├── review/                   # preview changes
+│       └── sharing/                  # publishing and published bundles
+└── dev-tools/                        # Dev Tools controls used by scenarios
 ```
+
+Composite page objects (such as `BundleEditorPage` or `PreviewPublishModal`)
+live in `shared/` and expose area-owned page objects as nested members, e.g.
+`editor.sourceReview.trackingNotice`.
 
 ### Naming conventions
 
@@ -147,9 +152,8 @@ src/run/pages/
 
 ### Placement rules
 
-1. If a component is used by **only one page**, nest it under that page's
-   `components/` folder.
-2. If a component is used by **multiple pages**, place it in `shared/`.
-3. If a component is large enough to have its own sub-components (like
-   `PreviewPublishModal`), give it its own folder with a `components/`
-   subfolder.
+1. If the UI belongs to **one app area**, place it under `areas/<area>/`.
+2. If it spans **multiple areas** (the editor shell, the preview modal, the
+   generated bundle), place it in `shared/`.
+3. Keep area folders flat; split a large page object into sibling files in the
+   same area rather than nesting `components/` folders.

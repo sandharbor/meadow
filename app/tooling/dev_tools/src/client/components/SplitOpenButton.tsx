@@ -16,12 +16,13 @@ const TARGET_LABELS: Record<ServiceTarget, string> = { local: 'Local', hosted: '
  * its reason when it could not work. The main click never remembers a
  * previous choice.
  */
-export function SplitOpenButton({ label, defaultTarget = 'local', targets, busy, disabled, onOpen, testId }: {
+export function SplitOpenButton({ label, defaultTarget = 'local', targets, busy, disabled, compact = false, onOpen, testId }: {
   label: string;
   defaultTarget?: ServiceTarget;
   targets: Record<ServiceTarget, TargetAvailability>;
   busy?: boolean;
   disabled?: boolean;
+  compact?: boolean;
   onOpen: (target: ServiceTarget) => void;
   testId?: string;
 }) {
@@ -43,7 +44,7 @@ export function SplitOpenButton({ label, defaultTarget = 'local', targets, busy,
       title={primaryUnavailable ? targets[defaultTarget].reason : undefined}
       disabled={disabled || busy || primaryUnavailable}
       onClick={() => onOpen(defaultTarget)}
-      className="flex-1 rounded-l-lg bg-info-600 px-3 py-2 text-sm font-medium text-white hover:bg-info-700 disabled:bg-neutral-300"
+      className={`flex-1 bg-info-600 px-3 font-medium text-white hover:bg-info-700 disabled:bg-neutral-300 ${compact ? 'rounded-l py-1 text-xs' : 'rounded-l-lg py-2 text-sm'}`}
     >
       {busy ? 'Working...' : label}
     </button>
@@ -55,7 +56,7 @@ export function SplitOpenButton({ label, defaultTarget = 'local', targets, busy,
       aria-controls={menuId}
       disabled={disabled || busy}
       onClick={() => setMenuOpen(open => !open)}
-      className="rounded-r-lg border-l border-info-400 bg-info-600 px-2 py-2 text-xs font-medium text-white hover:bg-info-700 disabled:bg-neutral-300"
+      className={`border-l border-info-400 bg-info-600 px-2 text-xs font-medium text-white hover:bg-info-700 disabled:bg-neutral-300 ${compact ? 'rounded-r py-1' : 'rounded-r-lg py-2'}`}
     >
       ▾ {TARGET_LABELS[defaultTarget]}
     </button>

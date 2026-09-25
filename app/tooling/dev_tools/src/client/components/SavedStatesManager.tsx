@@ -129,7 +129,7 @@ const SavedStatesManager: React.FC = () => {
   </div>;
 
   return <div className="min-h-full">
-    <div className="mx-auto max-w-4xl space-y-4 p-4">
+    <div className="mx-auto max-w-7xl space-y-4 p-4">
       {error && <div role="alert" className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-800">{error}</div>}
       {current && <QaPanel state={current} arrival={arrival} />}
       <section className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">

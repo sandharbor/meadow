@@ -23,31 +23,57 @@ import ScenarioViewer from './components/ScenarioViewer.tsx'
 import AgentRunsList from './components/AgentRunsList.tsx'
 import AgentRunDetail from './components/AgentRunDetail.tsx'
 import AgentTrialViewer from './components/AgentTrialViewer.tsx'
+import { CopyReferenceButton } from './components/CopyReferenceButton.tsx'
+import { scenarioDisplayName } from './helpers.ts'
 import './index.css'
 
 const FIXTURE_RUN_ID = '__fixture'
 const FIXTURE_TEST_SLUG = 'canonical'
 
+const ScenarioName: React.FC<{ slug: string }> = ({ slug }) => {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="min-w-0 text-neutral-600 font-medium">{scenarioDisplayName(slug)}</span>
+      <CopyReferenceButton text={`E2E scenario ${slug}`} label="Copy scenario reference" />
+    </span>
+  )
+}
+
+const RunIdentifier: React.FC<{ runId: string }> = ({ runId }) => {
+  const [notes, setNotes] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    fetch(`/api/${encodeURIComponent(runId)}/notes`)
+      .then(response => response.ok ? response.text() : null)
+      .catch(() => null)
+      .then(value => { if (mounted) setNotes(value) })
+    return () => { mounted = false }
+  }, [runId])
+
+  return <Link to={`/${runId}`} title={notes ?? undefined} className="text-[color:color-mix(in_srgb,theme(colors.brand.500),theme(colors.neutral.600))] hover:text-brand-700 font-medium">
+    {runId}
+  </Link>
+}
+
 const Breadcrumbs: React.FC = () => {
   const { runId, testSlug } = useParams()
 
   return (
-    <nav className="flex items-center gap-1 text-sm">
+    <nav className="flex min-w-0 items-center gap-1 text-sm">
       <Link to="/" className="text-brand-500 hover:text-brand-700 font-medium">
-        E2E Reports
+        Reports
       </Link>
       {runId && (
         <>
           <span className="text-neutral-400">/</span>
-          <Link to={`/${runId}`} className="text-brand-500 hover:text-brand-700 font-medium">
-            {runId}
-          </Link>
+          <RunIdentifier key={runId} runId={runId} />
         </>
       )}
       {testSlug && (
         <>
           <span className="text-neutral-400">/</span>
-          <span className="text-neutral-600 font-medium">{testSlug}</span>
+          <ScenarioName key={testSlug} slug={testSlug} />
         </>
       )}
     </nav>
@@ -156,9 +182,9 @@ const AppActionsMenu: React.FC = () => {
   )
 }
 
-const AppHeader: React.FC = () => {
+const ReportsNavigation: React.FC = () => {
   return (
-    <header className="bg-white border-b border-neutral-200 px-4 py-2 flex items-center gap-4 flex-shrink-0">
+    <>
       <h1 className="text-sm font-bold text-brand-500">E2E Report Viewer</h1>
       <div className="flex items-center gap-1 rounded bg-neutral-100 p-0.5 text-xs">
         <Link to="/" className="rounded px-2 py-1 font-semibold text-neutral-600 hover:bg-white hover:text-neutral-900">
@@ -168,9 +194,16 @@ const AppHeader: React.FC = () => {
           Agent evaluations
         </Link>
       </div>
+    </>
+  )
+}
+
+const AppHeader: React.FC = () => {
+  return (
+    <header className="bg-white border-b border-neutral-200 px-4 py-2 flex items-center gap-4 flex-shrink-0">
       <Routes>
-        <Route path="/" element={null} />
-        <Route path="/agents" element={null} />
+        <Route path="/" element={<ReportsNavigation />} />
+        <Route path="/agents" element={<ReportsNavigation />} />
         <Route path="/agents/:runId" element={<AgentBreadcrumbs />} />
         <Route path="/agents/:runId/:trialId" element={<AgentBreadcrumbs />} />
         <Route path="/:runId" element={<Breadcrumbs />} />

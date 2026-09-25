@@ -2,7 +2,7 @@
 
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../src/run/pages/index.js';
-import { SourcesControl } from '../src/run/pages/BundleEditorPage/components/SourcesControl.js';
+import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
 import { bundleSource, folderFilter } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });

@@ -87,20 +87,17 @@ export function CheckpointOpenControl({ runId, scenario, index }: { runId: strin
   const busy = status?.tone === 'busy'
 
   return (
-    <div ref={container} className="relative flex items-center gap-2" data-testid="checkpoint-open-control">
-      {option?.placeDescription && (
-        <span data-testid="checkpoint-place" className="text-[11px] text-neutral-500">at {option.placeDescription}</span>
-      )}
-      <div className="flex">
+    <div ref={container} className="relative flex shrink-0 items-center gap-2" data-testid="checkpoint-open-control">
+      <div className="flex whitespace-nowrap">
         <button
           type="button"
           aria-label={`Open checkpoint ${index} in Dev Tools with Local`}
-          title={targets.local.available ? undefined : targets.local.reason}
+          title={targets.local.available ? (option?.placeDescription ? `Opens at ${option.placeDescription}` : undefined) : targets.local.reason}
           disabled={busy || !targets.local.available}
           onClick={() => void open('local')}
           className="rounded-l bg-brand-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-brand-700 disabled:bg-neutral-300"
         >
-          Open in Dev Tools
+          Open dev
         </button>
         <button
           type="button"

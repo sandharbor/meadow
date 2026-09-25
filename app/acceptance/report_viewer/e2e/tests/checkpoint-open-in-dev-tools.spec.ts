@@ -69,8 +69,11 @@ test('a checkpoint opens in Dev Tools with Local, and Hosted Development explain
     await page.keyboard.press('ArrowRight');
     await page.keyboard.press('ArrowRight');
     const control = page.getByTestId('checkpoint-open-control');
-    await expect(control.getByRole('button', { name: 'Open checkpoint 2 in Dev Tools with Local' })).toBeEnabled();
-    await expect(control.getByTestId('checkpoint-place')).toHaveText('at big › Preview › share › publish');
+    const openButton = control.getByRole('button', { name: 'Open checkpoint 2 in Dev Tools with Local' });
+    await expect(openButton).toBeEnabled();
+    await expect(openButton).toHaveText('Open dev');
+    await expect(openButton).toHaveAttribute('title', 'Opens at big › Preview › share › publish');
+    await expect(control).not.toContainText('big › Preview › share › publish');
     await control.getByRole('button', { name: 'More ways to open checkpoint 2' }).click();
     const hosted = control.getByRole('menuitem', { name: /^Hosted Development/ });
     await expect(hosted).toBeDisabled();

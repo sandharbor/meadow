@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import type { Page, Expect, Response } from "@playwright/test";
-import { SourceSnapshotsModal } from "./components/SourceSnapshotsModal.js";
-import { SourceReviewModal } from "./components/SourceReviewModal.js";
+import { SourceSnapshotsModal } from "../areas/bundle/sourcing/SourceSnapshotsModal.js";
+import { SourceReviewModal } from "../areas/bundle/sourcing/SourceReviewModal.js";
 
 function isCommittedCurationResponse(response: Response): boolean {
   const url = response.url();

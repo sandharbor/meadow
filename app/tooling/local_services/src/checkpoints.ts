@@ -240,8 +240,16 @@ function extractTree(repo: string, treeish: string, destination: string): boolea
     return false;
   }
   fs.mkdirSync(destination, { recursive: true });
-  const archive = execFileSync("git", ["--git-dir", repo, "archive", "--format=tar", treeish], { maxBuffer: 1024 * 1024 * 1024 });
-  execFileSync("tar", ["-x", "-C", destination], { input: archive });
+  const staging = fs.mkdtempSync(path.join(os.tmpdir(), "meadow-checkpoint-archive-"));
+  try {
+    const archive = path.join(staging, "tree.tar");
+    execFileSync("git", ["--git-dir", repo, "archive", "--format=tar", "--output", archive, treeish]);
+    // tar may exit before consuming trailing archive padding from a pipe.
+    // Reading a file avoids reporting EPIPE after a successful extraction.
+    execFileSync("tar", ["-xf", archive, "-C", destination]);
+  } finally {
+    fs.rmSync(staging, { recursive: true, force: true });
+  }
   return true;
 }
 

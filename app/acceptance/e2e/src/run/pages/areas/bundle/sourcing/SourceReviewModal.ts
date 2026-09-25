@@ -3,13 +3,17 @@
 import type { Page, Expect } from '@playwright/test';
 import { SourceMoveReview } from './SourceMoveReview.js';
 import { SourceOrphansReview } from './SourceOrphansReview.js';
+import { SourceTrackingNotice } from './SourceTrackingNotice.js';
 
 /** Source-update review actions and assertions shared by sourcing scenarios. */
 export class SourceReviewModal {
   readonly orphans: SourceOrphansReview;
+  /** Appears after acceptance when bulk tracking skipped added pages. */
+  readonly trackingNotice: SourceTrackingNotice;
 
   constructor(private page: Page, private expect: Expect) {
     this.orphans = new SourceOrphansReview(page, expect);
+    this.trackingNotice = new SourceTrackingNotice(page, expect);
   }
 
   private get dialog() {

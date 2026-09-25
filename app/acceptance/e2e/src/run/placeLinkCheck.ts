@@ -3,7 +3,7 @@
 import type { Expect, Page } from "@playwright/test";
 import { appPlacePath, parseAppPlace, placeRegistry, type AppPlace } from "../../../../contracts/places/index.js";
 import { AppPlace as AppPlacePage } from "./pages/shared/AppPlace.js";
-import { FilterPanelComponent } from "./pages/BundleEditorPage/components/FilterPanelComponent.js";
+import { FilterPanelComponent } from "./pages/areas/bundle/curation/FilterPanelComponent.js";
 
 /**
  * A place to open from its link. Places that depend on state a link does not

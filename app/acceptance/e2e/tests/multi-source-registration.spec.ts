@@ -5,7 +5,7 @@ import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill } from '../src/run/pages/index.js';
-import { SourcesControl } from '../src/run/pages/BundleEditorPage/components/SourcesControl.js';
+import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
 import { bundleSource, frontier, sourceSnapshot } from '../../../concepts/index.js';
 import type { BundleConfig } from '../../../contracts/types/bundleConfig.js';
 

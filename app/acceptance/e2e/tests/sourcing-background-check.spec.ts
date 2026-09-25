@@ -2,7 +2,7 @@
 
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { PreviewPublishModal } from '../src/run/pages/BundleEditorPage/components/PreviewPublishModal/PreviewPublishModal.js';
+import { PreviewPublishModal } from '../src/run/pages/shared/PreviewPublishModal.js';
 import { Workflows } from '../src/run/workflows.js';
 import { sourceSnapshot } from '../../../concepts/index.js';
 

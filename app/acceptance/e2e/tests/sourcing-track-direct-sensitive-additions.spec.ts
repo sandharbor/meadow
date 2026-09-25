@@ -41,14 +41,12 @@ test('Sourcing acceptance leaves direct-sensitive additions untracked and shows 
 
   // Accept the source update.
   await editor.sourceReview.accept();
-  const notice = page.getByRole('dialog', { name: 'Tracking added pages', exact: true });
-  await expect(notice.getByText('Bulk tracking did not track 2 sensitive pages.', { exact: true })).toBeVisible();
+  await editor.sourceReview.trackingNotice.expectSensitiveSkipped(2);
   await addKeyFrame(sensitive);
   await checkpoint('curation reports which additions were not tracked');
 
   // Show only the skipped additions.
-  await notice.getByRole('button', { name: 'Show them', exact: true }).click();
-  await expect(notice).not.toBeVisible();
+  await editor.sourceReview.trackingNotice.showSkippedPages();
   await editor.switchToListView();
   await expect.poll(() => editor.getSelectedPageTitles()).toEqual(privateNames);
   await expect.poll(() => editor.getListViewPageCount()).toBe(2);

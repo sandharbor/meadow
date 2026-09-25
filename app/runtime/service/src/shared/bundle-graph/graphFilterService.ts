@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import type { CustomFilterConfig } from '../../../../../contracts/types/customFilters.js';
+import type { filterSensitivity, ParticipatesIn } from '../../../../../concepts/index.js';
 import type {
   GraphFilterApplication,
   GraphFilterCatalog,
@@ -186,3 +187,7 @@ export function selectEffectivelySensitiveNodeKeys(
   }
   return result;
 }
+
+export type FilterSensitivityMeadowConceptParticipations = [
+  ParticipatesIn<typeof filterSensitivity, "derive-sensitivity", typeof selectEffectivelySensitiveNodeKeys>,
+];

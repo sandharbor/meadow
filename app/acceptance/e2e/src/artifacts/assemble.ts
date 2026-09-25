@@ -27,6 +27,7 @@ import {
 import os from "os";
 import path from "path";
 import { performance } from "perf_hooks";
+import type { SourceChangeDefinition } from "../../../../shared_code/shared_dev/sourceChangesTypes.js";
 import {
   acceptanceConcepts as baseConcepts,
   allCoreConcepts,
@@ -229,6 +230,7 @@ interface TickData {
 
 interface Manifest {
   testName: string;
+  description: string;
   status: string;
   startTime: string;
   endTime: string;
@@ -246,6 +248,7 @@ interface Manifest {
   testSourceFile: string;
   testSource: string;
   testSourceFixtures: TestSourceFixture[];
+  testSourceChanges?: SourceChangeDefinition[];
   bundleMode: BundleMode | null;
   executionSurface: ExecutionSurface;
   conceptIds: string[];
@@ -328,6 +331,7 @@ interface ScenarioReportMeta {
   version: 1;
   scenarioInfo: {
     testName: string;
+    description: string;
     duration: number | null;
     bundleMode: BundleMode | null;
     executionSurface: ExecutionSurface;
@@ -1011,7 +1015,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
+  const { testName, description, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1024,7 +1028,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { testName, duration, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { testName, description, duration, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1230,12 +1234,20 @@ export function assembleTestArtifacts(testDir: string): void {
     const testFilePath = path.join(testDir, "test-file.txt");
     if (existsSync(testFilePath)) {
       sourceFile = readFileSync(testFilePath, "utf8").trim();
-      if (existsSync(sourceFile)) {
+      const snapshotPath = path.join(testDir, "test-source.ts");
+      if (existsSync(snapshotPath)) {
+        source = readFileSync(snapshotPath, "utf8");
+      } else if (existsSync(sourceFile)) {
         source = readFileSync(sourceFile, "utf8");
       }
     }
     return { testSourceFile: sourceFile, testSource: source };
   });
+  const descriptionPath = path.join(testDir, "description.txt");
+  const description = existsSync(descriptionPath) ? readFileSync(descriptionPath, "utf8").trim() : "";
+  const sourceChangesPath = path.join(testDir, "source-changes.json");
+  const testSourceChanges: SourceChangeDefinition[] | undefined = existsSync(sourceChangesPath)
+    ? JSON.parse(readFileSync(sourceChangesPath, "utf8")) : undefined;
   const testSourceFixtures = measured(assemblySteps, "read test source fixtures", () =>
     collectReferencedCliFixtures(testSourceFile, testSource)
   );
@@ -1320,7 +1332,7 @@ export function assembleTestArtifacts(testDir: string): void {
   );
 
   // Write manifest
-  const manifest: Manifest = { testName, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { testName, description, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
   const manifestJson = measured(assemblySteps, "manifest stringify", () =>
     JSON.stringify(manifest, null, 2)
   );

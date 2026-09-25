@@ -72,7 +72,25 @@ export const filters = defineMeadowConcept({
   mechanics: [
     conceptText`Filters can be created, combined into a filter mix, viewed alone, and evaluated against changing page data.`,
   ],
-  interplay: conceptText`Specialized filters expose ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}, ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, ${conceptLink(coreConceptIds.overrides, "Page Configuration Overrides")}, and ${conceptLink(coreConceptIds.linkGap, "In-Link Gaps")}.`,
+  interplay: conceptText`Specialized filters expose ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}, ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}, ${conceptLink(coreConceptIds.overrides, "Page Configuration Overrides")}, and ${conceptLink(coreConceptIds.linkGap, "In-Link Gaps")}. A Mark Sensitive action provides ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}.`,
+});
+
+export const filterSensitivity = defineMeadowConcept({
+  id: coreConceptIds.filterSensitivity,
+  name: "Filter-Derived Sensitivity",
+  aliases: ["Sensitivity Filters", "Sensitive via Filter"],
+  kind: "mechanism",
+  searchFacet: true,
+  parentId: coreConceptIds.sensitive,
+  appAreaIds: curationArea,
+  definition: conceptText`An enabled custom filter's Mark Sensitive action makes matching nodes effectively sensitive, even when their source does not mark them sensitive.`,
+  mechanics: [
+    conceptText`Effective sensitivity combines direct source sensitivity with matches from enabled bundle and global filters that have a Mark Sensitive action. Filter matches follow each filter's selector criteria and do not rewrite source sensitivity markings.`,
+    conceptText`Source review identifies these pages as Sensitive via filter. Acceptance includes them in the source snapshot, while curation excludes them from bulk tracking and reports exactly which requested pages were skipped.`,
+    conceptText`For example, a filter matching titles containing confidential can protect newly discovered notes and planning pages while allowing a public update from the same source change to be tracked.`,
+  ],
+  interplay: conceptText`${conceptLink(coreConceptIds.filters, "Custom Filters")} supply the matching rules and action; their matches become ${conceptLink(coreConceptIds.sensitive, "Sensitive Bundle Pages")}. The assessment applies to ${conceptLink(coreConceptIds.sourceSnapshot, "Source Snapshots")} and constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")}.`,
+  implementationRoles: ["derive-sensitivity", "assess-source-sensitivity"] as const,
 });
 
 export const folderFilter = defineMeadowConcept({
@@ -246,7 +264,7 @@ export const sensitive = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`A page marked as requiring protection from casual inclusion in a bundle.`,
   mechanics: [
-    conceptText`Sensitive pages are excluded from bulk tracking and remain available for deliberate, page-specific review. This includes requests handed to curation after source acceptance, and sensitivity derived from enabled bundle or global filters. Curation tracks the safe requested subset, reports skipped pages, and can select and solo exactly that skipped set without including unrelated untracked pages.`,
+    conceptText`Sensitive pages are excluded from bulk tracking and remain available for deliberate, page-specific review. This includes requests handed to curation after source acceptance and pages protected by ${conceptLink(coreConceptIds.filterSensitivity, "Filter-Derived Sensitivity")}. Curation tracks the safe requested subset, reports skipped pages, and can select and solo exactly that skipped set without including unrelated untracked pages.`,
   ],
   interplay: conceptText`Sensitivity constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} and is surfaced through ${conceptLink(coreConceptIds.filters, "Custom Filters")} and ${conceptLink(coreConceptIds.callout, "Curation Callouts")}.`,
 });
@@ -284,6 +302,7 @@ export const curationConcepts = [
   bundleConfig,
   callout,
   filters,
+  filterSensitivity,
   folderFilter,
   frontier,
   frontierPendingSources,

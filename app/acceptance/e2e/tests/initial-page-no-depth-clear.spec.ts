@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
-import { SelectedPageDetailComponent } from "../src/run/pages/BundleEditorPage/components/SelectedPageDetailComponent.js";
+import { SelectedPageDetailComponent } from "../src/run/pages/areas/bundle/curation/SelectedPageDetailComponent.js";
 import { Fixture } from "../src/run/workflows.js";
 import { initialPage, bundleConfig } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";

@@ -14,6 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+export function scenarioDisplayName(name: string): string {
+  return name.replace(/-+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
@@ -65,8 +69,9 @@ const RECORDING_FRAMES_PER_SECOND = 25
 export function adjacentVideoFrameTime(currentTime: number, duration: number, direction: -1 | 1): number {
   if (!Number.isFinite(duration) || duration <= 0) return currentTime
   const lastFrame = Math.max(0, Math.ceil(duration * RECORDING_FRAMES_PER_SECOND) - 1)
-  // Avoid rounding a frame boundary down after repeated floating-point seeks.
-  const currentFrame = Math.min(lastFrame, Math.floor(currentTime * RECORDING_FRAMES_PER_SECOND + 1e-7))
+  // Browsers can report a seek a microsecond short of its requested frame.
+  // Allow that precision loss so another step cannot get stuck on the same frame.
+  const currentFrame = Math.min(lastFrame, Math.floor((currentTime + 2e-6) * RECORDING_FRAMES_PER_SECOND))
   const nextFrame = Math.max(0, Math.min(lastFrame, currentFrame + direction))
   return nextFrame / RECORDING_FRAMES_PER_SECOND
 }

@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'node:path';
+import type { filterSensitivity, ParticipatesIn } from '../../../../../../../concepts/index.js';
 import { sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import { runSerializedBundleNodeMutation } from '../../../../shared/bundle-node/bundleNodeMutationQueue.js';
 import type { SnapshotTrackingRequest, SnapshotTrackingOutcome, TrackingSensitivity } from '../../../../../../../contracts/types/curationTracking.js';
@@ -31,6 +32,10 @@ export async function snapshotTrackingSensitivity(directory: string, snapshotId:
   return Object.fromEntries(nodeKeys.filter(key => sensitive.has(key))
     .map(key => [key, graph.getNode(key)?.sensitive ? 'source' : 'filter']));
 }
+
+export type SnapshotSensitivityMeadowConceptParticipations = [
+  ParticipatesIn<typeof filterSensitivity, "assess-source-sensitivity", typeof snapshotTrackingSensitivity>,
+];
 
 /** Own the mutation lock and revalidate the handoff against the accepted snapshot inside it. */
 export async function trackSnapshotAdditions(directory: string, request: SnapshotTrackingRequest): Promise<SnapshotTrackingOutcome> {

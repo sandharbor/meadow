@@ -37,6 +37,11 @@ describe('video frame navigation', () => {
     expect(adjacentVideoFrameTime(1.04, 5, -1)).toBe(1)
   })
 
+  it('keeps stepping when the browser reports a seek one microsecond short', () => {
+    expect(adjacentVideoFrameTime(8.199999, 10, 1)).toBe(8.24)
+    expect(adjacentVideoFrameTime(8.199999, 10, -1)).toBe(8.16)
+  })
+
   it('stays on the first and last frames, including after playback ends', () => {
     expect(adjacentVideoFrameTime(0, 5, -1)).toBe(0)
     expect(adjacentVideoFrameTime(4.96, 5, 1)).toBe(4.96)

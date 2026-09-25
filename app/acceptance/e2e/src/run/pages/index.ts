@@ -14,20 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-export { BundleListPage } from "./BundleListPage/BundleListPage.js";
-export { BundleEditorPage } from "./BundleEditorPage/BundleEditorPage.js";
+export { BundleListPage } from "./areas/bundles/BundleListPage.js";
+export { BundleEditorPage } from "./shared/BundleEditorPage.js";
 export { AppPlace } from "./shared/AppPlace.js";
-export { PreviewPublishModal } from "./BundleEditorPage/components/PreviewPublishModal/PreviewPublishModal.js";
-export { PublishToS3Tab } from "./BundleEditorPage/components/PreviewPublishModal/components/PublishToS3Tab.js";
-export { ChangesTab } from "./BundleEditorPage/components/PreviewPublishModal/components/ChangesTab.js";
-export { CustomizeTab } from "./BundleEditorPage/components/PreviewPublishModal/components/CustomizeTab.js";
-export { OpenKnowledgeFormatModal } from "./BundleEditorPage/components/PreviewPublishModal/components/OpenKnowledgeFormatModal.js";
-export { FilterPanelComponent } from "./BundleEditorPage/components/FilterPanelComponent.js";
-export { CreateAndEditBundleModal } from "./shared/CreateAndEditBundleModal.js";
-export { SelectedPageDetailComponent, Pill, ActionButton } from "./BundleEditorPage/components/SelectedPageDetailComponent.js";
-export { LinksModal } from "./BundleEditorPage/components/LinksModal.js";
-export { SourceOrphansReview } from "./BundleEditorPage/components/SourceOrphansReview.js";
-export { PublishedBundlePage } from "./shared/PublishedBundlePage.js";
+export { PreviewPublishModal } from "./shared/PreviewPublishModal.js";
+export { PublishToS3Tab } from "./areas/bundle/sharing/PublishToS3Tab.js";
+export { ChangesTab } from "./areas/bundle/review/ChangesTab.js";
+export { CustomizeTab } from "./areas/bundle/generation/CustomizeTab.js";
+export { OpenKnowledgeFormatModal } from "./areas/bundle/generation/OpenKnowledgeFormatModal.js";
+export { FilterPanelComponent } from "./areas/bundle/curation/FilterPanelComponent.js";
+export { CreateAndEditBundleModal } from "./areas/bundles/CreateAndEditBundleModal.js";
+export { SelectedPageDetailComponent, Pill, ActionButton } from "./areas/bundle/curation/SelectedPageDetailComponent.js";
+export { LinksModal } from "./areas/bundle/curation/LinksModal.js";
+export { SourceOrphansReview } from "./areas/bundle/sourcing/SourceOrphansReview.js";
+export { PublishedBundlePage } from "./areas/bundle/sharing/PublishedBundlePage.js";
 export { DeleteBundleModal } from "./shared/DeleteBundleModal.js";
 export {
   GeneratedBundle,
@@ -36,4 +36,4 @@ export {
   GeneratedBundleExcalidraw,
   GeneratedBundleFolderNavigation,
 } from "./shared/GeneratedBundle.js";
-export { SourceReviewModal } from "./BundleEditorPage/components/SourceReviewModal.js";
+export { SourceReviewModal } from "./areas/bundle/sourcing/SourceReviewModal.js";

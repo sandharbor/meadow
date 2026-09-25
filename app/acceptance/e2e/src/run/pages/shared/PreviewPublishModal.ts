@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import type { Page, Expect } from "@playwright/test";
-import { GeneratedBundle } from "../../../shared/GeneratedBundle.js";
+import { GeneratedBundle } from "./GeneratedBundle.js";
 
 export class PreviewPublishModal {
   readonly generatedBundle: GeneratedBundle;
