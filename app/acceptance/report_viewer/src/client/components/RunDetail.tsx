@@ -26,6 +26,7 @@ import {
   scenarioDisplayName,
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
+import { CopyReferenceButton } from './CopyReferenceButton.tsx'
 import { ScenarioFilterPill, type ScenarioFilterAction } from './ScenarioFilterPill.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
 import { isBundleMode, BUNDLE_MODE_OPTIONS, type BundleMode } from '../../bundleModes.ts'
@@ -1012,6 +1013,7 @@ export default function RunDetail() {
                               <Link to={`/${runId}/${scenario.slug}`} className="font-medium text-neutral-800 hover:text-brand-600 hover:underline">
                                 {name}
                               </Link>
+                              <CopyReferenceButton text={`E2E scenario ${scenario.slug}`} label="Copy scenario reference" />
                             </div>
                             <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
                               {scenario.duration == null ? '—' : `${scenario.duration.toFixed(1)}s`}
