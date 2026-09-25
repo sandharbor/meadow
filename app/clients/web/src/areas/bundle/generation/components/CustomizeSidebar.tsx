@@ -22,6 +22,7 @@ import CustomAssetsPanel from './CustomAssetsPanel';
 import HooksPanel from './HooksPanel';
 import { apiRequest } from '../../../../shared/utils/apiClient';
 import { logger } from '../../../../shared/utils/logger';
+import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 
@@ -128,6 +129,10 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
 
   // Agent prompt modal state
   const [agentPromptOpen, setAgentPromptOpen] = useState(false);
+  useLinkedSurface('preview', { open: agentPromptOpen, parameters: agentPromptOpen ? { prompt: 'agent' } : undefined }, {
+    open: () => { setAgentPromptOpen(true); return true; },
+    close: () => setAgentPromptOpen(false),
+  }, { parameters: ['prompt'] });
   const [agentPrompt, setAgentPrompt] = useState('');
   const [agentPromptConfigDir, setAgentPromptConfigDir] = useState('');
   const [agentPromptLoading, setAgentPromptLoading] = useState(false);
@@ -336,7 +341,7 @@ const CustomizeSidebar: React.FC<CustomizeSidebarProps> = ({
       {/* Agent Prompt Modal */}
       {agentPromptOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl w-[700px] max-h-[80vh] flex flex-col mx-4">
+          <div role="dialog" aria-label="Custom Assets & Hooks Agent Prompt" className="bg-white rounded-lg shadow-xl w-[700px] max-h-[80vh] flex flex-col mx-4">
             <div className="flex items-center justify-between px-4 py-3 border-b">
               <h2 className="text-sm font-semibold text-neutral-800">Custom Assets & Hooks Agent Prompt</h2>
               <button

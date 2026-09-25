@@ -192,6 +192,27 @@ export class BundleEditorPage {
     await btn.click();
   }
 
+  /** Open a bundle option that shows a dialog, check it opened, and close it. */
+  async openAndCloseBundleOption(option: "Edit bundle details" | "Bundle logs", dialogName: string | RegExp) {
+    await this.clickBundleOptionsMenu();
+    await this.page.getByRole("button", { name: option, exact: true }).click();
+    const dialog = this.page.getByRole("dialog", { name: dialogName });
+    await this.expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Close", exact: true }).first().click();
+    await this.expect(dialog).toBeHidden();
+  }
+
+  /** Copy the selected pages from the page tabs' menu, then close the dialog. */
+  async openAndCloseCopySelectedPages(expectedPage: string) {
+    await this.page.getByRole("navigation").getByTitle("More options", { exact: true }).click();
+    await this.page.getByRole("button", { name: "Copy as...", exact: true }).click();
+    const dialog = this.page.getByRole("dialog", { name: "Copy Selected Pages" });
+    await this.expect(dialog).toBeVisible();
+    await this.expect(dialog).toContainText(expectedPage);
+    await dialog.getByRole("button", { name: "Close", exact: true }).first().click();
+    await this.expect(dialog).toBeHidden();
+  }
+
   async clickDeleteBundleOption() {
     const btn = this.page.locator("button", { hasText: "Delete bundle" });
     await this.expect(btn).toBeVisible();

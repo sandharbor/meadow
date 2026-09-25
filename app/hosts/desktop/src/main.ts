@@ -21,6 +21,7 @@ import {
   FindInBundlesOptions,
   parseFindInBundlesDeepLink,
 } from '../../../contracts/types/findInBundlesOptions';
+import { appPlacePath, parseAppPlace } from '../../../contracts/places/index';
 import { getDefaultConfigDirectory } from '../../../shared_code/utils/appConfigUtils';
 import { getPlatformPaths } from '../../../shared_code/paths/getPlatformPaths';
 import {
@@ -737,8 +738,12 @@ class MeadowApp {
     if (this.isDev) {
       // In development, load from Vite dev server
       log('INFO', `Loading frontend from Vite dev server (http://127.0.0.1:${this.frontendPort})`);
-      const initialPath = process.env.MEADOW_INITIAL_APP_PATH ?? '/';
-      if (!/^\/(?:bundle\/[a-zA-Z0-9_-]+(?:\?sourceReview=1)?)?$/.test(initialPath)) throw new Error('Invalid initial app destination');
+      // Development tooling may open the app at any App Place, such as a
+      // forked checkpoint's screen.
+      const requestedPath = process.env.MEADOW_INITIAL_APP_PATH ?? '/';
+      const parsedPlace = parseAppPlace(requestedPath);
+      if (parsedPlace.ignored.length > 0) throw new Error(`Invalid initial app destination: ${parsedPlace.ignored.join(', ')}`);
+      const initialPath = appPlacePath(parsedPlace.place);
       this.mainWindow.loadURL(`http://127.0.0.1:${this.frontendPort}${initialPath}`);
       // this.mainWindow.webContents.openDevTools();
     } else {

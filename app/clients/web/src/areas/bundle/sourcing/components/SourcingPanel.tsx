@@ -4,6 +4,7 @@ import { SourceNamesProvider } from '../../../../shared/components/SourceNames.j
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '../../../../shared/components/Modal.js';
+import { useIsSurfaceRequested, useLinkedSurface } from '../../../../shared/places/placeContext.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 import { SourceSnapshotsModal } from './SourceSnapshotsModal.js';
 import { SourceRegistryChanges, sourceRegistryEdits } from './SourceRegistryChanges.js';
@@ -79,16 +80,16 @@ function SourceChangeRow({ change, sensitivity, loadComparison, imageUrl, graph,
   </details>;
 }
 
-export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, reviewTrigger = 0, initialReview = false, onPendingChanges, snapshotsOpen = false, onCloseSnapshots }: {
+export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceChangeTrigger = 0, reviewTrigger = 0, onPendingChanges, snapshotsOpen = false, onCloseSnapshots }: {
   reviewTrigger?: number;
   snapshotsOpen?: boolean;
   onCloseSnapshots?: () => void;
   onPendingChanges?: (pending: boolean) => void;
   sourceChangeTrigger?: number;
-  initialReview?: boolean;
   bundleSlug: string; hasDraftChanges: boolean; onAccepted: (result: SourceSnapshotAcceptanceResult) => void;
 }) {
   const [review, setReview] = useState<SourcingReview | null>(null);
+  const isSurfaceRequested = useIsSurfaceRequested();
   const traversal = useSourceTraversal(review, bundleSlug);
   const [open, setOpen] = useState(false);
   useEffect(() => { if (review) onPendingChanges?.(Boolean(review.candidate)); }, [review, onPendingChanges]);
@@ -160,21 +161,14 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     inFlight.current = false;
     reviewToken.current = undefined;
     setBackgroundBusy(false);
-    setReview(null); setResolutions({}); setComparison(null); setError(null); setOpen(initialReview);
-    if (initialReview) {
-      const generation = requestGeneration.current;
-      setBusy(true);
-      void request().then(result => {
-        if (generation === requestGeneration.current) receive(result as SourcingReview, false);
-      }).catch(err => {
-        if (generation === requestGeneration.current) setError(err instanceof Error ? err.message : String(err));
-      }).finally(() => { if (generation === requestGeneration.current) setBusy(false); });
-    } else if (canAutomaticallyRefreshSources()) void scan(true);
+    setReview(null); setResolutions({}); setComparison(null); setError(null); setOpen(false);
+    // A link to source review shows the pending review as it stands.
+    if (canAutomaticallyRefreshSources() && !isSurfaceRequested('source-review')) void scan(true);
     const timer = window.setInterval(() => {
       if (canAutomaticallyRefreshSources()) void scan(true, true);
     }, 30000);
     return () => { requestGeneration.current += 1; window.clearInterval(timer); };
-  }, [scan, initialReview, request, receive]);
+  }, [scan, isSurfaceRequested]);
 
   useEffect(() => {
     if (busy || !noChanges) return;
@@ -192,6 +186,39 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     void request().then(result => receive(result as SourcingReview, false))
       .catch(error => setError(String(error))).finally(() => setBusy(false));
   }, [reviewTrigger, request, receive]);
+
+  // A link opens the pending review as it stands; it never refreshes or accepts.
+  const pendingDetails = useRef<string | null>(null);
+  const showTraversal = traversal.show;
+  useEffect(() => {
+    const details = pendingDetails.current;
+    if (!details || !review) return;
+    pendingDetails.current = null;
+    const separator = details.indexOf(':');
+    const side = details.slice(0, separator);
+    if (side === 'accepted' || side === 'candidate') showTraversal(side, details.slice(separator + 1));
+  }, [review, showTraversal]);
+  useLinkedSurface('source-review', {
+    open,
+    parameters: traversal.selection ? { details: `${traversal.selection.side}:${traversal.selection.key}` } : undefined,
+  }, {
+    open: async parameters => {
+      setBusy(true); setError(null);
+      try {
+        const result = await request() as SourcingReview;
+        receive(result, false);
+        if (!result.candidate && result.orphans.length === 0) return 'there are no source changes to review';
+        pendingDetails.current = parameters.details ?? null;
+        setOpen(true);
+        return true;
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      } finally {
+        setBusy(false);
+      }
+    },
+    close: closeReview,
+  });
 
   const cancelCandidate = async () => {
     setBusy(true); setError(null);

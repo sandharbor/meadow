@@ -84,6 +84,11 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
   await detail.expectNoPill(Pill.Tracked);
   await checkpoint("frontier page details with disabled track and blacklist");
 
+  // Explain and copy the frontier page.
+  await detail.openAndCloseTraversalPath();
+  await editor.openAndCloseCopySelectedPages(".md");
+  await checkpoint("the frontier page's traversal path and copy dialogs open and close");
+
   // Return to the full graph.
   await editor.switchToGraphView();
   await page.waitForTimeout(250);

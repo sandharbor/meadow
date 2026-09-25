@@ -33,6 +33,11 @@ export interface PublishTabProps {
   onPublishSuccess?: () => void;
   onViewChanges: () => void;
   retryPublishTrigger?: number;
+  /**
+   * The provider's "Publication history" dialog, controlled by the host so it
+   * can be opened from an App Place link. Providers without history ignore it.
+   */
+  publicationHistory?: { open: boolean; onOpenChange: (open: boolean) => void };
 }
 
 /**

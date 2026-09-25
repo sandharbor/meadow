@@ -44,7 +44,8 @@ import {
 } from "./managementCommands.js";
 
 import { runSourcingCommand } from './sourcingCommands.js';
-import { bundleDestinationPath } from '../../../contracts/types/appDestination.js';
+import { parseBundleOpen, parsePlacePath, showBundleOpenHelp, waitForArrival } from './placeCommands.js';
+import { appPlacePath } from '../../../contracts/places/index.js';
 
 interface BundleSummary {
   slug?: unknown;
@@ -102,7 +103,7 @@ function showHelp(): void {
 
 Usage:
   meadow version
-  meadow open
+  meadow open [<place-path>]
   meadow bundles list
   meadow bundles list --archived
   meadow bundles create --source <directory> --entry <relative-page>
@@ -116,7 +117,7 @@ Usage:
   meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
   meadow bundle sources <review|refresh|accept> <bundle-slug> ...
-  meadow bundle open <bundle-slug> [--source-review]
+  meadow bundle open <bundle-slug> [--surface <name>] [--select <node>]
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
   meadow bundle versions <list|get|create|update|delete|restore|cancel-current> ...
@@ -259,7 +260,7 @@ function showBundleHelp(): void {
   meadow bundle node track <bundle-slug> --path <node-path>
   meadow bundle node <operation> <bundle-slug> (--id <id> | --path <path>)
   meadow bundle sources <review|refresh|accept> <bundle-slug> ...
-  meadow bundle open <bundle-slug> [--source-review]
+  meadow bundle open <bundle-slug> [--surface <name>] [--select <node>]
   meadow bundle generate <bundle-slug>
   meadow bundle save-generation <bundle-slug> --version <version-id>
   meadow bundle versions <operation> ...
@@ -272,7 +273,8 @@ Commands:
   track     Atomically track a selected set by stable bundleNodeKey, or use
             --all-safe for every trackable node Meadow does not consider sensitive.
   node      Inspect, curate, find, or set traversal depths for one node.
-  open      Open the full Meadow Web Client at this bundle explicitly.
+  open      Open the full Meadow Web Client at a place in this bundle and report
+            the place reached. Run 'meadow bundle open --help' for surfaces.
   generate  Generate or regenerate the current version and return its versionId
             plus a bundle-scoped, read-only preview URL.
   save-generation
@@ -497,16 +499,24 @@ async function openBrowser(
   });
   const executable = process.env.MEADOW_BROWSER_OPEN_EXECUTABLE
     ?? (process.platform === "darwin" ? "/usr/bin/open" : "xdg-open");
+  const since = new Date().toISOString();
   await new Promise<void>((resolve, reject) => {
     execFile(executable, [launchUrl], error => {
       if (error) reject(new Error(`Could not open the Meadow Web Client: ${error.message}`));
       else resolve();
     });
   });
+  // Report the place the web client actually reached, so a caller can tell
+  // whether the screen opened as asked.
+  const arrival = await waitForArrival(targetPath, since, (pathname, method, body) => requestJson(session, pathname, method as ApiMethod | undefined, body));
   console.log(JSON.stringify({
     operation,
     opened: true,
     url: new URL(targetPath, session.frontendOrigin).toString(),
+    requested: targetPath,
+    reached: arrival?.reached ?? null,
+    ...(arrival?.notice && { notice: arrival.notice }),
+    ...(!arrival && { notice: 'The Meadow Web Client did not report arriving; it may still be opening.' }),
     ...details,
   }, null, 2));
 }
@@ -902,8 +912,8 @@ async function main(): Promise<void> {
   }
 
   if (args[0] === "open") {
-    if (args.length !== 1) throw new Error("Usage: meadow open");
-    await openBrowser("/", "open");
+    if (args.length > 2) throw new Error("Usage: meadow open [<place-path>]");
+    await openBrowser(parsePlacePath(args[1] ?? "/"), "open");
     return;
   }
 
@@ -1008,12 +1018,11 @@ async function main(): Promise<void> {
 
   if (args[0] === "bundle" && args[1] === "open") {
     if (args[2] === "--help" || args[2] === "-h") {
-      console.log("Usage: meadow bundle open <bundle-slug> [--source-review]");
+      showBundleOpenHelp();
       return;
     }
-    const sourceReview = args[3] === '--source-review' && args.length === 4;
-    const slug = parseSlugOnly(sourceReview ? args.slice(2, 3) : args.slice(2), "meadow bundle open <bundle-slug> [--source-review]");
-    await openBrowser(bundleDestinationPath({ page: sourceReview ? 'source-review' : 'bundle', slug }), "bundle.open");
+    const place = await parseBundleOpen(args.slice(2), (pathname, method, body) => requestJson(resolveSession(), pathname, method as ApiMethod | undefined, body));
+    await openBrowser(appPlacePath(place), "bundle.open");
     return;
   }
 

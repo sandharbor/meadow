@@ -66,7 +66,7 @@ test('Sourcing Start scenario opens a fresh home and hands over directly in sour
       return result;
     };
     const first = await startScenario();
-    expect(first.targetPath).toBe('/bundle/meadow-test-bundle-big?sourceReview=1');
+    expect(first.targetPath).toBe('/bundle/meadow-test-bundle-big?surface=source-review');
     await addKeyFrame(savedState);
     await checkpoint('starting the scenario opens its fixture with Local services');
 

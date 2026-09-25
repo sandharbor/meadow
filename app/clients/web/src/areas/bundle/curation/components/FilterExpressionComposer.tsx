@@ -32,6 +32,7 @@ import {
   setFilterExpressionOperator,
   ungroupFilterExpression
 } from '../types/filterExpression';
+import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 interface FilterExpressionComposerProps {
   expression: FilterExpression;
@@ -333,6 +334,15 @@ const FilterExpressionComposer: React.FC<FilterExpressionComposerProps> = ({
   useEffect(() => {
     if (activeTerms.length < 2) setIsOpen(false);
   }, [activeTerms.length]);
+
+  useLinkedSurface('filter-mix', { open: isOpen }, {
+    open: () => {
+      if (activeTerms.length < 2) return 'mixing needs at least two active filters';
+      setIsOpen(true);
+      return true;
+    },
+    close: () => setIsOpen(false),
+  });
 
   useEffect(() => {
     const stopPointerDrag = () => setDraggedNodeId(null);

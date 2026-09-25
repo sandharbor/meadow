@@ -1,6 +1,15 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { OpenSavedState } from '../../shared/types';
+import type { OpenSavedState, PlaceArrival } from '../../shared/types';
+import { describeAppPlace, parseAppPlace } from '../../../../../contracts/places/index.js';
+
+function describe(path: string): string {
+  try {
+    return describeAppPlace(parseAppPlace(path).place);
+  } catch {
+    return path;
+  }
+}
 
 function shortRevision(revision: string, uncommitted: boolean): string {
   return `${revision.slice(0, 7)}${uncommitted ? ' (+uncommitted)' : ''}`;
@@ -16,7 +25,7 @@ function originText(state: OpenSavedState): string {
 }
 
 /** "What am I QA-ing?" — the single answer to what the app is running against. */
-export function QaPanel({ state }: { state: OpenSavedState }) {
+export function QaPanel({ state, arrival }: { state: OpenSavedState; arrival?: PlaceArrival | null }) {
   const run = state.checkpoint;
   const codeDiffers = run && (run.runCodeRevision !== state.currentCode.revision || run.runUncommittedCode || state.currentCode.uncommitted);
   return <section aria-labelledby="qa-panel-title" data-testid="qa-panel" className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
@@ -40,6 +49,12 @@ export function QaPanel({ state }: { state: OpenSavedState }) {
       {state.formatUpgrade && <>
         <dt className="text-neutral-500">Home format</dt>
         <dd data-testid="qa-format-upgrade" className="text-warning-800">Home upgraded from format {state.formatUpgrade.from} → {state.formatUpgrade.to} on open</dd>
+      </>}
+      {state.requestedPlace && <>
+        <dt className="text-neutral-500">Opened at</dt>
+        <dd data-testid="qa-place" className={arrival?.notice ? 'text-warning-800' : 'text-neutral-700'}>
+          {arrival ? (arrival.notice ?? describe(arrival.reached)) : <span className="text-neutral-500">Waiting for the app to open {describe(state.requestedPlace)}…</span>}
+        </dd>
       </>}
       <dt className="text-neutral-500">Services</dt>
       <dd data-testid="qa-service-target">

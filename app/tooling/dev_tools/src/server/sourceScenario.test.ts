@@ -39,7 +39,7 @@ test('a clean accepted baseline needs no redundant acceptance before applying a 
     return JSON.stringify({ accepted: { id: 'accepted' }, orphans: [], reviewToken: 'token' });
   }, 'multi-source-page', async () => { actions.push('move'); });
   assert.deepEqual(actions, ['refresh', 'move', 'refresh']);
-  assert.equal(target, '/bundle/multi-source-page?sourceReview=1');
+  assert.equal(target, '/bundle/multi-source-page?surface=source-review');
 });
 
 test('a baseline with eligible orphans is cleaned up before the scenario starts', async () => {

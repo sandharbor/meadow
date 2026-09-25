@@ -5,7 +5,16 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ]
   },
-  "include": ["interfaces/**/*.ts", "types/**/*.ts"]
+  "include": [
+    "interfaces/**/*.ts",
+    "types/**/*.ts",
+    "places/**/*.ts"
+  ]
 }

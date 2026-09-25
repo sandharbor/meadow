@@ -11,6 +11,7 @@ import Modal from '../../../../shared/components/Modal.js';
 import { apiRequest } from '../../../../shared/utils/apiClient.js';
 import type { SourceRegistryStatus, SourcingReview } from '../../../../../../../contracts/types/sourcing.js';
 import { SourceOutputPathsNotice } from './SourceRegistryChanges.js';
+import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onStaged, onChanged }: {
   bundleSlug: string; graph: Graph; isOpen: boolean; onClose: () => void; onOpen: () => void;
@@ -52,6 +53,16 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
   }).map(diagnostic => diagnostic.requestedSource))];
   const open = isOpen || reviewReferences;
   const close = () => { if (!busy) { setReviewReferences(false); onClose(); } };
+  useLinkedSurface('manage-sources', { open, parameters: { mode: reviewReferences ? 'references' : 'manage' } }, {
+    open: parameters => {
+      if (parameters.mode === 'references') {
+        if (references.size === 0 && ignored.length === 0) return 'no pages refer to unregistered sources';
+        setReviewReferences(true);
+      } else onOpen();
+      return true;
+    },
+    close,
+  });
 
   useEffect(() => {
     if (!open) return;

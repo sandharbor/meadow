@@ -15,43 +15,17 @@ limitations under the License.
 */
 
 import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { FindInBundlesOptions } from '../../../../../contracts/types/findInBundlesOptions';
+import type { AppPlace } from '../../../../../contracts/places/index.js';
+import { useOpenPlace } from '../places/placeContext.js';
 import { logger } from './logger';
-import { bundleDestinationPath, type BundleDestination } from '../../../../../contracts/types/appDestination.js';
-
-export type AppDestination =
-  | { page: 'bundle-list'; findInBundlesOptions?: FindInBundlesOptions }
-  | BundleDestination;
 
 const navigationLogger = logger.child('appNavigation');
 
-export const appPathFor = (destination: AppDestination): string => {
-  switch (destination.page) {
-    case 'bundle-list':
-      return '/';
-    case 'bundle':
-    case 'source-review':
-      return bundleDestinationPath(destination);
-  }
-};
-
-/**
- * Navigates within the app without reloading the document.
- * Keep route construction and cross-cutting navigation behavior here.
- */
+/** Move to an App Place from within the app. */
 export const useAppNavigation = (source: string) => {
-  const navigate = useNavigate();
-
-  return useCallback((destination: AppDestination) => {
-    const path = appPathFor(destination);
-    navigationLogger.debug(`Navigating from ${source} to ${path}`);
-
-    if (destination.page === 'bundle-list' && destination.findInBundlesOptions) {
-      navigate(path, { state: { findInBundlesOptions: destination.findInBundlesOptions } });
-      return;
-    }
-
-    navigate(path);
-  }, [navigate, source]);
+  const openPlace = useOpenPlace();
+  return useCallback((place: AppPlace) => {
+    navigationLogger.debug(`Navigating from ${source} to ${place.page === 'bundle' ? `/bundle/${place.slug}` : '/'}`);
+    openPlace(place);
+  }, [openPlace, source]);
 };

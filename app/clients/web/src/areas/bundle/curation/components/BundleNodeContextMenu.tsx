@@ -134,7 +134,13 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
       pageName: page.bundleNodeName,
     };
 
-    navigateInApp({ page: 'bundle-list', findInBundlesOptions });
+    navigateInApp({
+      page: 'bundle-list',
+      surface: {
+        name: 'find',
+        parameters: { vault: findInBundlesOptions.vaultPath, folder: findInBundlesOptions.folderPath, page: findInBundlesOptions.pageName },
+      },
+    });
     onClose();
   };
 

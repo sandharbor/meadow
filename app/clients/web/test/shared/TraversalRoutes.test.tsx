@@ -140,7 +140,7 @@ describe('traversal arrivals', () => {
       onClose={vi.fn()} onSelectedNodeKeysChange={vi.fn()} onTrackPage={vi.fn()} onBlacklistPage={vi.fn()}
       onTrackSelected={vi.fn()} onBlacklistSelected={vi.fn()} isEffectivelySensitive={() => false}
       onUpdatePageConfig={vi.fn()} onDeletePageConfigKey={vi.fn()} onPreviewPage={vi.fn()}
-      hasDraftChanges={false} obsidianInfo={null} />);
+      hasDraftChanges={false} obsidianInfo={null} onShowTraversalDetails={vi.fn()} onShowLinks={vi.fn()} />);
     fireEvent.click(screen.getByText('Details'));
     expect(screen.getByText('Inlink Depth').parentElement).toHaveTextContent(zeroOverride ? 'Inlink Depthoverride1→0' : 'Inlink Depth1');
     expect(screen.getByText('Outlink Depth').parentElement).toHaveTextContent('Outlink Depth2');

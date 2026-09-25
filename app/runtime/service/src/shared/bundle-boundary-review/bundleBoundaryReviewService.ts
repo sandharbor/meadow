@@ -42,6 +42,7 @@ import { currentSourceContentDigest } from '../bundle-node/trackingEvidence.js';
 import { loadCustomFiltersForBundle } from '../custom-filters/customFilterLoader.js';
 import { selectEffectivelySensitiveNodeKeys } from '../bundle-graph/graphFilterService.js';
 import { loadWorkingGraph } from '../bundle-graph/workingGraphService.js';
+import { appPlacePath } from '../../../../../contracts/places/index.js';
 
 const REVIEW_REQUEST_ID_PATTERN = /^bbr_[a-f0-9]{24}$/;
 
@@ -207,7 +208,8 @@ export async function assessBundleBoundary(slug: string): Promise<{
     policy: reviewRequired ? 'review-required' : 'recommend-review',
     createdAt: prior?.createdAt ?? now,
     updatedAt: prior?.updatedAt ?? now,
-    deepLinkPath: `/bundle/${encodeURIComponent(slug)}?reviewRequestId=${encodeURIComponent(reviewRequestId)}`,
+    // The link selects the pages under review in the bundle editor.
+    deepLinkPath: appPlacePath({ page: 'bundle', slug, select: findings.map(finding => ({ id: finding.bundleNodeId })) }),
     findings,
   };
   if (!prior || !sameReviewState(prior, next)) {

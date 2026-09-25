@@ -140,7 +140,8 @@ export default [
     }
   },
   {
-    files: ['src/shared/utils/appNavigation.ts'],
+    // App Places own the router; appNavigation moves between places.
+    files: ['src/shared/utils/appNavigation.ts', 'src/shared/app-shell/places/PlaceProvider.tsx'],
     rules: {
       'no-restricted-imports': 'off'
     }

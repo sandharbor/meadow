@@ -42,6 +42,7 @@ import appConfigFileRoutes from '../routes/appConfigFileRoutes.js';
 import { appShellRouterProviderDiscoveryRoutes as providerDiscoveryRoutes } from '../../areas/bundle/sharing/exported.js';
 import { appShellRouterPublishingCliRoutes as publishingCliRoutes } from '../../areas/bundle/sharing/exported.js';
 import { createHealthRoutes } from '../routes/healthRoutes.js';
+import { createPlaceRoutes } from '../routes/placeRoutes.js';
 import { appShellRouterReviewRoutes as reviewRoutes } from '../../areas/bundle/review/exported.js';
 import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
 import { ResourcesConfig } from '../../../../../contracts/types/resourcesConfig.js';
@@ -157,6 +158,7 @@ app.use('/api', publishingCliRoutes);
 app.use('/api', bundleListingRoutes);
 app.use('/api', bundleGenerationRoutes);
 app.use('/api', reviewRoutes);
+app.use('/api', createPlaceRoutes());
 app.use('/api', stylePresetsRoutes);
 
 // Mounts each registered provider's routes under

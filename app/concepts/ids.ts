@@ -103,6 +103,8 @@ export const coreConceptIds = {
   homeCommit: "home-commit",
   localServices: "local-services",
   serviceTarget: "service-target",
+
+  appPlace: "app-place",
 } as const;
 
 export type CoreConceptId = typeof coreConceptIds[keyof typeof coreConceptIds];

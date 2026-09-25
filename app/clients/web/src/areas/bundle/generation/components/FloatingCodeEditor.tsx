@@ -36,6 +36,8 @@ interface FloatingCodeEditorProps {
   hasChanges: boolean;
   toolbar?: React.ReactNode;
   initialOffset?: number;
+  /** Accessible name of the editor window, so places can recognize it. */
+  ariaLabel?: string;
 }
 
 const MIN_WIDTH = 400;
@@ -45,6 +47,7 @@ const DEFAULT_HEIGHT = 400;
 
 const FloatingCodeEditor: React.FC<FloatingCodeEditorProps> = ({
   title,
+  ariaLabel,
   language,
   content,
   onContentChange,
@@ -147,6 +150,8 @@ const FloatingCodeEditor: React.FC<FloatingCodeEditorProps> = ({
     )}
     <div
       ref={containerRef}
+      role="dialog"
+      aria-label={ariaLabel ?? title}
       className="fixed bg-white rounded-lg shadow-2xl border border-neutral-300 flex flex-col overflow-hidden"
       style={{
         left: position.x,

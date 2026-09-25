@@ -46,6 +46,10 @@ export interface CheckpointMetadata {
   ports: Record<string, number>;
   fixtureHome: string;
   scenario: string;
+  /** The App Place the scenario's page was at, when it had one. */
+  place?: string;
+  /** Dialogs open at the checkpoint and whether places account for them. */
+  openDialogs?: { name: string; classification: 'surface' | 'transient' | 'unaddressable' }[];
 }
 
 export interface CheckpointSummary {
@@ -128,6 +132,8 @@ export interface CaptureCheckpointOptions {
   ports: Record<string, number>;
   fixtureHome: string;
   scenario: string;
+  place?: string;
+  openDialogs?: CheckpointMetadata['openDialogs'];
   /** Object store shared by every scenario repository in a run. */
   sharedObjectsDirectory?: string;
 }
@@ -167,6 +173,8 @@ export async function captureCheckpoint(options: CaptureCheckpointOptions): Prom
       ports: options.ports,
       fixtureHome: options.fixtureHome,
       scenario: options.scenario,
+      ...(options.place && { place: options.place }),
+      ...(options.openDialogs && { openDialogs: options.openDialogs }),
     };
     fs.writeFileSync(path.join(staging, "checkpoint.json"), `${JSON.stringify(metadata, null, 2)}\n`);
 

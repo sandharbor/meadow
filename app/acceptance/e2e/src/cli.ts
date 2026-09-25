@@ -20,6 +20,7 @@ import os from "os";
 import path from "path";
 import { performance } from "perf_hooks";
 import { assembleRun } from "./artifacts/assemble.ts";
+import { reportPlaceCoverage } from "./artifacts/placeCoverage.ts";
 import {
   acceptanceConcepts as baseConcepts,
   allCoreConcepts,
@@ -496,6 +497,9 @@ if (!grep && !specs && !scenarios && !appAreas && specCount !== artifactCount) {
   process.exit(1);
 }
 
+// Step 3b: App Place coverage — a full run fails when a surface has no click path.
+const placeCoverageHeld = reportPlaceCoverage(artifactsDir, !grep && !specs && !scenarios && !appAreas);
+
 // Step 4: Write run-level notes and filter/highlight metadata
 if (runNotes && existsSync(artifactsDir)) {
   writeFileSync(path.join(artifactsDir, "notes.md"), runNotes, "utf8");
@@ -543,4 +547,8 @@ try {
 // Propagate Playwright exit code
 if (playwrightExitCode !== 0) {
   process.exit(playwrightExitCode);
+}
+if (!placeCoverageHeld) {
+  console.error("\nERROR: Some App Place surfaces are not reached by clicking in any scenario (see above).");
+  process.exit(1);
 }

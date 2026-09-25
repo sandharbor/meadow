@@ -20,6 +20,7 @@ import { apiRequest } from '../../../../shared/utils/apiClient';
 import { CustomAssetType } from '../../../../../../../contracts/types/customAssets';
 import { logger } from '../../../../shared/utils/logger';
 import FloatingCodeEditor from './FloatingCodeEditor';
+import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 interface CustomAssetsPanelProps {
   bundleSlug: string;
@@ -105,6 +106,19 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ bundleSlug, onCus
       logger.error('Failed to load asset content', error);
     }
   };
+
+  useLinkedSurface('preview', {
+    open: editingAsset !== null,
+    parameters: editingAsset ? { asset: `${editingAsset.scope}:${editingAsset.assetType}` } : undefined,
+  }, {
+    open: async parameters => {
+      const [scope, assetType] = parameters.asset.split(':');
+      if ((scope !== 'global' && scope !== 'bundle') || !ASSET_TYPES.some(asset => asset.type === assetType)) return `there is no custom asset ${parameters.asset}`;
+      await openEditor(assetType as CustomAssetType, scope);
+      return true;
+    },
+    close: () => setEditingAsset(null),
+  }, { parameters: ['asset'] });
 
   const saveAsset = async () => {
     if (!editingAsset) return;
@@ -322,6 +336,7 @@ const CustomAssetsPanel: React.FC<CustomAssetsPanelProps> = ({ bundleSlug, onCus
       {editingAsset && (
         <FloatingCodeEditor
           title={`${assetLabel} (${editingAsset.scope === 'global' ? 'Global' : 'Bundle'})`}
+          ariaLabel={`Edit asset ${editingAsset.scope}:${editingAsset.assetType}`}
           language={currentLanguage}
           content={assetContent}
           onContentChange={(code) => {

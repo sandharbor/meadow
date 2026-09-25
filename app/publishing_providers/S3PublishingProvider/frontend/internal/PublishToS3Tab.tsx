@@ -78,6 +78,7 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({
   onBusyChange,
   onPublishSuccess,
   onViewChanges,
+  publicationHistory,
 }) => {
   const [publishSlug, setPublishSlug] = useState('');
   const [draftSlug, setDraftSlug] = useState('');
@@ -96,7 +97,12 @@ export const PublishToS3Tab: React.FC<PublishTabProps> = ({
   const [showUpdateConfirm, setShowUpdateConfirm] = useState(false);
   const [showRevisionPlan, setShowRevisionPlan] = useState(false);
   const [isPlanningRevision, setIsPlanningRevision] = useState(false);
-  const [showPublicationHistory, setShowPublicationHistory] = useState(false);
+  const [localPublicationHistoryOpen, setLocalPublicationHistoryOpen] = useState(false);
+  const showPublicationHistory = publicationHistory?.open ?? localPublicationHistoryOpen;
+  const setShowPublicationHistory = (open: boolean) => {
+    if (publicationHistory) publicationHistory.onOpenChange(open);
+    else setLocalPublicationHistoryOpen(open);
+  };
   const [showDeletedRevisions, setShowDeletedRevisions] = useState(false);
   const [readerConnection, setReaderConnection] = useState<'connected' | 'disconnected'>('connected');
   const [cleanupPolicy, setCleanupPolicy] = useState<'keep' | 'delete-after-success'>('keep');

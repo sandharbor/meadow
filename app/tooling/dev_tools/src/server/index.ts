@@ -25,7 +25,9 @@ import { homedir } from "os";
 import { createSourceChangeRoutes, fixtureSourceGraphs } from './sourceChangeRoutes.js';
 import { applySourceChange, loadSourceChanges } from '../../../../shared_code/shared_dev/sourceChanges.js';
 import { acceptSourceBaseline } from "../../../../shared_code/shared_dev/sourceScenario.js";
-import { bundleDestinationPath } from "../../../../contracts/types/appDestination.js";
+import { appPlacePath, parseAppPlace, type PlaceArrival } from "../../../../contracts/places/index.js";
+import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
+import { readRuntimeSessionDescriptor } from "../../../../runtime/supervisor/src/sessionDescriptor.js";
 import type { SourcingReview } from "../../../../contracts/types/sourcing.js";
 import { getDefaultConfigDirectory } from "../../../../shared_code/utils/appConfigUtils.js";
 import { findProjectRoot } from "../../../../shared_code/shared_dev/testBundlesConfig.js";
@@ -124,9 +126,30 @@ function discoverFixtures(): ConfigFixture[] {
   })).sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
+/** What the app reported reaching after the latest launch, from the Runtime. */
+async function latestArrival(): Promise<PlaceArrival | null> {
+  const current = session.current();
+  if (!current.requestedPlace || !current.launchedAt) return null;
+  const descriptorPath = getRuntimePaths(current.homeDirectory).sessionDescriptor;
+  if (!existsSync(descriptorPath)) return null;
+  try {
+    const descriptor = readRuntimeSessionDescriptor(descriptorPath);
+    const response = await globalThis.fetch(`${descriptor.backendUrl}/places/arrivals?since=${encodeURIComponent(current.launchedAt)}`, {
+      headers: { "x-meadow-capability": descriptor.capability },
+      signal: globalThis.AbortSignal.timeout(2_000),
+    });
+    if (!response.ok) return null;
+    const { arrivals } = await response.json() as { arrivals: PlaceArrival[] };
+    return arrivals.filter(arrival => arrival.requested === current.requestedPlace).at(-1) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 app.get("/api/saved-states", async (_req, res) => {
   try {
     res.json({
+      arrival: await latestArrival(),
       current: session.current(),
       fixtures: discoverFixtures(),
       localServiceParts: await session.localServicesMounted(),
@@ -177,7 +200,9 @@ app.post("/api/saved-states/open", async (req, res) => {
     const serviceTarget: ServiceTarget = req.body?.serviceTarget === 'hosted' ? 'hosted' : 'local';
     const launch: LaunchMode = ['app', 'browser', 'none'].includes(req.body?.launch) ? req.body.launch : 'app';
     const state = await openSavedState(origin, serviceTarget);
-    const destination = await launchClient(launch, typeof req.body?.targetPath === 'string' ? req.body.targetPath : '/');
+    // A fork opens where its checkpoint was taken unless told otherwise.
+    const targetPath = typeof req.body?.targetPath === 'string' ? req.body.targetPath : state.checkpoint?.place ?? '/';
+    const destination = await launchClient(launch, targetPath);
     res.json({ success: true, state, destination });
   } catch (error) {
     if (error instanceof SavedStateRefusal) {
@@ -220,12 +245,12 @@ app.post('/api/source-scenarios/:changeId/start', async (req, res) => {
     applySourceChange({ projectRoot, sourceGraphsDir: join(state.homeDirectory, 'source_graphs'), sourceGraph: start.sourceGraph, changeId: change.id });
     // A change that disconnects a source or its required start cannot
     // capture a candidate; the accepted bundle is where the repair begins.
-    let targetPath = bundleDestinationPath({ page: 'source-review', slug: start.bundleSlug });
+    let targetPath = appPlacePath({ page: 'bundle', slug: start.bundleSlug, surface: { name: 'source-review', parameters: {} } });
     try {
       const review = JSON.parse(await run(['bundle', 'sources', 'refresh', start.bundleSlug])) as SourcingReview;
-      if (!review.candidate) targetPath = bundleDestinationPath({ page: 'bundle', slug: start.bundleSlug });
+      if (!review.candidate) targetPath = appPlacePath({ page: 'bundle', slug: start.bundleSlug });
     } catch {
-      targetPath = bundleDestinationPath({ page: 'bundle', slug: start.bundleSlug });
+      targetPath = appPlacePath({ page: 'bundle', slug: start.bundleSlug });
     }
     const launch: LaunchMode = ['app', 'browser', 'none'].includes(req.body?.launch) ? req.body.launch : 'app';
     const destination = await launchClient(launch, targetPath);
@@ -341,9 +366,11 @@ app.post("/api/logs/clear", (_req, res) => {
 
 // ============ App Launch Operations ============
 
+/** Any App Place is a valid destination; nothing else is. */
 function validDestination(targetPath: string): string {
-  if (!/^\/(?:bundle\/[a-zA-Z0-9_-]+(?:\?sourceReview=1)?)?$/.test(targetPath)) throw new Error('Invalid app destination');
-  return targetPath;
+  const parsed = parseAppPlace(targetPath);
+  if (parsed.ignored.length > 0) throw new Error(`Invalid app destination: ${parsed.ignored.join(', ')}`);
+  return appPlacePath(parsed.place);
 }
 
 /** Launch the dev Electron app against the open saved state. */
@@ -416,6 +443,7 @@ async function openBrowser(targetPath: string): Promise<string> {
 
 async function launchClient(launch: LaunchMode, targetPath: string): Promise<string | null> {
   const destination = validDestination(targetPath);
+  if (launch !== 'none') session.recordLaunch(destination);
   if (launch === 'app') {
     await launchDevApp(destination);
     return destination;

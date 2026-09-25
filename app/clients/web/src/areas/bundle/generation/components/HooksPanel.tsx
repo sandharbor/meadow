@@ -20,6 +20,7 @@ import { apiRequest } from '../../../../shared/utils/apiClient';
 import { HookType, HookMetadata } from '../../../../../../../contracts/types/hooks';
 import { logger } from '../../../../shared/utils/logger';
 import FloatingCodeEditor from './FloatingCodeEditor';
+import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 interface HooksPanelProps {
   bundleSlug: string;
@@ -100,6 +101,16 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ bundleSlug, onHooksChanged }) =
   };
 
   const editorKey = (scope: 'global' | 'bundle', hookType: HookType) => `${scope}:${hookType}`;
+  const newestEditor = Array.from(openEditors.values()).at(-1);
+  useLinkedSurface('preview', { open: newestEditor !== undefined, parameters: newestEditor ? { hook: newestEditor.key } : undefined }, {
+    open: async parameters => {
+      const [scope, hookType] = parameters.hook.split(':');
+      if ((scope !== 'global' && scope !== 'bundle') || !(hookType in HOOK_LABEL)) return `there is no hook ${parameters.hook}`;
+      await openEditor(hookType as HookType, scope);
+      return true;
+    },
+    close: () => setOpenEditors(new Map()),
+  }, { parameters: ['hook'] });
 
   const openEditor = async (hookType: HookType, scope: 'global' | 'bundle') => {
     const key = editorKey(scope, hookType);
@@ -350,6 +361,7 @@ const HooksPanel: React.FC<HooksPanelProps> = ({ bundleSlug, onHooksChanged }) =
           key={editor.key}
           initialOffset={idx * 30}
           title={`${HOOK_LABEL[editor.hookType]} (${editor.scope === 'global' ? 'Global' : 'Bundle'})`}
+          ariaLabel={`Edit hook ${editor.key}`}
           language="typescript"
           content={editor.content}
           onContentChange={(code) => {

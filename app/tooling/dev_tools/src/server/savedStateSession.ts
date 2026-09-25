@@ -47,8 +47,13 @@ export interface OpenSavedState {
   localServicePorts?: Record<string, number>;
   /** Set when the open state could not be resumed after a restart. */
   notice?: string;
+  /** The place the last launch asked the app to open, and when. */
+  requestedPlace?: string;
+  launchedAt?: string;
   checkpoint?: {
     message: string;
+    /** The App Place the scenario was at; forks open there. */
+    place?: string;
     scenarioTitle: string;
     reportUrl: string;
     runCodeRevision: string;
@@ -228,6 +233,7 @@ export class SavedStateSession {
       state.label = `${option.metadata.scenario} — ${option.message}`;
       state.checkpoint = {
         message: option.message,
+        ...(option.metadata.place && { place: option.metadata.place }),
         scenarioTitle: option.metadata.scenario,
         reportUrl: option.reportUrl,
         runCodeRevision: option.metadata.codeRevision,
@@ -289,6 +295,11 @@ export class SavedStateSession {
       preferredPorts: current.localServicePorts ?? {},
     });
     this.save({ ...current, serviceEnvironment: { ...current.serviceEnvironment, ...this.services.environment }, localServicePorts: this.services.ports });
+  }
+
+  /** Remember what the latest launch asked for, to compare with what the app reached. */
+  recordLaunch(requestedPlace: string): void {
+    this.save({ ...this.current(), requestedPlace, launchedAt: new Date().toISOString() });
   }
 
   private writeLocalResources(homeDirectory: string, logsDirectory: string): void {

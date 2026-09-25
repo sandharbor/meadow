@@ -16,6 +16,7 @@ limitations under the License.
 
 export { BundleListPage } from "./BundleListPage/BundleListPage.js";
 export { BundleEditorPage } from "./BundleEditorPage/BundleEditorPage.js";
+export { AppPlace } from "./shared/AppPlace.js";
 export { PreviewPublishModal } from "./BundleEditorPage/components/PreviewPublishModal/PreviewPublishModal.js";
 export { PublishToS3Tab } from "./BundleEditorPage/components/PreviewPublishModal/components/PublishToS3Tab.js";
 export { ChangesTab } from "./BundleEditorPage/components/PreviewPublishModal/components/ChangesTab.js";

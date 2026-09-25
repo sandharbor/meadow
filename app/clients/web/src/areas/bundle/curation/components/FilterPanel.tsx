@@ -35,6 +35,7 @@ import {
   FilterExpression,
   getActiveFilterExpressionTerms
 } from '../types/filterExpression';
+import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 const SEARCH_HIGHLIGHT_ACTION = { type: 'highlight' as const, color: '#009688', isDashed: false };
 
@@ -216,6 +217,28 @@ const FilterPanel = React.memo<FilterPanelProps>(({
       return hasChanges ? updated : prev;
     });
   }, [filters]);
+
+  useLinkedSurface('custom-filter', {
+    open: isCustomFilterModalOpen,
+    parameters: editingCustomFilter ? { filter: editingCustomFilter.id } : undefined,
+  }, {
+    open: async parameters => {
+      if (!parameters.filter) {
+        setEditingCustomFilter(null);
+        setIsCustomFilterModalOpen(true);
+        return true;
+      }
+      const response = await apiRequest(`bundles/${bundleSlug}/curation/custom-filters`);
+      if (!response.ok) return 'custom filters could not be loaded';
+      const data = await response.json() as { filters: CustomFilterConfig[] };
+      const customFilter = data.filters.find(filter => filter.id === parameters.filter);
+      if (!customFilter) return `there is no custom filter ${parameters.filter}`;
+      setEditingCustomFilter(customFilter);
+      setIsCustomFilterModalOpen(true);
+      return true;
+    },
+    close: () => { setIsCustomFilterModalOpen(false); setEditingCustomFilter(null); },
+  });
 
   // Custom filter handlers
   const handleCreateCustomFilter = () => {

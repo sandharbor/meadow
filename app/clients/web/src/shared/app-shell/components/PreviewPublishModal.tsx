@@ -32,12 +32,13 @@ import { openExternal } from '../../utils/openExternal';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import Modal from '../../components/Modal';
 import type { AppShellTypeOpenKnowledgeFormatSettings as OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/exported.js';
+import { useLinkedSurface } from '../../places/placeContext.js';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 type TopLevelTab = 'review' | 'share';
 type PreviewSubTab = 'bundlePreview' | 'changes' | 'versions';
 type ShareSubTab = 'localExport' | 'publish' | 'advanced';
-type PreviewModalTab = PreviewSubTab | ShareSubTab | 'customization';  // customization kept for URL param backward compat
+export type PreviewModalTab = PreviewSubTab | ShareSubTab;
 
 interface OpenKnowledgeFormatRename {
   sourcePath: string;
@@ -165,6 +166,9 @@ interface PreviewPublishModalProps {
   // URL param syncing
   onTabChange?: (tab: PreviewModalTab) => void;
   initialTab?: PreviewModalTab;
+  /** Open with the Customize panel showing, as a place link may ask. */
+  initialCustomize?: boolean;
+  onCustomizeChange?: (open: boolean) => void;
 
   // Hooks status
   hooksHaveErrors: boolean;
@@ -192,6 +196,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   onShowUntrackedNodes,
   onTabChange,
   initialTab,
+  initialCustomize,
+  onCustomizeChange,
   hooksHaveErrors,
 }) => {
   // Preview operations state
@@ -215,7 +221,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
 
   // UI state
   const [topLevelTab, setTopLevelTab] = useState<TopLevelTab>(() => {
-    if (initialTab === 'localExport' || initialTab === 'publish') return 'share';
+    if (initialTab === 'localExport' || initialTab === 'publish' || initialTab === 'advanced') return 'share';
     return 'review';
   });
   const [previewSubTab, setPreviewSubTab] = useState<PreviewSubTab>(
@@ -224,7 +230,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       : 'bundlePreview'
   );
   const [shareSubTab, setShareSubTab] = useState<ShareSubTab>(
-    initialTab === 'localExport' || initialTab === 'publish'
+    initialTab === 'localExport' || initialTab === 'publish' || initialTab === 'advanced'
       ? (initialTab as ShareSubTab)
       : 'publish'
   );
@@ -233,7 +239,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
   const [previewHistory, setPreviewHistory] = useState<string[]>([]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [isCustomizeSidebarOpen, setIsCustomizeSidebarOpen] = useState(initialTab === 'customization');
+  const [isCustomizeSidebarOpen, setIsCustomizeSidebarOpen] = useState(initialCustomize === true);
+  useEffect(() => { onCustomizeChange?.(isCustomizeSidebarOpen); }, [isCustomizeSidebarOpen, onCustomizeChange]);
   const [customizeSidebarAutoShownDismissed, setCustomizeSidebarAutoShownDismissed] = useState<boolean | null>(null);
   const [customizeSidebarWidth, setCustomizeSidebarWidth] = useState(380);
   const [changesInitialFile, setChangesInitialFile] = useState<string | undefined>(undefined);
@@ -980,6 +987,19 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
 
   const activeProvider = useActivePublishingProvider();
   const PublishTabComponent = activeProvider?.PublishTabComponent ?? null;
+
+  // The provider's publication history is a linkable place within Preview.
+  const [publicationHistoryOpen, setPublicationHistoryOpen] = useState(false);
+  useLinkedSurface('preview', { open: publicationHistoryOpen, parameters: publicationHistoryOpen ? { history: 'publications' } : undefined }, {
+    open: () => {
+      if (!PublishTabComponent) return 'the active publishing provider has no publication history';
+      setTopLevelTab('share');
+      setShareSubTab('publish');
+      setPublicationHistoryOpen(true);
+      return true;
+    },
+    close: () => setPublicationHistoryOpen(false),
+  }, { parameters: ['history'] });
   const publishTabLabel = activeProvider?.manifest.publishTabLabel ?? 'Publish';
   const hasOkfRenameCollisions = openKnowledgeFormatRenames.some(
     rename => rename.originalOutputPath !== rename.finalOutputPath
@@ -1291,6 +1311,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                       />
                       <div className="min-h-0 flex-1 overflow-auto">
                         <PublishTabComponent
+                          publicationHistory={{ open: publicationHistoryOpen, onOpenChange: setPublicationHistoryOpen }}
                           bundleSlug={slug || ''}
                           selectedVersionId={selectedShareVersionId}
                           generatedVersionLabels={generatedVersionLabels}

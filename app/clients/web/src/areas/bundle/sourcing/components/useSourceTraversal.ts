@@ -28,7 +28,7 @@ export function useSourceTraversal(review: SourcingReview | null, bundleSlug: st
   const graph = selection ? graphs[selection.side] : undefined;
   const node = selection ? graph?.getNode(selection.key) : undefined;
   const snapshot = selection ? review?.[selection.side] : undefined;
-  return { graphs, show, close, details: graph && node && snapshot ? {
+  return { graphs, show, close, selection, details: graph && node && snapshot ? {
     graph, selectedNode: node,
     addedNodeKeys: selection!.side === 'candidate' ? addedNodeKeys : undefined,
   } : null };

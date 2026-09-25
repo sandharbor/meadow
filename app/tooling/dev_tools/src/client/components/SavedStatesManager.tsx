@@ -1,7 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import type { ConfigFixture, OpenSavedState, PublishingProviderConfProfile, SavedStateOrigin, ServiceTarget } from '../../shared/types';
+import type { ConfigFixture, OpenSavedState, PlaceArrival, PublishingProviderConfProfile, SavedStateOrigin, ServiceTarget } from '../../shared/types';
 import { QaPanel } from './QaPanel.js';
 import { SourceChangesControl } from './SourceChangesControl.js';
 import { SplitOpenButton, type TargetAvailability } from './SplitOpenButton.js';
@@ -35,6 +35,7 @@ export function openSavedStateRequest(origin: SavedStateOrigin, serviceTarget: S
 
 const SavedStatesManager: React.FC = () => {
   const [current, setCurrent] = useState<OpenSavedState | null>(null);
+  const [arrival, setArrival] = useState<PlaceArrival | null>(null);
   const [fixtures, setFixtures] = useState<ConfigFixture[]>([]);
   const [providerProfiles, setProviderProfiles] = useState<PublishingProviderConfProfile[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +46,10 @@ const SavedStatesManager: React.FC = () => {
   });
 
   const refresh = useCallback(async () => {
-    const data = await requestJson<{ current: OpenSavedState; fixtures: ConfigFixture[] }>('/api/saved-states');
+    const data = await requestJson<{ current: OpenSavedState; fixtures: ConfigFixture[]; arrival: PlaceArrival | null }>('/api/saved-states');
     setCurrent(data.current);
     setFixtures(data.fixtures);
+    setArrival(data.arrival);
   }, []);
 
   useEffect(() => {
@@ -60,6 +62,14 @@ const SavedStatesManager: React.FC = () => {
     return () => window.removeEventListener('focus', onFocus);
   }, [refresh]);
 
+  // After a launch, check back until the app reports the place it reached.
+  const awaitingArrival = Boolean(current?.requestedPlace) && arrival === null;
+  useEffect(() => {
+    if (!awaitingArrival) return;
+    const timer = window.setInterval(() => { void refresh().catch(() => { /* Keep polling. */ }); }, 2_000);
+    return () => window.clearInterval(timer);
+  }, [awaitingArrival, refresh]);
+
   const changeLaunchMode = (mode: LaunchMode) => {
     setLaunchMode(mode);
     window.localStorage.setItem(LAUNCH_MODE_KEY, mode);
@@ -69,7 +79,9 @@ const SavedStatesManager: React.FC = () => {
     setBusy(key); setError(null);
     try {
       const result = await openSavedStateRequest(origin, target, launchMode);
-      setCurrent(result.state);
+      setArrival(null);
+      await refresh();
+      void result;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       await refresh().catch(() => { /* Keep the error visible. */ });
@@ -119,7 +131,7 @@ const SavedStatesManager: React.FC = () => {
   return <div className="min-h-full">
     <div className="mx-auto max-w-4xl space-y-4 p-4">
       {error && <div role="alert" className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-800">{error}</div>}
-      {current && <QaPanel state={current} />}
+      {current && <QaPanel state={current} arrival={arrival} />}
       <section className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-neutral-800">Saved states</h2>

@@ -137,6 +137,49 @@ export class BundleListPage {
     await archiveBtn.click();
   }
 
+  /** Open a bundle action that shows a dialog, check it opened, and close it. */
+  async openAndCloseBundleAction(name: string, action: "Edit bundle details" | "Rename bundle", dialogName: string | RegExp) {
+    await this.openBundleActions(name);
+    const button = this.page.getByRole("button", { name: action, exact: true });
+    await this.expect(button).toBeVisible();
+    await button.click();
+    const dialog = this.page.getByRole("dialog", { name: dialogName });
+    await this.expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Close", exact: true }).first().click();
+    await this.expect(dialog).toBeHidden();
+  }
+
+  private get relinkDialog() {
+    return this.page.getByRole("dialog", { name: "Relink selected folder" });
+  }
+
+  async expectRelinkRequired(missingFolder: string) {
+    await this.expect(this.relinkDialog).toBeVisible();
+    await this.expect(this.relinkDialog.getByText(missingFolder, { exact: true })).toBeVisible();
+  }
+
+  /** Choose the replacement folder, review the relink, and commit it. */
+  async relinkSelectedFolder(folderPath: string) {
+    await this.page.evaluate((chosen) => {
+      const target = window as unknown as { electronAPI?: Record<string, unknown> };
+      const originalAPI = target.electronAPI;
+      target.electronAPI = {
+        ...originalAPI,
+        showOpenDialog: async () => {
+          target.electronAPI = originalAPI;
+          return { canceled: false, filePaths: [chosen] };
+        },
+      };
+    }, folderPath);
+    await this.relinkDialog.getByRole("button", { name: "Choose folder" }).click();
+    await this.expect(this.relinkDialog.getByPlaceholder("Choose the replacement folder")).toHaveValue(folderPath);
+    await this.relinkDialog.getByRole("button", { name: "Review" }).click();
+    const relink = this.relinkDialog.getByRole("button", { name: "Relink folder" });
+    await this.expect(relink).toBeEnabled();
+    await relink.click();
+    await this.expect(this.relinkDialog).toBeHidden();
+  }
+
   async clickArchivedTab() {
     const tab = this.page.locator("button", { hasText: "Archived Bundles" });
     await this.expect(tab).toBeVisible();

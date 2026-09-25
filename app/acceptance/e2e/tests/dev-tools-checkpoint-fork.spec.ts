@@ -68,7 +68,7 @@ test('Dev Tools forks a scenario checkpoint into a fresh home with Local service
     expect((await refused.json() as { error: string }).error).toContain('a hosted backend could not resolve it');
     const opened = await fetch(`${devTools.serverUrl}/api/saved-states/open`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ origin: { kind: 'checkpoint', runId, scenario, checkpoint: 1 }, serviceTarget: 'local', launch: 'browser', targetPath: '/bundle/meadow-test-bundle-big?sourceReview=1' }),
+      body: JSON.stringify({ origin: { kind: 'checkpoint', runId, scenario, checkpoint: 1 }, serviceTarget: 'local', launch: 'browser', targetPath: '/bundle/meadow-test-bundle-big?surface=source-review' }),
     });
     expect(opened.ok).toBe(true);
     const { state, destination } = await opened.json() as { state: { homeDirectory: string; partition: string }; destination: string };

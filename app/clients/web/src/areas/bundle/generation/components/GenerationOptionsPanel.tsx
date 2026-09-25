@@ -20,6 +20,7 @@ import FolderNavigationSettingsModal from './FolderNavigationSettingsModal';
 import OpenKnowledgeFormatSettingsModal, {
   type OpenKnowledgeFormatSettings
 } from './open-knowledge-format/OpenKnowledgeFormatSettingsModal';
+import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 
@@ -260,6 +261,33 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
     }
     setIsSrsTagsModalOpen(true);
   };
+
+  const openSettings = isSrsTagsModalOpen ? `spaced-repetition-${scope}`
+    : isOkfSettingsModalOpen ? 'okf'
+    : isFolderNavigationSettingsOpen ? 'folder-navigation'
+    : null;
+  useLinkedSurface('preview', { open: openSettings !== null, parameters: openSettings ? { settings: openSettings } : undefined }, {
+    open: parameters => {
+      switch (parameters.settings) {
+        case 'spaced-repetition-global':
+        case 'spaced-repetition-bundle':
+          if (!effectiveSpacedRepetitionEnabled) return 'spaced repetition is off';
+          openSrsTagsModal(parameters.settings === 'spaced-repetition-global' ? 'global' : 'bundle');
+          return true;
+        case 'okf':
+          if (!effectiveOpenKnowledgeFormatEnabled) return 'Open Knowledge Format is off';
+          openOkfSettingsModal({ scope: 'edit' });
+          return true;
+        case 'folder-navigation':
+          if (!effectiveFolderNavigationEnabled) return 'folder navigation is off';
+          setIsFolderNavigationSettingsOpen(true);
+          return true;
+        default:
+          return 'unknown settings';
+      }
+    },
+    close: () => { setIsSrsTagsModalOpen(false); setIsOkfSettingsModalOpen(false); setIsFolderNavigationSettingsOpen(false); },
+  }, { parameters: ['settings'] });
 
   const handleGlobalSpacedRepetitionChange = async (checked: boolean) => {
     if (!checked) {

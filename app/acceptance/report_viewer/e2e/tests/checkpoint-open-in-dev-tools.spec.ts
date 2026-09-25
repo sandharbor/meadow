@@ -34,7 +34,7 @@ test('a checkpoint opens in Dev Tools with Local, and Hosted Development explain
       checkpoints: [
         { index: 1, message: 'setup complete', openable: true, hostedAvailable: true },
         {
-          index: 2, message: 'published', openable: true, hostedAvailable: false,
+          index: 2, message: 'published', openable: true, hostedAvailable: false, placeDescription: 'big › Preview › share › publish',
           hostedUnavailableReason: 'This checkpoint holds state in local Object storage (MinIO), such as published content or a signed-in account; a hosted backend could not resolve it.',
         },
       ],
@@ -70,6 +70,7 @@ test('a checkpoint opens in Dev Tools with Local, and Hosted Development explain
     await page.keyboard.press('ArrowRight');
     const control = page.getByTestId('checkpoint-open-control');
     await expect(control.getByRole('button', { name: 'Open checkpoint 2 in Dev Tools with Local' })).toBeEnabled();
+    await expect(control.getByTestId('checkpoint-place')).toHaveText('at big › Preview › share › publish');
     await control.getByRole('button', { name: 'More ways to open checkpoint 2' }).click();
     const hosted = control.getByRole('menuitem', { name: /^Hosted Development/ });
     await expect(hosted).toBeDisabled();

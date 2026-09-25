@@ -27,7 +27,7 @@ import { AppShellComponentBundleNodeTabs as BundleNodeTabs } from '../../../area
 import BundleLogsModal from './BundleLogsModal';
 import { AppShellComponentSinglePagePreviewCallout as SinglePagePreviewCallout, useAppShellStateSinglePagePreviewCallout as useSinglePagePreviewCallout } from '../../../areas/bundle/review/exported.js';
 import { AppShellComponentCreateOrEditBundleModal as CreateOrEditBundleModal } from '../../../areas/bundles/exported.js';
-import PreviewPublishModal from './PreviewPublishModal';
+import PreviewPublishModal, { type PreviewModalTab } from './PreviewPublishModal';
 import type { AppShellTypeOpenKnowledgeFormatSettings as OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/exported.js';
 import { useAppShellStateFilterState as useFilterState, appShellQueryCreateUntrackedNodeSelector as createUntrackedNodeSelector } from '../../../areas/bundle/curation/exported.js';
 import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig';
@@ -35,13 +35,24 @@ import { nodeConfigMatchesNode } from '../../../../../../shared_code/utils/bundl
 import { applySensitiveFromApiData, applyNodeConfigsToNodes, buildNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { getActiveFrontendProvider } from '../../publishing-provider-host/providerRegistry';
 import { fetchBundleEditData, BundleEditData } from '../../utils/bundleApi';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useLinkedSurface, usePlaceSelection } from '../../places/placeContext.js';
+import type { PlaceNodeReference } from '../../../../../../contracts/places/index.js';
 import { logger } from '../../utils/logger';
 import { openExternal } from '../../utils/openExternal';
 import { useAppNavigation } from '../../utils/appNavigation';
 import { DisabledTooltip } from '../../components/DisabledTooltip';
 import DeleteBundleModal from '../../bundle-management/DeleteBundleModal';
 import RenameBundleModal from '../../bundle-management/RenameBundleModal';
+
+const SHARE_TABS: readonly PreviewModalTab[] = ['publish', 'localExport', 'advanced'];
+const PLACE_TAB_BY_PREVIEW_TAB: Record<PreviewModalTab, string> = {
+  bundlePreview: 'bundle-preview', changes: 'changes', versions: 'versions',
+  publish: 'publish', localExport: 'local-export', advanced: 'advanced',
+};
+const PREVIEW_TAB_BY_PLACE_TAB: Record<string, PreviewModalTab> = Object.fromEntries(
+  Object.entries(PLACE_TAB_BY_PREVIEW_TAB).map(([tab, placeTab]) => [placeTab, tab as PreviewModalTab]),
+);
 
 const BundleEditor: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -57,7 +68,6 @@ const BundleEditor: React.FC = () => {
   const [isManageSourcesOpen, setIsManageSourcesOpen] = useState(false);
   const [sourceReviewTrigger, setSourceReviewTrigger] = useState(0);
   const [isSourceSnapshotsOpen, setIsSourceSnapshotsOpen] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
   const [graph, setGraph] = useState<Graph | null>(null);
   const [filters, setFilters, reloadCustomFilters] = useFilterState(slug || '');
   const [updateTrigger, setUpdateTrigger] = useState(0);
@@ -75,7 +85,10 @@ const BundleEditor: React.FC = () => {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isModalBusy, setIsModalBusy] = useState(false);
   const [previewStartPage, setPreviewStartPage] = useState<{ title: string; sourceGraphSubdirectory?: string; sourceId?: string } | undefined>();
-  const [previewModalTab, setPreviewModalTab] = useState<'bundlePreview' | 'changes' | 'versions' | 'customization' | 'localExport' | 'publish' | 'advanced'>('bundlePreview'); // customization kept for URL param backward compat
+  const [previewModalTab, setPreviewModalTab] = useState<PreviewModalTab>('bundlePreview');
+  const [previewCustomize, setPreviewCustomize] = useState(false);
+  const [previewStartKey, setPreviewStartKey] = useState<string | null>(null);
+  const [focusedNodeKey, setFocusedNodeKey] = useState<string | null>(null);
   const [hooksHaveErrors, setHooksHaveErrors] = useState(false); // Track if hooks have load errors
 
   const [hasPublishedVersions, setHasPublishedVersions] = useState(false);
@@ -125,65 +138,6 @@ const BundleEditor: React.FC = () => {
     return visible;
   }, [graph, pendingSourceChanges, updateTrigger]);
 
-
-  // Helper to update URL params for navigational components (nc prefix)
-  const updateNcParams = useCallback((updates: Record<string, string | null>) => {
-    setSearchParams((prev) => {
-      const newParams = new URLSearchParams(prev);
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null) {
-          newParams.delete(key);
-        } else {
-          newParams.set(key, value);
-        }
-      }
-      return newParams;
-    }, { replace: true });
-  }, [setSearchParams]);
-
-  // Track if we've already processed the initial URL params
-  const initialUrlParamsProcessed = useRef(false);
-
-  // Effect to read URL params on initial load and trigger preview modal if ncPreviewModal is present
-  useEffect(() => {
-    if (initialUrlParamsProcessed.current) return;
-
-    const ncPreviewModal = searchParams.get('ncPreviewModal');
-    const ncPreviewModalTab = searchParams.get('ncPreviewModalTab');
-
-    if (ncPreviewModal === '1') {
-      initialUrlParamsProcessed.current = true;
-
-      if (ncPreviewModalTab && ['bundlePreview', 'changes', 'versions', 'customization', 'localExport', 'publish', 'advanced'].includes(ncPreviewModalTab)) {
-        setPreviewModalTab(ncPreviewModalTab as 'bundlePreview' | 'changes' | 'versions' | 'customization' | 'localExport' | 'publish' | 'advanced');
-      }
-
-      if (slug) {
-        setTimeout(() => {
-          setIsPublishModalOpen(true);
-        }, 100);
-      }
-    }
-  }, [slug, searchParams]);
-
-  // Effect to sync URL params when modal state changes
-  useEffect(() => {
-    if (!initialUrlParamsProcessed.current && searchParams.get('ncPreviewModal') === '1') {
-      return;
-    }
-
-    if (isPublishModalOpen) {
-      updateNcParams({
-        ncPreviewModal: '1',
-        ncPreviewModalTab: previewModalTab,
-      });
-    } else {
-      updateNcParams({
-        ncPreviewModal: null,
-        ncPreviewModalTab: null,
-      });
-    }
-  }, [isPublishModalOpen, previewModalTab, updateNcParams, searchParams]);
 
   type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
 
@@ -690,6 +644,7 @@ const BundleEditor: React.FC = () => {
 
     const pageTitle = page.data?.title || page.label || bundleNodeKey;
     setPreviewStartPage({ title: pageTitle, sourceGraphSubdirectory: page.sourceGraphSubdirectory, sourceId: page.sourceId });
+    setPreviewStartKey(bundleNodeKey);
     setIsPublishModalOpen(true);
   };
 
@@ -718,6 +673,7 @@ const BundleEditor: React.FC = () => {
       return;
     }
     setPreviewStartPage(undefined);
+    setPreviewStartKey(null);
     setIsPublishModalOpen(true);
   };
 
@@ -939,6 +895,88 @@ const BundleEditor: React.FC = () => {
     setPreviewStartPage(undefined);
     setPreviewModalTab('bundlePreview');
   };
+  // ---- App Places ----
+  // Preview is a history place; the other editor dialogs are linkable places.
+  const graphRef = useRef<Graph | null>(null);
+  graphRef.current = graph;
+  const graphWaiters = useRef<((graph: Graph) => void)[]>([]);
+  useEffect(() => {
+    if (!graph) return;
+    graphWaiters.current.splice(0).forEach(resolve => resolve(graph));
+  }, [graph]);
+  const loadedGraph = useCallback((): Promise<Graph> => graphRef.current
+    ? Promise.resolve(graphRef.current)
+    : new Promise(resolve => graphWaiters.current.push(resolve)), []);
+
+  useLinkedSurface('preview', {
+    open: isPublishModalOpen,
+    parameters: {
+      step: SHARE_TABS.includes(previewModalTab) ? 'share' : 'review',
+      tab: PLACE_TAB_BY_PREVIEW_TAB[previewModalTab],
+      ...(previewCustomize && { customize: 'open' }),
+      ...(previewStartKey && { start: previewStartKey }),
+    },
+  }, {
+    open: async parameters => {
+      if (isModalBusy) return 'the bundle is busy';
+      const tab = parameters.tab ? PREVIEW_TAB_BY_PLACE_TAB[parameters.tab] : parameters.step === 'share' ? 'publish' : 'bundlePreview';
+      let startPage: typeof previewStartPage;
+      if (parameters.start) {
+        const page = (await loadedGraph()).getNode(parameters.start);
+        if (!page) return `its start page ${parameters.start} is not in this bundle`;
+        startPage = { title: page.data?.title || page.label || parameters.start, sourceGraphSubdirectory: page.sourceGraphSubdirectory, sourceId: page.sourceId };
+      }
+      setPreviewModalTab(tab ?? 'bundlePreview');
+      setPreviewCustomize(parameters.customize === 'open');
+      setPreviewStartPage(startPage);
+      setPreviewStartKey(parameters.start ?? null);
+      setIsPublishModalOpen(true);
+      return true;
+    },
+    close: () => handleClosePublishModal(),
+  });
+
+  useLinkedSurface('bundle-logs', { open: isBundleLogsModalOpen }, {
+    open: () => { setIsBundleLogsModalOpen(true); return true; },
+    close: () => setIsBundleLogsModalOpen(false),
+  });
+
+  useLinkedSurface('rename', { open: isRenameBundleModalOpen }, {
+    open: () => { setIsRenameBundleModalOpen(true); return true; },
+    close: () => setIsRenameBundleModalOpen(false),
+  });
+
+  useLinkedSurface('edit-details', { open: isEditBundleModalOpen }, {
+    open: async () => { await handleEditBundle(); return true as const; },
+    close: () => { setIsEditBundleModalOpen(false); setBundleToEdit(null); },
+  });
+
+  useLinkedSurface('source-snapshots', { open: isSourceSnapshotsOpen }, {
+    open: () => { setIsSourceSnapshotsOpen(true); return true; },
+    close: () => setIsSourceSnapshotsOpen(false),
+  });
+
+  // Selected pages: durable IDs where a page has one, locators otherwise.
+  const reportSelection = usePlaceSelection(async references => {
+    const loaded = await loadedGraph();
+    const nodes = loaded.getAllNodes();
+    const resolved = references.flatMap(reference => {
+      const node = 'id' in reference ? nodes.find(candidate => candidate.bundleNodeId === reference.id) : loaded.getNode(reference.key);
+      return node ? [{ reference, key: node.bundleNodeKey }] : [];
+    });
+    setSelectedNodeKeys(new Set(resolved.map(item => item.key)));
+    setFocusedNodeKey(resolved[0]?.key ?? null);
+    if (resolved.length > 0) setIsSelectionPanelCollapsed(false);
+    return { selected: resolved.map(item => item.reference), missing: references.length - resolved.length };
+  });
+  useEffect(() => {
+    const references: PlaceNodeReference[] = [...selectedNodeKeys].map(key => {
+      const id = graph?.getNode(key)?.bundleNodeId;
+      return id ? { id } : { key };
+    });
+    reportSelection(references);
+  }, [selectedNodeKeys, graph, reportSelection]);
+
 
 
   // Helper function to count untracked pages
@@ -974,7 +1012,7 @@ const BundleEditor: React.FC = () => {
     if (graphError) {
       return (
         <div className="w-full h-screen flex flex-col items-center justify-center p-8">
-          <SourcingPanel reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
+          <SourcingPanel reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
             setSourceTrackingOutcome(result.trackingOutcome);
             setGraphError(null); setConfigChangeTrigger(previous => previous + 1);
           }} />
@@ -1048,7 +1086,7 @@ const BundleEditor: React.FC = () => {
               </button>
             </div>
           )}
-          <SourcingPanel reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} initialReview={searchParams.get('sourceReview') === '1'} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
+          <SourcingPanel reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
             setSourceTrackingOutcome(result.trackingOutcome);
             refreshBundleNodeConfigs();
             reloadWorkingGraph();
@@ -1190,6 +1228,8 @@ const BundleEditor: React.FC = () => {
         onShowUntrackedNodes={handleShowUntrackedNodes}
         onTabChange={setPreviewModalTab}
         initialTab={previewModalTab}
+        initialCustomize={previewCustomize}
+        onCustomizeChange={setPreviewCustomize}
         hooksHaveErrors={hooksHaveErrors}
       />}
 
@@ -1264,6 +1304,7 @@ const BundleEditor: React.FC = () => {
           onSelectionPanelCollapseChange={setIsSelectionPanelCollapsed}
           selectedNodeKeys={selectedNodeKeys}
           onSelectedNodeKeysChange={setSelectedNodeKeys}
+          focusedNodeKey={focusedNodeKey}
           onPreviewPage={handlePreviewPage}
           hasDraftChanges={hasDraftChanges}
           bundleSlug={slug || ''}

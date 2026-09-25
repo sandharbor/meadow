@@ -1,3 +1,4 @@
+import React from 'react';
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { StrictMode } from 'react';
@@ -7,6 +8,26 @@ import { SourcingPanel } from '../../src/areas/bundle/sourcing/components/Sourci
 import { apiRequest } from '../../src/shared/utils/apiClient.js';
 import type { SourcingReview } from '../../../../contracts/types/sourcing.js';
 import type { SerializableBundleNode } from '../../../../contracts/types/IBundleNode.js';
+import { PlaceContext, type PlaceContextValue } from '../../src/shared/places/placeContext';
+
+/** Stand in for the app shell: a link asks to open source review. */
+function LinkedSourceReview({ children }: { children: React.ReactNode }) {
+  const value = React.useMemo<PlaceContextValue>(() => ({
+    epoch: 0,
+    openPlace: () => undefined,
+    openLink: () => undefined,
+    isSurfaceRequested: surface => surface === 'source-review',
+    registerSurface: participant => {
+      if (participant.surface === 'source-review' && !participant.parameters) void participant.onRequest({});
+      return () => undefined;
+    },
+    reportSurface: () => undefined,
+    registerSelection: () => () => undefined,
+    reportSelection: () => undefined,
+  }), []);
+  return <PlaceContext.Provider value={value}>{children}</PlaceContext.Provider>;
+}
+
 
 vi.mock('../../src/shared/utils/apiClient.js', () => ({ apiRequest: vi.fn() }));
 
@@ -95,7 +116,7 @@ describe('cancelling source settings', () => {
       candidate: { ...review.accepted, id: 'b'.repeat(32) }, changes: [{ kind: 'modified', path: 'Study.md' }],
       sourceChanges: { before: sources, after: sources, outputPathsChange: false, stale: false },
     }));
-    render(<SourcingPanel bundleSlug="example" initialReview hasDraftChanges={false} onAccepted={() => {}} />);
+    render(<LinkedSourceReview><SourcingPanel bundleSlug="example" hasDraftChanges={false} onAccepted={() => {}} /></LinkedSourceReview>);
     expect(await screen.findByRole('button', { name: 'Accept source changes' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /Discard|Cancel source/ })).not.toBeInTheDocument();
   });
@@ -107,7 +128,7 @@ describe('cancelling source settings', () => {
       candidate: { ...review.accepted, id: 'b'.repeat(32) }, changes: [{ kind: 'missing', path: 'Study.md' }],
       sourceChanges: { before, after, outputPathsChange: false, stale: false },
     })).mockResolvedValueOnce(response(review));
-    render(<SourcingPanel bundleSlug="example" initialReview hasDraftChanges={false} onAccepted={() => {}} />);
+    render(<LinkedSourceReview><SourcingPanel bundleSlug="example" hasDraftChanges={false} onAccepted={() => {}} /></LinkedSourceReview>);
     const button = await screen.findByRole('button', { name: operation === 'removal' ? 'Cancel source removal' : 'Cancel source settings changes' });
     expect(button).toHaveAccessibleDescription('Keep your current sources and included material. Your source files won’t be changed.');
     expect(screen.getByRole('button', { name: 'About cancelling source settings' })).toHaveAccessibleDescription('Keep your current sources and included material. Your source files won’t be changed.');

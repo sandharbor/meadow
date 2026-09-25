@@ -16,7 +16,6 @@ limitations under the License.
 
 /* global alert */
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
 import { apiRequest } from '../../../shared/utils/apiClient';
 import { getActiveFrontendProvider } from '../../../shared/publishing-provider-host/providerRegistry';
 import { fetchBundles, fetchDirectories, BundleConfigWithSlug } from '../../../shared/utils/bundleApi';
@@ -28,6 +27,7 @@ import RenameBundleModal from '../../../shared/bundle-management/RenameBundleMod
 import { logger } from '../../../shared/utils/logger';
 import { openExternal } from '../../../shared/utils/openExternal';
 import { useAppNavigation } from '../../../shared/utils/appNavigation';
+import { useLinkedSurface } from '../../../shared/places/placeContext.js';
 import SelectedFolderRepairModal from './SelectedFolderRepairModal';
 
 type BundleConfig = BundleConfigWithSlug;
@@ -154,7 +154,6 @@ const formatBundleDate = (value?: string | null): string | null => {
 };
 
 const BundleList: React.FC = () => {
-  const location = useLocation();
   const navigateInApp = useAppNavigation('bundleList');
   const [bundles, setBundles] = useState<BundleConfig[]>([]);
   const [directories, setDirectories] = useState<string[]>([]);
@@ -190,6 +189,77 @@ const BundleList: React.FC = () => {
   
   // Find in bundles filter state (from CLI args or "Find in Bundles" button)
   const [findInBundlesOptions, setFindInBundlesOptions] = useState<FindInBundlesOptions | null>(null);
+
+  // Links may name a bundle before the list has loaded.
+  const bundlesRef = useRef<BundleConfig[] | null>(null);
+  const bundlesLoadedRef = useRef<{ promise: Promise<BundleConfig[]>; resolve: (bundles: BundleConfig[]) => void } | null>(null);
+  if (!bundlesLoadedRef.current) {
+    let resolve: (bundles: BundleConfig[]) => void = () => {};
+    const promise = new Promise<BundleConfig[]>(settle => { resolve = settle; });
+    bundlesLoadedRef.current = { promise, resolve };
+  }
+  const bundlesLoaded = bundlesLoadedRef.current;
+  const bundleForPlace = async (slug: string): Promise<BundleConfig | string> => {
+    const loaded = bundlesRef.current ?? await bundlesLoaded.promise;
+    return loaded.find(bundle => bundle.slug === slug) ?? `there is no bundle named ${slug}`;
+  };
+
+  useLinkedSurface('find', {
+    open: findInBundlesOptions !== null,
+    parameters: findInBundlesOptions
+      ? { vault: findInBundlesOptions.vaultPath, folder: findInBundlesOptions.folderPath, page: findInBundlesOptions.pageName }
+      : undefined,
+  }, {
+    open: parameters => {
+      setFindInBundlesOptions({ vaultPath: parameters.vault, folderPath: parameters.folder, pageName: parameters.page });
+      return true;
+    },
+    close: () => setFindInBundlesOptions(null),
+  });
+
+  useLinkedSurface('create-bundle', { open: isCreateModalOpen }, {
+    open: () => { setIsCreateModalOpen(true); return true; },
+    close: () => setIsCreateModalOpen(false),
+  });
+
+  useLinkedSurface('edit-bundle', {
+    open: isEditModalOpen && bundleToEdit !== null,
+    parameters: bundleToEdit ? { bundle: bundleToEdit.slug } : undefined,
+  }, {
+    open: async parameters => {
+      const bundle = await bundleForPlace(parameters.bundle);
+      if (typeof bundle === 'string') return bundle;
+      handleEdit(bundle);
+      return true;
+    },
+    close: () => { setIsEditModalOpen(false); setBundleToEdit(null); },
+  });
+
+  useLinkedSurface('rename-bundle', {
+    open: bundleToRename !== null,
+    parameters: bundleToRename ? { bundle: bundleToRename.slug } : undefined,
+  }, {
+    open: async parameters => {
+      const bundle = await bundleForPlace(parameters.bundle);
+      if (typeof bundle === 'string') return bundle;
+      setBundleToRename(bundle);
+      return true;
+    },
+    close: () => setBundleToRename(null),
+  });
+
+  useLinkedSurface('repair-folder', {
+    open: bundleToRepair !== null,
+    parameters: bundleToRepair ? { bundle: bundleToRepair.slug } : undefined,
+  }, {
+    open: async parameters => {
+      const bundle = await bundleForPlace(parameters.bundle);
+      if (typeof bundle === 'string') return bundle;
+      setBundleToRepair(bundle);
+      return true;
+    },
+    close: () => setBundleToRepair(null),
+  });
   const [bundlesThatTrackPage, setBundlesThatTrackPage] = useState<Set<string>>(new Set());
   const [loadingPageTracking, setLoadingPageTracking] = useState(false);
   
@@ -279,6 +349,8 @@ const BundleList: React.FC = () => {
   const loadBundles = async () => {
     try {
       const data = await fetchBundles();
+      bundlesRef.current = data;
+      bundlesLoadedRef.current?.resolve(data);
       setBundles(data);
     } catch (err) {
       // Ignore network errors from page navigation (fetch aborted mid-flight)
@@ -300,23 +372,11 @@ const BundleList: React.FC = () => {
     }
   };
 
-  // Load find in bundles options from navigation state (Find in Bundles button) or CLI arguments
+  // Load find in bundles options from CLI arguments. "Find in Bundles" from
+  // the graph and meadow:// links arrive as the find place instead.
   const loadFindInBundlesOptions = async () => {
     logger.debug('[BundleList] loadFindInBundlesOptions called');
-    logger.debug('[BundleList] location.state:', location.state);
-    
     try {
-      // First priority: Check if there are find in bundles options from navigation state (from "Find in Bundles" button)
-      const navigationState = location.state as { findInBundlesOptions?: FindInBundlesOptions } | null;
-      if (navigationState?.findInBundlesOptions) {
-        logger.debug('[BundleList] Found find in bundles options from navigation state');
-        logger.debug('[BundleList] Find in bundles options from navigation:', navigationState.findInBundlesOptions);
-        setFindInBundlesOptions(navigationState.findInBundlesOptions);
-        logger.debug('[BundleList] Find in bundles options from navigation loaded and set');
-        return;
-      }
-      logger.debug('[BundleList] No find in bundles options in navigation state');
-      
       // If no navigation state, check CLI arguments (this is the only place that translates CLI args to FindInBundlesOptions)
       logger.debug('[BundleList] Attempting to load find in bundles options from CLI args...');
       const cliTargetPageInfo = await window.electronAPI?.getTargetPageInfo();
@@ -414,12 +474,10 @@ const BundleList: React.FC = () => {
     loadDirectories();
   }, []);
 
-  // Load find in bundles options when location changes (handles navigation from "Find in Bundles")
+  // Load find in bundles options passed on the desktop command line.
   useEffect(() => {
-    logger.debug('[BundleList] Location changed, loading find in bundles options');
     loadFindInBundlesOptions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location]);
+  }, []);
 
   // Check which bundles track the page from find in bundles options
   useEffect(() => {

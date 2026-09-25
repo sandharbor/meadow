@@ -43,6 +43,7 @@ import {
   mutateFileTrackingOptimistically,
   trackNodesOptimistically,
 } from '../utils/bundleTrackingInteraction';
+import { usePageInspectionDialogs } from './PageInspectionDialogs';
 
 interface BundleNodeTabsProps {
   sourceTrackingOutcome?: SnapshotTrackingOutcome;
@@ -59,6 +60,8 @@ interface BundleNodeTabsProps {
   onSelectionPanelCollapseChange: (collapsed: boolean) => void;
   selectedNodeKeys: Set<string>;
   onSelectedNodeKeysChange: (pages: Set<string>) => void;
+  /** The page a place link focused within the selection. */
+  focusedNodeKey?: string | null;
   onPreviewPage: (bundleNodeKey: string) => void;
   hasDraftChanges: boolean;
   bundleSlug: string;
@@ -88,6 +91,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   onSelectionPanelCollapseChange,
   selectedNodeKeys,
   onSelectedNodeKeysChange,
+  focusedNodeKey,
   onPreviewPage,
   hasDraftChanges,
   bundleSlug,
@@ -286,6 +290,9 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     return dg;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- graphUpdateTrigger forces recompute when graph is mutated in-place
   }, [graph, combinedFilters, effectiveFilterExpression, selectedNodeKeys, entryBundleNodeId, graphUpdateTrigger]);
+
+  const pageInspection = usePageInspectionDialogs({ graph, selectedNodeKeys, onSelectedNodeKeysChange,
+    isEffectivelySensitive: page => currentDisplayGraph.getDisplayNode(page.bundleNodeKey)?.isEffectivelySensitive ?? false });
 
   // When pages are selected, expand the panel
   useEffect(() => {
@@ -914,9 +921,14 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
             hasDraftChanges={hasDraftChanges}
             onMarkSensitive={handleMarkSensitive}
             obsidianInfo={obsidianInfo}
+            focusedNodeKey={focusedNodeKey}
+            onShowTraversalDetails={pageInspection.showTraversalDetails}
+            onShowLinks={pageInspection.showLinks}
           />
         </ResizableSidebar>
       )}
+
+      {pageInspection.dialogs}
 
       {/* Right-click context menu for pages */}
       {contextMenuPage && (() => {

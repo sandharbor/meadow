@@ -50,6 +50,19 @@ Keep the final `assertMeadowHomeState()` or `skipMeadowHomeStateCheck()` after t
 last checkpoint. This is scenario-writing guidance, not a rule to enforce with
 custom linting.
 
+## App Places in scenarios
+
+Every dialog is an App Place declared under `contracts/places`: an addressable
+surface of the area that renders it, or a declared transient with a reason. A
+checkpoint fails when an open dialog is neither, and names the dialog.
+
+A scenario may open a place directly (`new AppPlace(page, expect).open(path)`)
+only in its Setup phase; behavior under test stays click-driven. A full run
+reports place coverage and fails when a surface is reached only by link or not
+at all, so keep at least one scenario that clicks its way to every surface.
+The `app-place-links-*` scenarios open every declared surface from a link;
+add an example link in `src/run/placeLinkCheck.ts` when declaring a surface.
+
 ## Step 0: Determine run notes
 
 Before running the tests, decide on a short note describing **why** this run

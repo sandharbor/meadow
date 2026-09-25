@@ -22,8 +22,6 @@ import {
   type IBundleNode,
 } from '../../../../../../../contracts/types/IBundleNode';
 import { inheritedTraversalDepths, remainingTraversalDepths } from '../../../../shared/utils/traversalRoutes.js';
-import TraversalPathDetailsModal from '../../../../shared/components/TraversalPathDetailsModal.js';
-import BundleNodeLinksModal from './BundleNodeLinksModal';
 import BundleNodeContextMenu, { ObsidianInfo } from './BundleNodeContextMenu';
 import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 import { NodeFolderDetails } from './NodeFolderDetails.js';
@@ -44,6 +42,10 @@ interface BundleNodeSelectionSidebarProps {
   hasDraftChanges: boolean;
   onMarkSensitive?: (bundleNodeKey: string, isSensitive: boolean) => void;
   obsidianInfo: ObsidianInfo | null;
+  /** The page a place link focused: its details open and it scrolls into view. */
+  focusedNodeKey?: string | null;
+  onShowTraversalDetails: (bundleNodeKey: string) => void;
+  onShowLinks: (bundleNodeKey: string) => void;
 }
 
 const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
@@ -62,6 +64,9 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
   hasDraftChanges,
   onMarkSensitive,
   obsidianInfo,
+  focusedNodeKey,
+  onShowTraversalDetails,
+  onShowLinks,
 }) => {
   const [openDropdownBundleNodeKey, setOpenDropdownBundleNodeKey] = useState<string | null>(null);
   const [dropdownButtonRect, setDropdownButtonRect] = useState<{ x: number; y: number } | null>(null);
@@ -70,10 +75,6 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
   const [inlinksDepthInputsByBundleNodeKey, setInlinksDepthInputsByBundleNodeKey] = useState<Record<string, string>>({});
   const [outlinksDepthOverrideOpenByBundleNodeKey, setOutlinksDepthOverrideOpenByBundleNodeKey] = useState<Record<string, boolean>>({});
   const [inlinksDepthOverrideOpenByBundleNodeKey, setInlinksDepthOverrideOpenByBundleNodeKey] = useState<Record<string, boolean>>({});
-  const [isTraversalDetailsModalOpen, setIsTraversalDetailsModalOpen] = useState<boolean>(false);
-  const [traversalDetailsBundleNodeKey, setTraversalDetailsBundleNodeKey] = useState<string | null>(null);
-  const [isLinksModalOpen, setIsLinksModalOpen] = useState<boolean>(false);
-  const [linksModalBundleNodeKey, setLinksModalBundleNodeKey] = useState<string | null>(null);
 
   // Path collapsing state
   const [expandedPathBundleNodeKeys, setExpandedPathBundleNodeKeys] = useState<Set<string>>(new Set());
@@ -86,6 +87,11 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
     setOutlinksDepthInputsByBundleNodeKey({});
     setInlinksDepthInputsByBundleNodeKey({});
   }, [graph]);
+
+  useEffect(() => {
+    if (!focusedNodeKey || !selectedNodeKeys.has(focusedNodeKey)) return;
+    setOpenDetailsBundleNodeKeys(prev => prev.has(focusedNodeKey) ? prev : new Set([...prev, focusedNodeKey]));
+  }, [focusedNodeKey, selectedNodeKeys]);
 
   // Auto-expand details when only the initial bundle page is selected
   useEffect(() => {
@@ -546,10 +552,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                           <div className="flex items-center justify-between mb-1">
                             <div className="text-xs font-semibold text-neutral-700">{page!.traversal_alternative_routes?.length ? 'Shortest path' : 'Path'}</div>
                             <button
-                              onClick={() => {
-                                setTraversalDetailsBundleNodeKey(page!.bundleNodeKey);
-                                setIsTraversalDetailsModalOpen(true);
-                              }}
+                              onClick={() => onShowTraversalDetails(page!.bundleNodeKey)}
                               className="p-1 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
                               title="Show detailed traversal information"
                               type="button"
@@ -961,10 +964,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
                         <div className="flex items-center justify-between mb-1">
                           <div className="text-xs font-semibold text-neutral-700">Links</div>
                           <button
-                            onClick={() => {
-                              setLinksModalBundleNodeKey(page!.bundleNodeKey);
-                              setIsLinksModalOpen(true);
-                            }}
+                            onClick={() => onShowLinks(page!.bundleNodeKey)}
                             className="px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
                             title="Show all inlinks and outlinks for this page"
                           >
@@ -1011,37 +1011,6 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
         </div>
       </div>
 
-      {/* Traversal Path Details Modal */}
-      {isTraversalDetailsModalOpen && traversalDetailsBundleNodeKey && graph.getNode(traversalDetailsBundleNodeKey) && (
-        <TraversalPathDetailsModal
-          isOpen={isTraversalDetailsModalOpen}
-          onClose={() => setIsTraversalDetailsModalOpen(false)}
-          selectedNode={graph.getNode(traversalDetailsBundleNodeKey)!}
-          graph={graph}
-        />
-      )}
-
-      {/* Bundle Page Links Modal */}
-      {isLinksModalOpen && linksModalBundleNodeKey && (
-        <BundleNodeLinksModal
-          isOpen={isLinksModalOpen}
-          onClose={() => setIsLinksModalOpen(false)}
-          initialBundleNodeKey={linksModalBundleNodeKey}
-          graph={graph}
-          onSelectNode={(bundleNodeKey) => {
-            const newSelection = new Set(selectedNodeKeys);
-            newSelection.add(bundleNodeKey);
-            onSelectedNodeKeysChange(newSelection);
-          }}
-          onDeselectNode={(bundleNodeKey) => {
-            const newSelection = new Set(selectedNodeKeys);
-            newSelection.delete(bundleNodeKey);
-            onSelectedNodeKeysChange(newSelection);
-          }}
-          selectedNodeKeys={selectedNodeKeys}
-          isEffectivelySensitive={isEffectivelySensitive}
-        />
-      )}
     </>
   );
 };

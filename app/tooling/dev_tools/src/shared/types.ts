@@ -39,3 +39,4 @@ export type {
   ServiceTarget,
 } from "../server/savedStateSession.js";
 export type { CheckpointOption } from "../server/checkpointCatalog.js";
+export type { PlaceArrival } from "../../../../contracts/places/index.js";

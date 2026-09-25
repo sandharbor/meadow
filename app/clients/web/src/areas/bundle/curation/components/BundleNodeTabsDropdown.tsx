@@ -17,6 +17,7 @@ limitations under the License.
 import React, { useState, useRef, useEffect } from 'react';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
 import CopySelectedNodesModal from './CopySelectedNodesModal';
+import { useEventually, useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 interface BundleNodeTabsDropdownProps {
   selectedNodeKeys: Set<string>;
@@ -29,6 +30,15 @@ const BundleNodeTabsDropdown: React.FC<BundleNodeTabsDropdownProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCopyModalOpen, setIsCopyModalOpen] = useState(false);
+  const selectionSettled = useEventually(selectedNodeKeys.size);
+  useLinkedSurface('copy-selection', { open: isCopyModalOpen }, {
+    open: async () => {
+      if (!await selectionSettled(size => size > 0)) return 'no pages are selected';
+      setIsCopyModalOpen(true);
+      return true;
+    },
+    close: () => setIsCopyModalOpen(false),
+  });
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside

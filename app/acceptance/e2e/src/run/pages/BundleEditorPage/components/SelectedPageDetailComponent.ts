@@ -131,6 +131,16 @@ export class SelectedPageDetailComponent {
     await this.expect(this.root.getByTestId('selected-node-folder').getByRole('definition')).toHaveText(location);
   }
 
+  /** Show how traversal reached this page, then close the explanation. */
+  async openAndCloseTraversalPath() {
+    await this.root.getByTitle("Show detailed traversal information").click();
+    const page = this.root.page();
+    const dialog = page.getByRole("dialog", { name: "Traversal Path" });
+    await this.expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Close", exact: true }).first().click();
+    await this.expect(dialog).toBeHidden();
+  }
+
   async clickShowLinks() {
     const btn = this.root.locator("button", { hasText: "Show Links" });
     await this.expect(btn).toBeVisible();

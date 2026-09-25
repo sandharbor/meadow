@@ -23,25 +23,34 @@ import TitleBar from './components/TitleBar'
 import UpdateModal from './components/UpdateModal'
 import { initializeApiConfig } from '../utils/apiConfig'
 import { logger } from '../utils/logger'
-import { useAppNavigation } from '../utils/appNavigation'
 import { FindInBundlesOptions } from '../../../../../contracts/types/findInBundlesOptions'
+import { appPlacePath } from '../../../../../contracts/places/index.js'
+import { PlaceProvider } from './places/PlaceProvider'
+import { useOpenLink } from '../places/placeContext'
 import { startBrowserSessionHeartbeat } from './browserSessionHeartbeat'
 import './index.css'
 
+/** The desktop host's meadow://find-in-bundles links arrive as an App Place link. */
 const FindInBundlesDeepLinkListener: React.FC = () => {
-  const navigateInApp = useAppNavigation('findInBundlesDeepLink');
+  const openLink = useOpenLink();
 
   useEffect(() => {
     if (!window.electronAPI) return;
 
     window.electronAPI.onOpenFindInBundles((findInBundlesOptions: FindInBundlesOptions) => {
-      navigateInApp({ page: 'bundle-list', findInBundlesOptions });
+      openLink(appPlacePath({
+        page: 'bundle-list',
+        surface: {
+          name: 'find',
+          parameters: { vault: findInBundlesOptions.vaultPath, folder: findInBundlesOptions.folderPath, page: findInBundlesOptions.pageName },
+        },
+      }));
     });
 
     return () => {
       window.electronAPI.offOpenFindInBundles();
     };
-  }, [navigateInApp]);
+  }, [openLink]);
 
   return null;
 };
@@ -63,15 +72,17 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <FindInBundlesDeepLinkListener />
-      <TitleBar />
+      <PlaceProvider>
+        <FindInBundlesDeepLinkListener />
+        <TitleBar />
 
-      <div className="h-[calc(100vh-28px)] mt-[28px] overflow-hidden">
-        <Routes>
-          <Route path="/" element={<BundleList />} />
-          <Route path="/bundle/:slug" element={<BundleEditor />} />
-        </Routes>
-      </div>
+        <div className="h-[calc(100vh-28px)] mt-[28px] overflow-hidden">
+          <Routes>
+            <Route path="/" element={<BundleList />} />
+            <Route path="/bundle/:slug" element={<BundleEditor />} />
+          </Routes>
+        </div>
+      </PlaceProvider>
 
       <UpdateModal
         isOpen={isUpdateModalOpen}

@@ -40,6 +40,7 @@ import os from "os";
 import path from "path";
 import YAML from "yaml";
 import { EMPTY_HOME, openHomeFixture } from '../../../../shared_code/shared_dev/savedStates.js';
+import { parseAppPlace, placeRegistry } from '../../../../contracts/places/index.js';
 import { resolveFastGitOpsBinary } from "./utils/MeadowHomeGit.js";
 import { MeadowCli } from "./utils/MeadowCli.js";
 import { MinioS3 } from "./utils/MinioS3.js";
@@ -225,6 +226,32 @@ async function acquireSerialGroupLock(group: string): Promise<() => void> {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
+}
+
+/**
+ * Read the place the app published and the accessible names of open dialogs.
+ * Scenarios without an app page (CLI-only) have neither.
+ */
+async function readPlaceAndDialogs(page: import("@playwright/test").Page): Promise<{
+  place?: string;
+  openDialogs?: { name: string; classification: "surface" | "transient" | "unaddressable" }[];
+}> {
+  const snapshot = await page.evaluate(() => {
+    const place = document.documentElement.dataset.meadowPlace;
+    const dialogs = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')]
+      .filter(dialog => dialog.offsetParent !== null || dialog.getClientRects().length > 0)
+      .map(dialog => dialog.getAttribute("aria-label")
+        ?? (dialog.getAttribute("aria-labelledby")
+          ? dialog.getAttribute("aria-labelledby")!.split(/\s+/).map(id => document.getElementById(id)?.textContent ?? "").join(" ").trim()
+          : ""));
+    return { place, dialogs };
+  }).catch(() => ({ place: undefined, dialogs: [] as string[] }));
+  if (!snapshot.place) return {};
+  const current = parseAppPlace(snapshot.place).place;
+  return {
+    place: snapshot.place,
+    openDialogs: snapshot.dialogs.map(name => ({ name, classification: placeRegistry.classifyDialog(name, current) })),
+  };
 }
 
 /**
@@ -1406,7 +1433,7 @@ export const test = base.extend<{
     });
   },
 
-  checkpoint: async ({ artifactDir, testServer, minioS3, fixtureHome, _additionalCheckpointHandlers, _tickCaptureRegistry }, use, testInfo) => {
+  checkpoint: async ({ page, artifactDir, testServer, minioS3, fixtureHome, _additionalCheckpointHandlers, _tickCaptureRegistry }, use, testInfo) => {
     // --- Setup: init repos ---
 
     const { minioEndpoint, configDir } = testServer;
@@ -1492,9 +1519,14 @@ export const test = base.extend<{
         await handler(message);
       }
 
+      // The App Place the page is at, and every open dialog, so a fork can
+      // open the same screen and escaped dialogs are caught.
+      const screen = await readPlaceAndDialogs(page);
+
       // Capture a restorable saved state: the whole home plus every Local
       // Services partition, so Dev Tools can open (fork) this exact moment.
       await captureCheckpoint({
+        ...screen,
         repo: path.join(artifactDir, CHECKPOINT_REPO_DIRECTORY),
         homeDirectory: configDir,
         parts: testServer.localServices.parts,
@@ -1508,6 +1540,16 @@ export const test = base.extend<{
         scenario: testInfo.title,
         sharedObjectsDirectory: path.join(path.dirname(artifactDir), "__checkpoint-objects"),
       });
+
+      // Every open dialog must be a linkable App Place or a declared transient.
+      const escaped = screen.openDialogs?.filter(dialog => dialog.classification === "unaddressable") ?? [];
+      if (escaped.length > 0) {
+        throw new Error(
+          `Checkpoint "${message}" found ${escaped.length === 1 ? "an open dialog" : "open dialogs"} that App Places cannot reach: `
+          + `${escaped.map(dialog => `"${dialog.name}"`).join(", ")} (at ${screen.place}). Declare each as a surface or a transient `
+          + "in the contracts/places file of the area that renders it.",
+        );
+      }
 
       // Record this boundary before the next phase can change state or replace
       // its marker. Short phases may complete between periodic ticks.

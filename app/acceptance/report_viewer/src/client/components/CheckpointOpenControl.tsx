@@ -12,6 +12,8 @@ interface CheckpointOption {
   unavailableReason?: string
   hostedAvailable: boolean
   hostedUnavailableReason?: string
+  /** Where in the app the checkpoint was taken; the fork opens there. */
+  placeDescription?: string
 }
 
 const TARGET_LABELS: Record<ServiceTarget, string> = { local: 'Local', hosted: 'Hosted Development' }
@@ -86,6 +88,9 @@ export function CheckpointOpenControl({ runId, scenario, index }: { runId: strin
 
   return (
     <div ref={container} className="relative flex items-center gap-2" data-testid="checkpoint-open-control">
+      {option?.placeDescription && (
+        <span data-testid="checkpoint-place" className="text-[11px] text-neutral-500">at {option.placeDescription}</span>
+      )}
       <div className="flex">
         <button
           type="button"

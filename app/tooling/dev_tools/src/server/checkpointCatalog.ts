@@ -9,6 +9,7 @@ import {
   listCheckpoints,
   type CheckpointMetadata,
 } from '../../../local_services/src/index.js';
+import { describeAppPlace, parseAppPlace } from '../../../../contracts/places/index.js';
 
 /** A checkpoint as Dev Tools and the report viewer present it. */
 export interface CheckpointOption {
@@ -25,6 +26,8 @@ export interface CheckpointOption {
   hostedUnavailableReason?: string;
   upgradeFromFormat?: number;
   reportUrl: string;
+  /** Where in the app the checkpoint was taken, for display. */
+  placeDescription?: string;
   metadata: CheckpointMetadata;
 }
 
@@ -51,6 +54,14 @@ export function checkpointRepository(runId: string, scenario: string): string {
   return path.join(scenarioDirectory(runId, scenario), CHECKPOINT_REPO_DIRECTORY);
 }
 
+function describePlace(place: string): string | undefined {
+  try {
+    return describeAppPlace(parseAppPlace(place).place);
+  } catch {
+    return undefined;
+  }
+}
+
 function describeState(metadata: CheckpointMetadata): string {
   return metadata.parts.filter(part => part.hasState).map(part => part.displayName).join(' and ');
 }
@@ -74,6 +85,7 @@ export function checkpointOptions(runId: string, scenario: string): CheckpointOp
       }),
       ...(compatibility.upgradeFromFormat !== undefined && { upgradeFromFormat: compatibility.upgradeFromFormat }),
       reportUrl: `${reportViewerUrl()}/${encodeURIComponent(runId)}/${encodeURIComponent(scenario)}`,
+      ...(metadata.place && { placeDescription: describePlace(metadata.place) }),
       metadata,
     };
   });
