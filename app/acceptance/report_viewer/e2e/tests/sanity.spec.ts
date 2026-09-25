@@ -114,10 +114,11 @@ test("run detail filters scenarios by bundle-origin mode", async ({ page }) => {
 
   await page.goto(`/${runId}`);
 
-  const singleFile = page.getByRole("button", { name: "Single file (1)" });
-  const singleFolder = page.getByRole("button", { name: "Single folder (0)" });
-  const multipleFolders = page.getByRole("button", { name: "Multiple folders (0)" });
+  const singleFile = page.getByRole("button", { name: "Single file" });
+  const singleFolder = page.getByRole("button", { name: "Single folder" });
+  const multipleFolders = page.getByRole("button", { name: "Multiple folders" });
   await expect(singleFile).toBeVisible();
+  await page.getByRole('group', { name: 'Starts with', exact: true }).getByRole('button', { name: /^and \d+ hidden$/ }).click();
   await expect(singleFolder).toBeVisible();
   await expect(multipleFolders).toBeVisible();
   const scenarioCard = page.getByText("publish flow uploads files to minio", { exact: true }).first();
@@ -137,9 +138,9 @@ test("run detail treats browser and CLI as a primary interface choice", async ({
   await page.goto(`/${runId}`);
 
   const interfacePicker = page.getByRole("group", { name: "Interface" });
-  const all = interfacePicker.getByRole("button", { name: "All (2)" });
-  const browser = interfacePicker.getByRole("button", { name: "Browser (1)" });
-  const cli = interfacePicker.getByRole("button", { name: "CLI (1)" });
+  const all = interfacePicker.getByRole("button", { name: "All" });
+  const browser = interfacePicker.getByRole("button", { name: "Browser" });
+  const cli = interfacePicker.getByRole("button", { name: "CLI" });
   const browserScenario = page.getByText("Browser publish flow", { exact: true }).first();
   const cliScenario = page.getByText("CLI bundle nodes", { exact: true }).first();
 

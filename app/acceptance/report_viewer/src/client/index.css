@@ -22,3 +22,99 @@ html, body {
   height: 100%;
   width: 100%;
 }
+
+.filter-interface { --filter-accent: theme(colors.indigo.400); }
+.filter-areas { --filter-accent: theme(colors.sky.500); }
+.filter-bundles { --filter-accent: theme(colors.emerald.500); }
+.filter-starts-with { --filter-accent: theme(colors.violet.500); }
+.filter-tags { --filter-accent: theme(colors.brand.500); }
+.filter-contributed-tags { --filter-accent: theme(colors.amber.500); }
+
+.filter-section, .scenario-metadata-group {
+  --filter-background: color-mix(in srgb, var(--filter-accent) 6%, white);
+}
+
+.filter-section {
+  background-color: var(--filter-background);
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: clamp(5.5rem, 12vw, 8rem) 5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.25rem 0.5rem;
+}
+
+.filter-label {
+  padding-block: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.filter-all .filter-default {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.filter-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.filter-choices button {
+  max-width: 100%;
+}
+
+.filter-section button[aria-pressed="false"],
+.scenario-metadata-chip[data-selected="false"] {
+  background-color: color-mix(in srgb, var(--filter-background) 80%, var(--filter-accent));
+}
+
+.filter-section button[aria-pressed="false"]:hover,
+.scenario-metadata-chip[data-selected="false"]:hover {
+  background-color: color-mix(in srgb, var(--filter-background) 70%, var(--filter-accent));
+}
+
+.filter-section button[aria-pressed="true"],
+.scenario-metadata-chip[data-selected="true"] {
+  background-color: color-mix(in srgb, var(--filter-accent) 75%, white);
+  color: theme(colors.neutral.800);
+  outline: 2px solid theme(colors.orange.500);
+}
+
+.scenario-metadata-chip[data-muted="true"] {
+  opacity: 0.2;
+}
+
+.scenario-metadata-chip:focus-visible {
+  outline: 2px solid theme(colors.blue.500);
+  outline-offset: 2px;
+}
+
+.filter-section button.filter-default[aria-pressed="true"] {
+  background-color: color-mix(in srgb, var(--filter-accent) 45%, white);
+  color: theme(colors.neutral.700);
+  outline: none;
+}
+
+.filter-section button.filter-default:focus-visible {
+  outline: 2px solid theme(colors.blue.500);
+}
+
+.filter-section .filter-all[data-constrained="true"] button.filter-default {
+  background-color: theme(colors.neutral.100);
+  color: theme(colors.neutral.300);
+}
+
+.scenario-details-preview {
+  width: 100%;
+  max-width: var(--detail-video-width);
+}
+
+@media (min-width: 1024px) {
+  .scenario-details-row.has-video {
+    grid-template-columns: minmax(0, min(50%, var(--detail-video-width))) minmax(0, 1fr);
+  }
+}

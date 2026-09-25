@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { Fragment, useState, useEffect, useRef, useCallback, useId, type CSSProperties, type ReactNode } from 'react'
 import { Link, useParams, useNavigate, useSearchParams, createSearchParams } from 'react-router-dom'
 import {
   DEFAULT_PLAYBACK_SPEED_PERCENT,
@@ -26,6 +26,7 @@ import {
   scenarioDisplayName,
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
+import { ScenarioFilterPill, type ScenarioFilterAction } from './ScenarioFilterPill.tsx'
 import { categorizeScenarios, SectionHeader, StatusBadge } from './scenarioCategories.tsx'
 import { isBundleMode, BUNDLE_MODE_OPTIONS, type BundleMode } from '../../bundleModes.ts'
 import {
@@ -34,8 +35,19 @@ import {
   type ExecutionSurface,
 } from '../../../../e2e/src/run/executionSurface.ts'
 
-const VIEW_TABS = ['thumbs', 'list', 'details', 'videos', 'timing'] as const
+const VIEW_TABS = ['thumbs', 'list', 'videos', 'details', 'timing'] as const
 type ViewTab = typeof VIEW_TABS[number]
+type FilterGroup = 'surface' | 'bundle' | 'mode' | 'area'
+
+interface FilterValues {
+  areaIds: string[]
+  docIds: string[]
+  bundleIds: string[]
+  bundleModes: BundleMode[]
+  executionSurface: ExecutionSurface | null
+}
+
+const EMPTY_FILTERS: FilterValues = { areaIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurface: null }
 
 interface ConceptView {
   searchFacet: boolean
@@ -90,6 +102,124 @@ interface RunData {
   highlightedTestBasenames?: string[]
 }
 
+function FilterOptions<T extends { id: string }>({ preferenceId, options, availableIds, selectedIds, allOption, section, children }: {
+  preferenceId: string
+  options: readonly T[]
+  availableIds: ReadonlySet<string>
+  selectedIds: readonly string[]
+  allOption: ReactNode
+  section?: (option: T) => string | undefined
+  children: (option: T, available: boolean) => ReactNode
+}) {
+  const storageKey = `e2e-report-viewer.filter-expanded.${preferenceId}`
+  const [expanded, setExpanded] = useState(() => {
+    try { return window.localStorage.getItem(storageKey) === 'true' }
+    catch { return false }
+  })
+  const toggleExpanded = () => {
+    const next = !expanded
+    setExpanded(next)
+    try { window.localStorage.setItem(storageKey, String(next)) }
+    catch { /* Keep the toggle usable when browser storage is unavailable. */ }
+  }
+  const optionsId = useId()
+  // Keep selected options reachable even when another filter rules them out.
+  const visible = options.filter(option => availableIds.has(option.id) || selectedIds.includes(option.id))
+  const unavailable = options.filter(option => !availableIds.has(option.id) && !selectedIds.includes(option.id))
+  const hiddenLabel = `${visible.length > 0 ? 'and ' : ''}${unavailable.length} hidden`
+  const renderOptions = (choices: readonly T[]) => choices.map((option, index) => {
+    const heading = section?.(option)
+    const startsSection = heading && (index === 0 || heading !== section?.(choices[index - 1]))
+    return <Fragment key={option.id}>
+      {startsSection && <span className="text-xs text-neutral-400 font-medium mr-1">{heading}:</span>}
+      {children(option, availableIds.has(option.id))}
+    </Fragment>
+  })
+
+  return <>
+    <div className="filter-all" data-constrained={visible.length <= 1}>
+      {allOption}
+    </div>
+    <div className="filter-choices">
+      {renderOptions(visible)}
+      {unavailable.length > 0 && (
+        <button
+          type="button"
+          className="inline-grid px-2 py-1 text-left text-xs font-medium text-neutral-500 hover:text-neutral-800 hover:underline cursor-pointer"
+          aria-expanded={expanded}
+          aria-controls={optionsId}
+          onClick={toggleExpanded}
+        >
+          {/* Reserve the collapsed label's width so the link stays in place when rows wrap. */}
+          <span className="invisible col-start-1 row-start-1" aria-hidden="true">{hiddenLabel}</span>
+          <span className="col-start-1 row-start-1">{expanded ? 'hide' : hiddenLabel}</span>
+        </button>
+      )}
+      <span id={optionsId} className="contents">
+        {expanded && renderOptions(unavailable)}
+      </span>
+    </div>
+  </>
+}
+
+function ScenarioPreviewVideo({ src, poster, name, onRef }: {
+  src: string
+  poster?: string
+  name: string
+  onRef: (video: HTMLVideoElement | null) => void
+}) {
+  const [unavailable, setUnavailable] = useState(false)
+  return unavailable ? (
+    <div className="aspect-video flex items-center justify-center rounded bg-neutral-100 text-xs text-neutral-400">
+      No video available.
+    </div>
+  ) : (
+    <video
+      ref={onRef}
+      src={src}
+      poster={poster}
+      aria-label={`Video for ${name}`}
+      controls
+      playsInline
+      preload="metadata"
+      muted
+      onError={() => setUnavailable(true)}
+      className="w-full aspect-video rounded bg-neutral-900"
+    />
+  )
+}
+
+function ScenarioMetadataGroup({ label, accent, options, availableIds, selectedIds, onChoose }: {
+  label: string
+  accent: string
+  options: { id: string; name: string }[]
+  availableIds: ReadonlySet<string>
+  selectedIds: readonly string[]
+  onChoose: (id: string, action: ScenarioFilterAction) => void
+}) {
+  if (options.length === 0) return null
+  return (
+    <div className={`scenario-metadata-group ${accent} flex min-w-0 flex-wrap items-center gap-1`}>
+      <dt className="text-neutral-400">{label}:</dt>
+      <dd className="contents">
+        {options.map(option => {
+          const selected = selectedIds.includes(option.id)
+          const hidden = !availableIds.has(option.id) && !selected
+          return (
+            <ScenarioFilterPill
+              key={option.id}
+              name={option.name}
+              selected={selected}
+              hidden={hidden}
+              onChoose={action => onChoose(option.id, action)}
+            />
+          )
+        })}
+      </dd>
+    </div>
+  )
+}
+
 export default function RunDetail() {
   const { runId } = useParams<{ runId: string }>()
   const navigate = useNavigate()
@@ -140,7 +270,7 @@ export default function RunDetail() {
       .flatMap((s) => s.conceptIds)
   )
 
-  const setFilters = (next: { areaIds?: string[]; docIds?: string[]; bundleIds?: string[]; bundleModes?: BundleMode[]; executionSurface?: ExecutionSurface | null }) => {
+  const setFilters = (next: Partial<FilterValues>) => {
     const areaIds = next.areaIds ?? selectedAreaIds
     const docIds = next.docIds ?? selectedDocIds
     const bundleIds = next.bundleIds ?? selectedBundleIds
@@ -158,6 +288,20 @@ export default function RunDetail() {
     ])
   }
 
+  const chooseMetadataFilter = (next: Partial<FilterValues>, action: ScenarioFilterAction) => {
+    const current = action === 'restart' ? EMPTY_FILTERS : {
+      areaIds: selectedAreaIds, docIds: selectedDocIds, bundleIds: selectedBundleIds,
+      bundleModes: selectedBundleModes, executionSurface: selectedExecutionSurface,
+    }
+    setFilters({
+      areaIds: [...new Set([...current.areaIds, ...next.areaIds ?? []])],
+      docIds: [...new Set([...current.docIds, ...next.docIds ?? []])],
+      bundleIds: [...new Set([...current.bundleIds, ...next.bundleIds ?? []])],
+      bundleModes: [...new Set([...current.bundleModes, ...next.bundleModes ?? []])],
+      executionSurface: next.executionSurface ?? current.executionSurface,
+    })
+  }
+
   const setVideoRef = useCallback((slug: string, el: HTMLVideoElement | null) => {
     if (el) {
       setMediaPlaybackSpeed(el, playSpeed)
@@ -171,7 +315,7 @@ export default function RunDetail() {
     videoRefs.current.forEach((video) => {
       setMediaPlaybackSpeed(video, playSpeed)
       video.currentTime = 0
-      video.play()
+      void video.play().catch(() => {})
     })
   }, [playSpeed])
 
@@ -244,40 +388,41 @@ export default function RunDetail() {
   // Sort scenarios by slug descending (higher t-numbers = newer scenarios first)
   const sortedScenarios = [...data.scenarios].sort((a, b) => b.slug.localeCompare(a.slug))
 
-  const surfaceFiltered = selectedExecutionSurface
-    ? sortedScenarios.filter((s) => s.executionSurface === selectedExecutionSurface)
-    : sortedScenarios
+  const matchesFilters = (scenario: Scenario, except?: FilterGroup) =>
+    (except === 'surface' || !selectedExecutionSurface || scenario.executionSurface === selectedExecutionSurface)
+    && (except === 'bundle' || selectedBundles.length === 0 || selectedBundles.some(bundle => scenario.bundleDocIds.includes(bundle.id)))
+    && (except === 'mode' || selectedBundleModes.length === 0 || !!scenario.bundleMode && selectedBundleModes.includes(scenario.bundleMode))
+    && (except === 'area' || selectedAreas.length === 0 || selectedAreas.some(area => scenario.appAreaDocIds.includes(area.id)))
+    && (selectedDocs.length === 0 || selectedDocs.some(doc => scenario.conceptIds.includes(doc.id)))
 
-  const modeFiltered = selectedBundleModes.length > 0
-    ? surfaceFiltered.filter((s) => s.bundleMode && selectedBundleModes.includes(s.bundleMode))
-    : surfaceFiltered
+  const filteredScenarios = sortedScenarios.filter(scenario => matchesFilters(scenario))
 
-  const areaFiltered = selectedAreas.length > 0
-    ? modeFiltered.filter((s) =>
-        selectedAreas.some((area) => s.appAreaDocIds.includes(area.id))
-      )
-    : modeFiltered
-
-  const docFiltered = selectedDocs.length > 0
-    ? areaFiltered.filter((s) =>
-        selectedDocs.some((doc) => s.conceptIds.includes(doc.id))
-      )
-    : areaFiltered
-
-  const filteredScenarios = selectedBundles.length > 0
-    ? docFiltered.filter((s) =>
-        selectedBundles.some((bundle) => s.bundleDocIds.includes(bundle.id))
-      )
-    : docFiltered
+  // The primary rows keep alternatives to their own selection available.
+  const surfaceMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'surface'))
+  const bundleMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'bundle'))
+  const modeMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'mode'))
+  const areaMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'area'))
+  const availableSurfaceIds = new Set(surfaceMatches.map(s => s.executionSurface))
+  const availableBundleIds = new Set(bundleMatches.flatMap(s => s.bundleDocIds))
+  const availableModeIds = new Set(modeMatches.flatMap(s => s.bundleMode ? [s.bundleMode] : []))
+  const availableAreaIds = new Set(areaMatches.flatMap(s => s.appAreaDocIds))
+  // Tags show what co-occurs in the displayed scenarios, including selected tags.
+  const availableDocIds = new Set(filteredScenarios.flatMap(s => s.conceptIds))
+  const visibleFacetDocIds = new Set(facetDocs.filter(doc => availableDocIds.has(doc.id)).map(doc => doc.id))
+  const rootAreas = appAreas.filter(area => !area.parentId || area.id === 'bundles')
+  const bundleAreas = appAreas.filter(area => area.parentId === 'bundle' && area.id !== 'bundles')
+  const visibleAreaIds = new Set([...rootAreas, ...bundleAreas].filter(area => availableAreaIds.has(area.id)).map(area => area.id))
 
   const sections = categorizeScenarios(
     filteredScenarios,
     (s) => s.status === 'failed',
     (s) => s.hasIssues,
     (s) => !!(s.testBasename && highlightedBasenames.has(s.testBasename)),
-  )
+  ).filter(section => section.items.length > 0 || section.key === 'passing')
 
   const mediaSizeClass = ['h-32', 'h-64', 'h-96', 'h-[512px]'][mediaSize]
+  const detailVideoWidth = ['20rem', '28rem', '36rem', '44rem'][mediaSize]
+  const hasBrowserScenarios = filteredScenarios.some(scenario => scenario.executionSurface === 'browser')
   // Card max-width matches video width (height × 16/9) so names don't stretch cards
   const cardMaxWidthClass = ['max-w-[228px]', 'max-w-[456px]', 'max-w-[684px]', 'max-w-[912px]'][mediaSize]
   const displayedTab: ViewTab = selectedExecutionSurface === 'cli' && (activeTab === 'thumbs' || activeTab === 'videos')
@@ -312,113 +457,65 @@ export default function RunDetail() {
   }
 
   return (
-    <div className="mx-auto p-6 max-w-[90vw]">
-      <h2 className="text-lg font-bold text-neutral-800 mb-4">
-        Scenarios in {runId}
-      </h2>
-
-      {/* Execution surface is the primary division within a run. */}
-      <div className="mb-5 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Interface">
-          <span className="mr-1 text-sm font-bold text-neutral-700">Interface</span>
-          <button
-            className={`rounded-md px-4 py-1.5 text-sm font-semibold cursor-pointer transition-colors ${
-              selectedExecutionSurface === null
-                ? 'bg-neutral-800 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-            }`}
-            aria-pressed={selectedExecutionSurface === null}
-            onClick={() => setFilters({ executionSurface: null })}
-          >
-            All ({data.scenarios.length})
-          </button>
-          {EXECUTION_SURFACE_OPTIONS.map((surface) => {
-            const isSelected = selectedExecutionSurface === surface.id
-            const count = data.scenarios.filter(
-              (scenario) => scenario.executionSurface === surface.id
-            ).length
-            return (
+    <div className="mx-auto px-6 py-3 max-w-[90vw]">
+      {/* Execution surface filter */}
+      <div className="filter-section filter-interface mb-1 w-full rounded-md px-3 py-1.5">
+        <div className="filter-row" role="group" aria-label="Interface">
+          <span className="filter-label text-xs text-neutral-400 font-medium">Interface:</span>
+          <FilterOptions preferenceId="interface" options={EXECUTION_SURFACE_OPTIONS} availableIds={availableSurfaceIds} selectedIds={selectedExecutionSurface ? [selectedExecutionSurface] : []}
+            allOption={
               <button
-                key={surface.id}
-                className={`rounded-md px-4 py-1.5 text-sm font-semibold cursor-pointer transition-colors ${
-                  isSelected
-                    ? 'bg-neutral-800 text-white'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-                aria-pressed={isSelected}
-                onClick={() => setFilters({ executionSurface: surface.id })}
+                className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                aria-pressed={selectedExecutionSurface === null}
+                onClick={() => setFilters({ executionSurface: null })}
               >
-                {surface.label} ({count})
+                All
               </button>
-            )
-          })}
-        </div>
-        <p className="mt-2 text-xs text-neutral-500">
-          Browser scenarios include visual artifacts. CLI scenarios capture commands and structured output.
-        </p>
-      </div>
-
-      {/* Bundle-origin mode filter */}
-      <div className="mb-3">
-        <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-xs text-neutral-400 font-medium mr-1">Starts with:</span>
-          <button
-            className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-              selectedBundleModes.length === 0
-                ? 'bg-violet-500 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-            }`}
-            onClick={() => setFilters({ bundleModes: [] })}
-          >
-            All
-          </button>
-          {BUNDLE_MODE_OPTIONS.map((mode) => {
-            const isSelected = selectedBundleModes.includes(mode.id)
-            const count = data.scenarios.filter((scenario) => scenario.bundleMode === mode.id).length
-            return (
-              <button
-                key={mode.id}
-                className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                  isSelected
-                    ? 'bg-violet-500 text-white'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-                aria-pressed={isSelected}
-                onClick={() => setFilters({
-                  bundleModes: isSelected
-                    ? selectedBundleModes.filter((selected) => selected !== mode.id)
-                    : [...selectedBundleModes, mode.id],
-                })}
-              >
-                {mode.label} ({count})
-              </button>
-            )
-          })}
+            }>
+            {(surface, available) => {
+              const isSelected = selectedExecutionSurface === surface.id
+              return (
+                <button
+                  key={surface.id}
+                  title={available ? undefined : 'No matching scenarios with the current filters.'}
+                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-neutral-800 text-white'
+                      : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                      : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
+                  }${isSelected && !available ? ' opacity-60' : ''}`}
+                  aria-pressed={isSelected}
+                  onClick={() => setFilters({ executionSurface: isSelected ? null : surface.id })}
+                >
+                  {surface.label}
+                </button>
+              )
+            }}
+          </FilterOptions>
         </div>
       </div>
 
       {/* App area filter chips */}
       {appAreas.length > 0 && (() => {
-        const rootAreas = appAreas.filter((d) => !d.parentId)
-        const bundleAreas = appAreas.filter((d) => d.parentId === 'bundle')
-
-        const renderAreaPill = (area: AppAreaView) => {
+        const renderAreaPill = (area: AppAreaView, available: boolean) => {
           const isSelected = selectedAreaIds.includes(area.id)
           const hasData = presentAreaIds.has(area.id)
           const isTargeted = targetedAreaIds.has(area.id)
-          const highlight = isSelected ? ''
+          const highlight = isSelected || !available ? ''
             : isTargeted ? ' ring-2 ring-purple-400 bg-purple-50'
             : isPartialAreaRun && hasData ? ' ring-1 ring-blue-300 bg-blue-50'
             : ''
           return (
             <button
               key={area.id}
-              title={area.description}
+              title={available ? undefined : 'No matching scenarios with the current filters.'}
               className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
                 isSelected
                   ? 'bg-sky-500 text-white'
-                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-              }${highlight}`}
+                  : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                  : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
+              }${highlight}${isSelected && !available ? ' opacity-60' : ''}`}
+              aria-pressed={isSelected}
               onClick={() => {
                 const nextAreas = isSelected
                   ? selectedAreaIds.filter((id) => id !== area.id)
@@ -426,51 +523,135 @@ export default function RunDetail() {
                 setFilters({ areaIds: nextAreas })
               }}
             >
-              {area.name}
+              {area.parentId === 'bundle' ? area.name.replace(/^Bundle /, '') : area.name}
             </button>
           )
         }
 
         return (
-          <div className="mb-3">
-            <div className="flex flex-wrap gap-1.5 items-center">
-              <span className="text-xs text-neutral-400 font-medium mr-1">Areas:</span>
-              <button
-                className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                  selectedAreaIds.length === 0
-                    ? 'bg-sky-500 text-white'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-                onClick={() => setFilters({ areaIds: [] })}
-              >
-                All
-              </button>
-              {rootAreas.map(renderAreaPill)}
-              {bundleAreas.length > 0 && (
-                <span className="text-xs text-neutral-400 font-medium mr-1">Bundle:</span>
-              )}
-              {bundleAreas.map(renderAreaPill)}
+          <div className="filter-section filter-areas mb-1 w-full rounded-md px-3 py-1.5">
+            <div className="filter-row" role="group" aria-label="Areas">
+              <span className="filter-label text-xs text-neutral-400 font-medium">Areas:</span>
+              <FilterOptions preferenceId="areas" options={[...rootAreas, ...bundleAreas]} availableIds={availableAreaIds} selectedIds={selectedAreaIds}
+                section={area => area.parentId === 'bundle' && area.id !== 'bundles' ? 'Bundle' : undefined}
+                allOption={
+                  <button
+                    className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                    aria-pressed={selectedAreaIds.length === 0}
+                    onClick={() => setFilters({ areaIds: [] })}
+                  >
+                    All
+                  </button>
+                }>
+                {renderAreaPill}
+              </FilterOptions>
             </div>
-            {selectedAreas.length === 1 && (
-              <p className="mt-2 text-xs text-neutral-500">{selectedAreas[0].description}</p>
-            )}
           </div>
         )
       })()}
+
+      {/* Bundle filter chips */}
+      {bundleDocs.length > 0 && (
+        <div className="filter-section filter-bundles mb-1 w-full rounded-md px-3 py-1.5">
+          <div className="filter-row" role="group" aria-label="Bundles">
+            <span className="filter-label text-xs text-neutral-400 font-medium">Bundles:</span>
+            <FilterOptions preferenceId="bundles" options={bundleDocs} availableIds={availableBundleIds} selectedIds={selectedBundleIds}
+              allOption={
+                <button
+                  className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                  aria-pressed={selectedBundleIds.length === 0}
+                  onClick={() => setFilters({ bundleIds: [] })}
+                >
+                  All
+                </button>
+              }>
+              {(bundle, available) => {
+                const isSelected = selectedBundleIds.includes(bundle.id)
+                return (
+                  <button
+                    key={bundle.id}
+                    title={available ? bundle.description : 'No matching scenarios with the current filters.'}
+                    className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-emerald-500 text-white'
+                        : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                        : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
+                    }${isSelected && !available ? ' opacity-60' : ''}`}
+                    aria-pressed={isSelected}
+                    onClick={() => {
+                      const nextBundles = isSelected
+                        ? selectedBundleIds.filter((id) => id !== bundle.id)
+                        : [...selectedBundleIds, bundle.id]
+                      setFilters({ bundleIds: nextBundles })
+                    }}
+                  >
+                    {bundle.name}
+                  </button>
+                )
+              }}
+            </FilterOptions>
+            {selectedBundles.length === 1 && (
+              <p className="col-start-3 text-xs text-neutral-500">{selectedBundles[0].description}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bundle-origin mode filter */}
+      <div className="filter-section filter-starts-with mb-1 w-full rounded-md px-3 py-1.5">
+        <div className="filter-row" role="group" aria-label="Starts with">
+          <span className="filter-label text-xs text-neutral-400 font-medium">Starts with:</span>
+          <FilterOptions preferenceId="starts-with" options={BUNDLE_MODE_OPTIONS} availableIds={availableModeIds} selectedIds={selectedBundleModes}
+            allOption={
+              <button
+                className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                aria-pressed={selectedBundleModes.length === 0}
+                onClick={() => setFilters({ bundleModes: [] })}
+              >
+                All
+              </button>
+            }>
+            {(mode, available) => {
+              const isSelected = selectedBundleModes.includes(mode.id)
+              return (
+                <button
+                  key={mode.id}
+                  title={available ? undefined : 'No matching scenarios with the current filters.'}
+                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-violet-500 text-white'
+                      : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                      : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
+                  }${isSelected && !available ? ' opacity-60' : ''}`}
+                  aria-pressed={isSelected}
+                  onClick={() => setFilters({
+                    bundleModes: isSelected
+                      ? selectedBundleModes.filter((selected) => selected !== mode.id)
+                      : [...selectedBundleModes, mode.id],
+                  })}
+                >
+                  {mode.label}
+                </button>
+              )
+            }}
+          </FilterOptions>
+        </div>
+      </div>
 
       {/* Concept filter chips — two rows: core, then contributions. */}
       {docs.length > 0 && (() => {
         const baseDocs = facetDocs.filter((d) => !d.isContribution)
         const extensionDocs = facetDocs.filter((d) => d.isContribution)
         const extensionDocIds = extensionDocs.map((d) => d.id)
-        const allExtensionSelected = extensionDocIds.length > 0 && extensionDocIds.every((id) => selectedDocIds.includes(id))
+        const selectedBaseDocIds = selectedDocs.filter(doc => !doc.isContribution).map(doc => doc.id)
+        const selectedExtensionDocIds = selectedDocs.filter(doc => doc.isContribution).map(doc => doc.id)
 
-        const renderDocPill = (doc: ConceptView) => {
+        const renderDocPill = (doc: ConceptView, available: boolean) => {
           const isSelected = selectedDocIds.includes(doc.id)
           const hasData = presentDocIds.has(doc.id)
           const isTargeted = targetedDocIds.has(doc.id)
           const isHighlightedDoc = highlightedDocIds.has(doc.id)
-          const highlight = isSelected ? ''
+          const highlight = isSelected || !available ? ''
             : isHighlightedDoc ? ' ring-2 ring-amber-500 bg-amber-100'
             : isTargeted ? ' ring-2 ring-purple-400 bg-purple-50'
             : isPartialRun && hasData ? ' ring-1 ring-blue-300 bg-blue-50'
@@ -478,12 +659,14 @@ export default function RunDetail() {
           return (
             <button
               key={doc.id}
-              title={doc.isContribution ? 'Contributed Meadow concept' : undefined}
+              title={!available ? 'No matching scenarios with the current filters.' : doc.isContribution ? 'Contributed Meadow concept' : undefined}
               className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
                 isSelected
                   ? 'bg-brand-500 text-white'
-                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-              }${highlight}`}
+                  : available ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                  : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
+              }${highlight}${isSelected && !available ? ' opacity-60' : ''}`}
+              aria-pressed={isSelected}
               onClick={() => {
                 const nextDocs = isSelected
                   ? selectedDocIds.filter((id) => id !== doc.id)
@@ -491,7 +674,6 @@ export default function RunDetail() {
                 setFilters({ docIds: nextDocs })
               }}
             >
-              {doc.isContribution && <span className="mr-1" aria-hidden>☁</span>}
               {doc.name}
             </button>
           )
@@ -500,36 +682,39 @@ export default function RunDetail() {
         return (
           <div className="mb-3">
             {/* Base row */}
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Concept filters">
-              <button
-                className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                  selectedDocIds.length === 0
-                    ? 'bg-brand-500 text-white'
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-                onClick={() => setFilters({ docIds: [] })}
-              >
-                All
-              </button>
-              {baseDocs.map(renderDocPill)}
+            <div className="filter-section filter-tags mb-1 w-full rounded-md px-3 py-1.5 filter-row" role="group" aria-label="Concept filters">
+              <span className="filter-label text-xs text-neutral-400 font-medium">Tags:</span>
+              <FilterOptions preferenceId="tags" options={baseDocs} availableIds={availableDocIds} selectedIds={selectedDocIds}
+                allOption={
+                  <button
+                    className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                    aria-pressed={selectedBaseDocIds.length === 0}
+                    onClick={() => setFilters({ docIds: selectedExtensionDocIds })}
+                  >
+                    All
+                  </button>
+                }>
+                {renderDocPill}
+              </FilterOptions>
             </div>
 
             {/* Contribution row — hidden when no scenario in this run uses one. */}
             {extensionDocs.length > 0 && extensionDocIds.some((id) => presentDocIds.has(id)) && (
-              <div className="flex flex-wrap gap-1.5 items-center mt-1.5" role="group" aria-label="Contributed concept filters">
-                <span className="text-xs text-neutral-400 font-medium mr-1">meadow-extension:</span>
-                <button
-                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                    allExtensionSelected
-                      ? 'bg-brand-500 text-white'
-                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                  }`}
-                  title="Select all contributed concepts"
-                  onClick={() => setFilters({ docIds: extensionDocIds })}
-                >
-                  All
-                </button>
-                {extensionDocs.map(renderDocPill)}
+              <div className="filter-section filter-contributed-tags mb-1 w-full rounded-md px-3 py-1.5 filter-row" role="group" aria-label="Contributed concept filters">
+                <span className="filter-label text-xs text-neutral-400 font-medium">meadow-extension:</span>
+                <FilterOptions preferenceId="contributed-tags" options={extensionDocs} availableIds={availableDocIds} selectedIds={selectedDocIds}
+                  allOption={
+                    <button
+                      className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                      title="Clear contributed tag selections"
+                      aria-pressed={selectedExtensionDocIds.length === 0}
+                      onClick={() => setFilters({ docIds: selectedBaseDocIds })}
+                    >
+                      All
+                    </button>
+                  }>
+                  {renderDocPill}
+                </FilterOptions>
               </div>
             )}
 
@@ -546,41 +731,8 @@ export default function RunDetail() {
         )
       })()}
 
-      {/* Bundle filter chips */}
-      {bundleDocs.length > 0 && (
-        <div className="mb-3">
-          <div className="flex flex-wrap gap-1.5 items-center">
-            <span className="text-xs text-neutral-400 font-medium mr-1">Bundles:</span>
-            {bundleDocs.map((bundle) => {
-              const isSelected = selectedBundleIds.includes(bundle.id)
-              return (
-                <button
-                  key={bundle.id}
-                  className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                  }`}
-                  onClick={() => {
-                    const nextBundles = isSelected
-                      ? selectedBundleIds.filter((id) => id !== bundle.id)
-                      : [...selectedBundleIds, bundle.id]
-                    setFilters({ bundleIds: nextBundles })
-                  }}
-                >
-                  {bundle.name}
-                </button>
-              )
-            })}
-          </div>
-          {selectedBundles.length === 1 && (
-            <p className="mt-2 text-xs text-neutral-500">{selectedBundles[0].description}</p>
-          )}
-        </div>
-      )}
-
       {/* Tab bar */}
-      <div className="flex items-center bg-neutral-100 border-b border-neutral-200 mb-4">
+      <div className="flex flex-wrap items-center bg-neutral-100 border-b border-neutral-200 mb-4">
         <div className="flex">
           {availableTabs.map((tab) => (
             <button
@@ -597,7 +749,7 @@ export default function RunDetail() {
             </button>
           ))}
         </div>
-        {(displayedTab === 'thumbs' || displayedTab === 'videos') && (
+        {(displayedTab === 'thumbs' || displayedTab === 'videos' || (displayedTab === 'details' && hasBrowserScenarios)) && (
           <div className="ml-auto flex items-center gap-0.5 pr-2">
             {([0, 1, 2, 3] as const).map((size) => (
               <button
@@ -625,6 +777,30 @@ export default function RunDetail() {
           </div>
         )}
       </div>
+
+      {(displayedTab === 'videos' || displayedTab === 'details') && hasBrowserScenarios && (
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              onClick={playAll}
+              className="px-4 py-1.5 text-xs font-bold bg-brand-500 text-white rounded hover:bg-brand-600 transition-colors cursor-pointer"
+            >
+              Play All
+            </button>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={MIN_PLAYBACK_SPEED_PERCENT}
+                max={MAX_PLAYBACK_SPEED_PERCENT}
+                step="1"
+                value={playSpeed}
+                aria-label="Playback speed"
+                onChange={(e) => setPlaySpeed(normalizePlaybackSpeedPercent(e.target.value))}
+                className="w-28 accent-brand-500"
+              />
+              <span className="text-xs text-neutral-500 min-w-[36px]">{playSpeed}%</span>
+            </div>
+          </div>
+      )}
 
       {/* Thumbs tab */}
       {displayedTab === 'thumbs' && (
@@ -741,81 +917,9 @@ export default function RunDetail() {
         </div>
       )}
 
-      {/* Details tab */}
-      {displayedTab === 'details' && (
-        <div className="space-y-6">
-          {sections.map(({ key, label, color, items: scenarios }) => (
-            <div key={key}>
-              <SectionHeader label={label} count={scenarios.length} color={color} />
-              {scenarios.length === 0 ? (
-                <p className="text-xs text-neutral-400 italic ml-1">None</p>
-              ) : (
-                <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
-                  <table className="w-full table-fixed text-left text-sm" aria-label={`${label} scenario details`}>
-                    <thead className="border-b border-neutral-200 bg-neutral-50 text-xs text-neutral-500">
-                      <tr>
-                        <th scope="col" className="w-[30%] px-4 py-3 font-semibold">Scenario</th>
-                        <th scope="col" className="px-4 py-3 font-semibold">Description</th>
-                        <th scope="col" className="w-24 px-4 py-3 text-right font-semibold">Duration</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-200">
-                      {scenarios.map(scenario => (
-                        <tr key={scenario.slug} className="align-top hover:bg-neutral-50">
-                          <td className="px-4 py-4">
-                            <div className="flex items-start gap-2">
-                              <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
-                              <div className="min-w-0">
-                                <Link to={`/${runId}/${scenario.slug}`} className="font-medium text-neutral-800 hover:text-brand-600 hover:underline">
-                                  {scenarioDisplayName(scenario.testName)}
-                                </Link>
-                                {scenario.failureReason && <p className="mt-1 break-words text-xs text-red-600">{scenario.failureReason}</p>}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4">
-                            {scenario.description ? (
-                              <p className="whitespace-pre-line break-words leading-relaxed text-neutral-700">{scenario.description}</p>
-                            ) : (
-                              <p className="italic text-neutral-400">No description captured in this run.</p>
-                            )}
-                          </td>
-                          <td className="px-4 py-4 text-right text-neutral-500 tabular-nums">{scenario.duration == null ? '—' : `${scenario.duration.toFixed(1)}s`}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Videos tab */}
       {displayedTab === 'videos' && (
         <div>
-          <div className="mb-4 flex items-center gap-3">
-            <button
-              onClick={playAll}
-              className="px-4 py-1.5 text-xs font-bold bg-brand-500 text-white rounded hover:bg-brand-600 transition-colors cursor-pointer"
-            >
-              Play All
-            </button>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={MIN_PLAYBACK_SPEED_PERCENT}
-                max={MAX_PLAYBACK_SPEED_PERCENT}
-                step="1"
-                value={playSpeed}
-                aria-label="Playback speed"
-                onChange={(e) => setPlaySpeed(normalizePlaybackSpeedPercent(e.target.value))}
-                className="w-28 accent-brand-500"
-              />
-              <span className="text-xs text-neutral-500 min-w-[36px]">{playSpeed}%</span>
-            </div>
-          </div>
           <div className="space-y-6">
             {sections.map(({ key, label, color, items: scenarios }) => (
               <div key={key}>
@@ -868,6 +972,91 @@ export default function RunDetail() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Details tab */}
+      {displayedTab === 'details' && (
+        <div className="space-y-6" style={{ '--detail-video-width': detailVideoWidth } as CSSProperties}>
+          {sections.map(({ key, label, color, items: scenarios }) => (
+            <div key={key}>
+              <SectionHeader label={label} count={scenarios.length} color={color} />
+              {scenarios.length === 0 ? (
+                <p className="text-xs text-neutral-400 italic ml-1">None</p>
+              ) : (
+                <div className="space-y-3">
+                  {scenarios.map(scenario => {
+                    const name = scenarioDisplayName(scenario.testName)
+                    return (
+                      <article
+                        key={scenario.slug}
+                        aria-label={name}
+                        className={`scenario-details-row grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 ${scenario.executionSurface === 'browser' ? 'has-video' : ''}`}
+                      >
+                        {scenario.executionSurface === 'browser' && (
+                          <div className="scenario-details-preview">
+                            <ScenarioPreviewVideo
+                              key={`${runId}/${scenario.slug}`}
+                              src={`/api/${runId}/${scenario.slug}/video.webm`}
+                              poster={getKeyFrameUrl(scenario) ?? undefined}
+                              name={name}
+                              onRef={video => setVideoRef(scenario.slug, video)}
+                            />
+                          </div>
+                        )}
+                        <div className="min-w-0 text-sm">
+                          <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-2">
+                              <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
+                              {scenario.executionSurface === 'cli' && <span className="text-xs text-neutral-500">CLI</span>}
+                              <Link to={`/${runId}/${scenario.slug}`} className="font-medium text-neutral-800 hover:text-brand-600 hover:underline">
+                                {name}
+                              </Link>
+                            </div>
+                            <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
+                              {scenario.duration == null ? '—' : `${scenario.duration.toFixed(1)}s`}
+                            </span>
+                          </div>
+                          {scenario.failureReason && <p className="mb-2 break-words text-xs text-red-600">{scenario.failureReason}</p>}
+                          {scenario.description ? (
+                            <p className="whitespace-pre-line break-words leading-relaxed text-neutral-700">{scenario.description}</p>
+                          ) : (
+                            <p className="italic text-neutral-400">No description captured in this run.</p>
+                          )}
+                          <dl aria-label="Scenario metadata" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+                            <ScenarioMetadataGroup label="Interface" accent="filter-interface"
+                              options={EXECUTION_SURFACE_OPTIONS.filter(surface => surface.id === scenario.executionSurface).map(surface => ({ id: surface.id, name: surface.label }))}
+                              availableIds={availableSurfaceIds} selectedIds={selectedExecutionSurface ? [selectedExecutionSurface] : []}
+                              onChoose={(id, action) => { if (isExecutionSurface(id)) chooseMetadataFilter({ executionSurface: id }, action) }} />
+                            <ScenarioMetadataGroup label="Areas" accent="filter-areas"
+                              options={appAreas.filter(area => scenario.appAreaDocIds.includes(area.id)).map(area => ({ id: area.id, name: area.parentId === 'bundle' ? area.name.replace(/^Bundle /, '') : area.name }))}
+                              availableIds={visibleAreaIds} selectedIds={selectedAreaIds}
+                              onChoose={(id, action) => chooseMetadataFilter({ areaIds: [id] }, action)} />
+                            <ScenarioMetadataGroup label="Bundles" accent="filter-bundles"
+                              options={bundleDocs.filter(bundle => scenario.bundleDocIds.includes(bundle.id))}
+                              availableIds={availableBundleIds} selectedIds={selectedBundleIds}
+                              onChoose={(id, action) => chooseMetadataFilter({ bundleIds: [id] }, action)} />
+                            <ScenarioMetadataGroup label="Starts with" accent="filter-starts-with"
+                              options={BUNDLE_MODE_OPTIONS.filter(mode => mode.id === scenario.bundleMode).map(mode => ({ id: mode.id, name: mode.label }))}
+                              availableIds={availableModeIds} selectedIds={selectedBundleModes}
+                              onChoose={(id, action) => { if (isBundleMode(id)) chooseMetadataFilter({ bundleModes: [id] }, action) }} />
+                            <ScenarioMetadataGroup label="Tags" accent="filter-tags"
+                              options={docs.filter(doc => !doc.isContribution && scenario.conceptIds.includes(doc.id))}
+                              availableIds={visibleFacetDocIds} selectedIds={selectedDocIds}
+                              onChoose={(id, action) => chooseMetadataFilter({ docIds: [id] }, action)} />
+                            <ScenarioMetadataGroup label="meadow-extension" accent="filter-contributed-tags"
+                              options={docs.filter(doc => doc.isContribution && scenario.conceptIds.includes(doc.id))}
+                              availableIds={visibleFacetDocIds} selectedIds={selectedDocIds}
+                              onChoose={(id, action) => chooseMetadataFilter({ docIds: [id] }, action)} />
+                          </dl>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

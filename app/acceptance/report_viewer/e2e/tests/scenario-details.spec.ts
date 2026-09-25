@@ -1,11 +1,13 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { test, expect } from '@playwright/test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { ensurePublishFlowArtifact } from '../fixtures/publish-flow-fixture.js';
 
-test('scenario details read captured descriptions from artifacts and keep scenario links and filters', async ({ page, request }) => {
+test('scenario details play videos beside captured descriptions and keep scenario links and filters', async ({ page, request }) => {
+  const fixture = ensurePublishFlowArtifact();
   const root = path.join(os.homedir(), 'meadow-e2e-artifacts/current');
   mkdirSync(root, { recursive: true });
   const run = mkdtempSync(path.join(root, 'rv-descriptions-'));
@@ -26,6 +28,7 @@ test('scenario details read captured descriptions from artifacts and keep scenar
     const spec = path.join(dir, 'edited.spec.ts');
     writeFileSync(spec, '/* A different description in the current checkout. */\ntest("changed", () => {});');
     writeFileSync(path.join(dir, 'test-file.txt'), spec);
+    if (slug === 'bundle-preview') linkSync(path.join(fixture.artifactDir, 'video.webm'), path.join(dir, 'video.webm'));
   }
   try {
     const response = await request.get(`/api/runs/${runId}`);
@@ -34,18 +37,40 @@ test('scenario details read captured descriptions from artifacts and keep scenar
     expect(scenarios.find(scenario => scenario.slug === 'bundle-preview')?.description).toBe(description);
     expect(scenarios.find(scenario => scenario.slug === 'command-export')?.description).toBe(description);
     await page.goto(`/${runId}`);
-    await page.getByRole('button', { name: 'Details', exact: true }).click();
-    await expect(page.getByRole('columnheader', { name: 'Description', exact: true })).toBeVisible();
-    const row = page.getByRole('row').filter({ has: page.getByRole('link', { name: 'bundle preview', exact: true }) });
+    const details = page.getByRole('button', { name: 'Details', exact: true });
+    const videos = page.getByRole('button', { name: 'Videos', exact: true });
+    expect((await videos.boundingBox())!.x).toBeLessThan((await details.boundingBox())!.x);
+    await details.click();
+    const detailsUrl = page.url();
+    const row = page.getByRole('article', { name: 'bundle preview', exact: true });
     await expect(row).toContainText(description);
     await expect(row.getByRole('link')).toHaveAttribute('href', `/${runId}/bundle-preview`);
+    const video = row.locator('video');
+    await expect(video).toHaveAttribute('controls');
+    await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).readyState)).toBeGreaterThanOrEqual(2);
+    const videoBox = (await video.boundingBox())!;
+    const descriptionBox = (await row.getByText(description, { exact: true }).boundingBox())!;
+    expect(descriptionBox.x).toBeGreaterThanOrEqual(videoBox.x + videoBox.width);
+    await video.press('Space');
+    await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).currentTime)).toBeGreaterThan(0);
+    await expect(page).toHaveURL(detailsUrl);
+    await video.press('Space');
+    await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).paused)).toBe(true);
+    await page.getByRole('slider', { name: 'Playback speed' }).press('Home');
+    await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).playbackRate)).toBeCloseTo(0.07);
+    await page.getByRole('button', { name: 'Play All', exact: true }).click();
+    await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).paused)).toBe(false);
+    await expect(page).toHaveURL(detailsUrl);
+    await expect(page.getByRole('article', { name: 'older run', exact: true })).toContainText('No video available.');
     await expect(page.getByText('No description captured in this run.', { exact: true })).toBeVisible();
-    await page.getByRole('group', { name: 'Interface', exact: true }).getByRole('button', { name: 'CLI (1)', exact: true }).click();
+    await page.getByRole('group', { name: 'Interface', exact: true }).getByRole('button', { name: 'CLI', exact: true }).click();
     await expect(page.getByRole('link', { name: 'command export', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'bundle preview', exact: true })).toHaveCount(0);
+    await expect(page.locator('video')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Play All', exact: true })).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole('button', { name: 'Details', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('cell', { name: description, exact: true })).toBeVisible();
+    await expect(page.getByRole('article', { name: 'command export', exact: true }).getByText(description, { exact: true })).toBeVisible();
   } finally {
     await page.goto('about:blank');
     rmSync(run, { recursive: true, force: true });
