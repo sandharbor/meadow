@@ -26,6 +26,7 @@ interface ModalProps {
   movable?: boolean;
   allowContentScroll?: boolean;
   footer?: React.ReactNode;
+  headerActions?: React.ReactNode;
   ariaLabel?: string;
   closeLabel?: string;
   manageFocus?: boolean;
@@ -41,6 +42,7 @@ const Modal: React.FC<ModalProps> = ({
   movable = false,
   allowContentScroll = true,
   footer,
+  headerActions,
   ariaLabel,
   closeLabel = 'Close',
   manageFocus = false,
@@ -57,7 +59,7 @@ const Modal: React.FC<ModalProps> = ({
     if (!isOpen || !manageFocus) return;
     const previousFocus = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
-    panel?.querySelector<HTMLElement>('button')?.focus();
+    panel?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
       if (event.key !== 'Tab' || !panel) return;
@@ -135,7 +137,10 @@ const Modal: React.FC<ModalProps> = ({
           data-testid={movable ? 'movable-modal-title-bar' : undefined}
           title={movable ? 'Drag to move' : undefined}
         >
-          <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
+          <div className="flex items-center gap-3">
+            <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
+            {headerActions && <div onMouseDown={event => event.stopPropagation()}>{headerActions}</div>}
+          </div>
           {showCloseButton && (
             <button
               type="button"

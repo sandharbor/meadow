@@ -60,6 +60,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   // Let the automatic scan run.
   await page.clock.fastForward(30000);
   await expect(update.getByTestId('source-background-progress')).toBeVisible();
+  await editor.expectSourceRefreshSpinning(false);
   await expect(update).toHaveText('Refresh sources');
   await expect(status.getByText('Refreshing sources', { exact: true })).not.toBeVisible();
   await addKeyFrame(sourceSnapshot);
@@ -85,6 +86,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   gate = new Promise<void>(resolve => { release = resolve; });
   await page.clock.fastForward(30000);
   await expect(review.getByTestId('source-background-progress')).toBeVisible();
+  await editor.expectSourceRefreshSpinning(false);
   await expect(review).toHaveText('2 source changes available – Review');
   await expect(status.getByText('Refreshing sources', { exact: true })).not.toBeVisible();
   await addKeyFrame(sourceSnapshot);
@@ -109,6 +111,7 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
 
   // Resume manual and automatic scanning.
   release();
+  await page.clock.resume();
   await sourceReview.checkAgain();
   expect(scans).toBe(4);
   await sourceReview.close();

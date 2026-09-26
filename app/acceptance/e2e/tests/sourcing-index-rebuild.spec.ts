@@ -51,7 +51,7 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
     recheck.click(),
   ]);
   await expect(page.getByRole('dialog', { name: 'Source snapshots', exact: true })).not.toBeVisible();
-  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: 'Check again', exact: true })).toBeEnabled();
+  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: 'Refresh sources', exact: true })).toBeEnabled();
   const rebuilt = readIndex();
   expect(rebuilt.completedAtNanos).toBeGreaterThan(before.completedAtNanos);
   expect(rebuilt.metrics.cacheRebuilt).toBe(true);
@@ -69,7 +69,7 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
     page.waitForResponse(response => response.url().endsWith('/sourcing/scan') && response.request().postDataJSON()?.rebuildIndex === true && response.ok()),
     modalRecheck.click(),
   ]);
-  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: 'Check again', exact: true })).toBeEnabled();
+  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: 'Refresh sources', exact: true })).toBeEnabled();
   await editor.sourceReview.expectModified('t003 ---- page with section to link to.md');
   expect(readIndex().metrics.filesRead).toBe(readIndex().metrics.indexedFiles);
   expect(readState().acceptedId).toBe(acceptedId);

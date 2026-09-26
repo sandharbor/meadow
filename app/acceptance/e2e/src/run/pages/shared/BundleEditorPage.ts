@@ -76,7 +76,7 @@ export class BundleEditorPage {
   async expectSourceUpdateInToolbar() {
     const status = this.page.getByTestId('sourcing-status');
     await this.expect(status.getByRole('status')).toHaveText('Refreshing sources');
-    await this.expect(status.locator('.animate-spin')).toBeVisible();
+    await this.expect(status.getByRole('button', { name: 'Refresh sources', exact: true }).locator('svg')).toHaveClass(/animate-spin/);
     const statusBox = await status.boundingBox();
     const menuBox = await this.page.getByTitle('Bundle options', { exact: true }).boundingBox();
     this.expect(statusBox).not.toBeNull();
@@ -471,20 +471,18 @@ export class BundleEditorPage {
   // ---------------------------------------------------------------------------
 
   async waitForSourceCheck() {
-    await this.expect(this.page.getByTestId('sourcing-status').getByRole('button', { name: /^(Refresh sources|\d+ source changes? available.*Review)$/ })).toBeVisible();
+    await this.expect(this.page.getByTestId('sourcing-status').getByRole('button', { name: 'Refresh sources', exact: true })).toBeEnabled();
+  }
+
+  async expectSourceRefreshSpinning(spinning: boolean) {
+    const icon = this.page.getByTestId('sourcing-status').getByRole('button', { name: 'Refresh sources', exact: true }).locator('svg');
+    if (spinning) await this.expect(icon).toHaveClass(/animate-spin/);
+    else await this.expect(icon).not.toHaveClass(/animate-spin/);
   }
 
   async checkSourceChanges() {
     await this.waitForSourceCheck();
-    const update = this.page.getByRole('button', { name: 'Refresh sources', exact: true });
-    if (await update.isVisible()) {
-      await update.click();
-      await this.waitForSourceCheck();
-      return;
-    }
-    await this.sourceReview.open();
-    await this.sourceReview.checkAgain();
-    await this.sourceReview.defer();
+    await this.page.getByTestId('sourcing-status').getByRole('button', { name: 'Refresh sources', exact: true }).click();
     await this.waitForSourceCheck();
   }
 

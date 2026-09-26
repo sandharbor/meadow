@@ -41,24 +41,30 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await expect(orphanReview).toBeVisible();
   await sourceReview.open();
   await sourceReview.applyOrphanRemovals();
-  await expect(status.getByRole('status')).toHaveText('No changes');
+  await expect(update.getByRole('status')).toHaveText('No changes');
   await page.clock.runFor(1999);
-  await expect(status.getByRole('status')).toHaveText('No changes');
-  await expect(update).not.toBeVisible();
+  await expect(update.getByRole('status')).toHaveText('No changes');
+  await expect(update).toBeEnabled();
   await addKeyFrame(sourceSnapshot);
   await page.clock.runFor(1);
-  await expect(update).toBeVisible();
+  await expect(update).toHaveText('Refresh sources');
+  const refreshBounds = await update.boundingBox();
 
   gate = new Promise<void>(resolve => { release = resolve; });
   await update.click();
   await expect(status.getByRole('status')).toHaveText('Refreshing sources');
+  expect((await update.boundingBox())?.width).toBe(refreshBounds?.width);
   release();
-  await expect(status.getByRole('status')).toHaveText('No changes');
+  await page.clock.runFor(125);
+  await expect(update.getByRole('status')).toHaveText('No changes');
+  expect((await update.boundingBox())?.width).toBe(refreshBounds?.width);
+  await page.clock.runFor(150);
+  await addKeyFrame(sourceSnapshot);
   await page.clock.runFor(2000);
-  await expect(update).toBeVisible();
+  await expect(update).toHaveText('Refresh sources');
   expect(scans).toBe(2);
   await addKeyFrame(sourceSnapshot);
-  await checkpoint('no changes becomes an update button after two seconds');
+  await checkpoint('the refresh button briefly says no changes before restoring its label');
 
   // Inspect the accepted history.
   const initialHistory = await editor.reviewSourceHistory();
@@ -71,6 +77,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   // Rename the page and its links.
   await sourceChanges.apply('rename-page-with-links');
   await update.click();
+  await page.clock.runFor(125);
   const review = status.getByRole('button', { name: /source changes? available.*Review/i });
   await expect(review).toBeVisible();
   await page.clock.runFor(2100);
@@ -79,10 +86,39 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await addKeyFrame(sourceSnapshot);
   await checkpoint('available changes keep an explicit review action in the toolbar');
 
+  // Refresh again from the toolbar while changes are already waiting.
+  await sourceChanges.apply('delete-nested-page');
+  gate = new Promise<void>(resolve => { release = resolve; });
+  await expect(update).toHaveText('');
+  await update.click();
+  await expect(update).toBeDisabled();
+  await editor.expectSourceRefreshSpinning(true);
+  await expect(review).toHaveText('2 source changes available – Review');
+  await sourceReview.expectClosed();
+  await addKeyFrame(sourceSnapshot);
+  release();
+  await page.clock.runFor(125);
+  await expect(review).toHaveText('3 source changes available – Review');
+  await expect(update).toBeEnabled();
+  await page.clock.runFor(250);
+  await editor.expectSourceRefreshSpinning(false);
+  expect(scans).toBe(4);
+  await checkpoint('compact refresh discovers another change without opening review');
+
+  // Use the same refresh control at the top of source review.
+  await page.clock.resume();
+  await sourceReview.open();
+  await sourceReview.expectRefreshInHeader();
+  await sourceReview.checkAgain();
+  expect(scans).toBe(5);
+  await addKeyFrame(sourceSnapshot);
+  await sourceReview.close();
+  await checkpoint('source review exposes the familiar refresh icon beside its title');
+
   // Compare pending and accepted history.
   const pendingHistory = await editor.reviewSourceHistory();
   await pendingHistory.expectSnapshotCount(1);
-  expect(scans).toBe(3);
+  expect(scans).toBe(5);
   await pendingHistory.close();
   await sourceReview.open();
   await sourceReview.accept();

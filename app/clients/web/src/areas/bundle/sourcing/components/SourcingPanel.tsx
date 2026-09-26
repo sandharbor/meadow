@@ -7,6 +7,7 @@ import Modal from '../../../../shared/components/Modal.js';
 import { useIsSurfaceRequested, useLinkedSurface } from '../../../../shared/places/placeContext.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
 import { SourceSnapshotsModal } from './SourceSnapshotsModal.js';
+import { RefreshSourcesButton } from './RefreshSourcesButton.js';
 import { SourceRegistryChanges, sourceRegistryEdits } from './SourceRegistryChanges.js';
 import { MoveTraversal } from './MoveTraversal.js';
 import { OrphanReview } from './OrphanReview.js';
@@ -95,7 +96,9 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   useEffect(() => { if (review) onPendingChanges?.(Boolean(review.candidate)); }, [review, onPendingChanges]);
   const [busy, setBusy] = useState(true);
   const [backgroundBusy, setBackgroundBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const foregroundScan = useRef(false);
+  const minimumRefreshUntil = useRef(0);
   const [noChanges, setNoChanges] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resolutions, setResolutions] = useState<Record<string, string | null>>({});
@@ -132,14 +135,14 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const scan = useCallback(async (replaceCandidate = false, background = false, rebuildIndex = false) => {
     if (inFlight.current) {
       // A requested check can promote the check already running without duplicating it.
-      if (!background) { foregroundScan.current = true; setBusy(true); setBackgroundBusy(false); }
+      if (!background) { foregroundScan.current = true; setBusy(true); setRefreshing(true); setBackgroundBusy(false); }
       return;
     }
     inFlight.current = true;
     foregroundScan.current = !background;
     const generation = requestGeneration.current;
     if (background) setBackgroundBusy(true);
-    else { setBusy(true); setNoChanges(false); }
+    else { setBusy(true); setRefreshing(true); setNoChanges(false); }
     setError(null);
     // React can replay an effect during development while its first request is
     // still running. Reuse that request, but let the current effect receive it.
@@ -147,20 +150,32 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
       : { endpoint, promise: request('/scan', { replaceCandidate, ...(rebuildIndex && { rebuildIndex: true }) }) as Promise<SourcingReview> };
     sourceCheck.current = operation;
     try {
-      const result = await operation.promise;
+      const result = await operation.promise.finally(async () => {
+        if (generation !== requestGeneration.current) return;
+        // Even a fast manual check gets a brief, visible turn of the arrow.
+        const remaining = minimumRefreshUntil.current - performance.now();
+        if (remaining > 0) await new Promise(resolve => window.setTimeout(resolve, Math.ceil(remaining)));
+      });
       if (generation === requestGeneration.current) receive(result, foregroundScan.current);
     } catch (err) { if (generation === requestGeneration.current) setError(err instanceof Error ? err.message : String(err)); }
     finally {
       if (sourceCheck.current === operation) sourceCheck.current = undefined;
-      if (generation === requestGeneration.current) { inFlight.current = false; setBusy(false); setBackgroundBusy(false); }
+      if (generation === requestGeneration.current) { inFlight.current = false; setBusy(false); setRefreshing(false); setBackgroundBusy(false); }
     }
   }, [endpoint, request, receive]);
+
+  const refreshSources = () => {
+    minimumRefreshUntil.current = performance.now() + 125;
+    void scan(true);
+  };
 
   useEffect(() => {
     requestGeneration.current += 1;
     inFlight.current = false;
     reviewToken.current = undefined;
+    minimumRefreshUntil.current = 0;
     setBackgroundBusy(false);
+    setRefreshing(false);
     setReview(null); setResolutions({}); setComparison(null); setError(null); setOpen(false);
     // A link to source review shows the pending review as it stands.
     if (canAutomaticallyRefreshSources() && !isSurfaceRequested('source-review')) void scan(true);
@@ -255,6 +270,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
   const reviewLabel = changeCount > 0
     ? `${changeCount} source change${changeCount === 1 ? '' : 's'} available – Review`
     : 'Source changes available – Review';
+  const hasPendingChanges = Boolean(review && (review.candidate || review.orphans.length > 0));
   const backgroundProgress = backgroundBusy && <span aria-hidden="true" data-testid="source-background-progress" className="absolute bottom-0 left-0 h-0.5 w-1/3 bg-current motion-safe:animate-[source-update-sweep_1.2s_ease-in-out_infinite_alternate] motion-reduce:w-full" />;
   const imageUrl: SourceImageUrl = (filename, side) => `bundles/${encodeURIComponent(bundleSlug)}/sourcing/image?${new URLSearchParams({ snapshotId: (side === 'before' ? review?.accepted.id : review?.candidate?.id) ?? '', path: filename })}`;
   const proposedResolutions = proposedSourceMoveResolutions(review?.moves ?? [], resolutions);
@@ -274,15 +290,14 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
         void scan(true, false, true);
       }} />
     <div className="flex items-center gap-2 whitespace-nowrap text-sm" data-testid="sourcing-status" data-orphan-count={review?.orphans.length ?? 0} aria-live="polite">
-      {busy ? <span role="status" className="flex items-center gap-2 text-neutral-500"><Spinner />Refreshing sources</span>
-        : review && (review.candidate || review.orphans.length > 0) ? <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded bg-blue-100 px-3 py-1 font-medium text-blue-900" onClick={() => setOpen(true)}>{reviewLabel}{backgroundProgress}</button>
-        : noChanges ? <span role="status" className="text-neutral-500">No changes</span>
-        : <button aria-busy={backgroundBusy} className="relative overflow-hidden rounded border border-neutral-300 bg-neutral-50 px-3 py-1 font-medium text-neutral-700 hover:border-neutral-400 hover:bg-neutral-100 hover:text-neutral-800" onClick={() => void scan(true)}>Refresh sources{backgroundProgress}</button>}
+      {hasPendingChanges && <button aria-busy={refreshing || backgroundBusy} className="relative overflow-hidden rounded bg-blue-100 px-3 py-1 font-medium text-blue-900 hover:bg-blue-200" onClick={() => setOpen(true)}>{reviewLabel}{backgroundProgress}</button>}
+      <RefreshSourcesButton compact={hasPendingChanges} refreshing={refreshing} disabled={busy} backgroundBusy={backgroundBusy} noChanges={!busy && noChanges} onClick={refreshSources}>{!hasPendingChanges && backgroundProgress}</RefreshSourcesButton>
       {error && !open && <span role="alert" title={error} className="text-red-700">Source update failed<span className="sr-only">: {error}</span></span>}
     </div>
-    {open && createPortal(<SourceNamesProvider sources={[...(review?.accepted.sourceNames ?? []), ...(review?.candidate?.sourceNames ?? [])]}><Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus={!traversal.details} className="w-full max-w-3xl" footer={
+    {open && createPortal(<SourceNamesProvider sources={[...(review?.accepted.sourceNames ?? []), ...(review?.candidate?.sourceNames ?? [])]}><Modal isOpen={open} onClose={closeReview} title="Source changes" closeLabel="Close source changes" manageFocus={!traversal.details} className="w-full max-w-3xl" headerActions={
+      <RefreshSourcesButton compact refreshing={refreshing} disabled={busy} backgroundBusy={backgroundBusy} onClick={refreshSources} />
+    } footer={
       <div className="flex flex-wrap items-center justify-end gap-3">
-        <button className="text-xs text-main-700 hover:underline disabled:opacity-50" disabled={busy || backgroundBusy} onClick={() => void scan(true)}>{busy || backgroundBusy ? 'Checking…' : 'Check again'}</button>
         <p className="mr-auto text-xs text-neutral-500" role="status">{hasDraftChanges ? 'Save or undo curation changes before accepting.' : unresolvedMoves ? 'Decide before accepting: choose an identity for each competing move.' : ''}</p>
         {review?.candidate && hasSourceSettingsChanges && <span className="inline-flex items-center gap-2">
           <button className="text-sm text-neutral-600 underline disabled:opacity-50" aria-describedby={cancelSettingsHintId} disabled={busy || backgroundBusy} onClick={() => void cancelCandidate()}>{cancelSettingsLabel}</button>
@@ -330,7 +345,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
         </section>}
         {Boolean(review?.changes.length) && <section aria-label="Source content changes">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <h3 className="text-sm font-semibold">{groups.size ? 'Also in this update' : 'Source changes'}<SourceChangeCount count={review?.changes.length ?? 0} /></h3>
+            <h3 className="text-sm font-semibold">{groups.size ? 'Also in this update' : 'Content changes'}<SourceChangeCount count={review?.changes.length ?? 0} /></h3>
             {hasAddedPages && <div className="ml-auto flex items-center gap-2 text-xs text-neutral-500">
               <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" className="accent-main-600" checked={trackNewPages} disabled={busy || backgroundBusy} aria-describedby={trackNewPagesHintId} onChange={event => setTrackNewPages(event.target.checked)} />Track non-sensitive added pages</label>
               <span className="group relative inline-flex">

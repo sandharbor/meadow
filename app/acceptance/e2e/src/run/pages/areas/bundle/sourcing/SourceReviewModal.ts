@@ -59,12 +59,23 @@ export class SourceReviewModal {
   }
 
   async checkAgain() {
-    const check = this.dialog.getByRole('button', { name: 'Check again', exact: true });
+    const check = this.dialog.getByRole('button', { name: 'Refresh sources', exact: true });
     await Promise.all([
       this.page.waitForResponse(response => response.url().includes('/sourcing/scan') && response.request().method() === 'POST' && response.ok()),
       check.click(),
     ]);
     await this.expect(check).toBeEnabled();
+  }
+
+  async expectRefreshInHeader() {
+    const title = this.dialog.getByRole('heading', { name: 'Source changes', exact: true });
+    const refresh = this.dialog.getByRole('button', { name: 'Refresh sources', exact: true });
+    await this.expect(title).toHaveCount(1);
+    const titleBounds = await title.boundingBox();
+    const refreshBounds = await refresh.boundingBox();
+    this.expect(titleBounds).not.toBeNull();
+    this.expect(refreshBounds).not.toBeNull();
+    this.expect(Math.abs(titleBounds!.y - refreshBounds!.y)).toBeLessThan(10);
   }
 
   async defer() {
@@ -207,11 +218,12 @@ export class SourceReviewModal {
   async expectFocusTrapped() {
     const close = this.dialog.getByRole('button', { name: 'Close source changes', exact: true });
     await this.expect(close).toHaveText('×');
-    await this.expect(close).toBeFocused();
+    const refresh = this.dialog.getByRole('button', { name: 'Refresh sources', exact: true });
+    await this.expect(refresh).toBeFocused();
     await this.page.keyboard.press('Shift+Tab');
     await this.expect(this.dialog.getByRole('button', { name: 'Accept source changes', exact: true })).toBeFocused();
     await this.page.keyboard.press('Tab');
-    await this.expect(close).toBeFocused();
+    await this.expect(refresh).toBeFocused();
   }
 
   async close() {

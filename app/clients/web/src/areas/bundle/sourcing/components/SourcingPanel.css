@@ -4,3 +4,18 @@
   from { transform: translateX(0); }
   to { transform: translateX(200%); }
 }
+
+@keyframes source-no-changes {
+  0%, 100% { opacity: 0; }
+  6%, 94% { opacity: 1; }
+}
+
+@keyframes source-refresh-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes source-refresh-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
