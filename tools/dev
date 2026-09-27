@@ -122,7 +122,7 @@ tmux new-window -t "$SESSION" -n dev-tools -c "$DEV_TOOLS_DIR" \
 # --- 6. Wait for the replacement Dev Tools processes, verify their ports,
 # then open the browser and verify they survived the open. ---
 DEV_TOOLS_URL="http://localhost:$DEV_TOOLS_PORT"
-DEV_TOOLS_STATUS_URL="http://localhost:$DEV_TOOLS_SERVER_PORT/api/config/status"
+DEV_TOOLS_STATUS_URL="http://localhost:$DEV_TOOLS_SERVER_PORT/api/saved-states"
 
 dev_tools_is_running() {
   tmux has-session -t "$SESSION" 2>/dev/null \

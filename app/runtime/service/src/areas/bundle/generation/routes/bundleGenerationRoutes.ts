@@ -57,6 +57,22 @@ import type { BundleBoundaryReviewRequest } from '../../../../../../../contracts
 
 const router = express.Router();
 
+const previewNavigationBridge = `<script>
+(() => {
+  if (window.parent === window) return;
+  const reportPage = () => window.parent.postMessage({
+    type: 'meadow-preview-page-v1',
+    href: window.location.href,
+  }, '*');
+  window.addEventListener('pageshow', reportPage);
+  window.addEventListener('hashchange', reportPage);
+})();
+</script>`;
+
+function addPreviewNavigationBridge(html: string): string {
+  return html.replace(/<\/head>/i, `${previewNavigationBridge}</head>`);
+}
+
 function isPreviewGenerationActive(bundleSlug: string): boolean {
   const g = globalThis as unknown as { __meadowActivePreviewGenerations?: Set<string> };
   return g.__meadowActivePreviewGenerations?.has(bundleSlug) ?? false;
@@ -853,9 +869,26 @@ router.get('/bundles/:bundleSlug/generation/published/*', (req, res, next) => {
     // Set appropriate content type based on file extension
     if (filename.endsWith('.html') || filename.endsWith('.excalidraw.md')) {
       res.setHeader('Content-Type', filename.endsWith('.html') ? 'text/html' : 'text/markdown');
+      if (filename.endsWith('.html')) {
+        // The editor runs on a different local port and cannot inspect the
+        // iframe location. Add a preview-only bridge without changing the
+        // generated files that will be saved or published.
+        let htmlPath = filePath;
+        try {
+          return res.send(addPreviewNavigationBridge(fs.readFileSync(htmlPath, 'utf8')));
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+          const latestDirectory = previewFileDirectory(bundleDirectory, filename);
+          htmlPath = latestDirectory ? join(latestDirectory, filename) : filePath;
+          if (!fs.existsSync(htmlPath)) {
+            return res.status(404).json({ error: 'Preview file not found', requestedPath: htmlPath });
+          }
+          return res.send(addPreviewNavigationBridge(fs.readFileSync(htmlPath, 'utf8')));
+        }
+      }
       if (isPreviewGenerationActive(bundleSlug)) {
-        // Rendering can rewrite HTML metadata and copied drawing sources.
-        // Snapshot mutable live documents: sendFile's separate stat/read can
+        // Rendering can rewrite copied drawing sources. Snapshot mutable live
+        // documents: sendFile's separate stat/read can
         // otherwise send new bytes with an old Content-Length, truncating or
         // stalling the response while the preview is already visible.
         return res.send(fs.readFileSync(filePath));

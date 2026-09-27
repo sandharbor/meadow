@@ -133,13 +133,13 @@ test("run detail filters scenarios by bundle-origin mode", async ({ page }) => {
   await expect(page.getByText("publish flow uploads files to minio", { exact: true }).first()).toBeVisible();
 });
 
-test("run detail treats browser and CLI as a primary interface choice", async ({ page }) => {
+test("run detail allows selecting web app and CLI interfaces together", async ({ page }) => {
   const { runId } = mixedSurfaceFixture;
   await page.goto(`/${runId}`);
 
   const interfacePicker = page.getByRole("group", { name: "Interface" });
   const all = interfacePicker.getByRole("button", { name: "All" });
-  const browser = interfacePicker.getByRole("button", { name: "Browser" });
+  const browser = interfacePicker.getByRole("button", { name: "Web App" });
   const cli = interfacePicker.getByRole("button", { name: "CLI" });
   const browserScenario = page.getByText("Browser publish flow", { exact: true }).first();
   const cliScenario = page.getByText("CLI bundle nodes", { exact: true }).first();
@@ -159,7 +159,8 @@ test("run detail treats browser and CLI as a primary interface choice", async ({
   await browser.click();
   await expect(page).toHaveURL(new RegExp(`[?&]surface=browser(?:&|$)`));
   await expect(browserScenario).toBeVisible();
-  await expect(cliScenario).toHaveCount(0);
+  await expect(cliScenario).toBeVisible();
+  await expect(cli).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "Videos", exact: true })).toBeVisible();
 
   await all.click();

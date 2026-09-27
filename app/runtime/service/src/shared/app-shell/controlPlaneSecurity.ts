@@ -54,6 +54,11 @@ function previewBundleSlug(req: Parameters<RequestHandler>[0]): string | null {
   }
 }
 
+function isSameOriginPreviewRequest(req: Parameters<RequestHandler>[0], origin: string): boolean {
+  return previewBundleSlug(req) !== null
+    && origin === `http://127.0.0.1:${req.socket.localPort}`;
+}
+
 function cookieValue(source: string | undefined, name: string): string | undefined {
   if (!source) return undefined;
   for (const pair of source.split(';')) {
@@ -80,11 +85,13 @@ export function createControlPlaneSecurity(
     const origin = req.get('origin');
     if (origin) {
       res.setHeader('Vary', 'Origin');
-      if (origin !== allowedOrigin) {
+      if (origin !== allowedOrigin && !isSameOriginPreviewRequest(req, origin)) {
         res.status(403).json({ error: 'Origin not allowed' });
         return;
       }
-      res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+      if (origin === allowedOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+      }
     }
 
     if (req.method === 'OPTIONS') {

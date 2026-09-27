@@ -123,17 +123,24 @@ export const minioPart: LocalServicePart = {
     try {
       const bucket = minioBucketName(partition);
       const keys = await listKeys(client, bucket);
-      for (const key of keys) {
-        const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-        const bytes = Buffer.from(await result.Body!.transformToByteArray());
-        const target = path.join(directory, "objects", key);
-        fs.mkdirSync(path.dirname(target), { recursive: true });
-        fs.writeFileSync(target, bytes);
-        if (result.ContentType) {
-          const metaTarget = path.join(directory, "content-types", `${key}.txt`);
-          fs.mkdirSync(path.dirname(metaTarget), { recursive: true });
-          fs.writeFileSync(metaTarget, result.ContentType);
-        }
+      // Keep storage load bounded across parallel scenarios while avoiding
+      // a serial round trip for every file in every saved checkpoint.
+      for (let offset = 0; offset < keys.length; offset += 8) {
+        const results = await Promise.allSettled(keys.slice(offset, offset + 8).map(async key => {
+          const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+          const bytes = Buffer.from(await result.Body!.transformToByteArray());
+          const target = path.join(directory, "objects", key);
+          fs.mkdirSync(path.dirname(target), { recursive: true });
+          fs.writeFileSync(target, bytes);
+          if (result.ContentType) {
+            const metaTarget = path.join(directory, "content-types", `${key}.txt`);
+            fs.mkdirSync(path.dirname(metaTarget), { recursive: true });
+            fs.writeFileSync(metaTarget, result.ContentType);
+          }
+        }));
+        // Finish in-flight reads before destroying the client on a failure.
+        const failed = results.find(result => result.status === "rejected");
+        if (failed?.status === "rejected") throw failed.reason;
       }
       return keys.length > 0;
     } finally {

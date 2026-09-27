@@ -11,9 +11,12 @@ import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.j
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
 import { sourceChange, sourceSnapshot, savedState } from '../../../concepts/index.js';
+import { createBrowserLaunchUrl } from '../../../runtime/supervisor/src/runtimeClient.js';
+import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 
 const projectRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 
+test.use({ executionSurfaces: ['dev-tools', 'browser'] });
 test.use({ bundleMode: "single-file" });
 
 /*
@@ -126,6 +129,10 @@ test('Sourcing dev controls apply the same shared move to the running applicatio
     await checkpoint('nested and SRS expose the same source-change coverage');
 
     // Review the move in the application.
+    // Leaving the app for Dev Tools closes its browser session. Exchange a new
+    // launch token before returning, including when this review takes longer.
+    const runtimeSession = readRuntimeSessionDescriptor(testServer.runtimeSessionPath);
+    await page.goto(await createBrowserLaunchUrl(runtimeSession));
     await new Workflows(page, expect).navigateToBigBundle();
     const review = new BundleEditorPage(page, expect).sourceReview;
     await review.open();

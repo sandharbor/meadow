@@ -156,6 +156,7 @@ function classifyScenario(
   const manifestPath = path.join(scenarioDir, "manifest.json");
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
   manifest.executionSurface = executionSurface;
+  manifest.executionSurfaces = [executionSurface];
   manifest.testName = testName;
   if (sourceFixture) {
     manifest.testSource = [
@@ -174,9 +175,11 @@ function classifyScenario(
     scenarioInfo: Record<string, unknown>;
   };
   reportMeta.scenarioInfo.executionSurface = executionSurface;
+  reportMeta.scenarioInfo.executionSurfaces = [executionSurface];
   reportMeta.scenarioInfo.testName = testName;
   writeFileSync(reportMetaPath, JSON.stringify(reportMeta, null, 2));
   writeFileSync(path.join(scenarioDir, "execution-surface.txt"), executionSurface);
+  writeFileSync(path.join(scenarioDir, "execution-surfaces.json"), JSON.stringify([executionSurface]));
 }
 
 /**
@@ -187,7 +190,7 @@ function classifyScenario(
 export function ensureMixedSurfaceArtifact(
   source: PublishFlowFixture,
 ): MixedSurfaceFixture {
-  const runId = `${source.runId}-surfaces-v2`;
+  const runId = `${source.runId}-surfaces-v3`;
   const runDir = path.join(ARTIFACTS_ROOT, runId);
   const browserTestSlug = "browser-publish-flow";
   const cliTestSlug = "cli-bundle-nodes";

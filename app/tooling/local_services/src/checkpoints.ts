@@ -10,6 +10,8 @@ import {
   MEADOW_HOME_MANIFEST_FILENAME,
   OLDEST_UPGRADABLE_MEADOW_HOME_FORMAT_VERSION,
 } from "../../../shared_code/utils/meadowHomeFormat.js";
+import type { BundleSource } from "../../../contracts/types/bundleConfig.js";
+import { sourceConfigFingerprint, sourceInventory } from "../../../shared_code/utils/sourceSnapshotFingerprint.js";
 import type { LocalServiceContainer, LocalServicePart } from "./parts.js";
 import { hostedServiceReferences } from "./providerSeeding.js";
 import type { checkpoint, ParticipatesIn } from "../../../concepts/index.js";
@@ -256,7 +258,7 @@ function extractTree(repo: string, treeish: string, destination: string): boolea
 /**
  * Bundle configurations hold absolute source directories inside the captured
  * home's isolated source graphs. Point them at the restored copies; the
- * application sees an ordinary local relocation of the same sources.
+ * retained snapshots and pending proposals follow that same relocation.
  */
 function repointSourceDirectories(homeDirectory: string, capturedHome: string): void {
   const bundles = path.join(homeDirectory, "bundles");
@@ -269,6 +271,8 @@ function repointSourceDirectories(homeDirectory: string, capturedHome: string): 
     return prefix ? path.join(homeDirectory, directory.slice(prefix.length)) : directory;
   };
   for (const bundle of fs.readdirSync(bundles)) {
+    const bundleDirectory = path.join(bundles, bundle);
+    const beforeFingerprint = sourceConfigFingerprint(bundleDirectory);
     const configPath = path.join(bundles, bundle, "config", "bundle_config.yaml");
     if (!fs.existsSync(configPath)) continue;
     const config = YAML.parse(fs.readFileSync(configPath, "utf8")) as { sources?: { directory?: unknown }[]; sourceDirectory?: unknown };
@@ -276,6 +280,43 @@ function repointSourceDirectories(homeDirectory: string, capturedHome: string): 
     if (Array.isArray(config.sources)) config.sources = config.sources.map(source => ({ ...source, directory: repoint(source.directory) }));
     if (config.sourceDirectory !== undefined) config.sourceDirectory = repoint(config.sourceDirectory);
     if (JSON.stringify(config) !== before) fs.writeFileSync(configPath, YAML.stringify(config), "utf8");
+
+    // Retained snapshots must describe the same relocated registry as the
+    // bundle. Otherwise an unchanged refresh creates a content-free candidate.
+    const snapshots = path.join(bundleDirectory, "raw/sourcing/snapshots");
+    if (!fs.existsSync(snapshots)) continue;
+    const repointSources = (sources: BundleSource[]) => sources.map(source => ({
+      ...source, directory: repoint(source.directory) as string,
+    }));
+    for (const id of fs.readdirSync(snapshots)) {
+      const snapshotPath = path.join(snapshots, id, "snapshot.json");
+      if (!fs.existsSync(snapshotPath)) continue;
+      const snapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf8")) as {
+        sources?: BundleSource[]; files: Record<string, { digest: string; size: number }>;
+        directories: string[]; digest: string;
+        sourceProposal?: { sources: BundleSource[]; baseConfigFingerprint: string };
+      };
+      const original = JSON.stringify(snapshot);
+      if (snapshot.sources) {
+        const sources = repointSources(snapshot.sources);
+        if (JSON.stringify(sources) !== JSON.stringify(snapshot.sources)) {
+          if (sourceInventory(snapshot.files, snapshot.directories, snapshot.sources).digest !== snapshot.digest) {
+            throw new Error(`Cannot relocate corrupt source snapshot ${id}`);
+          }
+          snapshot.sources = sources;
+          snapshot.digest = sourceInventory(snapshot.files, snapshot.directories, sources).digest;
+        }
+      }
+      if (snapshot.sourceProposal) {
+        snapshot.sourceProposal.sources = repointSources(snapshot.sourceProposal.sources);
+        // Preserve stale proposals; only a proposal valid before relocation
+        // may acquire the relocated configuration's fingerprint.
+        if (snapshot.sourceProposal.baseConfigFingerprint === beforeFingerprint) {
+          snapshot.sourceProposal.baseConfigFingerprint = sourceConfigFingerprint(bundleDirectory);
+        }
+      }
+      if (JSON.stringify(snapshot) !== original) fs.writeFileSync(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+    }
   }
 }
 

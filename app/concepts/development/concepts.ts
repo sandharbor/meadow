@@ -57,7 +57,7 @@ export const checkpoint = define({
   mechanics: [
     text`Each checkpoint commits the complete ${link(id.meadowHome, "Meadow Home")}, including its Git repository, ignored files, generated bundle data, and isolated source graphs, into the scenario's artifact state repository. Every participating service part commits its state at the same moment.`,
     text`It records the active service parts, the home format version, the application version, and the code revision. Capture refuses to run if the home is configured for anything other than ${link(id.localServices, "Local Services")}.`,
-    text`Opening a checkpoint restores every part into a new home and fresh partitions: the captured data on the current code. Older home formats upgrade through normal startup; newer or unsupported formats cannot be opened.`,
+    text`Opening a checkpoint restores every part into a new home and fresh partitions: the captured data on the current code. Source locations in configuration, retained snapshots, and pending proposals move together into the restored home; relocation alone never creates a source update or makes a valid proposal stale. Older home formats upgrade through normal startup; newer or unsupported formats cannot be opened.`,
   ],
   interplay: text`A checkpoint is not a ${link(id.sourceSnapshot, "Source Snapshot")}; a scenario may checkpoint a home that contains many source snapshots. Commits made by the home itself during a run are ${link(id.homeCommit, "Home Commits")}.`,
   implementationRoles: ["capture", "restore"] as const,

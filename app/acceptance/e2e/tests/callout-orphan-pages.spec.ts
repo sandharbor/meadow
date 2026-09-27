@@ -69,7 +69,7 @@ test("Sourcing reviews existing and candidate orphans with removal on acceptance
   // Remove the incoming link.
   await sourceChanges.apply('remove-incoming-link');
   await editor.checkSourceChanges();
-  await expect(page.getByTestId('sourcing-status').getByRole('button')).toHaveText('2 source changes available – Review');
+  await expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).toHaveText('2 source changes available – Review');
   await review.reviewOrphans();
   await orphansModal.showExplanation('t001 ---- child 2');
   await orphansModal.expectExplanation('t001 ---- child 2', 'no longer links to');

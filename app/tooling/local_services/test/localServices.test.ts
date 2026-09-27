@@ -5,6 +5,7 @@ import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { sourceConfigFingerprint, sourceInventory } from "../../../shared_code/utils/sourceSnapshotFingerprint.js";
 import { test } from "node:test";
 import {
   acquireLocalServices,
@@ -116,6 +117,16 @@ test("a checkpoint restores the whole home, its repository, and each part partit
   fs.mkdirSync(path.join(home, "bundles/demo/config"), { recursive: true });
   fs.writeFileSync(path.join(home, "bundles/demo/config/bundle_config.yaml"), `sources:\n  - name: notes\n    directory: ${home}/source_graphs/notes\n  - name: elsewhere\n    directory: /Users/someone/notes\n`);
 
+  const bundle = path.join(home, "bundles/demo");
+  const sources = [{ id: "source000001", name: "notes", directory: `${home}/source_graphs/notes` }];
+  const inventory = sourceInventory({ "_mw_sources/source000001/a.md": { digest: "file-digest", size: 4 } }, ["_mw_sources/source000001"], sources);
+  const snapshots = path.join(bundle, "raw/sourcing/snapshots");
+  for (const [id, fingerprint] of [["accepted", undefined], ["pending", sourceConfigFingerprint(bundle)], ["stale", "stale-fingerprint"]] as const) {
+    fs.mkdirSync(path.join(snapshots, id), { recursive: true });
+    fs.writeFileSync(path.join(snapshots, id, "snapshot.json"), JSON.stringify({ id, sources, ...inventory,
+      ...(fingerprint && { sourceProposal: { sources, baseConfigFingerprint: fingerprint } }) }));
+  }
+
   const repo = path.join(root, "checkpoint-state-repo");
   const common = {
     repo, homeDirectory: home, parts: [part], containers: { files: container }, partition: "e2e-w0",
@@ -134,6 +145,19 @@ test("a checkpoint restores the whole home, its repository, and each part partit
   const restoredHome = path.join(root, "fork-home");
   await restoreCheckpoint({ repo, index: 1, homeDirectory: restoredHome, parts: [part], containers: { files: container }, partition: "fork-1" });
   assert.equal(fs.readFileSync(path.join(restoredHome, "bundles/demo/raw/generated.json"), "utf8"), "{}\n");
+  const restoredBundle = path.join(restoredHome, "bundles/demo");
+  for (const id of ["accepted", "pending", "stale"]) {
+    const snapshot = JSON.parse(fs.readFileSync(path.join(restoredBundle, "raw/sourcing/snapshots", id, "snapshot.json"), "utf8"));
+    assert.equal(snapshot.sources[0].directory, `${restoredHome}/source_graphs/notes`);
+    assert.equal(snapshot.digest, sourceInventory(snapshot.files, snapshot.directories, snapshot.sources).digest);
+    assert.notEqual(snapshot.digest, inventory.digest);
+    if (id !== "accepted") {
+      assert.equal(snapshot.sourceProposal.sources[0].directory, `${restoredHome}/source_graphs/notes`);
+      assert.equal(snapshot.sourceProposal.baseConfigFingerprint, id === "stale" ? "stale-fingerprint" : sourceConfigFingerprint(restoredBundle));
+    }
+  }
+  assert.equal(JSON.parse(fs.readFileSync(path.join(snapshots, "accepted/snapshot.json"), "utf8")).digest, inventory.digest, "captured snapshots remain unchanged");
+
   assert.equal(fs.readFileSync(path.join(restoredHome, "app/resources.local.yaml"), "utf8"), "logDirectory: /tmp/logs\n", "ignored files are restored");
   assert.equal(fs.existsSync(path.join(restoredHome, "logs")), false, "logs are not state");
   assert.match(fs.readFileSync(path.join(restoredHome, "bundles/demo/config/bundle_config.yaml"), "utf8"), new RegExp(`directory: ${restoredHome}/source_graphs/notes\n[\\s\\S]*directory: /Users/someone/notes`), "isolated sources follow the home; others stay put");

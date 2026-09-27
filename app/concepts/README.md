@@ -76,3 +76,11 @@ coverage; omission defaults to false. Behavioral rules use `searchFacet: false`
 and remain accessible through their parent concept and direct evidence links.
 The report keeps every concept available for documentation and screenshot
 navigation, while only opted-in facets appear in the run filter pills.
+
+## Scenario interfaces
+
+A scenario can exercise multiple interfaces: Web App, Dev Tools, and CLI.
+Declare them with `test.use({ executionSurfaces: ['dev-tools', 'browser'] })`
+when a scenario crosses interfaces. The report's Interface row supports multiple
+selections with the same any-match behavior as Tags. Interface selections
+combine with the other filter rows. Legacy single-interface reports still work.

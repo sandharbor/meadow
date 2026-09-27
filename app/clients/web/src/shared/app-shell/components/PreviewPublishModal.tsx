@@ -40,6 +40,27 @@ type PreviewSubTab = 'bundlePreview' | 'changes' | 'versions';
 type ShareSubTab = 'localExport' | 'publish' | 'advanced';
 export type PreviewModalTab = PreviewSubTab | ShareSubTab;
 
+interface PreviewNavigation {
+  entries: string[];
+  index: number;
+  frameUrl: string | null;
+  pendingUrl: string | null;
+}
+
+function previewPageKey(href: string): string {
+  const url = new URL(href);
+  url.searchParams.delete('_t');
+  url.searchParams.delete('meadowPreviewToken');
+  return url.toString();
+}
+
+function replacePreviewPage(navigation: PreviewNavigation, href: string): PreviewNavigation {
+  const entries = [...navigation.entries];
+  const index = navigation.index < 0 ? 0 : navigation.index;
+  entries[index] = href;
+  return { entries, index, frameUrl: href, pendingUrl: href };
+}
+
 interface OpenKnowledgeFormatRename {
   sourcePath: string;
   originalOutputPath: string;
@@ -236,8 +257,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
   );
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_isIframeLoading, setIsIframeLoading] = useState(false);
-  const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
-  const [previewHistory, setPreviewHistory] = useState<string[]>([]);
+  const [previewNavigation, setPreviewNavigation] = useState<PreviewNavigation>({
+    entries: [], index: -1, frameUrl: null, pendingUrl: null,
+  });
+  const currentPreviewUrl = previewNavigation.entries[previewNavigation.index] ?? null;
+  const canPreviewBack = previewNavigation.index > 0;
+  const canPreviewForward = previewNavigation.index < previewNavigation.entries.length - 1;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isCustomizeSidebarOpen, setIsCustomizeSidebarOpen] = useState(initialCustomize === true);
   useEffect(() => { onCustomizeChange?.(isCustomizeSidebarOpen); }, [isCustomizeSidebarOpen, onCustomizeChange]);
@@ -292,11 +317,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     setChangesInitialFile(undefined);
     selectedChangeFileRef.current = null;
     setChangesTabRefreshKey(previous => previous + 1);
-    setCurrentPreviewUrl(current => {
-      if (!current) return current;
-      const url = new URL(current);
+    setPreviewNavigation(current => {
+      const href = current.entries[current.index];
+      if (!href) return current;
+      const url = new URL(href);
       url.searchParams.set('_t', Date.now().toString());
-      return url.toString();
+      return replacePreviewPage(current, url.toString());
     });
   }, []);
 
@@ -528,7 +554,9 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
             if (data.result?.traversalPageUrl && !pageShown) {
               pageShown = true;
               setPreviewResult({ success: true, traversalPageUrl: data.result.traversalPageUrl });
-              setCurrentPreviewUrl(data.result.traversalPageUrl);
+              setPreviewNavigation(replacePreviewPage({
+                entries: [], index: -1, frameUrl: null, pendingUrl: null,
+              }, data.result.traversalPageUrl));
             }
 
             if (data.stage === 'complete' || data.stage === 'error' || data.stage === 'cancelled') {
@@ -640,7 +668,8 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
 
           if (data.stage === 'generating' && data.result?.traversalPageUrl) {
             startPageShown = true;
-            setCurrentPreviewUrl(data.result.traversalPageUrl);
+            const traversalPageUrl = data.result.traversalPageUrl;
+            setPreviewNavigation(current => replacePreviewPage(current, traversalPageUrl));
             setPreviewPageRefreshKey(previous => previous + 1);
           }
 
@@ -678,7 +707,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       if (!startPageShown && newTraversalUrl) {
         const url = new URL(newTraversalUrl);
         url.searchParams.set('_t', Date.now().toString());
-        setCurrentPreviewUrl(url.toString());
+        setPreviewNavigation(current => replacePreviewPage(current, url.toString()));
       }
 
       // Show a quick "done!" that fades away
@@ -707,11 +736,12 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     } else if (startPageShown) {
       // The failed staging tree was discarded. Reload the installed page so
       // the visible preview and Changes also return to the last complete output.
-      setCurrentPreviewUrl(current => {
-        if (!current) return current;
-        const url = new URL(current);
+      setPreviewNavigation(current => {
+        const href = current.entries[current.index];
+        if (!href) return current;
+        const url = new URL(href);
         url.searchParams.set('_t', Date.now().toString());
-        return url.toString();
+        return replacePreviewPage(current, url.toString());
       });
       setPreviewPageRefreshKey(previous => previous + 1);
     }
@@ -802,35 +832,71 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
     onClose();
   }, [onClose]);
 
+  // Generated preview pages report navigation because the iframe is served
+  // from the Runtime's origin, separate from the editor's origin.
+  useEffect(() => {
+    if (!previewResult?.traversalPageUrl) return;
+    const previewRoot = new URL(previewResult.traversalPageUrl);
+    const publishedPrefix = previewRoot.pathname.split('/generation/published/')[0] + '/generation/published/';
+    const handlePreviewPageMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow || event.origin !== previewRoot.origin) return;
+      if (event.data?.type !== 'meadow-preview-page-v1' || typeof event.data.href !== 'string') return;
+
+      let href: string;
+      try {
+        const reported = new URL(event.data.href);
+        if (reported.origin !== previewRoot.origin || !reported.pathname.startsWith(publishedPrefix)) return;
+        href = reported.toString();
+      } catch {
+        return;
+      }
+
+      setPreviewNavigation(current => {
+        if (current.pendingUrl && previewPageKey(href) !== previewPageKey(current.pendingUrl)) {
+          return current;
+        }
+        const entries = [...current.entries];
+        const active = entries[current.index];
+        if (!active) return { entries: [href], index: 0, frameUrl: current.frameUrl, pendingUrl: null };
+        if (previewPageKey(active) === previewPageKey(href)) {
+          entries[current.index] = href;
+          return { ...current, entries, pendingUrl: null };
+        }
+        return {
+          entries: [...entries.slice(0, current.index + 1), href],
+          index: current.index + 1,
+          frameUrl: current.frameUrl,
+          pendingUrl: null,
+        };
+      });
+    };
+    window.addEventListener('message', handlePreviewPageMessage);
+    return () => window.removeEventListener('message', handlePreviewPageMessage);
+  }, [previewResult?.traversalPageUrl]);
+
   // Handle iframe load
   const handleIframeLoad = useCallback(() => {
     setIsIframeLoading(false);
-
-    try {
-      const iframe = iframeRef.current;
-      if (iframe?.contentWindow?.location?.href) {
-        const iframeUrl = iframe.contentWindow.location.href;
-        const expectedUrl = currentPreviewUrl || previewResult?.traversalPageUrl;
-
-        if (expectedUrl && iframeUrl !== expectedUrl && iframeUrl !== 'about:blank') {
-          setPreviewHistory(prev => [...prev, expectedUrl]);
-          setCurrentPreviewUrl(iframeUrl);
-        }
-      }
-    } catch (e) {
-      logger.debug('Could not read iframe URL (cross-origin):', e);
-    }
-  }, [currentPreviewUrl, previewResult?.traversalPageUrl]);
+  }, []);
 
   // Navigate back in preview history
   const handlePreviewBack = useCallback(() => {
-    if (previewHistory.length === 0) return;
+    setPreviewNavigation(current => {
+      if (current.index <= 0) return current;
+      const index = current.index - 1;
+      const href = current.entries[index];
+      return { ...current, index, frameUrl: href, pendingUrl: href };
+    });
+  }, []);
 
-    const newHistory = [...previewHistory];
-    const previousUrl = newHistory.pop();
-    setPreviewHistory(newHistory);
-    setCurrentPreviewUrl(previousUrl || null);
-  }, [previewHistory]);
+  const handlePreviewForward = useCallback(() => {
+    setPreviewNavigation(current => {
+      if (current.index >= current.entries.length - 1) return current;
+      const index = current.index + 1;
+      const href = current.entries[index];
+      return { ...current, index, frameUrl: href, pendingUrl: href };
+    });
+  }, []);
 
   // Handle preview from changes tab
   const handlePreviewFromChanges = useCallback((filePath: string) => {
@@ -846,7 +912,17 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
       : previewResult.traversalPageUrl.substring(0, previewResult.traversalPageUrl.lastIndexOf('/') + 1);
     const previewUrl = `${baseUrl}${encodePathForUrl(relativePath)}`;
 
-    setCurrentPreviewUrl(previewUrl);
+    setPreviewNavigation(current => {
+      const active = current.entries[current.index];
+      if (!active) return replacePreviewPage(current, previewUrl);
+      if (previewPageKey(active) === previewPageKey(previewUrl)) return replacePreviewPage(current, previewUrl);
+      return {
+        entries: [...current.entries.slice(0, current.index + 1), previewUrl],
+        index: current.index + 1,
+        frameUrl: previewUrl,
+        pendingUrl: previewUrl,
+      };
+    });
     setPreviewSubTab('bundlePreview');
   }, [previewRootPath, previewResult?.traversalPageUrl]);
 
@@ -1191,23 +1267,41 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
           </div>
         )}
 
-        {/* Back button and Open in Browser for preview */}
+        {/* Preview navigation and Open in Browser */}
         {topLevelTab === 'review' && previewSubTab === 'bundlePreview' && previewResult?.success && (
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="flex items-center gap-2">
-              <DisabledTooltip disabled={previewHistory.length === 0} tooltip="No history" align="left">
+              <DisabledTooltip disabled={!canPreviewBack} tooltip="No earlier page" align="left">
                 <button
                   onClick={handlePreviewBack}
-                  disabled={previewHistory.length === 0}
+                  disabled={!canPreviewBack}
+                  aria-label="Go back"
                   className={`flex items-center justify-center w-8 h-8 rounded transition-colors ${
-                    previewHistory.length === 0
+                    !canPreviewBack
                       ? 'bg-neutral-100 text-neutral-300 cursor-not-allowed'
                       : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-800'
                   }`}
-                  title={previewHistory.length > 0 ? 'Go back' : undefined}
+                  title={canPreviewBack ? 'Go back' : undefined}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
+                  </svg>
+                </button>
+              </DisabledTooltip>
+              <DisabledTooltip disabled={!canPreviewForward} tooltip="No later page" align="left">
+                <button
+                  onClick={handlePreviewForward}
+                  disabled={!canPreviewForward}
+                  aria-label="Go forward"
+                  className={`flex items-center justify-center w-8 h-8 rounded transition-colors ${
+                    !canPreviewForward
+                      ? 'bg-neutral-100 text-neutral-300 cursor-not-allowed'
+                      : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 hover:text-neutral-800'
+                  }`}
+                  title={canPreviewForward ? 'Go forward' : undefined}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14m-7-7 7 7-7 7"/>
                   </svg>
                 </button>
               </DisabledTooltip>
@@ -1334,7 +1428,7 @@ const PreviewPublishModal: React.FC<PreviewPublishModalProps> = ({
                   <div className={previewSubTab === 'bundlePreview' ? 'h-full' : 'hidden'}>
                     <iframe
                       ref={iframeRef}
-                      src={currentPreviewUrl || previewResult.traversalPageUrl}
+                      src={previewNavigation.frameUrl || previewResult.traversalPageUrl}
                       className="w-full h-full border rounded"
                       title="Preview"
                       onLoad={handleIframeLoad}

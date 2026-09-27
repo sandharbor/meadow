@@ -4,7 +4,7 @@ import { coreConceptIds as id } from '../../ids.js';
 import { conceptLink as link, conceptText as text, defineMeadowConcept as define } from '../../language.js';
 
 export const bundleSource = define({
-  id: id.source, name: 'Source', aliases: ['Multi-source Support'], kind: 'entity', searchFacet: true,
+  id: id.source, name: 'Multi-source', aliases: ['Source', 'Multi-source Support'], kind: 'entity', searchFacet: true,
   appAreaIds: [id.bundleSourcing, id.bundles],
   definition: text`A named directory admitted to one bundle's graph, with a stable identity, a local location, and optional aliases.`,
   mechanics: [

@@ -1,10 +1,10 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'node:path';
-import type { SourceSnapshot, SnapshotFile } from './sourceSnapshots.js';
+import type { SourceSnapshot } from './sourceSnapshots.js';
 import type { WorkingGraphRustOutput } from '../bundle-graph/workingGraphService.js';
-import { sha256 } from './sourceSnapshots.js';
-import type { BundleSource } from '../../../../../contracts/types/bundleConfig.js';
+import { sourceInventory } from '../../../../../shared_code/utils/sourceSnapshotFingerprint.js';
+export { sourceInventory } from '../../../../../shared_code/utils/sourceSnapshotFingerprint.js';
 import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 
 // Wider link discovery is session data, never part of a durable snapshot.
@@ -17,12 +17,6 @@ export function rememberLiveSourceLinks(bundleDirectory: string, digest: string,
 export function liveSourceLinks(bundleDirectory: string, digest: string): WorkingGraphRustOutput | undefined {
   const value = liveLinks.get(bundleDirectory);
   return value?.digest === digest ? value.graph : undefined;
-}
-
-export function sourceInventory(files: Record<string, SnapshotFile>, directories: string[], sources?: BundleSource[]) {
-  const sortedFiles = Object.fromEntries(Object.keys(files).sort().map(filename => [filename, { digest: files[filename].digest, size: files[filename].size }]));
-  const sortedDirectories = [...new Set(directories)].sort();
-  return { files: sortedFiles, directories: sortedDirectories, fileCount: Object.keys(sortedFiles).length, digest: sha256(JSON.stringify({ files: sortedFiles, directories: sortedDirectories, ...(sources && { sources }) })) };
 }
 
 /** Discovery may inspect the library; the durable projection contains only admitted nodes. */

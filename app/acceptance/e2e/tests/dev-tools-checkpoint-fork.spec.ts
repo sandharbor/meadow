@@ -15,6 +15,7 @@ import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../runtime/supervisor/src/runtimeClient.js';
 
+test.use({ executionSurfaces: ['dev-tools', 'browser'] });
 test.use({ bundleMode: 'single-file' });
 
 async function stopRuntime(home: string): Promise<void> {

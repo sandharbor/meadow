@@ -240,13 +240,13 @@ test('concept and area choices also narrow rows above them, including the interf
   await expect(modes.getByRole('button', { name: /^Single folder/ })).toHaveCount(0);
   await expect(areas.getByRole('button', { name: 'Sourcing', exact: true })).toBeVisible();
   await expect(areas.getByRole('button', { name: 'Curation', exact: true })).toHaveCount(0);
-  await expect(surfaces.getByRole('button', { name: 'Browser', exact: true })).toBeVisible();
+  await expect(surfaces.getByRole('button', { name: 'Web App', exact: true })).toBeVisible();
   await expect(surfaces.getByRole('button', { name: /^CLI/ })).toHaveCount(0);
-  await surfaces.getByRole('button', { name: 'and 1 hidden', exact: true }).click();
+  await surfaces.getByRole('button', { name: 'and 2 hidden', exact: true }).click();
   await expect(surfaces.getByRole('button', { name: 'CLI', exact: true })).toHaveCSS('color', 'rgb(148, 163, 184)');
   await expect(surfaces.getByRole('button', { name: /^All/ })).toHaveCSS('color', 'rgb(203, 213, 225)');
   await surfaces.getByRole('button', { name: 'hide', exact: true }).click();
-  const browser = surfaces.getByRole('button', { name: 'Browser', exact: true });
+  const browser = surfaces.getByRole('button', { name: 'Web App', exact: true });
   await browser.click();
   await expect(browser).toHaveAttribute('aria-pressed', 'true');
   await browser.click();
@@ -271,7 +271,7 @@ test('rows with no available choices keep a muted All beside their hidden count'
   await concepts.getByRole('button', { name: 'and 1 hidden', exact: true }).click();
   await concepts.getByRole('button', { name: 'Unused Category', exact: true }).click();
 
-  for (const [name, count] of [['Interface', 2], ['Bundles', 2], ['Starts with', 4], ['Areas', 3]] as const) {
+  for (const [name, count] of [['Interface', 3], ['Bundles', 2], ['Starts with', 4], ['Areas', 3]] as const) {
     const row = page.getByRole('group', { name, exact: true });
     const toggle = row.getByRole('button', { name: `${count} hidden`, exact: true });
     await expect(row.getByRole('button')).toHaveCount(2);
@@ -306,7 +306,7 @@ test('Details shows each scenario’s metadata under its description and mirrors
   await expect(metadata.getByText('All', { exact: true })).toHaveCount(0);
 
   for (const [group, name] of [
-    ['Interface', 'Browser'], ['Areas', 'Sourcing'], ['Bundles', 'Big Bundle'],
+    ['Interface', 'Web App'], ['Areas', 'Sourcing'], ['Bundles', 'Big Bundle'],
     ['Starts with', 'Single file'], ['Concept filters', 'Source Snapshot'],
     ['Contributed concept filters', 'Contributed Sourcing'],
   ]) {
@@ -332,7 +332,7 @@ test('metadata pills can add to existing filters or restart with just the chosen
   const scenario = page.getByRole('article', { name: 'big file sourcing', exact: true });
   const metadata = scenario.locator('dl[aria-label="Scenario metadata"]');
   const selections = [
-    ['Browser', 'surface', 'browser'], ['Sourcing', 'area', 'sourcing'], ['Big Bundle', 'bundle', 'big'],
+    ['Web App', 'surface', 'browser'], ['Sourcing', 'area', 'sourcing'], ['Big Bundle', 'bundle', 'big'],
     ['Single file', 'mode', 'single-file'], ['Source Snapshot', 'doc', 'snapshot'],
     ['Contributed Sourcing', 'doc', 'contributed-source'],
   ];
@@ -399,4 +399,40 @@ test('the pill menu stays by its pill and supports cancel, Escape, outside click
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/view=details&doc=snapshot$/);
   await expect(menu).toHaveCount(0);
+});
+
+test('interfaces overlap, combine like tags, and survive reload', async ({ page }) => {
+  await page.route('**/api/runs/cascade', route => route.fulfill({ json: {
+    runId: 'cascade', scenarios: [
+      { slug: 'both-apps', executionSurfaces: ['dev-tools', 'browser'] },
+      { slug: 'web-only', executionSurfaces: ['browser'] },
+      { slug: 'cli-only', executionSurfaces: ['cli'] },
+    ].map(scenario => ({ ...scenario, testName: scenario.slug, status: 'passed', duration: 1,
+      description: '', executionSurface: scenario.executionSurfaces[0], bundleMode: 'single-file',
+      conceptIds: [], appAreaDocIds: [], bundleDocIds: [], keyFrames: [], hasIssues: false })),
+  } }));
+  await page.route('**/api/runs/cascade/health', route => route.fulfill({ json: {} }));
+  await page.goto('/cascade?view=list');
+  const interfaces = page.getByRole('group', { name: 'Interface', exact: true });
+  const dev = interfaces.getByRole('button', { name: 'Dev Tools', exact: true });
+  const web = interfaces.getByRole('button', { name: 'Web App', exact: true });
+  const cli = interfaces.getByRole('button', { name: 'CLI', exact: true });
+  await dev.click();
+  await expect(page.getByRole('link', { name: 'both apps' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'web only' })).toHaveCount(0);
+  await web.click();
+  await expect(dev).toHaveAttribute('aria-pressed', 'true');
+  await expect(web).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('link', { name: 'web only' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'cli only' })).toHaveCount(0);
+  await page.reload();
+  await expect(dev).toHaveAttribute('aria-pressed', 'true');
+  await expect(web).toHaveAttribute('aria-pressed', 'true');
+  await cli.click();
+  await expect(page.getByRole('link', { name: 'cli only' })).toBeVisible();
+  await dev.click();
+  await expect(web).toHaveAttribute('aria-pressed', 'true');
+  await expect(cli).toHaveAttribute('aria-pressed', 'true');
+  await interfaces.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(page).not.toHaveURL(/[?&]surface=/);
 });

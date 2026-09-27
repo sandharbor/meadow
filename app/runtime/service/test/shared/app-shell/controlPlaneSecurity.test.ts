@@ -127,6 +127,42 @@ describe('local control-plane security', () => {
       .expect(401);
   });
 
+  it('serves same-origin preview modules with a valid preview cookie', async () => {
+    const app = buildApp();
+    const server = app.listen(0, '127.0.0.1');
+    try {
+      if (!server.listening) {
+        await new Promise<void>(resolve => server.once('listening', resolve));
+      }
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('Expected a TCP listener');
+      const previewOrigin = `http://127.0.0.1:${address.port}`;
+      const previewPath = '/api/bundles/example/generation/published/_mw_assets/cust/srs/srs.js';
+      const token = createPreviewReadToken(CAPABILITY, 'example');
+      const initial = await request(server)
+        .get(`${previewPath}?${MEADOW_PREVIEW_TOKEN_QUERY}=${token}`)
+        .expect(302);
+      const cookie = initial.headers['set-cookie']?.[0];
+
+      await request(server)
+        .get(previewPath)
+        .set('Origin', previewOrigin)
+        .set('Cookie', cookie)
+        .expect(200);
+      await request(server)
+        .get(previewPath)
+        .set('Origin', previewOrigin)
+        .expect(401);
+      await request(server)
+        .get('/api/private')
+        .set('Origin', previewOrigin)
+        .set(MEADOW_CAPABILITY_HEADER, CAPABILITY)
+        .expect(403);
+    } finally {
+      server.close();
+    }
+  });
+
   it('never lets the preview token authorize mutations or a disallowed browser origin', async () => {
     const token = createPreviewReadToken(CAPABILITY, 'example');
     const url = `/api/bundles/example/generation/published/index.html?${MEADOW_PREVIEW_TOKEN_QUERY}=${token}`;

@@ -67,6 +67,14 @@ export class PreviewPublishModal {
     return this.previewIframe.locator("main h1").first();
   }
 
+  private get previewBackButton() {
+    return this.page.getByRole("button", { name: "Go back" });
+  }
+
+  private get previewForwardButton() {
+    return this.page.getByRole("button", { name: "Go forward" });
+  }
+
   private get changesTab() {
     return this.page.locator("nav button", { hasText: "Changes" }).first();
   }
@@ -245,6 +253,19 @@ export class PreviewPublishModal {
       },
       { timeout },
     ).toContain(expectedPath);
+  }
+
+  async expectPreviewNavigation(backEnabled: boolean, forwardEnabled: boolean) {
+    await this.expect(this.previewBackButton).toBeEnabled({ enabled: backEnabled });
+    await this.expect(this.previewForwardButton).toBeEnabled({ enabled: forwardEnabled });
+  }
+
+  async goBackInPreview() {
+    await this.previewBackButton.click();
+  }
+
+  async goForwardInPreview() {
+    await this.previewForwardButton.click();
   }
 
   /**

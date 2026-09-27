@@ -531,7 +531,7 @@ const GenerationOptionsPanel: React.FC<GenerationOptionsPanelProps> = ({
   return (
     <>
       <div className="text-sm">
-        <div className="font-medium text-neutral-700 mb-3">Publish Options</div>
+        <div className="font-medium text-neutral-700 mb-3">Options</div>
         <div className="rounded border border-neutral-200">
           <div className="grid grid-cols-[1fr,60px,60px] items-center gap-2 px-3 py-2 bg-neutral-50 border-b border-neutral-200 text-xs font-medium text-neutral-500">
             <span>Setting</span>

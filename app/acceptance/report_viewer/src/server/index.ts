@@ -16,7 +16,7 @@ limitations under the License.
 */
 
 import express from "express";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "fs";
 import { execSync } from "child_process";
 import os from "os";
 import path from "path";
@@ -38,6 +38,7 @@ import {
 import { isBundleMode, type BundleMode } from "../bundleModes.ts";
 import {
   isExecutionSurface,
+  executionSurfacesFor,
   type ExecutionSurface,
 } from "../../../e2e/src/run/executionSurface.ts";
 import {
@@ -516,6 +517,21 @@ app.get("/api/agent-runs/:runId/:trialId/file/*", (req, res) => {
 
 // --- Navigation APIs ---
 
+/**
+ * Whether a scenario's assembled summary reports issues. E2E assembly owns
+ * both this summary and run-report-meta.json; the viewer only reads them.
+ */
+function scenarioSummaryHasIssues(scenarioDir: string): boolean {
+  const reportMetaPath = path.join(scenarioDir, "report-meta.json");
+  if (!existsSync(reportMetaPath)) return false;
+  try {
+    const meta = JSON.parse(readFileSync(reportMetaPath, "utf8"));
+    return meta.version === 1 && meta.summary?.hasIssues === true;
+  } catch {
+    return false;
+  }
+}
+
 // GET /api/runs — list all runs with scenario statuses
 app.get("/api/runs", (_req, res) => {
   if (!existsSync(CURRENT_ARTIFACTS_ROOT)) {
@@ -552,10 +568,6 @@ app.get("/api/runs", (_req, res) => {
       }
     }
 
-    // Track fallback results so we can lazily backfill run-report-meta.json
-    const backfillScenarios: Record<string, { hasIssues: boolean }> = {};
-    let needsBackfill = false;
-
     const scenarios = readdirSync(runDir)
       .filter((name) => {
         // "__" entries hold run-level data, such as shared checkpoint objects.
@@ -570,56 +582,9 @@ app.get("/api/runs", (_req, res) => {
         if (existsSync(statusFile)) {
           status = readFileSync(statusFile, "utf8").trim();
         }
-
-        let hasIssues = false;
-        if (runMeta && slug in runMeta) {
-          hasIssues = runMeta[slug].hasIssues;
-        } else {
-          needsBackfill = true;
-          // Fallback: scan manifest.json (expensive for large logs)
-          const manifestFile = path.join(scenarioDir, "manifest.json");
-          if (existsSync(manifestFile)) {
-            try {
-              const manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
-              const logs: { level?: string }[] = manifest.logs || [];
-              const hasErrorOrWarn = logs.some(
-                (l) => l.level === "ERROR" || l.level === "WARN"
-              );
-              const uncommitted: {
-                uncommittedFiles: unknown[];
-              }[] = manifest.uncommittedEntries || [];
-              const hasUncommittedAtEnd =
-                uncommitted.length > 0 &&
-                uncommitted[uncommitted.length - 1].uncommittedFiles.length > 0;
-              hasIssues = hasErrorOrWarn || hasUncommittedAtEnd;
-            } catch {
-              // ignore
-            }
-          }
-          backfillScenarios[slug] = { hasIssues };
-        }
-
+        const hasIssues = runMeta?.[slug]?.hasIssues ?? scenarioSummaryHasIssues(scenarioDir);
         return { slug, status, hasIssues };
       });
-
-    // Lazily backfill run-report-meta.json so subsequent loads are fast
-    if (needsBackfill && Object.keys(backfillScenarios).length > 0) {
-      try {
-        const merged: Record<string, { totalErrorCount: number; totalWarnCount: number; hasUncommittedAtEnd: boolean; hasIssues: boolean }> = {};
-        // Carry over any existing entries from runMeta
-        if (runMeta) {
-          for (const [k, v] of Object.entries(runMeta)) {
-            merged[k] = { totalErrorCount: 0, totalWarnCount: 0, hasUncommittedAtEnd: false, ...v };
-          }
-        }
-        for (const [k, v] of Object.entries(backfillScenarios)) {
-          merged[k] = { totalErrorCount: 0, totalWarnCount: 0, hasUncommittedAtEnd: false, ...v };
-        }
-        writeFileSync(runMetaPath, JSON.stringify({ version: 1, scenarios: merged }, null, 2));
-      } catch {
-        // best-effort backfill
-      }
-    }
 
     const allPassed = scenarios.length > 0 && scenarios.every((s) => s.status === "passed");
     const anyFailed = scenarios.some((s) => s.status === "failed");
@@ -685,6 +650,7 @@ app.get("/api/runs/:runId", (req, res) => {
       let duration: number | null = null;
       let bundleMode: BundleMode | null = null;
       let executionSurface: ExecutionSurface = "browser";
+      let executionSurfaces: ExecutionSurface[] = ["browser"];
       let conceptIds: string[] = [];
       let bundleDocIds: string[] = [];
       let appAreaDocIds: string[] = [];
@@ -712,12 +678,13 @@ app.get("/api/runs/:runId", (req, res) => {
             executionSurface = isExecutionSurface(meta.scenarioInfo.executionSurface)
               ? meta.scenarioInfo.executionSurface
               : "browser";
+            executionSurfaces = executionSurfacesFor(meta.scenarioInfo);
             conceptIds = meta.scenarioInfo.conceptIds ?? meta.scenarioInfo.scenarioDocIds ?? [];
             bundleDocIds = meta.scenarioInfo.bundleDocIds || [];
             appAreaDocIds = meta.scenarioInfo.appAreaDocIds || [];
             keyFrames = meta.scenarioInfo.keyFrames || [];
             failureReason = meta.scenarioInfo.failureReason;
-            hasIssues = runMeta?.[slug]?.hasIssues ?? meta.summary?.hasIssues ?? false;
+            hasIssues = meta.summary?.hasIssues ?? hasIssues;
             resolved = true;
           }
         } catch {
@@ -737,6 +704,7 @@ app.get("/api/runs/:runId", (req, res) => {
             executionSurface = isExecutionSurface(manifest.executionSurface)
               ? manifest.executionSurface
               : "browser";
+            executionSurfaces = executionSurfacesFor(manifest);
             conceptIds = manifest.conceptIds ?? manifest.scenarioDocIds ?? [];
             bundleDocIds = manifest.bundleDocIds || [];
             appAreaDocIds = manifest.appAreaDocIds || [];
@@ -775,7 +743,7 @@ app.get("/api/runs/:runId", (req, res) => {
         }
       }
 
-      return { slug, testName, description, testBasename, status, duration, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
+      return { slug, testName, description, testBasename, status, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, failureReason, hasIssues };
     });
 
   // Read concept targeting metadata, with a fallback for historical runs.

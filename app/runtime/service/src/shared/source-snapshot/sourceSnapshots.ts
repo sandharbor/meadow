@@ -138,13 +138,7 @@ export function loadSourceNodeConfigs(bundleDirectory: string): BundleNodeConfig
   return parseBundleNodeConfig(fs.readFileSync(path.join(bundleDirectory, 'config/bundle_node_config.yaml'), 'utf8'));
 }
 
-export function sourceConfigFingerprint(bundleDirectory: string): string {
-  return sha256(['bundle_config.yaml', 'bundle_node_config.yaml', 'draft_bundle_node_config.yaml']
-    .map(name => {
-      const filename = path.join(bundleDirectory, 'config', name);
-      return fs.existsSync(filename) ? fs.readFileSync(filename, 'utf8') : '';
-    }).join('\0'));
-}
+export { sourceConfigFingerprint } from '../../../../../shared_code/utils/sourceSnapshotFingerprint.js';
 
 export function nodeSourcePath(config: BundleNodeConfig): string {
   if (config.bundleNodeKind === 'collection') return `collection:${config.bundleNodeId}`;

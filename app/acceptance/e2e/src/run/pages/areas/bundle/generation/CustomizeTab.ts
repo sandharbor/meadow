@@ -138,7 +138,11 @@ class GenerationOptionsSection {
     private expect: Expect,
   ) {}
 
-  /** Get a named setting row in the publish options grid. */
+  async expectOptionsHeading() {
+    await this.expect(this.page.getByText('Options', { exact: true })).toBeVisible();
+  }
+
+  /** Get a named setting row in the generation options grid. */
   private settingRow(name: string) {
     return this.page.locator("span", { hasText: name }).locator("xpath=ancestor::div[contains(@class, 'grid')]");
   }
@@ -292,7 +296,7 @@ class GenerationOptionsSection {
 
 /**
  * Component for the Customize tab within the PreviewPublishModal.
- * Exposes nested section objects for hooks and publish options.
+ * Exposes nested section objects for hooks and generation options.
  */
 export class CustomizeTab {
   readonly hooks: HooksSection;

@@ -15,7 +15,8 @@ limitations under the License.
 */
 
 export const EXECUTION_SURFACE_OPTIONS = [
-  { id: "browser", label: "Browser" },
+  { id: "browser", label: "Web App" },
+  { id: "dev-tools", label: "Dev Tools" },
   { id: "cli", label: "CLI" },
 ] as const;
 
@@ -23,4 +24,10 @@ export type ExecutionSurface = (typeof EXECUTION_SURFACE_OPTIONS)[number]["id"];
 
 export function isExecutionSurface(value: unknown): value is ExecutionSurface {
   return EXECUTION_SURFACE_OPTIONS.some((option) => option.id === value);
+}
+
+/** Older reports have one interface; new scenarios can exercise several. */
+export function executionSurfacesFor(value: { executionSurfaces?: unknown; executionSurface?: unknown }): ExecutionSurface[] {
+  const surfaces = Array.isArray(value.executionSurfaces) ? value.executionSurfaces.filter(isExecutionSurface) : [];
+  return surfaces.length ? [...new Set(surfaces)] : [isExecutionSurface(value.executionSurface) ? value.executionSurface : "browser"];
 }

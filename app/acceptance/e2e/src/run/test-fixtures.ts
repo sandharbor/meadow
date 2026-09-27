@@ -498,6 +498,7 @@ export const test = base.extend<{
   bundleMode: BundleMode;
   /** Which user-facing interface drives the scenario. */
   executionSurface: ExecutionSurface;
+  executionSurfaces: ExecutionSurface[];
   /** Keep resource-intensive specs in the same named group from running concurrently. */
   serialGroup: string | null;
   /** A home fixture folder name, or "empty" for a fresh install. */
@@ -570,6 +571,7 @@ export const test = base.extend<{
 }>({
   bundleMode: ["single-file", { option: true }],
   executionSurface: ["browser", { option: true }],
+  executionSurfaces: [async ({ executionSurface }, use) => { await use([executionSurface]); }, { option: true }],
   serialGroup: [null, { option: true }],
   fixtureHome: ["home_fixture_big_and_small", { option: true }],
   includeOversizedImage: [false, { option: true }],
@@ -883,7 +885,7 @@ export const test = base.extend<{
   ],
 
   artifactDir: [
-    async ({ page, testServer, minioS3, bundleMode, executionSurface, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
+    async ({ page, testServer, minioS3, bundleMode, executionSurface, executionSurfaces, _tickCaptureRegistry, _expectedErrorWindows: expectedErrorWindows }, use, testInfo) => {
       const { configDir } = testServer;
 
       // Create artifact directory
@@ -909,6 +911,7 @@ export const test = base.extend<{
       // Interface classification is explicit artifact metadata. In particular,
       // do not infer CLI scenarios from test names or the absence of video.
       writeFileSync(path.join(artifactDir, "execution-surface.txt"), executionSurface);
+      writeFileSync(path.join(artifactDir, "execution-surfaces.json"), JSON.stringify(executionSurfaces));
 
       // --- Tick recording ---
       const tickLogPath = path.join(artifactDir, "ticks.jsonl");
@@ -1467,20 +1470,26 @@ export const test = base.extend<{
           }
           mkdirSync(objectsDir, { recursive: true });
 
-          for (const key of keys) {
-            let content: string;
-            try {
-              content = await minioS3.getObjectContent(key);
-            } catch (err) {
-              const code = typeof err === "object" && err !== null && "Code" in err
-                ? (err as { Code?: string }).Code
-                : undefined;
-              if (code === "NoSuchKey") continue;
-              throw err;
-            }
-            const filePath = path.join(objectsDir, key);
-            mkdirSync(path.dirname(filePath), { recursive: true });
-            writeFileSync(filePath, content);
+          // Bound concurrent reads so large publications do not pay one
+          // network round trip per object at every checkpoint.
+          for (let offset = 0; offset < keys.length; offset += 8) {
+            const results = await Promise.allSettled(keys.slice(offset, offset + 8).map(async key => {
+              let content: string;
+              try {
+                content = await minioS3.getObjectContent(key);
+              } catch (err) {
+                const code = typeof err === "object" && err !== null && "Code" in err
+                  ? (err as { Code?: string }).Code
+                  : undefined;
+                if (code === "NoSuchKey") return;
+                throw err;
+              }
+              const filePath = path.join(objectsDir, key);
+              mkdirSync(path.dirname(filePath), { recursive: true });
+              writeFileSync(filePath, content);
+            }));
+            const failed = results.find(result => result.status === "rejected");
+            if (failed?.status === "rejected") throw failed.reason;
           }
           gitCommitIfChanged(minioStateRepo, message, minioTimelinePath);
         } catch (err) {

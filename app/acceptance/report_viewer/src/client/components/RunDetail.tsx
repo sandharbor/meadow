@@ -33,6 +33,7 @@ import { isBundleMode, BUNDLE_MODE_OPTIONS, type BundleMode } from '../../bundle
 import {
   EXECUTION_SURFACE_OPTIONS,
   isExecutionSurface,
+  executionSurfacesFor,
   type ExecutionSurface,
 } from '../../../../e2e/src/run/executionSurface.ts'
 
@@ -45,10 +46,10 @@ interface FilterValues {
   docIds: string[]
   bundleIds: string[]
   bundleModes: BundleMode[]
-  executionSurface: ExecutionSurface | null
+  executionSurfaces: ExecutionSurface[]
 }
 
-const EMPTY_FILTERS: FilterValues = { areaIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurface: null }
+const EMPTY_FILTERS: FilterValues = { areaIds: [], docIds: [], bundleIds: [], bundleModes: [], executionSurfaces: [] }
 
 interface ConceptView {
   searchFacet: boolean
@@ -87,6 +88,7 @@ interface Scenario {
   duration: number | null
   bundleMode: BundleMode | null
   executionSurface: ExecutionSurface
+  executionSurfaces?: ExecutionSurface[]
   conceptIds: string[]
   bundleDocIds: string[]
   appAreaDocIds: string[]
@@ -249,8 +251,7 @@ export default function RunDetail() {
   const selectedBundleIds = searchParams.getAll('bundle')
   const selectedBundles = bundleDocs.filter((d) => selectedBundleIds.includes(d.id))
   const selectedBundleModes = searchParams.getAll('mode').filter(isBundleMode)
-  const surfaceParam = searchParams.get('surface')
-  const selectedExecutionSurface = isExecutionSurface(surfaceParam) ? surfaceParam : null
+  const selectedExecutionSurfaces = searchParams.getAll('surface').filter(isExecutionSurface)
 
   // Track which acceptance concept IDs appear in this run's data.
   const presentDocIds = new Set(
@@ -276,12 +277,10 @@ export default function RunDetail() {
     const docIds = next.docIds ?? selectedDocIds
     const bundleIds = next.bundleIds ?? selectedBundleIds
     const bundleModes = next.bundleModes ?? selectedBundleModes
-    const executionSurface = next.executionSurface === undefined
-      ? selectedExecutionSurface
-      : next.executionSurface
+    const executionSurfaces = next.executionSurfaces ?? selectedExecutionSurfaces
     setSearchParams([
       ['view', activeTab],
-      ...(executionSurface ? [['surface', executionSurface] as [string, string]] : []),
+      ...executionSurfaces.map((surface): [string, string] => ['surface', surface]),
       ...bundleModes.map((mode): [string, string] => ['mode', mode]),
       ...areaIds.map((id): [string, string] => ['area', id]),
       ...docIds.map((id): [string, string] => ['doc', id]),
@@ -292,14 +291,14 @@ export default function RunDetail() {
   const chooseMetadataFilter = (next: Partial<FilterValues>, action: ScenarioFilterAction) => {
     const current = action === 'restart' ? EMPTY_FILTERS : {
       areaIds: selectedAreaIds, docIds: selectedDocIds, bundleIds: selectedBundleIds,
-      bundleModes: selectedBundleModes, executionSurface: selectedExecutionSurface,
+      bundleModes: selectedBundleModes, executionSurfaces: selectedExecutionSurfaces,
     }
     setFilters({
       areaIds: [...new Set([...current.areaIds, ...next.areaIds ?? []])],
       docIds: [...new Set([...current.docIds, ...next.docIds ?? []])],
       bundleIds: [...new Set([...current.bundleIds, ...next.bundleIds ?? []])],
       bundleModes: [...new Set([...current.bundleModes, ...next.bundleModes ?? []])],
-      executionSurface: next.executionSurface ?? current.executionSurface,
+      executionSurfaces: [...new Set([...current.executionSurfaces, ...next.executionSurfaces ?? []])],
     })
   }
 
@@ -390,7 +389,7 @@ export default function RunDetail() {
   const sortedScenarios = [...data.scenarios].sort((a, b) => b.slug.localeCompare(a.slug))
 
   const matchesFilters = (scenario: Scenario, except?: FilterGroup) =>
-    (except === 'surface' || !selectedExecutionSurface || scenario.executionSurface === selectedExecutionSurface)
+    (except === 'surface' || selectedExecutionSurfaces.length === 0 || selectedExecutionSurfaces.some(surface => executionSurfacesFor(scenario).includes(surface)))
     && (except === 'bundle' || selectedBundles.length === 0 || selectedBundles.some(bundle => scenario.bundleDocIds.includes(bundle.id)))
     && (except === 'mode' || selectedBundleModes.length === 0 || !!scenario.bundleMode && selectedBundleModes.includes(scenario.bundleMode))
     && (except === 'area' || selectedAreas.length === 0 || selectedAreas.some(area => scenario.appAreaDocIds.includes(area.id)))
@@ -403,7 +402,7 @@ export default function RunDetail() {
   const bundleMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'bundle'))
   const modeMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'mode'))
   const areaMatches = sortedScenarios.filter(scenario => matchesFilters(scenario, 'area'))
-  const availableSurfaceIds = new Set(surfaceMatches.map(s => s.executionSurface))
+  const availableSurfaceIds = new Set(surfaceMatches.flatMap(executionSurfacesFor))
   const availableBundleIds = new Set(bundleMatches.flatMap(s => s.bundleDocIds))
   const availableModeIds = new Set(modeMatches.flatMap(s => s.bundleMode ? [s.bundleMode] : []))
   const availableAreaIds = new Set(areaMatches.flatMap(s => s.appAreaDocIds))
@@ -423,13 +422,13 @@ export default function RunDetail() {
 
   const mediaSizeClass = ['h-32', 'h-64', 'h-96', 'h-[512px]'][mediaSize]
   const detailVideoWidth = ['20rem', '28rem', '36rem', '44rem'][mediaSize]
-  const hasBrowserScenarios = filteredScenarios.some(scenario => scenario.executionSurface === 'browser')
+  const hasBrowserScenarios = filteredScenarios.some(scenario => executionSurfacesFor(scenario).some(surface => surface !== 'cli'))
   // Card max-width matches video width (height × 16/9) so names don't stretch cards
   const cardMaxWidthClass = ['max-w-[228px]', 'max-w-[456px]', 'max-w-[684px]', 'max-w-[912px]'][mediaSize]
-  const displayedTab: ViewTab = selectedExecutionSurface === 'cli' && (activeTab === 'thumbs' || activeTab === 'videos')
+  const displayedTab: ViewTab = !hasBrowserScenarios && filteredScenarios.length > 0 && (activeTab === 'thumbs' || activeTab === 'videos')
     ? 'list'
     : activeTab
-  const availableTabs: readonly ViewTab[] = selectedExecutionSurface === 'cli'
+  const availableTabs: readonly ViewTab[] = !hasBrowserScenarios && filteredScenarios.length > 0
     ? ['list', 'details', 'timing']
     : VIEW_TABS
 
@@ -463,18 +462,18 @@ export default function RunDetail() {
       <div className="filter-section filter-interface mb-1 w-full rounded-md px-3 py-1.5">
         <div className="filter-row" role="group" aria-label="Interface">
           <span className="filter-label text-xs text-neutral-400 font-medium">Interface:</span>
-          <FilterOptions preferenceId="interface" options={EXECUTION_SURFACE_OPTIONS} availableIds={availableSurfaceIds} selectedIds={selectedExecutionSurface ? [selectedExecutionSurface] : []}
+          <FilterOptions preferenceId="interface" options={EXECUTION_SURFACE_OPTIONS} availableIds={availableSurfaceIds} selectedIds={selectedExecutionSurfaces}
             allOption={
               <button
                 className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-                aria-pressed={selectedExecutionSurface === null}
-                onClick={() => setFilters({ executionSurface: null })}
+                aria-pressed={selectedExecutionSurfaces.length === 0}
+                onClick={() => setFilters({ executionSurfaces: [] })}
               >
                 All
               </button>
             }>
             {(surface, available) => {
-              const isSelected = selectedExecutionSurface === surface.id
+              const isSelected = selectedExecutionSurfaces.includes(surface.id)
               return (
                 <button
                   key={surface.id}
@@ -486,7 +485,7 @@ export default function RunDetail() {
                       : 'bg-neutral-50 text-neutral-400 hover:bg-neutral-100'
                   }${isSelected && !available ? ' opacity-60' : ''}`}
                   aria-pressed={isSelected}
-                  onClick={() => setFilters({ executionSurface: isSelected ? null : surface.id })}
+                  onClick={() => setFilters({ executionSurfaces: isSelected ? selectedExecutionSurfaces.filter(id => id !== surface.id) : [...selectedExecutionSurfaces, surface.id] })}
                 >
                   {surface.label}
                 </button>
@@ -992,9 +991,9 @@ export default function RunDetail() {
                       <article
                         key={scenario.slug}
                         aria-label={name}
-                        className={`scenario-details-row grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 ${scenario.executionSurface === 'browser' ? 'has-video' : ''}`}
+                        className={`scenario-details-row grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 ${executionSurfacesFor(scenario).some(surface => surface !== 'cli') ? 'has-video' : ''}`}
                       >
-                        {scenario.executionSurface === 'browser' && (
+                        {executionSurfacesFor(scenario).some(surface => surface !== 'cli') && (
                           <div className="scenario-details-preview">
                             <ScenarioPreviewVideo
                               key={`${runId}/${scenario.slug}`}
@@ -1009,7 +1008,7 @@ export default function RunDetail() {
                           <div className="mb-3 flex items-start justify-between gap-3">
                             <div className="flex items-start gap-2">
                               <StatusBadge status={scenario.status} hasIssues={scenario.hasIssues} />
-                              {scenario.executionSurface === 'cli' && <span className="text-xs text-neutral-500">CLI</span>}
+                              {executionSurfacesFor(scenario).every(surface => surface === 'cli') && <span className="text-xs text-neutral-500">CLI</span>}
                               <Link to={`/${runId}/${scenario.slug}`} className="font-medium text-neutral-800 hover:text-brand-600 hover:underline">
                                 {name}
                               </Link>
@@ -1027,9 +1026,9 @@ export default function RunDetail() {
                           )}
                           <dl aria-label="Scenario metadata" className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
                             <ScenarioMetadataGroup label="Interface" accent="filter-interface"
-                              options={EXECUTION_SURFACE_OPTIONS.filter(surface => surface.id === scenario.executionSurface).map(surface => ({ id: surface.id, name: surface.label }))}
-                              availableIds={availableSurfaceIds} selectedIds={selectedExecutionSurface ? [selectedExecutionSurface] : []}
-                              onChoose={(id, action) => { if (isExecutionSurface(id)) chooseMetadataFilter({ executionSurface: id }, action) }} />
+                              options={EXECUTION_SURFACE_OPTIONS.filter(surface => executionSurfacesFor(scenario).includes(surface.id)).map(surface => ({ id: surface.id, name: surface.label }))}
+                              availableIds={availableSurfaceIds} selectedIds={selectedExecutionSurfaces}
+                              onChoose={(id, action) => { if (isExecutionSurface(id)) chooseMetadataFilter({ executionSurfaces: [id] }, action) }} />
                             <ScenarioMetadataGroup label="Areas" accent="filter-areas"
                               options={appAreas.filter(area => scenario.appAreaDocIds.includes(area.id)).map(area => ({ id: area.id, name: area.parentId === 'bundle' ? area.name.replace(/^Bundle /, '') : area.name }))}
                               availableIds={visibleAreaIds} selectedIds={selectedAreaIds}

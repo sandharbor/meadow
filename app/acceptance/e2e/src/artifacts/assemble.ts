@@ -41,6 +41,7 @@ import * as bundleDocExports from "../bundle-docs/index.ts";
 import { isBundleMode, type BundleMode } from "../run/bundleMode.ts";
 import {
   isExecutionSurface,
+  executionSurfacesFor,
   type ExecutionSurface,
 } from "../run/executionSurface.ts";
 import {
@@ -251,6 +252,7 @@ interface Manifest {
   testSourceChanges?: SourceChangeDefinition[];
   bundleMode: BundleMode | null;
   executionSurface: ExecutionSurface;
+  executionSurfaces: ExecutionSurface[];
   conceptIds: string[];
   bundleDocIds: string[];
   appAreaDocIds: string[];
@@ -335,6 +337,7 @@ interface ScenarioReportMeta {
     duration: number | null;
     bundleMode: BundleMode | null;
     executionSurface: ExecutionSurface;
+    executionSurfaces: ExecutionSurface[];
     conceptIds: string[];
     bundleDocIds: string[];
     appAreaDocIds: string[];
@@ -1015,7 +1018,7 @@ function computeScenarioReportMeta(
   testDir: string,
   manifest: Manifest
 ): ScenarioReportMeta {
-  const { testName, description, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
+  const { testName, description, startTime, endTime, logs, uncommittedEntries, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames } = manifest;
 
   // Compute duration
   const duration = (startTime && endTime)
@@ -1028,7 +1031,7 @@ function computeScenarioReportMeta(
     ? readFileSync(failureReasonPath, "utf8").trim()
     : undefined;
 
-  const scenarioInfo = { testName, description, duration, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
+  const scenarioInfo = { testName, description, duration, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...(failureReason && { failureReason }) };
 
   // Load expected error windows (written by the expectLogErrors fixture)
   const expectedWindowsPath = path.join(testDir, "expected-error-windows.json");
@@ -1303,6 +1306,10 @@ export function assembleTestArtifacts(testDir: string): void {
     return value;
   });
 
+  const executionSurfacesPath = path.join(testDir, "execution-surfaces.json");
+  const executionSurfaces = executionSurfacesFor({ executionSurface,
+    executionSurfaces: existsSync(executionSurfacesPath) ? JSON.parse(readFileSync(executionSurfacesPath, "utf8")) : undefined });
+
   // Extract concept, app-area, and bundle-doc IDs from test source imports.
   const { conceptIds, bundleDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {
     const scenarioIds = extractAcceptanceConceptIds(testSource);
@@ -1332,7 +1339,7 @@ export function assembleTestArtifacts(testDir: string): void {
   );
 
   // Write manifest
-  const manifest: Manifest = { testName, description, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  const manifest: Manifest = { testName, description, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
   const manifestJson = measured(assemblySteps, "manifest stringify", () =>
     JSON.stringify(manifest, null, 2)
   );

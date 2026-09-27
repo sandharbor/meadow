@@ -200,7 +200,12 @@ describe('live preview during atomic version generation', () => {
     });
     const url = `${origin}/api/bundles/example/generation/published/${encodeURIComponent(filename)}`;
     const content = await (await fetch(url)).text();
-    expect([before, after]).toContain(content);
+    if (filename.endsWith('.html')) {
+      expect(content).toContain("type: 'meadow-preview-page-v1'");
+      expect([before, after]).toContain(content.replace(/<script>[\s\S]*?<\/script>/, ''));
+    } else {
+      expect([before, after]).toContain(content);
+    }
     finish.resolve();
     for await (const event of events) {
       expect(event.stage).not.toBe('error');

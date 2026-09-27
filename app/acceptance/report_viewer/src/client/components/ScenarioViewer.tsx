@@ -2023,7 +2023,7 @@ export default function ScenarioViewer() {
             <CheckpointOpenControl runId={runId} scenario={testSlug} index={currentCheckpointNumber} />
           )}
           {testSlug && currentCheckpointMessage && (
-            <CopyReferenceButton text={`E2E scenario ${testSlug} at checkpoint ${currentCheckpointMessage}`}
+            <CopyReferenceButton text={`E2E scenario "${testSlug}" at checkpoint "${currentCheckpointMessage}"`}
               label="Copy checkpoint reference" className="ml-auto" />
           )}
           {checkpointDropdownOpen && hasTicks && (
