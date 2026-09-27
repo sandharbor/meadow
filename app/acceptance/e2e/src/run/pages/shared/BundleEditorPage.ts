@@ -193,7 +193,7 @@ export class BundleEditorPage {
   }
 
   /** Open a bundle option that shows a dialog, check it opened, and close it. */
-  async openAndCloseBundleOption(option: "Edit bundle details" | "Bundle logs", dialogName: string | RegExp) {
+  async openAndCloseBundleOption(option: "Edit bundle details" | "Rename bundle" | "Bundle logs", dialogName: string | RegExp) {
     await this.clickBundleOptionsMenu();
     await this.page.getByRole("button", { name: option, exact: true }).click();
     const dialog = this.page.getByRole("dialog", { name: dialogName });

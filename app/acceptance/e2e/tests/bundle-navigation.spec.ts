@@ -51,6 +51,7 @@ test("navigate from bundle list to bundle and see graph view", async ({ page, ch
 
   // Open and close the bundle's dialogs from its options.
   await editor.openAndCloseBundleOption("Edit bundle details", "Edit Bundle Details");
+  await editor.openAndCloseBundleOption("Rename bundle", "Rename bundle");
   await editor.openAndCloseBundleOption("Bundle logs", "Bundle logs");
   await places.expectCurrent("/bundle/meadow-test-bundle-big");
   await checkpoint("the bundle's option dialogs open and close");
