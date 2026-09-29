@@ -25,7 +25,7 @@ if (!testDir) {
 }
 
 try {
-  assembleTestArtifacts(testDir);
+  assembleTestArtifacts(testDir, { dropTickLog: true });
   process.exit(0);
 } catch (err) {
   console.error(`assemble-worker: ${testDir}: ${err}`);

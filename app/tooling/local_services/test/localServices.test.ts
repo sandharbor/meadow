@@ -162,6 +162,13 @@ test("a checkpoint restores the whole home, its repository, and each part partit
   assert.equal(fs.existsSync(path.join(restoredHome, "logs")), false, "logs are not state");
   assert.match(fs.readFileSync(path.join(restoredHome, "bundles/demo/config/bundle_config.yaml"), "utf8"), new RegExp(`directory: ${restoredHome}/source_graphs/notes\n[\\s\\S]*directory: /Users/someone/notes`), "isolated sources follow the home; others stay put");
   assert.equal(execFileSync("git", ["log", "--format=%s"], { cwd: restoredHome, encoding: "utf8" }).trim(), "initial Meadow Home commit");
+  // Home objects are stored natively, not as copies of .git/objects files,
+  // and a restored repository holds every captured object, reachable or not.
+  assert.equal(second.metadata.version, 2);
+  assert.equal(execFileSync("git", ["--git-dir", repo, "ls-tree", "--name-only", `${second.commit}:home.git`], { encoding: "utf8" }).split("\n").includes("objects"), false);
+  const objectIds = (gitDir: string) => execFileSync("git", ["--git-dir", gitDir, "cat-file", "--batch-all-objects", "--batch-check=%(objectname)"], { encoding: "utf8" });
+  assert.equal(objectIds(path.join(restoredHome, ".git")), objectIds(path.join(home, ".git")));
+  execFileSync("git", ["fsck", "--no-dangling"], { cwd: restoredHome, stdio: "pipe" });
   assert.equal(fs.readFileSync(path.join(container.endpoint, "fork-1", "published.html"), "utf8"), "<h1>published</h1>");
   await assert.rejects(
     restoreCheckpoint({ repo, index: 1, homeDirectory: restoredHome, parts: [part], containers: { files: container }, partition: "fork-2" }),

@@ -17,11 +17,13 @@ limitations under the License.
 
 import express from "express";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "fs";
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import os from "os";
 import path from "path";
 import { testSourceLocations } from '../testSourceLocations.ts';
 import { describeTestSourceChanges } from '../../../e2e/src/artifacts/testSourceChanges.ts';
+import { expandManifest } from '../../../e2e/src/artifacts/manifestEncoding.ts';
+import { FINAL_WORKTREE_REF } from '../../../e2e/src/run/stateRepoCompaction.ts';
 import {
   acceptanceConcepts,
   acceptanceConceptView,
@@ -1034,7 +1036,7 @@ app.get("/api/:runId/:testSlug/manifest", (req, res) => {
 
   const manifestPath = path.join(dir, "manifest.json");
   if (existsSync(manifestPath)) {
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const manifest = expandManifest(JSON.parse(readFileSync(manifestPath, "utf8")), dir);
     res.json(normalizeLegacyManifest(manifest));
   } else {
     res.status(404).json({ error: "No manifest found" });
@@ -1589,6 +1591,18 @@ app.get("/api/:runId/:testSlug/uncommitted-file/*", (req, res) => {
   const resolved = path.resolve(meadowHomeStateRepo, filePath);
   if (!resolved.startsWith(meadowHomeStateRepo + path.sep)) {
     return res.status(400).send("Invalid path");
+  }
+  // Snapshots keep the final working tree as a commit rather than as files.
+  try {
+    const gitDir = path.join(meadowHomeStateRepo, ".git");
+    const content = execFileSync("git", ["--git-dir", gitDir, "show", `${FINAL_WORKTREE_REF}:${filePath}`], {
+      encoding: "utf8",
+      maxBuffer: 256 * 1024 * 1024,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return res.type("text/plain").send(content);
+  } catch {
+    // Not in the snapshot commit, or an older artifact with a full working tree.
   }
   if (!existsSync(resolved)) {
     return res.status(404).send("File not found");

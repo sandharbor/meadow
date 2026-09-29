@@ -21,19 +21,26 @@ import type { checkpoint, ParticipatesIn } from "../../../concepts/index.js";
  *
  *   checkpoint.json   metadata (parts, formats, code revision, ports)
  *   home/             the Meadow Home work tree, including ignored files
- *   home.git/         the home's own Git repository
+ *   home.git/         the home's own Git repository, without its objects
+ *   home.git-objects  every object id in that repository (version 2)
  *   parts/<part>/     each Local Services part's partition state
+ *
+ * Version 2 stores the home's Git objects as objects of the checkpoint
+ * repository rather than as copies of their compressed files, so they share
+ * storage and deltas with everything else. Version 1 checkpoints kept the
+ * whole .git directory as files and still restore.
  *
  * The home's live repository is never written during a scenario.
  */
 
 export const CHECKPOINT_REPO_DIRECTORY = "checkpoint-state-repo";
 const CHECKPOINT_REF_PREFIX = "refs/checkpoints/";
+const HOME_GIT_OBJECTS_FILE = "home.git-objects";
 /** Logs and disposable caches are not state worth restoring. */
 const EXCLUDED_HOME_PATHS = ["logs", "cache/source-index"];
 
 export interface CheckpointMetadata {
-  version: 1;
+  version: 1 | 2;
   index: number;
   message: string;
   capturedAt: string;
@@ -60,7 +67,7 @@ export interface CheckpointSummary {
   metadata: CheckpointMetadata;
 }
 
-function git(repo: string, args: string[], options: { env?: Record<string, string>; input?: string } = {}): string {
+function git(repo: string, args: string[], options: { env?: Record<string, string>; input?: string | Buffer } = {}): string {
   return execFileSync("git", ["--git-dir", repo, ...args], {
     encoding: "utf8",
     env: { ...process.env, ...options.env },
@@ -78,7 +85,8 @@ function git(repo: string, args: string[], options: { env?: Record<string, strin
 function ensureRepository(repo: string, sharedObjectsDirectory?: string): Record<string, string> {
   if (!fs.existsSync(path.join(repo, "HEAD"))) {
     fs.mkdirSync(repo, { recursive: true });
-    execFileSync("git", ["init", "--bare", "--quiet", repo], { stdio: "ignore" });
+    // An empty template leaves out sample hooks, which every repository would copy.
+    execFileSync("git", ["init", "--bare", "--quiet", "--template=", repo], { stdio: "ignore" });
   }
   if (!sharedObjectsDirectory) return {};
   fs.mkdirSync(sharedObjectsDirectory, { recursive: true });
@@ -110,6 +118,44 @@ function treeOf(repo: string, workTree: string, objectEnv: Record<string, string
   } finally {
     fs.rmSync(index, { force: true });
   }
+}
+
+/**
+ * Copy the home repository's objects into the checkpoint store, skipping
+ * those it already holds, and return their ids. Every object is kept,
+ * reachable or not, so a restored repository is the one captured.
+ */
+function storeHomeObjects(repo: string, homeGit: string, objectEnv: Record<string, string>): string {
+  const ids = execFileSync("git", ["--git-dir", homeGit, "cat-file", "--batch-all-objects", "--batch-check=%(objectname)"], {
+    encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"],
+  }).trim().split("\n").filter(Boolean).sort();
+  if (ids.length === 0) return "";
+  const listing = `${ids.join("\n")}\n`;
+  const missing = git(repo, ["cat-file", "--batch-check=%(objectname) %(objecttype)"], { env: objectEnv, input: listing })
+    .split("\n").filter(line => line.endsWith(" missing")).map(line => line.split(" ")[0]);
+  if (missing.length > 0) {
+    const pack = execFileSync("git", ["--git-dir", homeGit, "pack-objects", "--stdout", "-q"], {
+      input: `${missing.join("\n")}\n`, maxBuffer: 1024 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"],
+    });
+    execFileSync("git", ["--git-dir", repo, "unpack-objects", "-q"], {
+      input: pack, env: { ...process.env, ...objectEnv }, stdio: ["pipe", "pipe", "pipe"],
+    });
+  }
+  return listing;
+}
+
+/** Write a version 2 checkpoint's home objects into a restored repository. */
+function restoreHomeObjects(repo: string, commit: string, gitDirectory: string): void {
+  fs.mkdirSync(path.join(gitDirectory, "objects", "info"), { recursive: true });
+  fs.mkdirSync(path.join(gitDirectory, "objects", "pack"), { recursive: true });
+  const listing = execFileSync("git", ["--git-dir", repo, "show", `${commit}:${HOME_GIT_OBJECTS_FILE}`], {
+    encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"],
+  });
+  if (!listing.trim()) return;
+  const pack = execFileSync("git", ["--git-dir", repo, "pack-objects", "--stdout", "-q"], {
+    input: listing, maxBuffer: 1024 * 1024 * 1024, stdio: ["pipe", "pipe", "pipe"],
+  });
+  execFileSync("git", ["--git-dir", gitDirectory, "unpack-objects", "-q"], { input: pack, stdio: ["pipe", "pipe", "pipe"] });
 }
 
 function readHomeFormat(homeDirectory: string): CheckpointMetadata["home"] {
@@ -162,7 +208,7 @@ export async function captureCheckpoint(options: CaptureCheckpointOptions): Prom
       parts.push({ id: part.id, displayName: part.displayName, hasState });
     }
     const metadata: CheckpointMetadata = {
-      version: 1,
+      version: 2,
       index,
       message: options.message,
       capturedAt: new Date().toISOString(),
@@ -179,11 +225,14 @@ export async function captureCheckpoint(options: CaptureCheckpointOptions): Prom
       ...(options.openDialogs && { openDialogs: options.openDialogs }),
     };
     fs.writeFileSync(path.join(staging, "checkpoint.json"), `${JSON.stringify(metadata, null, 2)}\n`);
+    const homeGit = path.join(options.homeDirectory, ".git");
+    if (fs.existsSync(homeGit)) {
+      fs.writeFileSync(path.join(staging, HOME_GIT_OBJECTS_FILE), storeHomeObjects(options.repo, homeGit, objectEnv));
+    }
 
     const stagingTree = treeOf(options.repo, staging, objectEnv);
     const homeTree = fs.existsSync(options.homeDirectory) ? treeOf(options.repo, options.homeDirectory, objectEnv, EXCLUDED_HOME_PATHS) : null;
-    const homeGit = path.join(options.homeDirectory, ".git");
-    const homeGitTree = fs.existsSync(homeGit) ? treeOf(options.repo, homeGit, objectEnv) : null;
+    const homeGitTree = fs.existsSync(homeGit) ? treeOf(options.repo, homeGit, objectEnv, ["objects"]) : null;
 
     const combinedIndex = path.join(staging, ".combined-index");
     const env = { ...objectEnv, GIT_INDEX_FILE: combinedIndex };
@@ -340,7 +389,10 @@ export async function restoreCheckpoint(options: RestoreCheckpointOptions): Prom
   if (fs.existsSync(options.homeDirectory)) throw new Error(`Restore destination already exists: ${options.homeDirectory}`);
 
   extractTree(options.repo, `${checkpoint.commit}:home`, options.homeDirectory);
-  extractTree(options.repo, `${checkpoint.commit}:home.git`, path.join(options.homeDirectory, ".git"));
+  const homeGit = path.join(options.homeDirectory, ".git");
+  if (extractTree(options.repo, `${checkpoint.commit}:home.git`, homeGit) && checkpoint.metadata.version >= 2) {
+    restoreHomeObjects(options.repo, checkpoint.commit, homeGit);
+  }
   repointSourceDirectories(options.homeDirectory, checkpoint.metadata.homeDirectory);
 
   if (options.restoreParts === false) return checkpoint;

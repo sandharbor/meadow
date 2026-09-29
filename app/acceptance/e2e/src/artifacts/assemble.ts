@@ -45,6 +45,13 @@ import {
   type ExecutionSurface,
 } from "../run/executionSurface.ts";
 import {
+  MEADOW_HOME_FINAL_STATUS_FILE,
+  SHARED_OBJECTS_DIRECTORY,
+  objectsDirectoryOf,
+  packSharedObjectStore,
+} from "../run/stateRepoCompaction.ts";
+import { compactManifest, contentBlobGitDir, expandManifest } from "./manifestEncoding.ts";
+import {
   collectReferencedCliFixtures,
   type TestSourceFixture,
 } from "./testSourceFixtures.ts";
@@ -668,8 +675,33 @@ function readUncommittedLog(logPath: string): UncommittedEntry[] {
   return content.split("\n").map((line) => JSON.parse(line) as UncommittedEntry);
 }
 
+const TICK_LOG = "ticks.jsonl";
+const TICK_LISTING_FIELDS = ["files", "uncommittedFiles", "ignoredFiles", "gitBranchHeads", "s3Keys"] as const;
+type TickListingField = typeof TICK_LISTING_FIELDS[number];
+
+/**
+ * Tick data from an earlier assembly. A run's tick logs are dropped once the
+ * manifest carries their data, so re-assembly reuses the manifest.
+ */
+function previouslyAssembledTickData(testDir: string): TickData | null {
+  const manifestPath = path.join(testDir, "manifest.json");
+  if (!existsSync(manifestPath)) return null;
+  try {
+    const manifest = expandManifest(JSON.parse(readFileSync(manifestPath, "utf8")) as Partial<TickData>, testDir);
+    if (!Array.isArray(manifest.ticks) || !manifest.tickConfig) return null;
+    return {
+      ticks: manifest.ticks,
+      consolidatedTicks: manifest.consolidatedTicks ?? [],
+      tickFileListing: manifest.tickFileListing ?? {},
+      s3KeyListing: manifest.s3KeyListing ?? {},
+      tickConfig: manifest.tickConfig,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function processTickLog(testDir: string): TickData {
-  const tickLogPath = path.join(testDir, "ticks.jsonl");
   const tickConfigPath = path.join(testDir, "tick-config.json");
 
   const defaultConfig = { intervalMs: 500, totalTicks: 0, totalDurationMs: 0 };
@@ -681,18 +713,24 @@ function processTickLog(testDir: string): TickData {
     tickConfig: defaultConfig,
   };
 
-  if (!existsSync(tickLogPath)) return emptyResult;
+  const tickLogPath = path.join(testDir, TICK_LOG);
+  if (!existsSync(tickLogPath)) return previouslyAssembledTickData(testDir) ?? emptyResult;
 
   const content = readFileSync(tickLogPath, "utf8").trim();
   if (!content) return emptyResult;
 
-  const rawTicks: RawTickEntry[] = content
-    .split("\n")
-    .map((line) => {
-      try { return JSON.parse(line) as RawTickEntry; }
-      catch { return null; }
-    })
-    .filter((t): t is RawTickEntry => t !== null);
+  const rawTicks: RawTickEntry[] = [];
+  const carried: Partial<Pick<RawTickEntry, TickListingField>> = {};
+  for (const line of content.split("\n")) {
+    let row: Partial<RawTickEntry>;
+    try { row = JSON.parse(line) as Partial<RawTickEntry>; }
+    catch { continue; }
+    // A listing left out of a row is unchanged since the previous row.
+    for (const field of TICK_LISTING_FIELDS) {
+      if (row[field] !== undefined) Object.assign(carried, { [field]: row[field] });
+    }
+    rawTicks.push({ ...row, files: [], uncommittedFiles: [], ...carried } as RawTickEntry);
+  }
 
   if (rawTicks.length === 0) return emptyResult;
 
@@ -1172,7 +1210,7 @@ function computeScenarioReportMeta(
  * Assemble per-test artifacts (everything except video).
  * Called during each test's fixture teardown so it runs in parallel.
  */
-export function assembleTestArtifacts(testDir: string): void {
+export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: boolean } = {}): void {
   const testName = path.basename(testDir);
   console.log(`Assembling artifacts for: ${testName}`);
   const assemblyStartedAt = new Date().toISOString();
@@ -1260,13 +1298,18 @@ export function assembleTestArtifacts(testDir: string): void {
     readUncommittedLog(path.join(testDir, "meadowHome-uncommitted.jsonl"))
   );
   measured(assemblySteps, "final git status", () => {
-    if (existsSync(meadowHomeStateRepo)) {
+    // Snapshots record the live home's status at teardown; older artifacts
+    // kept a full working tree to run status in.
+    const finalStatusPath = path.join(testDir, MEADOW_HOME_FINAL_STATUS_FILE);
+    if (existsSync(finalStatusPath) || existsSync(meadowHomeStateRepo)) {
       try {
-        const finalStatus = execSync("git status --porcelain", {
-          cwd: meadowHomeStateRepo,
-          encoding: "utf8",
-          stdio: ["pipe", "pipe", "pipe"],
-        }).trim();
+        const finalStatus = (existsSync(finalStatusPath)
+          ? readFileSync(finalStatusPath, "utf8")
+          : execSync("git status --porcelain", {
+            cwd: meadowHomeStateRepo,
+            encoding: "utf8",
+            stdio: ["pipe", "pipe", "pipe"],
+          })).trim();
         const finalFiles = finalStatus
           ? finalStatus.split("\n").map((line) => ({
               status: line.slice(0, 2).trim(),
@@ -1340,12 +1383,21 @@ export function assembleTestArtifacts(testDir: string): void {
 
   // Write manifest
   const manifest: Manifest = { testName, description, status, startTime, endTime, homeCommits, homeCommitMeta, minioCommitMeta, extensionCommitMeta, uncommittedEntries, logs, testSourceFile, testSource, testSourceFixtures, testSourceChanges, bundleMode, executionSurface, executionSurfaces, conceptIds, bundleDocIds, appAreaDocIds, keyFrames, ...tickData };
+  // On disk the manifest leaves out what the report viewer rebuilds, and
+  // skips indentation; see manifestEncoding.ts.
+  const blobGitDir = contentBlobGitDir(testDir);
+  const diskManifest = measured(assemblySteps, "manifest compact", () =>
+    compactManifest(manifest, existsSync(blobGitDir) ? objectsDirectoryOf(blobGitDir) : null)
+  );
   const manifestJson = measured(assemblySteps, "manifest stringify", () =>
-    JSON.stringify(manifest, null, 2)
+    JSON.stringify(diskManifest)
   );
   measured(assemblySteps, "manifest write", () => {
     writeFileSync(path.join(testDir, "manifest.json"), manifestJson);
   });
+  const tickLogBytes = fileSizeOrNull(path.join(testDir, TICK_LOG));
+  // The manifest now carries everything the tick log recorded.
+  if (options.dropTickLog) rmSync(path.join(testDir, TICK_LOG), { force: true });
   console.log(`  Manifest: ${homeCommits.length} home commits, ${logs.length} log entries, ${tickData.ticks.length} ticks`);
 
   // Pre-compute report metadata for fast viewer loading
@@ -1387,7 +1439,7 @@ export function assembleTestArtifacts(testDir: string): void {
       reportMetaBytes,
       reportMetaHealthPoints,
       reportMetaError,
-      tickLogBytes: fileSizeOrNull(path.join(testDir, "ticks.jsonl")),
+      tickLogBytes,
       frontendLogBytes: fileSizeOrNull(path.join(testDir, "frontend.log")),
       backendLogBytes: fileSizeOrNull(path.join(testDir, "backend.log")),
       meadowHomeCommitCount: homeCommits.length,
@@ -1476,6 +1528,18 @@ export async function assembleRun(runId: string): Promise<void> {
   console.log(`\nParallel assembly: ${dirs.length} tests, ${CONCURRENCY} workers, ${(assemblyMs / 1000).toFixed(1)}s (video scan: ${videoCollectMs.toFixed(0)}ms)`);
   if (failures.length > 0) {
     console.log(`  ${failures.length} assembly failure(s): ${failures.join(", ")}`);
+  }
+
+  // Scenario state repositories write loose objects into the run's shared
+  // store; one delta-compressed pack replaces them.
+  const packStart = performance.now();
+  try {
+    const { packedObjects } = packSharedObjectStore(path.join(runDir, SHARED_OBJECTS_DIRECTORY));
+    if (packedObjects > 0) {
+      console.log(`Packed ${packedObjects} shared git objects in ${((performance.now() - packStart) / 1000).toFixed(1)}s`);
+    }
+  } catch (err) {
+    console.log(`  Shared object packing failed (${err}); loose objects remain readable.`);
   }
 
   const scenarioTimings: AssemblyTimingSummary["scenarios"] = [];

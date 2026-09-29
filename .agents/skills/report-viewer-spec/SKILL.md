@@ -206,14 +206,17 @@ they are tripwires pointing at real bugs in the Meadow app (e.g.
 the user asks to fix the underlying bug, use this tight loop:
 
 1. **Diagnose at the right layer.** The report viewer just renders what
-   `manifest.json` and `ticks.jsonl` tell it. If a file is reported as
-   modified/new/etc., check:
-   - First, run real `git status` against the saved state repo at
-     `~/meadow-e2e-artifacts/current/<runId>/<testSlug>/meadowHome-state-repo`
-     (use `--git-dir=.git --work-tree=.`). If git itself agrees with the
-     tick data, the bug is NOT in `fast_git_ops` or the report viewer —
-     it's upstream in the Meadow app (some code path writes to the file
-     without committing).
+   `manifest.json` tells it (assembled from the run's tick log, which is
+   dropped after assembly). If a file is reported as modified/new/etc.,
+   check:
+   - First, read the live home's real `git status` at teardown from
+     `~/meadow-e2e-artifacts/current/<runId>/<testSlug>/meadowHome-final-status.txt`.
+     The saved `meadowHome-state-repo` holds only `.git`: its history,
+     plus the final working tree as the commit
+     `refs/meadow-e2e/final-worktree` (`git show refs/meadow-e2e/final-worktree:<path>`).
+     If git itself agrees with the tick data, the bug is NOT in
+     `fast_git_ops` or the report viewer — it's upstream in the Meadow
+     app (some code path writes to the file without committing).
    - If git disagrees, the bug is in `fast_git_ops` (see
      `app/runtime/native/fast_git_ops/fast_git_ops_code/src/main.rs`) or in
      how `test-fixtures.ts` consumes its output.

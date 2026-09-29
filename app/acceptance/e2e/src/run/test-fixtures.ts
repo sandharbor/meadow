@@ -25,7 +25,6 @@ import {
   readFileSync,
   existsSync,
   copyFileSync,
-  cpSync,
   rmSync,
   unlinkSync,
   appendFileSync,
@@ -48,6 +47,13 @@ import type { BundleMode } from "./bundleMode.js";
 import type { ExecutionSurface } from "./executionSurface.js";
 import { getTestArtifactDirectory } from "./artifactReporter.js";
 import { appendTickEntrySync } from "./writeTickEntry.js";
+import {
+  MEADOW_HOME_FINAL_STATUS_FILE,
+  SHARED_OBJECTS_DIRECTORY,
+  dropCommittedWorkTree,
+  moveObjectsToSharedStore,
+  snapshotHomeRepository,
+} from "./stateRepoCompaction.js";
 import { isPrivateMeadowHomePath } from "../../../../shared_code/utils/privateMeadowHomePaths.js";
 import { RuntimeSupervisor } from "../../../../runtime/supervisor/src/runtimeSupervisor.js";
 import { getRuntimePaths } from "../../../../runtime/supervisor/src/runtimePaths.js";
@@ -75,6 +81,18 @@ export const E2E_S3_ACCESS_KEY_ID = "FAKE-E2E-MINIO-ACCESS-KEY";
 export const E2E_S3_SECRET_ACCESS_KEY = "FAKE-E2E-MINIO-SECRET-KEY";
 const MAX_TICK_UNCOMMITTED_CONTENT_BYTES = 256 * 1024;
 const MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES = 1024 * 1024;
+const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
+
+/** Text files decode as UTF-8 and contain no NUL bytes. */
+function isUtf8Text(bytes: Buffer): boolean {
+  if (bytes.includes(0)) return false;
+  try {
+    strictUtf8.decode(bytes);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const BIG_BUNDLE_EXCALIDRAW_PAGE_CONFIGS = [
   {
     fileType: "excalidraw",
@@ -355,7 +373,8 @@ function listFilesRecursive(dir: string, excludeDirs: string[]): string[] {
 
 export function initGitRepo(repoDir: string, name: string) {
   mkdirSync(repoDir, { recursive: true });
-  execSync("git init", { cwd: repoDir, stdio: "ignore" });
+  // An empty template leaves out sample hooks, which every repository would copy.
+  execSync("git init --template=", { cwd: repoDir, stdio: "ignore" });
   execSync(`git config user.email "${name}@test"`, {
     cwd: repoDir,
     stdio: "ignore",
@@ -938,6 +957,7 @@ export const test = base.extend<{
       let lastUncommittedContentSignatureByPath = new Map<string, string>();
       let lastIgnoredContentSignatureByPath = new Map<string, string>();
       let lastAdditionalTickDataKey = "";
+      const lastListingByField = new Map<string, string>();
       // Cache for gitignored files. The set is a pure function of
       // (.gitignore contents, files on disk), so we can safely reuse the
       // last result when neither has changed. This matters: running
@@ -954,7 +974,7 @@ export const test = base.extend<{
       let cachedFilesKey = "";
       let cachedGitignoreKey = "";
       const observedBranchCommits = new Set<string>();
-      function captureTickSync(options: { forceContent?: boolean } = {}) {
+      function captureTickSync(options: { finalTick?: boolean } = {}) {
         try {
           const files = listFilesRecursive(configDir, ["logs", ".git"]);
 
@@ -1039,7 +1059,10 @@ export const test = base.extend<{
             unlinkSync(checkpointMarkerPath);
           }
 
-          const forceContent = options.forceContent === true;
+          // The final tick lifts the per-tick byte budget so every file's
+          // latest bytes are recorded somewhere in the log. Like any tick it
+          // records only what changed: readers walk back to earlier ticks.
+          const finalTick = options.finalTick === true;
           const uncommittedFileContents: Record<string, string> = {};
           const currentUncommittedContentSignatureByPath = new Map<string, string>();
           let capturedUncommittedContentBytes = 0;
@@ -1054,7 +1077,7 @@ export const test = base.extend<{
             if (isPrivateMeadowHomePath(relPath)) {
               const signature = "omitted:private-meadow-document";
               currentSignatures.set(relPath, signature);
-              if (forceContent || signature !== lastSignatures.get(relPath)) {
+              if (signature !== lastSignatures.get(relPath)) {
                 output[relPath] = "[content omitted: private Meadow document]";
               }
               return capturedBytes;
@@ -1068,7 +1091,7 @@ export const test = base.extend<{
               if (stat.size > MAX_TICK_UNCOMMITTED_CONTENT_BYTES) {
                 const signature = `omitted:size=${stat.size}:mtime=${stat.mtimeMs}`;
                 currentSignatures.set(relPath, signature);
-                if (forceContent || signature !== lastSignatures.get(relPath)) {
+                if (signature !== lastSignatures.get(relPath)) {
                   output[relPath] = `[content omitted: ${stat.size} bytes exceeds tick capture limit]`;
                 }
                 return capturedBytes;
@@ -1077,18 +1100,27 @@ export const test = base.extend<{
               const bytes = readFileSync(resolved);
               const hash = createHash("sha256").update(bytes).digest("hex");
               const signature = `sha256:${hash}:size=${stat.size}`;
-              currentSignatures.set(relPath, signature);
-              if (forceContent || signature !== lastSignatures.get(relPath)) {
-                if (
-                  !forceContent &&
-                  capturedBytes + stat.size > MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES
-                ) {
-                  output[relPath] = `[content omitted: tick content capture exceeded ${MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES} bytes]`;
-                  return capturedBytes;
-                }
-                output[relPath] = bytes.toString("utf8");
-                return capturedBytes + stat.size;
+              if (signature === lastSignatures.get(relPath)) {
+                currentSignatures.set(relPath, signature);
+                return capturedBytes;
               }
+              // Images, fonts and other binary files cannot be shown as text;
+              // a UTF-8 decode would only garble them. The placeholder still
+              // changes whenever the bytes do.
+              if (!isUtf8Text(bytes)) {
+                currentSignatures.set(relPath, signature);
+                output[relPath] = `[content omitted: binary file, ${stat.size} bytes, sha256 ${hash}]`;
+                return capturedBytes;
+              }
+              if (!finalTick && capturedBytes + stat.size > MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES) {
+                // Not recorded as captured, so a later tick retries it.
+                currentSignatures.set(relPath, `deferred:${signature}`);
+                output[relPath] = `[content omitted: tick content capture exceeded ${MAX_TICK_UNCOMMITTED_CONTENT_TOTAL_BYTES} bytes]`;
+                return capturedBytes;
+              }
+              currentSignatures.set(relPath, signature);
+              output[relPath] = bytes.toString("utf8");
+              return capturedBytes + stat.size;
             } catch {
               // Skip unreadable or transient files; listings/statuses still capture their presence.
             }
@@ -1139,10 +1171,23 @@ export const test = base.extend<{
           const additionalTickDataKey = JSON.stringify(additionalTickData);
           const shouldCaptureAdditionalTickData =
             isCheckpoint ||
-            forceContent ||
+            finalTick ||
             additionalTickDataKey !== lastAdditionalTickDataKey;
           if (shouldCaptureAdditionalTickData) {
             lastAdditionalTickDataKey = additionalTickDataKey;
+          }
+
+          // Listings usually repeat from one tick to the next; a field left
+          // out of a row means it is unchanged since the previous row.
+          const listings = { files, uncommittedFiles, ignoredFiles, gitBranchHeads, s3Keys: latestS3Keys };
+          const changedListings: Partial<typeof listings> = {};
+          const encodedListings = new Map<string, string>();
+          for (const key of Object.keys(listings) as (keyof typeof listings)[]) {
+            const encoded = JSON.stringify(listings[key]);
+            if (encoded !== lastListingByField.get(key)) {
+              encodedListings.set(key, encoded);
+              Object.assign(changedListings, { [key]: listings[key] });
+            }
           }
 
           const entry = {
@@ -1150,17 +1195,14 @@ export const test = base.extend<{
             tickIndex: tickIndex++,
             isCheckpoint,
             ...(checkpointMessage !== undefined && { checkpointMessage }),
-            files,
-            uncommittedFiles,
-            ignoredFiles,
+            ...changedListings,
             ...(hasUncommittedFileContents && { uncommittedFileContents }),
             ...(hasIgnoredFileContents && { ignoredFileContents }),
             ...(gitHeadSha !== undefined && { gitHeadSha }),
-            gitBranchHeads,
-            s3Keys: latestS3Keys,
             ...(shouldCaptureAdditionalTickData && additionalTickData),
           };
           appendTickEntrySync(tickLogPath, entry);
+          for (const [key, encoded] of encodedListings) lastListingByField.set(key, encoded);
         } catch (err) {
           console.error("tick capture error:", err);
         }
@@ -1237,17 +1279,18 @@ export const test = base.extend<{
       clearInterval(additionalTickTimer);
       await captureS3Keys(); // final S3 capture before last tick
       await captureAdditionalTickData(); // final extension capture before last tick
-      captureTickSync({ forceContent: true });
+      captureTickSync({ finalTick: true });
 
-      // Copy the MeadowHome config dir (including its .git history) as-is
+      // Snapshot the MeadowHome config dir: its full git history plus a
+      // commit of the final working tree, stored in the run's shared object
+      // store so scenarios share one copy of the fixture content.
       const meadowHomeStateRepo = path.join(artifactDir, "meadowHome-state-repo");
-      cpSync(configDir, meadowHomeStateRepo, {
-        recursive: true,
-        filter: (src) => {
-          if (src === configDir) return true;
-          const rel = path.relative(configDir, src);
-          return !rel.startsWith("logs");
-        },
+      snapshotHomeRepository({
+        homeDirectory: configDir,
+        destination: meadowHomeStateRepo,
+        sharedObjectsDirectory: path.join(path.dirname(artifactDir), SHARED_OBJECTS_DIRECTORY),
+        excludedTopLevel: ["logs*"],
+        finalStatusPath: path.join(artifactDir, MEADOW_HOME_FINAL_STATUS_FILE),
       });
 
       // Artifact-only references retain replaced candidate revisions for tick replay.
@@ -1547,7 +1590,7 @@ export const test = base.extend<{
         ports: testServer.checkpointPorts,
         fixtureHome,
         scenario: testInfo.title,
-        sharedObjectsDirectory: path.join(path.dirname(artifactDir), "__checkpoint-objects"),
+        sharedObjectsDirectory: path.join(path.dirname(artifactDir), SHARED_OBJECTS_DIRECTORY),
       });
 
       // Every open dialog must be a linkable App Place or a declared transient.
@@ -1566,6 +1609,16 @@ export const test = base.extend<{
     };
 
     await use(checkpointFn);
+
+    // MinIO history is read through git; its objects join the run's shared
+    // store and the downloaded object files are dropped.
+    if (minioStateRepo && existsSync(path.join(minioStateRepo, ".git"))) {
+      moveObjectsToSharedStore(
+        path.join(minioStateRepo, ".git"),
+        path.join(path.dirname(artifactDir), SHARED_OBJECTS_DIRECTORY)
+      );
+      dropCommittedWorkTree(minioStateRepo, ["timeline.jsonl"]);
+    }
   },
 
   assertMeadowHomeState: async ({ testServer, artifactDir }, use) => {
