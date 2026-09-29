@@ -39,9 +39,11 @@ const E2E_DIR = path.join(import.meta.dirname, "..");
 type ConceptLike = AnyMeadowConcept;
 let contributedConcepts: ConceptLike[] = [];
 let contributedConceptExports: Record<string, unknown> = {};
+const extensionMounted = existsSync(
+  path.join(import.meta.dirname, "..", "..", "..", "concepts", "meadow-extension", "index.ts")
+);
 {
-  const extIndex = path.join(import.meta.dirname, "..", "..", "..", "concepts", "meadow-extension", "index.ts");
-  if (existsSync(extIndex)) {
+  if (extensionMounted) {
     const extPath = "../../../concepts/meadow-extension/index.ts";
     const mod = await import(extPath) as { meadowExtensionConcepts?: ConceptLike[] } & Record<string, unknown>;
     contributedConcepts = mod.meadowExtensionConcepts ?? [];
@@ -466,7 +468,14 @@ if (selectedSpecFiles) {
 const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
 const result = spawnSync(npxCommand, playwrightArgs, {
   cwd: E2E_DIR,
-  env: { ...process.env, E2E_RUN_ID: runId },
+  env: {
+    ...process.env,
+    // A mounted extension layer makes this the composed distribution, whose
+    // default publishing provider some scenarios rely on. The workspace's
+    // scripts/e2e.sh exports this too; running slowcheck directly must match.
+    ...(extensionMounted && !process.env.MEADOW_BUILD_PERSPECTIVE && { MEADOW_BUILD_PERSPECTIVE: "composed" }),
+    E2E_RUN_ID: runId,
+  },
   stdio: "inherit",
 });
 
