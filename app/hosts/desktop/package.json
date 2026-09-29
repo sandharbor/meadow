@@ -1,6 +1,6 @@
 {
   "name": "meadow-electron",
-  "version": "0.5.56",
+  "version": "0.5.57",
   "description": "Meadow Desktop Application",
   "productName": "Meadow",
   "main": "dist/hosts/desktop/src/main.js",
@@ -30,7 +30,9 @@
     "protocols": [
       {
         "name": "Meadow Find in Bundles",
-        "schemes": ["meadow"]
+        "schemes": [
+          "meadow"
+        ]
       }
     ],
     "directories": {
@@ -47,14 +49,18 @@
       {
         "from": "../../runtime/payload/dist",
         "to": "runtime-payload",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64"
+          ]
         }
       ],
       "icon": "assets/icon.icns",
@@ -98,4 +104,4 @@
     "electron-updater": "^6.1.9",
     "yaml": "^2.7.1"
   }
-} 
+}
