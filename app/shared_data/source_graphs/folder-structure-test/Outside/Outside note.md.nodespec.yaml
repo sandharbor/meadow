@@ -13,15 +13,8 @@ nodespecs:
       isTracked: false
     generation:
       htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: Beyond outside.html
-        footerSectionBacklinks:
-          - relativeLinkPath: ../Alpha/Alpha note.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: ../Alpha/Alpha note.html
-                embeddedLinks:
-                  - linkName: Nested note
-                    linkRelativePath: ../Alpha/Nested/Nested note.html
+        mainSectionLinks: []
+        footerSectionBacklinks: []
   - bundle: ordered-folders
     sourcing:
       isInWorkingGraph: true
@@ -36,12 +29,5 @@ nodespecs:
       isTracked: false
     generation:
       htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: Beyond outside.html
-        footerSectionBacklinks:
-          - relativeLinkPath: ../Alpha/Alpha note.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: ../Alpha/Alpha note.html
-                embeddedLinks:
-                  - linkName: Nested note
-                    linkRelativePath: ../Alpha/Nested/Nested note.html
+        mainSectionLinks: []
+        footerSectionBacklinks: []

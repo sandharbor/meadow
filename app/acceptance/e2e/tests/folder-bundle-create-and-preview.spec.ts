@@ -21,7 +21,7 @@ import {
   BundleListPage,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { folderBundles, htmlGeneration } from "../../../concepts/index.js";
+import { folderBundles, htmlGeneration, tracking } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
@@ -99,9 +99,14 @@ test("previews a configured bundle from one recursively scanned folder", async (
   await page.mouse.move(0, 0);
   await checkpoint("single folder recursive structure in the editor");
 
+  // Track the folder's contents; a folder start tracks only the folder itself.
+  await editor.trackAllReachablePages();
+  await addKeyFrame(tracking);
+  await checkpoint("single folder contents tracked for publishing");
+
   // Preview the folder home.
   await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
+  await previewModal.waitForPreviewCompleteAllTracked();
   await previewModal.generatedBundle.expectSingleHeading("Alpha", 60_000);
   const folderNavigation = previewModal.generatedBundle.folderNavigation;
   await folderNavigation.expectAvailable();

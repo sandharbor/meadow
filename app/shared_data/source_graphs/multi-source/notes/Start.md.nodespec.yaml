@@ -92,9 +92,7 @@ nodespecs:
           - relativeLinkPath: ../research/Overview.html
             backlinkContexts:
               - seeInContextLinkRelativePath: ../research/Overview.html
-                embeddedLinks:
-                  - linkName: Inside
-                    linkRelativePath: ../research/Same/Inside.html
+                embeddedLinks: []
           - relativeLinkPath: ../research/Incoming.html
             backlinkContexts:
               - seeInContextLinkRelativePath: ../research/Incoming.html

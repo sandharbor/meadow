@@ -84,7 +84,6 @@ nodespecs:
       htmlRenderedLinks:
         mainSectionLinks:
           - relativeLinkPath: ../notes/Start.html
-          - relativeLinkPath: Same/Inside.html
           - relativeLinkPath: ../notes/diagram.svg
         footerSectionBacklinks:
           - relativeLinkPath: ../notes/Start.html
@@ -99,10 +98,6 @@ nodespecs:
                 embeddedLinks:
                   - linkName: Start
                     linkRelativePath: ../notes/Start.html
-          - relativeLinkPath: Same/Inside.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: Same/Inside.html
-                embeddedLinks: []
           - relativeLinkPath: ../reference/Study.html
             backlinkContexts:
               - seeInContextLinkRelativePath: ../reference/Study.html

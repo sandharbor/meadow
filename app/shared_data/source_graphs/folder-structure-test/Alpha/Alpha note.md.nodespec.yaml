@@ -13,9 +13,7 @@ nodespecs:
       isTracked: false
     generation:
       htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: Nested/Nested note.html
-          - relativeLinkPath: ../Outside/Outside note.html
+        mainSectionLinks: []
         footerSectionBacklinks: []
   - bundle: ordered-folders
     sourcing:
@@ -31,7 +29,5 @@ nodespecs:
       isTracked: false
     generation:
       htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: Nested/Nested note.html
-          - relativeLinkPath: ../Outside/Outside note.html
+        mainSectionLinks: []
         footerSectionBacklinks: []

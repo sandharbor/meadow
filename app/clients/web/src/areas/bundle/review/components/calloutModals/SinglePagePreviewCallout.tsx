@@ -58,12 +58,15 @@ export function useSinglePagePreviewCallout(): {
 
 interface SinglePagePreviewCalloutProps {
   isOpen: boolean;
+  /** Whether the bundle starts from one page or from folders and other starting selections. */
+  startKind: 'page' | 'structure';
   onClose: () => void;
   onContinue: () => void;
 }
 
 const SinglePagePreviewCallout: React.FC<SinglePagePreviewCalloutProps> = ({
   isOpen,
+  startKind,
   onClose,
   onContinue,
 }) => {
@@ -71,14 +74,16 @@ const SinglePagePreviewCallout: React.FC<SinglePagePreviewCalloutProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Only one page is tracked"
+      title={startKind === 'page' ? 'Only one page is tracked' : 'Only your starting selections are tracked'}
       className="w-[500px]"
       showCloseButton={false}
     >
       <div className="space-y-4">
         <div className="text-sm text-gray-600">
           <p>
-            Preview will only show that page and all the links will appear as not tracked.
+            {startKind === 'page'
+              ? 'Preview will only show that page and all the links will appear as not tracked.'
+              : 'Preview will only show your starting folders and pages. Pages and folders inside them are published only after you track them.'}
           </p>
         </div>
 

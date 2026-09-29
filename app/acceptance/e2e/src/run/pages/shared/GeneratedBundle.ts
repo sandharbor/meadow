@@ -742,6 +742,10 @@ export class GeneratedBundle {
     await this.expect(this.root.locator(".structural-child-name")).toHaveText(names);
   }
 
+  async expectStructuralEmptyMessage(text: string) {
+    await this.expect(this.root.locator(".structural-empty")).toHaveText(text);
+  }
+
   async expectStructuralImagePreview(name: string) {
     const child = this.root.locator(".structural-child", {
       has: this.root.locator(".structural-child-name", { hasText: name }),

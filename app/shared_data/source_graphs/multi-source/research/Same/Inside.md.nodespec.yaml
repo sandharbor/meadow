@@ -36,15 +36,8 @@ nodespecs:
       isTracked: false
     generation:
       htmlRenderedLinks:
-        mainSectionLinks:
-          - relativeLinkPath: ../Overview.html
-        footerSectionBacklinks:
-          - relativeLinkPath: ../Overview.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: ../Overview.html
-                embeddedLinks:
-                  - linkName: Start
-                    linkRelativePath: ../../notes/Start.html
+        mainSectionLinks: []
+        footerSectionBacklinks: []
   - bundle: multi-source-omitted
     sourcing:
       isInWorkingGraph: false

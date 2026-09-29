@@ -8,5 +8,6 @@ export const reviewPlaces: PlaceOwnerDefinition = {
   surfaces: [],
   transients: [
     { dialogName: 'Only one page is tracked', reason: 'A callout shown before previewing a bundle with one tracked page.' },
+    { dialogName: 'Only your starting selections are tracked', reason: 'A callout shown before previewing a bundle that tracks only its starting folders or selections.' },
   ],
 };

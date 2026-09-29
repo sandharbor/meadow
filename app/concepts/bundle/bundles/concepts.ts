@@ -70,6 +70,7 @@ export const folderBundles = defineMeadowConcept({
   definition: conceptText`A bundle whose starting structure contains a selected folder, alone or within an ordered collection of files and folders.`,
   mechanics: [
     conceptText`Folder roots drive recursive structural discovery, explicit-root tracking, and generated folder or collection home pages.`,
+    conceptText`Only the selected roots are tracked at creation. Discovered descendants remain untracked, and generation publishes only tracked nodes: untracked pages and folders contribute no output, names, or links. A tracked page beneath an untracked folder is listed under its nearest published ancestor.`,
     conceptText`Creation starts with folder selection. One folder supplies its own home-page title; several folders have a collection home-page title that can be customized separately from Bundle Name.`,
     conceptText`Each selected folder must belong to a configured source. Creation checks the selection whenever folders or sources change and remains unavailable until the starting structure is valid.`,
   ],
@@ -79,8 +80,8 @@ export const folderBundles = defineMeadowConcept({
 export const startingSelection = defineMeadowConcept({
   id: coreConceptIds.startingSelection, name: 'Starting Selection', kind: 'entity', searchFacet: false,
   appAreaIds: [coreConceptIds.bundles, coreConceptIds.bundleSourcing],
-  definition: conceptText`A file or folder in a configured source from which a bundle's traversal begins.`,
-  mechanics: [conceptText`Starting selections are independent of source admission. One page can traverse several sources. Several selections form an ordered collection, and each member begins with its applicable depth budget. Missing required starts require explicit setup repair; Meadow never chooses replacement pages automatically.`],
+  definition: conceptText`A page or folder in a configured source from which a bundle's traversal begins.`,
+  mechanics: [conceptText`Starting selections are independent of source admission. One page can traverse several sources. Several selections form an ordered collection, and each member begins with its applicable depth budget. Missing required starts require explicit setup repair; Meadow never chooses replacement pages automatically.`, conceptText`A selection is written as source://name followed by a source-relative path, chosen from that source's pages or page-bearing folders.`],
   interplay: conceptText`${conceptLink(coreConceptIds.source, 'Sources')} bound the available filesystem inventory; the ${conceptLink(coreConceptIds.collectionNode, 'Collection Node')} groups multiple starting selections.`,
 });
 

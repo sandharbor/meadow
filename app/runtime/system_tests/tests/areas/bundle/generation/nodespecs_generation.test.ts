@@ -115,7 +115,54 @@ describe('Nodespecs Generation System Tests', () => {
       }
     });
   });
+
+  describe('Untracked htmlRenderedLinks Tests', () => {
+    it('untracked pages should have empty htmlRenderedLinks arrays', () => {
+      const errors: string[] = [];
+      let pagesChecked = 0;
+
+      for (const sourceGraphDir of nodespecSourceGraphDirs) {
+        for (const sourceFile of findAllNodespecSourceFiles(sourceGraphDir)) {
+          const block = getNodespecBlock(sourceFile).block;
+          if (!block) continue;
+
+          for (const spec of block.nodespecs) {
+            if (spec.curation.isTracked !== false) continue;
+
+            pagesChecked++;
+            const mainLinks = spec.generation.htmlRenderedLinks?.mainSectionLinks ?? [];
+            const backlinks = spec.generation.htmlRenderedLinks?.footerSectionBacklinks ?? [];
+            if (mainLinks.length > 0 || backlinks.length > 0) {
+              errors.push(
+                `[${spec.bundle}] ${path.relative(sourceGraphDir, sourceFile)}: page is untracked but has non-empty htmlRenderedLinks (mainSectionLinks: ${mainLinks.length}, footerSectionBacklinks: ${backlinks.length})`
+              );
+            }
+          }
+        }
+      }
+
+      expect(pagesChecked).toBeGreaterThan(0);
+      if (errors.length > 0) {
+        throw new Error(`Untracked pages with non-empty htmlRenderedLinks:\n${errors.join('\n')}`);
+      }
+    });
+  });
 });
+
+async function generateNodespecPreviews(bundleSetups: NodespecBundleSetups): Promise<void> {
+  const generationResults = await Promise.allSettled(
+    getNodespecBundlesToCheck(bundleSetups).map(async ({ setup }) => {
+      await setup.captureInitialSourceSnapshot();
+      const bundleSlug = setup.getBundleSlug();
+      const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error(`${bundleSlug}: ${await response.text()}`);
+    })
+  );
+  const generationFailures = generationResults.flatMap(result => result.status === 'rejected' ? [String(result.reason)] : []);
+  if (generationFailures.length) throw new Error(generationFailures.join('\n'));
+}
 
 describe('Runtime Nodespec Generation Validation', () => {
   let bundleSetups: NodespecBundleSetups | undefined;
@@ -136,21 +183,36 @@ describe('Runtime Nodespec Generation Validation', () => {
     if (bundleSetups) for (const { setup } of getNodespecBundlesToCheck(bundleSetups)) setup.tearDown();
   });
 
+  it('should not publish any output for untracked pages', async () => {
+    const bundlesToCheck = getNodespecBundlesToCheck(bundleSetups!);
+    await generateNodespecPreviews(bundleSetups!);
+
+    const leaks: string[] = [];
+    let untrackedPagesChecked = 0;
+    for (const { name: bundleName, setup: bundleSetup, sourceGraphDir } of bundlesToCheck) {
+      const generatedHtmlFolderPath = bundleSetup.getCurrentGeneratedHtmlPath();
+      for (const sourceFile of findAllNodespecSourceFiles(sourceGraphDir)) {
+        const block = getNodespecBlock(sourceFile).block;
+        const bundleSpec = block && getNodespecForBundle(block, bundleName);
+        if (!bundleSpec || bundleSpec.curation.isTracked !== false) continue;
+
+        untrackedPagesChecked++;
+        const relativePath = getNodespecOutputPath(sourceFile, sourceGraphDir, bundleName);
+        if (fs.existsSync(path.join(generatedHtmlFolderPath, relativePath))) {
+          leaks.push(`[${bundleName}] ${relativePath}`);
+        }
+      }
+    }
+
+    expect(untrackedPagesChecked).toBeGreaterThan(0);
+    if (leaks.length > 0) {
+      throw new Error(`Untracked pages were published:\n${leaks.join('\n')}`);
+    }
+  });
+
   it('should validate htmlRenderedLinks match actual rendered HTML', async () => {
     const bundlesToCheck = getNodespecBundlesToCheck(bundleSetups!);
-
-    const generationResults = await Promise.allSettled(
-      bundlesToCheck.map(async ({ setup }) => {
-        await setup.captureInitialSourceSnapshot();
-        const bundleSlug = setup.getBundleSlug();
-        const response = await fetch(`${TEST_BASE_URL}/api/bundles/${bundleSlug}/generation/preview`, {
-          method: 'POST',
-        });
-        if (!response.ok) throw new Error(`${bundleSlug}: ${await response.text()}`);
-      })
-    );
-    const generationFailures = generationResults.flatMap(result => result.status === 'rejected' ? [String(result.reason)] : []);
-    if (generationFailures.length) throw new Error(generationFailures.join('\n'));
+    await generateNodespecPreviews(bundleSetups!);
 
     const errors: string[] = [];
     let pagesValidated = 0;

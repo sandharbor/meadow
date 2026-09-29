@@ -84,8 +84,9 @@ test("choose folders before naming a bundle and its published home page", async 
   await editor.clickBackToBundles();
   await bundleList.clickBundle("reading-room");
   await editor.waitForLoad("reading-room");
+  await editor.trackAllReachablePages();
   await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
+  await previewModal.waitForPreviewCompleteAllTracked();
   await previewModal.generatedBundle.expectSingleHeading("Collected Notes", 60_000);
   await previewModal.generatedBundle.expectStructuralChildNames(["Alpha", "Beta"]);
   await addKeyFrame(folderBundles);
@@ -98,7 +99,8 @@ test("choose folders before naming a bundle and its published home page", async 
       "bundles/reading-room/build/",
       "bundles/reading-room/config/generated_bundle_versions.yaml",
       "bundles/reading-room/html/",
-      "bundles/reading-room/raw/",
+      "bundles/reading-room/raw/folder_scope_snapshot.json",
+      "bundles/reading-room/raw/generation_inputs/",
     ],
   });
 });

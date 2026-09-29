@@ -68,7 +68,7 @@ describe('folder-derived HTML generation', () => {
     expect(project).toContain('class="structural-child-preview structural-child-preview-excalidraw"');
     expect(project).toContain('src="../../Project/Folder%20sketch.html?meadow-thumbnail=1"');
     expect(project).not.toContain('Project/Middle/index.html');
-    expect(read('_mw_gen/folderpages/empty-222222222222.html')).toContain('This folder is empty.');
+    expect(read('_mw_gen/folderpages/empty-222222222222.html')).toContain('No pages in this folder are included in this bundle.');
     expect(read('Project/Middle/Deep.html')).toContain('href="../../Outside.html"');
 
     const assets = path.join(generatedHtml, '_mw_assets', 'cust');

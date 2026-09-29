@@ -648,27 +648,25 @@ const BundleEditor: React.FC = () => {
     setIsPublishModalOpen(true);
   };
 
-  // Check if only the traversal-start node is tracked. updateTrigger is needed
-  // because the graph object reference does not change when node data updates.
-  const isOnlyTraversalStartNodeTracked = useMemo(() => {
-    if (!graph) return false;
+  // Detect when nothing beyond the starting selections is tracked: the entry
+  // node plus, for a collection, its members. updateTrigger is needed because
+  // the graph object reference does not change when node data updates.
+  const onlyStartTrackedKind = useMemo((): 'page' | 'structure' | null => {
+    if (!graph) return null;
     const allNodes = graph.getAllNodes();
-    if (allNodes.length === 0) return false;
-
-    const traversalStartNode = allNodes.find(node => node.depth === 0);
-    if (!traversalStartNode || !traversalStartNode.tracked) return false;
-
-    const otherTrackedNodes = allNodes.filter(
-      node => node.depth !== 0 && node.tracked
-    );
-    return otherTrackedNodes.length === 0;
+    const entryNode = allNodes.find(node => entryBundleNodeId ? node.bundleNodeId === entryBundleNodeId : node.depth === 0);
+    if (!entryNode?.tracked) return null;
+    const startIds = new Set<string>(entryNode.bundleNodeKind === 'collection' ? entryNode.memberBundleNodeIds : []);
+    const isStart = (node: IBundleNode) => node === entryNode || Boolean(node.bundleNodeId && startIds.has(node.bundleNodeId));
+    if (allNodes.some(node => node.tracked && !isStart(node))) return null;
+    return entryNode.bundleNodeKind === 'file' ? 'page' : 'structure';
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graph, updateTrigger]);
+  }, [graph, updateTrigger, entryBundleNodeId]);
 
   const handlePreview = () => {
     if (isModalBusy) return;
-    // Show warning if only initial page is tracked and user hasn't dismissed the warning before
-    if (isOnlyTraversalStartNodeTracked && !calloutPreviewSinglePageDismissed) {
+    // Show warning if only the starting selections are tracked and the user hasn't dismissed it before
+    if (onlyStartTrackedKind && !calloutPreviewSinglePageDismissed) {
       setIsSinglePageWarningOpen(true);
       return;
     }
@@ -1236,6 +1234,7 @@ const BundleEditor: React.FC = () => {
       {/* Single Page Preview Warning Callout */}
       <SinglePagePreviewCallout
         isOpen={isSinglePageWarningOpen}
+        startKind={onlyStartTrackedKind ?? 'page'}
         onClose={() => setIsSinglePageWarningOpen(false)}
         onContinue={handleSinglePageWarningContinue}
       />

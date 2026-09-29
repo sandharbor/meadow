@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
@@ -42,7 +41,6 @@ describe('tracked page content for folder-derived bundles', () => {
     'folder-structure-test',
   );
   let bundlePath: string;
-  const temporarySourceRoots: string[] = [];
 
   beforeEach(() => {
     setup.setUp();
@@ -51,166 +49,84 @@ describe('tracked page content for folder-derived bundles', () => {
 
   afterEach(() => {
     setup.tearDown();
-    temporarySourceRoots.splice(0).forEach(root => fs.rmSync(root, { recursive: true, force: true }));
   });
 
-  it('materializes selected-folder descendants and linked pages for preview generation', async () => {
+  const listFiles = (root: string): string[] => fs.readdirSync(root, { recursive: true, encoding: 'utf8' })
+    .map(file => file.split(path.sep).join('/'))
+    .filter(file => fs.statSync(path.join(root, file)).isFile())
+    .sort();
+
+  it('publishes only the tracked folder when its descendants are untracked', async () => {
     const persistedConfigPath = BundleConfigPaths.getBundleNodeConfigFile(bundlePath);
     const persistedConfigBefore = fs.readFileSync(persistedConfigPath, 'utf8');
 
     await ensureTrackedPageContent(bundlePath, sourceGraphDirectory);
 
     expect(fs.readFileSync(persistedConfigPath, 'utf8')).toBe(persistedConfigBefore);
-    const trackedConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundlePath);
-    const trackedConfigBefore = fs.readFileSync(trackedConfigPath, 'utf8');
-    const trackedConfigs = parseBundleNodeConfig(trackedConfigBefore, trackedConfigPath);
-    expect(trackedConfigs).toHaveLength(8);
-    expect(trackedConfigs.map(config => config.bundleNodeName)).toEqual(expect.arrayContaining([
-      'Alpha', 'Alpha note', 'Nested note', 'Beyond outside', 'Frontier image', 'Outside note', 'Nested', 'Visual map',
-    ]));
-    const derivedByName = new Map(trackedConfigs.slice(1).map(config => [config.bundleNodeName, config]));
-    expect(derivedByName.get('Alpha note')).toMatchObject({ outlinksDepth: 2, inlinksDepth: 0 });
-    expect(derivedByName.get('Outside note')).toMatchObject({ outlinksDepth: 1, inlinksDepth: 0 });
-    expect(derivedByName.get('Beyond outside')).toMatchObject({ outlinksDepth: 0, inlinksDepth: 0 });
-    expect(derivedByName.get('Frontier image')).toMatchObject({
-      fileType: 'png',
-      outlinksDepth: 0,
-      inlinksDepth: 0,
-    });
-
-    const trackedContent = BundleConfigPaths.getTrackedPageContentDir(bundlePath);
-    for (const relativePath of [
-      'Alpha/Alpha note.md',
-      'Alpha/Visual map.svg',
-      'Alpha/Nested/Nested note.md',
-      'Outside/Outside note.md',
-      'Outside/Beyond outside.md',
-      'Outside/Frontier image.png',
-    ]) {
-      expect(fs.existsSync(path.join(trackedContent, ...relativePath.split('/')))).toBe(true);
-    }
-
-    await ensureTrackedPageContent(bundlePath, sourceGraphDirectory);
-    expect(fs.readFileSync(trackedConfigPath, 'utf8')).toBe(trackedConfigBefore);
+    expect(fs.existsSync(BundleConfigPaths.getTrackedBundleNodeConfigFile(bundlePath))).toBe(false);
+    expect(listFiles(BundleConfigPaths.getTrackedPageContentDir(bundlePath))).toEqual([]);
 
     const generatedHtml = getGeneratedBundleTestOutputDirectory(bundlePath);
     await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtml });
-    const nestedFolderRoute = `_mw_gen/folderpages/nested-${derivedByName.get('Nested')!.bundleNodeId}.html`;
-    for (const relativePath of [
-      'index.html',
-      'Alpha/Alpha note.html',
-      nestedFolderRoute,
-      'Alpha/Nested/Nested note.html',
-      'Outside/Outside note.html',
-      'Outside/Beyond outside.html',
-      'Outside/Frontier image.png',
-    ]) {
-      expect(fs.existsSync(path.join(generatedHtml, ...relativePath.split('/'))), relativePath).toBe(true);
-    }
+    expect(listFiles(generatedHtml).filter(file => !file.startsWith('_mw_'))).toEqual(['index.html']);
     const alphaFolderHtml = fs.readFileSync(path.join(generatedHtml, 'index.html'), 'utf8');
     expect(alphaFolderHtml.match(/<h1>Alpha<\/h1>/g)).toHaveLength(1);
-    expect(alphaFolderHtml).not.toContain('This folder is empty.');
-    expect(alphaFolderHtml).toContain('Alpha/Alpha%20note.html');
-    expect(alphaFolderHtml).toContain('class="structural-child-icon"');
-    expect(alphaFolderHtml).toContain('class="structural-child-name">Nested</span>');
-    expect(alphaFolderHtml).not.toContain('structural-child-kind');
-    expect(alphaFolderHtml).toContain('data-file-type="svg"');
-    expect(alphaFolderHtml).toContain('class="structural-child-preview structural-child-preview-image"');
-    expect(alphaFolderHtml).toMatch(/href="_mw_assets\/cust\/structural-previews\/[a-f0-9]{12}\.[a-f0-9]{8}\.svg"/);
-    expect(alphaFolderHtml).toMatch(/structural-pages\.[a-f0-9]{8}\.css/);
-    const structuralPreviewDirectory = path.join(generatedHtml, '_mw_assets', 'cust', 'structural-previews');
-    expect(fs.readdirSync(structuralPreviewDirectory)).toEqual([
-      expect.stringMatching(/^[a-f0-9]{12}\.[a-f0-9]{8}\.svg$/),
-    ]);
-
-    const outsideHtml = fs.readFileSync(path.join(generatedHtml, 'Outside', 'Outside note.html'), 'utf8');
-    expect(outsideHtml).toContain('<a href="../index.html" class="breadcrumb-link">Alpha</a>');
-    expect(outsideHtml).not.toContain('folder%3AAlpha');
+    expect(alphaFolderHtml).toContain('No pages in this folder are included in this bundle.');
+    for (const untrackedName of ['Alpha note', 'Nested', 'Visual map', 'Outside note', 'Beyond outside', 'Frontier image']) {
+      expect(alphaFolderHtml).not.toContain(untrackedName);
+    }
   });
 
-  it('normalizes a frontier-image sentinel depth for preview generation', async () => {
-    const temporarySourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-folder-frontier-image-'));
-    temporarySourceRoots.push(temporarySourceRoot);
-    const isolatedSourceGraph = path.join(temporarySourceRoot, 'folder-structure-test');
-    fs.cpSync(sourceGraphDirectory, isolatedSourceGraph, { recursive: true });
-
-    const bundleConfigPath = BundleConfigPaths.getBundleConfigFile(bundlePath);
-    fs.writeFileSync(
-      bundleConfigPath,
-      fs.readFileSync(bundleConfigPath, 'utf8').replace('defaultOutlinksDepth: 2', 'defaultOutlinksDepth: 1'),
-      'utf8',
-    );
-    const outsideNotePath = path.join(isolatedSourceGraph, 'Outside', 'Outside note.md');
-    fs.writeFileSync(
-      outsideNotePath,
-      `![[Frontier visual.png]]\n\n${fs.readFileSync(outsideNotePath, 'utf8')}`,
-      'utf8',
-    );
-    fs.copyFileSync(
-      path.join(
-        process.cwd(),
-        '..',
-        '..',
-        'shared_data',
-        'source_graphs',
-        'meadow-test-bundles-data',
-        't016 ---- level 5 - frontier image.png',
-      ),
-      path.join(isolatedSourceGraph, 'Outside', 'Frontier visual.png'),
-    );
-
-    await ensureTrackedPageContent(bundlePath, isolatedSourceGraph);
-
-    const trackedConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundlePath);
-    const trackedConfigs = parseBundleNodeConfig(
-      fs.readFileSync(trackedConfigPath, 'utf8'),
-      trackedConfigPath,
-    );
-    expect(trackedConfigs.find(config => config.bundleNodeName === 'Frontier visual')).toMatchObject({
-      fileType: 'png',
-      outlinksDepth: 0,
-      inlinksDepth: 0,
-    });
-    expect(fs.existsSync(path.join(
-      BundleConfigPaths.getTrackedPageContentDir(bundlePath),
-      'Outside',
-      'Frontier visual.png',
-    ))).toBe(true);
-
-    const generatedHtml = getGeneratedBundleTestOutputDirectory(bundlePath);
-    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtml });
-    expect(fs.existsSync(path.join(generatedHtml, 'Outside', 'Outside note.html'))).toBe(true);
-  });
-
-  it('does not derive a duplicate config for an explicitly tracked frontier image', async () => {
+  it('publishes a tracked nested page beneath its untracked folder', async () => {
     const persistedConfigPath = BundleConfigPaths.getBundleNodeConfigFile(bundlePath);
-    const persistedConfigs = parseBundleNodeConfig(
-      fs.readFileSync(persistedConfigPath, 'utf8'),
-      persistedConfigPath,
-    );
+    const persistedConfigs = parseBundleNodeConfig(fs.readFileSync(persistedConfigPath, 'utf8'), persistedConfigPath);
     fs.writeFileSync(persistedConfigPath, stringifyBundleNodeConfig([
       ...persistedConfigs,
       {
-        bundleNodeName: 'Frontier image',
-        sourceGraphSubdirectory: 'Outside',
+        bundleNodeName: 'Nested note',
+        sourceGraphSubdirectory: 'Alpha/Nested',
         bundleNodeKind: 'file',
-        fileType: 'png',
-        bundleNodeId: 'frontier0001',
+        fileType: 'md',
+        bundleNodeId: 'nestednote01',
         listType: 'whitelist',
       },
     ]), 'utf8');
 
     await ensureTrackedPageContent(bundlePath, sourceGraphDirectory);
-
-    const trackedConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundlePath);
-    const trackedConfigs = parseBundleNodeConfig(
-      fs.readFileSync(trackedConfigPath, 'utf8'),
-      trackedConfigPath,
-    );
-    expect(trackedConfigs.filter(config => config.bundleNodeName === 'Frontier image')).toHaveLength(1);
+    expect(listFiles(BundleConfigPaths.getTrackedPageContentDir(bundlePath))).toEqual(['Alpha/Nested/Nested note.md']);
 
     const generatedHtml = getGeneratedBundleTestOutputDirectory(bundlePath);
     await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtml });
-    expect(fs.existsSync(path.join(generatedHtml, 'Outside', 'Frontier image.png'))).toBe(true);
+    expect(listFiles(generatedHtml).filter(file => !file.startsWith('_mw_'))).toEqual([
+      'Alpha/Nested/Nested note.html',
+      'index.html',
+    ]);
+    const alphaFolderHtml = fs.readFileSync(path.join(generatedHtml, 'index.html'), 'utf8');
+    expect(alphaFolderHtml).toContain('class="structural-child-name">Nested note</span>');
+    expect(alphaFolderHtml).not.toContain('class="structural-child-name">Nested</span>');
+    expect(alphaFolderHtml).not.toContain('Alpha note');
+  });
+
+  it('removes a derived generation config left by an earlier version', async () => {
+    const staleConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundlePath);
+    fs.mkdirSync(path.dirname(staleConfigPath), { recursive: true });
+    fs.writeFileSync(staleConfigPath, stringifyBundleNodeConfig([
+      ...parseBundleNodeConfig(fs.readFileSync(BundleConfigPaths.getBundleNodeConfigFile(bundlePath), 'utf8')),
+      {
+        bundleNodeName: 'Alpha note',
+        sourceGraphSubdirectory: 'Alpha',
+        bundleNodeKind: 'file',
+        fileType: 'md',
+        bundleNodeId: 'stalederived',
+        listType: 'whitelist',
+      },
+    ]), 'utf8');
+
+    await ensureTrackedPageContent(bundlePath, sourceGraphDirectory);
+    expect(fs.existsSync(staleConfigPath)).toBe(false);
+
+    const generatedHtml = getGeneratedBundleTestOutputDirectory(bundlePath);
+    await generateHtmlForBundle(bundlePath, { preview: true, outputDirectory: generatedHtml });
+    expect(fs.existsSync(path.join(generatedHtml, 'Alpha', 'Alpha note.html'))).toBe(false);
   });
 });

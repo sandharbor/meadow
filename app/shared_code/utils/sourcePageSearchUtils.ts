@@ -108,3 +108,32 @@ export function rankSourcePageCandidates(
   return rankSourcePageCandidatesWithCount(query, pages, limit).results;
 }
 
+
+/**
+ * Folders that contain source pages, including their ancestors and the source
+ * root (''). With a query, folders rank by the page-title buckets applied to
+ * the source-relative folder path; otherwise they are listed shallowest first.
+ */
+export function rankSourceFolderCandidatesWithCount(
+  query: string,
+  pages: SourcePageFileInfo[],
+  limit: number = 25
+): { totalCount: number; results: string[] } {
+  const folders = new Set<string>(['']);
+  for (const page of pages) {
+    const parts = page.directory.split('/').filter(Boolean);
+    for (let depth = 1; depth <= parts.length; depth++) folders.add(parts.slice(0, depth).join('/'));
+  }
+  const byPath = (a: string, b: string) => a.split('/').length - b.split('/').length || a.localeCompare(b);
+  const queryNormalized = normalizeForSearch(query);
+  const ranked = queryNormalized
+    ? [...folders]
+      .flatMap(folder => {
+        const bucket = folder ? bucketForTitle(queryNormalized, folder) : null;
+        return bucket ? [{ folder, bucket }] : [];
+      })
+      .sort((a, b) => a.bucket - b.bucket || byPath(a.folder, b.folder))
+      .map(({ folder }) => folder)
+    : [...folders].sort(byPath);
+  return { totalCount: ranked.length, results: ranked.slice(0, Math.max(0, limit)) };
+}

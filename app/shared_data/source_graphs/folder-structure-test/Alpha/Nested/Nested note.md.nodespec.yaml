@@ -12,13 +12,7 @@ nodespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
-        footerSectionBacklinks:
-          - relativeLinkPath: ../Alpha note.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: ../Alpha note.html
-                embeddedLinks:
-                  - linkName: Outside note
-                    linkRelativePath: ../../Outside/Outside note.html
+        footerSectionBacklinks: []
   - bundle: ordered-folders
     sourcing:
       isInWorkingGraph: true
@@ -32,10 +26,4 @@ nodespecs:
     generation:
       htmlRenderedLinks:
         mainSectionLinks: []
-        footerSectionBacklinks:
-          - relativeLinkPath: ../Alpha note.html
-            backlinkContexts:
-              - seeInContextLinkRelativePath: ../Alpha note.html
-                embeddedLinks:
-                  - linkName: Outside note
-                    linkRelativePath: ../../Outside/Outside note.html
+        footerSectionBacklinks: []

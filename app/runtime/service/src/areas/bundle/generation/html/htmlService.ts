@@ -1370,7 +1370,7 @@ export async function generateHtmlForBundle(
     });
     const bodyHtml = childItems.length > 0
         ? `<ul class="structural-children">${childItems.join('')}</ul>`
-        : '<p class="structural-empty">This folder is empty.</p>';
+        : '<p class="structural-empty">No pages in this folder are included in this bundle.</p>';
     const htmlPath = renderGeneratedBundleNodeToHtml({
       outputRoot: generatedHtmlDirectory,
       outputRoute,

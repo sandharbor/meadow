@@ -161,7 +161,9 @@ it('generates an ordered collection of a page and another source folder', async 
   expect(index).toContain('sources/notes/Start.html');
   expect(index).toContain('structural-child-name">research');
   expect(index.indexOf('structural-child-name">Start')).toBeLessThan(index.indexOf('structural-child-name">research'));
-  expect(fs.readFileSync(path.join(output, 'sources/research/Same/Inside.html'), 'utf8')).toContain('Overview.html');
+  // The folder start tracks only the folder: its untracked descendants are not published.
+  expect(fs.existsSync(path.join(output, 'sources/research/Same/Inside.html'))).toBe(false);
+  expect(index).not.toContain('Inside');
   expect(fs.readFileSync(BundleConfigPaths.getBundleNodeConfigFile(bundle), 'utf8')).toContain(original.bundleNodeId);
 });
 

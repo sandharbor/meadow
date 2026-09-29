@@ -31,7 +31,7 @@ import { parseBundleNodeConfig } from '../../../../../../shared_code/utils/bundl
 import { BundleConfig } from '../../../../../../contracts/types/bundleConfig.js';
 import { AppConfigPaths } from '../../../../../../shared_code/paths/appConfigPaths.js';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../../shared_code/utils/appConfigGitUtils.js';
-import { rankSourcePageCandidatesWithCount, recentSourcePageCandidatesWithCount } from '../../../../../../shared_code/utils/sourcePageSearchUtils.js';
+import { rankSourceFolderCandidatesWithCount, rankSourcePageCandidatesWithCount, recentSourcePageCandidatesWithCount } from '../../../../../../shared_code/utils/sourcePageSearchUtils.js';
 import { generateBundleGuid } from '../../../../../../shared_code/utils/bundleGuidUtils.js';
 import { getAllBackendProviders } from '../../../shared/publishing-provider-host/providerRegistry.js';
 import { getConfigDirectory, getBundlesDirectory, getBundleDirectory, getBundleConfigPath } from '../../../shared/bundle-config/bundleConfigPaths.js';
@@ -513,6 +513,27 @@ router.get('/bundles/source-pages/search', (req, res, next) => {
       logger.error('Error searching source pages:', error);
       next(error);
     }
+  })().catch(next);
+});
+
+// Search source-relative folders that contain pages (starting-selection typeahead).
+router.get('/bundles/source-folders/search', (req, res, next) => {
+  (async () => {
+    const { sourceDirectory, query, limit } = req.query;
+    if (!sourceDirectory || typeof sourceDirectory !== 'string') {
+      return res.status(400).json({ error: 'sourceDirectory is required' });
+    }
+    const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : NaN;
+    const finalLimit = !isNaN(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 25;
+    if (!fs.existsSync(sourceDirectory)) {
+      return res.status(404).json({ error: 'Source directory not found' });
+    }
+    const ranked = rankSourceFolderCandidatesWithCount(
+      typeof query === 'string' ? query : '',
+      await listMarkdownSourcePages(sourceDirectory),
+      finalLimit,
+    );
+    return res.json({ count: ranked.totalCount, folders: ranked.results });
   })().catch(next);
 });
 

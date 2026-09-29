@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import type { StartingSelection } from '../../../../../../../contracts/types/startingSelection.js';
+import { DirectoryPathInput } from '../../../../shared/components/DirectoryPathInput.js';
 import { StartingSelectionsFields } from '../../../../shared/components/StartingSelectionsFields.js';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -107,12 +108,6 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
     setSources(previous => [...previous, { id: window.crypto.randomUUID().replace(/-/g, '').slice(0, 12), name, directory: '' }]);
     setReviewReferences(false); onOpen();
   };
-  const browse = async (source: BundleSource) => {
-    try {
-      const result = await window.electronAPI?.showOpenDialog({ properties: ['openDirectory'], title: `Choose directory for ${source.name || 'source'}` });
-      if (result && !result.canceled && result.filePaths[0]) update(source.id, 'directory', result.filePaths[0]);
-    } catch (error) { setError(String(error)); }
-  };
   const update = (id: string, field: 'name' | 'directory', value: string) => setSources(previous => previous.map(source => source.id === id ? { ...source, [field]: value } : source));
   const referenceNames = [...new Set([...references.keys(), ...ignored])].sort();
   const hasEdits = status && (JSON.stringify(sources) !== JSON.stringify(status.sources)
@@ -139,8 +134,7 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
           {sources.map(source => <fieldset key={source.id} disabled={busy || !status} className="space-y-3 rounded border border-neutral-200 p-4" data-testid={`source-${source.id}`}>
             <div className="flex items-center justify-between gap-3"><label className="flex-1">Source name<input aria-label={`Source name ${source.name || 'new'}`} className="mt-1 block w-full rounded border px-3 py-2" value={source.name} onChange={event => update(source.id, 'name', event.target.value)} /></label>
               <button className="mt-5 text-red-700 underline" onClick={() => setSources(previous => previous.filter(item => item.id !== source.id))}>Remove source</button></div>
-            <label className="block">Directory<input aria-label={`Directory for ${source.name || 'new source'}`} className="mt-1 block w-full rounded border px-3 py-2" placeholder="/path/to/source" value={source.directory} onChange={event => update(source.id, 'directory', event.target.value)} /></label>
-            {window.electronAPI && <button className="text-main-700 underline" onClick={() => void browse(source)}>Choose directory…</button>}
+            <div>Directory<DirectoryPathInput ariaLabel={`Directory for ${source.name || 'new source'}`} dialogTitle={`Choose directory for ${source.name || 'source'}`} value={source.directory} onChange={directory => update(source.id, 'directory', directory)} /></div>
             {status?.disconnectedIds.includes(source.id) && <p role="status" className="text-amber-800">Disconnected. Captured pages remain available. Reconnect this directory or choose its new location.</p>}
             {source.aliases?.length ? <p className="text-xs text-neutral-500">Aliases: {source.aliases.join(', ')}</p> : null}
           </fieldset>)}

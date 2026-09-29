@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, it, expect } from 'vitest';
 import type { SourcePageFileInfo } from '../../../../../contracts/types/sourcePageFileInfo.js';
-import { rankSourcePageCandidates } from '../../../../../shared_code/utils/sourcePageSearchUtils.js';
+import { rankSourceFolderCandidatesWithCount, rankSourcePageCandidates } from '../../../../../shared_code/utils/sourcePageSearchUtils.js';
 
 function p(
   title: string,
@@ -100,5 +100,25 @@ describe('rankSourcePageCandidates', () => {
     // Newest first
     expect(results[0].title).toBe('hello 39');
     expect(results[24].title).toBe('hello 15');
+  });
+});
+
+describe('rankSourceFolderCandidatesWithCount', () => {
+  const pages = [
+    p('Top', 1, 'Top.md'),
+    p('Deep', 2, 'Projects/Research/Deep.md', 'Projects/Research'),
+    p('Notes', 3, 'Archive/Notes.md', 'Archive'),
+  ];
+
+  it('lists the source root and every folder containing pages, shallowest first', () => {
+    expect(rankSourceFolderCandidatesWithCount('', pages)).toEqual({
+      totalCount: 4,
+      results: ['', 'Archive', 'Projects', 'Projects/Research'],
+    });
+  });
+
+  it('matches folder paths without offering the root', () => {
+    expect(rankSourceFolderCandidatesWithCount('research', pages).results).toEqual(['Projects/Research']);
+    expect(rankSourceFolderCandidatesWithCount('proj', pages, 1)).toEqual({ totalCount: 2, results: ['Projects'] });
   });
 });

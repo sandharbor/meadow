@@ -19,11 +19,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { projectTrackedSourceOutput } from './sourceOutputProjection.js';
-import {
-  nodeConfigMatchesNode,
-  parseBundleNodeConfig,
-  resolveBundleNodeRoles,
-} from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
+import { parseBundleNodeConfig } from '../../../../../../../shared_code/utils/bundleNodeConfigUtils.js';
 import { canonicalPageFilename, sourceFileCandidateFilenames } from '../../../../../../../shared_code/utils/fileTypeUtils.js';
 import { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig.js';
@@ -48,10 +44,7 @@ import {
   pageMatchesConfiguredSrsTags,
 } from '../render-source/srsMarkdown.js';
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
-import {
-  invalidateWorkingGraphCache,
-  runWorkingGraphRaw,
-} from '../../../../shared/utils/workingGraphUtils.js';
+import { invalidateWorkingGraphCache } from '../../../../shared/utils/workingGraphUtils.js';
 import { copySourceFileToTrackedSnapshot } from '../../../../shared/bundle-node/trackedSourceContentSync.js';
 import {
   textDocumentCodec,
@@ -78,121 +71,6 @@ function generatedTagBundleNodeId(
   }
 }
 
-type FolderGenerationNode = {
-  sourceId?: string;
-  bundleNodeKey: string;
-  bundleNodeId?: string;
-  bundleNodeKind: 'file' | 'folder' | 'collection';
-  bundleNodeName: string;
-  sourceGraphSubdirectory?: string;
-  fileType?: FileBundleNodeConfig['fileType'];
-  effectiveBlacklistingBundleNodeId?: string;
-  remaining_depth: number;
-  remaining_inlinks_depth?: number;
-  isFrontierNode?: boolean;
-  isFrontierImageExtension?: boolean;
-};
-
-type FolderGenerationOutput = {
-  nodes: FolderGenerationNode[];
-};
-
-function generatedFolderBundleNodeId(
-  bundleIdentity: string,
-  bundleNodeKey: string,
-  assignedIds: Set<string>,
-): BundleNodeId {
-  for (let salt = 0; ; salt += 1) {
-    const candidate = crypto.createHash('sha256')
-      .update(`${bundleIdentity}\0folder-generation\0${bundleNodeKey}\0${salt}`)
-      .digest('hex')
-      .slice(0, 12);
-    if (!assignedIds.has(candidate)) return candidate as BundleNodeId;
-  }
-}
-
-async function materializeFolderGenerationConfigs(options: {
-  bundleDirectory: string;
-  sourceDirectory: string;
-  bundleNodeConfigPath: string;
-  bundleNodeConfigs: BundleNodeConfig[];
-}): Promise<BundleNodeConfig[]> {
-  const { bundleDirectory, sourceDirectory, bundleNodeConfigPath, bundleNodeConfigs } = options;
-  const bundleConfig = loadBundleConfig(bundleDirectory);
-  const { entryNode, defaultTraversalNode } = resolveBundleNodeRoles(
-    bundleNodeConfigs,
-    bundleConfig,
-    BundleConfigPaths.getBundleConfigFile(bundleDirectory),
-  );
-  if (entryNode.bundleNodeKind === 'file') return bundleNodeConfigs;
-
-  const raw = await runWorkingGraphRaw({
-    graphRoot: sourceDirectory,
-    sources: bundleConfig.sources?.map(source => ({ ...source, directory: path.join(sourceDirectory, sourceGraphPath(source.id, '')) })),
-    immutableSource: true,
-    bundleNodeConfigPath,
-    entryBundleNodeId: entryNode.bundleNodeId,
-    defaultTraversalBundleNodeId: defaultTraversalNode.bundleNodeId,
-    defaultOutlinksDepth: bundleConfig.defaultOutlinksDepth,
-    defaultInlinksDepth: bundleConfig.defaultInlinksDepth,
-    frontierDepth: 0,
-    allowImagesToExtendToFrontier: true,
-    allowLowerDepths: false,
-  });
-  const output = JSON.parse(raw) as FolderGenerationOutput;
-  const assignedIds = new Set<string>(bundleNodeConfigs.map(config => config.bundleNodeId));
-  const bundleIdentity = bundleConfig.bundleGuid || path.basename(bundleDirectory);
-  const derivedConfigs: BundleNodeConfig[] = [];
-  const derivedNodes = output.nodes
-    .filter(node => (
-      !node.bundleNodeId
-      && !bundleNodeConfigs.some(config => nodeConfigMatchesNode(
-        config,
-        node.bundleNodeName,
-        node.sourceGraphSubdirectory,
-        node.fileType,
-        node.bundleNodeKind,
-        undefined,
-        node.sourceId,
-      ))
-      && !node.effectiveBlacklistingBundleNodeId
-      && (!node.isFrontierNode || node.isFrontierImageExtension)
-    ))
-    .sort((left, right) => left.bundleNodeKey.localeCompare(right.bundleNodeKey));
-  for (const node of derivedNodes) {
-    const bundleNodeId = generatedFolderBundleNodeId(bundleIdentity, node.bundleNodeKey, assignedIds);
-    assignedIds.add(bundleNodeId);
-    if (node.bundleNodeKind === 'file' && node.fileType) {
-      derivedConfigs.push({
-        bundleNodeName: node.bundleNodeName,
-        ...(node.sourceId && { sourceId: node.sourceId }),
-        ...(node.sourceGraphSubdirectory && { sourceGraphSubdirectory: node.sourceGraphSubdirectory }),
-        bundleNodeKind: 'file',
-        fileType: node.fileType,
-        bundleNodeId,
-        listType: 'whitelist',
-        // Frontier-preserving images use -1 as an internal traversal sentinel.
-        // A materialized canonical config seeds generation rather than describing
-        // traversal state, so clamp that sentinel to the terminal depth of zero.
-        outlinksDepth: Math.max(0, node.remaining_depth),
-        inlinksDepth: Math.max(0, node.remaining_inlinks_depth ?? 0),
-      });
-    } else if (node.bundleNodeKind === 'folder') {
-      derivedConfigs.push({
-        bundleNodeName: node.bundleNodeName,
-        ...(node.sourceId && { sourceId: node.sourceId }),
-        sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '',
-        bundleNodeKind: 'folder',
-        bundleNodeId,
-        listType: 'whitelist',
-        outlinksDepth: 0,
-        inlinksDepth: 0,
-      });
-    }
-  }
-  return [...bundleNodeConfigs, ...derivedConfigs];
-}
-
 /**
  * Ensures the tracked_page_content directory is populated with files from the source directory.
  * This copies tracked pages (based on bundle_node_config.yaml) from the source directory to
@@ -209,39 +87,24 @@ export async function ensureTrackedPageContent(
   // filesystem operations. Keep an `await` to satisfy @typescript-eslint/require-await.
   await Promise.resolve();
   const targetDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
-  const trackedBundleNodeConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundleDirectory);
   const tagPagesSubdirName = BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;
   const bundleConfig = loadBundleConfig(bundleDirectory);
   const appConfig = loadAppConfig(getConfigDirectory());
   const generationOptions = resolveEffectiveGenerationOptions(appConfig, bundleConfig);
 
+  // Generation reads only the canonical tracked configuration. Remove a derived
+  // configuration written by earlier versions so it can never admit untracked pages.
+  fs.rmSync(BundleConfigPaths.getTrackedBundleNodeConfigFile(bundleDirectory), { force: true });
+
   // Read bundle_node_config.yaml to get tracked page titles
   const bundleNodeConfPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
   if (!fs.existsSync(bundleNodeConfPath)) {
-    fs.rmSync(trackedBundleNodeConfigPath, { force: true });
     logger.warn('bundle_node_config.yaml not found, skipping tracked page content sync');
     return;
   }
 
   const confContent = fs.readFileSync(bundleNodeConfPath, 'utf8');
-  const persistedBundleNodeConfigs = parseBundleNodeConfig(confContent);
-  const bundleNodeConfigs = await materializeFolderGenerationConfigs({
-    bundleDirectory,
-    sourceDirectory,
-    bundleNodeConfigPath: bundleNodeConfPath,
-    bundleNodeConfigs: persistedBundleNodeConfigs,
-  });
-
-  if (bundleNodeConfigs.length > persistedBundleNodeConfigs.length) {
-    fs.mkdirSync(path.dirname(trackedBundleNodeConfigPath), { recursive: true });
-    fs.writeFileSync(
-      trackedBundleNodeConfigPath,
-      stringifyBundleNodeConfig(projectBundleNodeConfigsForGeneration(bundleNodeConfigs)),
-      'utf8',
-    );
-  } else {
-    fs.rmSync(trackedBundleNodeConfigPath, { force: true });
-  }
+  const bundleNodeConfigs = parseBundleNodeConfig(confContent);
 
   // Canonical record presence is the sole tracking/registration signal.
   const trackedPages = bundleNodeConfigs;
@@ -361,10 +224,7 @@ export function prepareGenerationSourceMaterial(
 ): PreparedGenerationSourceMaterial {
   const trackedPageContentDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
   const persistedBundleNodeConfigPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
-  const trackedBundleNodeConfigPath = BundleConfigPaths.getTrackedBundleNodeConfigFile(bundleDirectory);
-  const baseBundleNodeConfigPath = fs.existsSync(trackedBundleNodeConfigPath)
-    ? trackedBundleNodeConfigPath
-    : persistedBundleNodeConfigPath;
+  const baseBundleNodeConfigPath = persistedBundleNodeConfigPath;
   const preparedSourceContentDir = BundleConfigPaths.getPreparedSourceContentDir(bundleDirectory);
   const preparedBundleNodeConfigPath = BundleConfigPaths.getPreparedBundleNodeConfigFile(bundleDirectory);
   const tagPagesSubdirName = BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;

@@ -87,4 +87,18 @@ export class MeadowHomeBundleConfig {
     this.expect(node, `Expected configured node in ${this.bundleSlug}: ${JSON.stringify(query)}`).toBeDefined();
     return node!;
   }
+
+  /** Content pages in the current generated version, excluding Meadow's generated support routes. */
+  generatedPreviewPages(): string[] {
+    const manifest = YAML.parse(this.readFile(path.join(this.bundleDirectory(), "config", "generated_bundle_versions.yaml"))) as
+      { versions?: Array<{ versionId?: string }> } | null;
+    const versionId = manifest?.versions?.at(-1)?.versionId;
+    this.expect(versionId, `Expected a generated version for ${this.bundleSlug}`).toBeDefined();
+    const root = path.join(this.bundleDirectory(), "html", "generated_bundle_versions", versionId!);
+    this.expect(fs.existsSync(root), `Expected preview output at ${root}`).toBe(true);
+    return fs.readdirSync(root, { recursive: true, encoding: "utf8" })
+      .map(file => file.split(path.sep).join("/"))
+      .filter(file => file.endsWith(".html") && !file.startsWith("_mw_"))
+      .sort();
+  }
 }

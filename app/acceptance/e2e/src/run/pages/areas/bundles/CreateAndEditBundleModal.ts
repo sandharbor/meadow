@@ -191,4 +191,16 @@ export class CreateAndEditBundleModal {
     await this.expect(btn).toBeVisible();
     await btn.click();
   }
+
+  /** Search a source's pages or folders for a starting selection and choose a suggestion. */
+  async chooseStartingSelectionPath(index: number, query: string, suggestion: string, expectedPath: string) {
+    const dialog = this.page.getByRole("dialog", { name: "Create New Bundle", exact: true });
+    const input = dialog.getByRole("textbox", { name: `Path for starting selection ${index}`, exact: true });
+    await input.fill(query);
+    await dialog.getByRole("list", { name: `Suggestions for starting selection ${index}`, exact: true })
+      .getByRole("button")
+      .filter({ has: this.page.getByText(suggestion, { exact: true }) })
+      .click();
+    await this.expect(input).toHaveValue(expectedPath);
+  }
 }

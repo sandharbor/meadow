@@ -229,6 +229,18 @@ export class BundleEditorPage {
     ).toBeVisible();
   }
 
+  async expectStartingSelectionsPreviewWarningVisible() {
+    await this.expect(
+      this.page.getByText("Only your starting selections are tracked"),
+    ).toBeVisible();
+  }
+
+  async clickPreviewAnyway() {
+    const dialog = this.page.getByRole("dialog", { name: "Only your starting selections are tracked" });
+    await dialog.getByRole("button", { name: "Preview", exact: true }).click();
+    await this.expect(dialog).toHaveCount(0);
+  }
+
   async clickGoBackAndTrackMorePages() {
     const btn = this.page.locator("button", { hasText: "Track more" });
     await this.expect(btn).toBeVisible();
@@ -414,6 +426,14 @@ export class BundleEditorPage {
       this.page.waitForResponse(isBundleConfigResponse, { timeout: 15000 }),
       btn.click(),
     ]);
+  }
+
+  /** Track every reachable page from the graph view, leaving sensitive pages for individual review. */
+  async trackAllReachablePages() {
+    await this.switchToGraphView();
+    await this.clickSelectAll();
+    await this.clickDeselectSensitivePagesIfVisible();
+    await this.clickTrackAll();
   }
 
   /** Click "Deselect sensitive pages" if the button is visible. */

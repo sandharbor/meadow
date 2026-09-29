@@ -21,7 +21,7 @@ import {
   BundleListPage,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { folderBundles, htmlGeneration } from "../../../concepts/index.js";
+import { folderBundles, htmlGeneration, tracking } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "multiple-folders" });
@@ -70,9 +70,14 @@ test("previews a configured multiple-folder collection bundle", async ({
   await editor.expectListViewRowByExactNamePresent("Frontier image");
   await checkpoint("ordered folder structure in the editor");
 
+  // Track the folders' contents; folder starts track only the folders themselves.
+  await editor.trackAllReachablePages();
+  await addKeyFrame(tracking);
+  await checkpoint("ordered folder contents tracked for publishing");
+
   // Preview the collection home.
   await editor.clickPreview();
-  await previewModal.waitForPreviewComplete();
+  await previewModal.waitForPreviewCompleteAllTracked();
   await previewModal.generatedBundle.expectSingleHeading("Ordered Folders", 60_000);
   const folderNavigation = previewModal.generatedBundle.folderNavigation;
   await folderNavigation.expectAvailable();

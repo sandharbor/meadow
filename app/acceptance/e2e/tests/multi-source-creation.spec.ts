@@ -2,7 +2,7 @@
 
 import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
-import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
+import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal } from '../src/run/pages/index.js';
 import { bundleSource, startingSelection } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
@@ -26,11 +26,12 @@ test('Multi-source initial creation captures ordered mixed selections without an
     await dialog.getByRole('textbox', { name: `Source name ${index + 1}`, exact: true }).fill(name);
     await dialog.getByRole('textbox', { name: `Source directory ${index + 1}`, exact: true }).fill(path.join(testServer.sourceGraphsDir, 'multi-source', name));
   }
-  await dialog.getByRole('textbox', { name: 'Path for starting selection 1', exact: true }).fill('Start.md');
+  const createModal = new CreateAndEditBundleModal(page, expect);
+  await createModal.chooseStartingSelectionPath(1, 'Sta', 'Start', 'Start.md');
   await dialog.getByRole('button', { name: 'Add starting selection', exact: true }).click();
   await dialog.getByRole('combobox', { name: 'Source for starting selection 2', exact: true }).selectOption({ label: 'research' });
   await dialog.getByRole('combobox', { name: 'Kind for starting selection 2', exact: true }).selectOption('folder');
-  await dialog.getByRole('textbox', { name: 'Path for starting selection 2', exact: true }).fill('Same');
+  await createModal.chooseStartingSelectionPath(2, 'sa', 'Same', 'Same');
   await dialog.getByRole('spinbutton', { name: 'Default outlink depth', exact: true }).fill('2');
   await dialog.getByRole('spinbutton', { name: 'Default inlink depth', exact: true }).fill('1');
   await addKeyFrame(bundleSource, startingSelection);
