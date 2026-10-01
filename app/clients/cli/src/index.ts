@@ -270,7 +270,7 @@ function showBundleHelp(): void {
   meadow bundle filters <bundle-slug>
 
 Commands:
-  track     Atomically track a selected set by stable bundleNodeKey, or use
+  track     Atomically track a selected set by current bundleNodeKey, or use
             --all-safe for every trackable node Meadow does not consider sensitive.
   node      Inspect, curate, find, or set traversal depths for one node.
   open      Open the full Meadow Web Client at a place in this bundle and report

@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import type { EncodedBundleNodeKey } from './bundleNodeKey.js';
+
 export type BundleNodeTraversalDetails = {
   outlinks_depth_set_first_time?: number;
   outlinks_depth_inherited?: number;
@@ -31,7 +33,7 @@ export type BundleNodeTraversalStateSummary = {
 
 /** Recorded arrivals along one selected path, aligned with its path keys. */
 export type BundleNodeTraversalPathStep = {
-  bundleNodeKey: string;
+  bundleNodeKey: EncodedBundleNodeKey;
   depth: number;
   remaining_depth: number;
   remaining_inlinks_depth: number;

@@ -42,7 +42,7 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
   for (const node of original) {
     const directory = node.bundleNodeName === 't001 ---- child 2' ? 'source-changes/nested/deeper' : 'source-changes/nested';
     expect(updated.find(item => item.bundleNodeId === node.bundleNodeId)).toEqual({ ...node, sourceGraphSubdirectory: directory });
-    await editor.expectListViewNodeVisible(`${directory}/${node.bundleNodeName}.md`, true);
+    await editor.expectListViewNodeVisible(`file:${directory}/${node.bundleNodeName}.md`, true);
   }
   await addKeyFrame(sourceSnapshot);
   await checkpoint('unchanged links reach the relocated group after acceptance');

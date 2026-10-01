@@ -16,7 +16,7 @@ test('pending source changes hide the frontier and acknowledging the notice only
   const filters = new FilterPanelComponent(page, expect);
   await filters.enableFilter('Frontier');
   const editor = new BundleEditorPage(page, expect);
-  await editor.expectGraphNodePresent('/t016 ---- level 5.md');
+  await editor.expectGraphNodePresent('file:t016 ---- level 5.md');
   const notice = page.getByText('The frontier can’t be shown while source changes are waiting for review.', { exact: true });
   await expect(notice).not.toBeVisible();
   await addKeyFrame(frontier, frontierLiveDiscovery);
@@ -31,7 +31,7 @@ test('pending source changes hide the frontier and acknowledging the notice only
   await review.expectReadyToAccept();
   await review.defer();
   await expect(notice).toBeVisible();
-  await editor.expectGraphNodeNotPresent('/t016 ---- level 5.md');
+  await editor.expectGraphNodeNotPresent('file:t016 ---- level 5.md');
   await addKeyFrame(frontierPendingSources);
   await checkpoint('pending source changes replace live frontier pages with an explanation');
 

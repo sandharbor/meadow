@@ -21,7 +21,7 @@ import { getSelectionChildrenOrdered, getSelectionDeeperPathsFromHereOrdered, ge
 
 function makePage(id: string, overrides: Partial<FileBundleNode> = {}): IBundleNode {
   return {
-    bundleNodeKey: id as IBundleNode['bundleNodeKey'],
+    bundleNodeKey: testKey(id),
     bundleNodeKind: 'file',
     label: id,
     bundleNodeName: id,
@@ -38,18 +38,18 @@ function makePage(id: string, overrides: Partial<FileBundleNode> = {}): IBundleN
 describe('selectionPaths', () => {
   describe('getSelectionPathToHereOrdered', () => {
     it('puts the node first, then ancestors back to root', () => {
-      const node = makePage('C', { path: ['A', 'B', 'C'] });
-      expect(getSelectionPathToHereOrdered(node)).toEqual(['C', 'B', 'A']);
+      const node = makePage('C', { path: [testKey('A'), testKey('B'), testKey('C')] });
+      expect(getSelectionPathToHereOrdered(node)).toEqual(['C', 'B', 'A'].map(testKey));
     });
 
     it('handles missing path', () => {
       const node = makePage('X');
-      expect(getSelectionPathToHereOrdered(node)).toEqual(['X']);
+      expect(getSelectionPathToHereOrdered(node)).toEqual(['X'].map(testKey));
     });
 
     it('dedupes while preserving order', () => {
-      const node = makePage('C', { path: ['A', 'B', 'B', 'C', 'A'] });
-      expect(getSelectionPathToHereOrdered(node)).toEqual(['C', 'A', 'B']);
+      const node = makePage('C', { path: [testKey('A'), testKey('B'), testKey('B'), testKey('C'), testKey('A')] });
+      expect(getSelectionPathToHereOrdered(node)).toEqual(['C', 'A', 'B'].map(testKey));
     });
   });
 
@@ -57,27 +57,27 @@ describe('selectionPaths', () => {
     it('selects descendants following directed edges', () => {
       const g = new Graph();
       ['A', 'B', 'C', 'D', 'E'].forEach((id) => g.addNode(makePage(id)));
-      g.addEdge({ source: 'A', target: 'B' });
-      g.addEdge({ source: 'B', target: 'C' });
-      g.addEdge({ source: 'A', target: 'D' });
-      g.addEdge({ source: 'C', target: 'E' });
+      g.addEdge({ source: testKey('A'), target: testKey('B') });
+      g.addEdge({ source: testKey('B'), target: testKey('C') });
+      g.addEdge({ source: testKey('A'), target: testKey('D') });
+      g.addEdge({ source: testKey('C'), target: testKey('E') });
 
-      expect(getSelectionPathFromHereOrdered(g, 'B')).toEqual(['B', 'C', 'E']);
+      expect(getSelectionPathFromHereOrdered(g, testKey('B'))).toEqual(['B', 'C', 'E'].map(testKey));
     });
 
     it('treats bidirectional edges as traversable both ways', () => {
       const g = new Graph();
       ['A', 'B', 'C'].forEach((id) => g.addNode(makePage(id)));
-      g.addEdge({ source: 'A', target: 'B', isBidirectional: true });
-      g.addEdge({ source: 'B', target: 'C' });
+      g.addEdge({ source: testKey('A'), target: testKey('B'), isBidirectional: true });
+      g.addEdge({ source: testKey('B'), target: testKey('C') });
 
-      expect(getSelectionPathFromHereOrdered(g, 'B')).toEqual(['B', 'A', 'C']);
+      expect(getSelectionPathFromHereOrdered(g, testKey('B'))).toEqual(['B', 'A', 'C'].map(testKey));
     });
 
     it('returns empty when startNodeKey is not in the graph', () => {
       const g = new Graph();
       g.addNode(makePage('A'));
-      expect(getSelectionPathFromHereOrdered(g, 'Z')).toEqual([]);
+      expect(getSelectionPathFromHereOrdered(g, testKey('Z'))).toEqual([].map(testKey));
     });
   });
 
@@ -88,11 +88,11 @@ describe('selectionPaths', () => {
       g.addNode(makePage('B', { depth: 1 }));
       g.addNode(makePage('C', { depth: 2 }));
       g.addNode(makePage('D', { depth: 1 }));
-      g.addEdge({ source: 'A', target: 'B' });
-      g.addEdge({ source: 'B', target: 'C' });
-      g.addEdge({ source: 'A', target: 'D' });
+      g.addEdge({ source: testKey('A'), target: testKey('B') });
+      g.addEdge({ source: testKey('B'), target: testKey('C') });
+      g.addEdge({ source: testKey('A'), target: testKey('D') });
 
-      expect(getSelectionDeeperPathsFromHereOrdered(g, 'A')).toEqual(['A', 'B', 'C', 'D']);
+      expect(getSelectionDeeperPathsFromHereOrdered(g, testKey('A'))).toEqual(['A', 'B', 'C', 'D'].map(testKey));
     });
 
     it('skips links to same-depth or lower-depth nodes', () => {
@@ -101,11 +101,11 @@ describe('selectionPaths', () => {
       g.addNode(makePage('B', { depth: 2 }));
       g.addNode(makePage('C', { depth: 1 }));
       g.addNode(makePage('D', { depth: 0 }));
-      g.addEdge({ source: 'A', target: 'B' });
-      g.addEdge({ source: 'A', target: 'C' });
-      g.addEdge({ source: 'A', target: 'D' });
+      g.addEdge({ source: testKey('A'), target: testKey('B') });
+      g.addEdge({ source: testKey('A'), target: testKey('C') });
+      g.addEdge({ source: testKey('A'), target: testKey('D') });
 
-      expect(getSelectionDeeperPathsFromHereOrdered(g, 'A')).toEqual(['A', 'B']);
+      expect(getSelectionDeeperPathsFromHereOrdered(g, testKey('A'))).toEqual(['A', 'B'].map(testKey));
     });
 
     it('works with bidirectional edges (only follows the deeper direction)', () => {
@@ -113,11 +113,11 @@ describe('selectionPaths', () => {
       g.addNode(makePage('A', { depth: 0 }));
       g.addNode(makePage('B', { depth: 1 }));
       g.addNode(makePage('C', { depth: 2 }));
-      g.addEdge({ source: 'B', target: 'A', isBidirectional: true });
-      g.addEdge({ source: 'B', target: 'C' });
+      g.addEdge({ source: testKey('B'), target: testKey('A'), isBidirectional: true });
+      g.addEdge({ source: testKey('B'), target: testKey('C') });
 
       // From B (depth 1): A is depth 0 (skip), C is depth 2 (follow)
-      expect(getSelectionDeeperPathsFromHereOrdered(g, 'B')).toEqual(['B', 'C']);
+      expect(getSelectionDeeperPathsFromHereOrdered(g, testKey('B'))).toEqual(['B', 'C'].map(testKey));
     });
 
     it('treats structural descendants as deeper even when their semantic depth is lower', () => {
@@ -128,35 +128,35 @@ describe('selectionPaths', () => {
       g.addNode(makePage('Nested note', { depth: 0 }));
       g.addNode(makePage('Outside', { depth: 1 }));
       g.addNode(makePage('Beyond outside', { depth: 2 }));
-      g.addEdge({ source: 'Alpha', target: 'Alpha note', bundleEdgeKind: 'directoryContainment' });
-      g.addEdge({ source: 'Alpha', target: 'Nested', bundleEdgeKind: 'directoryContainment' });
-      g.addEdge({ source: 'Nested', target: 'Nested note', bundleEdgeKind: 'directoryContainment' });
-      g.addEdge({ source: 'Alpha note', target: 'Outside' });
-      g.addEdge({ source: 'Outside', target: 'Beyond outside' });
+      g.addEdge({ source: testKey('Alpha'), target: testKey('Alpha note'), bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: testKey('Alpha'), target: testKey('Nested'), bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: testKey('Nested'), target: testKey('Nested note'), bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: testKey('Alpha note'), target: testKey('Outside') });
+      g.addEdge({ source: testKey('Outside'), target: testKey('Beyond outside') });
 
-      expect(getSelectionDeeperPathsFromHereOrdered(g, 'Alpha')).toEqual([
+      expect(getSelectionDeeperPathsFromHereOrdered(g, testKey('Alpha'))).toEqual([
         'Alpha',
         'Alpha note',
         'Outside',
         'Beyond outside',
         'Nested',
         'Nested note',
-      ]);
+      ].map(testKey));
     });
 
     it('returns just the start node when no deeper neighbors exist', () => {
       const g = new Graph();
       g.addNode(makePage('A', { depth: 5 }));
       g.addNode(makePage('B', { depth: 3 }));
-      g.addEdge({ source: 'A', target: 'B' });
+      g.addEdge({ source: testKey('A'), target: testKey('B') });
 
-      expect(getSelectionDeeperPathsFromHereOrdered(g, 'A')).toEqual(['A']);
+      expect(getSelectionDeeperPathsFromHereOrdered(g, testKey('A'))).toEqual(['A'].map(testKey));
     });
 
     it('returns empty when startNodeKey is not in the graph', () => {
       const g = new Graph();
       g.addNode(makePage('A'));
-      expect(getSelectionDeeperPathsFromHereOrdered(g, 'Z')).toEqual([]);
+      expect(getSelectionDeeperPathsFromHereOrdered(g, testKey('Z'))).toEqual([].map(testKey));
     });
   });
 
@@ -167,11 +167,11 @@ describe('selectionPaths', () => {
       g.addNode(makePage('B', { depth: 1 }));
       g.addNode(makePage('C', { depth: 1 }));
       g.addNode(makePage('D', { depth: 2 }));
-      g.addEdge({ source: 'A', target: 'B' });
-      g.addEdge({ source: 'A', target: 'C' });
-      g.addEdge({ source: 'B', target: 'D' });
+      g.addEdge({ source: testKey('A'), target: testKey('B') });
+      g.addEdge({ source: testKey('A'), target: testKey('C') });
+      g.addEdge({ source: testKey('B'), target: testKey('D') });
 
-      expect(getSelectionChildrenOrdered(g, 'A')).toEqual(['A', 'B', 'C']);
+      expect(getSelectionChildrenOrdered(g, testKey('A'))).toEqual(['A', 'B', 'C'].map(testKey));
     });
 
     it('excludes edges to nodes at same or lower depth', () => {
@@ -179,10 +179,10 @@ describe('selectionPaths', () => {
       g.addNode(makePage('A', { depth: 1 }));
       g.addNode(makePage('B', { depth: 2 }));
       g.addNode(makePage('C', { depth: 1 }));
-      g.addEdge({ source: 'A', target: 'B' });
-      g.addEdge({ source: 'A', target: 'C' });
+      g.addEdge({ source: testKey('A'), target: testKey('B') });
+      g.addEdge({ source: testKey('A'), target: testKey('C') });
 
-      expect(getSelectionChildrenOrdered(g, 'A')).toEqual(['A', 'B']);
+      expect(getSelectionChildrenOrdered(g, testKey('A'))).toEqual(['A', 'B'].map(testKey));
     });
 
     it('selects direct structural children regardless of semantic depth', () => {
@@ -192,29 +192,31 @@ describe('selectionPaths', () => {
       g.addNode(makePage('Visual map', { depth: 0 }));
       g.addNode(makePage('Nested', { depth: 2 }));
       g.addNode(makePage('Nested note', { depth: 0 }));
-      g.addEdge({ source: 'Alpha', target: 'Alpha note', bundleEdgeKind: 'directoryContainment' });
-      g.addEdge({ source: 'Alpha', target: 'Visual map', bundleEdgeKind: 'directoryContainment' });
-      g.addEdge({ source: 'Alpha', target: 'Nested', bundleEdgeKind: 'directoryContainment' });
-      g.addEdge({ source: 'Nested', target: 'Nested note', bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: testKey('Alpha'), target: testKey('Alpha note'), bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: testKey('Alpha'), target: testKey('Visual map'), bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: testKey('Alpha'), target: testKey('Nested'), bundleEdgeKind: 'directoryContainment' });
+      g.addEdge({ source: testKey('Nested'), target: testKey('Nested note'), bundleEdgeKind: 'directoryContainment' });
 
-      expect(getSelectionChildrenOrdered(g, 'Alpha')).toEqual([
+      expect(getSelectionChildrenOrdered(g, testKey('Alpha'))).toEqual([
         'Alpha',
         'Alpha note',
         'Visual map',
         'Nested',
-      ]);
+      ].map(testKey));
     });
 
     it('returns only the node when it has no children', () => {
       const g = new Graph();
       g.addNode(makePage('A', { depth: 2 }));
-      expect(getSelectionChildrenOrdered(g, 'A')).toEqual(['A']);
+      expect(getSelectionChildrenOrdered(g, testKey('A'))).toEqual(['A'].map(testKey));
     });
 
     it('returns empty when startNodeKey is not in the graph', () => {
       const g = new Graph();
       g.addNode(makePage('A'));
-      expect(getSelectionChildrenOrdered(g, 'Z')).toEqual([]);
+      expect(getSelectionChildrenOrdered(g, testKey('Z'))).toEqual([].map(testKey));
     });
   });
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';

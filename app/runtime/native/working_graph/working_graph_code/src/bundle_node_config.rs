@@ -222,17 +222,18 @@ impl BundleNodeConfig {
                 source_graph_subdirectory,
                 file_type,
                 ..
-            } => format!(
-                "{}/{}.{}",
+            } => crate::node_key::file_key(
                 source_graph_subdirectory.as_deref().unwrap_or(""),
                 bundle_node_name,
-                file_type
+                file_type,
             ),
             Self::Folder {
                 source_graph_subdirectory,
                 ..
-            } => format!("folder:{source_graph_subdirectory}"),
-            Self::Collection { bundle_node_id, .. } => format!("collection:{bundle_node_id}"),
+            } => crate::node_key::folder_key(source_graph_subdirectory),
+            Self::Collection { bundle_node_id, .. } => {
+                crate::node_key::collection_key(bundle_node_id)
+            }
         }
     }
 
@@ -475,7 +476,7 @@ nodes:
     fn parses_canonical_file_node_configuration() {
         let nodes = parse_bundle_node_config_yaml(CANONICAL).expect("canonical config parses");
         assert_eq!(nodes.len(), 1);
-        assert_eq!(nodes[0].bundle_node_key(), "Projects/Example.md");
+        assert_eq!(nodes[0].bundle_node_key(), "file:Projects/Example.md");
         assert_eq!(nodes[0].bundle_node_id(), "a1b2c3d4e5f6");
     }
 

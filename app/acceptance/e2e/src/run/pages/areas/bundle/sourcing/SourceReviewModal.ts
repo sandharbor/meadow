@@ -101,6 +101,11 @@ export class SourceReviewModal {
     await this.expect(row.getByText('Modified', { exact: true })).toBeVisible();
   }
 
+  async expectAdded(path: string) {
+    const row = this.changeDisclosure(path);
+    await this.expect(row.getByText('Added', { exact: true })).toBeVisible();
+  }
+
   async previewImage(path: string, route: string[]) {
     await this.dialog.getByRole('button', { name: `Preview ${path}`, exact: true }).hover();
     const tooltip = this.page.getByRole('tooltip');

@@ -234,7 +234,7 @@ describe('source traversal details', () => {
     // Given Hub has a shorter independent arrival with no incoming budget.
     const paths = ['Start.md', 'Bridge.md', 'Hub.md', 'Incoming.md'];
     const routeSteps = paths.map((key, index) => ({
-      bundleNodeKey: key, depth: index, remaining_depth: [3, 3, 2, 1][index],
+      bundleNodeKey: testKey(key), depth: index, remaining_depth: [3, 3, 2, 1][index],
       remaining_inlinks_depth: [1, 2, 1, 0][index],
       traversal_details: {
         link_type: index === 0 ? 'start' as const : index === 3 ? 'inlink' as const : 'outlink' as const,
@@ -244,22 +244,22 @@ describe('source traversal details', () => {
     }));
     const nodes: SerializableBundleNode[] = paths.map((key, index) => ({
       ...routeSteps[index],
-      bundleNodeKey: key as SerializableBundleNode['bundleNodeKey'], bundleNodeKind: 'file',
+      bundleNodeKey: testKey(key), bundleNodeKind: 'file',
       bundleNodeName: key.slice(0, -3), sourceGraphSubdirectory: '', fileType: 'md', label: key,
-      path: paths.slice(0, index + 1),
-      ...(index === 2 && { path: ['Start.md', key], depth: 1, remaining_inlinks_depth: 0 }),
+      path: paths.slice(0, index + 1).map(testKey),
+      ...(index === 2 && { path: ['Start.md', key].map(testKey), depth: 1, remaining_inlinks_depth: 0 }),
       ...(withRouteSteps && index === 3 && { traversal_path_steps: routeSteps }),
     }));
     const pending: SourcingReview = { ...review, reviewToken: 'candidate-traversal',
       candidate: { ...review.accepted, id: 'b'.repeat(32) },
-      changes: [{ kind: 'added', path: 'Bridge.md', route: paths.slice(0, 2) }, { kind: 'added', path: 'Incoming.md', route: paths }],
+      changes: [{ kind: 'added', path: 'Bridge.md', route: paths.slice(0, 2).map(testKey) }, { kind: 'added', path: 'Incoming.md', route: paths.map(testKey) }],
       traversalGraphs: {
         accepted: { snapshotId: review.accepted.id, nodes: nodes.slice(0, 1).map(node => ({ ...node, remaining_depth: 99 })), edges: [] },
         candidate: { snapshotId: 'b'.repeat(32), nodes, edges: [
-          { source: 'Start.md', target: 'Bridge.md', bundleEdgeKind: 'semanticLink' },
-          { source: 'Start.md', target: 'Hub.md', bundleEdgeKind: 'semanticLink' },
-          { source: 'Bridge.md', target: 'Hub.md', bundleEdgeKind: 'semanticLink' },
-          { source: 'Incoming.md', target: 'Hub.md', bundleEdgeKind: 'semanticLink' },
+          { source: testKey('Start.md'), target: testKey('Bridge.md'), bundleEdgeKind: 'semanticLink' },
+          { source: testKey('Start.md'), target: testKey('Hub.md'), bundleEdgeKind: 'semanticLink' },
+          { source: testKey('Bridge.md'), target: testKey('Hub.md'), bundleEdgeKind: 'semanticLink' },
+          { source: testKey('Incoming.md'), target: testKey('Hub.md'), bundleEdgeKind: 'semanticLink' },
         ] },
       },
     };
@@ -305,3 +305,5 @@ describe('source traversal details', () => {
     expect(apiRequest).toHaveBeenCalledTimes(2); // Inspecting traversal neither accepts nor rescans.
   });
 });
+
+import { testKey } from './nodeKeys.js';

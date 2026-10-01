@@ -1,0 +1,39 @@
+{
+  "valid": [
+    "file:Biases.md",
+    "file:Models/Biases.md",
+    "file:Models/évidence and spaces.md",
+    "file:A🙂.md",
+    "folder:A🙂",
+    "file:folder:Biases.md",
+    "file:collection:Biases.md",
+    "file:_mw_sources/source000001/Biases.md",
+    "folder:",
+    "folder:Models",
+    "folder:_mw_sources/source000001",
+    "folder:_mw_sources/source000001/Models",
+    "collection:a1b2c3d4e5f6"
+  ],
+  "invalid": [
+    "Biases.md",
+    "/Biases.md",
+    "file:",
+    "file:/Biases.md",
+    "folder:/",
+    "file:Models//Biases.md",
+    "file:Models/./Biases.md",
+    "file:Models/../Biases.md",
+    "file:Models/Biases.md/",
+    "file:Models\\Biases.md",
+    "file:C:/Biases.md",
+    "file:Biases\u0000.md",
+    "file:_mw_sources/invalid/Biases.md",
+    "file:_mw_sources/source000001",
+    "file:_mw_sources/source000001/",
+    "folder:_mw_sources/source000001/",
+    "collection:",
+    "collection:A1b2c3d4e5f6",
+    "collection:a1b2c3d4e5f6/extra",
+    "unknown:Biases.md"
+  ]
+}

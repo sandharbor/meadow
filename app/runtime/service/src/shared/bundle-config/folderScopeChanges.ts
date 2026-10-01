@@ -68,7 +68,16 @@ function validateFolderScopeSnapshot(value: unknown) {
       return { valid: false as const, diagnostic: '$.folderScope is invalid' };
     }
   }
-  return { valid: true as const, value: value as unknown as FolderScopeGraphSnapshot };
+  const snapshot = value as unknown as FolderScopeGraphSnapshot;
+  try {
+    const keys = new Map<string, EncodedBundleNodeKey>(snapshot.nodes.map(node => [node.bundleNodeKey,
+      snapshot.keyEncodingVersion === 1 ? encodedBundleNodeKey(node.bundleNodeKey) : migrateLegacyBundleNodeKey(node.bundleNodeKey, node.bundleNodeKind)]));
+    const key = (value: string) => keys.get(value) ?? encodedBundleNodeKey(value);
+    return { valid: true as const, value: { ...snapshot, keyEncodingVersion: 1 as const,
+      nodes: snapshot.nodes.map(node => ({ ...node, bundleNodeKey: key(node.bundleNodeKey) })),
+      edges: snapshot.edges.map(edge => ({ ...edge, source: key(edge.source), target: key(edge.target) })),
+    } };
+  } catch (error) { return { valid: false as const, diagnostic: String(error) }; }
 }
 
 const folderScopeSnapshotCodec = jsonDocumentCodec<FolderScopeGraphSnapshot>(validateFolderScopeSnapshot);
@@ -77,7 +86,7 @@ function locator(node: FolderScopeSnapshotNode): string {
   if (node.bundleNodeKind === 'folder') return node.sourceGraphSubdirectory ?? '';
   if (node.bundleNodeKind === 'file') {
     const directory = node.sourceGraphSubdirectory ?? '';
-    const filename = `${node.bundleNodeName}.${node.fileType ?? node.bundleNodeKey.split('.').pop() ?? ''}`;
+    const filename = `${node.bundleNodeName}.${node.fileType ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey).split('.').pop() ?? ''}`;
     return directory ? `${directory}/${filename}` : filename;
   }
   return node.bundleNodeName;
@@ -221,3 +230,11 @@ export function loadFolderScopeSnapshot(snapshotPath: string): FolderScopeGraphS
 export function writeFolderScopeSnapshot(snapshotPath: string, snapshot: FolderScopeGraphSnapshot): void {
   writeDurableDocument({ path: snapshotPath, value: snapshot, codec: folderScopeSnapshotCodec });
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+
+import { encodedBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
+
+import { migrateLegacyBundleNodeKey } from '../bundle-graph/workingGraphKeyCodec.js';
+
+import { bundleNodeKeySourceGraphPath } from '../../../../../shared_code/utils/bundleNodeKey.js';

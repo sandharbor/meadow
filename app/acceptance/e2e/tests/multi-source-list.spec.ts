@@ -21,9 +21,9 @@ test('Multi-source list view sorts canonical source names in flat and structural
   await editor.waitForSourceCheck();
   await editor.switchToListView();
   await editor.expectListViewSourceColumn(true);
-  await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notes', '/');
-  await editor.expectListViewLocation('_mw_sources/source000002/Overview.md', 'research', '/');
-  await editor.expectListViewLocation('_mw_sources/source000002/Same/Inside.md', 'research', 'Same');
+  await editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notes', '/');
+  await editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/');
+  await editor.expectListViewLocation('file:_mw_sources/source000002/Same/Inside.md', 'research', 'Same');
   await checkpoint("the flat list identifies each source separately from its folder");
 
   // --- Test start ---
@@ -47,7 +47,7 @@ test('Multi-source list view sorts canonical source names in flat and structural
 
   // Check the structural list.
   await editor.switchToStructuralListView();
-  await editor.expectListViewLocation('_mw_sources/source000002/Same/Inside.md', 'research', 'Same');
+  await editor.expectListViewLocation('file:_mw_sources/source000002/Same/Inside.md', 'research', 'Same');
   await editor.expectListViewSourceOrder(['—', 'research', 'research', 'notes'], 'descending', 'selected-folders');
   const outsideSources = [
     ...Array<string>(4).fill('notes'),

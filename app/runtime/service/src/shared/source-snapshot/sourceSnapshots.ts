@@ -121,6 +121,7 @@ export function loadSourcingState(bundleDirectory: string): SourcingState | null
 export function loadSourceSnapshot(bundleDirectory: string, id: string): SourceSnapshot {
   const snapshot = JSON.parse(fs.readFileSync(path.join(snapshotDirectory(bundleDirectory, id), 'snapshot.json'), 'utf8')) as SourceSnapshot;
   if (snapshot.id !== id || !snapshot.files || !Array.isArray(snapshot.directories)) throw new SourcingError('Invalid source snapshot');
+  if (snapshot.graph) snapshot.graph = decodeWorkingGraphKeys(snapshot.graph, true);
   return snapshot;
 }
 
@@ -141,7 +142,7 @@ export function loadSourceNodeConfigs(bundleDirectory: string): BundleNodeConfig
 export { sourceConfigFingerprint } from '../../../../../shared_code/utils/sourceSnapshotFingerprint.js';
 
 export function nodeSourcePath(config: BundleNodeConfig): string {
-  if (config.bundleNodeKind === 'collection') return `collection:${config.bundleNodeId}`;
+  if (config.bundleNodeKind === 'collection') return serializeBundleNodeKey(bundleNodeKeyFromConfig(config));
   if (config.bundleNodeKind === 'folder') return sourceGraphPath(config.sourceId, config.sourceGraphSubdirectory);
   const extension = config.fileType === 'excalidraw' ? 'excalidraw.md' : config.fileType;
   return sourceGraphPath(config.sourceId, path.posix.join(config.sourceGraphSubdirectory ?? '', `${config.bundleNodeName}.${extension}`));
@@ -205,17 +206,7 @@ export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSna
       defaultOutlinksDepth: config.defaultOutlinksDepth, defaultInlinksDepth: config.defaultInlinksDepth,
       frontierDepth, allowImagesToExtendToFrontier: config.allowImagesToExtendToFrontier ?? appConfig.allowImagesToExtendToFrontier ?? true, allowLowerDepths: false,
     });
-    // Rust root-level node keys begin with '/'; snapshot paths are relative to the source root.
-    const relative = (key: string) => key.replace(/^\/+/, '');
-    const links = (map: Record<string, string[]>) => Object.fromEntries(Object.entries(map).map(([key, values]) => [relative(key), values.map(relative)]));
-    return { ...graph,
-      nodes: graph.nodes.map(node => ({ ...node, bundleNodeKey: relative(node.bundleNodeKey), path: node.path.map(relative),
-        traversal_path_steps: node.traversal_path_steps?.map(step => ({ ...step, bundleNodeKey: relative(step.bundleNodeKey) })),
-        traversal_alternative_routes: node.traversal_alternative_routes?.map(route => route.map(step => ({ ...step, bundleNodeKey: relative(step.bundleNodeKey) }))),
-      })),
-      edges: graph.edges.map(edge => ({ ...edge, source: relative(edge.source), target: relative(edge.target) })),
-      allInlinkSources: links(graph.allInlinkSources), allOutlinkTargets: links(graph.allOutlinkTargets),
-    };
+    return decodeWorkingGraphKeys(graph);
   } finally { fs.rmSync(scratchDirectory, { recursive: true, force: true }); }
 }
 
@@ -450,7 +441,11 @@ export function rememberReachableProvenance(bundleDirectory: string, snapshot: S
     if (!node || node.isFrontierNode) continue;
     const route = [...node.path];
     if (route.at(-1) !== node.bundleNodeKey) route.push(node.bundleNodeKey);
-    records[config.bundleNodeId] = { ...records[config.bundleNodeId], lastReachable: { path: snapshotFilePath(snapshot, config), snapshotId: snapshot.id, route } };
+    records[config.bundleNodeId] = { ...records[config.bundleNodeId], lastReachable: { keyEncodingVersion: 1, path: snapshotFilePath(snapshot, config), snapshotId: snapshot.id, route } };
   }
   saveTrackingRecords(bundleDirectory, records);
 }
+
+import { decodeWorkingGraphKeys } from '../bundle-graph/workingGraphKeyCodec.js';
+
+import { serializeBundleNodeKey, bundleNodeKeyFromConfig } from '../../../../../shared_code/utils/bundleNodeKey.js';

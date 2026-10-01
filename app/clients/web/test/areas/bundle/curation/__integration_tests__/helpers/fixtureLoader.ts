@@ -24,7 +24,6 @@ import { IBundleNode } from '../../../../../../../../contracts/types/IBundleNode
 import {
   BundleNodeConfig,
   BundleNodeId,
-  BundleNodeKey,
 } from '../../../../../../../../contracts/types/bundleNodeConfig';
 import { FileType } from '../../../../../../../../contracts/types/FileType';
 
@@ -219,7 +218,7 @@ export function createMockPage(config: BundleNodeConfig, id: string, label: stri
     throw new Error('The legacy curation fixture loader accepts file nodes only');
   }
   const page: IBundleNode = {
-    bundleNodeKey: id as BundleNodeKey,
+    bundleNodeKey: testKey(id),
     bundleNodeId: config.bundleNodeId,
     bundleNodeKind: 'file',
     label,
@@ -245,7 +244,7 @@ export function createMockPage(config: BundleNodeConfig, id: string, label: stri
 export function createAdditionalTestPages(): IBundleNode[] {
   // Create a page with sensitive flag (simulating frontmatter meadow-sensitive: true)
   const sensitivePage: IBundleNode = {
-    bundleNodeKey: 'sensitive-test-page' as BundleNodeKey,
+    bundleNodeKey: testKey('sensitive-test-page'),
     bundleNodeKind: 'file',
     label: 'SENS',
     bundleNodeName: 't004 ---- sensitive page',
@@ -263,7 +262,7 @@ export function createAdditionalTestPages(): IBundleNode[] {
 
   // Create a frontier page
   const frontierPage: IBundleNode = {
-    bundleNodeKey: 'frontier-test-page' as BundleNodeKey,
+    bundleNodeKey: testKey('frontier-test-page'),
     bundleNodeKind: 'file',
     label: 'FRONT',
     bundleNodeName: 'frontier test page',
@@ -330,3 +329,5 @@ export function loadFixtureGraph(fixtureName: string, bundleFolderName: string):
     bundleNodeConfigs
   };
 }
+
+import { testKey } from '../../../../../shared/nodeKeys.js';

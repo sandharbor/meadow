@@ -9,7 +9,7 @@ import type { Graph } from '../../../../../../../contracts/types/graph.js';
 export const isSourceImage = (filename: string) => /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(filename);
 export type SourceImageUrl = (filename: string, side: 'before' | 'after') => string;
 
-export function SourceImagePreview({ url, filename, route, graph }: { url: string; filename: string; route?: string[]; graph?: Graph }) {
+export function SourceImagePreview({ url, filename, route, graph }: { url: string; filename: string; route?: EncodedBundleNodeKey[]; graph?: Graph }) {
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
   const show = (element: HTMLElement) => {
     const rect = element.getBoundingClientRect();
@@ -34,3 +34,5 @@ export function SourceImageComparison({ beforePath, afterPath, beforeImage, afte
     </figure>)}
   </div>;
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

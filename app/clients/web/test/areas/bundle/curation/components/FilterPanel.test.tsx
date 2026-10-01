@@ -21,11 +21,10 @@ import { IFilter } from '../../../../../src/areas/bundle/curation/types/filters'
 import { Graph } from '../../../../../../../contracts/types/graph';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import type { FileType } from '../../../../../../../contracts/types/FileType';
-import type { BundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig';
 
 describe('FilterPanel', () => {
   const fileNode = (key: string, fileType: FileType): IBundleNode => ({
-    bundleNodeKey: key as BundleNodeKey,
+    bundleNodeKey: testKey(key),
     bundleNodeName: key,
     bundleNodeKind: 'file',
     sourceGraphSubdirectory: '',
@@ -90,7 +89,7 @@ describe('FilterPanel', () => {
           id: 'test-selector-1',
           name: 'Test Selector 1',
           type: 'normal',
-          select: () => new Set(['page1', 'page2'])
+          select: () => testKeySet(new Set(['page1', 'page2']))
         }
       ],
       selectorApplicationCriteria: 'union',
@@ -113,7 +112,7 @@ describe('FilterPanel', () => {
           id: 'test-selector-2',
           name: 'Test Selector 2',
           type: 'normal',
-          select: () => new Set(['page3', 'page4'])
+          select: () => testKeySet(new Set(['page3', 'page4']))
         }
       ],
       selectorApplicationCriteria: 'union',
@@ -136,7 +135,7 @@ describe('FilterPanel', () => {
           id: 'search-by-title',
           name: 'Search By Title',
           type: 'normal',
-          select: () => new Set(['page1', 'page2']),
+          select: () => testKeySet(new Set(['page1', 'page2'])),
           searchInput: ''
         }
       ],
@@ -449,3 +448,5 @@ describe('FilterPanel', () => {
   });
 
 });
+
+import { testKeySet, testKey } from '../../../../shared/nodeKeys.js';

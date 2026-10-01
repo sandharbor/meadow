@@ -29,7 +29,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   await sources.expectNotice();
   const filters = new FilterPanelComponent(page, expect);
   await filters.enableFilter('Frontier');
-  await editor.expectGraphNodePresent('_mw_sources/source000001/Frontier.md');
+  await editor.expectGraphNodePresent('file:_mw_sources/source000001/Frontier.md');
   await sources.expectNotice();
   await addKeyFrame(frontier, bundleSource);
   await checkpoint('frontier references and unrelated indexed pages do not prompt source registration');
@@ -37,7 +37,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   // --- Test start ---
   // Expand the normal traversal boundary.
   await editor.switchToListView();
-  await editor.clickListViewRowByNodeKey('_mw_sources/source000001/Start.md');
+  await editor.clickListViewRowByNodeKey('file:_mw_sources/source000001/Start.md');
   await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).setOutlinksDepth(1);
   await editor.clickSave();
   await editor.checkSourceChanges();
@@ -64,7 +64,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   await filters.expandFilterGroup('Folders');
   await filters.expectFolderCount('reference://', 0);
   await filters.enableFilter('Frontier');
-  await editor.clickListViewRowByNodeKey(`_mw_sources/${referenceId}/Study.md`);
+  await editor.clickListViewRowByNodeKey(`file:_mw_sources/${referenceId}/Study.md`);
   await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Frontier);
   await sources.expectNotice();
   await addKeyFrame(bundleSource, frontier);

@@ -78,7 +78,7 @@ const BundleEditor: React.FC = () => {
   const [configLoaded, setConfigLoaded] = useState(false);
   const [hasDraftChanges, setHasDraftChanges] = useState(false);
   const [isSelectionPanelCollapsed, setIsSelectionPanelCollapsed] = useState(true);
-  const [selectedNodeKeys, setSelectedNodeKeys] = useState<Set<string>>(new Set());
+  const [selectedNodeKeys, setSelectedNodeKeys] = useState<Set<EncodedBundleNodeKey>>(new Set());
   const [configChangeTrigger, setConfigChangeTrigger] = useState(0);
 
   // Preview/Publish modal state
@@ -87,8 +87,8 @@ const BundleEditor: React.FC = () => {
   const [previewStartPage, setPreviewStartPage] = useState<{ title: string; sourceGraphSubdirectory?: string; sourceId?: string } | undefined>();
   const [previewModalTab, setPreviewModalTab] = useState<PreviewModalTab>('bundlePreview');
   const [previewCustomize, setPreviewCustomize] = useState(false);
-  const [previewStartKey, setPreviewStartKey] = useState<string | null>(null);
-  const [focusedNodeKey, setFocusedNodeKey] = useState<string | null>(null);
+  const [previewStartKey, setPreviewStartKey] = useState<EncodedBundleNodeKey | null>(null);
+  const [focusedNodeKey, setFocusedNodeKey] = useState<EncodedBundleNodeKey | null>(null);
   const [hooksHaveErrors, setHooksHaveErrors] = useState(false); // Track if hooks have load errors
 
   const [hasPublishedVersions, setHasPublishedVersions] = useState(false);
@@ -425,7 +425,7 @@ const BundleEditor: React.FC = () => {
   useEffect(() => {
     if (!graph || selectedNodeKeys.size === 0) return;
 
-    const currentNodeKeys = new Set<string>(graph.getAllNodes().map(node => node.bundleNodeKey));
+    const currentNodeKeys = new Set<EncodedBundleNodeKey>(graph.getAllNodes().map(node => node.bundleNodeKey));
     const filteredSelection = new Set(
       Array.from(selectedNodeKeys).filter(bundleNodeKey => currentNodeKeys.has(bundleNodeKey))
     );
@@ -635,7 +635,7 @@ const BundleEditor: React.FC = () => {
     }
   };
 
-  const handlePreviewPage = (bundleNodeKey: string) => {
+  const handlePreviewPage = (bundleNodeKey: EncodedBundleNodeKey) => {
     if (!slug || !graph) return;
     if (isModalBusy) return;
 
@@ -920,14 +920,14 @@ const BundleEditor: React.FC = () => {
       const tab = parameters.tab ? PREVIEW_TAB_BY_PLACE_TAB[parameters.tab] : parameters.step === 'share' ? 'publish' : 'bundlePreview';
       let startPage: typeof previewStartPage;
       if (parameters.start) {
-        const page = (await loadedGraph()).getNode(parameters.start);
+        const page = (await loadedGraph()).getNode(encodedBundleNodeKey(parameters.start));
         if (!page) return `its start page ${parameters.start} is not in this bundle`;
         startPage = { title: page.data?.title || page.label || parameters.start, sourceGraphSubdirectory: page.sourceGraphSubdirectory, sourceId: page.sourceId };
       }
       setPreviewModalTab(tab ?? 'bundlePreview');
       setPreviewCustomize(parameters.customize === 'open');
       setPreviewStartPage(startPage);
-      setPreviewStartKey(parameters.start ?? null);
+      setPreviewStartKey(parameters.start ? encodedBundleNodeKey(parameters.start) : null);
       setIsPublishModalOpen(true);
       return true;
     },
@@ -958,8 +958,17 @@ const BundleEditor: React.FC = () => {
   const reportSelection = usePlaceSelection(async references => {
     const loaded = await loadedGraph();
     const nodes = loaded.getAllNodes();
-    const resolved = references.flatMap(reference => {
-      const node = 'id' in reference ? nodes.find(candidate => candidate.bundleNodeId === reference.id) : loaded.getNode(reference.key);
+    const resolved = references.flatMap<{ reference: PlaceNodeReference; key: EncodedBundleNodeKey }>(reference => {
+      if ('id' in reference) {
+        const node = nodes.find(candidate => candidate.bundleNodeId === reference.id);
+        return node ? [{ reference, key: node.bundleNodeKey }] : [];
+      }
+      // Invalid external addresses are unresolved selections; other references
+      // in the same link must still reach their pages.
+      let key: EncodedBundleNodeKey;
+      try { key = encodedBundleNodeKey(reference.key); }
+      catch { return []; }
+      const node = loaded.getNode(key);
       return node ? [{ reference, key: node.bundleNodeKey }] : [];
     });
     setSelectedNodeKeys(new Set(resolved.map(item => item.key)));
@@ -1320,3 +1329,7 @@ const BundleEditor: React.FC = () => {
 };
 
 export default BundleEditor; 
+
+import type { EncodedBundleNodeKey } from '../../../../../../contracts/types/bundleNodeKey.js';
+
+import { encodedBundleNodeKey } from '../../../../../../shared_code/utils/bundleNodeKey.js';

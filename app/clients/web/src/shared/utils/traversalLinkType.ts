@@ -6,7 +6,7 @@ import type { BundleNodeTraversalDetails } from '../../../../../contracts/types/
 export type TraversalLinkType = NonNullable<BundleNodeTraversalDetails['link_type']> | 'unknown';
 
 /** Direction is relative to the previous step, including when the stored edge points backwards. */
-export function traversalLinkType(graph: Graph, previousKey: string | undefined, key: string): TraversalLinkType {
+export function traversalLinkType(graph: Graph, previousKey: EncodedBundleNodeKey | undefined, key: EncodedBundleNodeKey): TraversalLinkType {
   if (previousKey === undefined) return 'start';
   const forward = graph.getOutgoingEdges(previousKey).find(edge => edge.target === key);
   if (forward && forward.bundleEdgeKind !== 'semanticLink') return forward.bundleEdgeKind;
@@ -19,3 +19,5 @@ export function traversalLinkType(graph: Graph, previousKey: string | undefined,
   if (reverse) return 'inlink';
   return 'unknown';
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';

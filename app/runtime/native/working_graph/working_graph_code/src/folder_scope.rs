@@ -302,15 +302,15 @@ pub fn build_folder_scope_projection(
     for locator in &folder_locators {
         if let Some(parent) = parent_folder(locator, &materialized_folders) {
             containment_edges.push(StructuralEdge {
-                source: format!("folder:{parent}"),
-                target: format!("folder:{locator}"),
+                source: crate::node_key::folder_key(&parent),
+                target: crate::node_key::folder_key(locator),
                 bundle_edge_kind: "directoryContainment",
             });
         }
     }
     for file in &contained_files {
         containment_edges.push(StructuralEdge {
-            source: format!("folder:{}", file.source_graph_subdirectory),
+            source: crate::node_key::folder_key(&file.source_graph_subdirectory),
             target: file.bundle_node_key(),
             bundle_edge_kind: "directoryContainment",
         });
@@ -377,7 +377,7 @@ pub fn build_folder_scope_projection(
         let blacklist = nearest_blacklisted_folder(configs, locator);
         let policy = most_specific_folder_config(configs, locator);
         structural_nodes.push(FolderScopeNode {
-            bundle_node_key: format!("folder:{locator}"),
+            bundle_node_key: crate::node_key::folder_key(locator),
             bundle_node_id: config.map(|config| config.bundle_node_id().to_string()),
             bundle_node_kind: "folder",
             bundle_node_name: config
@@ -390,7 +390,7 @@ pub fn build_folder_scope_projection(
             effective_folder_policy_bundle_node_id: policy
                 .map(|config| config.bundle_node_id().to_string()),
             path: paths
-                .get(&format!("folder:{locator}"))
+                .get(&crate::node_key::folder_key(locator))
                 .cloned()
                 .unwrap_or_default(),
         });

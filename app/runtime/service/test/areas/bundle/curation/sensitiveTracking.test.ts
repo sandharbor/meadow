@@ -51,7 +51,7 @@ describe('single-file sensitive tracking', () => {
 
   it('keeps targeted-set and all-safe commands free of a sensitive override', () => {
     expect(() => parseTrackBundleOptions([
-      'example', '--node-key', 'private.md', '--include-sensitive',
+      'example', '--node-key', 'file:private.md', '--include-sensitive',
     ])).toThrow(/Unknown option: --include-sensitive/);
     expect(() => parseTrackBundleOptions([
       'example', '--all-safe', '--include-sensitive',

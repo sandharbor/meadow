@@ -17,7 +17,7 @@ limitations under the License.
 import type { BundleEdgeKind } from './graph.js';
 
 export interface FolderScopeSnapshotNode {
-  bundleNodeKey: string;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeId?: string;
   bundleNodeKind: 'file' | 'folder' | 'collection';
   bundleNodeName: string;
@@ -30,8 +30,9 @@ export interface FolderScopeSnapshotNode {
 }
 
 export interface FolderScopeGraphSnapshot {
+  keyEncodingVersion?: 1;
   nodes: FolderScopeSnapshotNode[];
-  edges: Array<{ source: string; target: string; bundleEdgeKind: BundleEdgeKind }>;
+  edges: Array<{ source: EncodedBundleNodeKey; target: EncodedBundleNodeKey; bundleEdgeKind: BundleEdgeKind }>;
   folderScope?: {
     skippedCounts: Record<string, number>;
     skippedPaths: Array<{ path: string; reason: string }>;
@@ -49,7 +50,7 @@ export interface FolderScopeChangeItem {
   code: string;
   message: string;
   bundleNodeId?: string;
-  bundleNodeKey?: string;
+  bundleNodeKey?: EncodedBundleNodeKey;
   oldLocator?: string;
   newLocator?: string;
   affectedNodeCount?: number;
@@ -63,3 +64,5 @@ export interface FolderScopeChangeExplanation {
   seedDelta: number;
   skippedCounts: Record<string, number>;
 }
+
+import type { EncodedBundleNodeKey } from './bundleNodeKey.js';

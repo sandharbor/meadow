@@ -16,14 +16,14 @@ limitations under the License.
 
 import fs from 'fs';
 import path from 'path';
-import type { FileBundleNodeConfig, BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { FileBundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import type { SourcePageFileInfo } from '../../../../../../../contracts/types/sourcePageFileInfo.js';
 import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundleConfigPaths.js';
 import {
   rankSourcePageCandidatesWithCount,
   recentSourcePageCandidatesWithCount
 } from '../../../../../../../shared_code/utils/sourcePageSearchUtils.js';
-import { bundleNodeConfigToKey, type BundleNodeConfigMap } from '../../../../shared/bundle-node/nodeKeys.js';
+import { bundleNodeConfigToKey } from '../../../../shared/bundle-node/nodeKeys.js';
 import { runWorkingGraphRaw } from '../../../../shared/utils/workingGraphUtils.js';
 import { sourceGraphPath } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { loadValidatedBundleNodeConfiguration } from '../../../../shared/bundle-node/bundleNodeConfigLoader.js';
@@ -59,14 +59,6 @@ export interface OpenKnowledgeFormatLogPageOptions {
   count: number;
 }
 
-function buildBundleNodeConfigMap(nodes: BundleNodeConfig[]): BundleNodeConfigMap {
-  const result: BundleNodeConfigMap = {};
-  for (const conf of nodes) {
-    result[bundleNodeConfigToKey(conf)] = conf;
-  }
-  return result;
-}
-
 function sourcePathForConfig(config: FileBundleNodeConfig): string {
   const fileType = config.fileType || 'md';
   const filename = fileType === 'excalidraw'
@@ -95,7 +87,6 @@ function pageInfoForConfig(config: FileBundleNodeConfig, trackedContentDir: stri
 async function reachableMarkdownPages(bundleDirectory: string): Promise<SourcePageFileInfo[]> {
   const { bundleConfig, nodes } = loadValidatedBundleNodeConfiguration(bundleDirectory);
   const bundleNodeConfPath = BundleConfigPaths.getBundleNodeConfigFile(bundleDirectory);
-  const bundleNodeConfs = buildBundleNodeConfigMap(nodes);
   const trackedContentDir = BundleConfigPaths.getTrackedPageContentDir(bundleDirectory);
   const raw = await runWorkingGraphRaw({
     graphRoot: trackedContentDir,
@@ -110,12 +101,12 @@ async function reachableMarkdownPages(bundleDirectory: string): Promise<SourcePa
     allowLowerDepths: false,
   });
   const output = JSON.parse(raw) as WorkingGraphOutput;
-  const reachableKeys = new Set<string>();
+  const reachableKeys = new Set<EncodedBundleNodeKey>();
   for (const node of output.nodes) {
-    reachableKeys.add(node.bundleNodeKey);
+    reachableKeys.add(encodedBundleNodeKey(node.bundleNodeKey));
   }
 
-  return Object.values(bundleNodeConfs)
+  return nodes
     .filter((config): config is FileBundleNodeConfig => config.bundleNodeKind === 'file' && config.fileType === 'md')
     .filter(config => reachableKeys.has(bundleNodeConfigToKey(config)))
     .map(config => pageInfoForConfig(config, trackedContentDir));
@@ -183,3 +174,6 @@ export async function getOpenKnowledgeFormatLogPageOptions(
     count: ranked.totalCount,
   };
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

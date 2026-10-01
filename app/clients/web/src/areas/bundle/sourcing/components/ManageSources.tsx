@@ -37,7 +37,7 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
     const groups = new Map<string, Set<string>>();
     for (const diagnostic of graph.sourceDiagnostics) {
       if (diagnostic.code !== 'unregisteredSource') continue;
-      const node = graph.getNode(diagnostic.path) ?? graph.getNode(`/${diagnostic.path}`);
+      const node = graph.getNode(serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(diagnostic.path)));
       if (!node) continue;
       const source = graph.sources.find(source => source.id === node.sourceId);
       const relativePath = `${node.sourceGraphSubdirectory ? `${node.sourceGraphSubdirectory}/` : ''}${node.bundleNodeName}`;
@@ -49,7 +49,7 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
     return groups;
   }, [graph]);
   const notices = [...new Set(graph.sourceDiagnostics.filter(diagnostic => {
-    const node = graph.getNode(diagnostic.path) ?? graph.getNode(`/${diagnostic.path}`);
+    const node = graph.getNode(serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(diagnostic.path)));
     return diagnostic.code === 'unregisteredSource' && node && !node.isFrontierNode && !node.isFrontierImageExtension && !ignored.includes(diagnostic.requestedSource);
   }).map(diagnostic => diagnostic.requestedSource))];
   const open = isOpen || reviewReferences;
@@ -156,3 +156,5 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
     </Modal>, document.body)}
   </>;
 }
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceFilePath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

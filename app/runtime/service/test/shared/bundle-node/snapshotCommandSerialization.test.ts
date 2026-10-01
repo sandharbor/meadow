@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runSerializedBundleNodeMutation } from '../../../src/shared/bundle-node/bundleNodeMutationQueue.js';
+import { makeBundleNodeKey } from '../../../src/shared/bundle-node/nodeKeys.js';
 import { acceptSnapshotCommand } from '../../../src/areas/bundle/sourcing/services/acceptSnapshotCommand.js';
 import { trackSnapshotAdditions } from '../../../src/areas/bundle/curation/services/snapshotTracking.js';
 import type { SourceSnapshotAcceptance } from '../../../../../contracts/types/sourcing.js';
@@ -31,7 +32,7 @@ describe('area commands own their shared bundle mutation safeguards', () => {
       await gate.promise;
       state.acceptedId = 'new';
     });
-    const tracking = trackSnapshotAdditions('/bundles/bundle', { snapshotId: 'old', nodeKeys: ['page.md'] });
+    const tracking = trackSnapshotAdditions('/bundles/bundle', { snapshotId: 'old', nodeKeys: [makeBundleNodeKey('page')] });
     const rejected = expect(tracking).rejects.toThrow(/snapshot changed/);
     gate.resolve();
     await running;

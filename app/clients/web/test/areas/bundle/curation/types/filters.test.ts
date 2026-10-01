@@ -48,7 +48,7 @@ describe('Bundle Node Selectors', () => {
     // Add test nodes
     const nodes: IBundleNode[] = [
       {
-        bundleNodeKey: '1' as IBundleNode['bundleNodeKey'],
+        bundleNodeKey: testKey('1'),
         bundleNodeKind: 'file',
         label: 'A',
         bundleNodeName: 'Alpha Page',
@@ -60,7 +60,7 @@ describe('Bundle Node Selectors', () => {
         getIdent: () => 'test/Alpha Page.md'
       },
       {
-        bundleNodeKey: '2' as IBundleNode['bundleNodeKey'],
+        bundleNodeKey: testKey('2'),
         bundleNodeKind: 'file',
         label: 'B',
         bundleNodeName: 'Beta Process',
@@ -72,7 +72,7 @@ describe('Bundle Node Selectors', () => {
         getIdent: () => 'test/Beta Process.md'
       },
       {
-        bundleNodeKey: '3' as IBundleNode['bundleNodeKey'],
+        bundleNodeKey: testKey('3'),
         bundleNodeKind: 'file',
         label: 'C',
         bundleNodeName: 'Gamma Service',
@@ -85,7 +85,7 @@ describe('Bundle Node Selectors', () => {
         getIdent: () => 'test/Gamma Service.md'
       },
       {
-        bundleNodeKey: '4' as IBundleNode['bundleNodeKey'],
+        bundleNodeKey: testKey('4'),
         bundleNodeKind: 'file',
         label: 'D',
         bundleNodeName: 'Delta Handler',
@@ -98,7 +98,7 @@ describe('Bundle Node Selectors', () => {
         getIdent: () => 'test/Delta Handler.md'
       },
       {
-        bundleNodeKey: '5' as IBundleNode['bundleNodeKey'],
+        bundleNodeKey: testKey('5'),
         bundleNodeKind: 'file',
         label: 'E',
         bundleNodeName: 'Epsilon Data',
@@ -111,7 +111,7 @@ describe('Bundle Node Selectors', () => {
         getIdent: () => 'test/Epsilon Data.md'
       },
       {
-        bundleNodeKey: '6' as IBundleNode['bundleNodeKey'],
+        bundleNodeKey: testKey('6'),
         bundleNodeKind: 'file',
         label: 'F',
         bundleNodeName: 'Phi Process',
@@ -124,7 +124,7 @@ describe('Bundle Node Selectors', () => {
         getIdent: () => 'test/Phi Process.md'
       },
       {
-        bundleNodeKey: '7' as IBundleNode['bundleNodeKey'],
+        bundleNodeKey: testKey('7'),
         bundleNodeKind: 'file',
         label: 'G',
         bundleNodeName: 'Off Topic Page',
@@ -137,7 +137,7 @@ describe('Bundle Node Selectors', () => {
         getIdent: () => 'test/Off Topic Page.md'
       },
       {
-        bundleNodeKey: '8' as IBundleNode['bundleNodeKey'],
+        bundleNodeKey: testKey('8'),
         bundleNodeKind: 'file',
         label: 'H',
         bundleNodeName: 'Another Off Topic',
@@ -160,14 +160,14 @@ describe('Bundle Node Selectors', () => {
       const selectedNodeKeys = selector.select(graph);
 
       expect(selectedNodeKeys.size).toBe(4);
-      expect(selectedNodeKeys.has('1')).toBe(true);
-      expect(selectedNodeKeys.has('3')).toBe(true);
-      expect(selectedNodeKeys.has('5')).toBe(true);
-      expect(selectedNodeKeys.has('8')).toBe(true);
-      expect(selectedNodeKeys.has('2')).toBe(false);
-      expect(selectedNodeKeys.has('4')).toBe(false);
-      expect(selectedNodeKeys.has('6')).toBe(false);
-      expect(selectedNodeKeys.has('7')).toBe(false);
+      expect(selectedNodeKeys.has(testKey('1'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('3'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('5'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('8'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('2'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('4'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('6'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('7'))).toBe(false);
     });
   });
 
@@ -177,14 +177,14 @@ describe('Bundle Node Selectors', () => {
       const selectedNodeKeys = selector.select(graph);
 
       expect(selectedNodeKeys.size).toBe(4);
-      expect(selectedNodeKeys.has('2')).toBe(true);
-      expect(selectedNodeKeys.has('4')).toBe(true);
-      expect(selectedNodeKeys.has('6')).toBe(true);
-      expect(selectedNodeKeys.has('7')).toBe(true);
-      expect(selectedNodeKeys.has('1')).toBe(false);
-      expect(selectedNodeKeys.has('3')).toBe(false);
-      expect(selectedNodeKeys.has('5')).toBe(false);
-      expect(selectedNodeKeys.has('8')).toBe(false);
+      expect(selectedNodeKeys.has(testKey('2'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('4'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('6'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('7'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('1'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('3'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('5'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('8'))).toBe(false);
     });
   });
 
@@ -194,10 +194,10 @@ describe('Bundle Node Selectors', () => {
       const selectedNodeKeys = selector.select(graph);
 
       expect(selectedNodeKeys.size).toBe(2);
-      expect(selectedNodeKeys.has('3')).toBe(true);
-      expect(selectedNodeKeys.has('4')).toBe(true);
-      expect(selectedNodeKeys.has('1')).toBe(false);
-      expect(selectedNodeKeys.has('2')).toBe(false);
+      expect(selectedNodeKeys.has(testKey('3'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('4'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('1'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('2'))).toBe(false);
     });
   });
 
@@ -207,12 +207,12 @@ describe('Bundle Node Selectors', () => {
       const selectedNodeKeys = selector.select(graph);
 
       expect(selectedNodeKeys.size).toBe(2);
-      expect(selectedNodeKeys.has('5')).toBe(true);
-      expect(selectedNodeKeys.has('6')).toBe(true);
-      expect(selectedNodeKeys.has('1')).toBe(false);
-      expect(selectedNodeKeys.has('2')).toBe(false);
-      expect(selectedNodeKeys.has('3')).toBe(false);
-      expect(selectedNodeKeys.has('4')).toBe(false);
+      expect(selectedNodeKeys.has(testKey('5'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('6'))).toBe(true);
+      expect(selectedNodeKeys.has(testKey('1'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('2'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('3'))).toBe(false);
+      expect(selectedNodeKeys.has(testKey('4'))).toBe(false);
     });
   });
 
@@ -227,14 +227,14 @@ describe('Bundle Node Selectors', () => {
       const selector = createSearchByTitleSelector('alpha');
       const selectedNodeKeys = selector.select(graph);
       expect(selectedNodeKeys.size).toBe(1);
-      expect(selectedNodeKeys.has('1')).toBe(true);
+      expect(selectedNodeKeys.has(testKey('1'))).toBe(true);
     });
 
     it('selects multiple pages with partial matches', () => {
       const selector = createSearchByTitleSelector('service');
       const selectedNodeKeys = selector.select(graph);
       expect(selectedNodeKeys.size).toBe(1);
-      expect(selectedNodeKeys.has('3')).toBe(true); // Gamma Service
+      expect(selectedNodeKeys.has(testKey('3'))).toBe(true); // Gamma Service
     });
 
     it('handles special characters in search', () => {
@@ -246,25 +246,29 @@ describe('Bundle Node Selectors', () => {
 
   describe('Folder Page Selector', () => {
     it('selects pages in a folder and all of its descendants', () => {
-      const nestedPage = graph.getNode('2');
+      const nestedPage = graph.getNode(testKey('2'));
       if (!nestedPage) throw new Error('Expected nested test page');
       nestedPage.sourceGraphSubdirectory = 'test/nested';
 
       const selectedNodeKeys = createFolderNodeSelector('test').select(graph);
 
       expect(selectedNodeKeys.size).toBe(8);
-      expect(selectedNodeKeys.has('2')).toBe(true);
+      expect(selectedNodeKeys.has(testKey('2'))).toBe(true);
     });
 
     it('selects only directly-rooted pages for the root folder', () => {
-      const rootPage = graph.getNode('1');
+      const rootPage = graph.getNode(testKey('1'));
       if (!rootPage) throw new Error('Expected root test page');
       rootPage.sourceGraphSubdirectory = '';
 
       const selectedNodeKeys = createFolderNodeSelector('').select(graph);
 
-      expect(selectedNodeKeys).toEqual(new Set(['1']));
+      expect(selectedNodeKeys).toEqual(testKeySet(['1']));
     });
   });
 
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';
+
+import { testKeySet } from '../../../../shared/nodeKeys.js';

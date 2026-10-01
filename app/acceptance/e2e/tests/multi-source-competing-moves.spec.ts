@@ -50,7 +50,7 @@ test('Multi-source competing moves never assign the old identity to either ident
   expect(updated.filter(node => node.bundleNodeName === 'Inside' && node.sourceGraphSubdirectory === 'Moved')).toEqual([]);
   expect(updated.some(node => node.bundleNodeId === original.bundleNodeId)).toBe(false);
   await editor.switchToListView();
-  for (const source of ['source000002', 'source000003']) await editor.expectListViewNodeVisible(`_mw_sources/${source}/Moved/Inside.md`, true);
+  for (const source of ['source000002', 'source000003']) await editor.expectListViewNodeVisible(`file:_mw_sources/${source}/Moved/Inside.md`, true);
   await addKeyFrame(sourceSnapshot);
   await checkpoint('explicitly keeping pages separate removes the old identity and leaves both new pages untracked');
 

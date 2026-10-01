@@ -9,7 +9,7 @@ import BundleNodeSelectionSidebar from '../../src/areas/bundle/curation/componen
 import { explainedTraversalRoutes, remainingTraversalDepths } from '../../src/shared/utils/traversalRoutes.js';
 
 function step(name: string, depth: number, outlinks: number, inlinks: number, via: 'start' | 'inlink' | 'outlink' = 'outlink'): BundleNodeTraversalPathStep {
-  return { bundleNodeKey: `${name}.md`, depth, remaining_depth: outlinks, remaining_inlinks_depth: inlinks,
+  return { bundleNodeKey: testKey(`${name}.md`), depth, remaining_depth: outlinks, remaining_inlinks_depth: inlinks,
     retainedForTraversal: true,
     traversal_details: { link_type: via } };
 }
@@ -23,15 +23,15 @@ function fixture() {
   const longer = [start, override, step('Hub', 2, 2, 1)];
   for (const route of [[start], [start, override], direct]) {
     const last = route.at(-1)!;
-    graph.addNode({ ...last, bundleNodeKey: last.bundleNodeKey as IBundleNode['bundleNodeKey'],
-      bundleNodeKind: 'file', bundleNodeName: last.bundleNodeKey.slice(0, -3), fileType: 'md', sourceGraphSubdirectory: '',
+    graph.addNode({ ...last, bundleNodeKey: testKey(last.bundleNodeKey),
+      bundleNodeKind: 'file', bundleNodeName: last.bundleNodeKey.slice('file:'.length, -3), fileType: 'md', sourceGraphSubdirectory: '',
       label: last.bundleNodeKey, path: route.map(s => s.bundleNodeKey), traversal_path_steps: route,
       getIdent: () => last.bundleNodeKey });
   }
-  graph.addEdge({ source: 'Start.md', target: 'Hub.md', bundleEdgeKind: 'semanticLink' });
-  graph.addEdge({ source: 'Start.md', target: 'Taxonomy.md', bundleEdgeKind: 'semanticLink' });
-  graph.addEdge({ source: 'Taxonomy.md', target: 'Hub.md', bundleEdgeKind: 'semanticLink' });
-  const node = graph.getNode('Hub.md')!;
+  graph.addEdge({ source: testKey('Start.md'), target: testKey('Hub.md'), bundleEdgeKind: 'semanticLink' });
+  graph.addEdge({ source: testKey('Start.md'), target: testKey('Taxonomy.md'), bundleEdgeKind: 'semanticLink' });
+  graph.addEdge({ source: testKey('Taxonomy.md'), target: testKey('Hub.md'), bundleEdgeKind: 'semanticLink' });
+  const node = graph.getNode(testKey('Hub.md'))!;
   node.traversal_states = [{ remaining_outlinks_depth: 2, remaining_inlinks_depth: 1 }];
   node.traversal_alternative_routes = [longer];
   return { graph, node };
@@ -136,7 +136,7 @@ describe('traversal arrivals', () => {
   it.each([false, true])('shows maximum remaining or pre-override depths in the sidebar (zero override: %s)', (zeroOverride) => {
     const { graph, node } = fixture();
     if (zeroOverride) applyZeroInlinkOverride(node);
-    render(<BundleNodeSelectionSidebar graph={graph} selectedNodeKeys={new Set(['Hub.md'])}
+    render(<BundleNodeSelectionSidebar graph={graph} selectedNodeKeys={testKeySet(new Set(['Hub.md']))}
       onClose={vi.fn()} onSelectedNodeKeysChange={vi.fn()} onTrackPage={vi.fn()} onBlacklistPage={vi.fn()}
       onTrackSelected={vi.fn()} onBlacklistSelected={vi.fn()} isEffectivelySensitive={() => false}
       onUpdatePageConfig={vi.fn()} onDeletePageConfigKey={vi.fn()} onPreviewPage={vi.fn()}
@@ -144,7 +144,9 @@ describe('traversal arrivals', () => {
     fireEvent.click(screen.getByText('Details'));
     expect(screen.getByText('Inlink Depth').parentElement).toHaveTextContent(zeroOverride ? 'Inlink Depthoverride1→0' : 'Inlink Depth1');
     expect(screen.getByText('Outlink Depth').parentElement).toHaveTextContent('Outlink Depth2');
-    expect(node.path).toEqual(['Start.md', 'Hub.md']);
+    expect(node.path).toEqual(['Start.md', 'Hub.md'].map(testKey));
     expect(node.remaining_inlinks_depth).toBe(0);
   });
 });
+
+import { testKeySet, testKey } from './nodeKeys.js';

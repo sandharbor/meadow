@@ -30,7 +30,7 @@ import { BundleConfigPaths } from '../../../../../../../shared_code/paths/bundle
 import { rewriteResolvedSourceUrls } from '../source-material/portableSourceLinks.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
-type AllLinkResolutionMaps = Map<string, LinkResolutionMap>;
+type AllLinkResolutionMaps = Map<EncodedBundleNodeKey, LinkResolutionMap>;
 
 export type OpenKnowledgeFormatLogSource =
   | { mode: 'auto' }
@@ -114,12 +114,12 @@ function fileTypeForSourcePath(sourcePath: string): string {
   return path.posix.extname(sourcePath).slice(1);
 }
 
-function pageIdentForSourcePath(sourcePath: string): string {
+function pageIdentForSourcePath(sourcePath: string): EncodedBundleNodeKey {
   const dir = relativeDirFor(sourcePath);
   const fileType = fileTypeForSourcePath(sourcePath);
   const title = fileType === 'excalidraw' ? markdownTitleForSourcePath(sourcePath) : path.posix.basename(sourcePath, `.${fileType}`);
   const filename = `${title}.${fileType}`;
-  return dir ? `${dir}/${filename}` : `/${filename}`;
+  return serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(dir ? `${dir}/${filename}` : filename));
 }
 
 function sourcePathForConfig(config: BundleNodeConfig): string {
@@ -567,3 +567,7 @@ export function prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory(
     logOutputPath: logSourcePath ? ROOT_LOG_PATH : null,
   };
 }
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

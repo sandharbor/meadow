@@ -40,11 +40,11 @@ interface GraphVisProps {
   graph: Graph;
   displayGraph: DisplayGraph;
   filters: IFilter[];
-  selectedNodeKeys: Set<string>;
-  onSelectedNodeKeysChange: (bundleNodeKeys: Set<string>) => void;
+  selectedNodeKeys: Set<EncodedBundleNodeKey>;
+  onSelectedNodeKeysChange: (bundleNodeKeys: Set<EncodedBundleNodeKey>) => void;
   bundleSlug: string;
   graphUpdateTrigger?: number;
-  onBundleNodeContextMenu?: (bundleNodeKey: string, x: number, y: number) => void;
+  onBundleNodeContextMenu?: (bundleNodeKey: EncodedBundleNodeKey, x: number, y: number) => void;
   isBundlePreviewOnlyActive?: boolean;
   bundlePreviewHover?: boolean;
   isFolderBasedBundle: boolean;
@@ -63,14 +63,14 @@ const GraphVis: React.FC<GraphVisProps> = ({
   bundlePreviewHover,
   isFolderBasedBundle,
 }) => {
-  const [positions, setPositions] = useState<Map<string, NodePosition>>(new Map());
+  const [positions, setPositions] = useState<Map<EncodedBundleNodeKey, NodePosition>>(new Map());
   const [layoutGuides, setLayoutGuides] = useState<GraphLayoutGuide[]>([]);
   const [showSemanticEdges, setShowSemanticEdges] = useState(true);
   const [showStructuralEdges, setShowStructuralEdges] = useState(true);
-  const positionsRef = useRef<Map<string, NodePosition>>(new Map());
+  const positionsRef = useRef<Map<EncodedBundleNodeKey, NodePosition>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNode, setHoveredNode] = useState<{
-    id: string;
+    id: EncodedBundleNodeKey;
     x: number;
     y: number;
     title: string;
@@ -84,7 +84,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
 
   // Compute set of "bundle page" IDs (tracked, not blacklisted, not frontier)
   const previewBundleNodeKeys = useMemo(() => {
-    const ids = new Set<string>();
+    const ids = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach(page => {
       if (page.tracked && !page.blacklisted && !isUntrackableFrontierNode(page)) {
         ids.add(page.bundleNodeKey);
@@ -147,7 +147,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
       const easeProgress = progress < 0.5
         ? 2 * progress * progress
         : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-      const currentPositions = new Map<string, NodePosition>();
+      const currentPositions = new Map<EncodedBundleNodeKey, NodePosition>();
 
       newPositions.forEach((endPos, bundleNodeKey) => {
         const startPos = startPositions.get(bundleNodeKey);
@@ -183,13 +183,13 @@ const GraphVis: React.FC<GraphVisProps> = ({
   }, []);
 
   // Get pages within a selection box
-  const getNodeKeysInBox = useCallback((box: SelectionBox): string[] => {
+  const getNodeKeysInBox = useCallback((box: SelectionBox): EncodedBundleNodeKey[] => {
     const minX = Math.min(box.startX, box.currentX);
     const maxX = Math.max(box.startX, box.currentX);
     const minY = Math.min(box.startY, box.currentY);
     const maxY = Math.max(box.startY, box.currentY);
 
-    const nodeKeysInBox: string[] = [];
+    const nodeKeysInBox: EncodedBundleNodeKey[] = [];
     displayGraph.allDisplayNodes.forEach(page => {
       if (!page.isVisible) return;
       const pos = positions.get(page.bundleNodeKey);
@@ -357,7 +357,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
     }
   }, [isPanning]);
 
-  const handlePageClick = (bundleNodeKey: string) => {
+  const handlePageClick = (bundleNodeKey: EncodedBundleNodeKey) => {
     const next = new Set(selectedNodeKeys);
     if (next.has(bundleNodeKey)) {
       next.delete(bundleNodeKey);
@@ -919,3 +919,5 @@ const GraphVis: React.FC<GraphVisProps> = ({
   );
 };
 export default GraphVis;
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

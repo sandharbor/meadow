@@ -4,10 +4,10 @@ import type { BundleNodeTraversalPathStep } from '../../../../../contracts/types
 import type { Graph } from '../../../../../contracts/types/graph.js';
 
 /** Use the displayed snapshot's registry, including steps absent from its node inventory. */
-export function traversalSourceName(graph: Graph, key: string): string | undefined {
+export function traversalSourceName(graph: Graph, key: EncodedBundleNodeKey): string | undefined {
   if (graph.sources.length < 2) return undefined;
-  const sourceId = graph.getNode(key)?.sourceId
-    ?? /^(?:folder:)?\/?_mw_sources\/([a-z0-9]{12})(?:\/|$)/.exec(key)?.[1];
+  const address = parseBundleNodeKey(key);
+  const sourceId = graph.getNode(key)?.sourceId ?? (address.kind === 'collection' ? undefined : address.sourceId);
   return graph.sources.find(source => source.id === sourceId)?.name;
 }
 
@@ -32,7 +32,7 @@ export function inheritedTraversalDepths(node: IBundleNode) {
 }
 
 export interface ExplainedTraversalRoute {
-  path: string[];
+  path: EncodedBundleNodeKey[];
   steps?: BundleNodeTraversalPathStep[];
   outlinks: number;
   inlinks: number;
@@ -89,3 +89,7 @@ export function defaultTraversalRoute(routes: ExplainedTraversalRoute[]): number
       || (route.inlinksBeforeOverride ?? 0) > (routes[0].inlinksBeforeOverride ?? 0)));
   return overridden < 0 ? 0 : overridden;
 }
+
+import { parseBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
+
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';

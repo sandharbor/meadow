@@ -16,7 +16,7 @@
   },
   "nodes": [
     {
-      "bundleNodeKey": "/t012 ---- title with six numbers 123456.md",
+      "bundleNodeKey": "file:t012 ---- title with six numbers 123456.md",
       "bundleNodeKind": "file",
       "label": "t012 ---- title with six numbers 123456",
       "bundleNodeName": "t012 ---- title with six numbers 123456",
@@ -29,9 +29,9 @@
       "remaining_depth": 2,
       "remaining_inlinks_depth": 98,
       "path": [
-        "/main page.md",
-        "/t012 - custom filters.md",
-        "/t012 ---- title with six numbers 123456.md"
+        "file:main page.md",
+        "file:t012 - custom filters.md",
+        "file:t012 ---- title with six numbers 123456.md"
       ],
       "isFrontierNode": false,
       "isFrontierImageExtension": false

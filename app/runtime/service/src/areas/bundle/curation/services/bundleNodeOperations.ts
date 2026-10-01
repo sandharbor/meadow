@@ -84,7 +84,7 @@ interface NodeContext {
   loaded: LoadedWorkingGraph;
   graph: Graph;
   node: IBundleNode;
-  effectivelySensitive: Set<string>;
+  effectivelySensitive: Set<EncodedBundleNodeKey>;
 }
 
 function normalizedPath(value: string): string {
@@ -121,7 +121,6 @@ function resolveNode(nodes: IBundleNode[], locator: BundleNodeLocator): IBundleN
   const requested = normalizedPath(locator.value);
   const matches = nodes.filter(node => (
     node.bundleNodeKey === locator.value
-    || normalizedPath(node.bundleNodeKey) === requested
     || sourcePathFor(node) === requested
   ));
   if (matches.length === 1) return matches[0];
@@ -192,7 +191,7 @@ function details(node: IBundleNode): BundleNodeDetails {
 }
 
 function descendants(graph: Graph, start: IBundleNode, deeperOnly: boolean): BundleNodeReference[] {
-  const adjacency = new Map<string, Array<{ key: string; structural: boolean }>>();
+  const adjacency = new Map<string, Array<{ key: EncodedBundleNodeKey; structural: boolean }>>();
   for (const edge of graph.getAllEdges()) {
     const outgoing = adjacency.get(edge.source) ?? [];
     outgoing.push({ key: edge.target, structural: edge.bundleEdgeKind !== 'semanticLink' });
@@ -203,9 +202,9 @@ function descendants(graph: Graph, start: IBundleNode, deeperOnly: boolean): Bun
       adjacency.set(edge.target, reverse);
     }
   }
-  const visited = new Set<string>();
+  const visited = new Set<EncodedBundleNodeKey>();
   const result: BundleNodeReference[] = [];
-  const stack: Array<{ key: string; depth: number }> = [{ key: start.bundleNodeKey, depth: start.depth }];
+  const stack: Array<{ key: EncodedBundleNodeKey; depth: number }> = [{ key: start.bundleNodeKey, depth: start.depth }];
   while (stack.length > 0) {
     const current = stack.pop()!;
     if (visited.has(current.key)) continue;
@@ -284,7 +283,7 @@ function ensureCanUntrack(context: NodeContext): void {
   }
 }
 
-function structuralDescendants(graph: Graph, startKey: string): IBundleNode[] {
+function structuralDescendants(graph: Graph, startKey: EncodedBundleNodeKey): IBundleNode[] {
   const result: IBundleNode[] = [];
   const pending = [startKey];
   const seen = new Set(pending);
@@ -608,3 +607,5 @@ export async function findBundleNode(
     bundles,
   };
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

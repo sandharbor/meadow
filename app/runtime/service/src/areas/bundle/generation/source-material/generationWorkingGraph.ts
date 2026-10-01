@@ -37,8 +37,10 @@ export async function runGenerationWorkingGraph(args: WorkingGraphRunArgs, confi
       immutableSource: true, bundleNodeConfigPath: filename })) as WorkingGraphRustOutput;
     const project = (value: string) => sourceOutputGraphPath(config, value);
     const projectKey = (value: string) => {
-      const mapped = project(value);
-      return mapped.includes('/') || mapped.startsWith('folder:') || mapped.startsWith('collection:') ? mapped : `/${mapped}`;
+      const key = parseBundleNodeKey(value);
+      if (key.kind === 'collection') return serializeBundleNodeKey(key);
+      const mapped = project(bundleNodeKeySourceGraphPath(key));
+      return serializeBundleNodeKey(key.kind === 'file' ? createFileNodeKey(mapped) : createFolderNodeKey(mapped));
     };
     const adjacency = (map: Record<string, string[]>) => Object.fromEntries(Object.entries(map).map(([key, values]) => [projectKey(key), values.map(projectKey)]));
     const steps = (route: NonNullable<WorkingGraphRustOutput['nodes'][number]['traversal_path_steps']>) => route.map(step => ({ ...step, bundleNodeKey: projectKey(step.bundleNodeKey) }));
@@ -65,3 +67,5 @@ export async function runGenerationWorkingGraph(args: WorkingGraphRunArgs, confi
     });
   } finally { fs.rmSync(scratch, { recursive: true, force: true }); }
 }
+
+import { parseBundleNodeKey, bundleNodeKeySourceGraphPath, serializeBundleNodeKey, createFileNodeKey, createFolderNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

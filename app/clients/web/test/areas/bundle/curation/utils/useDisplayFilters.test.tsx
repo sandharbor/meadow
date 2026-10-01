@@ -21,10 +21,9 @@ import type { IFilter } from '../../../../../src/areas/bundle/curation/types/fil
 import { Graph } from '../../../../../../../contracts/types/graph';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import type { FileType } from '../../../../../../../contracts/types/FileType';
-import type { BundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig';
 
 const fileNode = (key: string, fileType: FileType): IBundleNode => ({
-  bundleNodeKey: key as BundleNodeKey,
+  bundleNodeKey: testKey(key),
   bundleNodeName: key,
   bundleNodeKind: 'file',
   sourceGraphSubdirectory: '',
@@ -79,7 +78,7 @@ describe('useDisplayFilters node types', () => {
       isHidden: true,
       actions: [{ type: 'show_titles' }],
     });
-    expect(excalidrawFilter?.bundleNodeSelectors[0].select(graph)).toEqual(new Set(['drawing']));
+    expect(excalidrawFilter?.bundleNodeSelectors[0].select(graph)).toEqual(testKeySet(['drawing']));
   });
 
   it('solos Markdown independently from Excalidraw', () => {
@@ -104,7 +103,7 @@ describe('useDisplayFilters node types', () => {
       isSolo: true,
       isHidden: false,
     });
-    expect(markdownFilter?.bundleNodeSelectors[0].select(graph)).toEqual(new Set(['note']));
+    expect(markdownFilter?.bundleNodeSelectors[0].select(graph)).toEqual(testKeySet(['note']));
   });
 
   it('groups jpg and jpeg files into one JPEG row', () => {
@@ -131,7 +130,7 @@ describe('useDisplayFilters node types', () => {
       isHidden: false,
     });
     expect(jpegFilter?.bundleNodeSelectors[0].select(graph)).toEqual(
-      new Set(['short-extension', 'long-extension'])
+      testKeySet(['short-extension', 'long-extension'])
     );
   });
 
@@ -144,3 +143,7 @@ describe('useDisplayFilters node types', () => {
     expect(result.current.combinedFilters.some(filter => filter.id === 'node-types-filter-excalidraw')).toBe(false);
   });
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';
+
+import { testKeySet } from '../../../../shared/nodeKeys.js';

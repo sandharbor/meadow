@@ -27,7 +27,7 @@ const node = (
   distance: number | undefined,
   bundleNodeName = bundleNodeKey,
 ): GraphLayoutNode => ({
-  bundleNodeKey,
+  bundleNodeKey: testKey(bundleNodeKey),
   bundleNodeKind,
   bundleNodeName,
   distance,
@@ -38,10 +38,10 @@ const edge = (
   source: string,
   target: string,
   bundleEdgeKind: IEdge['bundleEdgeKind'],
-): IEdge => ({ source, target, bundleEdgeKind });
+): IEdge => ({ source: testKey(source), target: testKey(target), bundleEdgeKind });
 
 const position = (layout: ReturnType<typeof calculateGraphLayout>, key: string) => {
-  const result = layout.positions.get(key);
+  const result = layout.positions.get(testKey(key));
   expect(result, `expected a position for ${key}`).toBeDefined();
   return result!;
 };
@@ -189,3 +189,5 @@ describe('calculateGraphLayout', () => {
     expect(layout.guides.map(guide => guide.label)).toContain('Other');
   });
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';

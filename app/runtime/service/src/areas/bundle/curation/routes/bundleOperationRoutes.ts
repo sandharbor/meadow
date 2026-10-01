@@ -139,6 +139,12 @@ router.post('/bundles/:bundleSlug/curation/track-nodes', (req, res, next) => {
     if (Array.isArray(body.nodeKeys) && !body.nodeKeys.every(key => typeof key === 'string' && key.length > 0)) {
       return res.status(400).json({ error: 'Every node key must be a non-empty string' });
     }
+    let nodeKeys: EncodedBundleNodeKey[] = [];
+    try {
+      nodeKeys = ((body.nodeKeys ?? []) as string[]).map(encodedBundleNodeKey);
+    } catch (error) {
+      return res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid bundle node key' });
+    }
     try {
       const result = await runSerializedBundleNodeMutation(
         bundleSlug,
@@ -146,7 +152,7 @@ router.post('/bundles/:bundleSlug/curation/track-nodes', (req, res, next) => {
           bundleSlug,
           body.allSafe === true
             ? { mode: 'all-safe' }
-            : { mode: 'targeted', nodeKeys: body.nodeKeys as string[] },
+            : { mode: 'targeted', nodeKeys },
         ),
       );
       res.json(result);
@@ -157,3 +163,7 @@ router.post('/bundles/:bundleSlug/curation/track-nodes', (req, res, next) => {
 });
 
 export default router;
+
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

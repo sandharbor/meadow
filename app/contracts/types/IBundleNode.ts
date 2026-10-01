@@ -20,7 +20,7 @@ import type {
   FolderBundleNodeConfig,
   BundleNodeConfig,
   BundleNodeId,
-  BundleNodeKey,
+  EncodedBundleNodeKey,
 } from './bundleNodeConfig.js';
 import type { FileType } from './FileType.js';
 import type { BundleNodeTraversalDetails, BundleNodeTraversalStateSummary, BundleNodeTraversalPathStep } from './bundleNodeGraph.js';
@@ -31,7 +31,7 @@ export interface LinkResolvedInfo {
 }
 
 interface BaseBundleNode {
-  bundleNodeKey: BundleNodeKey;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeId?: BundleNodeId;
   label: string; // Auto-generated short identifier (A, B, C, ... Z, AA, AB, etc)
   bundleNodeName: string;
@@ -45,7 +45,7 @@ interface BaseBundleNode {
   depth: number;
   remaining_depth: number;
   remaining_inlinks_depth?: number;
-  path?: string[]; // Traversal path from the start node to this node
+  path?: EncodedBundleNodeKey[]; // Traversal path from the start node to this node
   traversal_details?: BundleNodeTraversalDetails;
   traversal_path_steps?: BundleNodeTraversalPathStep[];
   traversal_alternative_routes?: BundleNodeTraversalPathStep[][];

@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Graph, type IBundleNode } from '../../../../../../../contracts/types/graph';
+import { Graph } from '../../../../../../../contracts/types/graph';
 import ListView from '../../../../../src/areas/bundle/curation/components/ListView';
 import { DisplayGraph } from '../../../../../src/areas/bundle/curation/types/displayGraph';
 
@@ -14,7 +14,7 @@ const sourceGraph = () => {
   ];
   for (const source of graph.sources) {
     graph.addNode({
-      bundleNodeKey: `_mw_sources/${source.id}/Same/Overview.md` as IBundleNode['bundleNodeKey'],
+      bundleNodeKey: testKey(`_mw_sources/${source.id}/Same/Overview.md`),
       bundleNodeKind: 'file',
       bundleNodeName: 'Overview',
       sourceId: source.id,
@@ -52,7 +52,7 @@ describe('ListView source column', () => {
 
   it('keeps the column when filtering leaves only one source visible', () => {
     const graph = new DisplayGraph(sourceGraph());
-    graph.getDisplayNode('_mw_sources/source000001/Same/Overview.md')!.setVisible(false);
+    graph.getDisplayNode(testKey('_mw_sources/source000001/Same/Overview.md'))!.setVisible(false);
     render(<ListView displayGraph={graph} bundleSlug="test" onPageClick={vi.fn()} />);
     expect(screen.getByRole('columnheader', { name: 'Source' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'notes' })).toBeInTheDocument();
@@ -70,3 +70,5 @@ describe('ListView source column', () => {
     expect(within(screen.getAllByRole('row')[0]).getAllByRole('columnheader')).toHaveLength(4);
   });
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';

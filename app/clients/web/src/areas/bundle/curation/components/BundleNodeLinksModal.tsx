@@ -22,32 +22,24 @@ import { Graph } from '../../../../../../../contracts/types/graph';
 interface BundleNodeLinksModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialBundleNodeKey: string;
+  initialBundleNodeKey: EncodedBundleNodeKey;
   graph: Graph;
-  onSelectNode: (bundleNodeKey: string) => void;
-  onDeselectNode: (bundleNodeKey: string) => void;
-  selectedNodeKeys: Set<string>;
+  onSelectNode: (bundleNodeKey: EncodedBundleNodeKey) => void;
+  onDeselectNode: (bundleNodeKey: EncodedBundleNodeKey) => void;
+  selectedNodeKeys: Set<EncodedBundleNodeKey>;
   isEffectivelySensitive: (page: IBundleNode) => boolean;
 }
 
-// Helper to parse a page ID into title (page IDs are in format: "directory/title.fileType" or "/title.fileType")
-function parseBundleNodeKeyToTitle(bundleNodeKey: string): string {
-  const parts = bundleNodeKey.split('/');
-  const filename = parts[parts.length - 1];
+function parseBundleNodeKeyToTitle(key: EncodedBundleNodeKey): string {
+  const value = parseBundleNodeKey(key);
+  if (value.kind === 'collection') return value.bundleNodeId;
+  const filename = value.path.split('/').at(-1) ?? '';
   const dotIndex = filename.lastIndexOf('.');
-  return dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+  return dotIndex > 0 ? filename.slice(0, dotIndex) : filename;
 }
 
-// TODO: this should be centralized somewhere, not defined here
-// Convert link_resolved_target_path to page ID format
-// link_resolved_target_path: "title.md" for root, "subdir/title.md" for subdirectory
-// page ID format: "/title.md" for root, "subdir/title.md" for subdirectory
-function pathToBundleNodeKey(path: string): string {
-  if (!path.includes('/')) {
-    // Root file - add leading slash
-    return `/${path}`;
-  }
-  return path;
+function pathToBundleNodeKey(path: string): EncodedBundleNodeKey {
+  return serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(path));
 }
 
 // Status pill component for consistency
@@ -97,7 +89,7 @@ const BundleNodeLinksModal: React.FC<BundleNodeLinksModalProps> = ({
   isEffectivelySensitive,
 }) => {
   // Navigation stack: allows navigating between pages and going back
-  const [viewStack, setViewStack] = useState<string[]>([initialBundleNodeKey]);
+  const [viewStack, setViewStack] = useState<EncodedBundleNodeKey[]>([initialBundleNodeKey]);
 
   // Reset stack when modal opens with a new initial page
   React.useEffect(() => {
@@ -109,7 +101,7 @@ const BundleNodeLinksModal: React.FC<BundleNodeLinksModalProps> = ({
   const currentBundleNodeKey = viewStack[viewStack.length - 1];
   const currentNode = graph.getNode(currentBundleNodeKey);
 
-  const handleNavigateToNode = useCallback((bundleNodeKey: string) => {
+  const handleNavigateToNode = useCallback((bundleNodeKey: EncodedBundleNodeKey) => {
     setViewStack(prev => [...prev, bundleNodeKey]);
   }, []);
 
@@ -158,15 +150,21 @@ const BundleNodeLinksModal: React.FC<BundleNodeLinksModalProps> = ({
     .map(edge => ({ edge, node: graph.getNode(edge.source) }))
     .filter((item): item is typeof item & { node: IBundleNode } => item.node !== undefined);
 
+  const displayPath = (key: EncodedBundleNodeKey): string => {
+    const value = parseBundleNodeKey(key);
+    return value.kind === 'collection' ? graph.getNode(key)?.bundleNodeName ?? 'Bundle home' : bundleNodeKeySourceGraphPath(value);
+  };
+
   // Helper to render the page path with directory in lighter color
-  const renderNodePath = (bundleNodeKey: string) => {
-    const lastSlashIndex = bundleNodeKey.lastIndexOf('/');
+  const renderNodePath = (bundleNodeKey: EncodedBundleNodeKey) => {
+    const path = displayPath(bundleNodeKey);
+    const lastSlashIndex = path.lastIndexOf('/');
     if (lastSlashIndex === -1) {
       // No directory part
-      return <span className="font-medium">{bundleNodeKey}</span>;
+      return <span className="font-medium">{path}</span>;
     }
-    const dirPart = bundleNodeKey.substring(0, lastSlashIndex + 1);
-    const filePart = bundleNodeKey.substring(lastSlashIndex + 1);
+    const dirPart = path.substring(0, lastSlashIndex + 1);
+    const filePart = path.substring(lastSlashIndex + 1);
     return (
       <>
         <span className="text-gray-400">{dirPart}</span>
@@ -177,7 +175,7 @@ const BundleNodeLinksModal: React.FC<BundleNodeLinksModalProps> = ({
 
   // Helper to render a link item
   const renderLinkItem = (
-    bundleNodeKey: string,
+    bundleNodeKey: EncodedBundleNodeKey,
     _displayText: string,
     description: string,
     key: string,
@@ -200,7 +198,7 @@ const BundleNodeLinksModal: React.FC<BundleNodeLinksModalProps> = ({
       <div key={key} className={`border rounded-lg p-3 bg-gray-50 ${!isInGraph ? 'opacity-60' : ''}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="text-sm truncate" title={bundleNodeKey}>
+            <div className="text-sm truncate" title={displayPath(bundleNodeKey)}>
               {renderNodePath(bundleNodeKey)}
             </div>
             {description && (
@@ -456,3 +454,7 @@ const BundleNodeLinksModal: React.FC<BundleNodeLinksModalProps> = ({
 };
 
 export default BundleNodeLinksModal;
+
+import { parseBundleNodeKey, bundleNodeKeySourceGraphPath, serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

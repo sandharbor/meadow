@@ -302,3 +302,11 @@ export function checkNodespecLinks(
     errors,
   };
 }
+
+import type { EncodedBundleNodeKey } from '../../../contracts/types/bundleNodeKey.js';
+import { bundleNodeKeySourceGraphPath } from '../../../shared_code/utils/bundleNodeKey.js';
+
+/** Convert a graph address explicitly before comparing it with nodespec paths. */
+export function nodeKeyToPageId(key: EncodedBundleNodeKey): string {
+  return linkPathToPageId(bundleNodeKeySourceGraphPath(key));
+}

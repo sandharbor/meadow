@@ -39,7 +39,7 @@ test('Multi-source relocation saves the repaired location without reviewing unch
   // Verify the captured pages and repair the source.
   await sources.close();
   await editor.switchToListView();
-  await editor.expectListViewNodeVisible('_mw_sources/source000002/Overview.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Overview.md', true);
   await sources.open();
   const relocated = path.join(testServer.sourceGraphsDir, 'multi-source/research-relocated');
   await sources.setDirectory('research', relocated);
@@ -63,7 +63,7 @@ test('Multi-source relocation saves the repaired location without reviewing unch
   await editor.waitForLoad('multi-source-page');
   await editor.waitForSourceCheck();
   await editor.switchToListView();
-  await editor.expectListViewLocation('_mw_sources/source000002/Overview.md', 'research', '/');
+  await editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/');
   await checkpoint('the accepted source location survives reloading the bundle');
 
   await skipMeadowHomeStateCheck();

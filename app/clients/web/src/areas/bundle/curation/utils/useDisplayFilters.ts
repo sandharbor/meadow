@@ -33,14 +33,14 @@ interface UseDisplayFiltersOptions {
   filters: IFilter[];
   graph: Graph;
   graphUpdateTrigger: number;
-  hiddenNodeKeys: Set<string>;
-  selectedNodeKeys: Set<string>;
+  hiddenNodeKeys: Set<EncodedBundleNodeKey>;
+  selectedNodeKeys: Set<EncodedBundleNodeKey>;
   selectionShowTitles: boolean;
   bundleSlug: string;
-  soloNodeKeys: Set<string>;
+  soloNodeKeys: Set<EncodedBundleNodeKey>;
 }
 
-const createBundleNodeKeySelector = (bundleNodeKeys: Set<string>, name: string): IBundleNodeSelector => ({
+const createBundleNodeKeySelector = (bundleNodeKeys: Set<EncodedBundleNodeKey>, name: string): IBundleNodeSelector => ({
   id: `bundle-node-key-selector-${name}`,
   name,
   type: 'normal',
@@ -173,3 +173,5 @@ export function useDisplayFilters({
 
   return { combinedFilters, effectiveExpression, setExpression };
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

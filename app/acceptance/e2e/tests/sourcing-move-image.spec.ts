@@ -38,8 +38,8 @@ test('Sourcing moves a tracked image while preserving its identity and tracking'
   await editor.sourceReview.accept();
   expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual({ ...original, sourceGraphSubdirectory: 't024/images' });
   await editor.switchToListView();
-  await editor.expectListViewNodeVisible('t024/images/t024 ---- test image.png', true);
-  await editor.expectListViewNodeVisible('t024/t024 ---- test image.png', false);
+  await editor.expectListViewNodeVisible('file:t024/images/t024 ---- test image.png', true);
+  await editor.expectListViewNodeVisible('file:t024/t024 ---- test image.png', false);
   await addKeyFrame(sourceSnapshot);
   await checkpoint('the moved file remains reachable with the same identity and tracking');
 

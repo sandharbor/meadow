@@ -38,7 +38,7 @@ import {
 import { CUSTOMIZATION_ASSETS_DIRECTORY } from '../customizationAssets.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
-type AllLinkResolutionMaps = Map<string, LinkResolutionMap>;
+type AllLinkResolutionMaps = Map<EncodedBundleNodeKey, LinkResolutionMap>;
 
 export interface GeneratePublishedOpenKnowledgeFormatOptions {
   bundleDirectory: string;
@@ -129,3 +129,5 @@ export function cleanupPublishedOpenKnowledgeFormatArtifacts(options: {
   }
   removeOpenKnowledgeFormatGenerationManifest(options.bundleDirectory);
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

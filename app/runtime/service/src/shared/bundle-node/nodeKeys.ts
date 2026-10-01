@@ -14,23 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
-import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
+import type { BundleNodeConfig, EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeConfig.js';
+import { bundleNodeKeyFromConfig, fileNodeKeyFromSourceFilePath, serializeBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
 
 export interface BundleNodeConfigMap {
-  [bundleNodeKey: string]: BundleNodeConfig;
+  [bundleNodeKey: EncodedBundleNodeKey]: BundleNodeConfig;
 }
 
-/**
- * Creates the source-locator key used by raw working-graph nodes and edges.
- */
-export function makeBundleNodeKey(bundleNodeName: string, fileType: string = 'md', directory: string = ''): string {
-  const normalizedDir = directory.replace(/\/+$/, '');
-  return normalizedDir ? `${normalizedDir}/${bundleNodeName}.${fileType}` : `/${bundleNodeName}.${fileType}`;
+/** Construct a file key from a title, extension and graph-relative directory. */
+export function makeBundleNodeKey(bundleNodeName: string, fileType: string = 'md', directory: string = ''): EncodedBundleNodeKey {
+  const filename = `${bundleNodeName}.${fileType}`;
+  return sourceFilePathToBundleNodeKey(directory ? `${directory}/${filename}` : filename);
 }
 
-export function bundleNodeConfigToKey(conf: BundleNodeConfig): string {
-  if (conf.bundleNodeKind === 'folder') return `folder:${sourceGraphPath(conf.sourceId, conf.sourceGraphSubdirectory)}`;
-  if (conf.bundleNodeKind === 'collection') return `collection:${conf.bundleNodeId}`;
-  return makeBundleNodeKey(conf.bundleNodeName, conf.fileType, sourceGraphPath(conf.sourceId, conf.sourceGraphSubdirectory || ''));
+export function sourceFilePathToBundleNodeKey(sourcePath: string): EncodedBundleNodeKey {
+  return serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(sourcePath));
+}
+
+export function bundleNodeConfigToKey(conf: BundleNodeConfig): EncodedBundleNodeKey {
+  return serializeBundleNodeKey(bundleNodeKeyFromConfig(conf));
 }

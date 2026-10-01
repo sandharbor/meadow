@@ -17,13 +17,11 @@ limitations under the License.
 import type { FileType } from './FileType.js';
 
 declare const bundleNodeIdBrand: unique symbol;
-declare const bundleNodeKeyBrand: unique symbol;
 
 /** Stable identity assigned only when a node is configured. */
 export type BundleNodeId = string & { readonly [bundleNodeIdBrand]: true };
 
-/** Locator-derived key used by the current working graph and its edges. */
-export type BundleNodeKey = string & { readonly [bundleNodeKeyBrand]: true };
+export type { BundleNodeKey, EncodedBundleNodeKey } from './bundleNodeKey.js';
 
 interface BaseBundleNodeConfig {
   bundleNodeName: string;

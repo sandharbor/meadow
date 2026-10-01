@@ -38,8 +38,8 @@ test('Sourcing moves a nested page while preserving its identity and name-only l
   await editor.sourceReview.accept();
   expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual({ ...original, sourceGraphSubdirectory: 'source-changes/moved' });
   await editor.switchToListView();
-  await editor.expectListViewNodeVisible('source-changes/moved/t001 ---- child 2.md', true);
-  await editor.expectListViewNodeVisible('t001/deeper/t001 ---- child 2.md', false);
+  await editor.expectListViewNodeVisible('file:source-changes/moved/t001 ---- child 2.md', true);
+  await editor.expectListViewNodeVisible('file:t001/deeper/t001 ---- child 2.md', false);
   await addKeyFrame(sourceSnapshot);
   await checkpoint('the moved file remains reachable with the same identity and tracking');
 

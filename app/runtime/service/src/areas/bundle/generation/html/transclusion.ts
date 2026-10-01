@@ -49,7 +49,7 @@ export interface TransclusionOptions {
   /** Link resolution map for the page that *contains* the transclusion syntax */
   linkResolutionMapForCaller?: Record<string, LinkResolvedInfo>;
   /** All link resolution maps, keyed by page ident, for resolving links within the transcluded page's own context */
-  allLinkResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>;
+  allLinkResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>;
 
   /** Whether this transclusion is nested inside another transclusion */
   isNested?: boolean;
@@ -63,7 +63,7 @@ interface ResolvedPageTarget {
   title: string;
   directory: string;
   bundleNodeConfig: BundleNodeConfig;
-  pageIdent: string;
+  pageIdent: EncodedBundleNodeKey;
   normalizedOutputTitle: string;
 }
 
@@ -106,9 +106,9 @@ function customProcessEmbeddedMarkdown(mdContent: string, bundleSlug?: string, b
   return mdContent;
 }
 
-function pageIdentFor(title: string, directory: string): string {
+function pageIdentFor(title: string, directory: string): EncodedBundleNodeKey {
   const dir = (directory || '').replace(/\/+$/, '');
-  return dir ? `${dir}/${title}.md` : `/${title}.md`;
+  return serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(dir ? `${dir}/${title}.md` : `${title}.md`));
 }
 
 function findPageConfig(
@@ -388,3 +388,7 @@ export function renderTransclusionToHtml(linkText: string, options: Transclusion
 
   return wrapTransclusionHtml(innerHtml, seeInContextHref, isNested);
 }
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

@@ -55,12 +55,22 @@ fn folder(multiple: bool) -> Value {
         "0",
     )
 }
+fn encoded(key: &str) -> String {
+    if key.starts_with("file:") || key.starts_with("folder:") || key.starts_with("collection:") {
+        key.into()
+    } else {
+        working_graph::node_key::BundleNodeKey::file(key)
+            .unwrap()
+            .to_string()
+    }
+}
+
 fn has_node(result: &Value, key: &str) -> bool {
     result["nodes"]
         .as_array()
         .unwrap()
         .iter()
-        .any(|node| node["bundleNodeKey"] == key)
+        .any(|node| node["bundleNodeKey"] == encoded(key))
 }
 #[test]
 fn zero_override_keeps_only_the_entry_page() {
@@ -76,10 +86,10 @@ fn zero_override_keeps_only_the_entry_page() {
 #[test]
 fn stop_nodes_remain_visible_without_their_descendants() {
     let result = curated("ef63f962db68");
-    assert!(has_node(&result, "/t007 ---- blacklisted page.md"));
+    assert!(has_node(&result, "file:t007 ---- blacklisted page.md"));
     assert!(!has_node(
         &result,
-        "/t007 ---- child of blacklisted page.md"
+        "file:t007 ---- child of blacklisted page.md"
     ));
 }
 #[test]
@@ -98,10 +108,10 @@ fn meadow_edges_retain_link_text_and_resolved_directory() {
 fn outside_inlinks_are_returned_even_when_the_nodes_incoming_budget_is_zero() {
     let result = curated("ef63f962db68");
     assert!(
-        result["allInlinkSources"]["/t008 - page conf do not include inlinks.md"]
+        result["allInlinkSources"]["file:t008 - page conf do not include inlinks.md"]
             .as_array()
             .unwrap()
-            .contains(&json!("/t008 ---- has in link to page conf test.md"))
+            .contains(&json!("file:t008 ---- has in link to page conf test.md"))
     );
 }
 #[test]
@@ -112,29 +122,29 @@ fn native_html_nodes_keep_their_type_and_page_and_asset_adjacency() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|node| node["bundleNodeKey"] == key)
+        .find(|node| node["bundleNodeKey"] == encoded(key))
         .unwrap();
     assert_eq!(node["fileType"], "html");
     for target in [
-        "/t026 - HTML node.md",
+        "file:t026 - HTML node.md",
         "t026/t026 ---- second HTML page.html",
         "t026/t026 ---- shared style.css",
         "t026/t026 ---- shared behavior.js",
         "t026/t026 ---- shared image.svg",
     ] {
         assert!(
-            result["allOutlinkTargets"][key]
+            result["allOutlinkTargets"][encoded(key)]
                 .as_array()
                 .unwrap()
-                .contains(&json!(target)),
+                .contains(&json!(encoded(target))),
             "missing {target}"
         );
     }
     assert!(
-        result["allOutlinkTargets"]["t026/t026 ---- second HTML page.html"]
+        result["allOutlinkTargets"][encoded("t026/t026 ---- second HTML page.html")]
             .as_array()
             .unwrap()
-            .contains(&json!("t026/nested/t026 ---- nested markdown.md"))
+            .contains(&json!(encoded("t026/nested/t026 ---- nested markdown.md")))
     );
 }
 #[test]
@@ -204,12 +214,13 @@ fn html_at_the_depth_boundary_keeps_direct_embeds_including_encoded_stylesheets_
             .as_array()
             .unwrap()
             .iter()
-            .find(|node| node["bundleNodeKey"] == path)
+            .find(|node| node["bundleNodeKey"] == encoded(&path))
             .expect("embedded dependency included");
         assert_eq!(node["isFrontierImageExtension"], true);
         let raw = asset.replace(' ', "%20");
         assert_eq!(
-            result["allLinkResolutionMaps"]["site/page.html"][raw]["link_resolved_target_path"],
+            result["allLinkResolutionMaps"]["file:site/page.html"][raw]
+                ["link_resolved_target_path"],
             path
         );
     }
@@ -240,7 +251,7 @@ fn folder_scope_seeds_descendants_and_retains_meadows_structural_edges() {
         .iter()
         .any(|edge| edge["bundleEdgeKind"] == "directoryContainment"
             && edge["source"] == "folder:Projects/Sub"
-            && edge["target"] == "Projects/Sub/B.md"));
+            && edge["target"] == "file:Projects/Sub/B.md"));
 }
 #[test]
 fn collection_members_keep_their_authored_order_including_empty_folders() {
@@ -300,20 +311,20 @@ fn route_arrivals_keep_the_budget_that_enabled_an_incoming_hop() {
             .unwrap()
     };
     // Then node display metadata stays shortest, while the target's route is coherent.
-    assert_eq!(find("/Hub.md")["depth"], 1);
-    assert_eq!(find("/Hub.md")["remaining_inlinks_depth"], 0);
-    let alternatives = find("/Hub.md")["traversal_alternative_routes"]
+    assert_eq!(find("file:Hub.md")["depth"], 1);
+    assert_eq!(find("file:Hub.md")["remaining_inlinks_depth"], 0);
+    let alternatives = find("file:Hub.md")["traversal_alternative_routes"]
         .as_array()
         .unwrap();
     assert_eq!(alternatives.len(), 1);
-    assert_eq!(alternatives[0][1]["bundleNodeKey"], "/Taxonomy.md");
+    assert_eq!(alternatives[0][1]["bundleNodeKey"], "file:Taxonomy.md");
     assert_eq!(alternatives[0][2]["remaining_inlinks_depth"], 1);
     assert_eq!(alternatives[0][2]["retainedForTraversal"], true);
     assert_eq!(
-        find("/Hub.md")["traversal_path_steps"][1]["retainedForTraversal"],
+        find("file:Hub.md")["traversal_path_steps"][1]["retainedForTraversal"],
         false
     );
-    let target = find("/Target.md");
+    let target = find("file:Target.md");
     let steps = target["traversal_path_steps"].as_array().unwrap();
     assert_eq!(
         steps
@@ -340,7 +351,7 @@ fn route_arrivals_keep_the_budget_that_enabled_an_incoming_hop() {
         .as_array()
         .unwrap()
         .iter()
-        .find(|n| n["bundleNodeKey"] == "/Hub.md")
+        .find(|n| n["bundleNodeKey"] == "file:Hub.md")
         .unwrap();
     let arrival = hub["traversal_alternative_routes"][0]
         .as_array()
@@ -352,8 +363,8 @@ fn route_arrivals_keep_the_budget_that_enabled_an_incoming_hop() {
     assert_eq!(arrival["remaining_inlinks_depth"], 0);
     assert_eq!(arrival["retainedForTraversal"], false);
     assert_eq!(hub["traversal_path_steps"][1]["retainedForTraversal"], true);
-    assert!(!has_node(&restricted, "/Incoming.md"));
-    assert!(!has_node(&restricted, "/Target.md"));
+    assert!(!has_node(&restricted, "file:Incoming.md"));
+    assert!(!has_node(&restricted, "file:Target.md"));
 }
 
 #[test]

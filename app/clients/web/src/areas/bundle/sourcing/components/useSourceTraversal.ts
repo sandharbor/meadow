@@ -14,15 +14,15 @@ function hydrate(source?: SourceTraversalGraph): Graph | undefined {
 }
 
 export function useSourceTraversal(review: SourcingReview | null, bundleSlug: string) {
-  const [selection, setSelection] = useState<{ side: 'accepted' | 'candidate'; key: string } | null>(null);
-  const addedNodeKeys = useMemo(() => new Set(review?.changes.filter(change => change.kind === 'added').map(change => change.path)), [review]);
+  const [selection, setSelection] = useState<{ side: 'accepted' | 'candidate'; key: EncodedBundleNodeKey } | null>(null);
+  const addedNodeKeys = useMemo(() => new Set(review?.changes.filter(change => change.kind === 'added').map(change => serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(change.path)))), [review]);
   const graphs = useMemo(() => ({
     accepted: review?.traversalGraphs?.accepted?.snapshotId === review?.accepted.id ? hydrate(review?.traversalGraphs?.accepted) : undefined,
     candidate: review?.traversalGraphs?.candidate?.snapshotId === review?.candidate?.id ? hydrate(review?.traversalGraphs?.candidate) : undefined,
   }), [review]);
   useEffect(() => { setSelection(null); }, [review?.reviewToken, bundleSlug]);
   const close = useCallback(() => setSelection(null), []);
-  const show = (side: 'accepted' | 'candidate', key: string) => {
+  const show = (side: 'accepted' | 'candidate', key: EncodedBundleNodeKey) => {
     if (graphs[side]?.getNode(key)?.path?.length) setSelection({ side, key });
   };
   const graph = selection ? graphs[selection.side] : undefined;
@@ -33,3 +33,7 @@ export function useSourceTraversal(review: SourcingReview | null, bundleSlug: st
     addedNodeKeys: selection!.side === 'candidate' ? addedNodeKeys : undefined,
   } : null };
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceFilePath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

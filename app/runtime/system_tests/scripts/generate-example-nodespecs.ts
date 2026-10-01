@@ -48,7 +48,7 @@ import {
 } from '../helpers/htmlLinkExtractor.js';
 import {
   getSidecarNodespecPath,
-  linkPathToPageId,
+  nodeKeyToPageId,
   pageIdToLinkPath,
 } from '../nodespecs/index.js';
 
@@ -101,7 +101,7 @@ async function main() {
     );
     if (!normalResp.ok) throw new Error(`Working graph API failed: ${normalResp.status}`);
     const normalGraph = (await normalResp.json()) as {
-      nodes: { bundleNodeKey: string; remaining_depth: number }[];
+      nodes: { bundleNodeKey: string; bundleNodeKind: 'file' | 'folder' | 'collection'; remaining_depth: number }[];
       allOutlinkTargets: Record<string, string[]>;
       allInlinkSources: Record<string, string[]>;
     };
@@ -113,7 +113,7 @@ async function main() {
     );
     if (!frontierResp.ok) throw new Error(`Working graph frontier API failed: ${frontierResp.status}`);
     const frontierGraph = (await frontierResp.json()) as {
-      nodes: { bundleNodeKey: string; remaining_depth: number }[];
+      nodes: { bundleNodeKey: string; bundleNodeKind: 'file' | 'folder' | 'collection'; remaining_depth: number }[];
     };
 
     // 3. Generate preview HTML
@@ -128,22 +128,22 @@ async function main() {
       : [];
 
     // 5. Build lookup structures
-    const normalPageIds = new Set(normalGraph.nodes.map(node => linkPathToPageId(node.bundleNodeKey)));
+    const normalPageIds = new Set(normalGraph.nodes.filter(node => node.bundleNodeKind === 'file').map(node => nodeKeyToPageId(encodedBundleNodeKey(node.bundleNodeKey))));
 
     const outlinkMap = new Map<string, string[]>();
     for (const [pathKey, targets] of Object.entries(normalGraph.allOutlinkTargets)) {
-      outlinkMap.set(linkPathToPageId(pathKey), targets.map(t => linkPathToPageId(t)));
+      outlinkMap.set(nodeKeyToPageId(encodedBundleNodeKey(pathKey)), targets.map(t => nodeKeyToPageId(encodedBundleNodeKey(t))));
     }
 
     const inlinkMap = new Map<string, string[]>();
     for (const [pathKey, sources] of Object.entries(normalGraph.allInlinkSources)) {
-      inlinkMap.set(linkPathToPageId(pathKey), sources.map(s => linkPathToPageId(s)));
+      inlinkMap.set(nodeKeyToPageId(encodedBundleNodeKey(pathKey)), sources.map(s => nodeKeyToPageId(encodedBundleNodeKey(s))));
     }
 
     // Frontier page remaining-depth map (only pages NOT in normal graph)
     const frontierRemainingDepth = new Map<string, number>();
-    for (const node of frontierGraph.nodes) {
-      const pageId = linkPathToPageId(node.bundleNodeKey);
+    for (const node of frontierGraph.nodes.filter(node => node.bundleNodeKind === 'file')) {
+      const pageId = nodeKeyToPageId(encodedBundleNodeKey(node.bundleNodeKey));
       if (!normalPageIds.has(pageId)) {
         frontierRemainingDepth.set(pageId, node.remaining_depth);
       }
@@ -298,3 +298,5 @@ main().catch(err => {
   forceStopServer();
   process.exit(1);
 });
+
+import { encodedBundleNodeKey } from '../../../shared_code/utils/bundleNodeKey.js';

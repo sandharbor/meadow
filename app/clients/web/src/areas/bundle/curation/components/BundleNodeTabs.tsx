@@ -58,11 +58,11 @@ interface BundleNodeTabsProps {
   onAutoSave?: () => Promise<void> | void;
   isSelectionPanelCollapsed: boolean;
   onSelectionPanelCollapseChange: (collapsed: boolean) => void;
-  selectedNodeKeys: Set<string>;
-  onSelectedNodeKeysChange: (pages: Set<string>) => void;
+  selectedNodeKeys: Set<EncodedBundleNodeKey>;
+  onSelectedNodeKeysChange: (pages: Set<EncodedBundleNodeKey>) => void;
   /** The page a place link focused within the selection. */
-  focusedNodeKey?: string | null;
-  onPreviewPage: (bundleNodeKey: string) => void;
+  focusedNodeKey?: EncodedBundleNodeKey | null;
+  onPreviewPage: (bundleNodeKey: EncodedBundleNodeKey) => void;
   hasDraftChanges: boolean;
   bundleSlug: string;
   onRefresh: () => void;
@@ -126,7 +126,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     return ids;
   }, [protectedBundleNodeIds, bundleNodeConfigs]);
 
-  const structuralDescendants = useCallback((bundleNodeKey: string): IBundleNode[] => {
+  const structuralDescendants = useCallback((bundleNodeKey: EncodedBundleNodeKey): IBundleNode[] => {
     const result: IBundleNode[] = [];
     const pending = [bundleNodeKey];
     const seen = new Set(pending);
@@ -172,11 +172,11 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     );
   }, [structuralDescendants]);
 
-  const [hiddenNodeKeys, setHiddenNodeKeys] = useState<Set<string>>(new Set());
-  const [soloNodeKeys, setSoloNodeKeys] = useState<Set<string>>(new Set());
+  const [hiddenNodeKeys, setHiddenNodeKeys] = useState<Set<EncodedBundleNodeKey>>(new Set());
+  const [soloNodeKeys, setSoloNodeKeys] = useState<Set<EncodedBundleNodeKey>>(new Set());
   const [selectionShowTitles, setSelectionShowTitles] = useState(false);
 
-  const [contextMenuPage, setContextMenuPage] = useState<{ bundleNodeKey: string; x: number; y: number } | null>(null);
+  const [contextMenuPage, setContextMenuPage] = useState<{ bundleNodeKey: EncodedBundleNodeKey; x: number; y: number } | null>(null);
 
   const [obsidianInfo, setObsidianInfo] = useState<ObsidianInfo | null>(null);
 
@@ -208,7 +208,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   // State for meadow-sensitive consent modal
   const [showSensitiveConsentModal, setShowSensitiveConsentModal] = useState(false);
   const [pendingSensitiveOperation, setPendingSensitiveOperation] = useState<{
-    bundleNodeKey: string;
+    bundleNodeKey: EncodedBundleNodeKey;
     isSensitive: boolean;
   } | null>(null);
   const [hasSensitiveConsent, setHasSensitiveConsent] = useState<boolean | null>(null);
@@ -306,7 +306,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     onConfigChange?.(); // Notify parent of config change
   };
 
-  const handlePageClick = (bundleNodeKey: string) => {
+  const handlePageClick = (bundleNodeKey: EncodedBundleNodeKey) => {
     const page = graph.getNode(bundleNodeKey);
     if (page) {
       if (selectedNodeKeys.has(bundleNodeKey)) {
@@ -439,7 +439,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     }
   };
 
-  const handleTrackPage = async (bundleNodeKey: string) => {
+  const handleTrackPage = async (bundleNodeKey: EncodedBundleNodeKey) => {
     const page = graph.getNode(bundleNodeKey);
     if (page) {
       if (page.bundleNodeKind === 'collection' || page.effectiveBlacklistingBundleNodeId) return;
@@ -492,7 +492,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     }
   };
 
-  const handleBlacklistPage = async (bundleNodeKey: string) => {
+  const handleBlacklistPage = async (bundleNodeKey: EncodedBundleNodeKey) => {
     const page = graph.getNode(bundleNodeKey);
     if (page) {
       if (!page.blacklisted && !canBlacklistNode(page)) return;
@@ -524,7 +524,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     }
   };
 
-  const handleUpdatePageConfig = (bundleNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth', value: number) => {
+  const handleUpdatePageConfig = (bundleNodeKey: EncodedBundleNodeKey, key: 'outlinksDepth' | 'inlinksDepth', value: number) => {
     const page = graph.getNode(bundleNodeKey);
     if (page && page.bundleNodeKind !== 'collection' && !page.effectiveBlacklistingBundleNodeId) {
       ensurePageConfigForPersistence(page, page.blacklisted ? 'blacklist' : 'whitelist');
@@ -539,7 +539,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     }
   };
 
-  const handleDeletePageConfigKey = (bundleNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth') => {
+  const handleDeletePageConfigKey = (bundleNodeKey: EncodedBundleNodeKey, key: 'outlinksDepth' | 'inlinksDepth') => {
     const page = graph.getNode(bundleNodeKey);
     if (page?.conf) {
       delete page.conf[key];
@@ -593,7 +593,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   };
 
   // Core function that actually performs the sensitive marking operation
-  const performMarkSensitive = async (bundleNodeKey: string, isSensitive: boolean) => {
+  const performMarkSensitive = async (bundleNodeKey: EncodedBundleNodeKey, isSensitive: boolean) => {
     const page = graph.getNode(bundleNodeKey);
     if (!page || !canMarkNodeSensitive(page)) return;
 
@@ -622,7 +622,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
   };
 
   // Handler that checks consent before marking sensitive
-  const handleMarkSensitive = async (bundleNodeKey: string, isSensitive: boolean) => {
+  const handleMarkSensitive = async (bundleNodeKey: EncodedBundleNodeKey, isSensitive: boolean) => {
     // If marking as sensitive (not removing) and user hasn't consented yet, show modal
     if (isSensitive && !hasSensitiveConsent) {
       setPendingSensitiveOperation({ bundleNodeKey, isSensitive });
@@ -672,7 +672,7 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
     setPendingSensitiveOperation(null);
   };
 
-  const handleBundleNodeContextMenu = useCallback((bundleNodeKey: string, x: number, y: number) => {
+  const handleBundleNodeContextMenu = useCallback((bundleNodeKey: EncodedBundleNodeKey, x: number, y: number) => {
     setContextMenuPage({ bundleNodeKey, x, y });
   }, []);
 
@@ -995,3 +995,5 @@ const BundleNodeTabs: React.FC<BundleNodeTabsProps> = ({
 };
 
 export default BundleNodeTabs;
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

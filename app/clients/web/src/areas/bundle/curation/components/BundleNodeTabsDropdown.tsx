@@ -20,7 +20,7 @@ import CopySelectedNodesModal from './CopySelectedNodesModal';
 import { useEventually, useLinkedSurface } from '../../../../shared/places/placeContext.js';
 
 interface BundleNodeTabsDropdownProps {
-  selectedNodeKeys: Set<string>;
+  selectedNodeKeys: Set<EncodedBundleNodeKey>;
   graph: Graph;
 }
 
@@ -113,3 +113,5 @@ const BundleNodeTabsDropdown: React.FC<BundleNodeTabsDropdownProps> = ({
 };
 
 export default BundleNodeTabsDropdown;
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

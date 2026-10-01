@@ -9,14 +9,14 @@ import { SourceNamesProvider } from '../../src/shared/components/SourceNames.js'
 const move: SourceMoveCandidate = {
   bundleNodeId: 'page', oldPath: 'old/page.md', newPath: 'new/page.md',
   confidence: 'strong', competing: false, evidence: [],
-  previousRoute: ['root.md', 'parent.md', 'old/page.md'], currentRoute: ['root.md', 'parent.md', 'new/page.md'],
+  previousRoute: [testKey('root.md'), testKey('parent.md'), testKey('old/page.md')], currentRoute: [testKey('root.md'), testKey('parent.md'), testKey('new/page.md')],
 };
 
 describe('move traversal context', () => {
   it('keeps the source and folder visible in qualified route pills', () => {
     const parent = '_mw_sources/source000001/Folder/Parent.md';
     render(<SourceNamesProvider sources={[{ id: 'source000001', name: 'notes' }]}>
-      <MoveTraversal move={{ ...move, previousRoute: [parent, move.oldPath], currentRoute: [parent, move.newPath] }} />
+      <MoveTraversal move={{ ...move, previousRoute: [testKey(parent), testKey(move.oldPath)], currentRoute: [testKey(parent), testKey(move.newPath)] }} />
     </SourceNamesProvider>);
     expect(screen.getByTestId('source-file-pill')).toHaveTextContent('notes://Folder/Parent.md');
     expect(screen.getByTestId('source-file-pill')).toHaveAttribute('title', 'notes://Folder/Parent.md');
@@ -32,7 +32,7 @@ describe('move traversal context', () => {
   });
 
   it('keeps both routes when a different parent leads to the moved page', () => {
-    render(<MoveTraversal move={{ ...move, currentRoute: ['root.md', 'different.md', 'new/page.md'] }} />);
+    render(<MoveTraversal move={{ ...move, currentRoute: [testKey('root.md'), testKey('different.md'), testKey('new/page.md')] }} />);
     expect(screen.getByText('Before')).toBeInTheDocument();
     expect(screen.getByText('After')).toBeInTheDocument();
     expect(screen.getByTitle('parent.md')).toBeInTheDocument();
@@ -40,8 +40,10 @@ describe('move traversal context', () => {
   });
 
   it('distinguishes an unrecorded route from a traversal starting at the page', () => {
-    render(<MoveTraversal move={{ ...move, previousRoute: [], currentRoute: ['new/page.md'] }} />);
+    render(<MoveTraversal move={{ ...move, previousRoute: [], currentRoute: [testKey('new/page.md')] }} />);
     expect(screen.getByText('No previously reachable route recorded.')).toBeInTheDocument();
     expect(screen.getByText('Traversal starts at this page.')).toBeInTheDocument();
   });
 });
+
+import { testKey } from './nodeKeys.js';

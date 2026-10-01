@@ -28,7 +28,7 @@ async function requireTrackingSuccess<T>(response: Response, fallback: string): 
 
 export async function mutateFileTracking(options: {
   bundleSlug: string;
-  bundleNodeKey: string;
+  bundleNodeKey: EncodedBundleNodeKey;
   operation: 'track' | 'untrack';
   includeSensitive?: boolean;
 }): Promise<MutateBundleNodeCliResult> {
@@ -50,7 +50,7 @@ export async function mutateFileTracking(options: {
 
 export async function trackSafeNodeKeys(
   bundleSlug: string,
-  nodeKeys: string[],
+  nodeKeys: EncodedBundleNodeKey[],
 ): Promise<TrackBundleNodesCliResult> {
   const response = await apiRequest(
     `bundles/${encodeURIComponent(bundleSlug)}/curation/track-nodes`,
@@ -62,3 +62,5 @@ export async function trackSafeNodeKeys(
   );
   return requireTrackingSuccess<TrackBundleNodesCliResult>(response, 'Batch tracking failed');
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

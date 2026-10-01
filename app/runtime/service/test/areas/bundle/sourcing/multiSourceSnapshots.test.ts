@@ -93,8 +93,8 @@ describe('multi-source snapshots with the shared fixture', () => {
     expect(loadSourcingState(bundle)?.acceptedId).toBe(accepted.acceptedId);
     fs.renameSync(path.join(source, 'research'), path.join(source, 'relocated-research'));
     const historical = await snapshotGraph(bundle, captured, nodes, 0);
-    expect(historical.nodes.find(node => node.bundleNodeKey === '_mw_sources/source000002/Overview.md')).toMatchObject({ sourceId: 'source000002', sourceGraphSubdirectory: '' });
-    expect(historical.allLinkResolutionMaps['_mw_sources/source000001/Start.md']['Overview::papers|research overview'].link_resolved_target_path).toBe('_mw_sources/source000002/Overview.md');
+    expect(historical.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey('_mw_sources/source000002/Overview.md'))).toMatchObject({ sourceId: 'source000002', sourceGraphSubdirectory: '' });
+    expect(historical.allLinkResolutionMaps[sourceFilePathToBundleNodeKey('_mw_sources/source000001/Start.md')]['Overview::papers|research overview'].link_resolved_target_path).toBe('_mw_sources/source000002/Overview.md');
     expect(fs.readFileSync(path.join(source, 'relocated-research/Overview.md'))).toEqual(originalBytes);
     expect(sourceConfigFingerprint(bundle)).toBe(fingerprint);
   });
@@ -251,7 +251,7 @@ describe('registry review acceptance', () => {
     expect(registry().generationOpenKnowledgeFormatIndexSourcePath).toBe('_mw_sources/source000001/Start.md');
     const graph = await loadWorkingGraph({ bundleSlug: 'multi-source' });
     expect(graph.nodes.find(node => node.bundleNodeName === 'Start')?.bundleNodeId).toBe('start0000001');
-    expect((await snapshotGraph(bundle, loadSourceSnapshot(bundle, accepted.acceptedId), undefined, 0)).nodes.some(node => node.bundleNodeKey === 'Start.md')).toBe(true);
+    expect((await snapshotGraph(bundle, loadSourceSnapshot(bundle, accepted.acceptedId), undefined, 0)).nodes.some(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey('Start.md'))).toBe(true);
   });
 
   it('reviews removed-source orphans and retains the adopted output layout', async () => {
@@ -273,7 +273,7 @@ describe('registry review acceptance', () => {
 
 it('tracks duplicate relative files separately and keeps curation available while disconnected', async () => {
   await initializeSourcing(bundle);
-  const result = await trackBundleNodes('multi-source', { mode: 'safe-targeted', nodeKeys: ['_mw_sources/source000001/Overview.md', '_mw_sources/source000002/Overview.md'] });
+  const result = await trackBundleNodes('multi-source', { mode: 'safe-targeted', nodeKeys: ['_mw_sources/source000001/Overview.md', '_mw_sources/source000002/Overview.md'].map(sourceFilePathToBundleNodeKey) });
   expect(result.newlyTracked).toHaveLength(2);
   const tracked = path.join(bundle, 'raw/tracked_page_content/_mw_sources');
   expect(fs.readFileSync(path.join(tracked, 'source000001/Overview.md'), 'utf8')).toContain('Notebook overview');
@@ -282,7 +282,7 @@ it('tracks duplicate relative files separately and keeps curation available whil
   applyNodeConfigsToNodes(graph.nodes, graph.committedNodes);
   expect(new Set(graph.nodes.filter(node => node.bundleNodeName === 'Overview').map(node => node.bundleNodeId)).size).toBe(2);
   fs.renameSync(path.join(source, 'research'), path.join(source, 'offline'));
-  const offline = await trackBundleNodes('multi-source', { mode: 'safe-targeted', nodeKeys: ['_mw_sources/source000002/Same/Inside.md'] });
+  const offline = await trackBundleNodes('multi-source', { mode: 'safe-targeted', nodeKeys: ['_mw_sources/source000002/Same/Inside.md'].map(sourceFilePathToBundleNodeKey) });
   expect(offline.newlyTracked).toHaveLength(1);
 });
 
@@ -318,7 +318,7 @@ it('adds a mixed starting selection without replacing the original page, includi
   expect(start.bundleNodeId).toBe('start0000001');
   expect(start.remaining_depth).toBe(2);
   expect(graph.edges.some(edge => edge.bundleEdgeKind === 'collectionMembership' && edge.target === start.bundleNodeKey)).toBe(true);
-  expect(graph.nodes.find(node => node.bundleNodeKey === '_mw_sources/source000002/Same/Inside.md')?.remaining_depth).toBe(2);
+  expect(graph.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey('_mw_sources/source000002/Same/Inside.md'))?.remaining_depth).toBe(2);
   expect(bundleStartingSelections(loadSourceBundleConfig(bundle), loadSourceNodeConfigs(bundle))).toEqual([
     { sourceId: 'source000001', kind: 'file', path: 'Start.md' },
     { sourceId: 'source000002', kind: 'folder', path: 'Same' },
@@ -335,7 +335,7 @@ it('creates a mixed multi-source bundle with one initial accepted snapshot and o
   expect(state.candidateId).toBeUndefined();
   expect(loadSourceNodeConfigs(directory)).toHaveLength(3);
   const graph = await loadWorkingGraph({ bundleSlug: slug });
-  expect(graph.nodes.some(node => node.bundleNodeKey === '_mw_sources/source000002/Same/Inside.md')).toBe(true);
+  expect(graph.nodes.some(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey('_mw_sources/source000002/Same/Inside.md'))).toBe(true);
   expect(loadSourceBundleConfig(directory).sourceOutputLayout).toBe('multi');
   expect(getFolderBundleRepairStatus(directory)).toMatchObject({ folderDerived: true, repairRequired: false });
 });
@@ -398,3 +398,5 @@ it('keeps a separate default traversal start when refreshing a registry-only pro
   expect(loadSourceBundleConfig(bundle).entryBundleNodeId).toBe('start0000001');
   expect(loadSourceBundleConfig(bundle).defaultTraversalBundleNodeId).toBe('research0001');
 });
+
+import { sourceFilePathToBundleNodeKey } from '../../../../src/shared/bundle-node/nodeKeys.js';

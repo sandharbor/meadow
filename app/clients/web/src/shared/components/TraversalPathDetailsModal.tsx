@@ -28,7 +28,7 @@ interface TraversalPathDetailsModalProps {
   onClose: () => void;
   selectedNode: IBundleNode;
   graph: Graph;
-  addedNodeKeys?: ReadonlySet<string>;
+  addedNodeKeys?: Set<EncodedBundleNodeKey>;
   manageFocus?: boolean;
 }
 
@@ -190,11 +190,12 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
       const effectivePolicyName = node?.effectiveFolderPolicyBundleNodeId
         ? graph.getAllNodes().find(candidate => candidate.bundleNodeId === node.effectiveFolderPolicyBundleNodeId)?.bundleNodeName
         : undefined;
+      const keyValue = parseBundleNodeKey(bundleNodeKey);
       return {
         node: node ?? {
-          bundleNodeKey: bundleNodeKey as IBundleNode['bundleNodeKey'],
-          bundleNodeName: bundleNodeKey.split('/').pop()!,
-          bundleNodeKind: bundleNodeKey.startsWith('folder:') ? 'folder' : bundleNodeKey.startsWith('collection:') ? 'collection' : 'file',
+          bundleNodeKey,
+          bundleNodeName: keyValue.kind === 'collection' ? 'Bundle home' : keyValue.path.split('/').pop() || 'Source root',
+          bundleNodeKind: keyValue.kind,
         },
         linkType,
         outlinksDepthEvent: outlinksInfo.event,
@@ -327,3 +328,7 @@ const TraversalPathDetailsModal: React.FC<TraversalPathDetailsModalProps> = ({
 };
 
 export default TraversalPathDetailsModal;
+
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+
+import { parseBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';

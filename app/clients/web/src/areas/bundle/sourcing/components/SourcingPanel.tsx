@@ -58,7 +58,8 @@ function SourceChangeRow({ change, sensitivity, loadComparison, imageUrl, graph,
   };
   const route = change.route?.length ? [...change.route] : [];
   const sensitivityBadge = sensitivity && <span className="shrink-0 rounded bg-danger-100 px-1.5 py-0.5 text-xs text-danger-800" title={sensitivity === 'source' ? 'Marked meadow-sensitive in the captured page. Bulk tracking will skip it.' : 'An enabled bundle or global filter marks this page sensitive. Bulk tracking will skip it.'}>{sensitivity === 'source' ? 'Sensitive' : 'Sensitive via filter'}</span>;
-  if (route.length && route.at(-1) !== change.path) route.push(change.path);
+  const changeKey = serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(change.path));
+  if (route.length && route.at(-1) !== changeKey) route.push(changeKey);
   if (change.kind === 'added' && isSourceImage(change.path)) return <div className="ml-3 flex items-center gap-2 py-2.5 text-xs text-neutral-500">
     <span className="w-28 shrink-0">Added</span><SourcePath value={change.path} />{sensitivityBadge}
     <SourceImagePreview url={imageUrl(change.path, 'after')} filename={change.path} route={route} graph={graph} />
@@ -211,7 +212,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     pendingDetails.current = null;
     const separator = details.indexOf(':');
     const side = details.slice(0, separator);
-    if (side === 'accepted' || side === 'candidate') showTraversal(side, details.slice(separator + 1));
+    if (side === 'accepted' || side === 'candidate') showTraversal(side, encodedBundleNodeKey(details.slice(separator + 1)));
   }, [review, showTraversal]);
   useLinkedSurface('source-review', {
     open,
@@ -266,7 +267,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
 
   const groups = new Map<string, SourcingReview['moves']>();
   for (const move of review?.moves ?? []) groups.set(move.bundleNodeId, [...(groups.get(move.bundleNodeId) ?? []), move]);
-  const changeCount = groups.size + new Set([...(review?.changes.map(change => change.path) ?? []), ...(review?.orphans.map(orphan => orphan.path) ?? [])]).size;
+  const changeCount = groups.size + new Set([...(review?.changes.map(change => serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(change.path))) ?? []), ...(review?.orphans.map(orphan => orphan.path) ?? [])]).size;
   const reviewLabel = changeCount > 0
     ? `${changeCount} source change${changeCount === 1 ? '' : 's'} available – Review`
     : 'Source changes available – Review';
@@ -354,7 +355,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
               </span>
             </div>}
           </div>
-          <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} sensitivity={review?.trackingSensitivity?.[change.path]} graph={traversal.graphs.candidate} onTraversalDetails={traversal.graphs.candidate?.getNode(change.path)?.path?.length ? () => traversal.show('candidate', change.path) : undefined} loadComparison={async () => {
+          <div className="divide-y divide-neutral-100">{orderedChanges.slice(0, showAllChanges ? undefined : 8).map(change => <SourceChangeRow imageUrl={imageUrl} key={`${review!.reviewToken}:${change.kind}:${change.path}`} change={change} sensitivity={review?.trackingSensitivity?.[change.path]} graph={traversal.graphs.candidate} onTraversalDetails={traversal.graphs.candidate?.getNode(serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(change.path)))?.path?.length ? () => traversal.show('candidate', serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(change.path))) : undefined} loadComparison={async () => {
             const query = new URLSearchParams({ beforeId: review!.accepted.id, afterId: review!.candidate!.id, beforePath: change.previousPath ?? change.path, afterPath: change.path });
             return { beforePath: change.previousPath ?? change.path, afterPath: change.path, ...await request(`/comparison?${query}`) };
           }} />)}</div>
@@ -367,3 +368,7 @@ export function SourcingPanel({ bundleSlug, hasDraftChanges, onAccepted, sourceC
     {open && traversal.details && createPortal(<TraversalPathDetailsModal isOpen onClose={traversal.close} {...traversal.details} manageFocus />, document.body)}
   </>;
 }
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceFilePath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

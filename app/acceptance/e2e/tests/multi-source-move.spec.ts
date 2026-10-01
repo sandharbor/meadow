@@ -41,8 +41,8 @@ test('Multi-source move review preserves the accepted page identity and its cura
   const updated = bundleConfig.findNode({ bundleNodeId: original.bundleNodeId });
   expect(updated).toEqual({ ...original, sourceId: 'source000002', sourceGraphSubdirectory: 'Moved' });
   await editor.switchToListView();
-  await editor.expectListViewLocation('_mw_sources/source000002/Moved/Inside.md', 'research', 'Moved');
-  await editor.clickListViewRowByNodeKey('_mw_sources/source000002/Moved/Inside.md');
+  await editor.expectListViewLocation('file:_mw_sources/source000002/Moved/Inside.md', 'research', 'Moved');
+  await editor.clickListViewRowByNodeKey('file:_mw_sources/source000002/Moved/Inside.md');
   await editor.switchToGraphView();
   const details = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
   await details.openDetails();

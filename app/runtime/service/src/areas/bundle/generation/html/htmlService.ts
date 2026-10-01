@@ -45,7 +45,7 @@ import { runGenerationWorkingGraph } from '../source-material/generationWorkingG
 import type { LinkResolvedInfo } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode.js';
 import type { IEdge } from '../../../../../../../contracts/types/graph.js';
-import type { BundleNodeId, BundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeId, EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { buildVisibleStructuralProjection, type VisibleStructuralProjection } from '../../../../../../../shared_code/utils/structuralProjection.js';
 import { hashAndRenameStaticAssets, type PrecompressedAssetSource } from './staticAssets.js';
 import { createRequire } from 'module';
@@ -264,8 +264,8 @@ async function loadWorkingGraphData(options: {
   breadcrumbsEnabled: boolean;
 }): Promise<{
   breadcrumbPaths: { [pageKey: string]: string[] };
-  breadcrumbNodeKeysByNodeKey: Map<BundleNodeKey, BundleNodeKey[]>;
-  allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>>;
+  breadcrumbNodeKeysByNodeKey: Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
+  allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>;
   traversablePageKeys: Set<string>;
   graphNodes: IBundleNode[];
   graphEdges: IEdge[];
@@ -278,8 +278,8 @@ async function loadWorkingGraphData(options: {
   } = options;
 
   const breadcrumbPaths: { [pageKey: string]: string[] } = {};
-  const breadcrumbNodeKeysByNodeKey = new Map<BundleNodeKey, BundleNodeKey[]>();
-  let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
+  const breadcrumbNodeKeysByNodeKey = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>();
+  let allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>> = new Map();
   const traversablePageKeys: Set<string> = new Set();
   let graphNodes: IBundleNode[] = [];
   let graphEdges: IEdge[] = [];
@@ -303,14 +303,14 @@ async function loadWorkingGraphData(options: {
 
   graphNodes = output.nodes.map(node => {
     const common = {
-      bundleNodeKey: node.bundleNodeKey as BundleNodeKey,
+      bundleNodeKey: encodedBundleNodeKey(node.bundleNodeKey),
       ...(node.bundleNodeId && { bundleNodeId: node.bundleNodeId as BundleNodeId }),
       label: node.bundleNodeName,
       bundleNodeName: node.bundleNodeName,
       depth: node.depth,
       remaining_depth: node.remaining_depth,
       remaining_inlinks_depth: node.remaining_inlinks_depth,
-      path: node.path,
+      path: node.path?.map(encodedBundleNodeKey),
       ...(node.effectiveBlacklistingBundleNodeId && { effectiveBlacklistingBundleNodeId: node.effectiveBlacklistingBundleNodeId as BundleNodeId }),
       getIdent: () => node.bundleNodeKey,
     };
@@ -323,17 +323,17 @@ async function loadWorkingGraphData(options: {
     if (!node.fileType) throw new Error(`Working graph file node ${node.bundleNodeKey} has no fileType`);
     return { ...common, bundleNodeKind: 'file', sourceGraphSubdirectory: node.sourceGraphSubdirectory ?? '', fileType: node.fileType };
   });
-  graphEdges = (output.edges ?? []).map(edge => ({ ...edge }));
+  graphEdges = (output.edges ?? []).map(edge => ({ ...edge, source: encodedBundleNodeKey(edge.source), target: encodedBundleNodeKey(edge.target) }));
   const graphNodeByKey = new Map(output.nodes.map(node => [node.bundleNodeKey, node]));
 
-  allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
+  allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}).map(([key, links]) => [encodedBundleNodeKey(key), links]));
 
   for (const graphNode of output.nodes) {
     traversablePageKeys.add(graphNode.bundleNodeKey);
 
     if (breadcrumbsEnabled && graphNode.path) {
-      const nodeKeys = graphNode.path as BundleNodeKey[];
-      breadcrumbNodeKeysByNodeKey.set(graphNode.bundleNodeKey as BundleNodeKey, nodeKeys);
+      const nodeKeys = graphNode.path.map(encodedBundleNodeKey);
+      breadcrumbNodeKeysByNodeKey.set(encodedBundleNodeKey(graphNode.bundleNodeKey), nodeKeys);
       const titlePath = graphNode.path.map(ident => {
         const pathNode = graphNodeByKey.get(ident);
         if (pathNode) return pathNode.bundleNodeName;
@@ -491,7 +491,7 @@ export async function generateHtmlForBundle(
   // Everything downstream of this point reads from scrubbed_source_content,
   // which contains only publishable traversable files with unsafe links removed.
   let scrubbedTraversablePageKeys: Set<string> = new Set();
-  let scrubbedAllLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
+  let scrubbedAllLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>> = new Map();
   let sourceStructuralProjection: VisibleStructuralProjection | null = null;
   let sourceGraphNodes: IBundleNode[] = [];
   try {
@@ -835,8 +835,8 @@ export async function generateHtmlForBundle(
 
   // Key breadcrumbPaths by pageKey (title|directory|file_type) to handle duplicate titles correctly
   let breadcrumbPaths: { [pageKey: string]: string[] } = {};
-  let breadcrumbNodeKeysByNodeKey = new Map<BundleNodeKey, BundleNodeKey[]>();
-  let allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> = new Map();
+  let breadcrumbNodeKeysByNodeKey = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>();
+  let allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>> = new Map();
   // Track which pages are reachable via traversal - only these should have HTML generated
   let traversablePageKeys: Set<string> = new Set();
   let renderGraphNodes: IBundleNode[] = [];
@@ -970,7 +970,7 @@ export async function generateHtmlForBundle(
     try {
       await timeAsync('bundle.generation.stage', { ...timingLabels, stage: 'open_knowledge_format' }, async () => {
         const entryRuntimeKey = bundleNodeConfigToKey(entryNode);
-        const entryChildren = sourceStructuralProjection?.childrenByNodeKey.get(entryRuntimeKey as BundleNodeKey) ?? [];
+        const entryChildren = sourceStructuralProjection?.childrenByNodeKey.get(encodedBundleNodeKey(entryRuntimeKey)) ?? [];
         const generatedIndexMarkdown = entryNode.bundleNodeKind === 'file'
           ? undefined
           : `---\nokf_version: "0.1"\n---\n\n# ${entryNode.bundleNodeName}\n\n${entryChildren
@@ -1014,7 +1014,7 @@ export async function generateHtmlForBundle(
 
   emitProgress({ stage: 'scanning-links', message: 'Scanning links for backlinks...' });
   const scanLinksStart = performance.now();
-  const traversableLinkScanPageKeys = Object.keys(bundleNodeConfs).filter(pageKey => {
+  const traversableLinkScanPageKeys = Object.keys(bundleNodeConfs).map(encodedBundleNodeKey).filter(pageKey => {
     const conf = bundleNodeConfs[pageKey];
     const ft = conf.fileType;
     const isScannable = conf.bundleNodeKind === 'file'
@@ -1042,7 +1042,7 @@ export async function generateHtmlForBundle(
       for (const resolved of Object.values(allLinkResolutionMaps.get(pageKey) ?? {})) {
         const target = resolved.link_resolved_target_path;
         if (!target || !/\.(?:md|html|excalidraw)$/i.test(target)) continue;
-        const targetKey = target.includes('/') ? target : `/${target}`;
+        const targetKey = serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(target));
         const inlinks = inverseLinks[targetKey] ??= [];
         if (!inlinks.includes(pageKey)) inlinks.push(pageKey);
       }
@@ -1254,8 +1254,8 @@ export async function generateHtmlForBundle(
   let startPageRenderedEmitted = false;
   const renderNodeByKey = new Map(renderGraphNodes.map(node => [node.bundleNodeKey, node]));
   const configById = new Map(bundleNodeConfigsArray.map(config => [config.bundleNodeId, config]));
-  const breadcrumbNodeKeysFor = (pageKey: string): BundleNodeKey[] =>
-    breadcrumbNodeKeysByNodeKey.get(pageKey as BundleNodeKey) ?? [];
+  const breadcrumbNodeKeysFor = (pageKey: string): EncodedBundleNodeKey[] =>
+    breadcrumbNodeKeysByNodeKey.get(encodedBundleNodeKey(pageKey)) ?? [];
 
   const outputDirectoryForRoute = (route: string): string => {
     const directory = path.posix.dirname(route);
@@ -1299,7 +1299,7 @@ export async function generateHtmlForBundle(
     return outputRelativePath;
   };
 
-  const structuralBreadcrumbHtml = (bundleNodeKey: BundleNodeKey, currentRoute: string): string => {
+  const structuralBreadcrumbHtml = (bundleNodeKey: EncodedBundleNodeKey, currentRoute: string): string => {
     if (!breadcrumbsEnabled || !structuralProjection) return '';
     const keys = structuralProjection.breadcrumbNodeKeysByNodeKey.get(bundleNodeKey) ?? [];
     if (keys.length <= 1) return '';
@@ -1334,7 +1334,7 @@ export async function generateHtmlForBundle(
   for (const pageKey of structuralRenderOrder) {
     if (options.shouldCancel?.()) break;
     const config = bundleNodeConfs[pageKey];
-    const node = renderNodeByKey.get(pageKey as BundleNodeKey);
+    const node = renderNodeByKey.get(encodedBundleNodeKey(pageKey));
     if (!node || !structuralProjection) {
       throw new Error(`Cannot render structural bundle node ${pageKey}: visible projection is unavailable`);
     }
@@ -1376,7 +1376,7 @@ export async function generateHtmlForBundle(
       outputRoute,
       pageTitle: config.bundleNodeName,
       bodyHtml,
-      breadcrumbHtml: structuralBreadcrumbHtml(pageKey as BundleNodeKey, outputRoute),
+      breadcrumbHtml: structuralBreadcrumbHtml(encodedBundleNodeKey(pageKey), outputRoute),
       staticAssetNames,
       bundleConfig,
       bundleSlug: bundleSlug || undefined,
@@ -1577,7 +1577,7 @@ export async function generateHtmlForBundle(
     // the working-graph data. The client renderer reads this map to set the
     // right href on each linked text element, instead of re-implementing
     // Obsidian's link-resolution rules in JavaScript.
-    const excalidrawIdent = subdir ? `${subdir}/${conf.bundleNodeName}.excalidraw` : `/${conf.bundleNodeName}.excalidraw`;
+    const excalidrawIdent = makeBundleNodeKey(conf.bundleNodeName, 'excalidraw', subdir);
     const { tracked: clientLinkMap, untracked: clientUntrackedLinks } = buildExcalidrawClientLinkData({
       excalidrawPageIdent: excalidrawIdent,
       hostPageDirectory: outputDirectory,
@@ -1701,7 +1701,7 @@ export async function generateHtmlForBundle(
     
     // Get the link resolution map for this page
     // Page ident format is "directory/title.fileType" or "/title.fileType" for root
-    const pageIdent = subdir ? `${subdir}/${conf.bundleNodeName}.md` : `/${conf.bundleNodeName}.md`;
+    const pageIdent = makeBundleNodeKey(conf.bundleNodeName, 'md', subdir);
     const linkResolutionMap = allLinkResolutionMaps.get(pageIdent);
 
     // Determine if this is the initial page (no breadcrumbs for initial page)
@@ -1869,3 +1869,9 @@ export async function generateHtmlForBundle(
   emitProgress({ stage: 'complete', message: 'HTML render complete', current: renderedOrSkipped, total: totalToRender, percent: 100 });
   
 } 
+
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import { makeBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';

@@ -20,13 +20,15 @@ limitations under the License.
 import type { BundleSource } from './bundleConfig.js';
 import type { SourceReferenceDiagnostic } from './sourcing.js';
 import type { IBundleNode } from './IBundleNode.js';
+import type { BundleNodeKey, EncodedBundleNodeKey } from './bundleNodeKey.js';
+import { serializeBundleNodeKey, encodedBundleNodeKey } from '../../shared_code/utils/bundleNodeKey.js';
 export type { IBundleNode } from './IBundleNode.js';
 
 export type BundleEdgeKind = 'semanticLink' | 'directoryContainment' | 'collectionMembership';
 
 export interface IEdge {
-  source: string;
-  target: string;
+  source: EncodedBundleNodeKey;
+  target: EncodedBundleNodeKey;
   bundleEdgeKind: BundleEdgeKind;
   label?: string;
   isBidirectional?: boolean;
@@ -39,11 +41,11 @@ export class Graph {
   sourceDiagnostics: SourceReferenceDiagnostic[] = [];
   ignoredSourceNames: string[] = [];
   sourceContentView: 'accepted' | 'live' = 'accepted';
-  private nodes: Map<string, IBundleNode>;
+  private nodes: Map<EncodedBundleNodeKey, IBundleNode>;
   private edges: IEdge[];
   private changeListeners: Set<() => void>;
-  private allInlinkSources: Record<string, string[]>;
-  private allOutlinkTargets: Record<string, string[]>;
+  private allInlinkSources: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
+  private allOutlinkTargets: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
 
   constructor() {
     this.nodes = new Map();
@@ -51,6 +53,10 @@ export class Graph {
     this.changeListeners = new Set();
     this.allInlinkSources = {};
     this.allOutlinkTargets = {};
+  }
+
+  private key(key: BundleNodeKey | EncodedBundleNodeKey): EncodedBundleNodeKey {
+    return typeof key === 'string' ? encodedBundleNodeKey(key) : serializeBundleNodeKey(key);
   }
 
   notifyChange() {
@@ -66,15 +72,15 @@ export class Graph {
   }
 
   addNode(node: IBundleNode): void {
-    this.nodes.set(node.bundleNodeKey, node);
+    this.nodes.set(encodedBundleNodeKey(node.bundleNodeKey), node);
     this.notifyChange();
   }
 
-  updateNode(bundleNodeKey: string, node: IBundleNode): void {
-    if (!this.nodes.has(bundleNodeKey)) {
+  updateNode(bundleNodeKey: BundleNodeKey | EncodedBundleNodeKey, node: IBundleNode): void {
+    if (!this.nodes.has(this.key(bundleNodeKey))) {
       throw new Error('Node does not exist');
     }
-    this.nodes.set(bundleNodeKey, node);
+    this.nodes.set(this.key(bundleNodeKey), node);
     this.notifyChange();
   }
 
@@ -86,8 +92,8 @@ export class Graph {
     this.notifyChange();
   }
 
-  getNode(bundleNodeKey: string): IBundleNode | undefined {
-    return this.nodes.get(bundleNodeKey);
+  getNode(bundleNodeKey: BundleNodeKey | EncodedBundleNodeKey): IBundleNode | undefined {
+    return this.nodes.get(this.key(bundleNodeKey));
   }
 
   getAllNodes(): IBundleNode[] {
@@ -98,18 +104,20 @@ export class Graph {
     return this.edges;
   }
 
-  getOutgoingEdges(bundleNodeKey: string): IEdge[] {
-    return this.edges.filter(edge => edge.source === bundleNodeKey);
+  getOutgoingEdges(bundleNodeKey: BundleNodeKey | EncodedBundleNodeKey): IEdge[] {
+    const key = this.key(bundleNodeKey);
+    return this.edges.filter(edge => edge.source === key);
   }
 
-  getIncomingEdges(bundleNodeKey: string): IEdge[] {
-    return this.edges.filter(edge => edge.target === bundleNodeKey);
+  getIncomingEdges(bundleNodeKey: BundleNodeKey | EncodedBundleNodeKey): IEdge[] {
+    const key = this.key(bundleNodeKey);
+    return this.edges.filter(edge => edge.target === key);
   }
 
   // tag-todo-depth: we don't really need to calculate distances here... we can just rely on the depth property
   // tag-todo-naming: we should just call this depth
-  calculateDistances(): Map<string, number> {
-    const distances = new Map<string, number>();
+  calculateDistances(): Map<EncodedBundleNodeKey, number> {
+    const distances = new Map<EncodedBundleNodeKey, number>();
     this.nodes.forEach(node => {
       distances.set(node.bundleNodeKey, node.depth);
     });
@@ -118,20 +126,25 @@ export class Graph {
 
   // Methods for accessing full source-graph link data, including files outside the working graph.
   setLinkSourceData(
-    inlinkSources: Record<string, string[]>,
-    outlinkTargets: Record<string, string[]>
+    inlinkSources: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>,
+    outlinkTargets: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>
   ): void {
     this.allInlinkSources = inlinkSources;
     this.allOutlinkTargets = outlinkTargets;
   }
 
   // Returns all source-node keys that link to this node in the source graph.
-  getAllInlinkSources(bundleNodeKey: string): string[] {
-    return this.allInlinkSources[bundleNodeKey] || [];
+  getAllInlinkSources(bundleNodeKey: BundleNodeKey | EncodedBundleNodeKey): EncodedBundleNodeKey[] {
+    return this.allInlinkSources[this.key(bundleNodeKey)] || [];
   }
 
   // Returns all target-node keys that this node links to in the source graph.
-  getAllOutlinkTargets(bundleNodeKey: string): string[] {
-    return this.allOutlinkTargets[bundleNodeKey] || [];
+  getAllOutlinkTargets(bundleNodeKey: BundleNodeKey | EncodedBundleNodeKey): EncodedBundleNodeKey[] {
+    return this.allOutlinkTargets[this.key(bundleNodeKey)] || [];
   }
 }
+
+import type { bundleNodeKey, ParticipatesIn } from '../../concepts/index.js';
+export type GraphKeysMeadowConceptParticipations = [
+  ParticipatesIn<typeof bundleNodeKey, 'graph-lookup', Graph['getNode']>,
+];

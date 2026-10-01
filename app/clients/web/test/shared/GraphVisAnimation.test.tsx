@@ -49,7 +49,7 @@ function displayGraph(bundleNodeKeys: string[]): DisplayGraph {
 const props = {
   graph,
   filters: [],
-  selectedNodeKeys: new Set<string>(),
+  selectedNodeKeys: testKeySet([]),
   onSelectedNodeKeysChange: vi.fn(),
   bundleSlug: 'test-bundle',
   isFolderBasedBundle: false,
@@ -84,3 +84,5 @@ describe('GraphVis layout animation', () => {
     expect(frames).toHaveLength(0);
   });
 });
+
+import { testKeySet } from './nodeKeys.js';

@@ -29,10 +29,10 @@ import ListNodeGlyph from './ListNodeGlyph';
 interface ListViewProps {
   displayGraph: DisplayGraph;
   entryBundleNodeId?: string;
-  onPageClick: (bundleNodeKey: string) => void;
+  onPageClick: (bundleNodeKey: EncodedBundleNodeKey) => void;
   bundleSlug: string;
-  onBundleNodeContextMenu?: (bundleNodeKey: string, x: number, y: number) => void;
-  selectedNodeKeys?: Set<string>;
+  onBundleNodeContextMenu?: (bundleNodeKey: EncodedBundleNodeKey, x: number, y: number) => void;
+  selectedNodeKeys?: Set<EncodedBundleNodeKey>;
 }
 
 export type SortField = 'title' | 'source' | 'directory' | 'fileType' | 'depth';
@@ -387,3 +387,5 @@ const ListView: React.FC<ListViewProps> = ({
 };
 
 export default ListView;
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

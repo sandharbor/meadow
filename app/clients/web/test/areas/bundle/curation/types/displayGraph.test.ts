@@ -23,7 +23,7 @@ import { IFilter } from '../../../../../src/areas/bundle/curation/types/filters'
 function createGraph(): Graph {
   const graph = new Graph();
   const pages: IBundleNode[] = ['1', '2', '3'].map(id => ({
-    bundleNodeKey: id as IBundleNode['bundleNodeKey'],
+    bundleNodeKey: testKey(id),
     bundleNodeKind: 'file',
     label: id,
     bundleNodeName: `Page ${id}`,
@@ -46,7 +46,7 @@ function createFilter(id: string, pages: string[], mode: 'solo' | 'hide'): IFilt
       id: `${id}-selector`,
       name: id,
       type: 'normal',
-      select: () => new Set(pages)
+      select: () => testKeySet(new Set(pages))
     }],
     selectorApplicationCriteria: 'union',
     actions: [],
@@ -64,7 +64,7 @@ describe('DisplayGraph filter expressions', () => {
       createFilter('beta', ['2', '3'], 'solo')
     ]);
 
-    expect(displayGraph.visibleDisplayNodes.map(page => page.bundleNodeKey)).toEqual(['1', '2', '3']);
+    expect(displayGraph.visibleDisplayNodes.map(page => page.bundleNodeKey)).toEqual(['1', '2', '3'].map(testKey));
   });
 
   it('applies a custom intersection and the complement represented by Hide', () => {
@@ -83,6 +83,8 @@ describe('DisplayGraph filter expressions', () => {
       createFilter('beta', ['2', '3'], 'hide')
     ], expression);
 
-    expect(displayGraph.visibleDisplayNodes.map(page => page.bundleNodeKey)).toEqual(['1']);
+    expect(displayGraph.visibleDisplayNodes.map(page => page.bundleNodeKey)).toEqual(['1'].map(testKey));
   });
 });
+
+import { testKeySet, testKey } from '../../../../shared/nodeKeys.js';

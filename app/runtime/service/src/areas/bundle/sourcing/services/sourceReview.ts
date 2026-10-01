@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { loadTrackingRecords } from '../../../../shared/bundle-node/trackingRecords.js';
+import { sourceFilePathToBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
 import { diagnoseOrphanConnection } from './orphanDiagnosis.js';
 import { findGroupedSourceMoves } from './sourceMoveGroups.js';
 import { sourceTraversalGraph } from './sourceTraversalGraph.js';
@@ -113,10 +114,10 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
       if (path.basename(oldPath) === path.basename(newPath)) evidence.push('Same filename');
       else if (name >= 0.5) evidence.push('Similar filename');
       let context = 0;
-      if (sameLinks(previous.graph?.allInlinkSources[oldPath], current.graph?.allInlinkSources[newPath])) {
+      if (sameLinks(previous.graph?.allInlinkSources[sourceFilePathToBundleNodeKey(oldPath)], current.graph?.allInlinkSources[sourceFilePathToBundleNodeKey(newPath)])) {
         evidence.push('Same incoming links'); context += 0.5;
       }
-      if (sameLinks(previous.graph?.allOutlinkTargets[oldPath], current.graph?.allOutlinkTargets[newPath])) {
+      if (sameLinks(previous.graph?.allOutlinkTargets[sourceFilePathToBundleNodeKey(oldPath)], current.graph?.allOutlinkTargets[sourceFilePathToBundleNodeKey(newPath)])) {
         evidence.push('Same outgoing links'); context += 0.5;
       }
       const score = overlap * 0.75 + name * 0.15 + context * 0.1;
@@ -124,8 +125,8 @@ export function findSourceMoves(bundleDirectory: string, previous: SourceSnapsho
       const results = resultsByNode.get(node.bundleNodeId) ?? [];
       results.push({ bundleNodeId: node.bundleNodeId, oldPath, newPath, evidence,
         confidence: exact ? 'strong' : 'possible', competing: false, score,
-        previousRoute: previous.graph?.nodes.find(item => item.bundleNodeKey === oldPath)?.path ?? [],
-        currentRoute: current.graph?.nodes.find(item => item.bundleNodeKey === newPath)?.path ?? [] });
+        previousRoute: previous.graph?.nodes.find(item => item.bundleNodeKey === sourceFilePathToBundleNodeKey(oldPath))?.path ?? [],
+        currentRoute: current.graph?.nodes.find(item => item.bundleNodeKey === sourceFilePathToBundleNodeKey(newPath))?.path ?? [] });
       resultsByNode.set(node.bundleNodeId, results);
     }
   }
@@ -234,7 +235,7 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
       else if (file.digest !== candidate.files[currentPath].digest) changes.push({ kind: 'modified', path: currentPath, ...(currentPath !== filename && { previousPath: filename }), bundleNodeId: byPath.get(filename) });
     }
     for (const filename of Object.keys(candidate.files)) {
-      if (!accepted.files[equivalentSnapshotPath(candidate, accepted, filename)] && !pairedNew.has(filename)) changes.push({ kind: 'added', path: filename, route: candidateGraph?.nodes.find(node => node.bundleNodeKey === filename)?.path ?? [] });
+      if (!accepted.files[equivalentSnapshotPath(candidate, accepted, filename)] && !pairedNew.has(filename)) changes.push({ kind: 'added', path: filename, route: candidateGraph?.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey(filename))?.path ?? [] });
     }
   }
   if (sourceConfigFingerprint(bundleDirectory) !== fingerprint && attempt < 2) return await buildSourceReview(bundleDirectory, attempt + 1);
@@ -365,7 +366,7 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
       const additions = new Set(review.changes.filter(change => change.kind === 'added').map(change => change.path));
       const configuredPaths = new Set(next.map(node => snapshotFilePath(candidate, node)));
       const nodeKeys = graph.nodes.filter(node => node.bundleNodeKind === 'file'
-        && additions.has(node.bundleNodeKey) && !configuredPaths.has(node.bundleNodeKey))
+        && additions.has(node.sourceFile?.path ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey)) && !configuredPaths.has(node.sourceFile?.path ?? bundleNodeKeySourceGraphPath(node.bundleNodeKey)))
         .map(node => node.bundleNodeKey);
       if (nodeKeys.length) trackingRequest = { snapshotId: candidate.id, nodeKeys };
     }
@@ -428,3 +429,5 @@ export function sourceSnapshotHistory(bundleDirectory: string): SourceSnapshotHi
   const state = loadSourcingState(bundleDirectory);
   return { acceptedId: state?.acceptedId ?? null, snapshots: state?.history ?? [] };
 }
+
+import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

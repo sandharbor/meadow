@@ -27,8 +27,14 @@ export function FilePill({ path }: { path: string }) {
   </span>;
 }
 
-export function FileRoute({ paths, graph, onDetails }: { paths: string[]; graph?: Graph; onDetails?: () => void }) {
-  return <div className="mt-2 flex flex-wrap items-center gap-1">{paths.map((path, index) => <span key={`${index}:${path}`} className="contents">{index > 0 && <RouteConnector linkType={graph ? traversalLinkType(graph, paths[index - 1], path) : 'unknown'} />}<FilePill path={path} /></span>)}
-    {onDetails && <button type="button" className="ml-2 text-xs text-main-700 underline hover:text-main-900" aria-label={`Traversal details for ${paths.at(-1)}`} onClick={onDetails}>Details</button>}
+export function FileRoute({ paths, graph, onDetails }: { paths: EncodedBundleNodeKey[]; graph?: Graph; onDetails?: () => void }) {
+  const last = paths.at(-1);
+  const detailsLabel = last && (parseBundleNodeKey(last).kind === 'collection' ? 'Bundle home' : bundleNodeKeySourceGraphPath(last));
+  return <div className="mt-2 flex flex-wrap items-center gap-1">{paths.map((path, index) => <span key={`${index}:${path}`} className="contents">{index > 0 && <RouteConnector linkType={graph ? traversalLinkType(graph, paths[index - 1], path) : 'unknown'} />}<FilePill path={parseBundleNodeKey(path).kind === 'collection' ? 'Bundle home' : bundleNodeKeySourceGraphPath(path)} /></span>)}
+    {onDetails && <button type="button" className="ml-2 text-xs text-main-700 underline hover:text-main-900" aria-label={`Traversal details for ${detailsLabel}`} onClick={onDetails}>Details</button>}
   </div>;
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+
+import { bundleNodeKeySourceGraphPath, parseBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

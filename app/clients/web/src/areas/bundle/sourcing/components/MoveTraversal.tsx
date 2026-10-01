@@ -5,13 +5,13 @@ import { FileRoute } from './SourceFileRoute.js';
 import type { Graph } from '../../../../../../../contracts/types/graph.js';
 import { traversalLinkType } from '../../../../shared/utils/traversalLinkType.js';
 
-function leadingRoute(route: string[], target: string): string[] {
+function leadingRoute(route: EncodedBundleNodeKey[], target: string): EncodedBundleNodeKey[] {
   const last = route[route.length - 1];
-  return last === target || last === `folder:${target}` ? route.slice(0, -1) : route;
+  return last && last === serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(target)) ? route.slice(0, -1) : route;
 }
 
 /** The moved endpoint is already explained by the location diff above. */
-export function MoveTraversal({ move, graphs, onDetails }: { move: SourceMoveCandidate; graphs?: { accepted?: Graph; candidate?: Graph }; onDetails?: (side: 'accepted' | 'candidate', key: string) => void }) {
+export function MoveTraversal({ move, graphs, onDetails }: { move: SourceMoveCandidate; graphs?: { accepted?: Graph; candidate?: Graph }; onDetails?: (side: 'accepted' | 'candidate', key: EncodedBundleNodeKey) => void }) {
   const before = leadingRoute(move.previousRoute, move.oldPath);
   const after = leadingRoute(move.currentRoute, move.newPath);
   const same = move.previousRoute.length > 0 && move.currentRoute.length > 0
@@ -32,3 +32,7 @@ export function MoveTraversal({ move, graphs, onDetails }: { move: SourceMoveCan
     </dl>}
   </details>;
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceFilePath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

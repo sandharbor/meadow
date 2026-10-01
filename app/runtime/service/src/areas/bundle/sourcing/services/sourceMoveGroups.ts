@@ -85,8 +85,8 @@ export function findGroupedSourceMoves(bundleDirectory: string, previous: Source
       if (similarity < 0.9) continue;
       result.push({ bundleNodeId: config.bundleNodeId, oldPath, newPath, confidence: 'possible', competing: false,
         evidence: [`Follows the folder move shared by ${group.anchors.length} matched pages`, exact ? 'Identical file contents' : `${Math.round(similarity * 100)}% word overlap after the shared rename`],
-        previousRoute: previous.graph?.nodes.find(node => node.bundleNodeKey === oldPath)?.path ?? [],
-        currentRoute: current.graph?.nodes.find(node => node.bundleNodeKey === newPath)?.path ?? [],
+        previousRoute: previous.graph?.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey(oldPath))?.path ?? [],
+        currentRoute: current.graph?.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey(newPath))?.path ?? [],
       });
     }
   }
@@ -96,3 +96,5 @@ export function findGroupedSourceMoves(bundleDirectory: string, previous: Source
   }
   return unique;
 }
+
+import { sourceFilePathToBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';

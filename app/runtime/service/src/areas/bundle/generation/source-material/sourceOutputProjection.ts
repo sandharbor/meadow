@@ -34,13 +34,12 @@ export function sourceForOutputPath(config: BundleConfig, outputPath: string): {
 }
 
 export function sourceOutputGraphPath(config: BundleConfig, graphPath: string): string {
-  if (!config.sources || graphPath.startsWith('collection:')) return graphPath;
-  const folder = graphPath.startsWith('folder:');
-  const { sourceId, relativePath } = splitSourceGraphPath(folder ? graphPath.slice(7) : graphPath, config.sources);
+  if (!config.sources) return graphPath;
+  const { sourceId, relativePath } = splitSourceGraphPath(graphPath, config.sources);
   const tagRoot = BundleConfigPaths.TAGPAGE_SOURCE_STAGING_DIR;
   const projected = sourceId === config.sources[0].id && (relativePath === tagRoot || relativePath.startsWith(`${tagRoot}/`))
     ? relativePath : sourceOutputDirectory(config, sourceId, relativePath);
-  return `${folder ? 'folder:' : ''}${projected}`;
+  return projected;
 }
 
 /** Raw tracked bytes retain stable identities. Only this generation copy uses names. */

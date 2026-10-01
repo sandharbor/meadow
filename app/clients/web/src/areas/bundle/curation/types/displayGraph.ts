@@ -51,7 +51,7 @@ export class DisplayNode {
     this._node = node;
   }
 
-  get bundleNodeKey(): string {
+  get bundleNodeKey(): EncodedBundleNodeKey {
     return this._node.bundleNodeKey;
   }
 
@@ -168,7 +168,7 @@ export class DisplayNode {
 
 export class DisplayGraph {
   private _graph: Graph;
-  private _displayNodes: Map<string, DisplayNode>;
+  private _displayNodes: Map<EncodedBundleNodeKey, DisplayNode>;
   private _filters: IFilter[];
   private _filterExpression: FilterExpression | null;
 
@@ -196,7 +196,7 @@ export class DisplayGraph {
     return this._graph;
   }
 
-  getDisplayNode(id: string): DisplayNode | undefined {
+  getDisplayNode(id: EncodedBundleNodeKey): DisplayNode | undefined {
     return this._displayNodes.get(id);
   }
 
@@ -226,7 +226,7 @@ export class DisplayGraph {
     });
   }
 
-  setSelectedNodeKeys(bundleNodeKeys: Set<string>): void {
+  setSelectedNodeKeys(bundleNodeKeys: Set<EncodedBundleNodeKey>): void {
     this._displayNodes.forEach(displayNode => {
       displayNode.setSelected(bundleNodeKeys.has(displayNode.bundleNodeKey));
     });
@@ -235,16 +235,16 @@ export class DisplayGraph {
   private applyFilters(): void {
     const activeTerms = getActiveFilterExpressionTerms(this._filters);
     const activeFilterIds = new Set(activeTerms.map(term => term.filterId));
-    const filterMatches = new Map<string, Set<string>>();
+    const filterMatches = new Map<string, Set<EncodedBundleNodeKey>>();
 
     this._filters.forEach(filter => {
       if (!activeFilterIds.has(filter.id) || filterMatches.has(filter.id)) return;
       const selectedNodeKeys = filter.bundleNodeSelectors.map((selector: IBundleNodeSelector) => selector.select(this._graph));
-      const matches = new Set<string>();
+      const matches = new Set<EncodedBundleNodeKey>();
       this._displayNodes.forEach(displayNode => {
         const isSelected = filter.selectorApplicationCriteria === 'union'
-          ? selectedNodeKeys.some((nodeKeys: Set<string>) => nodeKeys.has(displayNode.bundleNodeKey))
-          : selectedNodeKeys.every((nodeKeys: Set<string>) => nodeKeys.has(displayNode.bundleNodeKey));
+          ? selectedNodeKeys.some((nodeKeys: Set<EncodedBundleNodeKey>) => nodeKeys.has(displayNode.bundleNodeKey))
+          : selectedNodeKeys.every((nodeKeys: Set<EncodedBundleNodeKey>) => nodeKeys.has(displayNode.bundleNodeKey));
         if (isSelected) matches.add(displayNode.bundleNodeKey);
       });
       filterMatches.set(filter.id, matches);
@@ -273,8 +273,8 @@ export class DisplayGraph {
 
       this._displayNodes.forEach((displayNode: DisplayNode) => {
         const isSelected = filter.selectorApplicationCriteria === 'union'
-          ? selectedNodeKeys.some((nodeKeys: Set<string>) => nodeKeys.has(displayNode.bundleNodeKey))
-          : selectedNodeKeys.every((nodeKeys: Set<string>) => nodeKeys.has(displayNode.bundleNodeKey));
+          ? selectedNodeKeys.some((nodeKeys: Set<EncodedBundleNodeKey>) => nodeKeys.has(displayNode.bundleNodeKey))
+          : selectedNodeKeys.every((nodeKeys: Set<EncodedBundleNodeKey>) => nodeKeys.has(displayNode.bundleNodeKey));
 
         if (isSelected) {
           // Process mark_sensitive before highlight so sensitivity state is set
@@ -331,3 +331,5 @@ export class DisplayGraph {
     });
   }
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

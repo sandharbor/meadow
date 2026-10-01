@@ -94,9 +94,9 @@ function executableFilters(customFilters: CustomFilterConfig[]): Map<string, Exe
   ]);
 }
 
-function matchingNodeKeys(filter: ExecutableFilter, graph: Graph): Set<string> {
+function matchingNodeKeys(filter: ExecutableFilter, graph: Graph): Set<EncodedBundleNodeKey> {
   const selectorResults = filter.selectors.map(selector => selector.select(graph));
-  const matches = new Set<string>();
+  const matches = new Set<EncodedBundleNodeKey>();
   for (const node of graph.getAllNodes()) {
     const selected = filter.selectorApplicationCriteria === 'union'
       ? selectorResults.some(result => result.has(node.bundleNodeKey))
@@ -136,12 +136,12 @@ export function selectGraphNodeKeys(
   customFilters: CustomFilterConfig[],
   applications: GraphFilterApplication[],
   combine: GraphFilterCombination,
-): Set<string> {
+): Set<EncodedBundleNodeKey> {
   const allBundleNodeKeys = new Set(graph.getAllNodes().map(node => node.bundleNodeKey));
   if (applications.length === 0) return allBundleNodeKeys;
 
   const availableFilters = executableFilters(customFilters);
-  const filterMatches = new Map<string, Set<string>>();
+  const filterMatches = new Map<string, Set<EncodedBundleNodeKey>>();
   for (const application of applications) {
     const filter = availableFilters.get(application.filterId);
     if (!filter) {
@@ -168,7 +168,7 @@ export function selectGraphNodeKeys(
 export function selectEffectivelySensitiveNodeKeys(
   graph: Graph,
   customFilters: CustomFilterConfig[],
-): Set<string> {
+): Set<EncodedBundleNodeKey> {
   const result = new Set(
     graph.getAllNodes()
       .filter(node => node.sensitive === true)
@@ -191,3 +191,5 @@ export function selectEffectivelySensitiveNodeKeys(
 export type FilterSensitivityMeadowConceptParticipations = [
   ParticipatesIn<typeof filterSensitivity, "derive-sensitivity", typeof selectEffectivelySensitiveNodeKeys>,
 ];
+
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';

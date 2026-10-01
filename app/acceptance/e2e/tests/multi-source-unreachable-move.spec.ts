@@ -41,8 +41,8 @@ test('Multi-source move to an unreachable destination remains an orphan instead 
   await editor.sourceReview.accept();
   expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toBeUndefined();
   await editor.switchToListView();
-  await editor.expectListViewNodeVisible('_mw_sources/source000002/Unreachable/Inside.md', false);
-  await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Unreachable/Inside.md', false);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true);
   await addKeyFrame(sourceSnapshot);
   await checkpoint('the unrelated reachable namesake remains and the unreachable destination stays outside the bundle');
 

@@ -31,7 +31,7 @@ test('Multi-source starting selections preserve the page start when adding a fol
   // --- Test start ---
   // Add a folder start.
   await editor.switchToListView();
-  await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000003/Study.md', true);
   await sources.open();
   await sources.editStartingSelections();
   await sources.addStartingSelection();
@@ -49,8 +49,8 @@ test('Multi-source starting selections preserve the page start when adding a fol
   expect(collection.bundleNodeKind === 'collection' && collection.memberBundleNodeIds[0]).toBe(originalStart.bundleNodeId);
   expect(afterNodes.find(node => node.bundleNodeId === originalStart.bundleNodeId)).toEqual(originalStart);
   expect(afterConfig.defaultOutlinksDepth).toBe(beforeConfig.defaultOutlinksDepth);
-  await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', true);
-  await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000003/Study.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true);
   const acceptedConfig = bundleConfig.readText();
   await checkpoint('the accepted collection retains the original page and adds the folder start');
 

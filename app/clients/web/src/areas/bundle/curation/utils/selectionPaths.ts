@@ -22,9 +22,9 @@ import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
  * Ordering is optimized for the selection sidebar: the "here" node comes first,
  * followed by its ancestors walking back toward the root.
  */
-export function getSelectionPathToHereOrdered(node: IBundleNode): string[] {
+export function getSelectionPathToHereOrdered(node: IBundleNode): EncodedBundleNodeKey[] {
   const pathNodeKeys = Array.isArray(node.path) ? node.path : [];
-  const ordered: string[] = [];
+  const ordered: EncodedBundleNodeKey[] = [];
 
   // Always prioritize the clicked node at the top of selection
   if (typeof node.bundleNodeKey === 'string' && node.bundleNodeKey.length > 0) {
@@ -40,7 +40,7 @@ export function getSelectionPathToHereOrdered(node: IBundleNode): string[] {
   }
 
   // De-dupe while preserving order
-  const seen = new Set<string>();
+  const seen = new Set<EncodedBundleNodeKey>();
   return ordered.filter((id) => {
     if (seen.has(id)) return false;
     seen.add(id);
@@ -64,11 +64,11 @@ export function getSelectionPathToHereOrdered(node: IBundleNode): string[] {
  * edges already encode a direct parent/child relationship, while semantic
  * links retain the legacy depth + 1 behavior.
  */
-export function getSelectionChildrenOrdered(graph: Graph, startNodeKey: string): string[] {
+export function getSelectionChildrenOrdered(graph: Graph, startNodeKey: EncodedBundleNodeKey): EncodedBundleNodeKey[] {
   const startPage = graph.getNode(startNodeKey);
   if (!startPage) return [];
 
-  const result: string[] = [startNodeKey];
+  const result: EncodedBundleNodeKey[] = [startNodeKey];
   const startDepth = startPage.depth;
 
   for (const e of graph.getAllEdges()) {
@@ -87,11 +87,11 @@ export function getSelectionChildrenOrdered(graph: Graph, startNodeKey: string):
  * Returns an ordered list of node IDs by DFS from startNodeKey, only following
  * edges to nodes with a strictly higher depth number than the current node.
  */
-export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startNodeKey: string): string[] {
+export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startNodeKey: EncodedBundleNodeKey): EncodedBundleNodeKey[] {
   const startPage = graph.getNode(startNodeKey);
   if (!startPage) return [];
 
-  const adjacency = new Map<string, Array<{ id: string; isStructural: boolean }>>();
+  const adjacency = new Map<EncodedBundleNodeKey, Array<{ id: EncodedBundleNodeKey; isStructural: boolean }>>();
   for (const e of graph.getAllEdges()) {
     if (!adjacency.has(e.source)) adjacency.set(e.source, []);
     const isStructural = e.bundleEdgeKind !== 'semanticLink';
@@ -102,9 +102,9 @@ export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startNodeKe
     }
   }
 
-  const visited = new Set<string>();
-  const result: string[] = [];
-  const stack: Array<{ id: string; depth: number }> = [{ id: startNodeKey, depth: startPage.depth }];
+  const visited = new Set<EncodedBundleNodeKey>();
+  const result: EncodedBundleNodeKey[] = [];
+  const stack: Array<{ id: EncodedBundleNodeKey; depth: number }> = [{ id: startNodeKey, depth: startPage.depth }];
 
   while (stack.length > 0) {
     const { id, depth } = stack.pop()!;
@@ -132,8 +132,8 @@ export function getSelectionDeeperPathsFromHereOrdered(graph: Graph, startNodeKe
   return result;
 }
 
-export function getSelectionPathFromHereOrdered(graph: Graph, startNodeKey: string): string[] {
-  const adjacency = new Map<string, string[]>();
+export function getSelectionPathFromHereOrdered(graph: Graph, startNodeKey: EncodedBundleNodeKey): EncodedBundleNodeKey[] {
+  const adjacency = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>();
   for (const e of graph.getAllEdges()) {
     if (!adjacency.has(e.source)) adjacency.set(e.source, []);
     adjacency.get(e.source)!.push(e.target);
@@ -143,9 +143,9 @@ export function getSelectionPathFromHereOrdered(graph: Graph, startNodeKey: stri
     }
   }
 
-  const visited = new Set<string>();
-  const result: string[] = [];
-  const stack: string[] = [startNodeKey];
+  const visited = new Set<EncodedBundleNodeKey>();
+  const result: EncodedBundleNodeKey[] = [];
+  const stack: EncodedBundleNodeKey[] = [startNodeKey];
 
   while (stack.length > 0) {
     const id = stack.pop()!;
@@ -170,3 +170,5 @@ export function getSelectionPathFromHereOrdered(graph: Graph, startNodeKey: stri
   return result;
 }
 
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

@@ -35,8 +35,8 @@ import {
 import { selectGraphNodeKeys } from '../../../../shared/bundle-graph/graphFilterService.js';
 
 interface GraphLinkData {
-  allInlinkSources: Record<string, string[]>;
-  allOutlinkTargets: Record<string, string[]>;
+  allInlinkSources: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
+  allOutlinkTargets: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
 }
 
 function compareText(left: string, right: string): number {
@@ -112,3 +112,5 @@ export function describeWorkingGraph(options: {
       )),
   };
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

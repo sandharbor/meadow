@@ -21,6 +21,7 @@ export * from "./registry.js";
 export * from "./acceptance.js";
 
 export * from "./bundle/appAreas.js";
+export * from "./bundle/nodeIdentity.js";
 export * from "./bundle/bundles/concepts.js";
 export * from "./bundle/sourcing/concepts.js";
 export * from "./bundle/curation/concepts.js";
@@ -31,6 +32,7 @@ export * from "./application/concepts.js";
 export * from "./runtime/concepts.js";
 export * from "./development/concepts.js";
 
+import { bundleIdentityConcepts } from "./bundle/nodeIdentity.js";
 import { applicationConcepts } from "./application/concepts.js";
 import { appAreaConcepts } from "./bundle/appAreas.js";
 import { bundleCollectionConcepts } from "./bundle/bundles/concepts.js";
@@ -45,6 +47,7 @@ import { developmentConcepts } from "./development/concepts.js";
 import type { AnyMeadowConcept } from "./types.js";
 
 export const acceptanceConcepts = [
+  ...bundleIdentityConcepts,
   ...bundleCollectionConcepts,
   ...sourcingConcepts,
   ...curationConcepts,

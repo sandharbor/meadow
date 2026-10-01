@@ -14,7 +14,7 @@ import { loadSourceBundleConfig, loadSourceNodeConfigs, loadSourceSnapshot, load
 import { trackBundleNodes } from './bundleTrackingOperations.js';
 
 /** Assess the complete captured graph, including nodes needed by graph-based filter selectors. */
-export async function snapshotTrackingSensitivity(directory: string, snapshotId: string, nodeKeys: string[]): Promise<Record<string, TrackingSensitivity>> {
+export async function snapshotTrackingSensitivity(directory: string, snapshotId: string, nodeKeys: EncodedBundleNodeKey[]): Promise<Record<string, TrackingSensitivity>> {
   if (!nodeKeys.length) return {};
   const snapshot = loadSourceSnapshot(directory, snapshotId);
   const context = sourceProposalContext(loadSourceBundleConfig(directory), loadSourceNodeConfigs(directory), loadSourcingState(directory)?.candidateId === snapshotId ? snapshot : undefined);
@@ -52,3 +52,5 @@ export async function trackSnapshotAdditions(directory: string, request: Snapsho
     };
   });
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

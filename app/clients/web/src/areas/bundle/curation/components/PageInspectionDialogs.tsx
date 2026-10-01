@@ -26,24 +26,24 @@ import { useLinkedSurface } from '../../../../shared/places/placeContext.js';
  */
 export function usePageInspectionDialogs(options: {
   graph: Graph;
-  selectedNodeKeys: Set<string>;
-  onSelectedNodeKeysChange: (pages: Set<string>) => void;
+  selectedNodeKeys: Set<EncodedBundleNodeKey>;
+  onSelectedNodeKeysChange: (pages: Set<EncodedBundleNodeKey>) => void;
   isEffectivelySensitive: (page: IBundleNode) => boolean;
-}): { showTraversalDetails(bundleNodeKey: string): void; showLinks(bundleNodeKey: string): void; dialogs: React.ReactNode } {
+}): { showTraversalDetails(bundleNodeKey: EncodedBundleNodeKey): void; showLinks(bundleNodeKey: EncodedBundleNodeKey): void; dialogs: React.ReactNode } {
   const { graph, selectedNodeKeys, onSelectedNodeKeysChange, isEffectivelySensitive } = options;
-  const [traversalNodeKey, setTraversalNodeKey] = useState<string | null>(null);
-  const [linksNodeKey, setLinksNodeKey] = useState<string | null>(null);
-  const pageForPlace = (bundleNodeKey: string): true | string => graph.getNode(bundleNodeKey) ? true : `the page ${bundleNodeKey} is not in this bundle`;
+  const [traversalNodeKey, setTraversalNodeKey] = useState<EncodedBundleNodeKey | null>(null);
+  const [linksNodeKey, setLinksNodeKey] = useState<EncodedBundleNodeKey | null>(null);
+  const pageForPlace = (bundleNodeKey: EncodedBundleNodeKey): true | string => graph.getNode(bundleNodeKey) ? true : `the page ${bundleNodeKey} is not in this bundle`;
 
   useLinkedSurface('traversal-details', {
     open: traversalNodeKey !== null,
     parameters: traversalNodeKey ? { node: traversalNodeKey } : undefined,
   }, {
     open: parameters => {
-      const found = pageForPlace(parameters.node);
+      const found = pageForPlace(encodedBundleNodeKey(parameters.node));
       if (found !== true) return found;
-      if (!graph.getNode(parameters.node)?.path?.length) return 'the page has no traversal path';
-      setTraversalNodeKey(parameters.node);
+      if (!graph.getNode(encodedBundleNodeKey(parameters.node))?.path?.length) return 'the page has no traversal path';
+      setTraversalNodeKey(encodedBundleNodeKey(parameters.node));
       return true;
     },
     close: () => setTraversalNodeKey(null),
@@ -53,16 +53,16 @@ export function usePageInspectionDialogs(options: {
     parameters: linksNodeKey ? { node: linksNodeKey } : undefined,
   }, {
     open: parameters => {
-      const found = pageForPlace(parameters.node);
+      const found = pageForPlace(encodedBundleNodeKey(parameters.node));
       if (found !== true) return found;
-      setLinksNodeKey(parameters.node);
+      setLinksNodeKey(encodedBundleNodeKey(parameters.node));
       return true;
     },
     close: () => setLinksNodeKey(null),
   });
 
   const traversalNode = traversalNodeKey ? graph.getNode(traversalNodeKey) : undefined;
-  const changeSelection = (bundleNodeKey: string, selected: boolean) => {
+  const changeSelection = (bundleNodeKey: EncodedBundleNodeKey, selected: boolean) => {
     const next = new Set(selectedNodeKeys);
     if (selected) next.add(bundleNodeKey);
     else next.delete(bundleNodeKey);
@@ -96,3 +96,7 @@ export function usePageInspectionDialogs(options: {
     </>,
   };
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';
+
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

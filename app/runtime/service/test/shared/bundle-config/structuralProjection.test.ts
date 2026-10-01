@@ -17,17 +17,17 @@ limitations under the License.
 import { describe, expect, it } from 'vitest';
 import type { IEdge } from '../../../../../contracts/types/graph.js';
 import type { IBundleNode } from '../../../../../contracts/types/IBundleNode.js';
-import type { BundleNodeConfig, BundleNodeId, BundleNodeKey } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeConfig.js';
 import { buildVisibleStructuralProjection } from '../../../../../shared_code/utils/structuralProjection.js';
 
 const id = (value: string) => value as BundleNodeId;
-const key = (value: string) => value as BundleNodeKey;
+const key = (value: string): EncodedBundleNodeKey => value.startsWith('folder:') || value.startsWith('collection:') ? encodedBundleNodeKey(value) : sourceFilePathToBundleNodeKey(value.replace(/^\//, ''));
 const base = { label: '', depth: 0, remaining_depth: 0, getIdent() { return this.bundleNodeKey; } };
 
 describe('visible structural projection', () => {
   it('contracts untracked folders, stops at tracked folders and blacklists, and retains member order', () => {
     const nodes: IBundleNode[] = [
-      { ...base, bundleNodeKind: 'collection', bundleNodeKey: key('collection:c'), bundleNodeId: id('cccccccccccc'), bundleNodeName: 'Home', memberBundleNodeIds: [id('bbbbbbbbbbbb'), id('aaaaaaaaaaaa')] },
+      { ...base, bundleNodeKind: 'collection', bundleNodeKey: key('collection:cccccccccccc'), bundleNodeId: id('cccccccccccc'), bundleNodeName: 'Home', memberBundleNodeIds: [id('bbbbbbbbbbbb'), id('aaaaaaaaaaaa')] },
       { ...base, bundleNodeKind: 'folder', bundleNodeKey: key('folder:B'), bundleNodeId: id('bbbbbbbbbbbb'), bundleNodeName: 'B', sourceGraphSubdirectory: 'B' },
       { ...base, bundleNodeKind: 'folder', bundleNodeKey: key('folder:A'), bundleNodeId: id('aaaaaaaaaaaa'), bundleNodeName: 'A', sourceGraphSubdirectory: 'A' },
       { ...base, bundleNodeKind: 'folder', bundleNodeKey: key('folder:A/middle'), bundleNodeName: 'middle', sourceGraphSubdirectory: 'A/middle' },
@@ -47,10 +47,10 @@ describe('visible structural projection', () => {
       { bundleNodeKind: 'folder', bundleNodeId: id('pppppppppppp'), bundleNodeName: 'private', sourceGraphSubdirectory: 'A/private', listType: 'blacklist' },
       { bundleNodeKind: 'file', bundleNodeId: id('oooooooooooo'), bundleNodeName: 'Outside', sourceGraphSubdirectory: '', fileType: 'md', listType: 'whitelist' },
     ];
-    const containment = (source: string, target: string, kind: IEdge['bundleEdgeKind'] = 'directoryContainment'): IEdge => ({ source, target, bundleEdgeKind: kind });
+    const containment = (source: string, target: string, kind: IEdge['bundleEdgeKind'] = 'directoryContainment'): IEdge => ({ source: key(source), target: key(target), bundleEdgeKind: kind });
     const edges = [
-      containment('collection:c', 'folder:B', 'collectionMembership'),
-      containment('collection:c', 'folder:A', 'collectionMembership'),
+      containment('collection:cccccccccccc', 'folder:B', 'collectionMembership'),
+      containment('collection:cccccccccccc', 'folder:A', 'collectionMembership'),
       containment('folder:A', 'folder:A/middle'),
       containment('folder:A/middle', '/A/middle/Z.md'),
       containment('folder:A', 'folder:A/stop'),
@@ -59,10 +59,13 @@ describe('visible structural projection', () => {
     ];
 
     const result = buildVisibleStructuralProjection(nodes, edges, configs, id('cccccccccccc'));
-    expect(result.childrenByNodeKey.get(key('collection:c'))).toEqual([key('folder:B'), key('folder:A')]);
+    expect(result.childrenByNodeKey.get(key('collection:cccccccccccc'))).toEqual([key('folder:B'), key('folder:A')]);
     expect(result.childrenByNodeKey.get(key('folder:A'))).toEqual([key('folder:A/stop'), key('/A/middle/Z.md')]);
     expect(result.childrenByNodeKey.get(key('folder:A/stop'))).toEqual([key('/A/stop/Child.md')]);
     expect(result.renderedNodeKeys).not.toContain(key('folder:A/private'));
     expect(result.semanticOnlyNodeKeys).toEqual([key('/Outside.md')]);
   });
 });
+
+import { encodedBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
+import { sourceFilePathToBundleNodeKey } from '../../../src/shared/bundle-node/nodeKeys.js';

@@ -41,7 +41,7 @@ describe('Web bundle tracking client', () => {
 
     const result = await mutateFileTracking({
       bundleSlug: 'private-notes',
-      bundleNodeKey: '/Personal.md',
+      bundleNodeKey: testKey('/Personal.md'),
       operation: 'track',
       includeSensitive: true,
     });
@@ -49,7 +49,7 @@ describe('Web bundle tracking client', () => {
     const [requestPath, request] = fetch.mock.calls[0];
     expect(requestPath).toBe('/api/bundles/private-notes/curation/node/track');
     expect(JSON.parse(String(request?.body))).toEqual({
-      path: '/Personal.md',
+      path: testKey('Personal.md'),
       includeSensitive: true,
     });
     expect(result).toEqual(responseBody);
@@ -59,11 +59,13 @@ describe('Web bundle tracking client', () => {
     const responseBody = { operation: 'bundle.track', newlyTracked: [] };
     const fetch = successfulFetch(responseBody);
 
-    const result = await trackSafeNodeKeys('garden', ['/Public.md']);
+    const result = await trackSafeNodeKeys('garden', [testKey('/Public.md')]);
 
     const [requestPath, request] = fetch.mock.calls[0];
     expect(requestPath).toBe('/api/bundles/garden/curation/track-nodes');
-    expect(JSON.parse(String(request?.body))).toEqual({ nodeKeys: ['/Public.md'] });
+    expect(JSON.parse(String(request?.body))).toEqual({ nodeKeys: [testKey('Public.md')] });
     expect(result).toEqual(responseBody);
   });
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';

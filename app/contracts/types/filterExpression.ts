@@ -250,28 +250,28 @@ export function reconcileFilterExpression(
   return next;
 }
 
-function union(sets: Set<string>[]): Set<string> {
-  const result = new Set<string>();
+function union<Key extends string>(sets: Set<Key>[]): Set<Key> {
+  const result = new Set<Key>();
   sets.forEach(set => set.forEach(value => result.add(value)));
   return result;
 }
 
-function intersection(sets: Set<string>[]): Set<string> {
+function intersection<Key extends string>(sets: Set<Key>[]): Set<Key> {
   if (sets.length === 0) return new Set();
   return new Set([...sets[0]].filter(value => sets.slice(1).every(set => set.has(value))));
 }
 
 /** Evaluates only active terms; inactive terms remain in the notation but are skipped. */
-export function evaluateFilterExpression(
+export function evaluateFilterExpression<Key extends string>(
   expression: FilterExpression | null,
   activeTerms: ActiveFilterExpressionTerm[],
-  filterMatches: ReadonlyMap<string, Set<string>>,
-  allBundleNodeKeys: Set<string>
-): Set<string> {
+  filterMatches: ReadonlyMap<string, Set<Key>>,
+  allBundleNodeKeys: Set<Key>
+): Set<Key> {
   if (!expression || activeTerms.length === 0) return new Set(allBundleNodeKeys);
   const activeTermIds = new Set(activeTerms.map(filterExpressionTermId));
 
-  const evaluate = (node: FilterExpression): Set<string> | null => {
+  const evaluate = (node: FilterExpression): Set<Key> | null => {
     if (node.type === 'all') return new Set(allBundleNodeKeys);
     if (node.type === 'filter') {
       if (!activeTermIds.has(filterExpressionTermId(node))) return null;
@@ -282,14 +282,14 @@ export function evaluateFilterExpression(
     }
 
     if (node.operator === 'difference') {
-      const childSets = node.children.map(evaluate).filter((set): set is Set<string> => set !== null);
+      const childSets = node.children.map(evaluate).filter((set): set is Set<Key> => set !== null);
       if (childSets.length === 0) return null;
       const result = new Set(childSets[0]);
       childSets.slice(1).forEach(set => set.forEach(value => result.delete(value)));
       return result;
     }
 
-    const childSets = node.children.map(evaluate).filter((set): set is Set<string> => set !== null);
+    const childSets = node.children.map(evaluate).filter((set): set is Set<Key> => set !== null);
     if (childSets.length === 0) return null;
     return node.operator === 'union' ? union(childSets) : intersection(childSets);
   };

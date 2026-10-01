@@ -7,7 +7,7 @@ import { traversalLinkType } from '../utils/traversalLinkType.js';
 
 interface Branch {
   id: number;
-  key: string;
+  key: EncodedBundleNodeKey;
   title: string;
   sourceName?: string;
   parent?: Branch;
@@ -33,7 +33,8 @@ function branchesFor(routes: ExplainedTraversalRoute[], graph: Graph) {
       const signature = JSON.stringify([parent?.id, key, step]);
       let branch = prefixes.get(signature);
       if (!branch) {
-        branch = { id: branches.length, key, title: graph.getNode(key)?.bundleNodeName ?? key.split('/').pop()!,
+        const keyValue = parseBundleNodeKey(key);
+        branch = { id: branches.length, key, title: graph.getNode(key)?.bundleNodeName ?? (keyValue.kind === 'collection' ? 'Bundle home' : keyValue.path.split('/').pop() || 'Source root'),
           sourceName: traversalSourceName(graph, key),
           parent, children: [], routes: [], level, x: 0,
           outlinks: step?.remaining_depth, inlinks: step?.remaining_inlinks_depth,
@@ -63,7 +64,7 @@ function branchesFor(routes: ExplainedTraversalRoute[], graph: Graph) {
 
 export default function TraversalRouteDiagram({ routes, graph, selected, onSelect, addedNodeKeys }: {
   routes: ExplainedTraversalRoute[]; graph: Graph; selected: number; onSelect: (index: number) => void;
-  addedNodeKeys?: ReadonlySet<string>;
+  addedNodeKeys?: Set<EncodedBundleNodeKey>;
 }) {
   const markerId = React.useId().replace(/:/g, '');
   const { branches, columns } = branchesFor(routes, graph);
@@ -129,3 +130,7 @@ export default function TraversalRouteDiagram({ routes, graph, selected, onSelec
     </div>
   </div>;
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';
+
+import { parseBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';

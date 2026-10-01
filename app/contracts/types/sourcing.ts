@@ -39,8 +39,8 @@ export interface SourceMoveCandidate {
   contentChanged?: boolean;
   confidence: 'strong' | 'possible';
   competing: boolean;
-  previousRoute: string[];
-  currentRoute: string[];
+  previousRoute: EncodedBundleNodeKey[];
+  currentRoute: EncodedBundleNodeKey[];
 }
 
 export interface SourceFileChange {
@@ -50,7 +50,7 @@ export interface SourceFileChange {
   path: string;
   bundleNodeId?: string;
   /** Captured route explaining why a newly included source is reachable. */
-  route?: string[];
+  route?: EncodedBundleNodeKey[];
 }
 
 export interface SourceOrphanExplanation {
@@ -60,9 +60,9 @@ export interface SourceOrphanExplanation {
   removalBlockedReason?: string;
   bundleNodeId: string;
   path: string;
-  previousPath: string[];
+  previousPath: EncodedBundleNodeKey[];
   reason: string;
-  brokenConnection?: { from: string; to: string };
+  brokenConnection?: { from: EncodedBundleNodeKey; to: EncodedBundleNodeKey };
   /** Filesystem absence is confirmed against the available live source, not inferred from capture scope. */
   diagnosis?: { kind: 'missing-file'; from?: string; to: string }
     | { kind: 'removed-link'; from: string; to: string }
@@ -116,3 +116,5 @@ export interface SourceReferenceDiagnostic {
   requestedSource: string;
   linkOriginalText: string;
 }
+
+import type { EncodedBundleNodeKey } from './bundleNodeKey.js';

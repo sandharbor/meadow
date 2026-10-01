@@ -19,7 +19,7 @@ import type { BundleNodeKind } from '../../../../../../../contracts/types/bundle
 import type { NodePosition } from '../types/graphViewport';
 
 export interface GraphLayoutNode {
-  bundleNodeKey: string;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeName: string;
   bundleNodeKind: BundleNodeKind;
   distance: number | undefined;
@@ -33,7 +33,7 @@ export interface GraphLayoutGuide {
 }
 
 export interface GraphLayout {
-  positions: Map<string, NodePosition>;
+  positions: Map<EncodedBundleNodeKey, NodePosition>;
   guides: GraphLayoutGuide[];
   isFolderAware: boolean;
 }
@@ -89,7 +89,7 @@ function calculateDepthLayout(
   const levelSpacing = sortedLevels.length > 1
     ? availableHeight / (sortedLevels.length - 1)
     : 0;
-  const positions = new Map<string, NodePosition>();
+  const positions = new Map<EncodedBundleNodeKey, NodePosition>();
 
   sortedLevels.forEach((levelNodes, levelIndex) => {
     const visible = levelNodes.filter(node => node.isVisible);
@@ -128,7 +128,7 @@ function chunksForRow(
 }
 
 function placeIndentedRow(
-  positions: Map<string, NodePosition>,
+  positions: Map<EncodedBundleNodeKey, NodePosition>,
   nodes: GraphLayoutNode[],
   indent: number,
   y: number,
@@ -147,12 +147,12 @@ function placeIndentedRow(
 function semanticPredecessorAverage(
   node: GraphLayoutNode,
   semanticEdges: IEdge[],
-  positions: Map<string, NodePosition>,
-  nodesByKey: Map<string, GraphLayoutNode>,
+  positions: Map<EncodedBundleNodeKey, NodePosition>,
+  nodesByKey: Map<EncodedBundleNodeKey, GraphLayoutNode>,
 ): number | undefined {
   const xValues: number[] = [];
   for (const edge of semanticEdges) {
-    let neighborKey: string | undefined;
+    let neighborKey: EncodedBundleNodeKey | undefined;
     if (edge.source === node.bundleNodeKey) neighborKey = edge.target;
     if (edge.target === node.bundleNodeKey) neighborKey = edge.source;
     if (!neighborKey) continue;
@@ -169,8 +169,8 @@ function semanticPredecessorAverage(
 function orderSemanticRow(
   row: SemanticRow,
   semanticEdges: IEdge[],
-  positions: Map<string, NodePosition>,
-  nodesByKey: Map<string, GraphLayoutNode>,
+  positions: Map<EncodedBundleNodeKey, NodePosition>,
+  nodesByKey: Map<EncodedBundleNodeKey, GraphLayoutNode>,
 ): GraphLayoutNode[] {
   return [...row.nodes].sort((left, right) => {
     const leftAverage = semanticPredecessorAverage(left, semanticEdges, positions, nodesByKey);
@@ -198,7 +198,7 @@ function semanticChunks(nodes: GraphLayoutNode[], width: number): GraphLayoutNod
 }
 
 function placeSemanticRow(
-  positions: Map<string, NodePosition>,
+  positions: Map<EncodedBundleNodeKey, NodePosition>,
   nodes: GraphLayoutNode[],
   y: number,
   width: number,
@@ -227,8 +227,8 @@ export function calculateGraphLayout(
   }
 
   const nodesByKey = new Map(nodes.map(node => [node.bundleNodeKey, node]));
-  const structuralChildren = new Map<string, string[]>();
-  const incomingStructural = new Set<string>();
+  const structuralChildren = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>();
+  const incomingStructural = new Set<EncodedBundleNodeKey>();
   for (const edge of structuralEdges) {
     const children = structuralChildren.get(edge.source) ?? [];
     if (!children.includes(edge.target)) children.push(edge.target);
@@ -240,7 +240,7 @@ export function calculateGraphLayout(
     node.bundleNodeKind !== 'file' && !incomingStructural.has(node.bundleNodeKey)
   );
   const folderRows: FolderRow[] = [];
-  const structurallyPlaced = new Set<string>();
+  const structurallyPlaced = new Set<EncodedBundleNodeKey>();
 
   const visitContainer = (node: GraphLayoutNode, indent: number): void => {
     if (structurallyPlaced.has(node.bundleNodeKey)) return;
@@ -305,7 +305,7 @@ export function calculateGraphLayout(
     ? Math.min(DESIRED_ROW_SPACING, availableHeight / lastUnit)
     : DESIRED_ROW_SPACING;
   const yForUnit = (unit: number): number => VERTICAL_PADDING + unit * rowSpacing;
-  const positions = new Map<string, NodePosition>();
+  const positions = new Map<EncodedBundleNodeKey, NodePosition>();
 
   folderRows.forEach((row, index) => {
     placeIndentedRow(positions, row.nodes, row.indent, yForUnit(index), width);
@@ -354,3 +354,5 @@ export function calculateGraphLayout(
 
   return { positions, guides, isFolderAware: true };
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

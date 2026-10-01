@@ -5,8 +5,12 @@ import { sourcingQuerySnapshotSensitivity } from '../../curation/exported.js';
 import { scanSourceChanges, sourcingReview } from './sourceReview.js';
 
 async function withTrackingAssessment(directory: string, review: SourcingReview): Promise<SourcingReview> {
-  const added = review.changes.filter(change => change.kind === 'added').map(change => change.path);
-  return { ...review, trackingSensitivity: await sourcingQuerySnapshotSensitivity(directory, review.candidate?.id ?? review.accepted.id, added) };
+  const added = review.changes.filter(change => change.kind === 'added').map(change => serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(change.path)));
+  const sensitivity = await sourcingQuerySnapshotSensitivity(directory, review.candidate?.id ?? review.accepted.id, added);
+  return { ...review, trackingSensitivity: Object.fromEntries(review.changes.filter(change => change.kind === 'added').flatMap(change => {
+    const assessment = sensitivity[serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(change.path))];
+    return assessment ? [[change.path, assessment]] : [];
+  })) };
 }
 
 export async function reviewWithTrackingAssessment(directory: string): Promise<SourcingReview> {
@@ -16,3 +20,5 @@ export async function reviewWithTrackingAssessment(directory: string): Promise<S
 export async function scanWithTrackingAssessment(directory: string, replaceCandidate: boolean, rebuildIndex: boolean): Promise<SourcingReview> {
   return withTrackingAssessment(directory, await scanSourceChanges(directory, replaceCandidate, rebuildIndex));
 }
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceFilePath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

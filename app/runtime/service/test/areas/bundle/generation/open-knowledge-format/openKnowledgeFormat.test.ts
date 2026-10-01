@@ -72,7 +72,7 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
       entrySourceGraphSubdirectory: '',
       allLinkResolutionMaps: new Map([
         [
-          '/main page.md',
+          encodedBundleNodeKey('file:main page.md'),
           {
             'connected page': {
               link_resolved_target_directory: '',
@@ -313,3 +313,5 @@ describe('prepareOpenKnowledgeFormatDirectoryFromScrubbedSourceDirectory', () =>
     expect(readFile(okfDir, 'log-original.md')).toContain('Log');
   });
 });
+
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

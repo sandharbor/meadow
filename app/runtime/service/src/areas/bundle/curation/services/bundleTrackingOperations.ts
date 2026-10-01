@@ -62,8 +62,8 @@ import { loadWorkingGraph } from '../../../../shared/bundle-graph/workingGraphSe
 import { acceptedSourceRoot, initializeSourcing, loadSourceSnapshot, loadSourcingState, rememberReachableProvenance, snapshotGraph } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
 export type TrackBundleNodesOptions =
-  | { mode: 'targeted'; nodeKeys: string[] }
-  | { mode: 'safe-targeted'; nodeKeys: string[] }
+  | { mode: 'targeted'; nodeKeys: EncodedBundleNodeKey[] }
+  | { mode: 'safe-targeted'; nodeKeys: EncodedBundleNodeKey[] }
   | { mode: 'all-safe' };
 
 export class BundleTrackingOperationError extends Error {
@@ -438,3 +438,5 @@ export async function trackBundleNodes(
     }],
   };
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

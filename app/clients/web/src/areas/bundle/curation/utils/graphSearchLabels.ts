@@ -20,7 +20,7 @@ export interface TextSegment {
 }
 
 export interface LabelPlacement {
-  bundleNodeKey: string;
+  bundleNodeKey: EncodedBundleNodeKey;
   nodeX: number;
   nodeY: number;
   labelX: number;
@@ -31,7 +31,7 @@ export interface LabelPlacement {
 }
 
 interface BundleNodeInput {
-  bundleNodeKey: string;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeName: string;
   nodeX: number;
   nodeY: number;
@@ -202,3 +202,5 @@ export function computeLabelPlacements(
 
   return placements;
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

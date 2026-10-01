@@ -23,8 +23,10 @@ export function liveSourceLinks(bundleDirectory: string, digest: string): Workin
 export function scopeSourceSnapshot(snapshot: SourceSnapshot, graph: WorkingGraphRustOutput | undefined): SourceSnapshot {
   const nodes = (graph?.nodes ?? []).filter(node => !node.isFrontierNode || node.isFrontierImageExtension);
   const keys = new Set(nodes.map(node => node.bundleNodeKey));
+  const fileGraphPaths = new Set(nodes.filter(node => node.bundleNodeKind === 'file').map(node => bundleNodeKeySourceGraphPath(node.bundleNodeKey)));
   const filenames = new Set(nodes.flatMap(node => {
-    const key = node.bundleNodeKey;
+    if (node.bundleNodeKind !== 'file') return [];
+    const key = bundleNodeKeySourceGraphPath(node.bundleNodeKey);
     if (node.sourceFile && snapshot.files[node.sourceFile.path]) return [node.sourceFile.path];
     if (snapshot.files[key]) return [key];
     if (node.fileType === 'excalidraw') return [`${key}.md`, key.replace(/\.excalidraw$/, '.md')].filter(filename => snapshot.files[filename]);
@@ -38,12 +40,16 @@ export function scopeSourceSnapshot(snapshot: SourceSnapshot, graph: WorkingGrap
     while (directory !== '.') { directories.add(directory); directory = path.posix.dirname(directory); }
   }
   directories.delete('');
-  const links = (map: Record<string, string[]>) => Object.fromEntries(Object.entries(map).filter(([key]) => keys.has(key)).map(([key, values]) => [key, values.filter(value => keys.has(value))]));
+  const links = (map: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>) => Object.fromEntries(Object.entries(map).filter(([key]) => keys.has(encodedBundleNodeKey(key))).map(([key, values]) => [key, values.filter(value => keys.has(value))]));
   return { ...snapshot, ...sourceInventory(files, [...directories], snapshot.sources), graph: graph ? { ...graph, nodes,
-    ...(graph.sourceDiagnostics && { sourceDiagnostics: graph.sourceDiagnostics.filter(diagnostic => keys.has(diagnostic.path)) }),
-    allLinkResolutionMaps: Object.fromEntries(Object.entries(graph.allLinkResolutionMaps).filter(([key]) => keys.has(key.replace(/^\/+/, ''))).map(([key, resolutions]) => [key, Object.fromEntries(Object.entries(resolutions).map(([link, resolution]) => [link, resolution.link_resolved_target_path && keys.has(resolution.link_resolved_target_path.replace(/^\/+/, '')) ? resolution : { link_resolved_target_directory: '', link_resolved_target_path: null }]))])),
-    ...(graph.folderScope && { folderScope: { ...graph.folderScope, skippedPaths: graph.folderScope.skippedPaths.filter(item => keys.has(item.path)) } }),
+    ...(graph.sourceDiagnostics && { sourceDiagnostics: graph.sourceDiagnostics.filter(diagnostic => keys.has(serializeBundleNodeKey(fileNodeKeyFromSourceFilePath(diagnostic.path)))) }),
+    allLinkResolutionMaps: Object.fromEntries(Object.entries(graph.allLinkResolutionMaps).filter(([key]) => keys.has(encodedBundleNodeKey(key))).map(([key, resolutions]) => [key, Object.fromEntries(Object.entries(resolutions).map(([link, resolution]) => [link, resolution.link_resolved_target_path && fileGraphPaths.has(resolution.link_resolved_target_path) ? resolution : { link_resolved_target_directory: '', link_resolved_target_path: null }]))])),
+    ...(graph.folderScope && { folderScope: { ...graph.folderScope, skippedPaths: graph.folderScope.skippedPaths.filter(item => filenames.has(item.path)) } }),
     edges: graph.edges.filter(edge => keys.has(edge.source) && keys.has(edge.target)),
     allInlinkSources: links(graph.allInlinkSources), allOutlinkTargets: links(graph.allOutlinkTargets),
   } : undefined };
 }
+
+import { encodedBundleNodeKey, bundleNodeKeySourceGraphPath, fileNodeKeyFromSourceFilePath, serializeBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
+
+import type { EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeKey.js';

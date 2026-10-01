@@ -88,7 +88,7 @@ export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory:
   }
 
   const traversableNodeKeys = new Set<string>();
-  let allLinkResolutionMaps: Map<string, Record<string, {
+  let allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, {
     link_resolved_target_directory: string;
     link_resolved_target_path: string | null;
   }>> = new Map();
@@ -106,7 +106,7 @@ export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory:
         allowLowerDepths: false,
       }, bundleConfig);
       const output = JSON.parse(raw) as WorkingGraphOutput;
-      allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
+      allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}).map(([key, links]) => [encodedBundleNodeKey(key), links]));
       for (const node of output.nodes) {
         traversableNodeKeys.add(node.bundleNodeKey);
       }
@@ -117,7 +117,7 @@ export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory:
     }
   }
 
-  const bundleNodeConfigsArrayForLinks: BundleNodeConfig[] = Object.values(bundleNodeConfs).filter(
+  const bundleNodeConfigsArrayForLinks: BundleNodeConfig[] = nodes.filter(
     conf => traversableNodeKeys.has(bundleNodeConfigToKey(conf))
   );
 
@@ -157,3 +157,6 @@ export async function buildFilteredOpenKnowledgeFormatForBundle(bundleDirectory:
 
   return okfDir;
 }
+
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

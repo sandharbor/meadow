@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeConfig, BundleNodeId, BundleNodeKey, BundleNodeKind } from './bundleNodeConfig.js';
+import type { BundleNodeConfig, BundleNodeId, EncodedBundleNodeKey, BundleNodeKind } from './bundleNodeConfig.js';
 import type { FileType } from './FileType.js';
 import type { GeneratedBundleVersionId } from './generatedBundleVersioning.js';
 import type { BundleBoundaryReviewRequest } from './bundleBoundaryReview.js';
@@ -142,14 +142,14 @@ export interface CreateBundleCliResult extends CliOperationResultBase {
 }
 
 export interface TrackedBundleNodeResult {
-  bundleNodeKey: BundleNodeKey;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeId: BundleNodeId;
   bundleNodeName: string;
   config: BundleNodeConfig;
 }
 
 export interface SkippedBundleNodeResult {
-  bundleNodeKey: BundleNodeKey;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeName: string;
   reason: string;
 }
@@ -169,7 +169,7 @@ export type BundleNodeLocator =
   | { kind: 'path'; value: string };
 
 export interface BundleNodeReference {
-  bundleNodeKey: BundleNodeKey;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeId?: BundleNodeId;
   bundleNodeName: string;
   bundleNodeKind: BundleNodeKind;

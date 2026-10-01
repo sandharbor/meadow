@@ -15,12 +15,12 @@ limitations under the License.
 */
 
 import type { FileBundleNode, LinkResolvedInfo } from '../../contracts/types/IBundleNode.js';
-import type { FileBundleNodeConfig, BundleNodeId, BundleNodeKey } from '../../contracts/types/bundleNodeConfig.js';
+import type { FileBundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../contracts/types/bundleNodeConfig.js';
 import type { FileType } from '../../contracts/types/FileType.js';
 
 export class BundleNodeModel implements FileBundleNode {
   sourceId?: string;
-  bundleNodeKey: BundleNodeKey;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeId?: BundleNodeId;
   bundleNodeKind = 'file' as const;
   label: string;
@@ -35,7 +35,7 @@ export class BundleNodeModel implements FileBundleNode {
   conf?: FileBundleNodeConfig;
   depth: number;
   remaining_depth: number;
-  path?: string[];
+  path?: EncodedBundleNodeKey[];
   linkResolutionMap?: Record<string, LinkResolvedInfo>;
   isFrontierNode?: boolean;
   isFrontierImageExtension?: boolean;
@@ -43,7 +43,7 @@ export class BundleNodeModel implements FileBundleNode {
   data?: Record<string, any>;
 
   constructor(
-    bundleNodeKey: BundleNodeKey,
+    bundleNodeKey: EncodedBundleNodeKey,
     label: string,
     bundleNodeName: string,
     body?: string,
@@ -56,7 +56,7 @@ export class BundleNodeModel implements FileBundleNode {
     fileType?: FileType,
     depth: number = 0,
     remaining_depth: number = 0,
-    path?: string[],
+    path?: EncodedBundleNodeKey[],
     linkResolutionMap?: Record<string, LinkResolvedInfo>,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data?: Record<string, any>

@@ -21,12 +21,12 @@ import ListNodeGlyph from './ListNodeGlyph';
 interface StructuralTreeRowsProps {
   displayGraph: DisplayGraph;
   entryBundleNodeId?: string;
-  selectedNodeKeys?: Set<string>;
+  selectedNodeKeys?: Set<EncodedBundleNodeKey>;
   compareNodes: (left: DisplayNode, right: DisplayNode) => number;
   sourceLabel?: (node: DisplayNode) => string;
   directoryLabel?: (node: DisplayNode) => string;
-  onNodeClick: (bundleNodeKey: string) => void;
-  onNodeContextMenu?: (bundleNodeKey: string, x: number, y: number) => void;
+  onNodeClick: (bundleNodeKey: EncodedBundleNodeKey) => void;
+  onNodeContextMenu?: (bundleNodeKey: EncodedBundleNodeKey, x: number, y: number) => void;
   onGlyphMouseEnter?: (event: React.MouseEvent<SVGSVGElement>, node: DisplayNode) => void;
   onGlyphMouseLeave?: () => void;
   renderInlineThumbnail?: (node: DisplayNode) => React.ReactNode;
@@ -57,10 +57,10 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
 }) => {
   const graph = displayGraph.underlyingGraph;
   const columnCount = sourceLabel ? 5 : 4;
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<EncodedBundleNodeKey>>(new Set());
   const data = useMemo(() => {
     const visible = new Set(displayGraph.visibleDisplayNodes.map(node => node.bundleNodeKey));
-    const children = new Map<string, string[]>();
+    const children = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>();
     for (const edge of graph.getAllEdges()) {
       if (edge.bundleEdgeKind === 'semanticLink') continue;
       const values = children.get(edge.source) ?? [];
@@ -69,15 +69,15 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
     }
     const entry = graph.getAllNodes().find(node => node.bundleNodeId === entryBundleNodeId)
       ?? graph.getAllNodes().find(node => node.bundleNodeKind !== 'file' && !graph.getIncomingEdges(node.bundleNodeKey).some(edge => edge.bundleEdgeKind !== 'semanticLink'));
-    const structurallyReached = new Set<string>();
-    const collectStructuralDescendants = (key: string): void => {
+    const structurallyReached = new Set<EncodedBundleNodeKey>();
+    const collectStructuralDescendants = (key: EncodedBundleNodeKey): void => {
       if (structurallyReached.has(key)) return;
       structurallyReached.add(key);
       for (const child of children.get(key) ?? []) collectStructuralDescendants(child);
     };
     const rows: StructuralRow[] = [];
-    const rendered = new Set<string>();
-    const visit = (key: string, depth: number): void => {
+    const rendered = new Set<EncodedBundleNodeKey>();
+    const visit = (key: EncodedBundleNodeKey, depth: number): void => {
       if (rendered.has(key)) return;
       rendered.add(key);
       const displayNode = displayGraph.getDisplayNode(key);
@@ -169,3 +169,5 @@ const StructuralTreeRows: React.FC<StructuralTreeRowsProps> = ({
 };
 
 export default StructuralTreeRows;
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

@@ -16,6 +16,7 @@ import { acceptSourceSnapshot, findSourceMoves, scanSourceChanges, sourcingRevie
 import { acceptedSourceRoot, initializeSourcing, loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, nodeSourcePath, snapshotSourceRoot, sourcingRoot, writeSourcingJson, sourceConfigFingerprint, withSourcingLock } from '../../../../src/shared/source-snapshot/sourceSnapshots.js';
 import { getFolderBundleRepairStatus } from '../../../../src/shared/bundle-config/folderBundleRepair.js';
 import { loadTrackingRecords } from '../../../../src/shared/bundle-node/trackingRecords.js';
+import { sourceFilePathToBundleNodeKey } from '../../../../src/shared/bundle-node/nodeKeys.js';
 import { sourceTraversalGraph } from '../../../../src/areas/bundle/sourcing/services/sourceTraversalGraph.js';
 import { ensureTrackedPageContent } from '../../../../src/areas/bundle/generation/source-material/trackedPageContent.js';
 
@@ -85,30 +86,30 @@ describe('source snapshots with the shared big graph', () => {
     const pending = await sourcingReview(bundle);
     expect(pending.reviewToken).toBe(captured.reviewToken);
     const route = pending.changes.find(item => item.path === 'Incoming.md')!.route;
-    expect(route).toEqual(['Start.md', 'Bridge.md', 'Hub.md', 'Incoming.md']);
+    expect(route).toEqual(['Start.md', 'Bridge.md', 'Hub.md', 'Incoming.md'].map(sourceFilePathToBundleNodeKey));
     const graph = pending.traversalGraphs!.candidate!;
     expect(graph.snapshotId).toBe(pending.candidate!.id);
     expect(graph.nodes.map(node => node.bundleNodeKey).sort()).toEqual([...route!].sort());
-    expect(graph.nodes.find(node => node.bundleNodeKey === 'Incoming.md')).toMatchObject({
+    expect(graph.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey('Incoming.md'))).toMatchObject({
       path: route, remaining_depth: 1, remaining_inlinks_depth: 0, traversal_details: { link_type: 'inlink' },
       traversal_path_steps: [
-        { bundleNodeKey: 'Start.md', depth: 0, remaining_depth: 3, remaining_inlinks_depth: 1, traversal_details: { link_type: 'start' } },
-        { bundleNodeKey: 'Bridge.md', depth: 1, remaining_depth: 3, remaining_inlinks_depth: 2, traversal_details: { link_type: 'outlink' } },
-        { bundleNodeKey: 'Hub.md', depth: 2, remaining_depth: 2, remaining_inlinks_depth: 1, traversal_details: { link_type: 'outlink' } },
-        { bundleNodeKey: 'Incoming.md', depth: 3, remaining_depth: 1, remaining_inlinks_depth: 0, traversal_details: { link_type: 'inlink' } },
+        { bundleNodeKey: sourceFilePathToBundleNodeKey('Start.md'), depth: 0, remaining_depth: 3, remaining_inlinks_depth: 1, traversal_details: { link_type: 'start' } },
+        { bundleNodeKey: sourceFilePathToBundleNodeKey('Bridge.md'), depth: 1, remaining_depth: 3, remaining_inlinks_depth: 2, traversal_details: { link_type: 'outlink' } },
+        { bundleNodeKey: sourceFilePathToBundleNodeKey('Hub.md'), depth: 2, remaining_depth: 2, remaining_inlinks_depth: 1, traversal_details: { link_type: 'outlink' } },
+        { bundleNodeKey: sourceFilePathToBundleNodeKey('Incoming.md'), depth: 3, remaining_depth: 1, remaining_inlinks_depth: 0, traversal_details: { link_type: 'inlink' } },
       ],
     });
-    const hub = graph.nodes.find(node => node.bundleNodeKey === 'Hub.md')!;
-    expect(hub.path).toEqual(['Start.md', 'Hub.md']);
-    expect(hub.traversal_alternative_routes?.[0].map(step => step.bundleNodeKey)).toEqual(['Start.md', 'Bridge.md', 'Hub.md']);
+    const hub = graph.nodes.find(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey('Hub.md'))!;
+    expect(hub.path).toEqual(['Start.md', 'Hub.md'].map(sourceFilePathToBundleNodeKey));
+    expect(hub.traversal_alternative_routes?.[0].map(step => step.bundleNodeKey)).toEqual(['Start.md', 'Bridge.md', 'Hub.md'].map(sourceFilePathToBundleNodeKey));
     expect(hub.traversal_alternative_routes?.[0].at(-1)?.remaining_inlinks_depth).toBe(1);
     // A review of Hub alone still includes the page that explains its alternative arrival.
     const hubReview = sourceTraversalGraph(pending.candidate!.id,
-      loadSourceSnapshot(bundle, pending.candidate!.id).graph, [['Start.md', 'Hub.md']]);
-    expect(hubReview!.nodes.map(node => node.bundleNodeKey).sort()).toEqual(['Bridge.md', 'Hub.md', 'Start.md']);
-    expect(graph.edges).toEqual(expect.arrayContaining([expect.objectContaining({ source: 'Incoming.md', target: 'Hub.md' })]));
+      loadSourceSnapshot(bundle, pending.candidate!.id).graph, [['Start.md', 'Hub.md'].map(sourceFilePathToBundleNodeKey)]);
+    expect(hubReview!.nodes.map(node => node.bundleNodeKey).sort()).toEqual(['Bridge.md', 'Hub.md', 'Start.md'].map(sourceFilePathToBundleNodeKey));
+    expect(graph.edges).toEqual(expect.arrayContaining([expect.objectContaining({ source: sourceFilePathToBundleNodeKey('Incoming.md'), target: sourceFilePathToBundleNodeKey('Hub.md') })]));
     expect(pending.traversalGraphs!.accepted!.snapshotId).toBe(state.acceptedId);
-    expect(pending.traversalGraphs!.accepted!.nodes.some(node => node.bundleNodeKey === 'Incoming.md')).toBe(false);
+    expect(pending.traversalGraphs!.accepted!.nodes.some(node => node.bundleNodeKey === sourceFilePathToBundleNodeKey('Incoming.md'))).toBe(false);
     expect(loadSourceSnapshot(bundle, state.acceptedId).files['Incoming.md']).toBeUndefined();
     expect(loadSourcingState(bundle)!.acceptedId).toBe(state.acceptedId);
   });
@@ -121,7 +122,7 @@ describe('source snapshots with the shared big graph', () => {
     expect(review.trackNewPages).toBe(true);
     const accepted = await acceptSourceSnapshot(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages });
     expect(accepted.trackingRequest).toEqual(trackNewPages ? {
-      snapshotId: review.candidate!.id, nodeKeys: ['source-changes/added field notes.md'],
+      snapshotId: review.candidate!.id, nodeKeys: ['source-changes/added field notes.md'].map(sourceFilePathToBundleNodeKey),
     } : undefined);
     const removedIds = new Set(review.orphans.filter(orphan => !orphan.removalBlockedReason).map(orphan => orphan.bundleNodeId));
     expect(loadSourceNodeConfigs(bundle)).toEqual(initialConfigs.filter(node => !removedIds.has(node.bundleNodeId)));
@@ -131,7 +132,7 @@ describe('source snapshots with the shared big graph', () => {
     expect(review.trackNewPages).toBe(trackNewPages);
     const next = await acceptSourceSnapshot(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {} });
     expect(next.trackingRequest).toEqual(trackNewPages ? {
-      snapshotId: review.candidate!.id, nodeKeys: ['source-changes/added sunflower.png'],
+      snapshotId: review.candidate!.id, nodeKeys: ['source-changes/added sunflower.png'].map(sourceFilePathToBundleNodeKey),
     } : undefined);
     expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeName === 'added sunflower')).toBe(false);
   }, 20000);
@@ -161,14 +162,39 @@ describe('source snapshots with the shared big graph', () => {
     expect(review.trackingSensitivity).toEqual(shouldSkip ? Object.fromEntries(privateKeys.map(key => [key, mode === 'direct' ? 'source' : 'filter'])) : {});
     const accepted = await sourceCurationWorkflow.accept(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages: true });
     expect(accepted.trackingOutcome?.error).toBeUndefined();
-    expect(accepted.trackingOutcome?.trackedNodeKeys).toEqual([...(shouldSkip ? [] : privateKeys), 'source-changes/added public update.md']);
+    expect(accepted.trackingOutcome?.trackedNodeKeys).toEqual([...(shouldSkip ? [] : privateKeys), 'source-changes/added public update.md'].map(sourceFilePathToBundleNodeKey));
     expect(accepted.reviewToken).toBe((await sourcingReview(bundle)).reviewToken);
-    expect(accepted.trackingOutcome?.sensitiveSkipped.map(node => node.bundleNodeKey)).toEqual(shouldSkip ? privateKeys : []);
+    expect(accepted.trackingOutcome?.sensitiveSkipped.map(node => node.bundleNodeKey)).toEqual(shouldSkip ? privateKeys.map(sourceFilePathToBundleNodeKey) : []);
     const added = loadSourceNodeConfigs(bundle).filter(node => node.bundleNodeName.startsWith('added '));
     expect(added.map(node => node.bundleNodeName)).toEqual([...(shouldSkip ? [] : ['added confidential notes', 'added confidential planning']), 'added public update']);
     expect(loadTrackingRecords(bundle)[added.find(node => node.bundleNodeName === 'added public update')!.bundleNodeId].lastReachable?.path).toBe('source-changes/added public update.md');
     for (const key of privateKeys) expect(fs.existsSync(path.join(acceptedSourceRoot(bundle), key))).toBe(true);
-    await expect(trackSnapshotAdditions(bundle, { snapshotId: 'outdated', nodeKeys: privateKeys })).rejects.toThrow(/snapshot changed/);
+    await expect(trackSnapshotAdditions(bundle, { snapshotId: 'outdated', nodeKeys: privateKeys.map(sourceFilePathToBundleNodeKey) })).rejects.toThrow(/snapshot changed/);
+  }, 20000);
+
+  it('assesses and accepts a new drawing through its graph key rather than its stored filename', async () => {
+    await initializeSourcing(bundle);
+    const filename = 'source-changes/added confidential drawing.excalidraw.md';
+    fs.mkdirSync(path.join(source, 'source-changes'), { recursive: true });
+    fs.copyFileSync(path.join(source, 't006/t006 --- meadow-flower.excalidraw.md'), path.join(source, filename));
+    fs.appendFileSync(path.join(source, 'main page.md'), '\n[[source-changes/added confidential drawing.excalidraw]]\n');
+    fs.writeFileSync(path.join(bundle, 'config/custom_filters.json'), JSON.stringify({ version: '1.0.0', filters: [{
+      id: 'confidential', name: 'Confidential', scope: 'bundle', enabled: true,
+      selectors: [{ field: 'title', matchType: 'substring', value: 'confidential' }],
+      selectorApplicationCriteria: 'union', actions: [{ type: 'mark_sensitive' }],
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+    }] }));
+    const review = await scanWithTrackingAssessment(bundle, false, false);
+    expect(review.changes.find(change => change.path === filename)).toMatchObject({ kind: 'added' });
+    expect(review.trackingSensitivity).toEqual({ [filename]: 'filter' });
+    const accepted = await sourceCurationWorkflow.accept(bundle, {
+      candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {}, trackNewPages: true,
+    });
+    expect(accepted.trackingOutcome?.error).toBeUndefined();
+    expect(accepted.trackingOutcome?.sensitiveSkipped.map(node => node.bundleNodeKey)).toEqual([
+      sourceFilePathToBundleNodeKey(filename),
+    ]);
+    expect(fs.existsSync(path.join(acceptedSourceRoot(bundle), filename))).toBe(true);
   }, 20000);
 
   it('keeps sources accepted and additions untracked when curation cannot evaluate its filters', async () => {
@@ -179,7 +205,7 @@ describe('source snapshots with the shared big graph', () => {
     fs.writeFileSync(path.join(bundle, 'config/custom_filters.json'), '{malformed');
     const accepted = await sourceCurationWorkflow.accept(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {} });
     expect(accepted.trackingOutcome?.error).toBeTruthy();
-    expect(accepted.trackingOutcome?.otherSkipped.map(node => node.bundleNodeKey)).toEqual(['source-changes/added field notes.md']);
+    expect(accepted.trackingOutcome?.otherSkipped.map(node => node.bundleNodeKey)).toEqual(['source-changes/added field notes.md'].map(sourceFilePathToBundleNodeKey));
     expect(loadSourcingState(bundle)!.acceptedId).toBe(review.candidate!.id);
     expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeName === 'added field notes')).toBe(false);
   }, 20000);
@@ -198,7 +224,7 @@ describe('source snapshots with the shared big graph', () => {
     const accepted = await sourceCurationWorkflow.accept(bundle, { candidateId: review.candidate!.id, reviewToken: review.reviewToken, resolutions: {} });
     expect(accepted.trackingOutcome?.error).toBeUndefined();
     expect(accepted.trackingOutcome?.sensitiveSkipped).toHaveLength(2);
-    expect(accepted.trackingOutcome?.trackedNodeKeys).toEqual(['source-changes/added public update.md']);
+    expect(accepted.trackingOutcome?.trackedNodeKeys).toEqual(['source-changes/added public update.md'].map(sourceFilePathToBundleNodeKey));
   }, 20000);
 
   it('reads only accepted history without capturing sources or including a pending candidate', async () => {
@@ -224,9 +250,9 @@ describe('source snapshots with the shared big graph', () => {
     change('modify-embedded-image');
     const review = await scanSourceChanges(bundle);
     const candidateId = review.candidate!.id;
-    expect(review.changes.find(item => item.path === 'source-changes/added field notes.md')).toMatchObject({ kind: 'added', route: expect.arrayContaining(['main page.md']) });
+    expect(review.changes.find(item => item.path === 'source-changes/added field notes.md')).toMatchObject({ kind: 'added', route: expect.arrayContaining(['main page.md'].map(sourceFilePathToBundleNodeKey)) });
     const addedImage = 'source-changes/added sunflower.png';
-    expect(review.changes.find(item => item.path === addedImage)).toMatchObject({ kind: 'added', route: expect.arrayContaining(['t006 - embedded media.md']) });
+    expect(review.changes.find(item => item.path === addedImage)).toMatchObject({ kind: 'added', route: expect.arrayContaining(['t006 - embedded media.md'].map(sourceFilePathToBundleNodeKey)) });
     const replacement = fs.readFileSync(path.join(source, imagePath));
     expect(original.equals(replacement)).toBe(false);
     fs.writeFileSync(path.join(source, imagePath), 'changed after capture');
@@ -479,8 +505,8 @@ describe('source snapshots with the shared big graph', () => {
     change('rename-page-without-links');
     const pending = await scanSourceChanges(bundle);
     const orphan = pending.orphans.find(item => item.path === oldName);
-    expect(orphan?.brokenConnection).toEqual({ from: 't003 - link to section.md', to: oldName });
-    expect(orphan?.previousPath).toContain(oldName);
+    expect(orphan?.brokenConnection).toEqual({ from: sourceFilePathToBundleNodeKey('t003 - link to section.md'), to: sourceFilePathToBundleNodeKey(oldName) });
+    expect(orphan?.previousPath).toContain(sourceFilePathToBundleNodeKey(oldName));
   });
 
   it('explains link removal without inventing a rename and retains tracking metadata outside config', async () => {
@@ -552,7 +578,7 @@ describe('source snapshots with the shared big graph', () => {
       reviewToken: pending.reviewToken, resolutions: {} });
     expect(loadSourceNodeConfigs(bundle).some(node => node.bundleNodeId === orphan.bundleNodeId)).toBe(false);
     expect(loadSourceNodeConfigs(bundle).find(node => nodeSourcePath(node) === newName)).toBeUndefined();
-    expect(accepted.trackingRequest?.nodeKeys).toContain(newName);
+    expect(accepted.trackingRequest?.nodeKeys).toContain(sourceFilePathToBundleNodeKey(newName));
   });
 
   it('requires an explicit choice when identical contents have more than one destination', async () => {

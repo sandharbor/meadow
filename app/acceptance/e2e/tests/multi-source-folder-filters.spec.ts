@@ -21,8 +21,8 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   await editor.waitForLoad('multi-source-page');
   await editor.waitForSourceCheck();
   await editor.switchToListView();
-  await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notes', '/');
-  await editor.expectListViewLocation('_mw_sources/source000002/Overview.md', 'research', '/');
+  await editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notes', '/');
+  await editor.expectListViewLocation('file:_mw_sources/source000002/Overview.md', 'research', '/');
   const filters = new FilterPanelComponent(page, expect);
   await filters.expandFilterGroup('Folders');
   await filters.expectFolderCount('notes://', 5);
@@ -38,8 +38,8 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   // --- Test start ---
   // Change the source-folder filters.
   await filters.hideFolder('notes://Same');
-  await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', false);
-  await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', false);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true);
   await checkpoint("hiding one namesake folder leaves the other source visible");
 
   // Rename the filtered source.
@@ -47,17 +47,17 @@ test('Multi-source folder filters distinguish equal folder names and retain inde
   await sources.open();
   await sources.rename('notes', 'notebook');
   await sources.saveWithoutMaterialChanges();
-  await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', false);
-  await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
-  await editor.expectListViewLocation('_mw_sources/source000001/Overview.md', 'notebook', '/');
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', false);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true);
+  await editor.expectListViewLocation('file:_mw_sources/source000001/Overview.md', 'notebook', '/');
   await filters.expectFolderVisible('notebook://Same');
   await addKeyFrame(folderFilter);
   await checkpoint("the renamed source retains its folder filter");
 
   // Reset the folder filters.
   await filters.resetFolderFilters();
-  await editor.expectListViewNodeVisible('_mw_sources/source000001/Same/Inside.md', true);
-  await editor.expectListViewNodeVisible('_mw_sources/source000002/Same/Inside.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000001/Same/Inside.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000002/Same/Inside.md', true);
   await checkpoint("resetting the folder filter restores both namesake pages");
 
   await skipMeadowHomeStateCheck();

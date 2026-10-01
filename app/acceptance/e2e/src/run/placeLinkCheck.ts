@@ -41,8 +41,8 @@ export function placeExamples(options: { sourceGraphsDir: string }): Record<stri
     "bundle:source-review": [at("source-review")],
     "bundle:manage-sources": [at("manage-sources", { mode: "manage" })],
     "bundle:source-snapshots": [at("source-snapshots")],
-    "bundle:node-links": [at("node-links", { node: "/main page.md" })],
-    "bundle:traversal-details": [at("traversal-details", { node: "t001/t001 ---- child 1.md" })],
+    "bundle:node-links": [at("node-links", { node: "file:main page.md" })],
+    "bundle:traversal-details": [at("traversal-details", { node: "file:t001/t001 ---- child 1.md" })],
     "bundle:custom-filter": [at("custom-filter")],
     "bundle:filter-mix": [{
       place: at("filter-mix"),

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import type { BundleNodeId, BundleNodeKey } from './bundleNodeConfig.js';
+import type { BundleNodeId, EncodedBundleNodeKey } from './bundleNodeConfig.js';
 
 export const BUNDLE_BOUNDARY_REVIEW_SCHEMA_VERSION = 1 as const;
 
@@ -26,7 +26,7 @@ export interface BundleBoundaryFinding {
   code: BundleBoundaryFindingCode;
   policy: 'recommend-review' | 'review-required';
   bundleNodeId: BundleNodeId;
-  bundleNodeKey: BundleNodeKey;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeName: string;
   sourceContentDigest: `sha256:${string}`;
   recordedSourceContentDigest: `sha256:${string}`;

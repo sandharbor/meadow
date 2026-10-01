@@ -44,12 +44,12 @@ interface BundleNodeContextMenuProps {
   graph: Graph;
   position: { x: number; y: number };
   onClose: () => void;
-  onTrackPage: (bundleNodeKey: string) => void;
-  onBlacklistPage: (bundleNodeKey: string) => void;
-  onPreviewPage: (bundleNodeKey: string) => void;
+  onTrackPage: (bundleNodeKey: EncodedBundleNodeKey) => void;
+  onBlacklistPage: (bundleNodeKey: EncodedBundleNodeKey) => void;
+  onPreviewPage: (bundleNodeKey: EncodedBundleNodeKey) => void;
   hasDraftChanges?: boolean;
-  onSelectedNodeKeysChange: (pages: Set<string>) => void;
-  onMarkSensitive?: (bundleNodeKey: string, isSensitive: boolean) => void;
+  onSelectedNodeKeysChange: (pages: Set<EncodedBundleNodeKey>) => void;
+  onMarkSensitive?: (bundleNodeKey: EncodedBundleNodeKey, isSensitive: boolean) => void;
   obsidianInfo: ObsidianInfo | null;
 }
 
@@ -309,3 +309,5 @@ const BundleNodeContextMenu: React.FC<BundleNodeContextMenuProps> = ({
 };
 
 export default BundleNodeContextMenu;
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

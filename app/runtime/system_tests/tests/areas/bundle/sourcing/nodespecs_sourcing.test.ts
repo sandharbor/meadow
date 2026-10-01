@@ -30,6 +30,7 @@ import {
   validateLinkSpec,
   validateLinksSection,
   linkPathToPageId,
+  nodeKeyToPageId,
   pageIdToLinkPath,
   validateOutlinks,
   validateInlinks,
@@ -416,7 +417,7 @@ async function validateNodespecLinksForBundle(
   const graphData = (await response.json()) as {
     allOutlinkTargets: Record<string, string[]>;
     allInlinkSources: Record<string, string[]>;
-    nodes: { bundleNodeKey: string }[];
+    nodes: { bundleNodeKey: string; bundleNodeKind: 'file' | 'folder' | 'collection' }[];
   };
 
   // Link expectations describe the live fixture graph, including links outside
@@ -427,19 +428,19 @@ async function validateNodespecLinksForBundle(
   const discovery = await discoveryResponse.json() as { allOutlinkTargets: Record<string, string[]>; allInlinkSources: Record<string, string[]>; frontierUnavailable?: string };
   expect(discovery.frontierUnavailable).toBeUndefined();
 
-  const workingGraphPageIds = new Set(graphData.nodes.map((node) => linkPathToPageId(node.bundleNodeKey)));
+  const workingGraphPageIds = new Set(graphData.nodes.filter(node => node.bundleNodeKind === 'file').map((node) => nodeKeyToPageId(encodedBundleNodeKey(node.bundleNodeKey))));
 
   const outlinkMap = new Map<string, string[]>();
   for (const [pathKey, targets] of Object.entries(discovery.allOutlinkTargets)) {
-    const pageTitle = linkPathToPageId(pathKey);
-    const targetTitles = targets.map((t) => linkPathToPageId(t));
+    const pageTitle = nodeKeyToPageId(encodedBundleNodeKey(pathKey));
+    const targetTitles = targets.map((t) => nodeKeyToPageId(encodedBundleNodeKey(t)));
     outlinkMap.set(pageTitle, targetTitles);
   }
 
   const inlinkMap = new Map<string, string[]>();
   for (const [pathKey, sources] of Object.entries(discovery.allInlinkSources)) {
-    const pageTitle = linkPathToPageId(pathKey);
-    const sourceTitles = sources.map((s) => linkPathToPageId(s));
+    const pageTitle = nodeKeyToPageId(encodedBundleNodeKey(pathKey));
+    const sourceTitles = sources.map((s) => nodeKeyToPageId(encodedBundleNodeKey(s)));
     inlinkMap.set(pageTitle, sourceTitles);
   }
 
@@ -540,10 +541,10 @@ describe('Runtime Nodespec Sourcing Validation', () => {
       expect(response.ok).toBe(true);
 
       const graphData = (await response.json()) as {
-        nodes: { bundleNodeKey: string }[];
+        nodes: { bundleNodeKey: string; bundleNodeKind: 'file' | 'folder' | 'collection' }[];
       };
 
-      const workingGraphPageIds = new Set(graphData.nodes.map((node) => linkPathToPageId(node.bundleNodeKey)));
+      const workingGraphPageIds = new Set(graphData.nodes.filter(node => node.bundleNodeKind === 'file').map((node) => nodeKeyToPageId(encodedBundleNodeKey(node.bundleNodeKey))));
       const nodespecSourceFiles = findAllNodespecSourceFiles(sourceGraphDir);
 
       for (const sourceFile of nodespecSourceFiles) {
@@ -584,12 +585,12 @@ describe('Runtime Nodespec Sourcing Validation', () => {
       expect(response.ok).toBe(true);
 
       const graphData = (await response.json()) as {
-        nodes: { bundleNodeKey: string; remaining_depth: number }[];
+        nodes: { bundleNodeKey: string; bundleNodeKind: 'file' | 'folder' | 'collection'; remaining_depth: number }[];
       };
 
       const pageRemainingDepthMap = new Map<string, number>();
-      for (const node of graphData.nodes) {
-        const pageId = linkPathToPageId(node.bundleNodeKey);
+      for (const node of graphData.nodes.filter(node => node.bundleNodeKind === 'file')) {
+        const pageId = nodeKeyToPageId(encodedBundleNodeKey(node.bundleNodeKey));
         pageRemainingDepthMap.set(pageId, node.remaining_depth);
       }
 
@@ -637,3 +638,5 @@ describe('Runtime Nodespec Sourcing Validation', () => {
     }
   });
 });
+
+import { encodedBundleNodeKey } from '../../../../../../shared_code/utils/bundleNodeKey.js';

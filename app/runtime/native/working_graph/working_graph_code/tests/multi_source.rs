@@ -72,7 +72,14 @@ fn node<'a>(result: &'a Value, key: &str) -> &'a Value {
         .as_array()
         .unwrap()
         .iter()
-        .find(|node| node["bundleNodeKey"] == key)
+        .find(|node| {
+            node["bundleNodeKey"]
+                == if key.starts_with("_mw_sources/") {
+                    format!("file:{key}")
+                } else {
+                    key.into()
+                }
+        })
         .unwrap_or_else(|| panic!("Missing node {key}"))
 }
 
@@ -95,7 +102,7 @@ fn multi_source_adapter_keeps_portable_paths_separate_and_ids_stable_after_renam
         "source000001"
     );
     assert_eq!(
-        before["allLinkResolutionMaps"]["_mw_sources/source000001/Start.md"]
+        before["allLinkResolutionMaps"]["file:_mw_sources/source000001/Start.md"]
             ["Overview::papers|research overview"]["link_resolved_target_path"],
         "_mw_sources/source000002/Overview.md"
     );
@@ -151,7 +158,7 @@ fn multi_source_frontier_diagnostics_become_normal_before_registration_and_keep_
     assert_eq!(study["remaining_depth"], -1);
     assert_eq!(study["depth"], 2);
     assert_eq!(
-        registered["allLinkResolutionMaps"]["_mw_sources/source000001/Frontier.md"]
+        registered["allLinkResolutionMaps"]["file:_mw_sources/source000001/Frontier.md"]
             ["Study::reference"]["link_resolved_target_path"],
         "_mw_sources/source000003/Study.md"
     );
@@ -181,7 +188,7 @@ fn multi_source_mixed_collection_preserves_the_page_start_and_zero_cost_membersh
         start["path"],
         json!([
             "collection:collect00001",
-            "_mw_sources/source000001/Start.md"
+            "file:_mw_sources/source000001/Start.md"
         ])
     );
     let inside = node(&result, "_mw_sources/source000002/Same/Inside.md");
@@ -192,7 +199,7 @@ fn multi_source_mixed_collection_preserves_the_page_start_and_zero_cost_membersh
         json!([
             "collection:collect00001",
             "folder:_mw_sources/source000002/Same",
-            "_mw_sources/source000002/Same/Inside.md"
+            "file:_mw_sources/source000002/Same/Inside.md"
         ])
     );
     assert_eq!(
@@ -204,5 +211,5 @@ fn multi_source_mixed_collection_preserves_the_page_start_and_zero_cost_membersh
         .unwrap()
         .iter()
         .any(|edge| edge["bundleEdgeKind"] == "collectionMembership"
-            && edge["target"] == "_mw_sources/source000001/Start.md"));
+            && edge["target"] == "file:_mw_sources/source000001/Start.md"));
 }

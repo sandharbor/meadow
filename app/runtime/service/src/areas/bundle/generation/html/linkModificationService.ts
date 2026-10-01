@@ -174,10 +174,10 @@ function linkInfoWithResolvedTargetType(
 }
 
 export function buildExcalidrawClientLinkData(args: {
-  excalidrawPageIdent: string; // `<dir>/<title>.excalidraw` (or `/<title>.excalidraw` for root)
+  excalidrawPageIdent: EncodedBundleNodeKey;
   hostPageDirectory: string; // directory of the page rendering the drawing's HTML
   bundleNodeConfigs: BundleNodeConfig[];
-  allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
+  allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>> | undefined;
   bundleConfig?: BundleConfig;
   bundleSlug?: string;
   routeTable?: BundleRouteTable;
@@ -236,10 +236,10 @@ export function buildExcalidrawClientLinkData(args: {
 }
 
 export function buildExcalidrawClientEmbeddedFileData(args: {
-  excalidrawPageIdent: string; // `<dir>/<title>.excalidraw` (or `/<title>.excalidraw` for root)
+  excalidrawPageIdent: EncodedBundleNodeKey;
   hostPageDirectory: string; // directory of the page rendering the drawing's HTML
   bundleNodeConfigs: BundleNodeConfig[];
-  allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
+  allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>> | undefined;
 }): ExcalidrawEmbeddedFileData {
   const { excalidrawPageIdent, hostPageDirectory, bundleNodeConfigs, allLinkResolutionMaps } = args;
   const tracked: Record<string, string> = {};
@@ -268,11 +268,11 @@ export function buildExcalidrawClientEmbeddedFileData(args: {
 }
 
 export function copyExcalidrawEmbeddedFiles(args: {
-  excalidrawPageIdent: string;
+  excalidrawPageIdent: EncodedBundleNodeKey;
   contentDir: string;
   outputDir: string;
   bundleNodeConfigs: BundleNodeConfig[];
-  allLinkResolutionMaps: Map<string, Record<string, LinkResolvedInfo>> | undefined;
+  allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>> | undefined;
 }): void {
   const { excalidrawPageIdent, contentDir, outputDir, bundleNodeConfigs, allLinkResolutionMaps } = args;
   if (!allLinkResolutionMaps) return;
@@ -454,7 +454,7 @@ export interface LinkOrImageHtmlOptions {
   highlightDoNotLinkPageName?: string;
   currentPageDirectory?: string;  // The directory of the current page being rendered
   linkResolutionMap?: Record<string, LinkResolvedInfo>;  // Pre-computed link resolution map
-  allLinkResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>;
+  allLinkResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>;
   mediaEmbedOptions?: MediaEmbedOptions;
   routeTable?: BundleRouteTable;
   currentOutputDirectory?: string;
@@ -608,9 +608,7 @@ export function linkOrImageHtml(
       );
       const mdSrc = `${encodedImagePath}.md`;
       const titleAttr = escapeHtmlAttribute(`Open ${drawingHtmlName}`);
-      const excalidrawPageIdent = imageSourceDir
-        ? `${imageSourceDir}/${drawingTitle}.excalidraw`
-        : `/${drawingTitle}.excalidraw`;
+      const excalidrawPageIdent = makeBundleNodeKey(drawingTitle, 'excalidraw', imageSourceDir);
       const fileAttrs = embeddedFileAttrs(buildExcalidrawClientEmbeddedFileData({
         excalidrawPageIdent,
         hostPageDirectory: currentPageDirectory,
@@ -800,3 +798,7 @@ export function linkOrImageHtml(
 function anchorNameFor(pageName: string): string {
   return pageName.toLowerCase().replace(/[^a-z0-9]/g, '-');
 } 
+
+import { makeBundleNodeKey } from '../../../../shared/bundle-node/nodeKeys.js';
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

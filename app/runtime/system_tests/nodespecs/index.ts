@@ -46,6 +46,7 @@ export type {
 
 export {
   linkPathToPageId,
+  nodeKeyToPageId,
   pageIdToLinkPath,
   validateOutlinks,
   validateInlinks,

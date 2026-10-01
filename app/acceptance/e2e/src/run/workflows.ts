@@ -35,6 +35,7 @@ export enum Fixture {
   MultiSource = "home_fixture_multi_source",
   Minimal = "home_fixture_minimal",
   Empty = "empty",
+  Example = "home_fixture_example",
 }
 
 /** Bundle names available in fixtures. */

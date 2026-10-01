@@ -70,13 +70,13 @@ test("CLI supports every single-node inspection and curation operation by path o
       slug: "notable-mental-models",
       locator: { kind: "path", value: "Charlie Munger.md" },
       node: {
-        bundleNodeKey: "/Charlie Munger.md",
+        bundleNodeKey: "file:Charlie Munger.md",
         bundleNodeName: "Charlie Munger",
         depth: expect.any(Number),
         tracked: false,
       },
     });
-    expect(described.related.pathToHere.at(-1)?.bundleNodeKey).toBe("/Charlie Munger.md");
+    expect(described.related.pathToHere.at(-1)?.bundleNodeKey).toBe("file:Charlie Munger.md");
     expect(described.related.children.map(node => node.bundleNodeName)).toEqual([
       "Latticework of Mental Models",
       "Man with a Hammer",
@@ -95,8 +95,8 @@ test("CLI supports every single-node inspection and curation operation by path o
         depth: expect.any(Number),
       }));
     }
-    expect(described.related.allPathsFromHere[0].bundleNodeKey).toBe("/Charlie Munger.md");
-    expect(described.related.deeperPathsFromHere[0].bundleNodeKey).toBe("/Charlie Munger.md");
+    expect(described.related.allPathsFromHere[0].bundleNodeKey).toBe("file:Charlie Munger.md");
+    expect(described.related.deeperPathsFromHere[0].bundleNodeKey).toBe("file:Charlie Munger.md");
 
     await checkpoint("page details include related traversal paths");
 
@@ -128,7 +128,7 @@ test("CLI supports every single-node inspection and curation operation by path o
 
     const copyTracked = await meadowCli.runJson<MutateBundleNodeCliResult>([
       "bundle", "node", "track", "node-operations-copy",
-      "--path", "/Charlie Munger.md",
+      "--path", "file:Charlie Munger.md",
     ], { artifactName: "track-charlie-in-copy" });
     expect(copyTracked.node.bundleNodeId).not.toBe(nodeId);
 

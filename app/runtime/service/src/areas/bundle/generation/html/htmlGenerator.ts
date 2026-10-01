@@ -172,7 +172,7 @@ export function renderPageToHtml(
   baseContentDirectory?: string,  // Base source-content directory for image lookups
   baseOutputFolder?: string,  // Base generated HTML directory for image output
   linkResolutionMap?: Record<string, LinkResolvedInfo>,  // Pre-computed link resolution map
-  allLinkResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>  // All page link resolution maps for transclusion
+  allLinkResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>  // All page link resolution maps for transclusion
 ): { htmlPath: string | null; htmlContent: string | null; srsCards: CollectedSrsCard[] } {
   const {
     processBacklinks = true,
@@ -624,9 +624,7 @@ export function renderPageToHtml(
                 : contentRoot;
               // Look up the backlink source page's link resolution map so that
               // wiki links inside the context block resolve correctly.
-              const backlinkPageIdent = backlinkSourceDir
-                ? `${backlinkSourceDir}/${backlinkName}.md`
-                : `/${backlinkName}.md`;
+              const backlinkPageIdent = makeBundleNodeKey(backlinkName, 'md', backlinkSourceDir);
               const backlinkResolutionMap = allLinkResolutionMaps?.get(backlinkPageIdent);
               const backlinkInfo = backlinkContext(backlinkDir, backlinkName, pageName, currentPageDirectory,
                 bundleConfig.sources ? backlinkResolutionMap : undefined);
@@ -1286,3 +1284,5 @@ function processMermaidDiagrams(htmlContent: string): string {
     return `<div class="mermaid">${diagramContent}</div>`;
   });
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

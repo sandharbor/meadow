@@ -16,14 +16,14 @@ limitations under the License.
 
 import type { IEdge } from '../../contracts/types/graph.js';
 import type { IBundleNode } from '../../contracts/types/IBundleNode.js';
-import type { BundleNodeConfig, BundleNodeId, BundleNodeKey } from '../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, BundleNodeId, EncodedBundleNodeKey } from '../../contracts/types/bundleNodeConfig.js';
 
 export interface VisibleStructuralProjection {
-  renderedNodeKeys: BundleNodeKey[];
-  childrenByNodeKey: Map<BundleNodeKey, BundleNodeKey[]>;
-  parentByNodeKey: Map<BundleNodeKey, BundleNodeKey>;
-  breadcrumbNodeKeysByNodeKey: Map<BundleNodeKey, BundleNodeKey[]>;
-  semanticOnlyNodeKeys: BundleNodeKey[];
+  renderedNodeKeys: EncodedBundleNodeKey[];
+  childrenByNodeKey: Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
+  parentByNodeKey: Map<EncodedBundleNodeKey, EncodedBundleNodeKey>;
+  breadcrumbNodeKeysByNodeKey: Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
+  semanticOnlyNodeKeys: EncodedBundleNodeKey[];
 }
 
 const compareText = (left: string, right: string): number =>
@@ -51,12 +51,12 @@ export function buildVisibleStructuralProjection(
   const nodesByKey = new Map(nodes.map(node => [node.bundleNodeKey, node]));
   const nodeById = new Map(nodes.flatMap(node => node.bundleNodeId ? [[node.bundleNodeId, node] as const] : []));
   const configById = new Map(configs.map(config => [config.bundleNodeId, config]));
-  const structuralChildren = new Map<BundleNodeKey, BundleNodeKey[]>();
+  const structuralChildren = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>();
   for (const edge of edges) {
     if (edge.bundleEdgeKind === 'semanticLink') continue;
-    const children = structuralChildren.get(edge.source as BundleNodeKey) ?? [];
-    if (!children.includes(edge.target as BundleNodeKey)) children.push(edge.target as BundleNodeKey);
-    structuralChildren.set(edge.source as BundleNodeKey, children);
+    const children = structuralChildren.get(edge.source) ?? [];
+    if (!children.includes(edge.target)) children.push(edge.target);
+    structuralChildren.set(edge.source, children);
   }
 
   const isBlocked = (node: IBundleNode): boolean => {
@@ -83,10 +83,10 @@ export function buildVisibleStructuralProjection(
     return raw.sort(compareDirectoryChildren);
   };
 
-  const firstVisibleDescendants = (parent: IBundleNode): BundleNodeKey[] => {
-    const visible: BundleNodeKey[] = [];
-    const seen = new Set<BundleNodeKey>();
-    const visit = (candidate: IBundleNode, ancestry: Set<BundleNodeKey>): void => {
+  const firstVisibleDescendants = (parent: IBundleNode): EncodedBundleNodeKey[] => {
+    const visible: EncodedBundleNodeKey[] = [];
+    const seen = new Set<EncodedBundleNodeKey>();
+    const visit = (candidate: IBundleNode, ancestry: Set<EncodedBundleNodeKey>): void => {
       if (ancestry.has(candidate.bundleNodeKey) || isBlocked(candidate)) return;
       if (isRendered(candidate)) {
         if (!seen.has(candidate.bundleNodeKey)) {
@@ -105,18 +105,18 @@ export function buildVisibleStructuralProjection(
       : visible.sort((left, right) => compareDirectoryChildren(nodesByKey.get(left)!, nodesByKey.get(right)!));
   };
 
-  const childrenByNodeKey = new Map<BundleNodeKey, BundleNodeKey[]>();
+  const childrenByNodeKey = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>();
   for (const key of renderedNodeKeys) {
     const node = nodesByKey.get(key);
     if (node && node.bundleNodeKind !== 'file') childrenByNodeKey.set(key, firstVisibleDescendants(node));
   }
 
   const entry = nodeById.get(entryBundleNodeId);
-  const parentByNodeKey = new Map<BundleNodeKey, BundleNodeKey>();
-  const breadcrumbNodeKeysByNodeKey = new Map<BundleNodeKey, BundleNodeKey[]>();
+  const parentByNodeKey = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey>();
+  const breadcrumbNodeKeysByNodeKey = new Map<EncodedBundleNodeKey, EncodedBundleNodeKey[]>();
   if (entry && isRendered(entry)) {
     breadcrumbNodeKeysByNodeKey.set(entry.bundleNodeKey, [entry.bundleNodeKey]);
-    const pending: BundleNodeKey[] = [entry.bundleNodeKey];
+    const pending: EncodedBundleNodeKey[] = [entry.bundleNodeKey];
     while (pending.length > 0) {
       const parentKey = pending.shift()!;
       const parentPath = breadcrumbNodeKeysByNodeKey.get(parentKey) ?? [parentKey];

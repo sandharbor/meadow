@@ -27,7 +27,7 @@ const node = (
   bundleNodeKind: 'file' | 'folder',
   sourceGraphSubdirectory: string,
 ): IBundleNode => ({
-  bundleNodeKey: bundleNodeKey as IBundleNode['bundleNodeKey'],
+  bundleNodeKey: testKey(bundleNodeKey),
   bundleNodeId: bundleNodeKey as IBundleNode['bundleNodeId'],
   bundleNodeName,
   bundleNodeKind,
@@ -49,8 +49,8 @@ describe('StructuralTreeRows', () => {
     graph.addNode(node('alpha', 'Alpha', 'folder', 'Alpha'));
     graph.addNode(node('alpha-note', 'Alpha note', 'file', 'Alpha'));
     graph.addNode(node('outside-note', 'Outside note', 'file', 'Outside'));
-    graph.addEdge({ source: 'alpha', target: 'alpha-note', bundleEdgeKind: 'directoryContainment' });
-    graph.addEdge({ source: 'alpha-note', target: 'outside-note', bundleEdgeKind: 'semanticLink' });
+    graph.addEdge({ source: testKey('alpha'), target: testKey('alpha-note'), bundleEdgeKind: 'directoryContainment' });
+    graph.addEdge({ source: testKey('alpha-note'), target: testKey('outside-note'), bundleEdgeKind: 'semanticLink' });
 
     render(
       <table><tbody><StructuralTreeRows
@@ -77,8 +77,8 @@ describe('StructuralTreeRows', () => {
     graph.addNode(node('beta-note', 'Beta note', 'file', 'Alpha'));
     graph.addNode(node('outside-zeta', 'Outside zeta', 'file', 'Outside/Zeta'));
     graph.addNode(node('outside-alpha', 'Outside alpha', 'file', 'Outside/Alpha'));
-    graph.addEdge({ source: 'alpha', target: 'zeta-note', bundleEdgeKind: 'directoryContainment' });
-    graph.addEdge({ source: 'alpha', target: 'beta-note', bundleEdgeKind: 'directoryContainment' });
+    graph.addEdge({ source: testKey('alpha'), target: testKey('zeta-note'), bundleEdgeKind: 'directoryContainment' });
+    graph.addEdge({ source: testKey('alpha'), target: testKey('beta-note'), bundleEdgeKind: 'directoryContainment' });
 
     const { container } = render(
       <table><tbody><StructuralTreeRows
@@ -111,7 +111,7 @@ describe('StructuralTreeRows', () => {
     visual.fileType = 'svg';
     graph.addNode(alpha);
     graph.addNode(visual);
-    graph.addEdge({ source: 'alpha', target: 'visual', bundleEdgeKind: 'directoryContainment' });
+    graph.addEdge({ source: testKey('alpha'), target: testKey('visual'), bundleEdgeKind: 'directoryContainment' });
 
     render(
       <table><tbody><StructuralTreeRows
@@ -139,8 +139,8 @@ describe('StructuralTreeRows', () => {
     graph.addNode(alpha);
     graph.addNode(beta);
     const displayGraph = new DisplayGraph(graph);
-    const alphaDisplay = displayGraph.getDisplayNode('alpha')!;
-    const betaDisplay = displayGraph.getDisplayNode('beta')!;
+    const alphaDisplay = displayGraph.getDisplayNode(testKey('alpha'))!;
+    const betaDisplay = displayGraph.getDisplayNode(testKey('beta'))!;
     alphaDisplay.setDistance(2);
     betaDisplay.setDistance(1);
 
@@ -151,3 +151,5 @@ describe('StructuralTreeRows', () => {
     expect(compareListNodes(alphaDisplay, betaDisplay, 'depth', 'desc')).toBeLessThan(0);
   });
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';

@@ -27,7 +27,7 @@ import { bundleNodeConfigToKey } from '../../../../shared/bundle-node/nodeKeys.j
 import { logger } from '../../../../shared/utils/logging/backendLoggingUtils.js';
 
 type LinkResolutionMap = Record<string, LinkResolvedInfo>;
-type AllLinkResolutionMaps = Map<string, LinkResolutionMap>;
+type AllLinkResolutionMaps = Map<EncodedBundleNodeKey, LinkResolutionMap>;
 
 const WIKI_LINK_OR_EMBED_PATTERN = /!?\[\[(.*?)\]\]/g;
 const EXCALIDRAW_TEXT_REPLACEMENT = 'link not tracked';
@@ -102,18 +102,14 @@ function configMatchesFileInfo(config: BundleNodeConfig, info: PageFileInfo): bo
 }
 
 function findMatchingConfig(
-  bundleNodeConfs: Record<string, BundleNodeConfig>,
+  bundleNodeConfs: Record<EncodedBundleNodeKey, BundleNodeConfig>,
   info: PageFileInfo
 ): BundleNodeConfig | undefined {
   return Object.values(bundleNodeConfs).find(conf => configMatchesFileInfo(conf, info));
 }
 
-function pageIdentForConfig(config: BundleNodeConfig): string {
-  if (config.bundleNodeKind !== 'file') throw new Error(`Cannot create a source page identifier for ${config.bundleNodeKind} node ${config.bundleNodeId}`);
-  const fileType = config.fileType || 'md';
-  const sourceGraphSubdirectory = config.sourceGraphSubdirectory || '';
-  const filename = `${config.bundleNodeName}.${fileType}`;
-  return sourceGraphSubdirectory ? `${sourceGraphSubdirectory}/${filename}` : `/${filename}`;
+function pageIdentForConfig(config: BundleNodeConfig): EncodedBundleNodeKey {
+  return bundleNodeConfigToKey(config);
 }
 
 function hasOwnLinkResolution(
@@ -449,7 +445,7 @@ export function prepareScrubbedSourceDirectory(
   sourceContentDir: string,
   scrubbedContentDir: string,
   traversablePageKeys: Set<string>,
-  bundleNodeConfs: Record<string, BundleNodeConfig>,
+  bundleNodeConfs: Record<EncodedBundleNodeKey, BundleNodeConfig>,
   bundleNodeConfigsForLinks: BundleNodeConfig[],
   allLinkResolutionMaps?: AllLinkResolutionMaps
 ): void {
@@ -517,3 +513,5 @@ export function prepareScrubbedSourceDirectory(
     }
   }
 }
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

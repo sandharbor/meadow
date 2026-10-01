@@ -18,7 +18,7 @@ export const sourceCurationWorkflow = {
       // Acceptance is already durable. A curation failure must not pretend it failed.
       return { ...accepted, trackingOutcome: {
         snapshotId: accepted.trackingRequest.snapshotId, trackedNodeKeys: [], sensitiveSkipped: [],
-        otherSkipped: accepted.trackingRequest.nodeKeys.map(bundleNodeKey => ({ bundleNodeKey, bundleNodeName: path.basename(bundleNodeKey) })),
+        otherSkipped: accepted.trackingRequest.nodeKeys.map(bundleNodeKey => ({ bundleNodeKey, bundleNodeName: path.basename(bundleNodeKeySourceGraphPath(bundleNodeKey)) })),
         error: error instanceof Error ? error.message : String(error),
       } };
     }
@@ -30,3 +30,5 @@ export const sourceCurationWorkflow = {
     return { ...refreshed, trackingRequest: accepted.trackingRequest, trackingOutcome };
   },
 };
+
+import { bundleNodeKeySourceGraphPath } from '../../../../../shared_code/utils/bundleNodeKey.js';

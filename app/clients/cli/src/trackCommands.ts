@@ -16,7 +16,7 @@ limitations under the License.
 
 export type TrackBundleOptions =
   | { slug: string; mode: "all-safe" }
-  | { slug: string; mode: "targeted"; nodeKeys: string[] };
+  | { slug: string; mode: "targeted"; nodeKeys: EncodedBundleNodeKey[] };
 
 export function parseTrackBundleOptions(args: string[]): TrackBundleOptions {
   const slug = args[0];
@@ -24,7 +24,7 @@ export function parseTrackBundleOptions(args: string[]): TrackBundleOptions {
     throw new Error("Usage: meadow bundle track <bundle-slug> <--all-safe|--node-key <key>>");
   }
   let allSafe = false;
-  const nodeKeys: string[] = [];
+  const nodeKeys: EncodedBundleNodeKey[] = [];
   for (let index = 1; index < args.length; index += 1) {
     const option = args[index];
     if (option === "--all-safe") {
@@ -35,7 +35,7 @@ export function parseTrackBundleOptions(args: string[]): TrackBundleOptions {
     if (option === "--node-key") {
       const value = args[index + 1];
       if (!value || value.startsWith("--")) throw new Error("--node-key requires a bundleNodeKey value");
-      nodeKeys.push(value);
+      nodeKeys.push(encodedBundleNodeKey(value));
       index += 1;
       continue;
     }
@@ -45,3 +45,6 @@ export function parseTrackBundleOptions(args: string[]): TrackBundleOptions {
   if (!allSafe && nodeKeys.length === 0) throw new Error("Provide --all-safe or at least one --node-key");
   return allSafe ? { slug, mode: "all-safe" } : { slug, mode: "targeted", nodeKeys };
 }
+
+import type { EncodedBundleNodeKey } from '../../../contracts/types/bundleNodeKey.js';
+import { encodedBundleNodeKey } from '../../../shared_code/utils/bundleNodeKey.js';

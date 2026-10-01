@@ -16,11 +16,12 @@ limitations under the License.
 
 import { hydrateTrackingEvidence } from '../bundle-node/trackingRecords.js';
 
+
 import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
 import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
-import type { BundleNodeConfig } from '../../../../../contracts/types/bundleNodeConfig.js';
+import type { BundleNodeConfig, EncodedBundleNodeKey } from '../../../../../contracts/types/bundleNodeConfig.js';
 import type { BundleNodeTraversalDetails, BundleNodeTraversalPathStep } from '../../../../../contracts/types/bundleNodeGraph.js';
 import type { FileType } from '../../../../../contracts/types/FileType.js';
 import type { FolderScopeGraphSnapshot } from '../../../../../contracts/types/folderScopeChanges.js';
@@ -56,7 +57,7 @@ interface RustLinkResolvedInfo {
 interface RustNode {
   sourceId?: string;
   sourceFile?: { path: string; digest: string; size: number };
-  bundleNodeKey: string;
+  bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeId?: string;
   bundleNodeKind: 'file' | 'folder' | 'collection';
   bundleNodeName: string;
@@ -68,7 +69,7 @@ interface RustNode {
   depth: number;
   remaining_depth: number;
   remaining_inlinks_depth: number;
-  path: string[];
+  path: EncodedBundleNodeKey[];
   traversal_details?: BundleNodeTraversalDetails;
   traversal_path_steps?: BundleNodeTraversalPathStep[];
   traversal_alternative_routes?: BundleNodeTraversalPathStep[][];
@@ -81,19 +82,20 @@ interface RustNode {
 }
 
 interface RustEdge {
-  source: string;
-  target: string;
+  source: EncodedBundleNodeKey;
+  target: EncodedBundleNodeKey;
   bundleEdgeKind: 'semanticLink' | 'directoryContainment' | 'collectionMembership';
   isBidirectional: boolean;
 }
 
 export interface WorkingGraphRustOutput {
+  keyEncodingVersion?: 1;
   sourceDiagnostics?: import('../../../../../contracts/types/sourcing.js').SourceReferenceDiagnostic[];
   nodes: RustNode[];
   edges: (RustEdge & { link_original_text: string })[];
   allLinkResolutionMaps: Record<string, Record<string, RustLinkResolvedInfo>>;
-  allInlinkSources: Record<string, string[]>;
-  allOutlinkTargets: Record<string, string[]>;
+  allInlinkSources: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
+  allOutlinkTargets: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
   folderScope?: FolderScopeGraphSnapshot['folderScope'];
 }
 
@@ -106,14 +108,14 @@ export interface LoadedWorkingGraph {
   draftNodes?: BundleNodeConfig[];
   nodes: IBundleNode[];
   edges: Array<{
-    source: string;
-    target: string;
+    source: EncodedBundleNodeKey;
+    target: EncodedBundleNodeKey;
     bundleEdgeKind: RustEdge['bundleEdgeKind'];
     isBidirectional: boolean;
     data: { fromDepth: number; toDepth: number };
   }>;
-  allInlinkSources: Record<string, string[]>;
-  allOutlinkTargets: Record<string, string[]>;
+  allInlinkSources: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
+  allOutlinkTargets: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>;
   folderScope?: FolderScopeGraphSnapshot['folderScope'];
   changeExplanations?: ReturnType<typeof explainFolderScopeChanges>;
 }
@@ -131,6 +133,7 @@ export class WorkingGraphOperationError extends Error {
 
 function snapshotFor(output: WorkingGraphRustOutput): FolderScopeGraphSnapshot {
   return {
+    keyEncodingVersion: 1,
     nodes: output.nodes.map(node => ({
       bundleNodeKey: node.bundleNodeKey,
       ...(node.bundleNodeId && { bundleNodeId: node.bundleNodeId }),
@@ -157,7 +160,7 @@ function serializeNodes(output: WorkingGraphRustOutput): IBundleNode[] {
   const linkResolutionMaps = output.allLinkResolutionMaps || {};
   return output.nodes.map(node => {
     const common = {
-      bundleNodeKey: node.bundleNodeKey as IBundleNode['bundleNodeKey'],
+      bundleNodeKey: node.bundleNodeKey,
       ...(node.bundleNodeId && { bundleNodeId: node.bundleNodeId as IBundleNode['bundleNodeId'] }),
       label: node.bundleNodeName,
       bundleNodeName: node.bundleNodeName,
@@ -340,7 +343,7 @@ async function loadWorkingGraphUnlocked(options: {
     ?? appConfig.allowImagesToExtendToFrontier
     ?? true;
   const runGraph = async (configFile: string): Promise<WorkingGraphRustOutput> => {
-    return await runWorkingGraphJson<WorkingGraphRustOutput>({
+    return decodeWorkingGraphKeys(await runWorkingGraphJson<WorkingGraphRustOutput>({
       graphRoot: notesDir,
       sources: notesDir === capturedRoot ? snapshotSourceRegistry(snapshot, capturedRoot) : bundleConfig.sources,
       immutableSource: notesDir === capturedRoot,
@@ -352,7 +355,7 @@ async function loadWorkingGraphUnlocked(options: {
       frontierDepth,
       allowImagesToExtendToFrontier,
       allowLowerDepths: false,
-    });
+    }));
   };
 
   let output: WorkingGraphRustOutput;
@@ -391,9 +394,8 @@ async function loadWorkingGraphUnlocked(options: {
 
   const discovered = liveSourceLinks(bundleDirectory, snapshot.digest);
   if (!frontierDepth && !frontierUnavailable && discovered) {
-    const included = new Set(output.nodes.map(node => node.bundleNodeKey.replace(/^\/+/, '')));
-    const nativeKey = (key: string) => { const relative = key.replace(/^\/+/, ''); return relative.includes('/') ? relative : `/${relative}`; };
-    const links = (map: Record<string, string[]>) => Object.fromEntries(Object.entries(map).filter(([key]) => included.has(key.replace(/^\/+/, ''))).map(([key, values]) => [nativeKey(key), values.map(nativeKey)]));
+    const included = new Set(output.nodes.map(node => node.bundleNodeKey));
+    const links = (map: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>) => Object.fromEntries(Object.entries(map).filter(([key]) => included.has(encodedBundleNodeKey(key))).map(([key, values]) => [encodedBundleNodeKey(key), values]));
     output = { ...output, allInlinkSources: links(discovered.allInlinkSources), allOutlinkTargets: links(discovered.allOutlinkTargets) };
   }
   const serialized = serializeWorkingGraphOutput(output);
@@ -408,3 +410,7 @@ async function loadWorkingGraphUnlocked(options: {
     ...(changeExplanations && { changeExplanations }),
   };
 }
+
+import { encodedBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';
+
+import { decodeWorkingGraphKeys } from './workingGraphKeyCodec.js';

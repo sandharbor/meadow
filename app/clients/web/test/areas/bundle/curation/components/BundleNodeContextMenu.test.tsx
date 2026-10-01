@@ -21,7 +21,7 @@ import { describe, expect, it, vi } from 'vitest';
 import BundleNodeContextMenu from '../../../../../src/areas/bundle/curation/components/BundleNodeContextMenu';
 import { Graph } from '../../../../../../../contracts/types/graph';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
-import type { BundleNodeId, BundleNodeKey } from '../../../../../../../contracts/types/bundleNodeConfig';
+import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig';
 
 const { openExternalMock } = vi.hoisted(() => ({
   openExternalMock: vi.fn(async () => undefined),
@@ -40,7 +40,7 @@ const commonNode = {
 
 const markdownNode: IBundleNode = {
   ...commonNode,
-  bundleNodeKey: 'note' as BundleNodeKey,
+  bundleNodeKey: testKey('note'),
   bundleNodeName: 'Note',
   bundleNodeKind: 'file',
   sourceGraphSubdirectory: '',
@@ -49,7 +49,7 @@ const markdownNode: IBundleNode = {
 
 const imageNode: IBundleNode = {
   ...commonNode,
-  bundleNodeKey: 'image' as BundleNodeKey,
+  bundleNodeKey: testKey('image'),
   bundleNodeName: 'Image',
   bundleNodeKind: 'file',
   sourceGraphSubdirectory: '',
@@ -58,7 +58,7 @@ const imageNode: IBundleNode = {
 
 const folderNode: IBundleNode = {
   ...commonNode,
-  bundleNodeKey: 'folder' as BundleNodeKey,
+  bundleNodeKey: testKey('folder'),
   bundleNodeName: 'Folder',
   bundleNodeKind: 'folder',
   sourceGraphSubdirectory: 'Folder',
@@ -66,7 +66,7 @@ const folderNode: IBundleNode = {
 
 const bundleHomeNode: IBundleNode = {
   ...commonNode,
-  bundleNodeKey: 'bundle-home' as BundleNodeKey,
+  bundleNodeKey: testKey('bundle-home'),
   bundleNodeName: 'Bundle home',
   bundleNodeKind: 'collection',
   memberBundleNodeIds: ['folder-id' as BundleNodeId],
@@ -138,3 +138,5 @@ describe('BundleNodeContextMenu file-specific actions', () => {
     });
   });
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';

@@ -88,7 +88,7 @@ export async function buildFilteredSourcesExportForBundle(bundleDirectory: strin
   }
 
   const traversablePageKeys = new Set<string>();
-  let allLinkResolutionMaps: Map<string, Record<string, {
+  let allLinkResolutionMaps: Map<EncodedBundleNodeKey, Record<string, {
     link_resolved_target_directory: string;
     link_resolved_target_path: string | null;
   }>> = new Map();
@@ -106,7 +106,7 @@ export async function buildFilteredSourcesExportForBundle(bundleDirectory: strin
         allowLowerDepths: false,
       }, bundleConfig);
       const output = JSON.parse(raw) as WorkingGraphOutput;
-      allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}));
+      allLinkResolutionMaps = new Map(Object.entries(output.allLinkResolutionMaps || {}).map(([key, links]) => [encodedBundleNodeKey(key), links]));
       for (const node of output.nodes) {
         traversablePageKeys.add(node.bundleNodeKey);
       }
@@ -117,7 +117,7 @@ export async function buildFilteredSourcesExportForBundle(bundleDirectory: strin
     }
   }
 
-  const bundleNodeConfigsArrayForLinks: BundleNodeConfig[] = Object.values(bundleNodeConfs).filter(
+  const bundleNodeConfigsArrayForLinks: BundleNodeConfig[] = parseBundleNodeConfig(fs.readFileSync(bundleNodeConfPath, 'utf8')).filter(
     conf => traversablePageKeys.has(bundleNodeConfigToKey(conf))
   );
 
@@ -134,3 +134,6 @@ export async function buildFilteredSourcesExportForBundle(bundleDirectory: strin
 
   return sourcesExportDir;
 }
+
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

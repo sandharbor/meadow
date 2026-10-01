@@ -20,9 +20,10 @@ pub struct FileBundleNode {
 
 impl FileBundleNode {
     pub fn bundle_node_key(&self) -> String {
-        format!(
-            "{}/{}.{}",
-            self.source_graph_subdirectory, self.bundle_node_name, self.file_type
+        crate::node_key::file_key(
+            &self.source_graph_subdirectory,
+            &self.bundle_node_name,
+            &self.file_type,
         )
     }
 }

@@ -27,25 +27,25 @@ import { DisabledTooltip } from '../../../../shared/components/DisabledTooltip';
 import { NodeFolderDetails } from './NodeFolderDetails.js';
 
 interface BundleNodeSelectionSidebarProps {
-  selectedNodeKeys: Set<string>;
+  selectedNodeKeys: Set<EncodedBundleNodeKey>;
   graph: Graph;
   onClose: () => void;
-  onSelectedNodeKeysChange: (pages: Set<string>) => void;
-  onTrackPage: (bundleNodeKey: string) => void;
-  onBlacklistPage: (bundleNodeKey: string) => void;
+  onSelectedNodeKeysChange: (pages: Set<EncodedBundleNodeKey>) => void;
+  onTrackPage: (bundleNodeKey: EncodedBundleNodeKey) => void;
+  onBlacklistPage: (bundleNodeKey: EncodedBundleNodeKey) => void;
   onTrackSelected: () => void;
   onBlacklistSelected: () => void;
   isEffectivelySensitive: (page: IBundleNode) => boolean;
-  onUpdatePageConfig: (bundleNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth', value: number) => void;
-  onDeletePageConfigKey: (bundleNodeKey: string, key: 'outlinksDepth' | 'inlinksDepth') => void;
-  onPreviewPage: (bundleNodeKey: string) => void;
+  onUpdatePageConfig: (bundleNodeKey: EncodedBundleNodeKey, key: 'outlinksDepth' | 'inlinksDepth', value: number) => void;
+  onDeletePageConfigKey: (bundleNodeKey: EncodedBundleNodeKey, key: 'outlinksDepth' | 'inlinksDepth') => void;
+  onPreviewPage: (bundleNodeKey: EncodedBundleNodeKey) => void;
   hasDraftChanges: boolean;
-  onMarkSensitive?: (bundleNodeKey: string, isSensitive: boolean) => void;
+  onMarkSensitive?: (bundleNodeKey: EncodedBundleNodeKey, isSensitive: boolean) => void;
   obsidianInfo: ObsidianInfo | null;
   /** The page a place link focused: its details open and it scrolls into view. */
-  focusedNodeKey?: string | null;
-  onShowTraversalDetails: (bundleNodeKey: string) => void;
-  onShowLinks: (bundleNodeKey: string) => void;
+  focusedNodeKey?: EncodedBundleNodeKey | null;
+  onShowTraversalDetails: (bundleNodeKey: EncodedBundleNodeKey) => void;
+  onShowLinks: (bundleNodeKey: EncodedBundleNodeKey) => void;
 }
 
 const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
@@ -68,16 +68,16 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
   onShowTraversalDetails,
   onShowLinks,
 }) => {
-  const [openDropdownBundleNodeKey, setOpenDropdownBundleNodeKey] = useState<string | null>(null);
+  const [openDropdownBundleNodeKey, setOpenDropdownBundleNodeKey] = useState<EncodedBundleNodeKey | null>(null);
   const [dropdownButtonRect, setDropdownButtonRect] = useState<{ x: number; y: number } | null>(null);
-  const [openDetailsBundleNodeKeys, setOpenDetailsBundleNodeKeys] = useState<Set<string>>(new Set());
+  const [openDetailsBundleNodeKeys, setOpenDetailsBundleNodeKeys] = useState<Set<EncodedBundleNodeKey>>(new Set());
   const [outlinksDepthInputsByBundleNodeKey, setOutlinksDepthInputsByBundleNodeKey] = useState<Record<string, string>>({});
   const [inlinksDepthInputsByBundleNodeKey, setInlinksDepthInputsByBundleNodeKey] = useState<Record<string, string>>({});
   const [outlinksDepthOverrideOpenByBundleNodeKey, setOutlinksDepthOverrideOpenByBundleNodeKey] = useState<Record<string, boolean>>({});
   const [inlinksDepthOverrideOpenByBundleNodeKey, setInlinksDepthOverrideOpenByBundleNodeKey] = useState<Record<string, boolean>>({});
 
   // Path collapsing state
-  const [expandedPathBundleNodeKeys, setExpandedPathBundleNodeKeys] = useState<Set<string>>(new Set());
+  const [expandedPathBundleNodeKeys, setExpandedPathBundleNodeKeys] = useState<Set<EncodedBundleNodeKey>>(new Set());
   const [shouldCollapsePathByBundleNodeKey, setShouldCollapsePathByBundleNodeKey] = useState<Map<string, boolean>>(new Map());
   const pathMeasureRefsMap = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
@@ -122,7 +122,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
 
     if (nodesToMeasure.length === 0) return;
 
-    const measurePath = (bundleNodeKey: string) => {
+    const measurePath = (bundleNodeKey: EncodedBundleNodeKey) => {
       const container = pathMeasureRefsMap.current.get(bundleNodeKey);
       if (!container) return null;
 
@@ -191,7 +191,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
     };
   }, [selectedNodeKeys, graph, openDetailsBundleNodeKeys, shouldCollapsePathByBundleNodeKey]);
 
-  const toggleDetailsForPage = (bundleNodeKey: string) => {
+  const toggleDetailsForPage = (bundleNodeKey: EncodedBundleNodeKey) => {
     setOpenDetailsBundleNodeKeys(prev => {
       const next = new Set(prev);
       if (next.has(bundleNodeKey)) {
@@ -212,15 +212,15 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
     });
   };
 
-  const setOutlinksDepthInputForPage = (bundleNodeKey: string, value: string) => {
+  const setOutlinksDepthInputForPage = (bundleNodeKey: EncodedBundleNodeKey, value: string) => {
     setOutlinksDepthInputsByBundleNodeKey(prev => ({ ...prev, [bundleNodeKey]: value }));
   };
 
-  const setInlinksDepthInputForPage = (bundleNodeKey: string, value: string) => {
+  const setInlinksDepthInputForPage = (bundleNodeKey: EncodedBundleNodeKey, value: string) => {
     setInlinksDepthInputsByBundleNodeKey(prev => ({ ...prev, [bundleNodeKey]: value }));
   };
 
-  const handleSetOutlinksDepthForPage = (bundleNodeKey: string) => {
+  const handleSetOutlinksDepthForPage = (bundleNodeKey: EncodedBundleNodeKey) => {
     const raw = outlinksDepthInputsByBundleNodeKey[bundleNodeKey] ?? '';
     if (raw === '') return;
     const depth = parseInt(raw, 10);
@@ -231,13 +231,13 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
     }
   };
 
-  const handleClearOutlinksDepthForPage = (bundleNodeKey: string) => {
+  const handleClearOutlinksDepthForPage = (bundleNodeKey: EncodedBundleNodeKey) => {
     onDeletePageConfigKey(bundleNodeKey, 'outlinksDepth');
     setOutlinksDepthInputForPage(bundleNodeKey, '');
     setOutlinksDepthOverrideOpenByBundleNodeKey(prev => ({ ...prev, [bundleNodeKey]: false }));
   };
 
-  const handleSetInlinksDepthForPage = (bundleNodeKey: string) => {
+  const handleSetInlinksDepthForPage = (bundleNodeKey: EncodedBundleNodeKey) => {
     const raw = inlinksDepthInputsByBundleNodeKey[bundleNodeKey] ?? '';
     if (raw === '') return;
     const depth = parseInt(raw, 10);
@@ -248,7 +248,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
     }
   };
 
-  const handleClearInlinksDepthForPage = (bundleNodeKey: string) => {
+  const handleClearInlinksDepthForPage = (bundleNodeKey: EncodedBundleNodeKey) => {
     onDeletePageConfigKey(bundleNodeKey, 'inlinksDepth');
     setInlinksDepthInputForPage(bundleNodeKey, '');
     setInlinksDepthOverrideOpenByBundleNodeKey(prev => ({ ...prev, [bundleNodeKey]: false }));
@@ -385,7 +385,7 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
         <div className="divide-y divide-neutral-200">
           {Array.from(selectedNodeKeys)
             .map((id, originalIndex) => ({ id, originalIndex, page: graph.getNode(id) }))
-            .filter((x): x is { id: string; originalIndex: number; page: IBundleNode } => Boolean(x.page))
+            .filter((x): x is { id: EncodedBundleNodeKey; originalIndex: number; page: IBundleNode } => Boolean(x.page))
             .sort((a, b) => {
               // Always order untracked + (effectively) sensitive pages to the top.
               // For all other pages, keep the existing selection order (newest-first insertion).
@@ -1016,3 +1016,5 @@ const BundleNodeSelectionSidebar: React.FC<BundleNodeSelectionSidebarProps> = ({
 };
 
 export default BundleNodeSelectionSidebar;
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

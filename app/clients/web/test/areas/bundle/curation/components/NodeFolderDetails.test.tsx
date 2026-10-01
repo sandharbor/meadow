@@ -10,7 +10,7 @@ const sources = [
   { id: 'source000002', name: 'research', directory: '/private/research' },
 ];
 const page: IBundleNode = {
-  bundleNodeKey: '_mw_sources/source000001/Same/Inside.md' as IBundleNode['bundleNodeKey'],
+  bundleNodeKey: testKey('_mw_sources/source000001/Same/Inside.md'),
   bundleNodeKind: 'file', bundleNodeName: 'Inside', fileType: 'md', sourceId: sources[0].id,
   sourceGraphSubdirectory: 'Same', label: 'Inside', depth: 1, remaining_depth: 0,
   getIdent: () => 'Inside',
@@ -33,3 +33,5 @@ describe('selected-node folder', () => {
     expect(screen.getByRole('definition')).toHaveTextContent('papers://Same');
   });
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';

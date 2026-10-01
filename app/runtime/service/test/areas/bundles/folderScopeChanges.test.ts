@@ -25,11 +25,12 @@ const folder: BundleNodeConfig = {
 };
 
 const base: FolderScopeGraphSnapshot = {
+  keyEncodingVersion: 1,
   nodes: [
-    { bundleNodeKey: 'folder:Project', bundleNodeId: folder.bundleNodeId, bundleNodeKind: 'folder', bundleNodeName: 'Project', sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId },
-    { bundleNodeKey: 'Project/A.md', bundleNodeKind: 'file', bundleNodeName: 'A', sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId },
+    { bundleNodeKey: encodedBundleNodeKey('folder:Project'), bundleNodeId: folder.bundleNodeId, bundleNodeKind: 'folder', bundleNodeName: 'Project', sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId },
+    { bundleNodeKey: encodedBundleNodeKey('file:Project/A.md'), bundleNodeKind: 'file', bundleNodeName: 'A', sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId },
   ],
-  edges: [{ source: 'folder:Project', target: 'Project/A.md', bundleEdgeKind: 'directoryContainment' }],
+  edges: [{ source: encodedBundleNodeKey('folder:Project'), target: encodedBundleNodeKey('file:Project/A.md'), bundleEdgeKind: 'directoryContainment' }],
   folderScope: {
     supportedSeedFileCount: 1, predictedRawNodeCount: 2, predictedTypedEdgeCount: 1,
     skippedCounts: { unsupportedFile: 1 }, skippedPaths: [], skippedPathCount: 1,
@@ -41,10 +42,10 @@ describe('folder scope change explanations', () => {
     const current: FolderScopeGraphSnapshot = {
       ...base,
       nodes: [...base.nodes, {
-        bundleNodeKey: 'Project/B.md', bundleNodeKind: 'file', bundleNodeName: 'B',
+        bundleNodeKey: encodedBundleNodeKey('file:Project/B.md'), bundleNodeKind: 'file', bundleNodeName: 'B',
         sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId,
       }],
-      edges: [...base.edges, { source: 'folder:Project', target: 'Project/B.md', bundleEdgeKind: 'directoryContainment' }],
+      edges: [...base.edges, { source: encodedBundleNodeKey('folder:Project'), target: encodedBundleNodeKey('file:Project/B.md'), bundleEdgeKind: 'directoryContainment' }],
       folderScope: {
         ...base.folderScope!, supportedSeedFileCount: 2, predictedRawNodeCount: 3,
         predictedTypedEdgeCount: 2, skippedCounts: { unsupportedFile: 2, hiddenDescendant: 1 },
@@ -74,16 +75,16 @@ describe('folder scope change explanations', () => {
     const previous: FolderScopeGraphSnapshot = {
       ...base,
       nodes: [...base.nodes,
-        { bundleNodeKey: 'Project/Old.md', bundleNodeId: priorTracked.bundleNodeId, bundleNodeKind: 'file', bundleNodeName: 'Old', sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId },
-        { bundleNodeKey: 'folder:Project/Nested', bundleNodeId: oldNested.bundleNodeId, bundleNodeKind: 'folder', bundleNodeName: 'Nested', sourceGraphSubdirectory: 'Project/Nested', effectiveFolderPolicyBundleNodeId: oldNested.bundleNodeId },
+        { bundleNodeKey: encodedBundleNodeKey('file:Project/Old.md'), bundleNodeId: priorTracked.bundleNodeId, bundleNodeKind: 'file', bundleNodeName: 'Old', sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId },
+        { bundleNodeKey: encodedBundleNodeKey('folder:Project/Nested'), bundleNodeId: oldNested.bundleNodeId, bundleNodeKind: 'folder', bundleNodeName: 'Nested', sourceGraphSubdirectory: 'Project/Nested', effectiveFolderPolicyBundleNodeId: oldNested.bundleNodeId },
       ],
     };
     const current: FolderScopeGraphSnapshot = {
       ...base,
       nodes: [...base.nodes,
-        { bundleNodeKey: 'Project/Moved.md', bundleNodeId: priorTracked.bundleNodeId, bundleNodeKind: 'file', bundleNodeName: 'Moved', sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId },
-        { bundleNodeKey: 'folder:Project/Nested', bundleNodeId: oldNested.bundleNodeId, bundleNodeKind: 'folder', bundleNodeName: 'Nested', sourceGraphSubdirectory: 'Project/Nested', effectiveFolderPolicyBundleNodeId: oldNested.bundleNodeId, effectiveBlacklistingBundleNodeId: oldNested.bundleNodeId },
-        { bundleNodeKey: 'Project/Nested/Blocked.md', bundleNodeKind: 'file', bundleNodeName: 'Blocked', sourceGraphSubdirectory: 'Project/Nested', effectiveFolderPolicyBundleNodeId: oldNested.bundleNodeId, effectiveBlacklistingBundleNodeId: oldNested.bundleNodeId },
+        { bundleNodeKey: encodedBundleNodeKey('file:Project/Moved.md'), bundleNodeId: priorTracked.bundleNodeId, bundleNodeKind: 'file', bundleNodeName: 'Moved', sourceGraphSubdirectory: 'Project', effectiveFolderPolicyBundleNodeId: folder.bundleNodeId },
+        { bundleNodeKey: encodedBundleNodeKey('folder:Project/Nested'), bundleNodeId: oldNested.bundleNodeId, bundleNodeKind: 'folder', bundleNodeName: 'Nested', sourceGraphSubdirectory: 'Project/Nested', effectiveFolderPolicyBundleNodeId: oldNested.bundleNodeId, effectiveBlacklistingBundleNodeId: oldNested.bundleNodeId },
+        { bundleNodeKey: encodedBundleNodeKey('file:Project/Nested/Blocked.md'), bundleNodeKind: 'file', bundleNodeName: 'Blocked', sourceGraphSubdirectory: 'Project/Nested', effectiveFolderPolicyBundleNodeId: oldNested.bundleNodeId, effectiveBlacklistingBundleNodeId: oldNested.bundleNodeId },
       ],
     };
     const result = explainFolderScopeChanges({
@@ -105,7 +106,7 @@ describe('folder scope change explanations', () => {
       bundleNodeName: 'Gone', sourceGraphSubdirectory: 'Project', bundleNodeKind: 'file', fileType: 'md',
       bundleNodeId: 'g1b2c3d4e5f6', listType: 'whitelist',
     };
-    const previous = { ...base, nodes: [...base.nodes, { bundleNodeKey: 'Project/Gone.md', bundleNodeId: tracked.bundleNodeId, bundleNodeKind: 'file' as const, bundleNodeName: 'Gone', sourceGraphSubdirectory: 'Project' }] };
+    const previous = { ...base, nodes: [...base.nodes, { bundleNodeKey: encodedBundleNodeKey('file:Project/Gone.md'), bundleNodeId: tracked.bundleNodeId, bundleNodeKind: 'file' as const, bundleNodeName: 'Gone', sourceGraphSubdirectory: 'Project' }] };
     const result = explainFolderScopeChanges({
       previous, current: base, previousConfigs: [folder, tracked], currentConfigs: [folder, tracked], basis: 'priorRebuild',
     });
@@ -113,3 +114,5 @@ describe('folder scope change explanations', () => {
     expect(result.items.some(item => item.category === 'move')).toBe(false);
   });
 });
+
+import { encodedBundleNodeKey } from '../../../../../shared_code/utils/bundleNodeKey.js';

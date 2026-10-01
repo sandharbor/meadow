@@ -190,6 +190,7 @@ struct OutputEdge {
 #[allow(non_snake_case)]
 #[derive(Serialize)]
 struct OutputGraph {
+    keyEncodingVersion: u8,
     nodes: Vec<OutputNode>,
     edges: Vec<OutputEdge>,
     allLinkResolutionMaps: HashMap<String, HashMap<String, LinkResolvedInfo>>,
@@ -247,7 +248,7 @@ fn is_supported_source_extension(extension: &str) -> bool {
     )
 }
 fn logical(file: &FileInfo) -> String {
-    format!("{}/{}.{}", file.directory, file.title, file.format)
+    working_graph::node_key::file_key(&file.directory, &file.title, &file.format)
 }
 fn sensitive(file: &FileInfo) -> bool {
     file.metadata
@@ -468,7 +469,12 @@ fn main() -> anyhow::Result<()> {
             .map(|file| file.path.clone())
             .unwrap_or_else(|| {
                 registry
-                    .linkrange_path(&config.bundle_node_key())
+                    .linkrange_path(
+                        working_graph::node_key::BundleNodeKey::parse(&config.bundle_node_key())
+                            .expect("validated key")
+                            .source_graph_path()
+                            .unwrap_or_default(),
+                    )
                     .unwrap_or_default()
             })
     };
@@ -478,12 +484,19 @@ fn main() -> anyhow::Result<()> {
             .map(|file| logical(file))
             .unwrap_or_else(|| {
                 let path = registry.graph_path(path).unwrap_or_else(|_| path.into());
-                if path.contains('/') {
-                    path
-                } else {
-                    format!("/{path}")
-                }
+                working_graph::node_key::BundleNodeKey::file(&path)
+                    .expect("validated source path")
+                    .to_string()
             })
+    };
+    // Link metadata carries a graph-relative target path, while sourceFile
+    // records the actual filename (for example drawing.excalidraw.md).
+    let logical_source_path = |path: &str| {
+        working_graph::node_key::BundleNodeKey::parse(&logical_path(path))
+            .expect("validated file key")
+            .source_graph_path()
+            .expect("file source path")
+            .to_owned()
     };
     let mut query = Query {
         depths: Depths {
@@ -734,7 +747,7 @@ fn main() -> anyhow::Result<()> {
             }
             let config = configs
                 .iter()
-                .find(|config| config.bundle_node_key() == logical(&node.file));
+                .find(|config| config.bundle_node_key() == logical_path(&node.file.path));
             if node.inclusion == Inclusion::EmbeddedAsset
                 || config.is_some_and(|config| config.list_type() == "blacklist")
             {
@@ -861,15 +874,15 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .map(|edge| {
             let link = &edge.link;
-            let target = logical_path(&edge.target)
-                .trim_start_matches('/')
-                .to_string();
+            let target = logical_source_path(&edge.target);
             OutputEdge {
                 source: logical_path(&edge.source),
                 target: logical_path(&edge.target),
                 bundleEdgeKind: "semanticLink",
                 isBidirectional: edge.bidirectional,
-                link_source_page_path: logical_path(&edge.source).trim_start_matches('/').into(),
+                link_source_page_path: registry
+                    .graph_path(&edge.source)
+                    .expect("resolved source path"),
                 link_original_text: link.link_original_text.clone(),
                 link_parsed_directory: link.link_parsed_directory.clone(),
                 link_parsed_title: link.link_parsed_title.clone(),
@@ -901,7 +914,7 @@ fn main() -> anyhow::Result<()> {
                     let target = link
                         .target
                         .as_ref()
-                        .map(|target| logical_path(target).trim_start_matches('/').to_string())
+                        .map(|target| logical_source_path(target))
                         .unwrap_or_else(|| {
                             registry
                                 .graph_path(&link.link_resolved_target_path)
@@ -960,13 +973,16 @@ fn main() -> anyhow::Result<()> {
                 && response.links_by_source.contains_key(&diagnostic.path)
         })
         .map(|diagnostic| linkrange::Diagnostic {
-            path: logical_path(&diagnostic.path),
+            path: registry
+                .graph_path(&diagnostic.path)
+                .expect("resolved diagnostic path"),
             ..diagnostic.clone()
         })
         .collect();
     serde_json::to_writer(
         std::io::stdout().lock(),
         &OutputGraph {
+            keyEncodingVersion: 1,
             sourceDiagnostics: source_diagnostics,
             nodes,
             edges,

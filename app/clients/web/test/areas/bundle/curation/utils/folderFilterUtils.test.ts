@@ -24,7 +24,7 @@ import {
 } from '../../../../../src/areas/bundle/curation/utils/folderFilterUtils';
 
 const page = (id: string, sourceGraphSubdirectory: string): IBundleNode => ({
-  bundleNodeKey: id as IBundleNode['bundleNodeKey'],
+  bundleNodeKey: testKey(id),
   bundleNodeKind: 'file',
   label: id,
   bundleNodeName: id,
@@ -95,3 +95,5 @@ it('groups all configured sources and keeps equal folder controls independent ac
   expect(single[0].displayPath).toBe('Same');
   expect(single[0].path).toBe(key);
 });
+
+import { testKey } from '../../../../shared/nodeKeys.js';

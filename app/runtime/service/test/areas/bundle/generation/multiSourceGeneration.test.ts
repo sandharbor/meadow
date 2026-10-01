@@ -79,7 +79,7 @@ it('publishes namesake pages and assets separately and rewrites links using sour
     bundleNodeConfigPath: BundleConfigPaths.getPreparedBundleNodeConfigFile(bundle), entryBundleNodeId: config.entryBundleNodeId!,
     defaultTraversalBundleNodeId: config.defaultTraversalBundleNodeId!, defaultOutlinksDepth: 2, defaultInlinksDepth: 1,
     frontierDepth: 0, allowImagesToExtendToFrontier: true, allowLowerDepths: false }, config));
-  expect(generatedGraph.allLinkResolutionMaps['sources/notes/diagram.svg']).toEqual({ 'source://notes/Overview.md': {
+  expect(generatedGraph.allLinkResolutionMaps['file:sources/notes/diagram.svg']).toEqual({ 'source://notes/Overview.md': {
     link_resolved_target_directory: 'sources/notes', link_resolved_target_path: 'sources/notes/Overview.md',
   } });
   const read = (relative: string) => fs.readFileSync(path.join(output, relative), 'utf8');

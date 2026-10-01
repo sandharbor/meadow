@@ -241,6 +241,11 @@ export class SelectedPageDetailComponent {
     await this.expect(this.removeOutlinksDepthOverrideBtn).toBeVisible();
   }
 
+  async removeOutlinksDepthOverride() {
+    await this.expect(this.removeOutlinksDepthOverrideBtn).toBeVisible();
+    await this.removeOutlinksDepthOverrideBtn.click();
+  }
+
   async expectRemoveOutlinksDepthNotVisible() {
     await this.expect(this.removeOutlinksDepthOverrideBtn).not.toBeVisible();
   }

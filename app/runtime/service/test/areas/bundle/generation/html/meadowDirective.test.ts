@@ -77,7 +77,7 @@ function renderHost(contentRoot: string, outputRoot: string, markdown: string): 
     undefined,
     new Map([
       [
-        '/drawing.excalidraw',
+        encodedBundleNodeKey('file:drawing.excalidraw'),
         {
           target: {
             link_resolved_target_directory: '',
@@ -161,3 +161,5 @@ describe('meadow container directive', () => {
     }
   });
 });
+
+import { encodedBundleNodeKey } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

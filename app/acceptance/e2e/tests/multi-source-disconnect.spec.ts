@@ -39,7 +39,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   // Verify the captured pages remain available.
   await sources.close();
   await editor.switchToListView();
-  await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000003/Study.md', true);
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
   await checkpoint('captured pages and configuration remain intact while the source is disconnected');
 
@@ -105,7 +105,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   expect(bundleConfig.read().sources?.map(source => source.id)).toContain('source000003');
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
   expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'multi-source/reference-disconnected/Study.md'))).toBe(true);
-  await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', true);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000003/Study.md', true);
   await sources.open();
   await sources.expectDisconnected('source000003');
   await expect(pendingChanges).toHaveCount(0);
@@ -122,7 +122,7 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   expect(config.sources?.map(source => source.id)).toEqual(['source000001', 'source000002']);
   expect(bundleConfig.readNodes().some(node => node.sourceId === 'source000003')).toBe(false);
   expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'multi-source/reference-disconnected/Study.md'))).toBe(true);
-  await editor.expectListViewNodeVisible('_mw_sources/source000003/Study.md', false);
+  await editor.expectListViewNodeVisible('file:_mw_sources/source000003/Study.md', false);
   await checkpoint('acceptance removes the disconnected source and its orphaned configuration');
 
   await skipMeadowHomeStateCheck();

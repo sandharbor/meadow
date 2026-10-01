@@ -68,7 +68,7 @@ export function restoreMarkdownLinkNotTrackedMarkers(markdown: string): string {
 export function prepareSourcesExportFromScrubbedSourceDirectory(
   scrubbedContentDir: string,
   exportDir: string,
-  sourceResolutionMaps?: Map<string, Record<string, LinkResolvedInfo>>,
+  sourceResolutionMaps?: Map<EncodedBundleNodeKey, Record<string, LinkResolvedInfo>>,
 ): void {
   if (fs.existsSync(exportDir)) {
     fs.rmSync(exportDir, { recursive: true, force: true });
@@ -89,7 +89,7 @@ export function prepareSourcesExportFromScrubbedSourceDirectory(
     }
 
     const graphPath = relativePath.replace(/\.excalidraw\.md$/, '.excalidraw').split(path.sep).join('/');
-    const resolutions = sourceResolutionMaps?.get(graphPath.includes('/') ? graphPath : `/${graphPath}`);
+    const resolutions = sourceResolutionMaps?.get(serializeBundleNodeKey(fileNodeKeyFromSourceGraphPath(graphPath)));
     if (filePath.endsWith('.md') || (sourceResolutionMaps && /\.(html|svg)$/.test(filePath))) {
       const content = fs.readFileSync(filePath, 'utf-8');
       const restored = restoreMarkdownLinkNotTrackedMarkers(restoreGeneratedTagWikilinks(content));
@@ -127,3 +127,7 @@ export function prepareSourcesExportDirectory(
   prepareSourcesExportFromScrubbedSourceDirectory(scrubbedTempDir, exportDir);
   fs.rmSync(scrubbedTempDir, { recursive: true, force: true });
 }
+
+import { serializeBundleNodeKey, fileNodeKeyFromSourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';
+
+import type { EncodedBundleNodeKey } from '../../../../../../../contracts/types/bundleNodeKey.js';

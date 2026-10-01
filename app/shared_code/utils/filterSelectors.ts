@@ -29,7 +29,7 @@ import type { FileType } from '../../contracts/types/FileType.js';
 export interface SelectorBase {
   id: string;
   name: string;
-  select: (graph: Graph) => Set<string>;
+  select: (graph: Graph) => Set<EncodedBundleNodeKey>;
 }
 
 export interface INormalBundleNodeSelector extends SelectorBase {
@@ -40,7 +40,7 @@ export interface INormalBundleNodeSelector extends SelectorBase {
 export type IBundleNodeSelector = INormalBundleNodeSelector;
 
 // Cache for search functions to avoid recreating them
-const searchFunctionCache = new Map<string, (graph: Graph) => Set<string>>();
+const searchFunctionCache = new Map<string, (graph: Graph) => Set<EncodedBundleNodeKey>>();
 
 // Page selector functions
 export const createTrackedNodeSelector = (): INormalBundleNodeSelector => ({
@@ -48,7 +48,7 @@ export const createTrackedNodeSelector = (): INormalBundleNodeSelector => ({
   name: 'Tracked Pages',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       if (node.tracked) {
         selectedNodeKeys.add(node.bundleNodeKey);
@@ -92,7 +92,7 @@ export const createSelectedScopeRootSelector = (): INormalBundleNodeSelector => 
     const membershipTargets = new Set(
       graph.getAllEdges().filter(edge => edge.bundleEdgeKind === 'collectionMembership').map(edge => edge.target)
     );
-    const result = new Set<string>(membershipTargets);
+    const result = new Set<EncodedBundleNodeKey>(membershipTargets);
     for (const node of graph.getAllNodes()) {
       if (node.bundleNodeKind !== 'folder') continue;
       const hasStructuralParent = graph.getIncomingEdges(node.bundleNodeKey)
@@ -108,7 +108,7 @@ export const createNodeWithOverrideSelector = (): INormalBundleNodeSelector => (
   name: 'Depth Override',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       // The initial node (depth 0) is not considered an override — its depth
       // settings are part of the base bundle configuration, not a per-node
@@ -130,7 +130,7 @@ export const createUntrackedNodeSelector = (): INormalBundleNodeSelector => ({
   name: 'Untracked Pages',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       if (!node.tracked) {
         selectedNodeKeys.add(node.bundleNodeKey);
@@ -145,7 +145,7 @@ export const createBlacklistedNodeSelector = (): INormalBundleNodeSelector => ({
   name: 'Blacklisted Pages',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       if (node.blacklisted) {
         selectedNodeKeys.add(node.bundleNodeKey);
@@ -161,7 +161,7 @@ export const createSearchByTitleSelector = (searchText: string = ''): INormalBun
 
   if (!selectFunction) {
     selectFunction = (graph: Graph) => {
-      const selectedNodeKeys = new Set<string>();
+      const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
       // Only search when there are 2 or more characters to avoid overwhelming results
       if (!searchText || searchText.length < 2) return selectedNodeKeys;
 
@@ -194,7 +194,7 @@ export const createSensitiveNodeSelector = (): INormalBundleNodeSelector => ({
   name: 'Sensitive Pages',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       if (node.sensitive) {
         selectedNodeKeys.add(node.bundleNodeKey);
@@ -209,7 +209,7 @@ export const createFrontierNodeSelector = (): INormalBundleNodeSelector => ({
   name: 'Frontier',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       if (node.isFrontierNode) {
         selectedNodeKeys.add(node.bundleNodeKey);
@@ -224,7 +224,7 @@ export const createFolderNodeSelector = (folderPath: string): INormalBundleNodeS
   name: folderPath ? `Folder: ${folderPath}` : 'Folder: Root',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       if (nodeMatchesFolderState(node, folderPath)) {
         selectedNodeKeys.add(node.bundleNodeKey);
@@ -239,7 +239,7 @@ export const createOutlinkDiscrepancySelector = (threshold: number = 5): INormal
   name: 'Outlink Gap',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       const allTargets = graph.getAllOutlinkTargets(node.bundleNodeKey);
       const sourceCount = allTargets.length;
@@ -257,7 +257,7 @@ export const createInlinkDiscrepancySelector = (threshold: number = 5): INormalB
   name: 'Inlink Gap',
   type: 'normal',
   select: (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
     graph.getAllNodes().forEach((node: IBundleNode) => {
       const allSources = graph.getAllInlinkSources(node.bundleNodeKey);
       const sourceCount = allSources.length;
@@ -327,7 +327,7 @@ export const createCustomBundleNodeSelector = (
   onError?: (message: string, error: unknown) => void
 ): INormalBundleNodeSelector => {
   const selectFunction = (graph: Graph) => {
-    const selectedNodeKeys = new Set<string>();
+    const selectedNodeKeys = new Set<EncodedBundleNodeKey>();
 
     graph.getAllNodes().forEach((node: IBundleNode) => {
       let matchValue = '';
@@ -397,3 +397,5 @@ export const createCustomBundleNodeSelector = (
     select: selectFunction
   };
 };
+
+import type { EncodedBundleNodeKey } from '../../contracts/types/bundleNodeKey.js';
