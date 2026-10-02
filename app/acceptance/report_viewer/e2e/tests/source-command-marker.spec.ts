@@ -47,6 +47,8 @@ test('ticks position command markers beside multiline calls without moving code 
     await page.getByRole('checkbox', { name: 'Show capture code' }).uncheck();
     await expect(commandLine).not.toContainText('sourceCommand');
     await commandLine.click();
+    await expect(marker).toHaveText('T 2CP');
+    await page.keyboard.press('ArrowLeft');
     await expect(marker).toHaveAttribute('data-command-status', 'running');
     await expect(commandLine.getByTestId('source-ticks-indicator')).toHaveCount(0);
     await expect(commandLine.getByTestId('source-checkpoints-indicator')).toHaveCount(0);

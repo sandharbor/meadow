@@ -2563,13 +2563,27 @@ export default function ScenarioViewer() {
                   .split('\n')
                   .map((lineHtml, i) => {
                     const fixtureReferences = testSourceFixturesByLine.get(i) ?? []
+                    const lineEvents = sourceTimelineMarkers.get(i + 1)
+                    const targetTick = lineEvents?.checkpoints[0] ?? lineEvents?.ticks[0]
+                    const goToLine = () => {
+                      if (targetTick !== undefined) selectTickIndex(targetTick - 1)
+                    }
                     return (
                       <div key={i}>
                         <div
                           data-source-line={i + 1}
                           data-source-highlighted={highlightedSourceLine === i + 1 ? true : undefined}
-                          title={highlightedSourceLine === i + 1 && selectedSourceCommand ? `Tick ${currentTickIndex + 1} · ${selectedSourceCommand.status}\n${selectedSourceCommand.text}` : undefined}
-                          className={`code-line relative pl-[46px] pr-3 font-mono ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : ''}`}
+                          title={highlightedSourceLine === i + 1 && selectedSourceCommand ? `Tick ${currentTickIndex + 1} · ${selectedSourceCommand.status}\n${selectedSourceCommand.text}` : targetTick === undefined ? undefined : `Go to ${lineEvents?.checkpoints.length ? 'checkpoint at ' : ''}tick ${targetTick}`}
+                          role={targetTick === undefined ? undefined : 'button'}
+                          tabIndex={targetTick === undefined ? undefined : 0}
+                          onClick={targetTick === undefined ? undefined : goToLine}
+                          onKeyDown={targetTick === undefined ? undefined : event => {
+                            if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                              event.preventDefault()
+                              goToLine()
+                            }
+                          }}
+                          className={`code-line relative pl-[46px] pr-3 font-mono ${targetTick === undefined ? '' : 'cursor-pointer'} ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : targetTick === undefined ? '' : lineEvents?.checkpoints.length ? 'hover:bg-orange-50/50 focus-visible:bg-orange-50/50' : 'hover:bg-purple-50/50 focus-visible:bg-purple-50/50'}`}
                         >
                           {highlightedSourceLine === i + 1 && currentTickIndex >= 0 && (
                             <span
@@ -2593,7 +2607,7 @@ export default function ScenarioViewer() {
                                 style={{ backgroundColor: kind === 'ticks'
                                   ? 'color-mix(in srgb, #f3e8ff 70%, #7e22ce 30%)'
                                   : 'color-mix(in srgb, #ffedd5 70%, #c2410c 30%)' }}
-                                className="h-[7px] w-[7px] cursor-help rounded-full" />
+                                className="h-[7px] w-[7px] rounded-full" />
                             })}
                           </span>}
                           <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />
@@ -2601,7 +2615,7 @@ export default function ScenarioViewer() {
                             <button key={`${change.id}:${index}`} type="button"
                               aria-label={`About source change ${change.id}`}
                               title={change.definition ? `${change.definition.label}\n\nAction: ${change.definition.action}\nCheck: ${change.definition.check}` : 'Source change definition unavailable'}
-                              onClick={() => setSourceChangeModal(change)}
+                              onClick={event => { event.stopPropagation(); setSourceChangeModal(change) }}
                               className="ml-2 inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-sky-400 bg-sky-50 align-middle font-sans text-[11px] font-bold text-sky-700 hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-600">?</button>
                           ))}
                         </div>
