@@ -56,6 +56,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/tracking') && response.ok(), { timeout: 10000 }),
       this.selectedPage.getByRole('button', { name: 'Track', exact: true }).click(),
     ]);
+    await this.expect(this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true })).toBeEnabled();
     await this.expect(this.selectedPage.getByText('Tracked', { exact: true })).toBeVisible();
   }
   async setTrackingPreference(enabled: boolean) {
@@ -70,6 +71,7 @@ export class SourcingWorkspacePage {
       this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/tracking') && response.ok(), { timeout: 10000 }),
       this.page.getByRole('button', { name: 'Untrack', exact: true }).click(),
     ]);
+    await this.expect(this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true })).toBeEnabled();
     await this.expect(this.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
   }
   async setSelectedOutlinkDepth(depth: number) {
