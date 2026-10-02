@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
@@ -22,10 +23,10 @@ test('Sourcing requires repair of missing required entries before acceptance', a
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'multi-source-page');
   const sources = new SourcesControl(page, expect);
   const panel = new FilterPanelComponent(page, expect);
   const directory = path.join(testServer.configDir, 'bundles/multi-source-page');
-  const proposal = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
   const bundlePath = path.join(directory, 'config/bundle_config.yaml');
   const before = fs.readFileSync(bundlePath, 'utf8');
   await list.goto();
@@ -36,7 +37,7 @@ test('Sourcing requires repair of missing required entries before acceptance', a
   await sourcing.untrackSelected();
   await panel.clickAddCustomFilter();
   await panel.fillAndSaveCustomFilter({ name: 'Preserved during repair', field: 'title', matchType: 'substring', value: 'Overview' });
-  const pendingId = proposal().id;
+  const pendingId = proposal.current.id;
   await checkpoint('page and filter edits are pending before the required start disappears');
 
   // --- Test start ---
@@ -47,7 +48,7 @@ test('Sourcing requires repair of missing required entries before acceptance', a
   await expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled();
   await expect(page.getByTestId('graph-canvas')).toHaveCount(0);
   expect(fs.readFileSync(bundlePath, 'utf8')).toBe(before);
-  expect(proposal().id).toBe(pendingId);
+  expect(proposal.current.id).toBe(pendingId);
   await addKeyFrame(sourceReviewCleanup);
   await checkpoint('the missing required entry blocks graph entry and acceptance without removing its configuration');
   await sourcing.later();
@@ -58,9 +59,9 @@ test('Sourcing requires repair of missing required entries before acceptance', a
   await checkpoint('source settings explicitly replace the missing entry and disconnect a separate source');
   await sources.stage();
   await expect(sourcing.root.getByRole('alert')).toHaveCount(0);
-  expect(proposal().id).toBe(pendingId);
-  expect(proposal().tracking['file:_mw_sources/source000003/Study.md']).toMatchObject({ track: false, origin: 'explicit' });
-  expect(proposal().proposed.bundleFilters.some((filter: { name: string }) => filter.name === 'Preserved during repair')).toBe(true);
+  expect(proposal.current.id).toBe(pendingId);
+  expect(proposal.current.tracking['file:_mw_sources/source000003/Study.md']).toMatchObject({ track: false, origin: 'explicit' });
+  expect(proposal.current.proposed.bundleFilters.some((filter: { name: string }) => filter.name === 'Preserved during repair')).toBe(true);
   expect(fs.readFileSync(bundlePath, 'utf8')).toBe(before);
   await sourcing.select('Incoming');
   await expect(sourcing.evidence).toContainText('source is no longer connected');

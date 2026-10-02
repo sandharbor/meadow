@@ -46,6 +46,8 @@ import { MinioS3 } from "./utils/MinioS3.js";
 import type { BundleMode } from "./bundleMode.js";
 import type { ExecutionSurface } from "./executionSurface.js";
 import { getTestArtifactDirectory } from "./artifactReporter.js";
+import { SourceCommandTracker } from "./SourceCommandTracker.js";
+import type { SourceCommand } from "../artifacts/sourceCommand.js";
 import { appendTickEntrySync } from "./writeTickEntry.js";
 import {
   MEADOW_HOME_FINAL_STATUS_FILE,
@@ -493,6 +495,7 @@ export type CheckpointHandler = (message: string) => Promise<void>;
 export type TickCaptureHandler = () => Promise<Record<string, unknown>>;
 
 export interface TickCaptureRegistry {
+  sourceCommand?: SourceCommandTracker;
   handlers: TickCaptureHandler[];
   latestData: Record<string, unknown>;
   captureNow: () => Promise<void>;
@@ -534,6 +537,8 @@ export const test = base.extend<{
   testServer: TestServer;
   sourceChanges: { apply: (changeId: string, sourceGraph?: string) => Promise<SourceChangeResult> };
   artifactDir: string;
+  /** Opt-in source-position capture for commands in a scenario. */
+  sourceCommand: <T>(action: () => T | Promise<T>) => Promise<T>;
   /** A Dev Tools fork supplies its actual home and service partition for portable capture. */
   checkpoint: (message: string, target?: { homeDirectory: string; partition: string; ports: Record<string, number> }) => Promise<void>;
   /**
@@ -1220,6 +1225,7 @@ export const test = base.extend<{
             timestamp: new Date().toISOString(),
             tickIndex: tickIndex++,
             isCheckpoint,
+            ...(_tickCaptureRegistry.sourceCommand?.current && { sourceCommand: { ..._tickCaptureRegistry.sourceCommand.current } satisfies SourceCommand }),
             ...(checkpointMessage !== undefined && { checkpointMessage }),
             ...changedListings,
             ...(hasUncommittedFileContents && { uncommittedFileContents }),
@@ -1490,6 +1496,12 @@ export const test = base.extend<{
       return () => { entry.endTime = new Date().toISOString(); };
     };
     await use(fn);
+  },
+
+  sourceCommand: async ({ _tickCaptureRegistry }, use, testInfo) => {
+    const tracker = new SourceCommandTracker(testInfo.file);
+    _tickCaptureRegistry.sourceCommand = tracker;
+    await use(tracker.run);
   },
 
   _additionalCheckpointHandlers: async ({}, use) => {

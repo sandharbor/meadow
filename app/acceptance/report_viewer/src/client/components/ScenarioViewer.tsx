@@ -124,6 +124,7 @@ interface ProcessedTick {
   tickIndex: number
   isCheckpoint: boolean
   checkpointMessage?: string
+  sourceCommand?: { id: number; file: string; line: number; column: number; endLine: number; text: string; status: 'running' | 'completed' | 'failed' }
   fileCount: number
   uncommittedCount: number
   uncommittedFiles: { path: string; status: string }[]
@@ -535,6 +536,8 @@ export default function ScenarioViewer() {
   const [prevS3Objects, setPrevS3Objects] = useState<Record<string, string>>({})
   const [s3DiffMode, setS3DiffMode] = useState(true)
   const [testSource, setTestSource] = useState('')
+  const [sourceDisplay, setSourceDisplay] = useState<{ source: string; commandLines: number[] } | null>(null)
+  const [showCaptureCode, setShowCaptureCode] = useState(false)
   const [sourceLocations, setSourceLocations] = useState<TestSourceLocations>({ testLine: null, checkpoints: [] })
   const [testSourceFixtureReferences, setTestSourceFixtureReferences] = useState<TestSourceFixtureReference[]>([])
   const [testSourceFixtureModal, setTestSourceFixtureModal] = useState<TestSourceFixtureModalState | null>(null)
@@ -745,6 +748,7 @@ export default function ScenarioViewer() {
       const s3Data: StateCommit[] = await s3Res.json()
       const testSourceData = await testSourceRes.json() as {
         source?: string
+        display?: { source: string; commandLines: number[] }
         locations?: TestSourceLocations
         fixtures?: TestSourceFixtureReference[]
         sourceChanges?: TestSourceChange[]
@@ -766,6 +770,8 @@ export default function ScenarioViewer() {
       setStateCommits(stateData)
       setS3Commits(s3Data)
       setTestSource(testSourceData.source || '')
+      setSourceDisplay(testSourceData.display ?? null)
+      setShowCaptureCode(false)
       setTestSourceChanges(testSourceData.sourceChanges ?? [])
       setSourceChangeModal(null)
       setSourceLocations(testSourceData.locations ?? { testLine: null, checkpoints: [] })
@@ -1045,21 +1051,26 @@ export default function ScenarioViewer() {
     scrubTimerRef.current = setTimeout(() => syncToVideoTime(), 100)
   }, [syncToVideoTime])
 
-  // The selected checkpoint owns the highlight, even beside the end of the video.
+  const selectedSourceCommand = ticks[currentTickIndex]?.sourceCommand
+  const sourceHighlightBackground = ticks[currentTickIndex]?.isCheckpoint === false ? 'bg-purple-50' : 'bg-orange-50'
+  const sourceMarkerColors = ticks[currentTickIndex]?.isCheckpoint ? 'border-orange-200 text-orange-700' : 'border-purple-200 text-purple-700'
+
+  // Command locations follow ticks; older runs retain checkpoint highlighting.
   const highlightedSourceLine = useMemo(() => {
+    if (selectedSourceCommand) return selectedSourceCommand.line
     const message = timelineCheckpointMessages[currentMessageIndex]?.message
     if (!message) return sourceLocations.testLine
     const matches = sourceLocations.checkpoints.filter(location => location.message === message)
     const occurrence = timelineCheckpointMessages.slice(0, currentMessageIndex)
       .filter(checkpoint => checkpoint.message === message).length
     return matches[Math.min(occurrence, matches.length - 1)]?.line ?? null
-  }, [currentMessageIndex, timelineCheckpointMessages, sourceLocations])
+  }, [currentMessageIndex, timelineCheckpointMessages, sourceLocations, selectedSourceCommand])
 
   useEffect(() => {
     if (activeTab !== 'test-code' || highlightedSourceLine === null) return
     testCodeRef.current?.querySelector(`[data-source-line="${highlightedSourceLine}"]`)
       ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [highlightedSourceLine, activeTab, testSource])
+  }, [highlightedSourceLine, activeTab, testSource, showCaptureCode])
 
   const openTestSourceFixture = useCallback(async (name: string) => {
     setTestSourceFixtureModal({ name, content: null, error: null })
@@ -1227,7 +1238,10 @@ export default function ScenarioViewer() {
     ticks
       .filter((_, i) => {
         const c = tickStateChanges[i]
-        return c && (c.files || c.state || c.s3 || c.checkpoint)
+        const command = ticks[i].sourceCommand
+        const previous = ticks[i - 1]?.sourceCommand
+        const commandChanged = command && (command.id !== previous?.id || command.status !== previous?.status)
+        return commandChanged || (c && (c.files || c.state || c.s3 || c.checkpoint))
       })
       .map(t => t.tickIndex),
     [ticks, tickStateChanges]
@@ -2033,7 +2047,7 @@ export default function ScenarioViewer() {
                 let i = 0
                 while (i < ticks.length) {
                   const changes = tickStateChanges[i]
-                  const hasChange = changes && (changes.files || changes.state || changes.s3 || changes.checkpoint)
+                  const hasChange = interestingTickIndices.includes(ticks[i].tickIndex)
                   if (hasChange) {
                     const idx = i
                     const tick = ticks[i]
@@ -2087,8 +2101,7 @@ export default function ScenarioViewer() {
                   } else {
                     const groupStart = i
                     while (i < ticks.length) {
-                      const c = tickStateChanges[i]
-                      if (c && (c.files || c.state || c.s3 || c.checkpoint)) break
+                      if (interestingTickIndices.includes(ticks[i].tickIndex)) break
                       i++
                     }
                     const count = i - groupStart
@@ -2518,12 +2531,19 @@ export default function ScenarioViewer() {
 
           {/* Test Code tab */}
           {activeTab === 'test-code' && (
+            <>
+            {sourceDisplay && sourceDisplay.commandLines.length > 0 && (
+              <label className="flex items-center justify-end gap-1 border-b border-neutral-100 px-3 py-1 text-[10px] text-neutral-500">
+                <input type="checkbox" checked={showCaptureCode} onChange={event => setShowCaptureCode(event.target.checked)} />
+                Show capture code
+              </label>
+            )}
             <pre
               ref={testCodeRef}
               className="flex-1 min-h-0 overflow-auto m-0 text-xs leading-relaxed"
             >
               {testSource ? (
-                highlight(testSource, languages.typescript, 'typescript')
+                highlight(!showCaptureCode && sourceDisplay ? sourceDisplay.source : testSource, languages.typescript, 'typescript')
                   .split('\n')
                   .map((lineHtml, i) => {
                     const fixtureReferences = testSourceFixturesByLine.get(i) ?? []
@@ -2531,8 +2551,17 @@ export default function ScenarioViewer() {
                       <div key={i}>
                         <div
                           data-source-line={i + 1}
-                          className={`code-line px-3 font-mono ${highlightedSourceLine === i + 1 ? 'bg-orange-100' : ''}`}
+                          data-source-highlighted={highlightedSourceLine === i + 1 ? true : undefined}
+                          className={`code-line relative px-3 font-mono ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : ''}`}
                         >
+                          {!showCaptureCode && sourceDisplay?.commandLines.includes(i + 1) && (
+                            <span
+                              title="This command is wrapped in sourceCommand(...) in the original test to record its source position at each tick. Enable Show capture code to see the wrapper."
+                              aria-label="Source position capture"
+                              data-testid="source-capture-indicator"
+                              className="absolute left-0.5 cursor-help select-none text-[9px] text-neutral-400"
+                            >✓</span>
+                          )}
                           <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />
                           {(testSourceChangesByLine.get(i) ?? []).map((change, index) => (
                             <button key={`${change.id}:${index}`} type="button"
@@ -2542,6 +2571,19 @@ export default function ScenarioViewer() {
                               className="ml-2 inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-sky-400 bg-sky-50 align-middle font-sans text-[11px] font-bold text-sky-700 hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-600">?</button>
                           ))}
                         </div>
+                        {selectedSourceCommand?.endLine === i + 1 && (
+                          <div
+                            title={selectedSourceCommand.text}
+                            data-testid="source-command-marker"
+                            data-command-id={selectedSourceCommand.id}
+                            data-command-status={selectedSourceCommand.status}
+                            data-command-line={selectedSourceCommand.line}
+                            className={`mx-3 my-1 flex items-center gap-2 whitespace-normal border-t-2 font-sans text-[10px] ${sourceMarkerColors}`}
+                          >
+                            <span aria-hidden="true">▲</span>
+                            Tick {currentTickIndex + 1} · {selectedSourceCommand.status}
+                          </div>
+                        )}
                         {fixtureReferences.map((fixture) => (
                           <button
                             key={fixture.name}
@@ -2560,6 +2602,7 @@ export default function ScenarioViewer() {
                 <div className="p-10 text-center text-neutral-400">No test source code captured.</div>
               )}
             </pre>
+            </>
           )}
 
           {/* OTEL tab */}

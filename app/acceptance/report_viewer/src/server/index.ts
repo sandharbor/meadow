@@ -21,6 +21,7 @@ import { execFileSync, execSync } from "child_process";
 import os from "os";
 import path from "path";
 import { readConceptImplementations } from '../../../e2e/src/artifacts/conceptImplementations.js';
+import { testSourceDisplay } from '../testSourceDisplay.ts';
 import { testSourceLocations } from '../testSourceLocations.ts';
 import { describeTestSourceChanges } from '../../../e2e/src/artifacts/testSourceChanges.ts';
 import { expandManifest } from '../../../e2e/src/artifacts/manifestEncoding.ts';
@@ -1085,6 +1086,7 @@ app.get("/api/:runId/:testSlug/test-source", (req, res) => {
   res.json({
     file: manifest.testSourceFile || "",
     source: manifest.testSource || "",
+    display: testSourceDisplay(manifest.testSource || ""),
     locations: testSourceLocations(manifest.testSource || ""),
     fixtures: extractReferencedCliFixtureReferences(manifest.testSource || ""),
     sourceChanges: describeTestSourceChanges(manifest.testSource || "", manifest.testSourceChanges),

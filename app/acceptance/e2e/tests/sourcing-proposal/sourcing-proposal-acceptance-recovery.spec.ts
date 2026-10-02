@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -27,10 +28,10 @@ test('Failed proposal acceptance preserves accepted state and recoverable node a
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   const filters = new FilterPanelComponent(page, expect);
   const home = testServer.configDir;
   const bundle = path.join(home, 'bundles/sourcing-review');
-  const proposalPath = path.join(bundle, 'raw/sourcing/proposal.json');
   const journalPath = path.join(home, 'app/sourcing-transaction.json');
   const faultPath = path.join(home, 'cache/sourcing-acceptance-fault.json');
   const read = (file: string) => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
@@ -57,8 +58,8 @@ test('Failed proposal acceptance preserves accepted state and recoverable node a
   const acceptedSourceRefs = () => execFileSync('git', ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads/meadow-sources/'], { cwd: home, encoding: 'utf8' }).split('\n').filter(line => !line.includes('-candidate '));
   const beforeRefs = acceptedSourceRefs();
   const before = documents();
-  const pending = read(proposalPath);
-  const proposed = JSON.parse(pending!);
+  const pending = proposal.serialized;
+  const proposed = proposal.current;
   await checkpoint('a complete isolated proposal includes source node filter policy and cleanup changes');
 
   // --- Test start ---
@@ -71,7 +72,7 @@ test('Failed proposal acceptance preserves accepted state and recoverable node a
   expect(fs.existsSync(journalPath)).toBe(false);
   expect(documents()).toEqual(before);
   expect(acceptedSourceRefs()).toEqual(beforeRefs);
-  expect(read(proposalPath)).toBe(pending);
+  expect(proposal.serialized).toBe(pending);
   endFailure();
   await addKeyFrame(sourceReviewAcceptance);
   await checkpoint('a real partial application failure restores accepted documents and preserves every draft');
@@ -84,13 +85,13 @@ test('Failed proposal acceptance preserves accepted state and recoverable node a
   await expect.poll(() => fs.existsSync(testServer.runtimeSessionPath)).toBe(false);
   expect(documents()).not.toEqual(before);
   expect(read(path.join(home, 'app/global_custom_filters.json'))).toContain('Recovered shared rule');
-  expect(read(proposalPath)).toBe(pending);
+  expect(proposal.serialized).toBe(pending);
   await page.goto('about:blank');
   await testServer.restartRuntime();
   expect(fs.existsSync(journalPath)).toBe(false);
   expect(documents()).toEqual(before);
   expect(acceptedSourceRefs()).toEqual(beforeRefs);
-  expect(read(proposalPath)).toBe(pending);
+  expect(proposal.serialized).toBe(pending);
   await page.goto(testServer.browserLaunchUrl);
   endInterruption();
   await list.clickBundle('sourcing-review');
@@ -105,7 +106,7 @@ test('Failed proposal acceptance preserves accepted state and recoverable node a
   await sourcing.accept();
   const accepted = documents();
   expect(accepted).not.toEqual(before);
-  expect(fs.existsSync(proposalPath)).toBe(false);
+  expect(proposal.exists).toBe(false);
   expect(fs.existsSync(journalPath)).toBe(false);
   const nodes = YAML.parse(read(path.join(bundle, 'config/bundle_node_config.yaml'))!).nodes;
   expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf')).toBe(false);

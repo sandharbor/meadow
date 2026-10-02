@@ -1,3 +1,4 @@
+import type { SourceCommand } from "./sourceCommand.js";
 /*
 Copyright 2026 Sand Harbor Software, LLC
 
@@ -177,6 +178,7 @@ interface RawTickEntry {
   tickIndex: number;
   isCheckpoint: boolean;
   checkpointMessage?: string;
+  sourceCommand?: SourceCommand;
   files: string[];
   uncommittedFiles: { path: string; status: string }[];
   uncommittedFileContents?: Record<string, string>;
@@ -194,6 +196,7 @@ interface ProcessedTick {
   tickIndex: number;
   isCheckpoint: boolean;
   checkpointMessage?: string;
+  sourceCommand?: SourceCommand;
   fileCount: number;
   uncommittedCount: number;
   uncommittedFiles: { path: string; status: string }[];
@@ -886,6 +889,7 @@ function processTickLog(testDir: string): TickData {
       timestamp: raw.timestamp,
       tickIndex: raw.tickIndex,
       isCheckpoint: raw.isCheckpoint,
+      ...(raw.sourceCommand && { sourceCommand: raw.sourceCommand }),
       ...(raw.checkpointMessage !== undefined && { checkpointMessage: raw.checkpointMessage }),
       fileCount: raw.files.length,
       uncommittedCount: raw.uncommittedFiles.length,

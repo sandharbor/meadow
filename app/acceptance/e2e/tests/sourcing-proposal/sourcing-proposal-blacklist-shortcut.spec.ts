@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
@@ -22,6 +23,7 @@ test('Curation applies blacklist shortcuts only when calculated impact is limite
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   await list.goto();
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
@@ -38,7 +40,7 @@ test('Curation applies blacklist shortcuts only when calculated impact is limite
   const undo = page.getByRole('button', { name: 'Undo blacklist change', exact: true });
   await expect(undo).toBeVisible();
   await expect(sourcing.root).toBeHidden();
-  expect(configuration().nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf').listType).toBe('blacklist');
+  expect(configuration().nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf')?.listType).toBe('blacklist');
   await addKeyFrame(blacklist);
   await checkpoint('the leaf blacklist was applied with Undo and no wider scope changes');
 
@@ -62,8 +64,7 @@ test('Curation applies blacklist shortcuts only when calculated impact is limite
   await sourcing.select('Leaf');
   await sourcing.setSelectedBlacklisted(true);
   expect(configuration()).toEqual(original);
-  const proposal = JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles/sourcing-review/raw/sourcing/proposal.json'), 'utf8'));
-  expect(proposal.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf').listType).toBe('blacklist');
+  expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Leaf')?.listType).toBe('blacklist');
   await checkpoint('the harmless leaf edit is staged with the wider pending exclusion');
 
   await sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click();

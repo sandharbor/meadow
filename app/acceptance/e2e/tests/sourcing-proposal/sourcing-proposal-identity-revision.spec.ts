@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
@@ -22,8 +23,8 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  const proposal = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
   await list.goto();
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
@@ -33,7 +34,7 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   await sourcing.identities.getByRole('button', { name: 'Confirm 3 unambiguous suggestions', exact: true }).click();
   await sourcing.chooseIdentity('100000000006', 'Retained One.md');
   await sourcing.continueToGraph();
-  const pendingId = proposal().id;
+  const pendingId = proposal.current.id;
   await sourcing.select('Gateway');
   await sourcing.untrackSelected();
   await expect(sourcing.evidence).toContainText('Routes/Branch/Bridge.md');
@@ -58,15 +59,15 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   await sourcing.sensitivityReview.getByRole('button', { name: 'Confirm tracking current page', exact: true }).click();
   await expect(sourcing.sensitivityReview).toContainText('All tracking choices reviewed.');
   await sourcing.sensitivityReview.getByRole('button', { name: 'Close', exact: true }).click();
-  const newId = proposal().tracking['file:Routes/Branch/Gateway.md'].bundleNodeId;
+  const newId = proposal.current.tracking['file:Routes/Branch/Gateway.md'].bundleNodeId;
   expect(newId).not.toBe('100000000002');
   await sourcing.later();
   await page.reload();
   await editor.waitForLoad('sourcing-review');
   await sourcing.open();
-  expect(proposal().id).toBe(pendingId);
-  expect(proposal().identities['100000000002']).toBe(null);
-  expect(proposal().tracking['file:Routes/Branch/Gateway.md'].bundleNodeId).toBe(newId);
+  expect(proposal.current.id).toBe(pendingId);
+  expect(proposal.current.identities['100000000002']).toBe(null);
+  expect(proposal.current.tracking['file:Routes/Branch/Gateway.md'].bundleNodeId).toBe(newId);
   await checkpoint('the revised identity and renewed tracking survive Later and reload');
   await sourcing.accept();
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
@@ -84,8 +85,8 @@ test('Sourcing identity choices remain revisable only while the proposal is pend
   await checkpoint('accepted identity evidence is inspectable as read-only history');
   await history.getByRole('button', { name: 'Close source snapshots', exact: true }).click();
   await sourcing.open();
-  expect(proposal().id).not.toBe(pendingId);
-  expect(proposal().identities).toEqual({});
+  expect(proposal.current.id).not.toBe(pendingId);
+  expect(proposal.current.identities).toEqual({});
   await expect(sourcing.root.getByRole('button', { name: 'Review identities', exact: true })).toHaveCount(0);
   await sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click();
   await expect(sourcing.root).toBeHidden();

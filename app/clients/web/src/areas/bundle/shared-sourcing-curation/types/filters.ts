@@ -168,6 +168,9 @@ function createBuiltInFilters(): IFilter[] {
 
 // --- Custom hook for filter state ---
 export function useFilterState(bundleSlug: string, request: EditorOperations['request'], mode: 'curation' | 'sourcing' = 'curation', options?: { ready?: boolean; additionalFilters?: () => IFilter[] }): [IFilter[], React.Dispatch<React.SetStateAction<IFilter[]>>, () => void] {
+  const additionalFilters = options?.additionalFilters;
+  const additionalFiltersRef = React.useRef(additionalFilters);
+  additionalFiltersRef.current = additionalFilters;
   const ready = options?.ready !== false;
   const [customFilters, setCustomFilters] = useState<CustomFilterConfig[]>([]);
 
@@ -192,7 +195,7 @@ export function useFilterState(bundleSlug: string, request: EditorOperations['re
   
   const [filters, setRawFilters] = useState<IFilter[]>(() => restoreFilterViews(bundleSlug, mode, [...createBuiltInFilters(), ...(options?.additionalFilters?.() ?? [])]));
   const setFilters = React.useCallback<React.Dispatch<React.SetStateAction<IFilter[]>>>(change => setRawFilters(previous => {
-    const sourceDefaults = options?.additionalFilters?.() ?? [];
+    const sourceDefaults = additionalFiltersRef.current?.() ?? [];
     const next = (typeof change === 'function' ? change(previous) : change)
       .map(filter => {
         if (filter.group !== 'source-changes') return filter;
@@ -203,7 +206,7 @@ export function useFilterState(bundleSlug: string, request: EditorOperations['re
       });
     saveFilterViews(bundleSlug, mode, next);
     return next;
-  }), [bundleSlug, mode, options?.additionalFilters]);
+  }), [bundleSlug, mode]);
   useEffect(() => { setRawFilters(previous => restoreFilterViews(bundleSlug, mode, previous)); }, [bundleSlug, mode]);
 
   // Add custom filters to the main filters list

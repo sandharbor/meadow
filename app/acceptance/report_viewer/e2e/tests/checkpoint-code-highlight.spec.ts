@@ -44,7 +44,7 @@ test('arrow navigation highlights checkpoint calls in both directions and after 
     fs.writeFileSync(manifestPath, JSON.stringify({ ...manifest, ticks }));
     await page.reload();
     await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).duration)).toBeGreaterThan(1);
-    const selectedLine = page.locator('.code-line.bg-orange-100');
+    const selectedLine = page.locator('.code-line[data-source-highlighted="true"]');
     await expect(selectedLine).toHaveAttribute('data-source-line', '1');
     for (const line of [2, 5, 8]) {
       await page.keyboard.press('ArrowRight');

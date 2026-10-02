@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -20,6 +21,7 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
   const editor = new BundleEditorPage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'meadow-test-bundle-big');
   await editor.waitForSourceCheck();
   await page.clock.install();
   const pausedAt = Date.now();
@@ -74,7 +76,7 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
   await editor.sourceReview.checkAgain();
   await editor.sourceReview.expectModified('t003 ---- page with section to link to.md');
   expect(readState().acceptedId).toBe(acceptedId);
-  expect(JSON.parse(fs.readFileSync(path.join(bundle, 'raw/sourcing/proposal.json'), 'utf8')).candidateSnapshotId).not.toBe(acceptedId);
+  expect(proposal.current.candidateSnapshotId).not.toBe(acceptedId);
   await addKeyFrame(sourceSnapshot);
   await checkpoint('the full rebuild presents modified content for normal source review');
 

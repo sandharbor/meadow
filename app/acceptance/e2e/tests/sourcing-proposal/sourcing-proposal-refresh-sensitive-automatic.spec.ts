@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
@@ -21,9 +22,9 @@ test('Refreshing source material makes newly sensitive automatic tracking choice
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   const filters = new FilterPanelComponent(page, expect);
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  const proposal = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
   await list.goto();
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
@@ -36,8 +37,8 @@ test('Refreshing source material makes newly sensitive automatic tracking choice
     await sourcing.select(name);
     await expect(sourcing.selectedPage.getByText('Tracked', { exact: true })).toBeVisible();
   }
-  for (const name of ['Safe One', 'Safe Two']) expect(proposal().tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'automatic' });
-  const captured = proposal().candidateSnapshotId;
+  for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'automatic' });
+  const captured = proposal.current.candidateSnapshotId;
   await checkpoint('safe additions have pending automatic tracking choices');
 
   // --- Test start ---
@@ -47,13 +48,13 @@ test('Refreshing source material makes newly sensitive automatic tracking choice
   await sourcing.updateSources();
   const comparison = await (await comparisonResponse).json();
   expect(comparison.graph.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Safe One').body).toContain('review-sensitive');
-  expect(proposal().candidateSnapshotId).not.toBe(captured);
+  expect(proposal.current.candidateSnapshotId).not.toBe(captured);
   for (const name of ['Safe One', 'Safe Two']) {
     await sourcing.select(name);
     await expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
     await expect(sourcing.selectedPage.getByText('Sensitive', { exact: true })).toBeVisible();
-    expect(proposal().tracking[`file:Additions/${name}.md`]).toMatchObject({ track: false, origin: 'automatic' });
-    expect(proposal().tracking[`file:Additions/${name}.md`].needsConfirmation).not.toBe(true);
+    expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: false, origin: 'automatic' });
+    expect(proposal.current.tracking[`file:Additions/${name}.md`].needsConfirmation).not.toBe(true);
   }
   await expect(sourcing.root.getByRole('button', { name: /Review .* tracking choices/ })).toHaveCount(0);
   await addKeyFrame(sourceReviewSensitivity);

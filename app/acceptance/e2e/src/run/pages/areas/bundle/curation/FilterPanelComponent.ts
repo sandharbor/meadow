@@ -70,6 +70,14 @@ export class FilterPanelComponent {
     return this.page.locator(`[data-source-change-filter=${JSON.stringify(filterName)}]`);
   }
 
+  async expectSourceChangeCount(filterName: string, count: number) {
+    const row = this.sourceChangeRow(filterName);
+    await this.expect(row.getByText(filterName, { exact: true })).toBeVisible();
+    if (count > 0) await this.expect(row.locator('[data-source-change-count]')).toHaveText(String(count));
+    else await this.expect(row.locator('[data-source-change-count]')).toHaveCount(0);
+    await this.expect(row.getByRole('checkbox')).toHaveCount(0);
+  }
+
   private filterDisclosure(filterName: string) {
     const escaped = filterName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return this.page.getByRole("button", {

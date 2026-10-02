@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
@@ -21,6 +22,7 @@ test('Confirming a depth change incorporates newer sources and applies the edit 
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'example-bundle');
   await list.goto();
   await list.clickBundle('example-bundle');
   await editor.waitForLoad('example-bundle');
@@ -29,8 +31,7 @@ test('Confirming a depth change incorporates newer sources and applies the edit 
   await sourcing.untrackSelected();
   await sourcing.select('Cognitive Biases');
   const directory = path.join(testServer.configDir, 'bundles/example-bundle');
-  const proposal = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
-  const before = proposal();
+  const before = proposal.current;
   const acceptedConfig = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
   await checkpoint('the captured scope stops at Cognitive Biases with an explicit untrack choice');
 
@@ -48,9 +49,9 @@ test('Confirming a depth change incorporates newer sources and applies the edit 
   // Capture the new links and destination together, retaining the applicable earlier decision.
   await confirmation.getByRole('button', { name: 'Update sources and apply change', exact: true }).click();
   await expect(confirmation).toBeHidden();
-  expect(proposal().candidateSnapshotId).not.toBe(before.candidateSnapshotId);
-  expect(proposal().proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Cognitive Biases').outlinksDepth).toBe(1);
-  expect(proposal().tracking['file:Inversion.md']).toMatchObject({ track: false, origin: 'explicit' });
+  expect(proposal.current.candidateSnapshotId).not.toBe(before.candidateSnapshotId);
+  expect(proposal.current.proposed.nodes.find(node => node.bundleNodeName === 'Cognitive Biases')?.outlinksDepth).toBe(1);
+  expect(proposal.current.tracking['file:Inversion.md']).toMatchObject({ track: false, origin: 'explicit' });
   expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(acceptedConfig);
   await sourcing.compare('Confirmation Bias');
   await expect(sourcing.comparison).toContainText('This newly reviewed destination describes the tendency');

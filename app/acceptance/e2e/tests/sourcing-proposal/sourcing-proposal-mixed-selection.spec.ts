@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
@@ -22,6 +23,7 @@ test('Sourcing bulk tracking explicitly reports departing comparison nodes it ca
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   await list.goto();
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
@@ -40,9 +42,8 @@ test('Sourcing bulk tracking explicitly reports departing comparison nodes it ca
   await checkpoint('the mixed selection contains a candidate and a departing comparison node');
   await sourcing.root.getByRole('button', { name: 'Track All', exact: true }).click();
   await expect(sourcing.root.getByRole('status')).toContainText('Skipped 1 selected page: Departing');
-  const proposal = JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
-  expect(proposal.tracking['file:Routes/Reference.md']).toMatchObject({ track: true, origin: 'explicit' });
-  expect(proposal.tracking['file:Departing.md']).toBeUndefined();
+  expect(proposal.current.tracking['file:Routes/Reference.md']).toMatchObject({ track: true, origin: 'explicit' });
+  expect(proposal.current.tracking['file:Departing.md']).toBeUndefined();
   expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
   await addKeyFrame(sourceReviewWorkspace);
   await checkpoint('the bulk action explicitly reports the skipped departure and stages only the eligible page');

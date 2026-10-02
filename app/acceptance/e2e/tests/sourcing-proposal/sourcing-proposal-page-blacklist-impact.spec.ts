@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
@@ -21,6 +22,7 @@ test('Sourcing previews page blacklist effects beyond the selected page', async 
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   await list.goto();
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
@@ -52,8 +54,7 @@ test('Sourcing previews page blacklist effects beyond the selected page', async 
   await sourcing.select('Departing');
   await expect(sourcing.evidence).toContainText('Unchanged source material');
   await expect(sourcing.evidence).not.toContainText('Orphaned configuration');
-  const proposal = JSON.parse(fs.readFileSync(path.join(testServer.configDir, 'bundles/sourcing-review/raw/sourcing/proposal.json'), 'utf8'));
-  expect(proposal.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing').outlinksDepth).toBe(1);
+  expect(proposal.current.proposed.nodes.find((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')?.outlinksDepth).toBe(1);
   expect(fs.readFileSync(configPath, 'utf8')).toBe(saved);
   await checkpoint('reversing the exclusion restores the page and its saved depth setting');
 

@@ -21,6 +21,7 @@ export class SourceReviewWorkspace extends SourcingWorkspacePage {
   }
   async expectClosed() { await this.reviewExpect(this.root).not.toBeVisible(); }
   async checkAgain() {
+    await this.reviewExpect(this.root.locator('header').getByRole('button', { name: 'Update sources', exact: true })).toBeEnabled();
     await this.closeInspection();
     if (await this.identities.isVisible()) {
       await Promise.all([

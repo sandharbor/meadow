@@ -16,7 +16,7 @@ test('Shift arrows step recorded frames while plain arrows navigate ticks', asyn
     const video = page.locator('video');
     await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).duration)).toBeGreaterThan(4);
     const time = () => video.evaluate(element => (element as HTMLVideoElement).currentTime);
-    const selectedLine = page.locator('.code-line.bg-orange-100');
+    const selectedLine = page.locator('.code-line[data-source-highlighted="true"]');
     await expect(selectedLine).toHaveAttribute('data-source-line', '1');
 
     // --- Test start ---

@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
@@ -23,8 +24,8 @@ test('Source-change filters alter only presentation and expose removal reasons a
   const editor = new BundleEditorPage(page, expect);
   const filters = new FilterPanelComponent(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  const proposal = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
   await list.goto();
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
@@ -38,15 +39,7 @@ test('Source-change filters alter only presentation and expose removal reasons a
   await sourcing.continueToGraph();
   await filters.expandFilterGroup('Removed');
   for (const [name, count] of [['Added', 1], ['Renamed', 1], ['Modified', 2], ['Removed', 3], ['Source missing', 1], ['Not reachable', 2], ['Disconnected', 0], ['Unchanged', 1]] as const) {
-    const row = page.locator(`[data-source-change-filter=${JSON.stringify(name)}]`);
-    if (count === 0 && !['Source missing', 'Not reachable', 'Disconnected'].includes(name)) {
-      await expect(row).toHaveCount(0);
-      continue;
-    }
-    await expect(row.getByText(name, { exact: true })).toBeVisible();
-    if (count > 0) await expect(row.locator('[data-source-change-count]')).toHaveText(String(count));
-    else await expect(row.locator('[data-source-change-count]')).toHaveCount(0);
-    await expect(row.getByRole('checkbox')).toHaveCount(0);
+    await filters.expectSourceChangeCount(name, count);
   }
   await sourcing.select('Leaf');
   await expect(sourcing.evidence).toContainText('source was missing');
@@ -65,7 +58,7 @@ test('Source-change filters alter only presentation and expose removal reasons a
   await expect(sourcing.evidence).toContainText('Routes/Reference Renamed.md');
   await sourcing.expectNodeVisible('Reference', false);
   await sourcing.clearSelection();
-  const reviewed = proposal();
+  const reviewed = proposal.current;
   await addKeyFrame(sourceReviewFiltering);
   await checkpoint('each category has an exact count and the confirmed rename is one comparison node');
 
@@ -81,7 +74,7 @@ test('Source-change filters alter only presentation and expose removal reasons a
   await sourcing.expectNodeVisible('Reference Renamed');
   await sourcing.expectNodeVisible('Bridge', false);
   await sourcing.expectNodeVisible('Leaf', false);
-  expect(proposal()).toEqual(reviewed);
+  expect(proposal.current).toEqual(reviewed);
   await checkpoint('combined category and folder presentation leaves the complete proposal unchanged');
   await sourcing.accept();
   const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;

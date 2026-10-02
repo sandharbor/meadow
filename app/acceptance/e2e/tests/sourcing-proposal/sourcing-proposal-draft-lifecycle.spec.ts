@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from '../../src/run/pages/index.js';
@@ -21,6 +22,7 @@ test('Sourcing preserves node and filter drafts on Later and discards them toget
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   const filters = new FilterPanelComponent(page, expect);
   await list.goto();
   await list.clickBundle('sourcing-review');
@@ -29,7 +31,6 @@ test('Sourcing preserves node and filter drafts on Later and discards them toget
   const savedNodes = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
   const globalPath = path.join(testServer.configDir, 'app/global_custom_filters.json');
   const savedGlobal = fs.readFileSync(globalPath, 'utf8');
-  const proposal = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
   await sourcing.open();
   await checkpoint('the new proposal begins with the saved node and filter configuration');
 
@@ -42,7 +43,7 @@ test('Sourcing preserves node and filter drafts on Later and discards them toget
   await filters.fillAndSaveCustomFilter({ name: 'Draft bridge', field: 'title', matchType: 'substring', value: 'Bridge' });
   await filters.clickAddCustomFilter();
   await filters.fillAndSaveCustomFilter({ name: 'Draft shared emphasis', field: 'title', matchType: 'substring', value: 'Retained', scope: 'global' });
-  const staged = proposal();
+  const staged = proposal.current;
   expect(staged.proposed.bundleFilters.some((filter: { name: string }) => filter.name === 'Draft bridge')).toBe(true);
   expect(staged.proposed.globalFilters.some((filter: { name: string }) => filter.name === 'Draft shared emphasis')).toBe(true);
   expect(fs.readFileSync(globalPath, 'utf8')).toBe(savedGlobal);
@@ -69,8 +70,8 @@ test('Sourcing preserves node and filter drafts on Later and discards them toget
   await expect(page.getByRole('checkbox', { name: /Draft bridge/ })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /Draft shared emphasis/ })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /Accepted later emphasis/ })).toBeVisible();
-  expect(proposal().candidateSnapshotId).toBe(staged.candidateSnapshotId);
-  expect(proposal().proposed).toEqual(staged.proposed);
+  expect(proposal.current.candidateSnapshotId).toBe(staged.candidateSnapshotId);
+  expect(proposal.current.proposed).toEqual(staged.proposed);
   await sourcing.select('Reference');
   await expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
   await checkpoint('reopening restores all drafts alongside the independent saved filter');
@@ -79,7 +80,7 @@ test('Sourcing preserves node and filter drafts on Later and discards them toget
     sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click(),
   ]);
   await expect(sourcing.root).toBeHidden();
-  expect(fs.existsSync(path.join(directory, 'raw/sourcing/proposal.json'))).toBe(false);
+  expect(proposal.exists).toBe(false);
   expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(savedNodes);
   expect(fs.readFileSync(globalPath, 'utf8')).toBe(acceptedLaterGlobal);
   expect(fs.readFileSync(path.join(testServer.sourceGraphsDir, 'sourcing-review-data/Start.md'), 'utf8')).toContain('The former leaf link has been removed.');

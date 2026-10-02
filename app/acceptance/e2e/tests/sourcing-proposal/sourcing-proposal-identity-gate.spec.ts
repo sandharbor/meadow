@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
@@ -20,8 +21,8 @@ test('Sourcing requires identity decisions before graph entry and preserves part
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  const proposal = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
   await list.goto();
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
@@ -49,7 +50,7 @@ test('Sourcing requires identity decisions before graph entry and preserves part
   await sourcing.open();
   await expect(sourcing.identities).toBeVisible();
   await expect(sourcing.identities.getByTestId('source-move-100000000002').getByRole('radio', { name: 'Same page — Routes/Branch/Gateway.md', exact: true })).toBeChecked();
-  expect(Object.keys(proposal().identities)).toEqual(['100000000002']);
+  expect(Object.keys(proposal.current.identities)).toEqual(['100000000002']);
   await expect(sourcing.identities.getByRole('button', { name: 'Continue to graph', exact: true })).toBeDisabled();
   await checkpoint('reopening restores the partial identity review and still gates the graph');
 

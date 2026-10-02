@@ -1,7 +1,6 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import fs from 'node:fs';
-import path from 'node:path';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import { test, expect } from '../../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
 import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
@@ -21,6 +20,7 @@ test('Cancelling a depth change that needs newer sources preserves the reviewed 
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'example-bundle');
   await list.goto();
   await list.clickBundle('example-bundle');
   await editor.waitForLoad('example-bundle');
@@ -28,9 +28,7 @@ test('Cancelling a depth change that needs newer sources preserves the reviewed 
   await sourcing.select('Inversion');
   await sourcing.untrackSelected();
   await sourcing.select('Cognitive Biases');
-  const proposalPath = path.join(testServer.configDir, 'bundles/example-bundle/raw/sourcing/proposal.json');
-  const proposal = () => JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
-  const before = proposal();
+  const before = proposal.current;
   await checkpoint('the reviewed capture retains its depth stop and a staged untrack choice');
 
   // --- Test start ---
@@ -42,16 +40,16 @@ test('Cancelling a depth change that needs newer sources preserves the reviewed 
   await expect(confirmation).toBeVisible();
   endConsentErrors();
   await expect(confirmation).toContainText('Newer source material is available');
-  expect(proposal().candidateSnapshotId).toBe(before.candidateSnapshotId);
-  expect(proposal().proposed).toEqual(before.proposed);
+  expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
+  expect(proposal.current.proposed).toEqual(before.proposed);
   await addKeyFrame(sourceChangesDuringReview);
   await checkpoint('the depth refresh confirmation is open with the original proposal preserved');
 
   // Cancel preserves the old capture and the displayed depth as well as the durable draft.
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(confirmation).toBeHidden();
-  expect(proposal().proposed).toEqual(before.proposed);
-  expect(proposal().tracking).toEqual(before.tracking);
+  expect(proposal.current.proposed).toEqual(before.proposed);
+  expect(proposal.current.tracking).toEqual(before.tracking);
   await sourcing.select('Inversion');
   await expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
   await sourcing.compare('Cognitive Biases');
@@ -61,12 +59,12 @@ test('Cancelling a depth change that needs newer sources preserves the reviewed 
   await sourcing.closeComparison();
   await sourcing.later();
   await sourcing.open();
-  expect(proposal().candidateSnapshotId).toBe(before.candidateSnapshotId);
-  expect(proposal().proposed).toEqual(before.proposed);
-  expect(proposal().tracking).toEqual(before.tracking);
+  expect(proposal.current.candidateSnapshotId).toBe(before.candidateSnapshotId);
+  expect(proposal.current.proposed).toEqual(before.proposed);
+  expect(proposal.current.tracking).toEqual(before.tracking);
   await checkpoint('cancelled depth and the earlier untrack decision survive deferral');
 
   // The pending proposal and the two external source edits intentionally remain for manual review.
-  await assertMeadowHomeState({ allowedUntracked: ['bundles/example-bundle/raw/sourcing/proposal.json', 'source_graphs/.source-changes.jsonl'],
+  await assertMeadowHomeState({ allowedUntracked: [proposal.relativePath, 'source_graphs/.source-changes.jsonl'],
     allowedModified: ['source_graphs/example-bundle-data/Cognitive Biases.md', 'source_graphs/example-bundle-data/Confirmation Bias.md'] });
 });

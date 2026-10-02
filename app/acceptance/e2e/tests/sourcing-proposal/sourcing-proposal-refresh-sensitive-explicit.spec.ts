@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import fs from 'node:fs';
+import { SourcingProposalState } from '../../src/run/state/SourcingProposalState.js';
 import path from 'node:path';
 import YAML from 'yaml';
 import { test, expect } from '../../src/run/test-fixtures.js';
@@ -21,9 +22,9 @@ test('Refreshing source material requires renewed confirmation for explicit trac
   const list = new BundleListPage(page, expect);
   const editor = new BundleEditorPage(page, expect);
   const sourcing = new SourcingWorkspacePage(page, expect);
+  const proposal = new SourcingProposalState(testServer, 'sourcing-review');
   const filters = new FilterPanelComponent(page, expect);
   const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
-  const proposal = () => JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
   await list.goto();
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
@@ -38,17 +39,17 @@ test('Refreshing source material requires renewed confirmation for explicit trac
     await sourcing.untrackSelected();
     await sourcing.trackSelected();
   }
-  for (const name of ['Safe One', 'Safe Two']) expect(proposal().tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'explicit' });
-  const captured = proposal().candidateSnapshotId;
+  for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ track: true, origin: 'explicit' });
+  const captured = proposal.current.candidateSnapshotId;
   await checkpoint('safe additions have pending explicit tracking choices');
 
   // --- Test start ---
   // Refresh incorporates changed bytes and revalidates the existing tracking decisions.
   await sourceChanges.apply('mark-review-pages-sensitive', 'sourcing-review-data');
   await sourcing.updateSources();
-  expect(proposal().candidateSnapshotId).not.toBe(captured);
+  expect(proposal.current.candidateSnapshotId).not.toBe(captured);
   await expect(sourcing.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeDisabled();
-  for (const name of ['Safe One', 'Safe Two']) expect(proposal().tracking[`file:Additions/${name}.md`]).toMatchObject({ origin: 'explicit', needsConfirmation: true });
+  for (const name of ['Safe One', 'Safe Two']) expect(proposal.current.tracking[`file:Additions/${name}.md`]).toMatchObject({ origin: 'explicit', needsConfirmation: true });
   await sourcing.reviewTrackingChoices(2);
   await expect(sourcing.sensitivityReview).toContainText('Restricted review material');
   await addKeyFrame(sourceReviewSensitivity);
