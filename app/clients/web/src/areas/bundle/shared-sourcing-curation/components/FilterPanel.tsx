@@ -311,6 +311,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     filter.id === 'outlink-gap-filter' || filter.id === 'inlink-gap-filter'
   ));
   const showGapFilter = gapFilters.length > 1;
+  const removalCount = filters.find(filter => filter.id === 'source-departing')?.bundleNodeSelectors[0]?.select(graph).size ?? 0;
   const otherFilters = filters.filter(f =>
     !f.hideFromFilterList
     && (mode === 'sourcing' || f.id !== 'frontier-filter')
@@ -318,7 +319,9 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     && (!f.isFolderFilter || showFolderFilter)
     && (!f.isNodeTypeFilter || showNodeTypeFilter)
     && (!f.isGapFilter || showGapFilter)
-    && (f.group !== 'source-changes' || f.parentFilterId === 'source-departing' || f.id === 'source-departing' || (f.bundleNodeSelectors[0]?.select(graph).size ?? 0) > 0)
+    && (f.group !== 'source-changes' || (f.parentFilterId === 'source-departing'
+      ? removalCount > 0
+      : (f.bundleNodeSelectors[0]?.select(graph).size ?? 0) > 0))
   ).sort((a, b) => Number(b.group === 'source-changes') - Number(a.group === 'source-changes'));
   const sourceCountDigits = Math.max(1, ...otherFilters.filter(filter => filter.group === 'source-changes')
     .map(filter => String(filter.bundleNodeSelectors[0]?.select(graph).size ?? 0).length));
