@@ -36,9 +36,17 @@ test('Source-change filters alter only presentation and expose removal reasons a
   await sourcing.open();
   await sourcing.chooseIdentity('100000000003', 'Routes/Reference Renamed.md');
   await sourcing.continueToGraph();
-  await filters.expandFilterGroup('No longer included');
-  for (const [name, count] of [['Added', 1], ['Modified', 2], ['No longer included', 3], ['Source missing', 1], ['No longer reachable', 2], ['Disconnected source', 0], ['Renames and moves', 1], ['Orphaned configuration', 3], ['Unchanged', 1]] as const) {
-    await expect(page.getByRole('checkbox', { name: `${name} ${count}`, exact: true })).toBeVisible();
+  await filters.expandFilterGroup('Removed');
+  for (const [name, count] of [['Added', 1], ['Renamed', 1], ['Modified', 2], ['Removed', 3], ['Source missing', 1], ['Not reachable', 2], ['Disconnected', 0], ['Unchanged', 1]] as const) {
+    const row = page.locator(`[data-source-change-filter=${JSON.stringify(name)}]`);
+    if (count === 0 && !['Source missing', 'Not reachable', 'Disconnected'].includes(name)) {
+      await expect(row).toHaveCount(0);
+      continue;
+    }
+    await expect(row.getByText(name, { exact: true })).toBeVisible();
+    if (count > 0) await expect(row.locator('[data-source-change-count]')).toHaveText(String(count));
+    else await expect(row.locator('[data-source-change-count]')).toHaveCount(0);
+    await expect(row.getByRole('checkbox')).toHaveCount(0);
   }
   await sourcing.select('Leaf');
   await expect(sourcing.evidence).toContainText('source was missing');
@@ -62,9 +70,9 @@ test('Source-change filters alter only presentation and expose removal reasons a
   await checkpoint('each category has an exact count and the confirmed rename is one comparison node');
 
   // Solo and hide can combine with folder filters without changing any proposal decisions.
-  await filters.clickSoloOnFilter('No longer included');
+  await filters.clickSoloOnFilter('Removed');
   await editor.expectListViewRowCount(3);
-  await filters.clickSoloOnFilter('No longer included');
+  await filters.clickSoloOnFilter('Removed');
   await filters.expandFilterGroup('Folders');
   await filters.expandFolder('Routes');
   await filters.soloFolder('Routes');

@@ -66,6 +66,10 @@ export class FilterPanelComponent {
     return this.page.getByRole("checkbox", { name: new RegExp(`^${escaped}(\\s|$)`) });
   }
 
+  private sourceChangeRow(filterName: string) {
+    return this.page.locator(`[data-source-change-filter=${JSON.stringify(filterName)}]`);
+  }
+
   private filterDisclosure(filterName: string) {
     const escaped = filterName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return this.page.getByRole("button", {
@@ -163,6 +167,11 @@ export class FilterPanelComponent {
   }
 
   async enableFilter(filterName: string) {
+    const sourceRow = this.sourceChangeRow(filterName);
+    if (await sourceRow.count() > 0) {
+      await this.expect(sourceRow).toBeVisible();
+      return;
+    }
     const gapDirection = this.gapDirection(filterName);
     if (gapDirection) await this.expandFilterGroup("Gap");
 
@@ -214,6 +223,11 @@ export class FilterPanelComponent {
   }
 
   async clickSoloOnFilter(filterName: string) {
+    const sourceRow = this.sourceChangeRow(filterName);
+    if (await sourceRow.count() > 0) {
+      await sourceRow.locator('button[title="Solo"]').click();
+      return;
+    }
     const gapDirection = this.gapDirection(filterName);
     if (gapDirection) {
       await this.expandFilterGroup("Gap");
@@ -375,6 +389,11 @@ export class FilterPanelComponent {
   }
 
   async clickShowTitlesOnFilter(filterName: string) {
+    const sourceRow = this.sourceChangeRow(filterName);
+    if (await sourceRow.count() > 0) {
+      await sourceRow.locator('button[title="Show text labels"]').click();
+      return;
+    }
     const filterRow = this.filterCheckbox(filterName).locator("xpath=ancestor::div[.//button[@title='Show text labels']][1]");
     await filterRow.locator('button[title="Show text labels"]').click();
   }

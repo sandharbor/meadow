@@ -34,6 +34,33 @@ export function createSourceChangeRoutes(options: {
   openSourceGraphs: () => string[];
 }): express.Router {
   const router = express.Router();
+  router.get('/source-changes/:sourceGraph/:changeId', (req, res) => {
+    try {
+      const { sourceGraph, changeId } = req.params;
+      if (!options.openSourceGraphs().includes(sourceGraph)) throw new Error('Open a saved state that includes this source graph to apply this change.');
+      const change = listSourceChangeStatus(options.projectRoot, path.join(options.openHome(), 'source_graphs'), sourceGraph)
+        .find(candidate => candidate.id === changeId);
+      if (!change) return res.status(404).json({ error: 'This source change is unavailable in the current checkout.' });
+      res.json({ change });
+    } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : String(error) }); }
+  });
+  router.post('/source-changes/:sourceGraph/:changeId', (req, res) => {
+    try {
+      const { sourceGraph, changeId } = req.params;
+      if (!options.openSourceGraphs().includes(sourceGraph)) throw new Error('The open saved state does not include this source graph');
+      const definition = loadSourceChanges(options.projectRoot, sourceGraph).find(change => change.id === changeId);
+      if (!definition) return res.status(404).json({ error: 'This source change is unavailable in the current checkout.' });
+      if (JSON.stringify(definition.operations) !== JSON.stringify(req.body?.operations)) {
+        throw new Error('This source change differs from the definition shown in the report. Open a report for the current checkout.');
+      }
+      res.json(applySourceChange({
+        projectRoot: options.projectRoot,
+        sourceGraphsDir: path.join(options.openHome(), 'source_graphs'),
+        sourceGraph,
+        changeId,
+      }));
+    } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : String(error) }); }
+  });
   router.get('/config/fixtures/:fixtureName/source-changes', (req, res) => {
     try {
       const sourceLocations = fixtureSourceLocations(options.projectRoot, req.params.fixtureName);

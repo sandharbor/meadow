@@ -391,7 +391,6 @@ const CustomFilterModal: React.FC<CustomFilterModalProps> = ({
                   className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500"
                 >
                   <option value="highlight">Highlight</option>
-                  <option value="fade">Fade</option>
                   <option value="mark_sensitive">Mark Sensitive</option>
                 </select>
               </div>

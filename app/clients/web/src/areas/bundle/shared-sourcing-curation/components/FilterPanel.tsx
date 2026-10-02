@@ -318,7 +318,10 @@ const FilterPanel = React.memo<FilterPanelProps>(({
     && (!f.isFolderFilter || showFolderFilter)
     && (!f.isNodeTypeFilter || showNodeTypeFilter)
     && (!f.isGapFilter || showGapFilter)
+    && (f.group !== 'source-changes' || f.parentFilterId === 'source-departing' || f.id === 'source-departing' || (f.bundleNodeSelectors[0]?.select(graph).size ?? 0) > 0)
   ).sort((a, b) => Number(b.group === 'source-changes') - Number(a.group === 'source-changes'));
+  const sourceCountDigits = Math.max(1, ...otherFilters.filter(filter => filter.group === 'source-changes')
+    .map(filter => String(filter.bundleNodeSelectors[0]?.select(graph).size ?? 0).length));
   const searchText = searchInputs['search-by-title-filter'] || '';
   const hasSearchText = searchText.length > 0;
   const expressionFilters = filterExpressionFilters || filters;
@@ -464,9 +467,13 @@ const FilterPanel = React.memo<FilterPanelProps>(({
           </button>
         </div>
         <div className="space-y-3">
+          {mode === 'sourcing' && <h3 className="border-b pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600">Source changes</h3>}
           {otherFilters.map((filter, index) => {
             if (filter.parentFilterId && !expandedFilterGroups.has(filter.parentFilterId)) return null;
             const hasChildFilters = otherFilters.some(child => child.parentFilterId === filter.id);
+            const sourceChangeCount = filter.group === 'source-changes' ? filter.bundleNodeSelectors[0]?.select(graph).size ?? 0 : 0;
+            const sourceRowOpacity = filter.group === 'source-changes' && sourceChangeCount === 0 ? 0.65 : 1;
+            const sourceHighlight = filter.actions.find(action => action.type === 'highlight');
             const threshold = thresholdInputs[filter.id] ?? filter.thresholdValue ?? 5;
             const isExpandableFilter = Boolean(filter.isFolderFilter || filter.isNodeTypeFilter || filter.isGapFilter);
             const isExpanded = expandedFilterGroups.has(filter.id);
@@ -476,17 +483,38 @@ const FilterPanel = React.memo<FilterPanelProps>(({
               : filter.id === 'inlink-gap-filter'
               ? `Pages with ${threshold} or more inlinks that do not show in the graph`
               : null;
-            const tooltipDescription = filter.descriptionNode || gapDescription || filter.description;
+            const tooltipDescription = filter.group === 'source-changes' && !filter.parentFilterId
+              ? null : filter.descriptionNode || gapDescription || filter.description;
             return (
             <div
               key={filter.id}
+              data-source-change-filter={filter.group === 'source-changes' ? filter.name : undefined}
               className={`space-y-2 ${filter.parentFilterId ? 'ml-4 border-l pl-2' : ''}`}
             >
-              {mode === 'sourcing' && (index === 0 || filter.group !== otherFilters[index - 1].group) && <h3 className="border-b pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600">{filter.group === 'source-changes' ? 'Source changes' : 'Page filters'}</h3>}
+              {mode === 'sourcing' && filter.group !== 'source-changes' && (index === 0 || otherFilters[index - 1].group === 'source-changes') && <h3 className="border-b pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600">Page filters</h3>}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 min-w-0 flex-1">
-                  {hasChildFilters && <button type="button" aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${filter.name}`} aria-expanded={isExpanded} onClick={() => toggleFilterGroup(filter.id)} className="shrink-0 text-xs text-neutral-500">{isExpanded ? '▾' : '▸'}</button>}
-                  {isExpandableFilter ? (
+                  {filter.group === 'source-changes' ? (
+                    <>
+                      {hasChildFilters ? (
+                        <button type="button" aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${filter.name}`} aria-expanded={isExpanded}
+                          onClick={() => toggleFilterGroup(filter.id)} style={{ opacity: sourceRowOpacity }} className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-500 hover:text-gray-900">
+                          <svg className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M5.5 3.5L10 8l-4.5 4.5V3.5z" />
+                          </svg>
+                        </button>
+                      ) : <span className="h-4 w-4 shrink-0" aria-hidden="true" />}
+                      <span className="flex shrink-0 items-center justify-center text-xs tabular-nums"
+                        style={{ width: filter.parentFilterId === 'source-departing' ? `max(1rem, ${sourceCountDigits}ch)` : `max(1.5rem, calc(${sourceCountDigits}ch + 1rem))`, opacity: sourceRowOpacity }}>
+                        {sourceChangeCount > 0 && <span data-source-change-count
+                          className={`inline-flex h-6 shrink-0 items-center justify-center rounded-full text-xs font-medium tabular-nums ${filter.id === 'source-unchanged' ? 'bg-gray-100 text-gray-500 opacity-40' : filter.parentFilterId ? 'text-gray-700' : 'border-2 text-gray-700'} ${filter.parentFilterId ? '' : sourceChangeCount < 10 ? 'w-6' : 'min-w-6 px-1.5'}`}
+                          style={filter.id === 'source-unchanged' || filter.parentFilterId ? undefined : { borderColor: sourceHighlight?.color ?? '#fdba74', borderStyle: sourceHighlight?.isDashed ? 'dashed' : 'solid' }}>
+                          {sourceChangeCount}
+                        </span>}
+                      </span>
+                      <span style={{ opacity: sourceRowOpacity, marginLeft: filter.parentFilterId === 'source-departing' ? '0.125rem' : '0.5rem' }} className="min-w-0 truncate text-sm text-gray-700">{filter.name}</span>
+                    </>
+                  ) : isExpandableFilter ? (
                     <button
                       type="button"
                       onClick={() => toggleFilterGroup(filter.id)}
@@ -524,7 +552,6 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                       />
                       <label htmlFor={`${filter.id}-enabled`} className={`text-sm text-gray-700 flex items-center min-w-0 transition-opacity duration-200 ${!filter.enabled ? 'opacity-50' : ''}`}>
                         <span className="truncate">{filter.name}</span>
-                        {filter.group === 'source-changes' && <span className="ml-1 text-xs text-neutral-500">{filter.bundleNodeSelectors[0]?.select(graph).size ?? 0}</span>}
                         {filter.id === 'untracked-filter' && untrackedNodeCount !== undefined && untrackedNodeCount > 0 && (
                           <span className="ml-1.5 px-1.5 py-0.5 text-xs font-medium bg-warning-100 text-warning-700 rounded flex-shrink-0">
                             {untrackedNodeCount}
@@ -535,7 +562,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                   )}
                   {tooltipDescription && (
                     <span className="relative ml-1 group cursor-default">
-                      <span className={`w-3.5 h-3.5 inline-flex items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] -translate-y-0.5 transition-opacity duration-[125ms] ${isPanelHovered ? (filter.enabled ? 'opacity-100' : 'opacity-50') : 'opacity-0'}`}>
+                      <span className={`w-3.5 h-3.5 inline-flex items-center justify-center rounded-full border border-gray-400 text-gray-500 text-[10px] -translate-y-0.5 transition-opacity duration-[125ms] ${isPanelHovered ? (sourceRowOpacity < 1 ? 'opacity-[0.65]' : filter.enabled ? 'opacity-100' : 'opacity-50') : 'opacity-0'}`}>
                         ?
                       </span>
                       <span
@@ -558,11 +585,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                   </button>
                 )}
                 {filter.enabled && !isExpandableFilter && (
-                  <div className="flex space-x-1 flex-shrink-0 ml-2">
-                    <button type="button" aria-label={`Fade ${filter.name}`} aria-pressed={filter.actions.some(action => action.type === 'fade')}
-                      title="Fade" className="h-6 w-6 rounded bg-gray-100 text-xs text-gray-600 hover:bg-gray-200"
-                      onClick={() => onFilterChange(filter.id, { actions: filter.actions.some(action => action.type === 'fade')
-                        ? filter.actions.filter(action => action.type !== 'fade') : [...filter.actions, { type: 'fade' }] })}>◐</button>
+                  <div style={{ opacity: sourceRowOpacity }} className="flex space-x-1 flex-shrink-0 ml-2">
                     {filter.id.startsWith('custom-') && (
                       <button
                         onClick={() => handleEditCustomFilter(filter.id)}
@@ -690,7 +713,7 @@ const FilterPanel = React.memo<FilterPanelProps>(({
                   />
                 </div>
               )}
-              {filter.enabled && (() => {
+              {filter.enabled && filter.group !== 'source-changes' && (() => {
                 const highlightAction = filter.actions.find(a => a.type === 'highlight');
                 const sensitiveAction = filter.actions.find(a => a.type === 'mark_sensitive');
                 const showLabelsAction = filter.actions.find(a => a.type === 'show_labels');

@@ -192,10 +192,18 @@ export function useFilterState(bundleSlug: string, request: EditorOperations['re
   
   const [filters, setRawFilters] = useState<IFilter[]>(() => restoreFilterViews(bundleSlug, mode, [...createBuiltInFilters(), ...(options?.additionalFilters?.() ?? [])]));
   const setFilters = React.useCallback<React.Dispatch<React.SetStateAction<IFilter[]>>>(change => setRawFilters(previous => {
-    const next = typeof change === 'function' ? change(previous) : change;
+    const sourceDefaults = options?.additionalFilters?.() ?? [];
+    const next = (typeof change === 'function' ? change(previous) : change)
+      .map(filter => {
+        if (filter.group !== 'source-changes') return filter;
+        const defaults = sourceDefaults.find(item => item.id === filter.id);
+        return { ...filter, enabled: true, actions: defaults
+          ? [...defaults.actions, ...filter.actions.filter(action => action.type === 'show_titles')]
+          : filter.actions };
+      });
     saveFilterViews(bundleSlug, mode, next);
     return next;
-  }), [bundleSlug, mode]);
+  }), [bundleSlug, mode, options?.additionalFilters]);
   useEffect(() => { setRawFilters(previous => restoreFilterViews(bundleSlug, mode, previous)); }, [bundleSlug, mode]);
 
   // Add custom filters to the main filters list

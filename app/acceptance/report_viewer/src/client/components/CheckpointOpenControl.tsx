@@ -1,6 +1,7 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import { useEffect, useRef, useState } from 'react'
+import { resolveDevToolsUrl } from '../devTools.ts'
 
 type ServiceTarget = 'local' | 'hosted'
 
@@ -17,12 +18,6 @@ interface CheckpointOption {
 }
 
 const TARGET_LABELS: Record<ServiceTarget, string> = { local: 'Local', hosted: 'Hosted Development' }
-
-let devToolsUrl: Promise<string> | undefined
-function resolveDevToolsUrl(): Promise<string> {
-  devToolsUrl ??= fetch('/api/dev-tools').then(response => response.json()).then((data: { url: string }) => data.url)
-  return devToolsUrl
-}
 
 /**
  * Fork the scenario at a checkpoint: Dev Tools restores the saved state and

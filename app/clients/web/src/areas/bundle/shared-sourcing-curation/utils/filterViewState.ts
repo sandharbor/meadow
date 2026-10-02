@@ -15,7 +15,10 @@ export function restoreFilterViews(bundleSlug: string, mode: 'curation' | 'sourc
     const selectors = filter.id === 'search-by-title-filter' ? [createSearchByTitleSelector(searchInput ?? '')]
       : filter.id === 'outlink-gap-filter' && view.thresholdValue !== undefined ? [createOutlinkDiscrepancySelector(view.thresholdValue)]
       : filter.id === 'inlink-gap-filter' && view.thresholdValue !== undefined ? [createInlinkDiscrepancySelector(view.thresholdValue)] : filter.bundleNodeSelectors;
-    return { ...filter, ...presentation, actions: [...presentation.actions.filter(action => action.type !== 'mark_sensitive'), ...filter.actions.filter(action => action.type === 'mark_sensitive')], bundleNodeSelectors: selectors };
+    const actions = filter.group === 'source-changes'
+      ? [...filter.actions.filter(action => action.type !== 'show_titles'), ...presentation.actions.filter(action => action.type === 'show_titles')]
+      : [...presentation.actions.filter(action => action.type !== 'mark_sensitive'), ...filter.actions.filter(action => action.type === 'mark_sensitive')];
+    return { ...filter, ...presentation, ...(filter.group === 'source-changes' && { enabled: true }), actions, bundleNodeSelectors: selectors };
   });
 }
 

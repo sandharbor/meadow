@@ -793,7 +793,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
             const startMarkerSuffix = isSelected ? '-selected' : (!sourceTracked ? '-untracked' : '');
 
             return (
-              <g key={`edge-${index}`} style={{ opacity: visibilityOpacity * (sourcePage.isFaded && targetPage.isFaded ? 0.4 : 1) }}>
+              <g key={`edge-${index}`} style={{ opacity: visibilityOpacity * (sourcePage.isFaded && targetPage.isFaded ? 0.5 : 1) }}>
                 {/* Define color gradient for this edge if needed (fades from tracked to untracked color) */}
                 {needsGradient && (
                   <defs>
@@ -840,7 +840,7 @@ const GraphVis: React.FC<GraphVisProps> = ({
               <g
                 key={page.bundleNodeKey}
                 data-faded={page.isFaded || undefined}
-                style={{ opacity: page.isFaded && !page.isSelected ? 0.4 : 1 }}
+                style={{ opacity: page.isFaded && !page.isSelected ? 0.5 : 1 }}
                 data-testid="graph-page-node"
                 data-page-id={page.bundleNodeKey}
                 transform={`translate(${pagePosition.x},${pagePosition.y})`}

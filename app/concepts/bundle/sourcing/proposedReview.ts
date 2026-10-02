@@ -135,7 +135,8 @@ export const sourceReviewFiltering = define({
   parentId: id.sourceReviewWorkspace, appAreaIds: [id.bundleSourcing, id.bundleCuration],
   definition: text`source-change filters change presentation only and combine with existing graph filters without changing the accepted proposal.`,
   mechanics: [
-    text`Hide, solo, highlight, category toggles, and fade never reject source changes, undo tracking choices, or omit changes from acceptance. Source categories remain combinable with folders and ordinary filters. Unchanged defaults to Fade; changed categories have distinguishable treatments with readable explanations.`,
+    text`Source-change filters are always enabled and have no enable checkbox. Hide, solo, highlight, and fade never reject source changes, undo tracking choices, or omit changes from acceptance. Source categories remain combinable with folders and ordinary filters. Unchanged defaults to Fade; changed categories have distinguishable treatments with readable explanations.`,
+    text`The source-change categories are Added, Renamed, Modified, Removed, and Unchanged. Removed remains available to expand and always shows Source missing, Not reachable, and Disconnected, including empty subcategories, so their meanings can be compared. Other empty categories are hidden. Orphaned configuration remains explained in removal evidence rather than a separate filter. Only the removal subcategories have hover explanations, which remain fully opaque even when an empty subcategory's controls are faded.`,
     text`Soloing a group brings matching nodes to full visibility even when they match Fade. Leaving solo restores the underlying fade setting instead of rewriting it. Faded context remains available for selection and inspection.`,
   ],
   interplay: text`${link(id.filters, 'Filters')} supply the normal toolkit. ${link(id.graphFade, 'Graph Fade')} supplies the general presentation action. ${link(id.sourceReviewAcceptance, 'Proposal Acceptance')} remains independent of visibility.`,
@@ -147,7 +148,7 @@ export const graphFade = define({
   appAreaIds: [id.bundleCuration, id.bundleSourcing],
   definition: text`a reusable graph-filter action that reduces the prominence of matching context without hiding it or changing business state.`,
   mechanics: [
-    text`Fade is a general filter action alongside highlighting, not a hard-coded sourcing-only opacity rule. In sourcing, the Unchanged subfilter uses it by default. Opacity, color, and optional marker patterns are prototype choices; labels and selection remain usable.`,
+    text`Fade is an internal filter action alongside highlighting. It is used by the Unchanged subfilter in sourcing review and is not available as a filter toolbar button or a user-created filter action. Labels and selection remain usable.`,
     text`Solo temporarily brings its targets into focus while retaining the remembered fade configuration. Fade and its current effective presentation are included in restorable per-mode view state.`,
   ],
   interplay: text`${link(id.sourceReviewFiltering, 'Source Review Filtering')} uses Fade for unchanged comparison context. ${link(id.sourceReviewViewState, 'Mode View State')} remembers the action separately from proposal decisions.`,

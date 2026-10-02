@@ -24,9 +24,8 @@ test('Solo temporarily restores full prominence for faded unchanged context with
   await list.clickBundle('sourcing-review');
   await editor.waitForLoad('sourcing-review');
   await sourcing.open();
-  await sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.4);
-  const fade = sourcing.root.getByRole('button', { name: 'Fade Unchanged', exact: true });
-  await expect(fade).toHaveAttribute('aria-pressed', 'true');
+  await sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.5);
+  await expect(sourcing.root.getByRole('button', { name: /^Fade / })).toHaveCount(0);
   await checkpoint('the full source comparison begins with unchanged context faded');
 
   // --- Test start ---
@@ -37,7 +36,6 @@ test('Solo temporarily restores full prominence for faded unchanged context with
   await filters.enableAndSoloFilter('Untracked');
   await sourcing.expectListOpacity('Reference', 1);
   await sourcing.expectNodeVisible('Start', false);
-  await expect(fade).toHaveAttribute('aria-pressed', 'true');
   await sourcing.select('Reference');
   await expect(sourcing.evidence).toContainText('Unchanged source material');
   await expect(sourcing.selectedPage.getByText('Not Tracked', { exact: true })).toBeVisible();
@@ -48,8 +46,7 @@ test('Solo temporarily restores full prominence for faded unchanged context with
   await sourcing.expectListOpacity('Reference', 0.45);
   await sourcing.expectNodeVisible('Start');
   await sourcing.root.getByRole('button', { name: 'Graph View', exact: true }).click();
-  await sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.4);
-  await expect(fade).toHaveAttribute('aria-pressed', 'true');
+  await sourcing.expectGraphOpacity('file:Routes/Reference.md', 0.5);
   await checkpoint('leaving Solo restores the original Fade in graph and list');
   await sourcing.root.getByRole('button', { name: 'Discard proposal', exact: true }).click();
   await expect(sourcing.root).toBeHidden();
