@@ -1,15 +1,55 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import { test } from '../../src/run/test-fixtures.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import YAML from 'yaml';
+import { test, expect } from '../../src/run/test-fixtures.js';
+import { BundleListPage, BundleEditorPage } from '../../src/run/pages/index.js';
+import { SourcingWorkspacePage } from '../../src/run/pages/areas/bundle/sourcing/SourcingWorkspacePage.js';
+import { Fixture } from '../../src/run/workflows.js';
 import { sourcingReviewRedesign, sourceReviewWorkspace, tracking, sourceReviewCleanup } from '../../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
+test.use({ fixtureHome: Fixture.SourcingReview });
 
 /*
- * Planned scenario, not executable evidence.
- * Select eligible candidate pages together with departing comparison-only nodes. Track selected and
- * verify only eligible pages receive staged tracking while skipped departures are explicitly
- * identified. Verify acceptance applies the complete source proposal rather than requiring per-node
- * source approval. Required checkpoints: mixed selection; visible bulk-action result.
+ * Track an eligible untracked candidate together with a departing comparison node. The action
+ * stages the eligible page and explicitly names the departure it skipped. Acceptance applies the
+ * complete scope and mandatory cleanup without any per-page source approval.
  */
-test.fixme("Sourcing bulk tracking explicitly reports departing comparison nodes it cannot track", async () => {});
+test('Sourcing bulk tracking explicitly reports departing comparison nodes it cannot track', async ({ page, testServer, checkpoint, addKeyFrame, assertMeadowHomeState }) => {
+  // --- Setup ---
+  const list = new BundleListPage(page, expect);
+  const editor = new BundleEditorPage(page, expect);
+  const sourcing = new SourcingWorkspacePage(page, expect);
+  await list.goto();
+  await list.clickBundle('sourcing-review');
+  await editor.waitForLoad('sourcing-review');
+  const directory = path.join(testServer.configDir, 'bundles/sourcing-review');
+  const saved = fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8');
+  await sourcing.open();
+  await sourcing.select('Bridge');
+  await sourcing.setSelectedOutlinkDepth(0);
+  await sourcing.select('Reference');
+  await sourcing.untrackSelected();
+  await checkpoint('the proposed graph contains an eligible untracked page and departing configured pages');
+
+  // --- Test start ---
+  await sourcing.addToSelection('Departing');
+  await expect(sourcing.root.getByRole('button', { name: 'Track All', exact: true })).toBeEnabled();
+  await checkpoint('the mixed selection contains a candidate and a departing comparison node');
+  await sourcing.root.getByRole('button', { name: 'Track All', exact: true }).click();
+  await expect(sourcing.root.getByRole('status')).toContainText('Skipped 1 selected page: Departing');
+  const proposal = JSON.parse(fs.readFileSync(path.join(directory, 'raw/sourcing/proposal.json'), 'utf8'));
+  expect(proposal.tracking['file:Routes/Reference.md']).toMatchObject({ track: true, origin: 'explicit' });
+  expect(proposal.tracking['file:Departing.md']).toBeUndefined();
+  expect(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).toBe(saved);
+  await addKeyFrame(sourceReviewWorkspace);
+  await checkpoint('the bulk action explicitly reports the skipped departure and stages only the eligible page');
+  await sourcing.accept();
+  const nodes = YAML.parse(fs.readFileSync(path.join(directory, 'config/bundle_node_config.yaml'), 'utf8')).nodes;
+  expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Reference')).toBe(true);
+  expect(nodes.some((node: { bundleNodeName: string }) => node.bundleNodeName === 'Departing')).toBe(false);
+  await checkpoint('acceptance applies the full source proposal including cleanup of the skipped departure');
+  await assertMeadowHomeState();
+});

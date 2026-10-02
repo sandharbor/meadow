@@ -1,0 +1,12 @@
+bundleGuid: sourcing-review
+sourceDirectory: ./source_graphs/sourcing-review-data
+entryBundleNodeId: "100000000001"
+defaultTraversalBundleNodeId: "100000000001"
+defaultOutlinksDepth: 4
+defaultInlinksDepth: 0
+generatedBundleVersions: []
+archivedAt: null
+bundleCreatedAt: 2026-10-01T00:00:00.000Z
+bundleUpdatedAt: 2026-10-01T00:00:00.000Z
+bundleLastPublishedAt: null
+bundleNotes: ""

@@ -12,10 +12,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Reject a proposed rename by keeping the old and new files separate. Acceptance should
  * remove the old configuration instead of transferring its identity.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing treats a rejected rename as different pages and removes the old configuration on acceptance', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -31,7 +27,6 @@ test('Sourcing treats a rejected rename as different pages and removes the old c
   const review = editor.sourceReview;
   await review.open();
   const rename = await review.moveFrom(`${originalTitle}.md`);
-  await rename.expandDetails();
   await rename.keepSeparate();
   await rename.expectPreviousRoute('t003 - link to section.md');
   await addKeyFrame(orphan);

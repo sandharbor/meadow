@@ -16,8 +16,8 @@ limitations under the License.
 
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { useDisplayFilters } from '../../../../../src/areas/bundle/curation/utils/useDisplayFilters';
-import type { IFilter } from '../../../../../src/areas/bundle/curation/types/filters';
+import { useDisplayFilters } from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/useDisplayFilters';
+import type { IFilter } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filters';
 import { Graph } from '../../../../../../../contracts/types/graph';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import type { FileType } from '../../../../../../../contracts/types/FileType';

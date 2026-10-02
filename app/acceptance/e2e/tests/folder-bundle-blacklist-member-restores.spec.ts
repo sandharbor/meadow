@@ -25,10 +25,6 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 /*
  * Blacklist one folder in a collection and inspect the reduced graph. Removing the
  * blacklist should restore its descendants and reachable pages.
- *
- * Project impact (planned): Review the blacklist impact shortcut, staged wider exclusions, and
- * configuration cleanup at acceptance.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("a collection member folder can be blacklisted and restored", async ({
   page,
@@ -53,13 +49,10 @@ test("a collection member folder can be blacklisted and restored", async ({
   await editor.clickListViewRowByNodeKey("folder:Alpha");
   await editor.expectSelectedPageBadge("folder:Alpha", "Tracked");
   await editor.rightClickListViewRowByNodeKey("folder:Alpha");
-  const blacklistDialogPromise = page.waitForEvent("dialog");
-  const blacklistActionPromise =
-    editor.clickContextMenuItemAndAwaitAutoSaveAndGraphReload("Blacklist");
-  const blacklistDialog = await blacklistDialogPromise;
-  expect(blacklistDialog.message()).toContain("Blacklist 1 folder as a hard subtree boundary?");
-  await blacklistDialog.accept();
-  await blacklistActionPromise;
+  await editor.clickContextMenuItem("Blacklist");
+  await expect(editor.sourceReview.root).toBeVisible();
+  await checkpoint("folder boundary and departing descendants await acceptance");
+  await editor.sourceReview.accept();
 
   await expect.poll(() => editor.getListViewPageCount()).toBe(4);
   await editor.expectSelectedPageBadge("folder:Alpha", "Blacklisted");
@@ -83,7 +76,9 @@ test("a collection member folder can be blacklisted and restored", async ({
 
   // Restore the folder.
   await editor.rightClickListViewRowByNodeKey("folder:Alpha");
-  await editor.clickContextMenuItemAndAwaitAutoSaveAndGraphReload("Remove from Blacklist");
+  await editor.clickContextMenuItem("Remove from Blacklist");
+  await expect(editor.sourceReview.root).toBeVisible();
+  await editor.sourceReview.accept();
 
   await expect.poll(() => editor.getListViewPageCount()).toBe(11);
   for (const restoredTitle of [
@@ -101,6 +96,6 @@ test("a collection member folder can be blacklisted and restored", async ({
   await checkpoint("removing the Alpha folder blacklist restores its descendants");
 
   await assertMeadowHomeState({
-    allowedUntracked: ["bundles/ordered-folders/raw/"],
+    allowedUntracked: ["bundles/ordered-folders/raw/folder_scope_snapshot.json"],
   });
 });

@@ -8,7 +8,7 @@
       "reason": "Legacy editor shell still coordinates bundle curation, preview, navigation, and app-level state.",
       "followUp": "Move area-specific behavior behind curation/review/shared modules and leave only app-shell orchestration."
     },
-    "areas/bundle/curation/components/BundleNodeSelectionSidebar.tsx": {
+    "areas/bundle/shared-sourcing-curation/components/BundleNodeSelectionSidebar.tsx": {
       "reason": "Large bundle curation sidebar preserved during area move to avoid changing selection behavior.",
       "followUp": "Split selected-page details, page actions, and filter/metadata panels within the bundle/curation area."
     },

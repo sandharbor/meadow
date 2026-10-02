@@ -21,6 +21,7 @@ import { PlaceContext, PlaceEpochContext, type PlaceContextValue } from '../../p
 import { apiRequest } from '../../utils/apiClient.js';
 import { logger } from '../../utils/logger.js';
 import { PlaceCoordinator } from './placeCoordinator.js';
+import { hasRestoredEditorCheckpointView } from '../../utils/restoreEditorCheckpoint.js';
 
 const placeLogger = logger.child('place');
 
@@ -39,6 +40,7 @@ export const PlaceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   /** Locations the coordinator produced itself, which need no handling. */
   const ownLocations = useRef<string[]>([]);
   const initial = useRef(true);
+  const handledLocation = useRef<string | null>(null);
   // Children mount (and run effects) before this provider handles the first
   // location, so the initial link is known from the start.
   const initialSurface = useRef<string | undefined>((() => {
@@ -70,12 +72,16 @@ export const PlaceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const path = `${location.pathname}${location.search}`;
+    // Strict Mode replays mount effects. A repeated delivery must not replace
+    // a checkpoint arrival with an ordinary link before its async selection settles.
+    if (handledLocation.current === path) return;
+    handledLocation.current = path;
     const ownIndex = ownLocations.current.indexOf(path);
     if (ownIndex >= 0) {
       ownLocations.current.splice(0, ownIndex + 1);
       return;
     }
-    coordinator.handleLocation(path, { initial: initial.current });
+    coordinator.handleLocation(path, { initial: initial.current, restoreView: hasRestoredEditorCheckpointView() });
     initial.current = false;
     initialSurface.current = undefined;
   }, [coordinator, location.pathname, location.search]);
@@ -86,8 +92,10 @@ export const PlaceProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     isSurfaceRequested: surface => initialSurface.current === surface || coordinator.requestedSurface() === surface,
     registerSurface: participant => coordinator.registerSurface(participant),
     reportSurface: (surface, owned, open, parameters) => coordinator.reportSurface(surface, owned, open, parameters),
-    registerSelection: handler => coordinator.registerSelection(handler),
-    reportSelection: references => coordinator.reportSelection(references),
+    registerSelection: (handler, mode) => coordinator.registerSelection(handler, mode),
+    reportSelection: (references, mode) => coordinator.reportSelection(references, mode),
+    registerEditorMode: handler => coordinator.registerEditorMode(handler),
+    reportEditorMode: mode => coordinator.reportEditorMode(mode),
   }), [coordinator]);
 
   return (

@@ -13,3 +13,5 @@
 export { SourcingPanel as AppShellComponentSourcingPanel } from './components/SourcingPanel.js';
 
 export { ManageSources as AppShellComponentManageSources } from './components/ManageSources.js';
+export { stageBoundary as appShellCommandStageBoundary } from './stageBoundary.js';
+export { applyBlacklistReview as appShellCommandApplyBlacklistReview, undoBlacklistReview as appShellCommandUndoBlacklistReview } from './blacklistReview.js';

@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import * as fs from 'fs';
+import { spawn } from 'node:child_process';
 import * as os from 'os';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -148,6 +149,29 @@ describe('durable document persistence', () => {
       writeDurableDocument({ path: target, value: { name: 'replacement' }, codec: yamlCodec }),
     ).toThrow(DurableDocumentLockError);
     expect(fs.readFileSync(target)).toEqual(original);
+  });
+
+  it('reclaims only a proven dead writer and its own temporary material', async () => {
+    const child = spawn(process.execPath, ['-e', 'process.exit(0)']);
+    const pid = child.pid!;
+    await new Promise<void>(resolve => child.once('exit', () => resolve()));
+    fs.writeFileSync(target, 'name: original\n');
+    fs.writeFileSync(`${target}.lock`, JSON.stringify({ pid }));
+    const abandoned = path.join(directory, `.document.yaml.tmp.${pid}.abandoned`);
+    const unrelated = path.join(directory, '.unrelated.tmp');
+    fs.writeFileSync(abandoned, 'partial write');
+    fs.writeFileSync(unrelated, 'keep');
+    writeDurableDocument({ path: target, value: { name: 'recovered' }, codec: yamlCodec });
+    expect(fs.readFileSync(target, 'utf8')).toContain('recovered');
+    expect(fs.existsSync(abandoned)).toBe(false);
+    expect(fs.existsSync(unrelated)).toBe(true);
+    expect(fs.existsSync(`${target}.lock`)).toBe(false);
+  });
+
+  it('does not reclaim a live writer with a valid owner record', () => {
+    fs.writeFileSync(`${target}.lock`, JSON.stringify({ pid: process.pid }));
+    expect(() => writeDurableDocument({ path: target, value: { name: 'blocked' }, codec: yamlCodec })).toThrow(DurableDocumentLockError);
+    expect(fs.existsSync(target)).toBe(false);
   });
 
   it('writes the target and all staged secret material with mode 0600', () => {

@@ -23,6 +23,7 @@ import { join } from 'path';
 import { GlobalCustomFiltersConfig } from '../../contracts/types/customFilters.js';
 import { globalCustomFiltersCodec } from './configDocumentCodecs.js';
 import { readDurableDocument, requireValidDocument, writeDurableDocument } from './durableDocument.js';
+import { recoverSourcingTransaction } from './sourcingTransaction.js';
 
 const GLOBAL_CUSTOM_FILTERS_FILENAME = 'global_custom_filters.json';
 
@@ -31,6 +32,7 @@ export function getGlobalCustomFiltersPath(configDir: string): string {
 }
 
 export function loadGlobalCustomFilters(configDir: string): GlobalCustomFiltersConfig {
+  recoverSourcingTransaction(configDir);
   const path = getGlobalCustomFiltersPath(configDir);
   return requireValidDocument(readDurableDocument(path, globalCustomFiltersCodec), () => ({
     filters: [],

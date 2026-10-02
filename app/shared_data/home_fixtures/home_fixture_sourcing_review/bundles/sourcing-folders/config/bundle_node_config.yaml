@@ -1,0 +1,66 @@
+{
+  "nodes": [
+    {
+      "bundleNodeName": "Bridge",
+      "bundleNodeId": "100000000002",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Routes/Branch",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Reference",
+      "bundleNodeId": "100000000003",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Routes",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Departing",
+      "bundleNodeId": "100000000004",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "outlinksDepth": 1
+    },
+    {
+      "bundleNodeName": "Outside",
+      "bundleNodeId": "100000000005",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Retained",
+      "bundleNodeId": "100000000006",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Routes",
+      "bundleNodeId": "100000000008",
+      "listType": "whitelist",
+      "bundleNodeKind": "folder",
+      "sourceGraphSubdirectory": "Routes"
+    },
+    {
+      "bundleNodeName": "Empty",
+      "bundleNodeId": "100000000009",
+      "listType": "whitelist",
+      "bundleNodeKind": "folder",
+      "sourceGraphSubdirectory": "Routes/Empty"
+    },
+    {
+      "bundleNodeName": "Branch",
+      "bundleNodeId": "100000000010",
+      "listType": "whitelist",
+      "bundleNodeKind": "folder",
+      "sourceGraphSubdirectory": "Routes/Branch"
+    }
+  ]
+}

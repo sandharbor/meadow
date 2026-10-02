@@ -36,12 +36,8 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Add a depth override to a child page. Unlike simple tracking changes, the override
  * should remain pending until explicitly saved.
- *
- * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
- * proposal lifecycle.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
-test("adding a depth override on a child page requires an explicit save", async ({
+test("adding a depth override on a child page requires proposal acceptance", async ({
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -76,20 +72,16 @@ test("adding a depth override on a child page requires an explicit save", async 
   await detail.openDetails();
   await checkpoint("child page selected with details open");
 
-  // Add a traversal override.
-  // Adding a depth override is a "complex op" — it should NOT auto-save. The
-  // change should land in draft state and surface the Save / Undo buttons.
+  // Stage a traversal override without changing accepted curation.
   await detail.addOutlinksDepthOverride(0);
-  await page.waitForTimeout(500);
-  await editor.expectUndoVisible();
+  await expect(editor.sourceReview.root).toBeVisible();
   await addKeyFrame(bundleConfig);
-  await checkpoint("override set - draft state, save button visible");
-
-  // Save the override.
-  await editor.clickSave();
-  await page.waitForTimeout(1000);
+  await checkpoint("override is captured in the sourcing proposal");
+  await editor.sourceReview.defer();
   await editor.expectUndoNotVisible();
-  await checkpoint("override saved - draft cleared");
+  await editor.sourceReview.open();
+  await editor.sourceReview.accept();
+  await checkpoint("accepted override is now available to curation");
 
   // Find the page using the override filter.
   // Verify the override persisted: the Depth Override filter should now

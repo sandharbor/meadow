@@ -1,0 +1,16 @@
+id: revise-biases-and-diagram
+label: Revise biases and their diagram
+action: "Revise the introduction to Cognitive Biases and label the mental models diagram as the reviewed revision."
+check: "Acceptance retains the reviewed text and diagram even when both live files change again during review."
+e2e: sourcing-proposal-exact-capture.spec.ts
+categories: [modify]
+sourceGraph: example-bundle-data
+operations:
+  - replaceText:
+      path: Cognitive Biases.md
+      before: Cognitive biases are systematic patterns of deviation from rationality in judgment.
+      after: Reviewed revision B explains systematic errors in judgment.
+  - replaceText:
+      path: images/Mental Models Diagram.svg
+      before: Mental Models Lattice
+      after: Reviewed revision B

@@ -80,9 +80,7 @@ export class FilterPanelComponent {
   }
 
   private async filterControl(filterName: string) {
-    const checkbox = this.filterCheckbox(filterName);
-    if (await checkbox.count() > 0) return checkbox;
-    return this.filterDisclosure(filterName);
+    return this.filterCheckbox(filterName).or(this.filterDisclosure(filterName)).first();
   }
 
   private folderRow(folderPath: string) {
@@ -111,14 +109,17 @@ export class FilterPanelComponent {
     matchType,
     value,
     markSensitive = false,
+    scope = 'bundle',
   }: {
     name: string;
     field: string;
     matchType: string;
     value: string;
     markSensitive?: boolean;
+    scope?: 'bundle' | 'global';
   }) {
     await this.filterNameInput.fill(name);
+    await this.page.getByLabel('Filter scope', { exact: true }).selectOption(scope);
 
     const selectorBlock = this.page
       .locator(".p-4.border.border-gray-200")
@@ -135,6 +136,30 @@ export class FilterPanelComponent {
     }
     await this.saveFilterBtn.click();
     await this.expect(this.createCustomFilterHeading).toBeHidden();
+  }
+
+  async editCustomFilter(filterName: string) {
+    await this.enableFilter(filterName);
+    const row = this.filterCheckbox(filterName).locator("xpath=ancestor::div[.//button[@title='Edit']][1]");
+    await row.getByTitle('Edit', { exact: true }).click();
+    await this.expect(this.page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true })).toBeVisible();
+  }
+
+  async saveCustomFilterEdits(options: { note?: string; enabled?: boolean; name?: string }) {
+    const dialog = this.page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true });
+    if (options.note !== undefined) await dialog.getByPlaceholder('Optional description shown when hovering over the filter').fill(options.note);
+    if (options.name !== undefined) await dialog.getByPlaceholder('Enter filter name').fill(options.name);
+    if (options.enabled !== undefined) await dialog.getByRole('checkbox', { name: 'Enable this filter', exact: true }).setChecked(options.enabled);
+    await dialog.getByRole('button', { name: 'Save Filter', exact: true }).click();
+    await this.expect(dialog).toBeHidden();
+  }
+
+  async deleteCustomFilter(filterName: string) {
+    await this.editCustomFilter(filterName);
+    this.page.once('dialog', dialog => void dialog.accept());
+    const dialog = this.page.getByRole('dialog', { name: 'Edit Custom Filter', exact: true });
+    await dialog.getByRole('button', { name: 'Delete Filter', exact: true }).click();
+    await this.expect(dialog).toBeHidden();
   }
 
   async enableFilter(filterName: string) {
@@ -281,7 +306,7 @@ export class FilterPanelComponent {
   }
 
   async chooseMixOperator(operator: "Any" | "All" | "Without") {
-    const button = this.mixFiltersModal.getByRole("button", { name: operator, exact: true });
+    const button = this.mixFiltersModal.getByRole("button", { name: operator, exact: true }).first();
     await this.expect(button).toBeVisible();
     await button.click();
     await this.expect(button).toHaveAttribute("aria-pressed", "true");
@@ -422,13 +447,13 @@ export class FilterPanelComponent {
   }
 
   async soloFolder(folderPath: string) {
-    const button = this.page.getByTitle(`Solo folder ${folderPath || 'Root'}`);
+    const button = this.page.getByTitle(`Solo folder ${folderPath || 'Root'}`, { exact: true });
     await this.expect(button).toBeVisible();
     await button.click();
   }
 
   async hideFolder(folderPath: string) {
-    const button = this.page.getByTitle(`Hide folder ${folderPath || 'Root'}`);
+    const button = this.page.getByTitle(`Hide folder ${folderPath || 'Root'}`, { exact: true });
     await this.expect(button).toBeVisible();
     await button.click();
   }

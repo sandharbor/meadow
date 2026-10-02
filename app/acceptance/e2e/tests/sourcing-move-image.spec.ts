@@ -11,10 +11,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Move a tracked image and review the proposed match. Accepting it should preserve both
  * the image's identity and tracking state.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing moves a tracked image while preserving its identity and tracking', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -34,6 +30,8 @@ test('Sourcing moves a tracked image while preserving its identity and tracking'
   await editor.sourceReview.expectMoveCount(1);
   await editor.sourceReview.expectMove('Moved', 't024/t024 ---- test image.png', 't024/images/t024 ---- test image.png');
   await editor.sourceReview.expectMoveListed(original.bundleNodeId);
+  await editor.sourceReview.confirmSuggestedIdentities();
+  await editor.sourceReview.continueToGraph();
   await editor.sourceReview.orphans.expectNotListed(original.bundleNodeName);
   await addKeyFrame(sourceMove);
   await checkpoint('review identifies the move through the shared source change');

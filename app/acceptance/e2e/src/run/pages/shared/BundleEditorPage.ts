@@ -16,7 +16,7 @@ limitations under the License.
 
 import type { Page, Expect, Response } from "@playwright/test";
 import { SourceSnapshotsModal } from "../areas/bundle/sourcing/SourceSnapshotsModal.js";
-import { SourceReviewModal } from "../areas/bundle/sourcing/SourceReviewModal.js";
+import { SourceReviewWorkspace } from "../areas/bundle/sourcing/SourceReviewWorkspace.js";
 
 function isCommittedCurationResponse(response: Response): boolean {
   const url = response.url();
@@ -24,6 +24,7 @@ function isCommittedCurationResponse(response: Response): boolean {
     url.includes("/curation/track-nodes")
     || url.includes("/curation/node/")
     || url.includes("/curation/bundle-config")
+    || url.includes("/sourcing/blacklist")
   );
 }
 
@@ -38,13 +39,13 @@ function isBundleConfigResponse(response: Response): boolean {
 }
 
 export class BundleEditorPage {
-  readonly sourceReview: SourceReviewModal;
+  readonly sourceReview: SourceReviewWorkspace;
 
   constructor(
     private page: Page,
     private expect: Expect,
   ) {
-    this.sourceReview = new SourceReviewModal(page, expect);
+    this.sourceReview = new SourceReviewWorkspace(page, expect);
   }
 
   // ---------------------------------------------------------------------------
@@ -154,6 +155,14 @@ export class BundleEditorPage {
     await this.expect(
       this.page.locator(`[data-testid="graph-page-node"][data-page-id="${bundleNodeKey}"]`),
     ).toBeVisible();
+  }
+
+  async clickGraphNode(bundleNodeKey: string) {
+    await this.page.locator(`[data-testid="graph-page-node"][data-page-id="${bundleNodeKey}"]`).click();
+  }
+
+  async expectListViewRowCount(count: number) {
+    await this.expect(this.listViewRows).toHaveCount(count);
   }
 
   async expectGraphNodeNotPresent(bundleNodeKey: string) {
@@ -507,6 +516,10 @@ export class BundleEditorPage {
   }
 
   async expectSourceOrphanCount(count: number) {
+    if (await this.sourceReview.root.isVisible()) {
+      await this.expect(this.sourceReview.root).toHaveAttribute('data-orphan-count', String(count));
+      return;
+    }
     await this.waitForSourceCheck();
     await this.expect(this.page.getByTestId('sourcing-status')).toHaveAttribute('data-orphan-count', String(count));
     await this.expect(this.page.getByTestId('orphans-banner')).not.toBeVisible();

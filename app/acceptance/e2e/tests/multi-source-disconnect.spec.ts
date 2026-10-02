@@ -14,12 +14,8 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Make one registered source unavailable. Captured pages should remain usable until the
  * source is explicitly removed and the removal is accepted.
- *
- * Project impact (planned): Review source-registration, repair, and naming flows against the proposal
- * transaction and required-entry rules; preserve source identity and publication guarantees.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
-test('Multi-source disconnection preserves captured pages until the source is explicitly removed', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+test('Multi-source disconnection preserves captured pages until the source is explicitly removed', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck, expectLogErrors }) => {
   // --- Setup ---
   const list = new BundleListPage(page, expect);
   await list.goto();
@@ -62,21 +58,10 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   await addKeyFrame(sourceSnapshot);
   await checkpoint('review shows only the removed source and affected pages while accepted material stays intact');
 
-  // Inspect cancellation help without adding a permanent explanation to the footer.
-  const cancellationHelp = page.getByRole('button', { name: 'About cancelling source settings', exact: true });
-  const cancellationTooltip = page.getByRole('tooltip').filter({ hasText: 'Keep your current sources and included material.' });
-  await expect(cancellationTooltip).not.toBeVisible();
-  await cancellationHelp.hover();
-  await expect(cancellationTooltip).toBeVisible();
-  await expect(cancellationTooltip).toHaveCSS('opacity', '1');
-  await expect(cancellationTooltip).toContainText('Your source files won’t be changed.');
-  await addKeyFrame(sourceSnapshot);
-  await checkpoint('the question mark explains cancellation on hover');
-  await page.getByRole('heading', { name: 'Source changes', exact: true }).hover();
-  await expect(cancellationTooltip).not.toBeVisible();
-  await cancellationHelp.focus();
-  await expect(cancellationTooltip).toBeVisible();
-  await expect(cancellationTooltip).toHaveCSS('opacity', '1');
+  // Cleanup explains why the disconnected source's files are preserved.
+  await editor.sourceReview.orphans.showExplanation('Study');
+  await editor.sourceReview.orphans.expectExplanation('Study', 'Its files are untouched.');
+  await checkpoint('source removal cleans configuration at acceptance while retaining source files');
 
   // Later retains the proposed registry across reloads, with a direct route back to its review.
   await editor.sourceReview.defer();
@@ -104,8 +89,12 @@ test('Multi-source disconnection preserves captured pages until the source is ex
   await checkpoint('the pending changes indicator returns directly to the source and material review');
 
   // Cancel the proposed removal without altering the source files or accepted material.
-  await page.getByRole('button', { name: 'Cancel source removal', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true })).not.toBeVisible();
+  const endDisconnectedScan = expectLogErrors(/disconnected: its directory is unavailable|server responded with a status of 409/);
+  await editor.sourceReview.discard();
+  await editor.waitForSourceCheck();
+  await expect(page.getByTestId('sourcing-status').getByRole('alert')).toContainText('disconnected');
+  endDisconnectedScan();
+  await expect(page.getByTestId('sourcing-workspace')).not.toBeVisible();
   expect(bundleConfig.read().sources?.map(source => source.id)).toContain('source000003');
   expect(bundleConfig.readNodesText()).toBe(beforeNodes);
   expect(fs.existsSync(path.join(testServer.sourceGraphsDir, 'multi-source/reference-disconnected/Study.md'))).toBe(true);

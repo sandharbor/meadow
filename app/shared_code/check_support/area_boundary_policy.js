@@ -5,6 +5,7 @@ import path from 'node:path';
 export const AREA_CALLERS = new Map([
   ['bundles', 'bundles'], ['bundle/sourcing', 'sourcing'], ['bundle/curation', 'curation'],
   ['bundle/generation', 'generation'], ['bundle/review', 'review'], ['bundle/sharing', 'sharing'],
+  ['bundle/shared-sourcing-curation', 'sharedSourcingCuration'],
 ]);
 export const INTERFACE_GUIDANCE = `This area's deliberately narrow public interface.
 

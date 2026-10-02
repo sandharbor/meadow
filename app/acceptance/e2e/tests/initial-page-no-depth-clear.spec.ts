@@ -28,10 +28,6 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Select the starting page and inspect its depth controls. Its required traversal depths
  * should not be removable.
- *
- * Project impact (planned): Preserve initial capture and required-root behavior as regression baselines
- * while integrating the new sourcing lifecycle.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("a publisher should not be able to remove the depth on the initial page", async ({
   page, checkpoint, assertMeadowHomeState, addKeyFrame,

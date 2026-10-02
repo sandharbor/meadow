@@ -755,6 +755,7 @@ export default function RunDetail() {
               <div className="mt-2 space-y-2 text-xs text-neutral-500">
                 {!selectedDocs[0].searchFacet && <h2 className="font-semibold text-neutral-800">{selectedDocs[0].name}</h2>}
                 <p className="whitespace-pre-line">{selectedDocs[0].description}</p>
+                <Link className="inline-block text-brand-600 underline" to={`/concepts/${encodeURIComponent(selectedDocs[0].id)}`}>Concept details and implementation</Link>
                 {selectedDocs[0].parentId && <button className="text-brand-600 underline" onClick={() => setFilters({ docIds: [selectedDocs[0].parentId!] })}>Back to {docs.find(doc => doc.id === selectedDocs[0].parentId)?.name ?? 'concept'}</button>}
                 {docs.filter(doc => doc.parentId === selectedDocs[0].id && doc.kind === 'behavioral-rule').map(rule => <button key={rule.id} className="block text-brand-600 underline" onClick={() => setFilters({ docIds: [rule.id] })}>{rule.name}</button>)}
                 {selectedDocs[0].kind === 'behavioral-rule' && <p>Screenshots below are evidence from this run; open the scenario to inspect its result, revision, and recording.</p>}

@@ -11,10 +11,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Rename a page without updating the link that reached its old name. Meadow should not
  * transfer the old identity to the now-unreachable page.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing does not assign identity to a renamed page whose old link is unchanged', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

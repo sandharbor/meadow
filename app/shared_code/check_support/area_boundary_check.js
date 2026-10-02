@@ -90,6 +90,12 @@ export function checkAreaBoundaries({ sourceRoot, otherSourceRoots = [], consume
       if (isSource(target)) queue.push(target);
       const destination = ownership(target, roots);
       if (!destination.area || (owner.area === destination.area && owner.root === destination.root)) return;
+      if (owner.area === 'bundle/shared-sourcing-curation') {
+        report(file, node, 'Shared Sourcing and Curation cannot import area implementations or facades; mode-specific actions must be explicit inputs.'); return;
+      }
+      if (destination.area === 'bundle/shared-sourcing-curation' && !['bundle/sourcing', 'bundle/curation'].includes(owner.area)) {
+        report(file, node, 'Only sourcing and curation may consume the shared editor interface.'); return;
+      }
       if (target !== destination.interface) { report(file, node, `Private ${destination.area} import: callers must use that area's exported.ts.`); return; }
       if (!fs.existsSync(target)) { report(file, node, 'Missing area exported.ts.'); return; }
       const api = interfaceExports(target, destination);

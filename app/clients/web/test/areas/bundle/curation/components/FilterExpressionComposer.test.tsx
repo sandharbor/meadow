@@ -14,20 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import FilterExpressionComposer from '../../../../../src/areas/bundle/curation/components/FilterExpressionComposer';
+import SharedFilterExpressionComposer from '../../../../../src/areas/bundle/shared-sourcing-curation/components/FilterExpressionComposer';
+import { EditorOperationsContext } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/editorOperations';
 import {
   ActiveFilterExpressionTerm,
   FilterExpression,
   createDefaultFilterExpression
-} from '../../../../../src/areas/bundle/curation/types/filterExpression';
+} from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filterExpression';
 
 const activeTerms: ActiveFilterExpressionTerm[] = [
   { filterId: 'alpha', mode: 'solo' },
   { filterId: 'beta', mode: 'solo' }
 ];
+function FilterExpressionComposer(props: ComponentProps<typeof SharedFilterExpressionComposer>) {
+  return <EditorOperationsContext.Provider value={{ mode: 'curation', request: () => Promise.reject(new Error('This view-only control must not write configuration.')) }}>
+    <SharedFilterExpressionComposer {...props} />
+  </EditorOperationsContext.Provider>;
+}
 const filterNames = new Map([
   ['alpha', 'Alpha'],
   ['beta', 'Beta']

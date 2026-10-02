@@ -11,10 +11,11 @@ import {
   OLDEST_UPGRADABLE_MEADOW_HOME_FORMAT_VERSION,
 } from "../../../shared_code/utils/meadowHomeFormat.js";
 import type { BundleSource } from "../../../contracts/types/bundleConfig.js";
+import { editorViewSessionPrefix, isEditorViewCheckpoint, type EditorViewCheckpoint } from "../../../contracts/types/editorViewCheckpoint.js";
 import { sourceConfigFingerprint, sourceInventory } from "../../../shared_code/utils/sourceSnapshotFingerprint.js";
 import type { LocalServiceContainer, LocalServicePart } from "./parts.js";
 import { hostedServiceReferences } from "./providerSeeding.js";
-import type { checkpoint, ParticipatesIn } from "../../../concepts/index.js";
+import type { checkpoint, checkpointViewRestoration, ParticipatesIn } from "../../../concepts/index.js";
 
 /**
  * A checkpoint repository holds one commit per checkpoint:
@@ -37,7 +38,7 @@ export const CHECKPOINT_REPO_DIRECTORY = "checkpoint-state-repo";
 const CHECKPOINT_REF_PREFIX = "refs/checkpoints/";
 const HOME_GIT_OBJECTS_FILE = "home.git-objects";
 /** Logs and disposable caches are not state worth restoring. */
-const EXCLUDED_HOME_PATHS = ["logs", "cache/source-index"];
+const EXCLUDED_HOME_PATHS = ["logs", "cache/source-index", "cache/editor-view"];
 
 export interface CheckpointMetadata {
   version: 1 | 2;
@@ -59,6 +60,7 @@ export interface CheckpointMetadata {
   place?: string;
   /** Dialogs open at the checkpoint and whether places account for them. */
   openDialogs?: { name: string; classification: 'surface' | 'transient' | 'unaddressable' }[];
+  editorView?: EditorViewCheckpoint;
 }
 
 export interface CheckpointSummary {
@@ -182,6 +184,7 @@ export interface CaptureCheckpointOptions {
   scenario: string;
   place?: string;
   openDialogs?: CheckpointMetadata['openDialogs'];
+  editorView?: EditorViewCheckpoint;
   /** Object store shared by every scenario repository in a run. */
   sharedObjectsDirectory?: string;
 }
@@ -223,6 +226,7 @@ export async function captureCheckpoint(options: CaptureCheckpointOptions): Prom
       scenario: options.scenario,
       ...(options.place && { place: options.place }),
       ...(options.openDialogs && { openDialogs: options.openDialogs }),
+      ...(options.editorView && { editorView: options.editorView }),
     };
     fs.writeFileSync(path.join(staging, "checkpoint.json"), `${JSON.stringify(metadata, null, 2)}\n`);
     const homeGit = path.join(options.homeDirectory, ".git");
@@ -309,16 +313,37 @@ function extractTree(repo: string, treeish: string, destination: string): boolea
  * home's isolated source graphs. Point them at the restored copies; the
  * retained snapshots and pending proposals follow that same relocation.
  */
-function repointSourceDirectories(homeDirectory: string, capturedHome: string): void {
-  const bundles = path.join(homeDirectory, "bundles");
-  if (!fs.existsSync(bundles)) return;
+function sourceDirectoryRepoint(homeDirectory: string, capturedHome: string) {
   const prefixes = [...new Set([capturedHome, fs.existsSync(capturedHome) ? fs.realpathSync(capturedHome) : capturedHome])]
     .map(prefix => `${prefix.replace(/\/$/, "")}/`);
-  const repoint = (directory: unknown): unknown => {
+  return (directory: unknown): unknown => {
     if (typeof directory !== "string") return directory;
     const prefix = prefixes.find(candidate => directory.startsWith(candidate));
     return prefix ? path.join(homeDirectory, directory.slice(prefix.length)) : directory;
   };
+}
+
+function repointConfigurationValue(value: unknown, repoint: (directory: unknown) => unknown, field?: string): unknown {
+  if (field === 'directory' || field === 'sourceDirectory') return repoint(value);
+  if (Array.isArray(value)) return value.map(item => repointConfigurationValue(item, repoint));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, repointConfigurationValue(item, repoint, key)]));
+  return value;
+}
+
+function relocateEditorView(view: EditorViewCheckpoint, homeDirectory: string, capturedHome: string): EditorViewCheckpoint {
+  const repoint = sourceDirectoryRepoint(homeDirectory, capturedHome);
+  return { ...view, session: Object.fromEntries(Object.entries(view.session).map(([key, serialized]) => {
+    if (!key.startsWith(editorViewSessionPrefix)) return [key, serialized];
+    const configuration = JSON.parse(serialized) as { bundle?: unknown };
+    if (configuration.bundle) configuration.bundle = repointConfigurationValue(configuration.bundle, repoint);
+    return [key, JSON.stringify(configuration)];
+  })) };
+}
+
+function repointSourceDirectories(homeDirectory: string, capturedHome: string): void {
+  const bundles = path.join(homeDirectory, "bundles");
+  if (!fs.existsSync(bundles)) return;
+  const repoint = sourceDirectoryRepoint(homeDirectory, capturedHome);
   for (const bundle of fs.readdirSync(bundles)) {
     const bundleDirectory = path.join(bundles, bundle);
     const beforeFingerprint = sourceConfigFingerprint(bundleDirectory);
@@ -329,6 +354,23 @@ function repointSourceDirectories(homeDirectory: string, capturedHome: string): 
     if (Array.isArray(config.sources)) config.sources = config.sources.map(source => ({ ...source, directory: repoint(source.directory) }));
     if (config.sourceDirectory !== undefined) config.sourceDirectory = repoint(config.sourceDirectory);
     if (JSON.stringify(config) !== before) fs.writeFileSync(configPath, YAML.stringify(config), "utf8");
+
+    const proposalPath = path.join(bundleDirectory, 'raw/sourcing/proposal.json');
+    if (fs.existsSync(proposalPath)) {
+      const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8')) as {
+        original: { bundle: typeof config }; proposed: { bundle: typeof config };
+        resolutions: { path: string[]; original?: unknown; saved?: unknown; proposed?: unknown }[];
+      };
+      for (const configuration of [proposal.original, proposal.proposed]) {
+        if (configuration.bundle.sourceDirectory !== undefined) configuration.bundle.sourceDirectory = repoint(configuration.bundle.sourceDirectory);
+        if (configuration.bundle.sources) configuration.bundle.sources = configuration.bundle.sources.map(source => ({ ...source, directory: repoint(source.directory) }));
+      }
+      for (const resolution of proposal.resolutions) {
+        if (resolution.path[0] !== 'bundle') continue;
+        for (const side of ['original', 'saved', 'proposed'] as const) if (resolution[side] !== undefined) resolution[side] = repointConfigurationValue(resolution[side], repoint, resolution.path.at(-1));
+      }
+      fs.writeFileSync(proposalPath, `${JSON.stringify(proposal, null, 2)}\n`);
+    }
 
     // Retained snapshots must describe the same relocated registry as the
     // bundle. Otherwise an unchanged refresh creates a content-free candidate.
@@ -394,6 +436,12 @@ export async function restoreCheckpoint(options: RestoreCheckpointOptions): Prom
     restoreHomeObjects(options.repo, checkpoint.commit, homeGit);
   }
   repointSourceDirectories(options.homeDirectory, checkpoint.metadata.homeDirectory);
+  if (checkpoint.metadata.editorView) {
+    if (!isEditorViewCheckpoint(checkpoint.metadata.editorView)) throw new Error('The checkpoint contains invalid presentation state');
+    const filename = path.join(options.homeDirectory, 'cache', 'editor-view', 'checkpoint.json');
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    fs.writeFileSync(filename, JSON.stringify({ id: `${checkpoint.commit}:${options.homeDirectory}`, view: relocateEditorView(checkpoint.metadata.editorView, options.homeDirectory, checkpoint.metadata.homeDirectory) }));
+  }
 
   if (options.restoreParts === false) return checkpoint;
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), "meadow-checkpoint-restore-"));
@@ -417,5 +465,6 @@ export async function restoreCheckpoint(options: RestoreCheckpointOptions): Prom
 
 export type CheckpointMeadowConceptParticipations = [
   ParticipatesIn<typeof checkpoint, "capture", typeof captureCheckpoint>,
+  ParticipatesIn<typeof checkpointViewRestoration, "capture-view", typeof captureCheckpoint>,
   ParticipatesIn<typeof checkpoint, "restore", typeof restoreCheckpoint>,
 ];

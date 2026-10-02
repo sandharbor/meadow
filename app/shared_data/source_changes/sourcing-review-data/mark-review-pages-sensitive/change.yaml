@@ -1,0 +1,16 @@
+id: mark-review-pages-sensitive
+label: Make reviewed additions match sensitivity policy
+action: "Add a review-sensitive marker to the two previously public additions."
+check: "Refreshing revalidates automatic tracking and requires renewed approval for explicit tracking."
+e2e: sourcing-proposal-refresh-sensitive-explicit.spec.ts
+categories: [modify]
+sourceGraph: sourcing-review-data
+operations:
+  - replaceText:
+      path: Additions/Safe One.md
+      before: "A public research summary"
+      after: "review-sensitive: A restricted research summary"
+  - replaceText:
+      path: Additions/Safe Two.md
+      before: "A public planning summary"
+      after: "review-sensitive: A restricted planning summary"

@@ -26,7 +26,7 @@ limitations under the License.
  * Called from playwright.config.ts at top-level, before workers start.
  *
  * Staleness detection: the script hashes the mtimes of all tracked
- * source inputs (src/**, shared_components/**, index.html, vite.config.ts, package.json,
+ * source inputs (src/**, shared_components/**, shared app modules, index.html, vite.config.ts, package.json,
  * postcss.config.js, tailwind.config.js, tsconfig.json) and stores the
  * hash next to dist/. Rebuilds only when that hash changes. Typical
  * re-run cost: ~50ms for the walk + zero build time.
@@ -51,7 +51,7 @@ const stampPath = path.join(distDir, ".e2e-build-stamp");
 const PROVIDER_E2E_BUILD_ENV_FILE = ".e2e-build-env.json";
 
 // Source inputs whose changes should invalidate dist/
-const WATCH_DIRS = ["src", "shared_components"];
+const WATCH_DIRS = ["src", "shared_components", "../../contracts", "../../shared_code", "../../concepts"];
 const WATCH_FILES = [
   "index.html",
   "vite.config.ts",

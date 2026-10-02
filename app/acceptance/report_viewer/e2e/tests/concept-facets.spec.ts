@@ -52,10 +52,10 @@ test('run filters use explicit category facets while rules remain directly navig
   await expect(facets.getByRole('button', { name: 'Publishing', exact: true })).toBeVisible();
   await expect(facets.getByRole('button', { name: 'HTML Generation', exact: true })).toBeVisible();
   await facets.getByRole('button', { name: 'hide', exact: true }).click();
-  await expect(facets.getByRole('button', { name: 'Pending source changes hide the frontier', exact: true })).toHaveCount(0);
+  await expect(facets.getByRole('button', { name: 'Newer source material pauses frontier exploration', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Details', exact: true }).click();
   const metadata = page.getByRole('article', { name: 'Frontier rule evidence', exact: true }).locator('dl[aria-label="Scenario metadata"]');
-  const ruleBadge = metadata.getByText('Pending source changes hide the frontier', { exact: true });
+  const ruleBadge = metadata.getByText('Newer source material pauses frontier exploration', { exact: true });
   await expect(ruleBadge).toHaveCSS('opacity', '0.2');
   await expect(ruleBadge).toHaveAttribute('title', 'Hidden in the filters above');
   await expect(metadata.getByText('Frontier Bundle Page', { exact: true })).toHaveCSS('opacity', '1');
@@ -63,11 +63,11 @@ test('run filters use explicit category facets while rules remain directly navig
   await ruleBadge.click();
   await page.getByRole('menuitem', { name: 'restart with this', exact: true }).click();
   await expect(page).toHaveURL(/doc=frontier-pending-sources/);
-  await expect(page.getByRole('heading', { name: 'Pending source changes hide the frontier', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Newer source material pauses frontier exploration', exact: true })).toBeVisible();
   await expect(conceptsToggle).toHaveText('▸Concepts1 selected');
   await conceptsToggle.click();
   await expect(detailedConcepts).toBeVisible();
-  await expect(detailedConcepts.getByRole('button', { name: 'Pending source changes hide the frontier', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(detailedConcepts.getByRole('button', { name: 'Newer source material pauses frontier exploration', exact: true })).toHaveAttribute('aria-pressed', 'true');
   const filteredUrl = page.url();
   await conceptsToggle.click();
   await expect(detailedConcepts).not.toBeVisible();
@@ -80,7 +80,7 @@ test('run filters use explicit category facets while rules remain directly navig
   await page.reload();
   await expect(conceptsToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(conceptsToggle).toContainText('1 selected');
-  await expect(page.getByRole('heading', { name: 'Pending source changes hide the frontier', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Newer source material pauses frontier exploration', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back to Frontier Bundle Page', exact: true }).click();
   await expect(page).toHaveURL(/doc=frontier(?:&|$)/);
 });
@@ -101,9 +101,9 @@ test('detailed concepts follow matching scenarios and retain visible counts for 
   const concepts = page.getByRole('group', { name: 'Detailed concept filters', exact: true });
   const modes = page.getByRole('group', { name: 'Starts with', exact: true });
   await modes.getByRole('button', { name: 'Single file', exact: true }).click();
-  const pending = concepts.getByRole('button', { name: 'Pending source changes hide the frontier', exact: true });
+  const pending = concepts.getByRole('button', { name: 'Newer source material pauses frontier exploration', exact: true });
   await expect(pending).toBeVisible();
-  await expect(concepts.getByRole('button', { name: 'Dismissing the notice disables the frontier filter', exact: true })).toHaveCount(0);
+  await expect(concepts.getByRole('button', { name: 'Disabling the frontier clears its unavailable notice', exact: true })).toHaveCount(0);
   await pending.click();
   const available = concepts.getByRole('button', { name: 'Frontier exploration checks live sources', exact: true });
   await available.click();
@@ -121,6 +121,6 @@ test('detailed concepts follow matching scenarios and retain visible counts for 
   await expect(pending).toHaveAttribute('aria-pressed', 'true');
   await concepts.getByRole('button', { name: 'All', exact: true }).click();
   await expect(toggle).not.toContainText('selected');
-  await expect(concepts.getByRole('button', { name: 'Dismissing the notice disables the frontier filter', exact: true })).toBeVisible();
+  await expect(concepts.getByRole('button', { name: 'Disabling the frontier clears its unavailable notice', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /folder review/ })).toBeVisible();
 });

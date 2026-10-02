@@ -21,7 +21,7 @@ import {
   hasNodesInMultipleFolders,
   normalizeFolderPath,
   nodeIsInFolder, nodeMatchesFolderState
-} from '../../../../../src/areas/bundle/curation/utils/folderFilterUtils';
+} from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/folderFilterUtils';
 
 const page = (id: string, sourceGraphSubdirectory: string): IBundleNode => ({
   bundleNodeKey: testKey(id),

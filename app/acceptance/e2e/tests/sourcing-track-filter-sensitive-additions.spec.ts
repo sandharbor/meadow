@@ -11,10 +11,6 @@ test.use({ bundleMode: "single-file" });
  * Enable a custom filter's Mark Sensitive action, then add matching pages without source
  * sensitivity markings. Acceptance should leave those effectively sensitive pages untracked
  * and name exactly which pages were skipped, while tracking the safe addition.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing acceptance leaves filter-sensitive additions untracked and shows exactly the skipped pages', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

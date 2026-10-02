@@ -10,10 +10,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Add pages that are directly marked sensitive. Acceptance should leave them untracked and
  * name exactly which pages were skipped.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing acceptance leaves direct-sensitive additions untracked and shows exactly the skipped pages', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

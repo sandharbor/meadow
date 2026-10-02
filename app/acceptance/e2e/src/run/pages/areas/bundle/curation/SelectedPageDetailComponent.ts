@@ -124,7 +124,7 @@ export class SelectedPageDetailComponent {
   async openDetails() {
     const btn = this.root.locator('button[title="Toggle details"]');
     await this.expect(btn).toBeVisible();
-    await btn.click();
+    if (await btn.getAttribute('aria-expanded') !== 'true') await btn.click();
   }
 
   async expectFolder(location: string) {

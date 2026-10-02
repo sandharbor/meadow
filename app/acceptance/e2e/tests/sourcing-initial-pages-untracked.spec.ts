@@ -12,10 +12,6 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Capture a source for the first time. Candidate pages should be visible without being
  * automatically tracked.
- *
- * Project impact (planned): Preserve initial capture and required-root behavior as regression baselines
- * while integrating the new sourcing lifecycle.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing initial capture leaves candidate pages untracked', async ({ page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

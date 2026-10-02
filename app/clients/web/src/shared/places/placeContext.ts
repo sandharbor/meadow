@@ -33,12 +33,18 @@ export type SurfaceRequestHandler = (
 
 export interface SurfaceParticipant {
   surface: string;
+  editorMode?: 'curation' | 'sourcing';
   /**
    * The parameters this participant owns. Omitted for the surface's owner,
    * which opens the surface itself; extensions own named parameters within it.
    */
   parameters?: readonly string[];
   onRequest: SurfaceRequestHandler;
+}
+
+export interface SelectionRequestContext {
+  /** A checkpoint already restored selection details and sidebar presentation. */
+  preserveView: boolean;
 }
 
 export interface SelectionRequestResult {
@@ -55,8 +61,10 @@ export interface PlaceContextValue {
   isSurfaceRequested(surface: string): boolean;
   registerSurface(participant: SurfaceParticipant): () => void;
   reportSurface(surface: string, owned: readonly string[] | undefined, open: boolean, parameters: Readonly<Record<string, string>>): void;
-  registerSelection(onRequest: (references: readonly PlaceNodeReference[]) => SelectionRequestResult | Promise<SelectionRequestResult>): () => void;
-  reportSelection(references: readonly PlaceNodeReference[]): void;
+  registerSelection(onRequest: (references: readonly PlaceNodeReference[], context: SelectionRequestContext) => SelectionRequestResult | Promise<SelectionRequestResult>, mode?: 'curation' | 'sourcing'): () => void;
+  reportSelection(references: readonly PlaceNodeReference[], mode?: 'curation' | 'sourcing'): void;
+  registerEditorMode?(onRequest: (mode: 'curation' | 'sourcing') => Promise<void>): () => void;
+  reportEditorMode?(mode: 'curation' | 'sourcing'): void;
 }
 
 export const PlaceContext = createContext<PlaceContextValue | null>(null);
@@ -80,7 +88,7 @@ export interface PlaceSurfaceReporter {
 export function usePlaceSurface(
   surface: string,
   onRequest: SurfaceRequestHandler,
-  options: { parameters?: readonly string[] } = {},
+  options: { parameters?: readonly string[]; editorMode?: 'curation' | 'sourcing' } = {},
 ): PlaceSurfaceReporter {
   const context = useContext(PlaceContext);
   const handler = useRef(onRequest);
@@ -89,9 +97,10 @@ export function usePlaceSurface(
   const ownedKey = owned?.join(',');
   useEffect(() => context?.registerSurface({
     surface,
+    editorMode: options.editorMode,
     parameters: ownedKey === undefined ? undefined : ownedKey.split(','),
     onRequest: parameters => handler.current(parameters),
-  }), [context, surface, ownedKey]);
+  }), [context, surface, ownedKey, options.editorMode]);
   return useMemo(() => ({
     opened: (parameters = {}) => context?.reportSurface(surface, ownedKey === undefined ? undefined : ownedKey.split(','), true, parameters),
     closed: () => context?.reportSurface(surface, ownedKey === undefined ? undefined : ownedKey.split(','), false, {}),
@@ -100,13 +109,22 @@ export function usePlaceSurface(
 
 /** The bundle editor reports and restores the node selection. */
 export function usePlaceSelection(
-  onRequest: (references: readonly PlaceNodeReference[]) => SelectionRequestResult | Promise<SelectionRequestResult>,
+  onRequest: (references: readonly PlaceNodeReference[], context: SelectionRequestContext) => SelectionRequestResult | Promise<SelectionRequestResult>,
+  mode: 'curation' | 'sourcing' = 'curation',
 ): (references: readonly PlaceNodeReference[]) => void {
   const context = useContext(PlaceContext);
   const handler = useRef(onRequest);
   handler.current = onRequest;
-  useEffect(() => context?.registerSelection(references => handler.current(references)), [context]);
-  return useMemo(() => (references: readonly PlaceNodeReference[]) => context?.reportSelection(references), [context]);
+  useEffect(() => context?.registerSelection((references, request) => handler.current(references, request), mode), [context, mode]);
+  return useMemo(() => (references: readonly PlaceNodeReference[]) => context?.reportSelection(references, mode), [context, mode]);
+}
+
+export function useEditorMode(mode: 'curation' | 'sourcing', onRequest: (mode: 'curation' | 'sourcing') => Promise<void>) {
+  const context = useContext(PlaceContext);
+  const handler = useRef(onRequest);
+  handler.current = onRequest;
+  useEffect(() => context?.registerEditorMode?.(value => handler.current(value)), [context]);
+  useEffect(() => context?.reportEditorMode?.(mode), [context, mode]);
 }
 
 /** Move the person to a place from within the app. */
@@ -127,7 +145,7 @@ export function useLinkedSurface(
     open(parameters: Readonly<Record<string, string>>): SurfaceOpenResult | Promise<SurfaceOpenResult>;
     close(): void;
   },
-  options: { parameters?: readonly string[] } = {},
+  options: { parameters?: readonly string[]; editorMode?: 'curation' | 'sourcing' } = {},
 ): void {
   const actionsRef = useRef(actions);
   actionsRef.current = actions;

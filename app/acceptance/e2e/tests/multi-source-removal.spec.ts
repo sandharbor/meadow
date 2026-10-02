@@ -14,10 +14,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Remove a registered source and review its orphaned pages. Ignored source names should
  * stay quiet until the user chooses to reconsider them.
- *
- * Project impact (planned): Replace Keep in config with mandatory accepted cleanup and review source
- * removal through the sourcing proposal.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source removal reviews orphans and ignored source names stay quiet until reconsidered', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -40,17 +36,18 @@ test('Multi-source removal reviews orphans and ignored source names stay quiet u
   await sources.remove('source000003');
   await sources.stage();
   await editor.sourceReview.orphans.expectSummaryCount(2);
-  await editor.sourceReview.orphans.keepInConfig('Study');
+  await editor.sourceReview.orphans.showExplanation('Study');
+  expect(bundleConfig.findNode({ bundleNodeId: study.bundleNodeId })).toEqual(study);
   await addKeyFrame(bundleSource);
-  await checkpoint('deliberate removal offers orphan cleanup with optional retained configuration');
+  await checkpoint('deliberate removal offers mandatory cleanup while preserving saved configuration until acceptance');
 
   // Accept the source update.
   await editor.sourceReview.accept();
-  expect(bundleConfig.findNode({ bundleNodeId: study.bundleNodeId })).toEqual(study);
+  expect(bundleConfig.findNode({ bundleNodeId: study.bundleNodeId })).toBeUndefined();
   expect(bundleConfig.findNode({ bundleNodeName: 'Appendix' })).toBeUndefined();
   expect(fs.readFileSync(referenceFile, 'utf8')).toBe(referenceContent);
   expect(bundleConfig.read().sourceOutputLayout).toBe('multi');
-  await checkpoint('source removal preserves the explicitly retained page configuration');
+  await checkpoint('source removal cleans both unreachable entries and preserves the source files');
 
   // Ignore the missing source reminder.
   await sources.expectNotice(['reference']);

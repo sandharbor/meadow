@@ -1,0 +1,16 @@
+id: redirect-biases-link
+label: Redirect a link behind a traversal stop
+action: "Redirect the Availability Bias link to Confirmation Bias and revise the destination text."
+check: "A depth edit asks before incorporating the new source material, then captures the revised links and destination together."
+e2e: sourcing-proposal-depth-refresh-confirm.spec.ts
+categories: [modify]
+sourceGraph: example-bundle-data
+operations:
+  - replaceText:
+      path: Cognitive Biases.md
+      before: "**[[Availability Bias]]**"
+      after: "**[[Confirmation Bias]]**"
+  - replaceText:
+      path: Confirmation Bias.md
+      before: "Confirmation bias is the tendency"
+      after: "This newly reviewed destination describes the tendency"

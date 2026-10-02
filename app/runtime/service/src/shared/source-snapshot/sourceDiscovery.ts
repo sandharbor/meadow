@@ -1,11 +1,28 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import path from 'node:path';
+import fs from 'node:fs';
+import type { BundleConfig } from '../../../../../contracts/types/bundleConfig.js';
 import type { SourceSnapshot } from './sourceSnapshots.js';
 import type { WorkingGraphRustOutput } from '../bundle-graph/workingGraphService.js';
 import { sourceInventory } from '../../../../../shared_code/utils/sourceSnapshotFingerprint.js';
 export { sourceInventory } from '../../../../../shared_code/utils/sourceSnapshotFingerprint.js';
-import { sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
+import { sourceGraphPath, bundleSources, splitSourceGraphPath, LEGACY_SOURCE_ID } from '../../../../../shared_code/utils/bundleSourceUtils.js';
+
+export function captureSourceAvailability(previous: SourceSnapshot, configuration: BundleConfig): NonNullable<SourceSnapshot['sourceAvailability']> {
+  const sources = bundleSources(configuration);
+  // Registry storage includes a synthetic namespace parent. It is not a source
+  // directory and has no corresponding location whose presence can be checked.
+  const directories = previous.directories.filter(filename => !previous.sources || previous.sources.some(source =>
+    filename === sourceGraphPath(source.id, '') || filename.startsWith(`${sourceGraphPath(source.id, '')}/`)));
+  return Object.fromEntries([...Object.keys(previous.files), ...directories].map(filename => {
+    const locator = splitSourceGraphPath(filename, previous.sources);
+    const source = sources.find(item => item.id === (locator.sourceId ?? LEGACY_SOURCE_ID));
+    let presence: 'present' | 'missing' | 'disconnected' = 'disconnected';
+    if (source && fs.existsSync(source.directory)) presence = fs.existsSync(path.join(source.directory, locator.relativePath)) ? 'present' : 'missing';
+    return [filename, presence];
+  }));
+}
 
 // Wider link discovery is session data, never part of a durable snapshot.
 const liveLinks = new Map<string, { digest: string; graph: WorkingGraphRustOutput }>();

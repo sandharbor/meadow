@@ -11,10 +11,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Rename a linked group of pages and review it. Meadow should classify the group once and
  * avoid treating its members as unrelated orphans.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing classifies a renamed linked group once and keeps its pages out of orphan cleanup', async ({ page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -37,8 +33,10 @@ test('Sourcing classifies a renamed linked group once and keeps its pages out of
   await review.expectMoveCount(3);
   for (const node of original) {
     await review.expectMoveListed(node.bundleNodeId);
-    await review.orphans.expectNotListed(node.bundleNodeName);
   }
+  await review.confirmSuggestedIdentities();
+  await review.continueToGraph();
+  for (const node of original) await review.orphans.expectNotListed(node.bundleNodeName);
   await review.orphans.expectSummaryCount(13);
   await addKeyFrame(sourceMove);
   await checkpoint('three linked moves form review items while existing unrelated orphans remain separate');

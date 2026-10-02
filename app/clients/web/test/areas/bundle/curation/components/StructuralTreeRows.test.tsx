@@ -17,9 +17,9 @@ limitations under the License.
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
-import StructuralTreeRows from '../../../../../src/areas/bundle/curation/components/StructuralTreeRows';
-import { compareListNodes } from '../../../../../src/areas/bundle/curation/components/ListView';
-import { DisplayGraph } from '../../../../../src/areas/bundle/curation/types/displayGraph';
+import StructuralTreeRows from '../../../../../src/areas/bundle/shared-sourcing-curation/components/StructuralTreeRows';
+import { compareListNodes } from '../../../../../src/areas/bundle/shared-sourcing-curation/components/ListView';
+import { DisplayGraph } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/displayGraph';
 
 const node = (
   bundleNodeKey: string,
@@ -54,6 +54,7 @@ describe('StructuralTreeRows', () => {
 
     render(
       <table><tbody><StructuralTreeRows
+        bundleSlug="structure-test"
         displayGraph={new DisplayGraph(graph)}
         entryBundleNodeId={'alpha' as IBundleNode['bundleNodeId']}
         compareNodes={compareByTitle}
@@ -82,6 +83,7 @@ describe('StructuralTreeRows', () => {
 
     const { container } = render(
       <table><tbody><StructuralTreeRows
+        bundleSlug="structure-test"
         displayGraph={new DisplayGraph(graph)}
         entryBundleNodeId={'alpha' as IBundleNode['bundleNodeId']}
         compareNodes={compareByTitle}
@@ -115,6 +117,7 @@ describe('StructuralTreeRows', () => {
 
     render(
       <table><tbody><StructuralTreeRows
+        bundleSlug="structure-test"
         displayGraph={new DisplayGraph(graph)}
         entryBundleNodeId={'alpha' as IBundleNode['bundleNodeId']}
         compareNodes={compareByTitle}

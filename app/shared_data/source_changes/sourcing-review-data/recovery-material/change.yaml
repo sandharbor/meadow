@@ -1,0 +1,12 @@
+id: recovery-material
+label: Add pages and retire a leaf route
+action: "Link review additions while removing Start's route to Leaf."
+check: "Acceptance applies additions and mandatory cleanup together with node and shared policy drafts, or recovers the complete previous state."
+e2e: sourcing-proposal-acceptance-recovery.spec.ts
+categories: [add, modify]
+sourceGraph: sourcing-review-data
+operations:
+  - replaceText:
+      path: Start.md
+      before: "[[Leaf]]"
+      after: "The former leaf link has been removed.\n\n[[Additions/Safe One]]\n[[Additions/Safe Two]]\n[[Additions/Secret]]\n[[Additions/Policy Draft]]"

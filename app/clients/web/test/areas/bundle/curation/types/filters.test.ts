@@ -17,11 +17,11 @@ limitations under the License.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
-import { createTrackedNodeSelector, createUntrackedNodeSelector, createBlacklistedNodeSelector, createSearchByTitleSelector, createSensitiveNodeSelector, createFolderNodeSelector, useFilterState } from '../../../../../src/areas/bundle/curation/types/filters';
+import { createTrackedNodeSelector, createUntrackedNodeSelector, createBlacklistedNodeSelector, createSearchByTitleSelector, createSensitiveNodeSelector, createFolderNodeSelector, useFilterState } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filters';
 
 describe('Built-in filter order', () => {
   it('keeps primary filters in sidebar order before custom filters', () => {
-    const { result } = renderHook(() => useFilterState(''));
+    const { result } = renderHook(() => useFilterState('', () => Promise.reject(new Error('An empty bundle must not request filters'))));
     const sidebarFilterNames = result.current[0]
       .filter(filter => !filter.showSearchInput && !filter.hideFromFilterList)
       .map(filter => filter.name);

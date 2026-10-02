@@ -15,10 +15,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Register another source containing a frontier reference. That page should enter the
  * bundle only when normal traversal reaches it within the configured boundary.
- *
- * Project impact (planned): Review source-registration, repair, and naming flows against the proposal
- * transaction and required-entry rules; preserve source identity and publication guarantees.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source registration admits a frontier reference only after its page enters the normal boundary', async ({ page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -32,6 +28,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   const sources = new SourcesControl(page, expect);
   await sources.expectNotice();
   const filters = new FilterPanelComponent(page, expect);
+  await editor.sourceReview.open();
   await filters.enableFilter('Frontier');
   await editor.expectGraphNodePresent('file:_mw_sources/source000001/Frontier.md');
   await sources.expectNotice();
@@ -43,12 +40,8 @@ test('Multi-source registration admits a frontier reference only after its page 
   await editor.switchToListView();
   await editor.clickListViewRowByNodeKey('file:_mw_sources/source000001/Start.md');
   await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).setOutlinksDepth(1);
-  await editor.clickSave();
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
   await editor.sourceReview.accept();
   await sources.expectNotice(['reference']);
-  await filters.disableFilter('Frontier');
   await sources.reviewMissing();
   await sources.expectReferences('reference', ['notes://Frontier', 'research://Report']);
   await expect(page.getByTestId('source-reference-unrelated')).not.toBeVisible();
@@ -67,6 +60,7 @@ test('Multi-source registration admits a frontier reference only after its page 
   const referenceId = config.sources!.find(source => source.name === 'reference')!.id;
   await filters.expandFilterGroup('Folders');
   await filters.expectFolderCount('reference://', 0);
+  await editor.sourceReview.open();
   await filters.enableFilter('Frontier');
   await editor.clickListViewRowByNodeKey(`file:_mw_sources/${referenceId}/Study.md`);
   await new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect).expectPill(Pill.Frontier);

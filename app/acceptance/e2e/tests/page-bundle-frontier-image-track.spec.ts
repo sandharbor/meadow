@@ -30,10 +30,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Find and track a frontier image in a page-rooted bundle. The image should be included
  * when the bundle is generated.
- *
- * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
- * generated-material steps accordingly.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("tracks a frontier image in a page-derived bundle", async ({
   page,

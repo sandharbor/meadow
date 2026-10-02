@@ -16,9 +16,10 @@ export class SourceSnapshotsModal {
   }
 
   async expectSnapshotCount(count: number) {
-    await this.expect(this.dialog.getByRole('listitem')).toHaveCount(count);
+    const snapshots = this.dialog.getByRole('list', { name: 'Accepted source snapshots' }).locator(':scope > li');
+    await this.expect(snapshots).toHaveCount(count);
     await this.expect(this.dialog.getByText('Current', { exact: true })).toHaveCount(1);
-    await this.expect(this.dialog.getByRole('listitem').first()).toContainText('Current');
+    await this.expect(snapshots.first()).toContainText('Current');
   }
 
   async close() {

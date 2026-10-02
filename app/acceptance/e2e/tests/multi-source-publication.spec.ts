@@ -15,10 +15,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Publish a multi-source bundle, rename a source, and publish a successor. Previously
  * published pages should remain available and link to their corresponding new pages.
- *
- * Project impact (planned): Review source-registration, repair, and naming flows against the proposal
- * transaction and required-entry rules; preserve source identity and publication guarantees.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source publication retains old pages and connects their stable identities through a source rename', async ({ page, testServer, minioS3, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

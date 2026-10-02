@@ -5,16 +5,18 @@ import type { StartingSelection } from '../../../../../../../contracts/types/sta
 import { applyStartingSelections, bundleStartingSelections } from '../../../../../../../shared_code/utils/startingSelectionUtils.js';
 import path from 'node:path';
 import YAML from 'yaml';
-import type { BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
+import type { BundleConfig, BundleSource } from '../../../../../../../contracts/types/bundleConfig.js';
 import type { SourceRegistryStatus } from '../../../../../../../contracts/types/sourcing.js';
 import { assignLegacySourceIdentity, bundleSources, validateBundleSources, validateSourceName } from '../../../../../../../shared_code/utils/bundleSourceUtils.js';
 import { textDocumentCodec, writeDurableDocument } from '../../../../../../../shared_code/utils/durableDocument.js';
+import { loadPendingSourceProposal, sourceProposalConfigurationReview } from './proposalStore.js';
+import type { BundleNodeConfig } from '../../../../../../../contracts/types/bundleNodeConfig.js';
 import { sourceProposalContext } from '../../../../shared/source-snapshot/sourceRegistrySnapshots.js';
 import { retainCandidateSourceTree } from '../../../../shared/source-snapshot/sourceGit.js';
 import { captureSourceSnapshot, initializeSourcing, loadSourceBundleConfig, loadSourceNodeConfigs, loadSourceSnapshot, loadSourcingState, sourceConfigFingerprint, snapshotDirectory, sourcingStatePath, SourcingError, withSourcingLock, writeSourcingJson, type SourceSnapshot } from '../../../../shared/source-snapshot/sourceSnapshots.js';
 
-export function registryProposal(bundleDirectory: string, requested: BundleSource[], selections?: StartingSelection[], retained?: SourceSnapshot['sourceProposal']): NonNullable<SourceSnapshot['sourceProposal']> {
-  const config = loadSourceBundleConfig(bundleDirectory);
+export function registryProposal(bundleDirectory: string, requested: BundleSource[], selections?: StartingSelection[], retained?: SourceSnapshot['sourceProposal'], context?: { config: BundleConfig; nodes: BundleNodeConfig[] }): NonNullable<SourceSnapshot['sourceProposal']> {
+  const config = context?.config ?? loadSourceBundleConfig(bundleDirectory);
   const previous = bundleSources(config);
   const sources = globalThis.structuredClone(requested).map(source => {
     const before = previous.find(item => item.id === source.id);
@@ -23,7 +25,7 @@ export function registryProposal(bundleDirectory: string, requested: BundleSourc
       ...(before && before.name !== source.name ? [before.name] : [])])].filter(alias => alias !== source.name) };
   });
   try { validateBundleSources(sources); } catch (error) { throw new SourcingError((error as Error).message, 400); }
-  let nodes = assignLegacySourceIdentity(loadSourceNodeConfigs(bundleDirectory));
+  let nodes = assignLegacySourceIdentity(context?.nodes ?? loadSourceNodeConfigs(bundleDirectory));
   if (retained) {
     const entry = retained.nodes.find(node => node.bundleNodeId === retained.entryBundleNodeId);
     const selectedIds = new Set([retained.entryBundleNodeId, retained.defaultTraversalBundleNodeId, ...(entry?.bundleNodeKind === 'collection' ? entry.memberBundleNodeIds : [])]);
@@ -57,13 +59,16 @@ export function registryProposal(bundleDirectory: string, requested: BundleSourc
 export function sourceRegistryStatus(bundleDirectory: string): SourceRegistryStatus {
   const state = loadSourcingState(bundleDirectory);
   const candidate = state?.candidateId ? loadSourceSnapshot(bundleDirectory, state.candidateId) : undefined;
-  const { config, nodes } = sourceProposalContext(loadSourceBundleConfig(bundleDirectory), loadSourceNodeConfigs(bundleDirectory), candidate);
+  const proposal = loadPendingSourceProposal(bundleDirectory);
+  const merged = proposal && sourceProposalConfigurationReview(bundleDirectory, proposal).configuration;
+  const { config, nodes } = merged ? { config: merged.bundle, nodes: merged.nodes }
+    : sourceProposalContext(loadSourceBundleConfig(bundleDirectory), loadSourceNodeConfigs(bundleDirectory), candidate);
   const sources = bundleSources(config);
   const disconnectedIds = sources.filter(source => {
     try { return !fs.statSync(source.directory).isDirectory(); } catch { return true; }
   }).map(source => source.id);
   return { sources, startingSelections: bundleStartingSelections(config, nodes), disconnectedIds,
-    ignoredSourceNames: config.ignoredSourceNames ?? [], pendingChanges: Boolean(candidate) };
+    ignoredSourceNames: config.ignoredSourceNames ?? [], pendingChanges: Boolean(proposal || candidate), ...(proposal && { proposalRevision: proposal.revision }) };
 }
 
 export async function stageSourceRegistry(bundleDirectory: string, sources: BundleSource[], selections?: StartingSelection[]): Promise<void> {

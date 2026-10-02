@@ -9,10 +9,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Add a plain link to an image beyond the traversal boundary. The live frontier should
  * show it without allowing it to be tracked there.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('a plain link to an image beyond the boundary stays untrackable in the live frontier', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -32,8 +28,10 @@ test('a plain link to an image beyond the boundary stays untrackable in the live
 
   // Accept the source update.
   await editor.sourceReview.accept();
+  await editor.sourceReview.open();
   await new FilterPanelComponent(page, expect).enableFilter('Frontier');
   await editor.switchToListView();
+  await page.getByRole('button', { name: 'Select None', exact: true }).click();
   await editor.clickListViewRowByExactName('t016 ---- level 5 - frontier image');
   const detail = new SelectedPageDetailComponent(editor.getSelectedPageRoot(), expect);
   await detail.expectPill(Pill.Frontier);

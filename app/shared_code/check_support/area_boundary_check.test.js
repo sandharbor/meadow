@@ -164,3 +164,37 @@ test('Vite globs cannot import private areas or bypass caller checks', t => {
   const f = fixture(t); f.caller("const modules = import.meta.glob('../curation/**/*.ts');");
   assert.match(f.messages(), /Glob imports are reserved/);
 });
+
+for (const consumer of ['sourcing', 'curation']) {
+  test(`${consumer} can consume its named shared editor interface`, t => {
+    const f = fixture(t);
+    f.write('src/areas/bundle/shared-sourcing-curation/editor.ts', 'export function editor() {}');
+    f.write('src/areas/bundle/shared-sourcing-curation/exported.ts', guidance
+      + `export { editor as ${consumer}QueryEditor } from './editor.js';`);
+    f.caller(`import { ${consumer}QueryEditor } from '../shared-sourcing-curation/exported.js';`, `areas/bundle/${consumer}`);
+    assert.deepEqual(f.check(), []);
+  });
+}
+
+for (const consumer of ['areas/bundle/generation', 'areas/bundle/review', 'areas/bundle/sharing', 'shared/app-shell', 'shared/helpers']) {
+  test(`${consumer} cannot consume the shared sourcing and curation editor`, t => {
+    const f = fixture(t);
+    f.write('src/areas/bundle/shared-sourcing-curation/editor.ts', 'export function editor() {}');
+    f.write('src/areas/bundle/shared-sourcing-curation/exported.ts', guidance
+      + "export { editor as sourcingQueryEditor } from './editor.js';");
+    const prefix = consumer.startsWith('areas/') ? '../shared-sourcing-curation' : '../../areas/bundle/shared-sourcing-curation';
+    f.caller(`import { sourcingQueryEditor } from '${prefix}/exported.js';`, consumer);
+    assert.match(f.messages(), /Only sourcing and curation/);
+  });
+}
+
+for (const target of ['sourcing', 'curation']) {
+  test(`shared editor cannot reverse-import the ${target} facade`, t => {
+    const f = fixture(t);
+    f.write(`src/areas/bundle/${target}/operation.ts`, 'export function command() {}');
+    f.write(`src/areas/bundle/${target}/exported.ts`, guidance
+      + "export { command as sharedSourcingCurationCommandEdit } from './operation.js';");
+    f.caller(`import { sharedSourcingCurationCommandEdit } from '../${target}/exported.js';`, 'areas/bundle/shared-sourcing-curation');
+    assert.match(f.messages(), /cannot import area implementations or facades/);
+  });
+}

@@ -25,12 +25,8 @@ test.use({ bundleMode: "single-file" });
 /*
  * Change page configuration within a bundle, then use Undo. The editor should restore the
  * saved configuration without leaving the bundle.
- *
- * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
- * proposal lifecycle.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
-test("Undo reverts bundle page config changes without leaving the bundle", async ({
+test("Discarding a sourcing depth proposal restores accepted configuration", async ({
   page,
   checkpoint,
   assertMeadowHomeState,
@@ -55,24 +51,15 @@ test("Undo reverts bundle page config changes without leaving the bundle", async
   await page.waitForTimeout(500);
   await checkpoint("main page selected - details auto-opened");
 
-  // Reduce its outgoing traversal.
+  // Reduce traversal in the isolated proposal; departing pages remain comparison context.
   const selectedPageRoot = editor.getSelectedPageRoot();
   const detail = new SelectedPageDetailComponent(selectedPageRoot, expect);
   await detail.setOutlinksDepth(1);
-  await page.waitForTimeout(500);
-  const reducedCount = await editor.getListViewPageCount();
-  expect(reducedCount).toBeLessThan(originalCount);
-  await checkpoint("outlinks depth set to 1 - fewer pages");
-
-  // Undo the traversal change.
-  await editor.expectUndoVisible();
-
-  // Click Undo — pages should re-appear without leaving the bundle
-  await editor.clickUndo();
-  await page.waitForTimeout(500);
-
-  const restoredCount = await editor.getListViewPageCount();
-  expect(restoredCount).toBe(originalCount);
+  await expect(editor.sourceReview.root).toBeVisible();
+  await checkpoint("reduced scope remains pending alongside departing context");
+  await editor.sourceReview.discard();
+  await editor.switchToListView();
+  expect(await editor.getListViewPageCount()).toBe(originalCount);
 
   // The depth input should show the original value (4), not the stale edit (1)
   const restoredDetail = new SelectedPageDetailComponent(

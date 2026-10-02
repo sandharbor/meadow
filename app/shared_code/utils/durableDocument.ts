@@ -184,6 +184,13 @@ function flushDirectory(path: string): void {
   }
 }
 
+/** Flush the containing directory so completed transaction removals survive restart. */
+export function removeDurableDocument(path: string): void {
+  try { fs.unlinkSync(path); }
+  catch (error) { if (errorCode(error) === 'ENOENT') return; throw error; }
+  flushDirectory(dirname(path));
+}
+
 function uniqueSibling(path: string, purpose: string): string {
   return join(dirname(path), `.${basename(path)}.${purpose}.${process.pid}.${randomUUID()}`);
 }
@@ -221,6 +228,50 @@ function restorePreviousTarget(
   }
 }
 
+/** A dead writer cannot finish its rename. Unknown or live owners remain protected. */
+function reclaimDeadDocumentLock(target: string): void {
+  const lockPath = `${target}.lock`;
+  let owner: unknown;
+  let identity: fs.Stats;
+  try {
+    identity = fs.statSync(lockPath);
+    owner = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  } catch { return; }
+  if (!isPlainObject(owner) || !Number.isSafeInteger(owner.pid) || (owner.pid as number) <= 0) return;
+  const pid = owner.pid as number;
+  try { process.kill(pid, 0); return; }
+  catch (error) { if (errorCode(error) !== 'ESRCH') return; }
+  const current = fs.statSync(lockPath, { throwIfNoEntry: false });
+  if (!current || current.ino !== identity.ino || current.dev !== identity.dev) return;
+  unlinkIfPresent(lockPath);
+  // Temporary bytes from that exact dead writer are not accepted material.
+  for (const name of fs.readdirSync(dirname(target))) {
+    if (['tmp', 'rollback', 'lock-owner'].some(purpose => name.startsWith(`.${basename(target)}.${purpose}.${pid}.`))) {
+      unlinkIfPresent(join(dirname(target), name));
+    }
+  }
+}
+
+/** Publish a complete owner record atomically, even if the process dies during acquisition. */
+function acquireDocumentLock(target: string): string {
+  const lockPath = `${target}.lock`;
+  const ownerPath = uniqueSibling(target, 'lock-owner');
+  try {
+    writeAndFlush(ownerPath, Buffer.from(JSON.stringify({ pid: process.pid })), 0o600);
+    try { fs.linkSync(ownerPath, lockPath); }
+    catch (error) {
+      if (errorCode(error) !== 'EEXIST') throw error;
+      reclaimDeadDocumentLock(target);
+      try { fs.linkSync(ownerPath, lockPath); }
+      catch (retryError) {
+        if (errorCode(retryError) === 'EEXIST') throw new DurableDocumentLockError(lockPath);
+        throw retryError;
+      }
+    }
+    return lockPath;
+  } finally { unlinkIfPresent(ownerPath); }
+}
+
 /**
  * Atomically replaces a validated document. All cooperating writers use the
  * adjacent exclusive lock. A malformed current target is never overwritten.
@@ -231,18 +282,9 @@ export function writeDurableDocument<T>(options: WriteDurableDocumentOptions<T>)
   const directory = dirname(targetPath);
   fs.mkdirSync(directory, { recursive: true });
 
-  const lockPath = `${targetPath}.lock`;
-  let lockDescriptor: number;
-  try {
-    lockDescriptor = fs.openSync(lockPath, 'wx', 0o600);
-  } catch (error) {
-    if (errorCode(error) === 'EEXIST') throw new DurableDocumentLockError(lockPath);
-    throw error;
-  }
-
+  const lockPath = acquireDocumentLock(targetPath);
   let temporaryPath: string | null = null;
   try {
-    fs.fchmodSync(lockDescriptor, 0o600);
     const current = readDurableDocument(targetPath, options.codec);
     if (current.status === 'invalid') {
       const recognizedOlderSchema = options.acceptedExistingCodecs?.some(codec =>
@@ -286,7 +328,6 @@ export function writeDurableDocument<T>(options: WriteDurableDocumentOptions<T>)
     if (temporaryPath !== null) {
       unlinkIfPresent(temporaryPath);
     }
-    fs.closeSync(lockDescriptor);
     unlinkIfPresent(lockPath);
   }
 }

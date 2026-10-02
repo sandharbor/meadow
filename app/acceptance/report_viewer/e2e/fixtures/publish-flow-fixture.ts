@@ -217,6 +217,12 @@ export function ensureMixedSurfaceArtifact(
     rmSync(path.join(cliDir, "video.webm"), { force: true });
   }
 
+  // Scenario repositories use a relative alternate into the run's shared object store.
+  const objects = path.join(path.dirname(source.artifactDir), "__checkpoint-objects");
+  if (existsSync(objects) && !existsSync(path.join(runDir, "__checkpoint-objects"))) {
+    cpSync(objects, path.join(runDir, "__checkpoint-objects"), { recursive: true });
+  }
+
   writeFileSync(path.join(runDir, "run-notes.txt"), "Mixed browser and CLI report-viewer fixture\n");
   return { runId, browserTestSlug, cliTestSlug };
 }

@@ -31,6 +31,7 @@ export interface LinkResolvedInfo {
 }
 
 interface BaseBundleNode {
+  sourceReview?: import('./sourcingProposal.js').SourceNodeReview;
   bundleNodeKey: EncodedBundleNodeKey;
   bundleNodeId?: BundleNodeId;
   label: string; // Auto-generated short identifier (A, B, C, ... Z, AA, AB, etc)

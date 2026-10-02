@@ -10,10 +10,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Add reachable pages and accept the source changes with the default settings. The newly
  * accepted pages should become tracked.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing acceptance tracks new pages by default', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -27,7 +23,7 @@ test('Sourcing acceptance tracks new pages by default', async ({ page, sourceCha
   await sourceChanges.apply('add-linked-page');
   await editor.checkSourceChanges();
   await editor.sourceReview.open();
-  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: /Discard|Cancel source/ })).toHaveCount(0);
+  await expect(page.getByTestId('sourcing-workspace').getByRole('button', { name: 'Discard proposal', exact: true })).toBeVisible();
   await editor.sourceReview.expectTrackNewPages(true);
   await addKeyFrame(sourceSnapshot);
   await checkpoint('added page is selected for tracking by default');

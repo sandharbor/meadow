@@ -25,10 +25,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Mark a page as sensitive for the first time. Check that the introductory callout
  * explains the source change and can be dismissed.
- *
- * Project impact (planned): Migrate orphan and sensitivity review interactions into the workspace;
- * reconcile cleanup and provisional tracking with the proposed concepts.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("callout for marking source node sensitive the first time", async ({
   page,

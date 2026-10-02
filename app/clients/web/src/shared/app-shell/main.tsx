@@ -28,6 +28,7 @@ import { appPlacePath } from '../../../../../contracts/places/index.js'
 import { PlaceProvider } from './places/PlaceProvider'
 import { useOpenLink } from '../places/placeContext'
 import { startBrowserSessionHeartbeat } from './browserSessionHeartbeat'
+import { restoreEditorCheckpoint } from '../utils/restoreEditorCheckpoint'
 import './index.css'
 
 /** The desktop host's meadow://find-in-bundles links arrive as an App Place link. */
@@ -94,14 +95,20 @@ const App: React.FC = () => {
 
 const initializeApp = async () => {
   startBrowserSessionHeartbeat();
+  let leaving = false;
+  const onPageHide = () => { leaving = true; };
+  window.addEventListener('pagehide', onPageHide, { once: true });
   try {
     logger.info('Initializing API configuration...');
     await initializeApiConfig();
+    await restoreEditorCheckpoint();
     logger.info('API configuration initialized successfully');
   } catch (error) {
-    logger.error('Failed to initialize API configuration:', error);
+    if (!leaving) logger.error('Failed to initialize API configuration:', error);
   }
 
+  window.removeEventListener('pagehide', onPageHide);
+  if (leaving) return;
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <App />

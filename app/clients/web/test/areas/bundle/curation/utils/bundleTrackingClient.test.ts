@@ -15,10 +15,11 @@ limitations under the License.
 */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { apiRequest } from '../../../../../src/shared/utils/apiClient';
 import {
   mutateFileTracking,
   trackSafeNodeKeys,
-} from '../../../../../src/areas/bundle/curation/utils/bundleTrackingClient';
+} from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/bundleTrackingClient';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -40,6 +41,7 @@ describe('Web bundle tracking client', () => {
     const fetch = successfulFetch(responseBody);
 
     const result = await mutateFileTracking({
+      request: (operation, options) => apiRequest(`bundles/private-notes/curation/${operation}`, options),
       bundleSlug: 'private-notes',
       bundleNodeKey: testKey('/Personal.md'),
       operation: 'track',
@@ -59,7 +61,7 @@ describe('Web bundle tracking client', () => {
     const responseBody = { operation: 'bundle.track', newlyTracked: [] };
     const fetch = successfulFetch(responseBody);
 
-    const result = await trackSafeNodeKeys('garden', [testKey('/Public.md')]);
+    const result = await trackSafeNodeKeys((operation, options) => apiRequest(`bundles/garden/curation/${operation}`, options), [testKey('/Public.md')]);
 
     const [requestPath, request] = fetch.mock.calls[0];
     expect(requestPath).toBe('/api/bundles/garden/curation/track-nodes');

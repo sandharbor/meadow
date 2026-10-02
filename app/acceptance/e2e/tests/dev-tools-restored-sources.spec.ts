@@ -19,10 +19,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source', executionSurfaces: ['dev-to
  * Restore an accepted page-and-folder collection into a new Dev Tools home.
  * Refreshing the relocated sources must leave the accepted snapshot alone;
  * a real edit after restoration must still produce a readable source review.
- *
- * Project impact (planned): Update source-review entry and checkpoint restoration for mode state,
- * identity gates, dialogs, and active tabs.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Dev Tools restores accepted multi-source starts without inventing source changes', async ({ page, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---
@@ -80,7 +76,7 @@ test('Dev Tools restores accepted multi-source starts without inventing source c
     fs.appendFileSync(path.join(forkHome, 'source_graphs/multi-source/notes/Overview.md'), '\nA real edit after restoring the checkpoint.\n');
     await refresh();
     await forkEditor.sourceReview.open();
-    await expect(page.getByRole('dialog', { name: 'Source changes', exact: true })).toContainText('Overview.md');
+    await forkEditor.sourceReview.expectModified('_mw_sources/source000001/Overview.md');
     await addKeyFrame(bundleSource);
     await checkpoint('the restored collection reviews a real source edit');
   } finally {

@@ -13,10 +13,6 @@ test.use({ fixtureHome: Fixture.Example });
 /*
  * Remove the example bundle's zero-depth override and accept the three pages newly
  * reached by its inherited depth. Acceptance should track them without a recovery notice.
- *
- * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
- * proposal lifecycle.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Removing the example depth override tracks newly accepted pages', async ({
   page, checkpoint, addKeyFrame, assertMeadowHomeState,
@@ -45,17 +41,12 @@ test('Removing the example depth override tracks newly accepted pages', async ({
   await addKeyFrame(overrides);
   await checkpoint('Cognitive Biases is selected with its zero-depth override');
 
-  // Restore the inherited outlink depth and save it.
+  // Removing the override opens the isolated comparison workspace.
   await detail.removeOutlinksDepthOverride();
-  await editor.expectUndoVisible();
-  await editor.clickSave();
-  await editor.expectUndoNotVisible();
+  await expect(editor.sourceReview.root).toBeVisible();
   await addKeyFrame(overrides);
-  await checkpoint('the outlink depth override is removed and saved');
+  await checkpoint('the inherited boundary and its newly reached pages await acceptance');
 
-  // Review the three pages reached by the expanded boundary.
-  await editor.checkSourceChanges();
-  await editor.sourceReview.open();
   await editor.sourceReview.expectTrackNewPages(true);
   for (const name of additions) {
     await editor.sourceReview.expectAdded(`${name}.md`);

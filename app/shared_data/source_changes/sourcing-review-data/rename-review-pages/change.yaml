@@ -1,0 +1,33 @@
+id: rename-review-pages
+label: Rename pages with one competing match
+action: "Rename the bridge, independent route, leaf, and retained page; add an identical second candidate for the retained identity."
+check: "Three unambiguous identities can be confirmed together while the competing destinations require an individual choice."
+e2e: sourcing-proposal-identity-bulk.spec.ts
+categories: [rename, add]
+sourceGraph: sourcing-review-data
+operations:
+  - move: { from: Routes/Branch/Bridge.md, to: Routes/Branch/Gateway.md }
+  - move: { from: Routes/Reference.md, to: Routes/Independent.md }
+  - move: { from: Leaf.md, to: Petal.md }
+  - move: { from: Retained.md, to: Retained One.md }
+  - write: { path: Retained Twin.md, contentFile: Retained Twin.md }
+  - replaceText:
+      path: Start.md
+      before: "[[Routes/Branch/Bridge]]"
+      after: "[[Routes/Branch/Gateway]]"
+  - replaceText:
+      path: Start.md
+      before: "[[Routes/Reference]]"
+      after: "[[Routes/Independent]]"
+  - replaceText:
+      path: Start.md
+      before: "[[Leaf]]"
+      after: "[[Petal]]"
+  - replaceText:
+      path: Routes/Branch/Gateway.md
+      before: "[[Retained]]"
+      after: "[[Retained One]]\n[[Retained Twin]]"
+  - replaceText:
+      path: Routes/Independent.md
+      before: "[[Retained]]"
+      after: "[[Retained One]]\n[[Retained Twin]]"

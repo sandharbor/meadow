@@ -27,10 +27,6 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Open the example bundle and enable the frontier filter. Check that pages beyond the
  * normal traversal boundary appear in the graph.
- *
- * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
- * generated-material steps accordingly.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("example bundle frontier pages show in graph view with frontier filter", async ({
   page, checkpoint, assertMeadowHomeState, addKeyFrame,
@@ -47,6 +43,8 @@ test("example bundle frontier pages show in graph view with frontier filter", as
   await checkpoint("example bundle editor loaded");
 
   // --- Test start ---
+  await editor.sourceReview.open();
+
   // Enable frontier pages.
   await filterPanel.enableFilter("Frontier");
   await page.waitForTimeout(500);
@@ -67,5 +65,7 @@ test("example bundle frontier pages show in graph view with frontier filter", as
 
   void exampleBundle;
 
+  await editor.sourceReview.discard();
+  await checkpoint("frontier exploration leaves accepted material unchanged");
   await assertMeadowHomeState();
 });

@@ -15,10 +15,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Rename a source page that already has curation settings. Review should preserve those
  * settings and retain the page's identity after acceptance.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing reviews a shared rename without disrupting curation and preserves page identity', async ({ page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -44,18 +40,14 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   // Open source review.
   const review = editor.sourceReview;
   await review.open();
-  await review.expectReadyToAccept();
-  await review.expectFocusTrapped();
+  await review.expectIdentityChoiceRequired();
   await review.expectMove('Renamed', `${originalTitle}.md`, `${renamedTitle}.md`);
   const rename = await review.moveFrom(`${originalTitle}.md`);
-  await rename.expectDetailsCollapsed();
   await addKeyFrame(sourceMove);
-  await checkpoint('proposed rename is ready to accept with choices and evidence collapsed');
+  await checkpoint('proposed rename requires an explicit identity decision');
 
   // Inspect the unchanged traversal route.
-  await rename.expandDetails();
-  await rename.collapseDetails();
-  await rename.expandDetails('keyboard');
+  await review.confirmSuggestedIdentities();
   await rename.expectSamePageSelected();
   await rename.expectNoContentComparison();
   await rename.expectSingleRoute(['main page.md', 't003 - link to section.md']);
@@ -63,9 +55,8 @@ test('Sourcing reviews a shared rename without disrupting curation and preserves
   await checkpoint('an unchanged traversal route uses file pills without repeating the renamed endpoint');
 
   // Reopen review and inspect the link edit.
-  await review.closeWithEscape();
+  await review.defer();
   await review.open();
-  await rename.expectDetailsCollapsed();
   await review.expandDetails('t003 - link to section.md');
   await review.expectInlineChanges('t003 - link to section.md', ['page with section to link to'], ['renamed section page']);
   await addKeyFrame(sourceChange);

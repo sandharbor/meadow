@@ -19,7 +19,7 @@ export type PlaceExample = AppPlace | { place: AppPlace; prepare(page: Page, exp
  */
 export function placeExamples(options: { sourceGraphsDir: string }): Record<string, PlaceExample[]> {
   const bundle = "meadow-test-bundle-big";
-  const at = (surface: string, parameters: Record<string, string> = {}, select?: { id: string }[]): AppPlace =>
+  const at = (surface: string, parameters: Record<string, string> = {}, select?: { id: string }[]): Extract<AppPlace, { page: "bundle" }> =>
     ({ page: "bundle", slug: bundle, surface: { name: surface, parameters }, ...(select && { select }) });
   const listAt = (surface: string, parameters: Record<string, string> = {}): AppPlace =>
     ({ page: "bundle-list", surface: { name: surface, parameters } });
@@ -38,6 +38,7 @@ export function placeExamples(options: { sourceGraphsDir: string }): Record<stri
     "bundle:bundle-logs": [at("bundle-logs")],
     "bundle:rename": [at("rename")],
     "bundle:edit-details": [at("edit-details")],
+    "bundle:source-diff": [{ ...at("source-diff", { node: "file:main page.md" }), editorMode: "sourcing" }],
     "bundle:source-review": [at("source-review")],
     "bundle:manage-sources": [at("manage-sources", { mode: "manage" })],
     "bundle:source-snapshots": [at("source-snapshots")],
@@ -78,7 +79,8 @@ export async function checkPlaceLinks(page: Page, expect: Expect, examples: Plac
       const parametersReached = Object.entries(place.surface?.parameters ?? {})
         .every(([name, value]) => reached.surface?.parameters[name] === value);
       const selection = (candidate: AppPlace) => JSON.stringify(candidate.page === "bundle" ? candidate.select ?? [] : []);
-      return parametersReached && selection(reached) === selection(place);
+      // A link without a selection leaves the mode's remembered selection intact.
+      return parametersReached && (place.page !== 'bundle' || !place.select || selection(reached) === selection(place));
     };
     try {
       await expect.poll(reachedRequested, { timeout: 15_000 }).toBe(true);

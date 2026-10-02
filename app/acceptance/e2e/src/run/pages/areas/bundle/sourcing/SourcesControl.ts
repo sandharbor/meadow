@@ -68,14 +68,14 @@ export class SourcesControl {
 
   async stage() {
     await this.dialog.getByRole('button', { name: 'Save', exact: true }).click();
-    await this.expect(this.page.getByRole('dialog', { name: 'Source changes', exact: true })).toBeVisible();
+    await this.expect(this.page.getByTestId('sourcing-workspace')).toBeVisible();
   }
 
   async saveWithoutMaterialChanges() {
     await this.dialog.getByRole('button', { name: 'Save', exact: true }).click();
     await this.expect(this.dialog).not.toBeVisible();
     await this.expect(this.page.getByRole('status').filter({ hasText: 'Sources updated' })).toBeVisible();
-    await this.expect(this.page.getByRole('dialog', { name: 'Source changes', exact: true })).not.toBeVisible();
+    await this.expect(this.page.getByTestId('sourcing-workspace')).not.toBeVisible();
   }
 
   async setIgnored(name: string, ignored: boolean) {

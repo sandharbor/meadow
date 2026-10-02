@@ -6,50 +6,37 @@ import { sourcingReviewRedesign, frontier, frontierPendingSources, frontierDismi
 
 test.use({ bundleMode: 'single-file' });
 
-/*
- * Leave source changes awaiting review and inspect the frontier notice. The frontier
- * should stay hidden; acknowledging the notice should only turn off its filter.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
- */
-test('pending source changes hide the frontier and acknowledging the notice only disables its filter', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
+/* Frontier discovery uses the reviewed core capture. Newer source links remain unavailable until an explicit update. */
+test('newer source changes pause sourcing frontier discovery until the reviewed capture is updated', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
   await new Workflows(page, expect).navigateToBigBundle();
-  const filters = new FilterPanelComponent(page, expect);
-  await filters.enableFilter('Frontier');
   const editor = new BundleEditorPage(page, expect);
+  const review = editor.sourceReview;
+  const filters = new FilterPanelComponent(page, expect);
+  await review.open();
+  await filters.enableFilter('Frontier');
   await editor.expectGraphNodePresent('file:t016 ---- level 5.md');
-  const notice = page.getByText('The frontier can’t be shown while source changes are waiting for review.', { exact: true });
-  await expect(notice).not.toBeVisible();
   await addKeyFrame(frontier, frontierLiveDiscovery);
-  await checkpoint('live frontier exploration remains available despite orphan cleanup entries');
+  await checkpoint('frontier exploration uses the current reviewed capture');
 
   // --- Test start ---
-  // Rename the page and its links.
   await sourceChanges.apply('rename-page-with-links');
-  const review = editor.sourceReview;
-  await review.open();
-  await review.checkAgain();
-  await review.expectReadyToAccept();
-  await review.defer();
+  await filters.setFilterThresholdValue('Frontier', 2);
+  const notice = page.getByText('Update sources to explore the frontier of the newer material. Your reviewed capture has been kept.', { exact: true });
   await expect(notice).toBeVisible();
   await editor.expectGraphNodeNotPresent('file:t016 ---- level 5.md');
   await addKeyFrame(frontierPendingSources);
-  await checkpoint('pending source changes replace live frontier pages with an explanation');
-
-  // Acknowledge the frontier notice.
-  await page.getByRole('button', { name: 'Okay', exact: true }).click();
+  await checkpoint('newer live links cannot be combined with the existing capture');
+  await filters.disableFilter('Frontier');
   await expect(notice).not.toBeVisible();
-  await expect(page.getByTestId('sourcing-status').getByRole('button', { name: /source changes? available.*Review/i })).toBeVisible();
   await addKeyFrame(frontierDismissal);
-  await checkpoint('acknowledging the notice leaves the source update waiting for review');
-
-  // Try frontier exploration again.
+  await checkpoint('disabling exploration preserves the pending capture');
+  await review.checkAgain();
+  await review.confirmSuggestedIdentities();
+  await review.continueToGraph();
   await filters.enableFilter('Frontier');
-  await expect(notice).toBeVisible();
-  await checkpoint('reopening the frontier reminds the user that source review is still pending');
-
+  await editor.expectGraphNodePresent('file:t016 ---- level 5.md');
+  await expect(notice).not.toBeVisible();
+  await checkpoint('explicit capture and identity confirmation restore frontier exploration');
   await skipMeadowHomeStateCheck();
 });

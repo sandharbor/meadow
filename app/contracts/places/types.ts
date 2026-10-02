@@ -71,7 +71,7 @@ export interface PlaceSurface {
 
 export type AppPlace =
   | { page: 'bundle-list'; surface?: PlaceSurface }
-  | { page: 'bundle'; slug: string; surface?: PlaceSurface; select?: readonly PlaceNodeReference[] };
+  | { page: 'bundle'; slug: string; editorMode?: 'sourcing'; surface?: PlaceSurface; select?: readonly PlaceNodeReference[] };
 
 /** What a link asked for and what the app actually reached, as reported to the Runtime. */
 export interface PlaceArrival {

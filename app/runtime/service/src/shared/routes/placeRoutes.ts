@@ -1,6 +1,10 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
 import express from 'express';
+import fs from 'node:fs';
+import path from 'node:path';
+import { getConfigDirectory } from '../bundle-config/bundleConfigPaths.js';
+import { isEditorViewCheckpoint } from '../../../../../contracts/types/editorViewCheckpoint.js';
 import type { PlaceArrival } from '../../../../../contracts/places/index.js';
 import { parseAppPlace } from '../../../../../contracts/places/index.js';
 
@@ -24,6 +28,14 @@ function validPlace(value: unknown): value is string {
 export function createPlaceRoutes(now: () => number = Date.now): express.Router {
   const router = express.Router();
   const arrivals: PlaceArrival[] = [];
+
+  router.get('/places/checkpoint-view', (_req, res) => {
+    const filename = path.join(getConfigDirectory(), 'cache', 'editor-view', 'checkpoint.json');
+    if (!fs.existsSync(filename)) { res.json({}); return; }
+    const data = JSON.parse(fs.readFileSync(filename, 'utf8')) as { id?: unknown; view?: unknown };
+    if (typeof data.id !== 'string' || !isEditorViewCheckpoint(data.view)) { res.status(409).json({ error: 'The checkpoint presentation state is invalid.' }); return; }
+    res.json(data);
+  });
 
   router.post('/places/arrivals', (req, res) => {
     const { requested, reached, notice } = (req.body ?? {}) as Record<string, unknown>;

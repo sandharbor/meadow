@@ -14,7 +14,7 @@ import type { appPlace, ParticipatesIn } from '../../concepts/index.js';
  * registry; tests may bind it to small definition sets.
  */
 
-const RESERVED = new Set(['surface', 'select']);
+const RESERVED = new Set(['surface', 'select', 'editorMode']);
 const SLUG = /^[a-zA-Z0-9_-]+$/;
 
 export interface ParsedAppPlace {
@@ -103,6 +103,7 @@ export function createPlaceRegistry(owners: readonly PlaceOwnerDefinition[]): Pl
 
   const appPlacePath = (place: AppPlace): string => {
     const query = new globalThis.URLSearchParams();
+    if (place.page === 'bundle' && place.editorMode === 'sourcing') query.set('editorMode', 'sourcing');
     if (place.surface) {
       const definition = surfaceDefinition(place.page, place.surface.name);
       if (!definition) throw new Error(`Unknown ${place.page} surface: ${place.surface.name}`);
@@ -139,6 +140,11 @@ export function createPlaceRegistry(owners: readonly PlaceOwnerDefinition[]): Pl
       place = { page: 'bundle', slug };
     }
     const surfaceName = url.searchParams.get('surface');
+    const editorMode = url.searchParams.get('editorMode');
+    if (editorMode !== null) {
+      if (place.page === 'bundle' && editorMode === 'sourcing') place = { ...place, editorMode };
+      else ignored.push(`editorMode=${editorMode}`);
+    }
     const definition = surfaceName ? surfaceDefinition(place.page, surfaceName) : undefined;
     if (surfaceName && !definition) ignored.push(`surface=${surfaceName}`);
     if (definition) {
@@ -164,7 +170,7 @@ export function createPlaceRegistry(owners: readonly PlaceOwnerDefinition[]): Pl
       }
     }
     for (const key of url.searchParams.keys()) {
-      if (key === 'surface' || key === 'select') continue;
+      if (key === 'surface' || key === 'select' || key === 'editorMode') continue;
       if (!definition?.parameters.some(parameter => parameter.name === key)) ignored.push(key);
     }
     return { place, ignored: [...new Set(ignored)] };
@@ -172,6 +178,7 @@ export function createPlaceRegistry(owners: readonly PlaceOwnerDefinition[]): Pl
 
   const describeAppPlace = (place: AppPlace): string => {
     const parts = [place.page === 'bundle-list' ? 'Bundles' : place.slug];
+    if (place.page === 'bundle' && place.editorMode === 'sourcing') parts.push('Sourcing');
     if (place.surface) {
       const definition = surfaceDefinition(place.page, place.surface.name);
       parts.push(definition?.title ?? place.surface.name);

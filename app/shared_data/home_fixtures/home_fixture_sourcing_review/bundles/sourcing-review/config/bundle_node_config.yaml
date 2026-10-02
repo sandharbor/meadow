@@ -1,0 +1,61 @@
+{
+  "nodes": [
+    {
+      "bundleNodeName": "Start",
+      "bundleNodeId": "100000000001",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Bridge",
+      "bundleNodeId": "100000000002",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Routes/Branch",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Reference",
+      "bundleNodeId": "100000000003",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "Routes",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Departing",
+      "bundleNodeId": "100000000004",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md",
+      "outlinksDepth": 1
+    },
+    {
+      "bundleNodeName": "Outside",
+      "bundleNodeId": "100000000005",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Retained",
+      "bundleNodeId": "100000000006",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md"
+    },
+    {
+      "bundleNodeName": "Leaf",
+      "bundleNodeId": "100000000007",
+      "listType": "whitelist",
+      "bundleNodeKind": "file",
+      "sourceGraphSubdirectory": "",
+      "fileType": "md"
+    }
+  ]
+}

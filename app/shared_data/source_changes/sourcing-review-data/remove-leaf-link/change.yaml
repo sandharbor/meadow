@@ -1,0 +1,12 @@
+id: remove-leaf-link
+label: Remove the route to a leaf
+action: "Remove Start's link to Leaf while preserving Leaf's source file."
+check: "The proposal distinguishes an externally broken route from a staged boundary exclusion and cleans both only on acceptance."
+e2e: sourcing-proposal-cleanup-after.spec.ts
+categories: [modify]
+sourceGraph: sourcing-review-data
+operations:
+  - replaceText:
+      path: Start.md
+      before: "[[Leaf]]"
+      after: "The former leaf link has been removed."

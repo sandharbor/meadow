@@ -13,10 +13,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Delete a file while leaving a section link that points to it. Review should identify the
  * missing file and optionally show the previously accepted route.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route', async ({ page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -52,10 +48,10 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
     fs.rmSync(handoff, { recursive: true, force: true });
   }
   expect(new URL(opened.url).pathname + new URL(opened.url).search).toBe(destination);
-  expect(opened.reached).toBe(destination);
+  expect(opened.reached).toBe(destination.replace('?surface=', '?editorMode=sourcing&surface='));
   const editor = new BundleEditorPage(page, expect);
   const review = editor.sourceReview;
-  await expect(page.getByRole('dialog', { name: 'Source changes' })).toBeVisible();
+  await expect(page.getByTestId('sourcing-workspace')).toBeVisible();
   await editor.expectSourceOrphanCount(1);
   await checkpoint('the prepared deletion opens directly in source review');
 
@@ -73,7 +69,6 @@ test('Sourcing explains a surviving section link to a deleted file with file pil
   await orphans.expectCollapsedFile(title);
   await orphans.showExplanation(title);
   await orphans.expectMissingLinkedFile(title, 't003 - link to section.md', `${title}.md`);
-  await review.expectNoMissingEntry(`${title}.md`);
   await addKeyFrame(orphan);
   expect(navigationMutations).toEqual([]);
   await checkpoint('a surviving section link explains the missing file without showing the full route');

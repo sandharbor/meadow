@@ -20,12 +20,15 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync 
 import { execFileSync, execSync } from "child_process";
 import os from "os";
 import path from "path";
+import { readConceptImplementations } from '../../../e2e/src/artifacts/conceptImplementations.js';
 import { testSourceLocations } from '../testSourceLocations.ts';
 import { describeTestSourceChanges } from '../../../e2e/src/artifacts/testSourceChanges.ts';
 import { expandManifest } from '../../../e2e/src/artifacts/manifestEncoding.ts';
 import { FINAL_WORKTREE_REF } from '../../../e2e/src/run/stateRepoCompaction.ts';
 import {
   acceptanceConcepts,
+  allCoreConcepts,
+  relatedConceptIds,
   acceptanceConceptView,
   acceptanceAppAreaConcepts as appAreaConcepts,
   renderConceptText,
@@ -346,6 +349,25 @@ app.get("/api/concepts", (_req, res) => {
     isContribution: true,
   }));
   res.json([...core, ...contributions]);
+});
+
+const conceptAppRoot = path.resolve(import.meta.dirname, '../../../..');
+app.get('/api/concepts/:conceptId', (req, res) => {
+  const concepts = [...allCoreConcepts, ...contributedConcepts];
+  const concept = concepts.find(value => value.id === req.params.conceptId);
+  if (!concept) return res.status(404).json({ error: 'Concept not found' });
+  const implementations = readConceptImplementations(conceptAppRoot);
+  if (implementations.errors.length) return res.status(500).json({ error: implementations.errors.join('\n') });
+  return res.json({ ...acceptanceConceptView(concept), mechanics: concept.mechanics.map(text => renderConceptText(text)),
+    interplay: renderConceptText(concept.interplay),
+    related: relatedConceptIds(concept, concepts).map(id => ({ id, name: concepts.find(value => value.id === id)?.name ?? id })),
+    implementations: implementations.entries.filter(entry => entry.conceptId === concept.id) });
+});
+app.get('/api/concepts/:conceptId/implementation', (req, res) => {
+  const entry = readConceptImplementations(conceptAppRoot).entries.find(value => value.conceptId === req.params.conceptId
+    && value.file === req.query.file && String(value.line) === req.query.line && value.role === req.query.role);
+  if (!entry) return res.status(404).json({ error: 'Implementation not found in current code' });
+  return res.json({ ...entry, content: readFileSync(path.join(conceptAppRoot, entry.file), 'utf8') });
 });
 
 // GET /api/bundle-docs — return all bundle doc definitions

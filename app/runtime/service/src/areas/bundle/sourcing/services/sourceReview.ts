@@ -5,7 +5,10 @@ import { sourceFilePathToBundleNodeKey } from '../../../../shared/bundle-node/no
 import { diagnoseOrphanConnection } from './orphanDiagnosis.js';
 import { findGroupedSourceMoves } from './sourceMoveGroups.js';
 import { sourceTraversalGraph } from './sourceTraversalGraph.js';
+import { loadPendingSourceProposal } from './proposalStore.js';
+import { checkSourceProposalUpdates } from './proposalCapture.js';
 import { proposedSourceMoveResolutions } from '../../../../../../../shared_code/utils/sourceMoveResolutions.js';
+import { isPlainObject } from '../../../../../../../shared_code/utils/durableDocument.js';
 
 import { bundleStartingSelections } from '../../../../../../../shared_code/utils/startingSelectionUtils.js';
 import { registryProposal } from './sourceRegistryReview.js';
@@ -160,7 +163,7 @@ export function relinkSourceNode(node: FileBundleNodeConfig | FolderBundleNodeCo
     sourceGraphSubdirectory: path.posix.dirname(relative) === '.' ? '' : path.posix.dirname(relative) };
 }
 
-export function explainSourceOrphans(bundleDirectory: string, snapshot: SourceSnapshot, graph: SourceSnapshot['graph'], configs: BundleNodeConfig[], bundle = loadSourceBundleConfig(bundleDirectory)): SourceOrphanExplanation[] {
+export function explainSourceOrphans(bundleDirectory: string, snapshot: SourceSnapshot, graph: SourceSnapshot['graph'], configs: BundleNodeConfig[], bundle = loadSourceBundleConfig(bundleDirectory), capturedOnly = false): SourceOrphanExplanation[] {
   if (!graph) return [];
   const records = loadTrackingRecords(bundleDirectory);
   const protectedIds = new Set([bundle.entryBundleNodeId, bundle.defaultTraversalBundleNodeId,
@@ -168,7 +171,7 @@ export function explainSourceOrphans(bundleDirectory: string, snapshot: SourceSn
   const results: SourceOrphanExplanation[] = [];
   const priorGraphs = new Map<string, SourceSnapshot['graph']>();
   for (const config of configs) {
-    if (config.listType === 'blacklist' || graph.nodes.some(node => node.bundleNodeId === config.bundleNodeId)) continue;
+    if (graph.nodes.some(node => node.bundleNodeId === config.bundleNodeId)) continue;
     const previous = records[config.bundleNodeId]?.lastReachable;
     const filename = snapshotFilePath(snapshot, config);
     let reason = 'This configuration is not reachable in the snapshot’s working graph.';
@@ -185,7 +188,7 @@ export function explainSourceOrphans(bundleDirectory: string, snapshot: SourceSn
         if (previous && !priorGraphs.has(previous.snapshotId)) {
           priorGraphs.set(previous.snapshotId, loadSourceSnapshot(bundleDirectory, previous.snapshotId).graph);
         }
-        diagnosis = diagnoseOrphanConnection(bundle.sourceDirectory,  previous ? priorGraphs.get(previous.snapshotId) : undefined, graph, from, to, bundle.sources);
+        diagnosis = diagnoseOrphanConnection(bundle.sourceDirectory,  previous ? priorGraphs.get(previous.snapshotId) : undefined, graph, from, to, bundle.sources, capturedOnly ? snapshot.sourceAvailability ?? {} : undefined);
         if (diagnosis?.kind === 'missing-file') reason = diagnosis.from
           ? `${diagnosis.from} links to ${diagnosis.to}, but that file does not exist in the filesystem.`
           : `${diagnosis.to} does not exist in the filesystem.`;
@@ -268,6 +271,10 @@ async function buildSourceReview(bundleDirectory: string, attempt = 0): Promise<
 
 export async function scanSourceChanges(bundleDirectory: string, replaceCandidate = false, rebuildIndex = false): Promise<SourcingReview> {
   await initializeSourcing(bundleDirectory);
+  if (loadPendingSourceProposal(bundleDirectory)) {
+    await checkSourceProposalUpdates(bundleDirectory, rebuildIndex);
+    return sourcingReview(bundleDirectory);
+  }
   await withSourcingLock(bundleDirectory, async () => {
     const state = loadSourcingState(bundleDirectory)!;
     if (state.candidateId && !replaceCandidate && !rebuildIndex) return;
@@ -305,6 +312,7 @@ export async function scanSourceChanges(bundleDirectory: string, replaceCandidat
 }
 
 export async function acceptSourceSnapshot(bundleDirectory: string, request: SourceSnapshotAcceptance): Promise<SourceSnapshotAcceptanceResult> {
+  if (loadPendingSourceProposal(bundleDirectory)) throw new SourcingError('Accept this update in the sourcing workspace so its pending decisions are included.');
   let trackingRequest: SourceSnapshotAcceptanceResult['trackingRequest'];
   // Build the review before taking the write lock; acceptance checks its revision again inside it.
   const review = await sourcingReview(bundleDirectory);
@@ -317,7 +325,6 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
       throw new SourcingError(`Snapshot '${request.candidateId}' does not match the reviewed snapshot '${reviewedSnapshotId}'. Copy the snapshot ID and review token exactly from source review before applying.`);
     }
     if (fs.existsSync(path.join(bundleDirectory, 'config/draft_bundle_node_config.yaml'))) throw new SourcingError('Save or undo curation changes before accepting a source update.');
-    if (request.orphanRemovals !== undefined && request.orphanKeeps !== undefined) throw new SourcingError('Choose either orphan removals or retained entries, not both.', 400);
     const removals = new Set(request.orphanRemovals ?? []);
     for (const id of removals) {
       const orphan = review.orphans.find(item => item.bundleNodeId === id);
@@ -348,13 +355,9 @@ export async function acceptSourceSnapshot(bundleDirectory: string, request: Sou
     if (missingSnapshotRoles(candidate, bundle, relinked).length) throw new SourcingError('The bundle entry, traversal source, or selected folder is missing. Resolve its move before accepting this snapshot.');
     const relinkedGraph = await snapshotGraph(bundleDirectory, candidate, relinked, 0, false, bundle);
     const stillOrphaned = new Set(explainSourceOrphans(bundleDirectory, candidate, relinkedGraph, relinked, bundle).filter(item => !item.removalBlockedReason).map(item => item.bundleNodeId));
-    const keeps = new Set(request.orphanKeeps ?? []);
-    for (const id of keeps) if (!stillOrphaned.has(id)) throw new SourcingError('Only removable orphaned entries can be explicitly kept.', 400);
-    // Re-evaluate after identity decisions: rejected matches can create orphans,
-    // and accepted moves can restore reachability. Never delete a restored page.
-    if (request.orphanRemovals === undefined) {
-      for (const id of stillOrphaned) if (!keeps.has(id)) removals.add(id);
-    }
+    // Resolved identity can restore reachability. All remaining unreachable entries
+    // are cleaned together; an explicit legacy removal list cannot preserve others.
+    for (const id of stillOrphaned) removals.add(id);
     if (!state.candidateId && !removals.size) throw new SourcingError('No orphan removals or source update to apply.');
     for (const id of removals) if (!stillOrphaned.has(id)) throw new SourcingError('A selected entry is reachable after the chosen moves. Keep it and review the update again.');
     const next = relinked.filter(node => !removals.has(node.bundleNodeId));
@@ -414,20 +417,34 @@ function sourceImageType(filename: string): string | undefined {
   return types[path.extname(filename).toLowerCase()];
 }
 
-/** Read only an admitted image from retained snapshot history, never the live source directory. */
-export function sourceSnapshotImage(bundleDirectory: string, id: string, relative: string) {
+/** Read an admitted file from retained history, never from the live source directory. */
+export function sourceSnapshotContent(bundleDirectory: string, id: string, relative: string) {
   const state = loadSourcingState(bundleDirectory);
   if (!state || (state.candidateId !== id && !state.history.some(item => item.id === id))) throw new SourcingError('Snapshot is not available in this bundle', 404);
-  const type = sourceImageType(relative);
   const snapshot = loadSourceSnapshot(bundleDirectory, id);
-  if (!type || !Object.prototype.hasOwnProperty.call(snapshot.files, relative)) throw new SourcingError('Image is not available in this snapshot', 404);
+  if (!Object.prototype.hasOwnProperty.call(snapshot.files, relative)) throw new SourcingError('File is not available in this snapshot', 404);
   const bytes = snapshot.git ? readSourceBlob(snapshot.git, relative) : fs.readFileSync(sourcePath(snapshotSourceRoot(bundleDirectory, id), relative));
-  return { type, bytes };
+  return { type: sourceImageType(relative) ?? 'text/plain; charset=utf-8', bytes };
+}
+
+export function sourceSnapshotImage(bundleDirectory: string, id: string, relative: string) {
+  if (!sourceImageType(relative)) throw new SourcingError('Image is not available in this snapshot', 404);
+  return sourceSnapshotContent(bundleDirectory, id, relative);
 }
 
 export function sourceSnapshotHistory(bundleDirectory: string): SourceSnapshotHistory {
   const state = loadSourcingState(bundleDirectory);
-  return { acceptedId: state?.acceptedId ?? null, snapshots: state?.history ?? [] };
+  const filename = path.join(sourcingRoot(bundleDirectory), 'acceptance-history.json');
+  const acceptances: unknown = fs.existsSync(filename) ? JSON.parse(fs.readFileSync(filename, 'utf8')) : [];
+  if (!Array.isArray(acceptances) || acceptances.some((value: unknown) => !isPlainObject(value)
+    || typeof value.proposalId !== 'string' || typeof value.snapshotId !== 'string' || typeof value.acceptedAt !== 'string'
+    || !Array.isArray(value.identities) || value.identities.some((identity: unknown) => !isPlainObject(identity)
+      || typeof identity.bundleNodeId !== 'string' || typeof identity.previousPath !== 'string'
+      || (identity.proposedPath !== null && typeof identity.proposedPath !== 'string')))) {
+    throw new SourcingError('Invalid accepted identity history');
+  }
+  return { acceptedId: state?.acceptedId ?? null, snapshots: state?.history ?? [],
+    ...(acceptances.length > 0 && { acceptances: acceptances as SourceSnapshotHistory['acceptances'] }) };
 }
 
 import { bundleNodeKeySourceGraphPath } from '../../../../../../../shared_code/utils/bundleNodeKey.js';

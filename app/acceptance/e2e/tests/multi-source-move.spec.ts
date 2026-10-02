@@ -11,10 +11,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Move a captured page into another source and review the proposed match. Accepting the
  * move should preserve its stable identity and curation.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source move review preserves the accepted page identity and its curation', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -36,6 +32,8 @@ test('Multi-source move review preserves the accepted page identity and its cura
   await editor.sourceReview.expectMoveCount(1);
   await editor.sourceReview.expectMoveListed(original.bundleNodeId);
   await editor.sourceReview.expectMove('Moved', 'notes://Same/Inside.md', 'research://Moved/Inside.md');
+  await editor.sourceReview.confirmSuggestedIdentities();
+  await editor.sourceReview.continueToGraph();
   await editor.sourceReview.orphans.expectNotListed('Inside');
   await addKeyFrame(sourceMove);
   await checkpoint('content and link context support a move into another source');

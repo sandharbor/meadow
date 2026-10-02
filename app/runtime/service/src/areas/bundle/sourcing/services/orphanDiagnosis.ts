@@ -16,7 +16,7 @@ function links(graph: Graph, filename: EncodedBundleNodeKey) {
 }
 
 /** Check only paths already named by the tracked route; never persist wider discovery. */
-export function diagnoseOrphanConnection(root: string | undefined, previous: Graph, current: Graph, from: EncodedBundleNodeKey, to: EncodedBundleNodeKey, sources?: BundleSource[]): SourceOrphanExplanation['diagnosis'] {
+export function diagnoseOrphanConnection(root: string | undefined, previous: Graph, current: Graph, from: EncodedBundleNodeKey, to: EncodedBundleNodeKey, sources?: BundleSource[], capturedAvailability?: SourceSnapshot['sourceAvailability']): SourceOrphanExplanation['diagnosis'] {
   if (parseBundleNodeKey(to).kind !== 'file') return undefined;
   const fromPath = parseBundleNodeKey(from).kind === 'collection' ? undefined : bundleNodeKeySourceGraphPath(from);
   const toPath = bundleNodeKeySourceGraphPath(to);
@@ -26,7 +26,9 @@ export function diagnoseOrphanConnection(root: string | undefined, previous: Gra
   const stillLinked = originals.some(original => currentLinks && Object.prototype.hasOwnProperty.call(currentLinks, original)
     && (!currentLinks[original].link_resolved_target_path || relative(currentLinks[original].link_resolved_target_path) === toPath));
   let exists: boolean | undefined;
-  try {
+  if (capturedAvailability) {
+    exists = capturedAvailability[toPath] === 'missing' ? false : capturedAvailability[toPath] === 'present' ? true : undefined;
+  } else try {
     // An offline or inaccessible source root cannot establish that a file is absent.
     const locator = splitSourceGraphPath(toPath, sources);
     if (sources) root = sources.find(source => source.id === locator.sourceId)?.directory;

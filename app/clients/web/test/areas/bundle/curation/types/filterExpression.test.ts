@@ -27,7 +27,7 @@ import {
   reconcileFilterExpression,
   setFilterExpressionOperator,
   ungroupFilterExpression
-} from '../../../../../src/areas/bundle/curation/types/filterExpression';
+} from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filterExpression';
 
 const allPages = new Set(['a', 'b', 'c', 'd']);
 const matches = new Map<string, Set<string>>([

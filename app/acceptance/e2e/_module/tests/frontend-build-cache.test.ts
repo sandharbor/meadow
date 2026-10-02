@@ -7,6 +7,24 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { computeSourceHash } from '../../src/run/scripts/build_frontend.js';
 
+test('shared policy and contract edits invalidate the static E2E frontend', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-policy-cache-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const web = path.join(root, 'app/clients/web');
+  fs.mkdirSync(web, { recursive: true });
+  const hash = () => computeSourceHash(web, path.join(root, 'app/publishing_providers'));
+  for (const module of ['shared_code', 'contracts', 'concepts']) {
+    const before = hash();
+    const filename = path.join(root, 'app', module, 'policy.ts');
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    fs.writeFileSync(filename, 'export const policy = "captured content";');
+    assert.notEqual(hash(), before, `${module} participates in the browser bundle`);
+    const created = hash();
+    fs.writeFileSync(filename, 'export const policy = "newly reviewed captured content";');
+    assert.notEqual(hash(), created, `${module} edits require rebuilding`);
+  }
+});
+
 test('shared diff edits and new helpers invalidate the static E2E frontend', t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'meadow-frontend-cache-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

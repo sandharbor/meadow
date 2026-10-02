@@ -90,9 +90,9 @@ export function ManageSources({ bundleSlug, graph, isOpen, onClose, onOpen, onSt
   const stage = async () => {
     setBusy(true); setError('');
     try {
-      const review = await request('sources', { sources, ...(editingSelections && { startingSelections: selections }) }) as SourcingReview;
+      const review = await request('sources', { sources, proposalRevision: status?.proposalRevision, ...(editingSelections && { startingSelections: selections }) }) as SourcingReview & { pendingProposal?: boolean };
       setReviewReferences(false); onClose();
-      if (review.candidate) onStaged();
+      if (review.pendingProposal || review.candidate) onStaged();
       else { setSaved(true); onChanged(); }
     }
     catch (error) { setError(error instanceof Error ? error.message : String(error)); }

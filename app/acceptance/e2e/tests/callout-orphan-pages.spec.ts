@@ -29,10 +29,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Remove a link that leaves previously captured pages orphaned. Review the existing and
  * proposed orphans, then confirm that acceptance removes the chosen configuration.
- *
- * Project impact (planned): Migrate orphan and sensitivity review interactions into the workspace;
- * reconcile cleanup and provisional tracking with the proposed concepts.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("Sourcing reviews existing and candidate orphans with removal on acceptance", async ({
   page,
@@ -77,7 +73,7 @@ test("Sourcing reviews existing and candidate orphans with removal on acceptance
   await review.reviewOrphans();
   await orphansModal.showExplanation('t001 ---- child 2');
   await orphansModal.expectExplanation('t001 ---- child 2', 'no longer links to');
-  await review.expectNoMissingEntry('t001/deeper/t001 ---- child 2.md');
+  await review.expectNoLongerIncluded('t001/deeper/t001 ---- child 2.md');
   await addKeyFrame(orphan);
   await checkpoint('candidate orphan is listed once and removed by default with its broken link');
 

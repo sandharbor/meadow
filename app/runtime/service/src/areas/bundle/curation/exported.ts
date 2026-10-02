@@ -15,3 +15,4 @@ export { default as appShellRouterCustomFiltersRoutes } from './routes/customFil
 export { default as appShellRouterBundleCurationRoutes } from './routes/bundleCurationRoutes.js';
 export { default as appShellRouterBundleOperationRoutes } from './routes/bundleOperationRoutes.js';
 export { snapshotTrackingSensitivity as sourcingQuerySnapshotSensitivity, trackSnapshotAdditions as appShellCommandTrackSnapshotAdditions } from './services/snapshotTracking.js';
+export { prepareProposalTracking as sourcingQueryPrepareProposalTracking } from './services/proposalTrackingPlan.js';

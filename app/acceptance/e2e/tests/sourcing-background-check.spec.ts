@@ -11,10 +11,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Change source files and let the background check discover them. The count should update
  * quietly while the toolbar keeps its normal review action.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing quietly checks every thirty seconds and updates the change count without replacing the toolbar button', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -102,23 +98,30 @@ test('Sourcing quietly checks every thirty seconds and updates the change count 
   // Check scanning while review is open.
   await sourceReview.open();
   const rename = await sourceReview.moveFrom('t003 ---- page with section to link to.md');
-  await rename.expandDetails();
   await rename.keepSeparate();
+  await expect(sourceReview.root.getByRole('button', { name: 'Accept source changes', exact: true })).toBeEnabled();
   await sourceChanges.apply('remove-incoming-link');
   gate = new Promise<void>(resolve => { release = resolve; });
   await page.clock.fastForward(60000);
   expect(scans).toBe(3);
   await expect(status.getByTestId('source-background-progress')).not.toBeVisible();
   await rename.expectSeparateSelected();
-  await expect(review).toHaveText('3 source changes available – Review');
-  await checkpoint('source review pauses automatic checks and preserves its decisions');
+  await expect(sourceReview.root.getByRole('status')).toContainText('Newer sources available');
+  await checkpoint('source review discovers newer material without replacing the reviewed capture or its decisions');
 
   // Resume manual and automatic scanning.
   release();
   await page.clock.resume();
   await sourceReview.checkAgain();
+  expect(scans).toBe(3);
+  await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/sourcing/scan') && response.ok()),
+    sourceReview.close(),
+  ]);
+  await expect(update).toBeVisible();
   expect(scans).toBe(4);
-  await sourceReview.close();
+  await expect(status.getByTestId('source-background-progress')).not.toBeVisible();
+  await editor.waitForSourceCheck();
   await page.clock.fastForward(30000);
   await expect.poll(() => scans).toBe(5);
   await expect(status.getByTestId('source-background-progress')).not.toBeVisible();

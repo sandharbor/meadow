@@ -10,10 +10,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Turn off automatic tracking for newly accepted pages. A later source review should
  * remember that preference for the bundle.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing remembers the bundle preference to leave new pages untracked', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

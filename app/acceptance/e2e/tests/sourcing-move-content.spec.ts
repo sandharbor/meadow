@@ -10,10 +10,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Move and edit a page at the same time. Review should compare the content and show the
  * unchanged leading part of its route only once.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing compares edited content for a move while showing its unchanged leading route once', async ({ page, meadowCli, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -29,7 +25,6 @@ test('Sourcing compares edited content for a move while showing its unchanged le
 
   // --- Test start ---
   // Compare the moved content.
-  await move.expandDetails();
   await move.expectSingleRoute(['main page.md']);
   await move.compareContent();
   await move.expectContentEdit('This test covers standard markdown link syntax.', 'This updated page demonstrates standard Markdown links after a directory move.');

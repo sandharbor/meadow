@@ -18,10 +18,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Replace a source page while a saved generation exists. Generated material should remain
  * unchanged until the source replacement is accepted and regenerated.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing keeps generated material stable until a full-page source replacement is accepted', async ({ page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

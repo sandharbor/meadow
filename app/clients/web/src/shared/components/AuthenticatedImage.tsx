@@ -46,6 +46,8 @@ export function AuthenticatedImage({
     let generatedObjectUrl: string | null = null;
     let cancelled = false;
 
+    const onPageHide = () => { cancelled = true; abortController.abort(); };
+    window.addEventListener('pagehide', onPageHide);
     setLoadedImage(null);
     setErrored(false);
 
@@ -67,6 +69,7 @@ export function AuthenticatedImage({
     })();
 
     return () => {
+      window.removeEventListener('pagehide', onPageHide);
       cancelled = true;
       abortController.abort();
       if (generatedObjectUrl) URL.revokeObjectURL(generatedObjectUrl);

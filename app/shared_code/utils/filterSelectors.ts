@@ -348,9 +348,7 @@ export const createCustomBundleNodeSelector = (
           break;
         }
         case 'content':
-          // For content matching, we'd need to load file content
-          // For now, we'll match against node title as a fallback
-          matchValue = node.bundleNodeName || '';
+          matchValue = node.body ?? '';
           break;
       }
 

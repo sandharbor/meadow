@@ -44,6 +44,13 @@ export function SourceSnapshotsModal({ isOpen, bundleSlug, onClose, onRecheck, c
               <div>
                 <time dateTime={item.acceptedAt ?? item.capturedAt} className="text-sm font-medium text-neutral-800">{new Date(item.acceptedAt ?? item.capturedAt).toLocaleString()}</time>
                 <p className="mt-1 text-xs text-neutral-500">{item.fileCount.toLocaleString()} source {item.fileCount === 1 ? 'file' : 'files'}</p>
+                {(history.acceptances ?? []).filter(acceptance => acceptance.snapshotId === item.id && acceptance.identities.length > 0).map(acceptance => <details key={acceptance.proposalId} className="mt-2 text-sm">
+                  <summary className="cursor-pointer">Accepted identity decisions</summary>
+                  <p className="mt-1 text-xs text-neutral-500">These completed decisions are historical evidence.</p>
+                  <ul className="mt-2 space-y-2">{acceptance.identities.map(identity => <li key={identity.bundleNodeId}>
+                    <span>{identity.previousPath}</span><span> → {identity.proposedPath ?? 'Different pages; old configuration removed'}</span>
+                  </li>)}</ul>
+                </details>)}
               </div>
               {item.id === history.acceptedId && <span className="rounded bg-main-50 px-2 py-1 text-xs font-medium text-main-800">Current</span>}
             </li>)}

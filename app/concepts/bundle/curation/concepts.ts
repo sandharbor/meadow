@@ -28,7 +28,7 @@ export const blacklist = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`The explicit exclusion of a source page or source-folder subtree from a bundle.`,
   mechanics: [
-    conceptText`A page blacklist is local and non-transitive; a folder blacklist is a hard subtree boundary.`,
+    conceptText`A page blacklist stops traversal through that page; independent routes can retain its descendants. A folder blacklist is a hard subtree boundary.`,
     conceptText`Removing the blacklist restores pages that remain reachable under the bundle's other constraints.`,
   ],
   interplay: conceptText`Blacklisting constrains ${conceptLink(coreConceptIds.tracking, "Bundle Page Tracking")} and protects the generated graph before ${conceptLink(coreConceptIds.htmlGeneration, "HTML Bundle Generation")}.`,
@@ -43,7 +43,7 @@ export const bundleConfig = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`The durable per-page configuration that records a bundle page's tracking and traversal choices.`,
   mechanics: [
-    conceptText`Simple operations can save immediately, while compound depth or bulk changes remain a draft until explicitly saved.`,
+    conceptText`Curation tracking and simple settings save immediately. Traversal edits and exclusions with wider graph effects are staged in a sourcing proposal; Later preserves the draft and Discard restores accepted configuration. Acceptance commits the reviewed settings with their captured material.`,
   ],
   interplay: conceptText`${conceptLink(coreConceptIds.overrides, "Page Configuration Overrides")} exposes pages whose settings differ from bundle defaults; ${conceptLink(coreConceptIds.initialPage, "Initial Bundle Page")} has additional invariants.`,
 });
@@ -116,7 +116,7 @@ export const frontier = defineMeadowConcept({
   appAreaIds: curationArea,
   definition: conceptText`A reachable page just beyond the bundle's current traversal boundary.`,
   mechanics: [
-    conceptText`Frontier depth bounds exploration beyond the normal traversal boundary. Depth overrides on frontier-only pages are ignored, including overrides that would shorten exploration; exhausted incoming-link traversal remains exhausted. Stop and exclusion policies still apply.`,
+    conceptText`Frontier exploration belongs to sourcing. Frontier depth bounds exploration beyond the normal traversal boundary. Depth overrides on frontier-only pages are ignored, including overrides that would shorten exploration; exhausted incoming-link traversal remains exhausted. Stop and exclusion policies still apply.`,
     conceptText`An embedded asset at the boundary remains directly trackable without expanding ordinary page traversal. Direct embeds in HTML pages are retained, including stylesheets, scripts, images, and embedded documents. Supported images in other source formats are retained when the image extension setting is enabled.`,
   ],
   interplay: conceptText`An ordinary frontier page is visible for boundary reasoning but cannot become a ${conceptLink(coreConceptIds.tracking, "tracked bundle page")} until the graph constraints admit it; required embedded assets are the deliberate exception.`,
@@ -124,25 +124,25 @@ export const frontier = defineMeadowConcept({
 
 export const frontierPendingSources = defineMeadowConcept({
   id: coreConceptIds.frontierPendingSources,
-  name: "Pending source changes hide the frontier",
+  name: "Newer source material pauses frontier exploration",
   kind: "behavioral-rule",
   searchFacet: false,
   parentId: coreConceptIds.frontier,
   appAreaIds: curationArea,
-  definition: conceptText`The frontier is hidden whenever source changes are waiting for review.`,
-  mechanics: [conceptText`Rationale: Curation must not combine an accepted graph with a frontier discovered from different source material. Orphan cleanup by itself does not change the source material.`, conceptText`Example: With the frontier visible, rename a reachable page. The next source check hides the frontier and explains why; the accepted snapshot remains unchanged.`],
+  definition: conceptText`The frontier is unavailable when live included sources differ from the capture being reviewed.`,
+  mechanics: [conceptText`Rationale: Sourcing must not combine reviewed links with destinations discovered from different live material. A pending proposal alone does not prevent frontier exploration.`, conceptText`Example: With the frontier visible, rename a reachable page. The next frontier request explains why it is unavailable; both the reviewed capture and the accepted snapshot remain unchanged until their separate explicit actions.`],
   interplay: conceptText`This is a behavioral rule of ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}.`,
 });
 
 export const frontierDismissal = defineMeadowConcept({
   id: coreConceptIds.frontierDismissal,
-  name: "Dismissing the notice disables the frontier filter",
+  name: "Disabling the frontier clears its unavailable notice",
   kind: "behavioral-rule",
   searchFacet: false,
   parentId: coreConceptIds.frontier,
   appAreaIds: curationArea,
-  definition: conceptText`Choosing Okay in the frontier notice turns off the frontier filter.`,
-  mechanics: [conceptText`Rationale: Acknowledging a notice is not acceptance of source changes. Source review remains a separate user decision.`, conceptText`Example: After a source change hides the frontier, choose Okay. The filter is off and the source update remains available for review.`],
+  definition: conceptText`Turning off the frontier filter clears its unavailable notice without updating or accepting source material.`,
+  mechanics: [conceptText`Rationale: Acknowledging a notice is not acceptance of source changes. Source review remains a separate user decision.`, conceptText`Example: After newer source material pauses exploration, turn off Frontier. The notice closes and the current proposal remains available.`],
   interplay: conceptText`This is a behavioral rule of ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}.`,
 });
 
@@ -165,7 +165,7 @@ export const frontierLiveDiscovery = defineMeadowConcept({
   searchFacet: false,
   parentId: coreConceptIds.frontier,
   appAreaIds: curationArea,
-  definition: conceptText`Requesting the frontier verifies that live included sources still match the accepted snapshot before showing additional pages.`,
+  definition: conceptText`Requesting the frontier verifies that live included sources still match the reviewed capture before showing additional pages.`,
   mechanics: [conceptText`Rationale: Frontier discovery is temporary and does not retain its page contents. Offline curation and generation continue from the accepted snapshot.`, conceptText`Example: Take the source directory offline: accepted pages still load, while requesting the frontier shows an unavailable notice.`],
   interplay: conceptText`This is a behavioral rule of ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}.`,
 });
@@ -236,7 +236,7 @@ export const overrides = defineMeadowConcept({
   definition: conceptText`A per-page traversal setting that differs from the bundle's default configuration.`,
   mechanics: [
     conceptText`The Overrides filter highlights affected pages and excludes the initial page's base settings.`,
-    conceptText`A depth override changes traversal from the selected page without tracking destination pages. Tracking additional pages remains a separate curation decision.`,
+    conceptText`A depth override stages traversal from the selected page in sourcing. Newly admitted pages receive provisional tracking choices under the proposal preference and sensitivity policy; acceptance applies both material and resolved tracking decisions.`,
   ],
   interplay: conceptText`Overrides are stored in ${conceptLink(coreConceptIds.bundleConfig, "Bundle Page Configuration")} and alter the graph boundary that produces ${conceptLink(coreConceptIds.frontier, "Frontier Bundle Pages")}.`,
 });

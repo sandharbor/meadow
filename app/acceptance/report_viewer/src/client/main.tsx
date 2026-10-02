@@ -17,6 +17,7 @@ limitations under the License.
 import React, { useEffect, useRef, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom'
+import ConceptPage from './components/ConceptPage.tsx'
 import RunsList from './components/RunsList.tsx'
 import RunDetail from './components/RunDetail.tsx'
 import ScenarioViewer from './components/ScenarioViewer.tsx'
@@ -204,6 +205,7 @@ const AppHeader: React.FC = () => {
       <Routes>
         <Route path="/" element={<ReportsNavigation />} />
         <Route path="/agents" element={<ReportsNavigation />} />
+        <Route path="/concepts/:conceptId" element={<Link to="/">Reports / Concepts</Link>} />
         <Route path="/agents/:runId" element={<AgentBreadcrumbs />} />
         <Route path="/agents/:runId/:trialId" element={<AgentBreadcrumbs />} />
         <Route path="/:runId" element={<Breadcrumbs />} />
@@ -216,13 +218,14 @@ const AppHeader: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="h-full flex flex-col">
         <AppHeader />
         <div className="flex-1 min-h-0">
           <Routes>
             <Route path="/" element={<RunsList />} />
             <Route path="/agents" element={<AgentRunsList />} />
+            <Route path="/concepts/:conceptId" element={<ConceptPage />} />
             <Route path="/agents/:runId" element={<AgentRunDetail />} />
             <Route path="/agents/:runId/:trialId" element={<AgentTrialViewer />} />
             <Route path="/:runId" element={<RunDetail />} />

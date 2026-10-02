@@ -11,10 +11,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Move a nested page while leaving name-only links unchanged. Review and acceptance should
  * preserve the page's identity and working links.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing moves a nested page while preserving its identity and name-only links', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -34,6 +30,8 @@ test('Sourcing moves a nested page while preserving its identity and name-only l
   await editor.sourceReview.expectMoveCount(1);
   await editor.sourceReview.expectMove('Moved', 't001/deeper/t001 ---- child 2.md', 'source-changes/moved/t001 ---- child 2.md');
   await editor.sourceReview.expectMoveListed(original.bundleNodeId);
+  await editor.sourceReview.confirmSuggestedIdentities();
+  await editor.sourceReview.continueToGraph();
   await editor.sourceReview.orphans.expectNotListed(original.bundleNodeName);
   await addKeyFrame(sourceMove);
   await checkpoint('review identifies the move through the shared source change');

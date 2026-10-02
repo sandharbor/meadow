@@ -40,7 +40,7 @@ export interface CustomFilterConfig {
 }
 
 export interface CustomFilterAction {
-  type: 'highlight' | 'mark_sensitive';
+  type: 'highlight' | 'mark_sensitive' | 'fade';
   color?: string; // for highlight
   isDashed?: boolean; // for highlight
 }
@@ -53,4 +53,4 @@ export interface GlobalCustomFiltersConfig {
 export interface BundleCustomFiltersConfig {
   filters: CustomFilterConfig[];
   version: string;
-} 
+}

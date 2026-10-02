@@ -24,10 +24,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Inspect pages beyond the traversal boundary and change the traversal depth. The frontier
  * should update as pages enter or leave the working graph.
- *
- * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
- * generated-material steps accordingly.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("frontier nodes show filtered pages and respond to depth changes", async ({ page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---
@@ -41,6 +37,8 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
   const editor = new BundleEditorPage(page, expect);
   await editor.waitForLoad("meadow-test-bundle-big");
   await checkpoint("bundle editor loaded");
+
+  await editor.sourceReview.open();
 
   // Enable frontier pages.
   const filterPanel = new FilterPanelComponent(page, expect);
@@ -101,5 +99,7 @@ test("frontier nodes show filtered pages and respond to depth changes", async ({
 
   void bigBundle;
 
+  await editor.sourceReview.discard();
+  await checkpoint("frontier exploration leaves accepted material unchanged");
   await assertMeadowHomeState();
 });

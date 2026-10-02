@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, expect, it } from 'vitest';
 import type { IBundleNode } from '../../../../../../../contracts/types/graph';
-import { bundleIsFolderBased } from '../../../../../src/areas/bundle/curation/utils/bundleMode';
+import { bundleIsFolderBased } from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/bundleMode';
 
 const node = (bundleNodeId: string, bundleNodeKind: IBundleNode['bundleNodeKind']) => ({ bundleNodeId, bundleNodeKind });
 

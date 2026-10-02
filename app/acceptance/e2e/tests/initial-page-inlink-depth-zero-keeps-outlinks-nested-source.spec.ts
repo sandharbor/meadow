@@ -43,10 +43,6 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Set the starting page's incoming-link depth to zero in a nested source directory. Its
  * depth-one outgoing media should remain visible.
- *
- * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
- * proposal lifecycle.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible (nested source dir)", async ({
   page,
@@ -131,6 +127,8 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
     await addKeyFrame(images);
     await addKeyFrame(excalidraw);
     await checkpoint("depth-1 outlink media still present in list view");
+    await editor.sourceReview.accept();
+    await checkpoint("accepted incoming-depth change preserves the outgoing media");
 
     void customBundle;
 
@@ -141,9 +139,7 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
     rmSync(wrapperDir, { recursive: true, force: true });
   }
 
-  // The test ends with the inlink-depth change still un-saved, so the draft
-  // bundle_node_config is expected to be present as an untracked file.
   await assertMeadowHomeState({
-    allowedUntracked: ["bundles/t006-embedded-media/config/draft_bundle_node_config.yaml"],
+    allowedUntracked: [],
   });
 });

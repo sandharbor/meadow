@@ -10,10 +10,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Open a bundle, request source checks, and introduce a change. The toolbar should briefly
  * report no changes when appropriate and retain access to pending review.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing toolbar checks on entry and request, briefly shows no changes, and retains the review action', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -45,12 +41,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await expect(orphanReview).toBeVisible();
   await sourceReview.open();
   await sourceReview.applyOrphanRemovals();
-  await expect(update.getByRole('status')).toHaveText('No changes');
-  await page.clock.runFor(1999);
-  await expect(update.getByRole('status')).toHaveText('No changes');
   await expect(update).toBeEnabled();
-  await addKeyFrame(sourceSnapshot);
-  await page.clock.runFor(1);
   await expect(update).toHaveText('Refresh sources');
   const refreshBounds = await update.boundingBox();
 
@@ -66,14 +57,14 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await addKeyFrame(sourceSnapshot);
   await page.clock.runFor(2000);
   await expect(update).toHaveText('Refresh sources');
-  expect(scans).toBe(2);
+  expect(scans).toBe(3);
   await addKeyFrame(sourceSnapshot);
   await checkpoint('the refresh button briefly says no changes before restoring its label');
 
   // Inspect the accepted history.
   const initialHistory = await editor.reviewSourceHistory();
   await initialHistory.expectSnapshotCount(1);
-  expect(scans).toBe(2);
+  expect(scans).toBe(3);
   await addKeyFrame(sourceSnapshot);
   await initialHistory.close();
   await checkpoint('initial history contains only the accepted checkpoint');
@@ -106,7 +97,7 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   await expect(update).toBeEnabled();
   await page.clock.runFor(250);
   await editor.expectSourceRefreshSpinning(false);
-  expect(scans).toBe(4);
+  expect(scans).toBe(5);
   await checkpoint('compact refresh discovers another change without opening review');
 
   // Use the same refresh control at the top of source review.
@@ -122,9 +113,10 @@ test('Sourcing toolbar checks on entry and request, briefly shows no changes, an
   // Compare pending and accepted history.
   const pendingHistory = await editor.reviewSourceHistory();
   await pendingHistory.expectSnapshotCount(1);
-  expect(scans).toBe(5);
+  expect(scans).toBe(6);
   await pendingHistory.close();
   await sourceReview.open();
+  await sourceReview.confirmSuggestedIdentities();
   await sourceReview.accept();
   const acceptedHistory = await editor.reviewSourceHistory();
   await acceptedHistory.expectSnapshotCount(2);

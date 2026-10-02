@@ -51,6 +51,7 @@ export interface GraphMarkSensitiveAction {
 
 export type BuiltInGraphFilterAction =
   | GraphHighlightAction
+  | { type: 'fade' }
   | GraphShowLabelsAction
   | GraphShowTitlesAction
   | GraphMarkSensitiveAction;

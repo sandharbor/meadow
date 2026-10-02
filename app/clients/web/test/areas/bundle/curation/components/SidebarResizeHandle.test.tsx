@@ -16,7 +16,7 @@ limitations under the License.
 
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import SidebarResizeHandle from '../../../../../src/areas/bundle/curation/components/SidebarResizeHandle';
+import SidebarResizeHandle from '../../../../../src/areas/bundle/shared-sourcing-curation/components/SidebarResizeHandle';
 
 interface RenderHandleOptions {
   direction?: 'left' | 'right';

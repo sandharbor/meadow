@@ -1,0 +1,22 @@
+id: review-mixed-changes
+label: Compare every source change category
+action: "Remove a leaf file and the route through Departing, rename the independent route, and link a previously unlinked addition."
+check: "The review distinguishes missing files from unreachable pages, pairs the confirmed rename, and accepts all changes regardless of visibility filters."
+e2e: sourcing-proposal-change-filters.spec.ts
+categories: [modify, rename, remove]
+sourceGraph: sourcing-review-data
+operations:
+  - delete: Leaf.md
+  - move: { from: Routes/Reference.md, to: Routes/Reference Renamed.md }
+  - replaceText:
+      path: Start.md
+      before: "[[Routes/Reference]]"
+      after: "[[Routes/Reference Renamed]]"
+  - replaceText:
+      path: Start.md
+      before: "[[Leaf]]"
+      after: "[[Additions/Safe One]]"
+  - replaceText:
+      path: Routes/Branch/Bridge.md
+      before: "[[Departing]]"
+      after: "The route to Departing is no longer included."

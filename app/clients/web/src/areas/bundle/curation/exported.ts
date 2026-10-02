@@ -10,6 +10,6 @@
  * Export capabilities and contracts, not implementation conveniences.
  */
 
-export { default as AppShellComponentBundleNodeTabs } from './components/BundleNodeTabs.js';
-export { useFilterState as useAppShellStateFilterState } from './types/filters.js';
-export { createUntrackedNodeSelector as appShellQueryCreateUntrackedNodeSelector } from './types/filters.js';
+export { CurationEditor as AppShellComponentBundleNodeTabs } from './editorFacade.js';
+export { useFilterState as useAppShellStateFilterState } from './editorFacade.js';
+export { createUntrackedNodeSelector as appShellQueryCreateUntrackedNodeSelector } from './editorFacade.js';

@@ -12,10 +12,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Add a folder to a bundle that already starts from a page. Preserve the page selection
  * and require explicit repair when a starting selection becomes invalid.
- *
- * Project impact (planned): Review source-registration, repair, and naming flows against the proposal
- * transaction and required-entry rules; preserve source identity and publication guarantees.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source starting selections preserve the page start when adding a folder and require explicit repair', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

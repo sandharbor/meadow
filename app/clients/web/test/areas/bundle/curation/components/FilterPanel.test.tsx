@@ -16,11 +16,20 @@ limitations under the License.
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, screen, waitFor } from '@testing-library/react';
-import FilterPanel from '../../../../../src/areas/bundle/curation/components/FilterPanel';
-import { IFilter } from '../../../../../src/areas/bundle/curation/types/filters';
+import SharedFilterPanel from '../../../../../src/areas/bundle/shared-sourcing-curation/components/FilterPanel';
+import { EditorOperationsContext } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/editorOperations';
+import { apiRequest } from '../../../../../src/shared/utils/apiClient';
+import type React from 'react';
+import { IFilter } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filters';
 import { Graph } from '../../../../../../../contracts/types/graph';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import type { FileType } from '../../../../../../../contracts/types/FileType';
+
+function FilterPanel(props: React.ComponentProps<typeof SharedFilterPanel>) {
+  return <EditorOperationsContext.Provider value={{ mode: 'curation', request: (operation, options) => apiRequest(`bundles/${props.bundleSlug}/curation/${operation}`, options) }}>
+    <SharedFilterPanel {...props} />
+  </EditorOperationsContext.Provider>;
+}
 
 describe('FilterPanel', () => {
   const fileNode = (key: string, fileType: FileType): IBundleNode => ({

@@ -23,7 +23,7 @@ export class SourceOrphansReview {
   ) {}
 
   private get modalTitle() {
-    return this.page.getByRole("dialog", { name: "Source changes" });
+    return this.page.getByRole("dialog", { name: "Configuration cleanup", exact: true });
   }
 
   private get orphansView() {
@@ -39,20 +39,27 @@ export class SourceOrphansReview {
   }
 
   async waitForOpen() {
+    if (!await this.modalTitle.isVisible()) await this.page.getByTestId('sourcing-workspace').getByRole('button', { name: /^Configuration cleanup ·/ }).click();
     await this.expect(this.modalTitle).toBeVisible();
     await this.expect(this.orphansView).toBeVisible();
   }
+
+  async close() { await this.modalTitle.getByRole('button', { name: 'Close', exact: true }).click(); }
 
   async expectClosed() {
     await this.expect(this.modalTitle).not.toBeVisible();
   }
 
   async expectSummaryCount(count: number) {
+    await this.waitForOpen();
     await this.expect(this.modalTitle.getByTestId('source-orphans').getByRole('heading')).toHaveText(`Orphaned configuration${count >= 10 ? ` (${count})` : ''}`);
     await this.expectOrphanCount(count);
   }
 
   async expectNotListed(title: string) {
+    const button = this.page.getByTestId('sourcing-workspace').getByRole('button', { name: /^Configuration cleanup ·/ });
+    if (!await button.isVisible()) { await this.expect(this.orphanRow(title)).toHaveCount(0); return; }
+    await this.waitForOpen();
     await this.expect(this.orphanRow(title)).toHaveCount(0);
   }
 
@@ -84,7 +91,7 @@ export class SourceOrphansReview {
     await help.hover();
     await this.expect(tooltip).toBeVisible();
     await this.expect(tooltip).toContainText('The source files are untouched.');
-    await this.modalTitle.getByRole('heading', { name: 'Source changes', level: 2, exact: true }).hover();
+    await this.modalTitle.getByRole('heading', { name: 'Configuration cleanup', level: 2, exact: true }).hover();
     await help.focus();
     await this.expect(tooltip).toBeVisible();
     await help.press('Tab');
@@ -101,6 +108,7 @@ export class SourceOrphansReview {
   }
 
   async showExplanation(title: string) {
+    await this.waitForOpen();
     const row = this.orphanRow(title);
     if (await row.getAttribute('open') === null) await row.locator('summary').first().click();
     await this.expect(row.getByText('Why is this orphaned?', { exact: true })).toBeVisible();
@@ -124,12 +132,8 @@ export class SourceOrphansReview {
     await this.orphanRow(title).getByText('Previous route', { exact: true }).click();
   }
 
-  async keepInConfig(title: string) {
-    await this.showExplanation(title);
-    await this.orphanRow(title).getByRole('checkbox', { name: 'Keep in config', exact: true }).check();
-  }
-
   async expectOrphanListed(title: string) {
+    await this.waitForOpen();
     await this.expect(this.orphanRow(title)).toBeVisible();
   }
 }

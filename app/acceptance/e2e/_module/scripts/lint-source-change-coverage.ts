@@ -9,13 +9,22 @@ import { fixtureSourceGraphs, loadSourceChanges } from '../../../../shared_code/
 const root = fileURLToPath(new URL('../../../../../', import.meta.url));
 const tests = path.join(root, 'app/acceptance/e2e/tests');
 const definitions = path.join(root, 'app/shared_data/source_changes');
+function scenarioFiles(directory: string): string[] {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const filename = path.join(directory, entry.name);
+    return entry.isDirectory() ? scenarioFiles(filename) : entry.name.endsWith('.spec.ts') ? [filename] : [];
+  });
+}
+const scenarios = scenarioFiles(tests);
 const owners = new Map<string, string>();
 for (const graph of fs.readdirSync(definitions)) {
   for (const change of loadSourceChanges(root, graph)) {
     const key = `${graph}/${change.id}`;
     if (owners.has(change.e2e)) throw new Error(`${change.e2e} owns both ${owners.get(change.e2e)} and ${key}; each change needs its own scenario`);
     owners.set(change.e2e, key);
-    const file = path.join(tests, change.e2e);
+    const matches = scenarios.filter(filename => path.basename(filename) === change.e2e);
+    if (matches.length !== 1) throw new Error(`${key}: expected one scenario named ${change.e2e}, found ${matches.length}`);
+    const file = matches[0];
     const ast = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
     let applies = false;
     const visit = (node: ts.Node) => {

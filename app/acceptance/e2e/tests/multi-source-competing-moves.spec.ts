@@ -12,10 +12,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
  * Replace one accepted page with two identical, reachable pages in different sources.
  * Review must require an identity choice; keeping them separate should retire the old
  * identity.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source competing moves never assign the old identity to either identical destination', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -36,7 +32,6 @@ test('Multi-source competing moves never assign the old identity to either ident
   await editor.sourceReview.open();
   await editor.sourceReview.expectMoveCount(1);
   const move = await editor.sourceReview.moveForNode(original.bundleNodeId);
-  await move.expandDetails();
   await move.expectUnresolved(['research://Moved/Inside.md', 'reference://Moved/Inside.md']);
   await editor.sourceReview.expectIdentityChoiceRequired();
   expect(bundleConfig.findNode({ bundleNodeId: original.bundleNodeId })).toEqual(original);
@@ -45,18 +40,19 @@ test('Multi-source competing moves never assign the old identity to either ident
 
   // Keep the destinations separate.
   await move.keepSeparate();
+  await editor.sourceReview.continueToGraph();
   await editor.sourceReview.expectReadyToAccept();
   await checkpoint('the user chose different pages and the update is ready to accept');
 
   // Accept the source update.
   await editor.sourceReview.accept();
   const updated = bundleConfig.readNodes();
-  expect(updated.filter(node => node.bundleNodeName === 'Inside' && node.sourceGraphSubdirectory === 'Moved')).toEqual([]);
+  expect(updated.filter(node => node.bundleNodeName === 'Inside' && node.sourceGraphSubdirectory === 'Moved')).toHaveLength(2);
   expect(updated.some(node => node.bundleNodeId === original.bundleNodeId)).toBe(false);
   await editor.switchToListView();
   for (const source of ['source000002', 'source000003']) await editor.expectListViewNodeVisible(`file:_mw_sources/${source}/Moved/Inside.md`, true);
   await addKeyFrame(sourceSnapshot);
-  await checkpoint('explicitly keeping pages separate removes the old identity and leaves both new pages untracked');
+  await checkpoint('explicitly keeping pages separate removes the old identity and automatically tracks both safe additions with fresh identities');
 
   await skipMeadowHomeStateCheck();
 });

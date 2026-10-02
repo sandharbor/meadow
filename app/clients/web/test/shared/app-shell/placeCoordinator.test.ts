@@ -56,17 +56,77 @@ describe('PlaceCoordinator', () => {
 
   it('opens as deep as it can when a surface refuses or never appears', async () => {
     const { coordinator, arrivals, fireTimers, flush } = harness();
-    coordinator.handleLocation('/bundle/big?surface=source-review', { initial: true });
-    coordinator.registerSurface({ surface: 'source-review', onRequest: () => 'no source changes to review' });
+    coordinator.handleLocation('/bundle/big?surface=node-links&node=/gone.md', { initial: true });
+    coordinator.registerSurface({ surface: 'node-links', onRequest: () => 'the page is missing' });
     await flush();
     expect(arrivals.at(-1)).toEqual({
-      requested: '/bundle/big?surface=source-review',
+      requested: '/bundle/big?surface=node-links&node=/gone.md',
       reached: '/bundle/big',
-      notice: "Opened big, but Source review couldn't open: no source changes to review.",
+      notice: "Opened big, but Page links couldn't open: the page is missing.",
     });
     coordinator.handleLocation('/bundle/other?surface=source-snapshots', { initial: false });
     fireTimers();
     expect(arrivals.at(-1)?.notice).toBe("Opened other, but Source snapshots couldn't open: it isn't available here.");
+  });
+
+  it('opens the requested editor before restoring its selection and exact dialog parameters', async () => {
+    const { coordinator, arrivals, flush } = harness();
+    const steps: string[] = [];
+    coordinator.registerSelection(() => { throw new Error('Curation must not receive the sourcing selection.'); });
+    coordinator.registerSurface({ surface: 'custom-filter', editorMode: 'curation', onRequest: () => { throw new Error('Curation must not open the sourcing filter.'); } });
+    coordinator.handleLocation('/bundle/big?editorMode=sourcing&surface=custom-filter&filter=private&select=key:/Draft.md', { initial: true });
+    expect(arrivals).toHaveLength(0);
+    coordinator.registerEditorMode(mode => {
+      steps.push(mode);
+      coordinator.registerSelection(references => { steps.push('selection'); return { selected: references, missing: 0 }; }, 'sourcing');
+      coordinator.registerSurface({ surface: 'custom-filter', editorMode: 'sourcing', onRequest: parameters => { steps.push(`filter:${parameters?.filter}`); return true; } });
+      return Promise.resolve();
+    });
+    await flush();
+    expect(steps).toEqual(['sourcing', 'selection', 'filter:private']);
+    expect(arrivals.at(-1)?.reached).toBe('/bundle/big?editorMode=sourcing&surface=custom-filter&filter=private&select=key:%2FDraft.md');
+    expect(arrivals.at(-1)?.notice).toBeUndefined();
+  });
+
+  it('waits for a requested sourcing dialog while the editor reports its default workspace', async () => {
+    const { coordinator, arrivals, flush } = harness();
+    coordinator.registerEditorMode(async () => {
+      coordinator.reportSurface('source-review', undefined, true, {});
+    });
+    coordinator.handleLocation('/bundle/big?editorMode=sourcing&surface=source-diff&node=file:Leaf.md', { initial: true });
+    await flush();
+    coordinator.registerSurface({ surface: 'source-diff', editorMode: 'sourcing', onRequest: () => true });
+    await flush();
+    expect(arrivals.at(-1)?.reached).toBe('/bundle/big?editorMode=sourcing&surface=source-diff&node=file:Leaf.md');
+    expect(arrivals.at(-1)?.notice).toBeUndefined();
+  });
+
+  it('preserves checkpoint presentation only on initial arrival while subsequent links focus normally', async () => {
+    const { coordinator, flush } = harness();
+    const contexts: boolean[] = [];
+    coordinator.registerSelection((references, context) => {
+      contexts.push(context.preserveView);
+      return { selected: references, missing: 0 };
+    });
+    coordinator.handleLocation('/bundle/big?select=key:Leaf.md', { initial: true, restoreView: true });
+    await flush();
+    coordinator.handleLocation('/bundle/big?select=key:Bridge.md', { initial: false, restoreView: true });
+    await flush();
+    expect(contexts).toEqual([true, false]);
+  });
+
+  it('updates the browser location when Later returns from sourcing after a reload', () => {
+    const { coordinator, events } = harness();
+    coordinator.handleLocation('/bundle/big', { initial: true });
+    coordinator.reportEditorMode('sourcing');
+    coordinator.reportSurface('source-review', undefined, true, {});
+    coordinator.reportEditorMode('curation');
+    coordinator.reportSurface('source-review', undefined, false, {});
+    expect(events.filter(event => event.startsWith('replace'))).toEqual([
+      'replace /bundle/big?editorMode=sourcing',
+      'replace /bundle/big',
+    ]);
+    expect(coordinator.current()).toEqual({ page: 'bundle', slug: 'big' });
   });
 
   it('ignores a surface the page being left reports after moving on', () => {

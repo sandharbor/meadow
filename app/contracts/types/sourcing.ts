@@ -7,6 +7,7 @@ import type { IEdge } from './graph.js';
 import type { SnapshotTrackingRequest, SnapshotTrackingOutcome, TrackingSensitivity } from './curationTracking.js';
 
 export interface SourceRegistryStatus {
+  proposalRevision?: number;
   sources: BundleSource[];
   startingSelections: StartingSelection[];
   disconnectedIds: string[];
@@ -98,9 +99,7 @@ export interface SourceSnapshotAcceptance {
   reviewToken: string;
   /** Uncontested matches may be omitted. Competing matches require a destination or null to keep pages separate. */
   resolutions: Record<string, string | null>;
-  /** Explicit exceptions to default orphan cleanup. Source files are retained. */
-  orphanKeeps?: string[];
-  /** Legacy explicit removal selection. Omission removes all eligible orphans except orphanKeeps. */
+  /** Legacy removal assertions are validated; all unreachable configuration is cleaned. */
   orphanRemovals?: string[];
 }
 
@@ -108,6 +107,13 @@ export interface SourceSnapshotAcceptance {
 export interface SourceSnapshotHistory {
   acceptedId: string | null;
   snapshots: SourceSnapshotSummary[];
+  acceptances?: SourceProposalAcceptanceHistory[];
+}
+export interface SourceProposalAcceptanceHistory {
+  proposalId: string;
+  snapshotId: string;
+  acceptedAt: string;
+  identities: Array<{ bundleNodeId: string; previousPath: string; proposedPath: string | null }>;
 }
 export interface SourceReferenceDiagnostic {
   path: string;

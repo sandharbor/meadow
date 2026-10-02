@@ -11,10 +11,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Move a nested group whose links use page names. Accept the move and verify that all
  * three page identities survive.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing moves a nested group while unchanged name-only links retain all three identities', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -34,8 +30,10 @@ test('Sourcing moves a nested group while unchanged name-only links retain all t
   await editor.sourceReview.expectMoveCount(3);
   for (const node of original) {
     await editor.sourceReview.expectMoveListed(node.bundleNodeId);
-    await editor.sourceReview.orphans.expectNotListed(node.bundleNodeName);
   }
+  await editor.sourceReview.confirmSuggestedIdentities();
+  await editor.sourceReview.continueToGraph();
+  for (const node of original) await editor.sourceReview.orphans.expectNotListed(node.bundleNodeName);
   await addKeyFrame(sourceMove);
   await checkpoint('all three reachable pages are proposed as moves');
 

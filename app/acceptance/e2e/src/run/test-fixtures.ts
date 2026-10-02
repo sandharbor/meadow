@@ -253,6 +253,7 @@ async function acquireSerialGroupLock(group: string): Promise<() => void> {
 async function readPlaceAndDialogs(page: import("@playwright/test").Page): Promise<{
   place?: string;
   openDialogs?: { name: string; classification: "surface" | "transient" | "unaddressable" }[];
+  editorView?: import('../../../../contracts/types/editorViewCheckpoint.js').EditorViewCheckpoint;
 }> {
   const snapshot = await page.evaluate(() => {
     const place = document.documentElement.dataset.meadowPlace;
@@ -262,12 +263,14 @@ async function readPlaceAndDialogs(page: import("@playwright/test").Page): Promi
         ?? (dialog.getAttribute("aria-labelledby")
           ? dialog.getAttribute("aria-labelledby")!.split(/\s+/).map(id => document.getElementById(id)?.textContent ?? "").join(" ").trim()
           : ""));
-    return { place, dialogs };
-  }).catch(() => ({ place: undefined, dialogs: [] as string[] }));
+    const selectedStorage = (storage: Storage, prefix: string) => Object.fromEntries(Object.keys(storage).filter(key => key.startsWith(prefix)).map(key => [key, storage.getItem(key)!]));
+    return { place, dialogs, editorView: { version: 1 as const, local: selectedStorage(localStorage, 'meadow.editor-view.v1:'), session: selectedStorage(sessionStorage, 'sourceProposalPendingEdit:') } };
+  }).catch(() => ({ place: undefined, dialogs: [] as string[], editorView: undefined }));
   if (!snapshot.place) return {};
   const current = parseAppPlace(snapshot.place).place;
   return {
     place: snapshot.place,
+    editorView: snapshot.editorView,
     openDialogs: snapshot.dialogs.map(name => ({ name, classification: placeRegistry.classifyDialog(name, current) })),
   };
 }
@@ -422,6 +425,8 @@ export interface TestServer {
   backendPort: number;
   frontendPort: number;
   browserLaunchUrl: string;
+  /** Restart this scenario’s owned Runtime against the same durable home. */
+  restartRuntime: () => Promise<void>;
   webServerPort: number;
   minioEndpoint: string;
   minioBucket: string;
@@ -529,7 +534,8 @@ export const test = base.extend<{
   testServer: TestServer;
   sourceChanges: { apply: (changeId: string, sourceGraph?: string) => Promise<SourceChangeResult> };
   artifactDir: string;
-  checkpoint: (message: string) => Promise<void>;
+  /** A Dev Tools fork supplies its actual home and service partition for portable capture. */
+  checkpoint: (message: string, target?: { homeDirectory: string; partition: string; ports: Record<string, number> }) => Promise<void>;
   /**
    * Assert that the MeadowHome configDir git repo is clean except for the
    * explicitly allowed paths. Untracked entries (`??`) and modified entries
@@ -781,7 +787,7 @@ export const test = base.extend<{
       leaseAcquired = true;
       const runtimeSession = await runtimeSupervisor.start();
       const runtimeSessionPath = getRuntimePaths(configDir).sessionDescriptor;
-      const { backendPort, frontendPort, capability: apiCapability } = runtimeSession;
+      let { backendPort, frontendPort, capability: apiCapability } = runtimeSession;
       const browserLaunchUrl = await createBrowserLaunchUrl(runtimeSession);
 
       // 9. RuntimeSupervisor.start() already proved the service and Web
@@ -812,6 +818,26 @@ export const test = base.extend<{
         minioBucket,
         localServices: { partition, parts, containers },
         checkpointPorts: { webServer: webServerPort },
+        restartRuntime: async () => {
+          const previous = runtimeSupervisor!;
+          await previous.shutdown("requested");
+          // Child shutdown and home-release run asynchronously after a crash.
+          await expect.poll(() => existsSync(runtimeSessionPath), { timeout: 10000 }).toBe(false);
+          backendStderrFd = openSync(backendStderrPath, "a");
+          frontendStderrFd = openSync(frontendStderrPath, "a");
+          runtimeSupervisor = new RuntimeSupervisor(previous.launchSpec, {
+            childStdio: kind => ["ignore", "ignore", kind === "service" ? backendStderrFd! : frontendStderrFd!],
+            ownershipLogPath: path.join(logsDirectory, "meadow.log"),
+          });
+          runtimeSupervisor.leases.acquire("client", leaseId, process.pid);
+          const restarted = await runtimeSupervisor.start();
+          ({ backendPort, frontendPort, capability: apiCapability } = restarted);
+          server.backendPort = backendPort;
+          server.frontendPort = frontendPort;
+          server.browserLaunchUrl = await createBrowserLaunchUrl(restarted);
+          closeSync(backendStderrFd); backendStderrFd = undefined;
+          closeSync(frontendStderrFd); frontendStderrFd = undefined;
+        },
         getBackendConnectionForRendererTest: () => ({
           baseUrl: `http://127.0.0.1:${backendPort}/api`,
           capability: apiCapability,
@@ -1500,12 +1526,15 @@ export const test = base.extend<{
 
     // --- The checkpoint function ---
 
-    const checkpointFn = async (message: string) => {
+    const checkpointFn = async (message: string, target?: { homeDirectory: string; partition: string; ports: Record<string, number> }) => {
+      const checkpointHome = target?.homeDirectory ?? configDir;
+      const checkpointPartition = target?.partition ?? testServer.localServices.partition;
+      const storage = target && minioEndpoint ? new MinioS3(minioEndpoint, minioBucketName(checkpointPartition), expect) : minioS3;
       // MinIO capture
       if (minioStateRepo && minioTimelinePath) {
         try {
           const objectsDir = path.join(minioStateRepo, "objects");
-          const keys = await minioS3.listKeys();
+          const keys = await storage.listKeys();
 
           // Clear and re-download to handle deletions
           if (existsSync(objectsDir)) {
@@ -1519,7 +1548,7 @@ export const test = base.extend<{
             const results = await Promise.allSettled(keys.slice(offset, offset + 8).map(async key => {
               let content: string;
               try {
-                content = await minioS3.getObjectContent(key);
+                content = await storage.getObjectContent(key);
               } catch (err) {
                 const code = typeof err === "object" && err !== null && "Code" in err
                   ? (err as { Code?: string }).Code
@@ -1537,15 +1566,17 @@ export const test = base.extend<{
           gitCommitIfChanged(minioStateRepo, message, minioTimelinePath);
         } catch (err) {
           console.error("minio checkpoint error:", err);
+        } finally {
+          if (storage !== minioS3) storage.destroy();
         }
       }
 
       // Check for uncommitted files in the app's configDir.
-      const gitDir = path.join(configDir, ".git");
+      const gitDir = path.join(checkpointHome, ".git");
       if (existsSync(gitDir)) {
         try {
           const statusOutput = execSync("git status --porcelain -z", {
-            cwd: configDir,
+            cwd: checkpointHome,
             encoding: "utf8",
           });
           const records = statusOutput.split("\0").filter((r) => r.length > 0);
@@ -1567,7 +1598,7 @@ export const test = base.extend<{
       }
 
       // Let layered fixtures contribute their own checkpoint capture.
-      for (const handler of _additionalCheckpointHandlers) {
+      for (const handler of target ? [] : _additionalCheckpointHandlers) {
         await handler(message);
       }
 
@@ -1580,14 +1611,14 @@ export const test = base.extend<{
       await captureCheckpoint({
         ...screen,
         repo: path.join(artifactDir, CHECKPOINT_REPO_DIRECTORY),
-        homeDirectory: configDir,
+        homeDirectory: checkpointHome,
         parts: testServer.localServices.parts,
         containers: testServer.localServices.containers,
-        partition: testServer.localServices.partition,
+        partition: checkpointPartition,
         message,
         codeRevision,
         uncommittedCode,
-        ports: testServer.checkpointPorts,
+        ports: target?.ports ?? testServer.checkpointPorts,
         fixtureHome,
         scenario: testInfo.title,
         sharedObjectsDirectory: path.join(path.dirname(artifactDir), SHARED_OBJECTS_DIRECTORY),

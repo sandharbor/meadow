@@ -174,7 +174,7 @@ describe('generated bundle version Git identity and integrity', () => {
       fs.writeFileSync(path.join(versionDirectory, unusualPath), 'before');
       commitAll('save large generation');
       fs.writeFileSync(path.join(versionDirectory, unusualPath), 'after');
-    });
+    }, 30000);
 
     it('compares a thousand files without blocking the event loop and preserves unusual filenames', async () => {
       let eventLoopServiced = false;

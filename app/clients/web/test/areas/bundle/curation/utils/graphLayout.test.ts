@@ -19,7 +19,7 @@ import type { IEdge } from '../../../../../../../contracts/types/graph';
 import {
   calculateGraphLayout,
   type GraphLayoutNode,
-} from '../../../../../src/areas/bundle/curation/utils/graphLayout';
+} from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/graphLayout';
 
 const node = (
   bundleNodeKey: string,

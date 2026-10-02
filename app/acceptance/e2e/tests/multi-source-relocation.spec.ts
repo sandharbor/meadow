@@ -14,10 +14,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
  * Move a source directory and repair its registered location. Captured pages should
  * survive the missing directory. Saving the repaired location should close source
  * management with a success message and no material review.
- *
- * Project impact (planned): Review source-registration, repair, and naming flows against the proposal
- * transaction and required-entry rules; preserve source identity and publication guarantees.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source relocation saves the repaired location without reviewing unchanged material', async ({ page, testServer, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

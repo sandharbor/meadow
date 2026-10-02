@@ -31,10 +31,6 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
 /*
  * Open a bundle rooted at a recursively scanned folder and generate it. Check that its
  * pages and folder structure appear in the preview.
- *
- * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
- * generated-material steps accordingly.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("previews a configured bundle from one recursively scanned folder", async ({
   page,

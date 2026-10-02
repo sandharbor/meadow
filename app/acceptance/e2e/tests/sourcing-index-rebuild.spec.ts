@@ -15,10 +15,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Change source content, then rebuild the source index. A full scan should discover the
  * update and present it for review.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing rechecks all source files through a real Rust index rebuild and reviews the resulting update', async ({ page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -55,7 +51,7 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
     recheck.click(),
   ]);
   await expect(page.getByRole('dialog', { name: 'Source snapshots', exact: true })).not.toBeVisible();
-  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: 'Refresh sources', exact: true })).toBeEnabled();
+  await editor.sourceReview.open();
   const rebuilt = readIndex();
   expect(rebuilt.completedAtNanos).toBeGreaterThan(before.completedAtNanos);
   expect(rebuilt.metrics.cacheRebuilt).toBe(true);
@@ -73,11 +69,12 @@ test('Sourcing rechecks all source files through a real Rust index rebuild and r
     page.waitForResponse(response => response.url().endsWith('/sourcing/scan') && response.request().postDataJSON()?.rebuildIndex === true && response.ok()),
     modalRecheck.click(),
   ]);
-  await expect(page.getByRole('dialog', { name: 'Source changes', exact: true }).getByRole('button', { name: 'Refresh sources', exact: true })).toBeEnabled();
-  await editor.sourceReview.expectModified('t003 ---- page with section to link to.md');
+  await editor.sourceReview.open();
   expect(readIndex().metrics.filesRead).toBe(readIndex().metrics.indexedFiles);
+  await editor.sourceReview.checkAgain();
+  await editor.sourceReview.expectModified('t003 ---- page with section to link to.md');
   expect(readState().acceptedId).toBe(acceptedId);
-  expect(readState().candidateId).toBeTruthy();
+  expect(JSON.parse(fs.readFileSync(path.join(bundle, 'raw/sourcing/proposal.json'), 'utf8')).candidateSnapshotId).not.toBe(acceptedId);
   await addKeyFrame(sourceSnapshot);
   await checkpoint('the full rebuild presents modified content for normal source review');
 

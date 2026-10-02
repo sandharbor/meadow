@@ -18,6 +18,7 @@ import type { appPlace, ParticipatesIn } from '../../../../../../concepts/index.
 import type { AppPlace, PlaceNodeReference, PlaceRegistry, PlaceSurface } from '../../../../../../contracts/places/index.js';
 import type {
   SelectionRequestResult,
+  SelectionRequestContext,
   SurfaceOpenResult,
   SurfaceParticipant,
 } from '../../places/placeContext.js';
@@ -52,6 +53,8 @@ export interface PlaceCoordinatorEnvironment {
 type PageOnly = { page: 'bundle-list' } | { page: 'bundle'; slug: string };
 
 interface PendingArrival {
+  editorMode: 'curation' | 'sourcing';
+  modeSettled: boolean;
   requestedPath: string;
   /** Opened by the app itself rather than a link: nothing to report back. */
   inApp: boolean;
@@ -60,6 +63,7 @@ interface PendingArrival {
   notices: string[];
   surfaceSettled: boolean;
   selectionSettled: boolean;
+  preserveView: boolean;
   cancelTimers: (() => void)[];
 }
 
@@ -76,7 +80,9 @@ export class PlaceCoordinator {
   private surface: PlaceSurface | undefined;
   private selection: readonly PlaceNodeReference[] = [];
   private readonly participants = new Set<SurfaceParticipant>();
-  private selectionHandler: ((references: readonly PlaceNodeReference[]) => SelectionRequestResult | Promise<SelectionRequestResult>) | undefined;
+  private editorMode: 'curation' | 'sourcing' = 'curation';
+  private modeHandler: ((mode: 'curation' | 'sourcing') => Promise<void>) | undefined;
+  private readonly selectionHandlers = new Map<'curation' | 'sourcing', (references: readonly PlaceNodeReference[], context: SelectionRequestContext) => SelectionRequestResult | Promise<SelectionRequestResult>>();
   private arrival: PendingArrival | undefined;
   /** The URL still shows the link that brought the person here. */
   private holdingLinkUrl = false;
@@ -102,6 +108,7 @@ export class PlaceCoordinator {
       : {
         page: 'bundle',
         slug: this.page.slug,
+        ...(this.editorMode === 'sourcing' && { editorMode: 'sourcing' as const }),
         ...(this.surface && { surface: this.surface }),
         ...(this.selection.length > 0 && { select: this.selection }),
       };
@@ -113,7 +120,7 @@ export class PlaceCoordinator {
    * A location the app did not produce itself: the first load, a link, or a
    * browser Back/Forward. Links carry surfaces or selections to open.
    */
-  handleLocation(path: string, options: { initial: boolean }): void {
+  handleLocation(path: string, options: { initial: boolean; restoreView?: boolean }): void {
     let parsed;
     try {
       parsed = this.environment.registry.parseAppPlace(path);
@@ -123,7 +130,7 @@ export class PlaceCoordinator {
     const target = parsed.place;
     const pageChanged = !samePage(this.page, pageOf(target));
     if (pageChanged) this.enterPage(pageOf(target));
-    const isLink = options.initial || Boolean(target.surface) || (target.page === 'bundle' && Boolean(target.select?.length));
+    const isLink = options.initial || Boolean(target.surface) || (target.page === 'bundle' && Boolean(target.editorMode || target.select?.length));
     if (!isLink) {
       // Back/Forward to a place without a surface closes a history surface.
       if (this.surface && this.isHistorySurface(this.surface.name)) {
@@ -141,13 +148,14 @@ export class PlaceCoordinator {
       this.requestSurface(target.surface.name, target.surface.parameters);
       return;
     }
-    this.beginArrival(path, target, parsed.ignored);
+    this.beginArrival(path, target, parsed.ignored, false, options.initial && options.restoreView);
   }
 
   private enterPage(page: PageOnly): void {
     this.page = page;
     this.surface = undefined;
     this.selection = [];
+    this.editorMode = 'curation';
     this.pushedHistorySurface = false;
     this.environment.pageEntered?.();
   }
@@ -158,9 +166,12 @@ export class PlaceCoordinator {
 
   // ---- Arrival ----
 
-  private beginArrival(requestedPath: string, target: AppPlace, ignored: readonly string[], inApp = false): void {
+  private beginArrival(requestedPath: string, target: AppPlace, ignored: readonly string[], inApp = false, preserveView = false): void {
     this.cancelArrival();
     const arrival: PendingArrival = {
+      editorMode: target.page === 'bundle' && (target.editorMode === 'sourcing' || target.surface?.name === 'source-review') ? 'sourcing' : 'curation',
+      modeSettled: false,
+      preserveView,
       requestedPath,
       inApp,
       surface: target.surface,
@@ -172,10 +183,35 @@ export class PlaceCoordinator {
     };
     this.arrival = arrival;
     this.holdingLinkUrl = !inApp;
-    // Selection first: some surfaces, such as copying the selected pages, act on it.
-    if (arrival.select) this.deliverSelection(arrival);
-    else if (arrival.surface) this.deliverSurface(arrival);
-    this.finishArrivalIfSettled();
+    this.deliverMode(arrival);
+  }
+
+  private deliverMode(arrival: PendingArrival): void {
+    const deliver = () => {
+      if (this.arrival !== arrival) return;
+      this.editorMode = arrival.editorMode;
+      arrival.modeSettled = true;
+      // The mode's editor supplies the selection and dialog participants.
+      if (arrival.select) this.deliverSelection(arrival);
+      else if (arrival.surface) this.deliverSurface(arrival);
+      this.finishArrivalIfSettled();
+    };
+    if (arrival.editorMode === this.editorMode) { deliver(); return; }
+    if (!this.modeHandler) {
+      arrival.cancelTimers.push(this.timer(() => {
+        if (this.arrival !== arrival || arrival.modeSettled) return;
+        arrival.notices.push(`the ${arrival.editorMode} editor is not available here`);
+        arrival.modeSettled = true; arrival.selectionSettled = true; arrival.surfaceSettled = true;
+        this.finishArrivalIfSettled();
+      }));
+      return;
+    }
+    void this.modeHandler(arrival.editorMode).then(deliver).catch(error => {
+      if (this.arrival !== arrival) return;
+      arrival.notices.push(error instanceof Error ? error.message : String(error));
+      arrival.modeSettled = true; arrival.selectionSettled = true; arrival.surfaceSettled = true;
+      this.finishArrivalIfSettled();
+    });
   }
 
   private timer(callback: () => void): () => void {
@@ -186,7 +222,8 @@ export class PlaceCoordinator {
   }
 
   private owner(surface: string): SurfaceParticipant | undefined {
-    return [...this.participants].find(participant => participant.surface === surface && !participant.parameters);
+    return [...this.participants].find(participant => participant.surface === surface && !participant.parameters
+      && (!participant.editorMode || participant.editorMode === this.editorMode));
   }
 
   private deliverSurface(arrival: PendingArrival): void {
@@ -262,7 +299,7 @@ export class PlaceCoordinator {
   private retryExtensions: (() => void) | undefined;
 
   private deliverSelection(arrival: PendingArrival): void {
-    const handler = this.selectionHandler;
+    const handler = this.selectionHandlers.get(arrival.editorMode);
     if (!handler) {
       arrival.cancelTimers.push(this.timer(() => {
         if (this.arrival !== arrival || arrival.selectionSettled) return;
@@ -273,7 +310,7 @@ export class PlaceCoordinator {
       }));
       return;
     }
-    void Promise.resolve(handler(arrival.select!)).then(result => {
+    void Promise.resolve(handler(arrival.select!, { preserveView: arrival.preserveView })).then(result => {
       if (this.arrival !== arrival) return;
       if (result.missing > 0) {
         const total = arrival.select!.length;
@@ -288,7 +325,7 @@ export class PlaceCoordinator {
 
   private finishArrivalIfSettled(): void {
     const arrival = this.arrival;
-    if (!arrival || !arrival.surfaceSettled || !arrival.selectionSettled) return;
+    if (!arrival || !arrival.modeSettled || !arrival.surfaceSettled || !arrival.selectionSettled) return;
     arrival.cancelTimers.forEach(cancel => cancel());
     this.arrival = undefined;
     this.retryExtensions = undefined;
@@ -316,18 +353,33 @@ export class PlaceCoordinator {
   registerSurface(participant: SurfaceParticipant): () => void {
     this.participants.add(participant);
     const arrival = this.arrival;
-    if (arrival?.surface?.name === participant.surface && !arrival.surfaceSettled && arrival.selectionSettled) {
+    if (arrival?.modeSettled && arrival.surface?.name === participant.surface && !arrival.surfaceSettled && arrival.selectionSettled
+      && (!participant.editorMode || participant.editorMode === arrival.editorMode)) {
       if (!participant.parameters && !this.surface) this.deliverSurface(arrival);
       else this.retryExtensions?.();
     }
     return () => { this.participants.delete(participant); };
   }
 
-  registerSelection(handler: (references: readonly PlaceNodeReference[]) => SelectionRequestResult | Promise<SelectionRequestResult>): () => void {
-    this.selectionHandler = handler;
+  registerSelection(handler: (references: readonly PlaceNodeReference[], context: SelectionRequestContext) => SelectionRequestResult | Promise<SelectionRequestResult>, mode: 'curation' | 'sourcing' = 'curation'): () => void {
+    this.selectionHandlers.set(mode, handler);
     const arrival = this.arrival;
-    if (arrival?.select && !arrival.selectionSettled) this.deliverSelection(arrival);
-    return () => { if (this.selectionHandler === handler) this.selectionHandler = undefined; };
+    if (arrival?.modeSettled && arrival.editorMode === mode && arrival.select && !arrival.selectionSettled) this.deliverSelection(arrival);
+    return () => { if (this.selectionHandlers.get(mode) === handler) this.selectionHandlers.delete(mode); };
+  }
+
+  registerEditorMode(handler: (mode: 'curation' | 'sourcing') => Promise<void>): () => void {
+    this.modeHandler = handler;
+    if (this.arrival && !this.arrival.modeSettled) this.deliverMode(this.arrival);
+    return () => { if (this.modeHandler === handler) this.modeHandler = undefined; };
+  }
+
+  reportEditorMode(mode: 'curation' | 'sourcing'): void {
+    if (this.arrival && !this.arrival.modeSettled) return;
+    if (mode === this.editorMode) return;
+    this.editorMode = mode;
+    this.selection = [];
+    this.afterAppChange(this.surface, true);
   }
 
   private requestSurface(name: string, parameters: Readonly<Record<string, string>> | null): void {
@@ -340,6 +392,9 @@ export class PlaceCoordinator {
   reportSurface(name: string, owned: readonly string[] | undefined, open: boolean, parameters: Readonly<Record<string, string>>): void {
     // A component of the page being left may still report as it unmounts.
     if (!this.environment.registry.surfaceDefinition(this.page.page, name)) return;
+    // Opening an editor can mount its default surface before the requested dialog.
+    // Its ambient report must not replace the link still being delivered.
+    if (this.arrival && this.arrival.surface?.name !== name) return;
     const previous = this.surface;
     if (!owned) {
       // The owner opened, changed, or closed its surface. Closing a surface
@@ -359,7 +414,8 @@ export class PlaceCoordinator {
     return Object.fromEntries(Object.entries(this.surface.parameters).filter(([key]) => !registry.isOwnParameter(this.page.page, name, key)));
   }
 
-  reportSelection(references: readonly PlaceNodeReference[]): void {
+  reportSelection(references: readonly PlaceNodeReference[], mode: 'curation' | 'sourcing' = 'curation'): void {
+    if (mode !== this.editorMode) return;
     const unchanged = references.length === this.selection.length
       && references.every((reference, index) => JSON.stringify(reference) === JSON.stringify(this.selection[index]));
     if (unchanged) return;
@@ -380,7 +436,7 @@ export class PlaceCoordinator {
       this.holdingLinkUrl = false;
       this.publish('app');
     }
-    if (place.surface || (place.page === 'bundle' && place.select?.length)) {
+    if (place.surface || (place.page === 'bundle' && (place.editorMode || place.select?.length))) {
       this.beginArrival(this.environment.registry.appPlacePath(place), place, [], true);
     }
   }
@@ -394,7 +450,7 @@ export class PlaceCoordinator {
     this.publish('app');
   }
 
-  private afterAppChange(previous: PlaceSurface | undefined): void {
+  private afterAppChange(previous: PlaceSurface | undefined, modeChanged = false): void {
     if (this.arrival) {
       // Changes while a link is still opening are part of its arrival.
       this.environment.publish(this.environment.registry.appPlacePath(this.current()));
@@ -419,7 +475,7 @@ export class PlaceCoordinator {
     } else if (wasHistory && !isHistory && this.pushedHistorySurface) {
       this.pushedHistorySurface = false;
       this.environment.back();
-    } else if (isHistory || wasHistory) {
+    } else if (isHistory || wasHistory || modeChanged) {
       this.environment.navigate(projection, { push: false });
     }
     this.publish('app');
@@ -427,7 +483,7 @@ export class PlaceCoordinator {
 
   private pathWithoutSelection(): string {
     return this.environment.registry.appPlacePath(
-      this.page.page === 'bundle' ? { page: 'bundle', slug: this.page.slug, ...(this.surface && { surface: this.surface }) } : this.current(),
+      this.page.page === 'bundle' ? { page: 'bundle', slug: this.page.slug, ...(this.editorMode === 'sourcing' && { editorMode: 'sourcing' }), ...(this.surface && { surface: this.surface }) } : this.current(),
     );
   }
 
@@ -436,7 +492,7 @@ export class PlaceCoordinator {
     const surface = this.surface && this.isHistorySurface(this.surface.name) ? this.surface : undefined;
     return this.page.page === 'bundle-list'
       ? { page: 'bundle-list', ...(surface && { surface }) }
-      : { page: 'bundle', slug: this.page.slug, ...(surface && { surface }) };
+      : { page: 'bundle', slug: this.page.slug, ...(this.editorMode === 'sourcing' && { editorMode: 'sourcing' }), ...(surface && { surface }) };
   }
 
   private publish(via: 'app' | 'link'): void {

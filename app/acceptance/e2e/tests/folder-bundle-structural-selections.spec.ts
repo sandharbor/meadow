@@ -25,10 +25,6 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 /*
  * Select a folder's direct children, then its deeper paths. Confirm that structural
  * descendants and linked pages are selected in the list and graph.
- *
- * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
- * generated-material steps accordingly.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("folder context selections include structural children and deeper paths", async ({
   page,

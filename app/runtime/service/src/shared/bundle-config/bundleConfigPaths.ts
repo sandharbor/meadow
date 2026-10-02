@@ -19,6 +19,7 @@ import { join } from 'path';
 import { AppConfigGitUtils, GIT_AUTHORS } from '../../../../../shared_code/utils/appConfigGitUtils.js';
 import { getDefaultConfigDirectory } from '../../../../../shared_code/utils/appConfigUtils.js';
 import { logger } from '../utils/logging/backendLoggingUtils.js';
+import { recoverSourcingTransaction } from '../../../../../shared_code/utils/sourcingTransaction.js';
 
 async function initGitRepo(dir: string): Promise<void> {
   try {
@@ -31,6 +32,7 @@ async function initGitRepo(dir: string): Promise<void> {
 
 function getConfigDir(): string {
   const configDir = getDefaultConfigDirectory();
+  recoverSourcingTransaction(configDir);
 
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });

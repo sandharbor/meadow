@@ -26,6 +26,7 @@ import { BootstrapConfig } from "../../contracts/types/bootstrapConfig.js";
 import { AppConfigPaths } from "../paths/appConfigPaths.js";
 import { getPlatformPaths } from "../paths/getPlatformPaths.js";
 import { appConfigCodec } from "./configDocumentCodecs.js";
+import { recoverSourcingTransaction } from './sourcingTransaction.js';
 import {
   DurableDocumentResult,
   readDurableDocument,
@@ -89,11 +90,13 @@ export function configDirectoryExists(configDir?: string): boolean {
  * not here.
  */
 export function loadAppConfig(configDir?: string): AppConfig {
+  recoverSourcingTransaction(configDir ?? getDefaultConfigDirectory());
   const path = getAppConfigPath(configDir);
   return requireValidDocument(readDurableDocument(path, appConfigCodec), () => ({ version: "1.0.0" }));
 }
 
 export function readAppConfigDocument(configDir?: string): DurableDocumentResult<AppConfig> {
+  recoverSourcingTransaction(configDir ?? getDefaultConfigDirectory());
   return readDurableDocument(getAppConfigPath(configDir), appConfigCodec);
 }
 

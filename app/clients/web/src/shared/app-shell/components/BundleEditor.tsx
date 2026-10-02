@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import type { SnapshotTrackingOutcome } from '../../../../../../contracts/types/curationTracking.js';
-import { AppShellComponentSourcingPanel as SourcingPanel, AppShellComponentManageSources as ManageSources } from '../../../areas/bundle/sourcing/exported.js';
+import { AppShellComponentSourcingPanel as SourcingPanel, AppShellComponentManageSources as ManageSources, appShellCommandStageBoundary as stageBoundary, appShellCommandApplyBlacklistReview as applyBlacklistReview, appShellCommandUndoBlacklistReview as undoBlacklistReview } from '../../../areas/bundle/sourcing/exported.js';
 import { SourceNamesProvider } from '../../components/SourceNames.js';
 
 /* global alert */
@@ -30,6 +30,7 @@ import { AppShellComponentCreateOrEditBundleModal as CreateOrEditBundleModal } f
 import PreviewPublishModal, { type PreviewModalTab } from './PreviewPublishModal';
 import type { AppShellTypeOpenKnowledgeFormatSettings as OpenKnowledgeFormatSettings } from '../../../areas/bundle/generation/exported.js';
 import { useAppShellStateFilterState as useFilterState, appShellQueryCreateUntrackedNodeSelector as createUntrackedNodeSelector } from '../../../areas/bundle/curation/exported.js';
+import type { BlacklistShortcutUndo } from '../../../../../../contracts/types/blacklistReview.js';
 import type { BundleNodeConfig } from '../../../../../../contracts/types/bundleNodeConfig';
 import { nodeConfigMatchesNode } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
 import { applySensitiveFromApiData, applyNodeConfigsToNodes, buildNodeConfigs } from '../../../../../../shared_code/utils/bundleNodeConfigUtils';
@@ -66,7 +67,12 @@ const BundleEditor: React.FC = () => {
   const [frontierUnavailable, setFrontierUnavailable] = useState<string | null>(null);
   const [sourceChangeTrigger, setSourceChangeTrigger] = useState(0);
   const [isManageSourcesOpen, setIsManageSourcesOpen] = useState(false);
+  const [sourcingOpen, setSourcingOpen] = useState(false);
+  const [awaitingAcceptedGraph, setAwaitingAcceptedGraph] = useState(false);
   const [sourceReviewTrigger, setSourceReviewTrigger] = useState(0);
+  const [blacklistUndo, setBlacklistUndo] = useState<BlacklistShortcutUndo | null>(null);
+  const [blacklistNotice, setBlacklistNotice] = useState<string | null>(null);
+  useEffect(() => { setBlacklistUndo(null); setBlacklistNotice(null); }, [slug]);
   const [isSourceSnapshotsOpen, setIsSourceSnapshotsOpen] = useState(false);
   const [graph, setGraph] = useState<Graph | null>(null);
   const [filters, setFilters, reloadCustomFilters] = useFilterState(slug || '');
@@ -125,7 +131,7 @@ const BundleEditor: React.FC = () => {
   const frontierDepth = frontierFilter?.thresholdValue ?? 1;
   const curationGraph = useMemo(() => {
     void updateTrigger; // Graph mutations publish a revision without replacing the Graph object.
-    if (!graph || !pendingSourceChanges) return graph;
+    if (!graph) return graph;
     const visible = new Graph();
     visible.sources = graph.sources;
     visible.sourceDiagnostics = graph.sourceDiagnostics;
@@ -136,7 +142,7 @@ const BundleEditor: React.FC = () => {
     graph.getAllEdges().filter(edge => visible.getNode(edge.source) && visible.getNode(edge.target)).forEach(edge => visible.addEdge(edge));
     visible.setLinkSourceData(Object.fromEntries(nodes.map(node => [node.bundleNodeKey, graph.getAllInlinkSources(node.bundleNodeKey)])), Object.fromEntries(nodes.map(node => [node.bundleNodeKey, graph.getAllOutlinkTargets(node.bundleNodeKey)])));
     return visible;
-  }, [graph, pendingSourceChanges, updateTrigger]);
+  }, [graph, updateTrigger]);
 
 
   type OverrideSetting = 'inherit' | 'enabled' | 'disabled';
@@ -352,10 +358,12 @@ const BundleEditor: React.FC = () => {
     // Clear previous error when starting a new fetch
     setGraphError(null);
     let cancelled = false;
-    const frontierParam = viewFrontierEnabled && !pendingSourceChanges ? `?frontierDepth=${frontierDepth}` : '';
-    const url = `bundles/${slug || ''}/curation/working-graph${frontierParam}`;
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    window.addEventListener('pagehide', abort);
+    const url = `bundles/${slug || ''}/curation/working-graph`;
     logger.debug('Fetching working graph from:', url);
-    apiRequest(url)
+    apiRequest(url, { signal: controller.signal })
       .then(res => {
         if (!res.ok) {
           // Parse error response and extract message
@@ -401,13 +409,14 @@ const BundleEditor: React.FC = () => {
         setGraphError(null); // Clear error on success
       })
       .catch(err => {
+        if (cancelled || controller.signal.aborted) return;
         logger.error('Failed to load working graph:', err);
         setGraphError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
-        setIsRecalculatingGraph(false);
+        if (!cancelled) { setIsRecalculatingGraph(false); setAwaitingAcceptedGraph(false); }
       });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; controller.abort(); window.removeEventListener('pagehide', abort); };
   }, [slug, configLoaded, configChangeTrigger, viewFrontierEnabled, frontierDepth, pendingSourceChanges, sourceCheckCompleted]);
 
   useEffect(() => {
@@ -503,6 +512,8 @@ const BundleEditor: React.FC = () => {
       if (pageToSelect) {
         logger.debug(`Auto-selecting page: ${autoSelectPageName}`);
         setSelectedNodeKeys(new Set([pageToSelect.bundleNodeKey]));
+        setIsSelectionPanelCollapsed(false);
+        setFocusedNodeKey(pageToSelect.bundleNodeKey);
         // Clear the session storage after selection
         sessionStorage.removeItem('autoSelectPageName');
         sessionStorage.removeItem('autoSelectPageSource');
@@ -544,17 +555,14 @@ const BundleEditor: React.FC = () => {
     if (!graph) return;
     const nodeConfigs = buildMergedNodeConfigs();
     try {
-      await apiRequest(`bundles/${slug || ''}/curation/bundle-config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ configs: nodeConfigs, isDraft: true })
-      });
-      checkDraftStatus();
+      await stageBoundary(slug || '', nodeConfigs);
+      setSourceReviewTrigger(value => value + 1);
+      refreshBundleNodeConfigs();
       reloadWorkingGraph();
     } catch (error) {
       logger.error('Error saving draft configuration:', error);
     }
-  }, [graph, buildMergedNodeConfigs, slug, checkDraftStatus, reloadWorkingGraph]);
+  }, [graph, buildMergedNodeConfigs, slug, refreshBundleNodeConfigs, reloadWorkingGraph]);
 
   // Shared implementation for saving the full config and committing it.
   // When commitMessage is provided, it's used instead of the default ("auto-save" path).
@@ -579,12 +587,26 @@ const BundleEditor: React.FC = () => {
     await saveAndCommitConfig();
   }, [saveAndCommitConfig]);
 
-  // Auto-save used by simple operations (track page, track all, blacklist single page).
-  // Writes directly to the committed config (bypassing the draft file) so the
-  // Save button never flickers in and out for these straightforward actions.
-  const handleAutoSaveConfig = useCallback(async () => {
-    await saveAndCommitConfig('auto-save config on simple change');
-  }, [saveAndCommitConfig]);
+  const handleAutoSaveConfig = useCallback(async (options?: { boundaryKeys: EncodedBundleNodeKey[] }) => {
+    if (!options?.boundaryKeys) { await saveAndCommitConfig('auto-save config on simple change'); return; }
+    const changes = options.boundaryKeys.flatMap(key => {
+      const node = graph?.getNode(key); return node?.conf ? [node.conf] : [];
+    });
+    try {
+      const result = await applyBlacklistReview(slug || '', changes);
+      if (result.mode === 'sourcing') {
+        setBlacklistNotice(null); setBlacklistUndo(null); setSourceReviewTrigger(value => value + 1);
+      } else { setBlacklistUndo(result.undo); setBlacklistNotice('Blacklist updated. No other pages entered or left scope.'); }
+    } catch (error) { setBlacklistNotice(error instanceof Error ? error.message : String(error)); }
+    refreshBundleNodeConfigs(); reloadWorkingGraph();
+  }, [graph, slug, saveAndCommitConfig, refreshBundleNodeConfigs, reloadWorkingGraph]);
+
+  const undoBlacklistShortcut = async () => {
+    if (!blacklistUndo || !slug) return;
+    try { await undoBlacklistReview(slug, blacklistUndo); setBlacklistUndo(null); setBlacklistNotice(null); }
+    catch (error) { setBlacklistNotice(error instanceof Error ? error.message : String(error)); }
+    refreshBundleNodeConfigs(); reloadWorkingGraph();
+  };
 
   // Check for localStorage flag to save config after reload
   useEffect(() => {
@@ -955,7 +977,7 @@ const BundleEditor: React.FC = () => {
   });
 
   // Selected pages: durable IDs where a page has one, locators otherwise.
-  const reportSelection = usePlaceSelection(async references => {
+  const reportSelection = usePlaceSelection(async (references, { preserveView }) => {
     const loaded = await loadedGraph();
     const nodes = loaded.getAllNodes();
     const resolved = references.flatMap<{ reference: PlaceNodeReference; key: EncodedBundleNodeKey }>(reference => {
@@ -972,8 +994,10 @@ const BundleEditor: React.FC = () => {
       return node ? [{ reference, key: node.bundleNodeKey }] : [];
     });
     setSelectedNodeKeys(new Set(resolved.map(item => item.key)));
-    setFocusedNodeKey(resolved[0]?.key ?? null);
-    if (resolved.length > 0) setIsSelectionPanelCollapsed(false);
+    if (!preserveView) {
+      setFocusedNodeKey(resolved[0]?.key ?? null);
+      if (resolved.length > 0) setIsSelectionPanelCollapsed(false);
+    }
     return { selected: resolved.map(item => item.reference), missing: references.length - resolved.length };
   });
   useEffect(() => {
@@ -1019,8 +1043,9 @@ const BundleEditor: React.FC = () => {
     if (graphError) {
       return (
         <div className="w-full h-screen flex flex-col items-center justify-center p-8">
-          <SourcingPanel reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
+          <SourcingPanel onModeChange={setSourcingOpen} reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
             setSourceTrackingOutcome(result.trackingOutcome);
+            reloadCustomFilters();
             setGraphError(null); setConfigChangeTrigger(previous => previous + 1);
           }} />
           <div className="max-w-2xl w-full bg-danger-50 border border-danger-300 rounded-lg p-6">
@@ -1053,7 +1078,7 @@ const BundleEditor: React.FC = () => {
   }
 
   return (
-    <SourceNamesProvider sources={graph.sources}><div className="w-full h-full overflow-hidden flex flex-col">
+    <SourceNamesProvider sources={graph.sources}><div style={sourcingOpen ? { visibility: 'hidden' } : undefined} className="w-full h-full overflow-hidden flex flex-col">
       <div className="flex border-b border-neutral-200 items-center py-2 flex-shrink-0">
         <button
           className="ml-4 px-3 py-1 bg-neutral-200 rounded hover:bg-neutral-300"
@@ -1093,9 +1118,10 @@ const BundleEditor: React.FC = () => {
               </button>
             </div>
           )}
-          <SourcingPanel reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
+          <SourcingPanel onModeChange={setSourcingOpen} reviewTrigger={sourceReviewTrigger} snapshotsOpen={isSourceSnapshotsOpen} onCloseSnapshots={() => setIsSourceSnapshotsOpen(false)} onPendingChanges={handleSourceCheck} sourceChangeTrigger={sourceChangeTrigger} bundleSlug={slug || ''} hasDraftChanges={hasDraftChanges} onAccepted={result => {
             setSourceTrackingOutcome(result.trackingOutcome);
-            refreshBundleNodeConfigs();
+            setAwaitingAcceptedGraph(true);
+            reloadCustomFilters();
             reloadWorkingGraph();
           }} />
           {/* Bundle menu dropdown */}
@@ -1296,7 +1322,11 @@ const BundleEditor: React.FC = () => {
         <button className="rounded border border-neutral-300 bg-white px-3 py-1 hover:bg-neutral-100" onClick={() => { setFilters(filters.map(filter => filter.id === 'frontier-filter' ? { ...filter, enabled: false } : filter)); setFrontierUnavailable(null); }}>Okay</button>
       </div>}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <BundleNodeTabs
+        {blacklistNotice && <p role="status" className="bg-blue-50 px-4 py-2 text-sm">{blacklistNotice}
+          {blacklistUndo && <button className="ml-3 underline" onClick={() => void undoBlacklistShortcut()}>Undo blacklist change</button>}
+          <button className="ml-3 underline" onClick={() => { setBlacklistNotice(null); setBlacklistUndo(null); }}>Dismiss</button>
+        </p>}
+        {!sourcingOpen && !awaitingAcceptedGraph && <BundleNodeTabs
           graph={curationGraph ?? graph}
           entryBundleNodeId={entryBundleNodeId ?? undefined}
           filters={filters}
@@ -1322,7 +1352,7 @@ const BundleEditor: React.FC = () => {
           untrackedNodeCount={getUntrackedNodeCount()}
           bundleNodeConfigs={bundleNodeConfigs}
           protectedBundleNodeIds={new Set([entryBundleNodeId, defaultTraversalBundleNodeId].filter((id): id is string => id !== null))}
-        />
+        />}
       </div>
     </div></SourceNamesProvider>
   );

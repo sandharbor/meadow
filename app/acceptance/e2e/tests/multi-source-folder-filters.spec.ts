@@ -11,10 +11,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Hide one of two equally named folders in different sources, then rename that source. The
  * filter should keep affecting only the original source and remain resettable.
- *
- * Project impact (planned): Review source-registration, repair, and naming flows against the proposal
- * transaction and required-entry rules; preserve source identity and publication guarantees.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source folder filters distinguish equal folder names and retain independent settings', async ({ page, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

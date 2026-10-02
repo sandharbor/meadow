@@ -10,10 +10,6 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Replace an accepted image with a different picture. Compare both images in review before
  * accepting the replacement.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing compares accepted and replacement images before accepting the new picture', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

@@ -28,7 +28,7 @@ import {
   createSensitiveNodeSelector,
   createSearchByTitleSelector,
   createCustomBundleNodeSelector
-} from '../../../../../src/areas/bundle/curation/utils/filterSelectors';
+} from '../../../../../src/areas/bundle/shared-sourcing-curation/utils/filterSelectors';
 import type { CustomBundleNodeSelectorConfig } from '../../../../../../../contracts/types/customFilters';
 
 describe('Filter Integration Tests', () => {

@@ -63,6 +63,7 @@ const MANAGED_GITIGNORE_PATTERNS = [
   '.DS_Store',
   'logs/',
   '/cache/source-index/',
+  '/cache/editor-view/',
   '.meadow-migration-recovery/',
   'app/secret_app_config.yaml',
   'app/resources.local.yaml',
@@ -74,6 +75,7 @@ const GITIGNORE_CONTENT = `${MANAGED_GITIGNORE_START}
 .DS_Store
 logs/
 /cache/source-index/
+/cache/editor-view/
 .meadow-migration-recovery/
 app/secret_app_config.yaml
 app/resources.local.yaml

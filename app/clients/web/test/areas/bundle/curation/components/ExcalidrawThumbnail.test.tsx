@@ -17,7 +17,7 @@ limitations under the License.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import { apiRequest, requireApiSuccess } from '../../../../../src/shared/utils/apiClient';
-import { ExcalidrawThumbnail } from '../../../../../src/areas/bundle/curation/components/ExcalidrawThumbnail';
+import { ExcalidrawThumbnail } from '../../../../../src/areas/bundle/shared-sourcing-curation/components/ExcalidrawThumbnail';
 
 vi.mock('../../../../../src/shared/utils/apiClient', () => ({
   apiRequest: vi.fn(),

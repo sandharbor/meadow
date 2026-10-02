@@ -17,7 +17,7 @@ import { parseBundleNodeConfig, stringifyBundleNodeConfig } from '../../../../..
 import { textDocumentCodec, writeDurableDocument } from '../../../../../shared_code/utils/durableDocument.js';
 import { runWorkingGraphJson, invalidateWorkingGraphCache } from '../utils/workingGraphUtils.js';
 import type { WorkingGraphRustOutput } from '../bundle-graph/workingGraphService.js';
-import { scopeSourceSnapshot, sourceInventory, forgetLiveSourceLinks, rememberLiveSourceLinks } from './sourceDiscovery.js';
+import { scopeSourceSnapshot, sourceInventory, forgetLiveSourceLinks, rememberLiveSourceLinks, captureSourceAvailability } from './sourceDiscovery.js';
 import { materializedSourceTree, pruneMaterializedSourceTrees, retainAcceptedSourceTree, retainCandidateSourceTree, storeSourceTree, type SourceGitTree } from './sourceGit.js';
 import { bundleSources, LEGACY_SOURCE_ID, sourceGraphPath } from '../../../../../shared_code/utils/bundleSourceUtils.js';
 import { copyDiscoveredSources, nodeInSnapshot, nodesInSnapshot, snapshotSourceRegistry } from './sourceRegistrySnapshots.js';
@@ -28,6 +28,8 @@ export interface SnapshotFile {
 }
 
 export interface SourceSnapshot extends SourceSnapshotSummary {
+  /** Presence evidence captured for previous paths; scoped absence alone is not deletion. */
+  sourceAvailability?: Record<string, 'present' | 'missing' | 'disconnected'>;
   sources?: BundleSource[];
   /** The candidate owns its proposed registry until acceptance installs it atomically. */
   sourceProposal?: {
@@ -58,7 +60,7 @@ export interface SourcingState {
 }
 
 export class SourcingError extends Error {
-  constructor(message: string, readonly statusCode = 409) { super(message); this.name = 'SourcingError'; }
+  constructor(message: string, readonly statusCode = 409, readonly code?: string) { super(message); this.name = 'SourcingError'; }
 }
 
 const locks = new Map<string, Promise<unknown>>();
@@ -108,6 +110,8 @@ export function writeSourcingJson(filename: string, value: unknown): void {
 }
 
 export function loadSourcingState(bundleDirectory: string): SourcingState | null {
+  // Resolve any home-wide proposal transaction before exposing either pointer.
+  getConfigDirectory();
   recoverSourcingAcceptance(bundleDirectory);
   const filename = sourcingStatePath(bundleDirectory);
   if (!fs.existsSync(filename)) return null;
@@ -190,6 +194,19 @@ function inventory(root: string): Pick<SourceSnapshot, 'files' | 'directories' |
   return { files, directories, fileCount: Object.keys(files).length, digest: sha256(JSON.stringify({ files, directories })) };
 }
 
+/** Content filters always inspect the same admitted bytes as the displayed capture. */
+export function hydrateSnapshotNodeContents(root: string, snapshot: SourceSnapshot, nodes: WorkingGraphRustOutput['nodes']): void {
+  for (const node of nodes) {
+    if (node.bundleNodeKind !== 'file' || !node.fileType || !['md', 'txt', 'html', 'css', 'js', 'svg', 'excalidraw'].includes(node.fileType)) continue;
+    const key = bundleNodeKeySourceGraphPath(node.bundleNodeKey);
+    const filename = [node.sourceFile?.path, key, ...(node.fileType === 'excalidraw' ? [`${key}.md`, key.replace(/\.excalidraw$/, '.md')] : [])]
+      .find((value): value is string => Boolean(value && snapshot.files[value]));
+    if (filename) node.body = fs.readFileSync(sourcePath(root, filename), 'utf8');
+  }
+}
+
+import { bundleNodeKeySourceGraphPath } from '../../../../../shared_code/utils/bundleNodeKey.js';
+
 export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSnapshot, nodes = loadSourceNodeConfigs(bundleDirectory), frontierDepth = 1, rebuildIndex = false, config = loadSourceBundleConfig(bundleDirectory)): Promise<WorkingGraphRustOutput> {
   nodes = nodesInSnapshot(snapshot, nodes);
   const appConfig = loadAppConfig(getConfigDirectory());
@@ -206,11 +223,13 @@ export async function snapshotGraph(bundleDirectory: string, snapshot: SourceSna
       defaultOutlinksDepth: config.defaultOutlinksDepth, defaultInlinksDepth: config.defaultInlinksDepth,
       frontierDepth, allowImagesToExtendToFrontier: config.allowImagesToExtendToFrontier ?? appConfig.allowImagesToExtendToFrontier ?? true, allowLowerDepths: false,
     });
-    return decodeWorkingGraphKeys(graph);
+    const decoded = decodeWorkingGraphKeys(graph);
+    if (!snapshot.transientSourceRoot) hydrateSnapshotNodeContents(graphRoot, snapshot, decoded.nodes);
+    return decoded;
   } finally { fs.rmSync(scratchDirectory, { recursive: true, force: true }); }
 }
 
-export async function discoverSourceSnapshot(bundleDirectory: string, rebuildIndex = false, context?: { config: BundleConfig; nodes: BundleNodeConfig[] }): Promise<SourceSnapshot> {
+export async function discoverSourceSnapshot(bundleDirectory: string, rebuildIndex = false, context?: { config: BundleConfig; nodes: BundleNodeConfig[]; frontierDepth?: number }): Promise<SourceSnapshot> {
   try {
     const config = context?.config ?? loadSourceBundleConfig(bundleDirectory);
     const sources = bundleSources(config);
@@ -224,7 +243,7 @@ export async function discoverSourceSnapshot(bundleDirectory: string, rebuildInd
     for (const source of sources) invalidateWorkingGraphCache(source.directory);
     // A curation focus narrows the displayed graph, not the source capture. Keep
     // the entry traversal so changing focus cannot discard its captured pages.
-    const graph = await snapshotGraph(bundleDirectory, live, context?.nodes ?? loadSourceNodeConfigs(bundleDirectory), 0, rebuildIndex,
+    const graph = await snapshotGraph(bundleDirectory, live, context?.nodes ?? loadSourceNodeConfigs(bundleDirectory), context?.frontierDepth ?? 0, rebuildIndex,
       { ...config, defaultTraversalBundleNodeId: config.entryBundleNodeId });
     // File metadata comes from the same Rust read that produced each node's parsed links.
     // Physical paths matter: an Excalidraw node can be backed by an ordinary .md filename.
@@ -288,6 +307,7 @@ export async function captureSourceSnapshot(bundleDirectory: string, options: { 
   const captured = sourceInventory(stored.files, snapshot.directories, snapshot.sources);
   if (captured.digest !== snapshot.digest) throw new SourcingError('Source files changed during capture. Check for changes again.');
   snapshot.git = { commit: stored.commit, tree: stored.tree, branch: stored.branch };
+  if (previous) snapshot.sourceAvailability = captureSourceAvailability(previous, config);
   try { writeSourcingJson(path.join(snapshotDirectory(bundleDirectory, snapshot.id), 'snapshot.json'), snapshot); }
   catch (error) {
     const retained = state?.candidateId ? loadSourceSnapshot(bundleDirectory, state.candidateId).git : previous?.git;

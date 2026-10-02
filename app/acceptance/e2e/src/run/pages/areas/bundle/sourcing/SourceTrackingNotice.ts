@@ -15,6 +15,11 @@ export class SourceTrackingNotice {
     await this.expect(this.dialog.getByText(`Bulk tracking did not track ${count} sensitive ${pages}.`, { exact: true })).toBeVisible();
   }
 
+  async close() {
+    await this.dialog.getByRole('button', { name: 'Okay', exact: true }).click();
+    await this.expect(this.dialog).toBeHidden();
+  }
+
   /** Select exactly the skipped pages in the editor. */
   async showSkippedPages() {
     await this.dialog.getByRole('button', { name: 'Show them', exact: true }).click();

@@ -36,4 +36,4 @@ export {
   GeneratedBundleExcalidraw,
   GeneratedBundleFolderNavigation,
 } from "./shared/GeneratedBundle.js";
-export { SourceReviewModal } from "./areas/bundle/sourcing/SourceReviewModal.js";
+export { SourceReviewWorkspace } from "./areas/bundle/sourcing/SourceReviewWorkspace.js";

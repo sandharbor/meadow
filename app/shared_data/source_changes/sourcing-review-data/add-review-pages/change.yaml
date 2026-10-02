@@ -1,0 +1,12 @@
+id: add-review-pages
+label: Add pages for tracking review
+action: "Link two safe pages, a directly sensitive page, and a page available for filter-based policy."
+check: "Sourcing shows provisional tracking and accepts selected pages without tracking them."
+e2e: sourcing-proposal-tracking-preference.spec.ts
+categories: [add]
+sourceGraph: sourcing-review-data
+operations:
+  - replaceText:
+      path: Start.md
+      before: "[[Leaf]]"
+      after: "[[Leaf]]\n\n[[Additions/Safe One]]\n[[Additions/Safe Two]]\n[[Additions/Secret]]\n[[Additions/Policy Draft]]"

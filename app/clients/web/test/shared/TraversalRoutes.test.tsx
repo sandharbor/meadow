@@ -5,7 +5,7 @@ import { Graph } from '../../../../contracts/types/graph.js';
 import type { IBundleNode } from '../../../../contracts/types/IBundleNode.js';
 import type { BundleNodeTraversalPathStep } from '../../../../contracts/types/bundleNodeGraph.js';
 import TraversalPathDetailsModal from '../../src/shared/components/TraversalPathDetailsModal.js';
-import BundleNodeSelectionSidebar from '../../src/areas/bundle/curation/components/BundleNodeSelectionSidebar.js';
+import BundleNodeSelectionSidebar from '../../src/areas/bundle/shared-sourcing-curation/components/BundleNodeSelectionSidebar.js';
 import { explainedTraversalRoutes, remainingTraversalDepths } from '../../src/shared/utils/traversalRoutes.js';
 
 function step(name: string, depth: number, outlinks: number, inlinks: number, via: 'start' | 'inlink' | 'outlink' = 'outlink'): BundleNodeTraversalPathStep {
@@ -136,7 +136,7 @@ describe('traversal arrivals', () => {
   it.each([false, true])('shows maximum remaining or pre-override depths in the sidebar (zero override: %s)', (zeroOverride) => {
     const { graph, node } = fixture();
     if (zeroOverride) applyZeroInlinkOverride(node);
-    render(<BundleNodeSelectionSidebar graph={graph} selectedNodeKeys={testKeySet(new Set(['Hub.md']))}
+    render(<BundleNodeSelectionSidebar bundleSlug="traversal-test" graph={graph} selectedNodeKeys={testKeySet(new Set(['Hub.md']))}
       onClose={vi.fn()} onSelectedNodeKeysChange={vi.fn()} onTrackPage={vi.fn()} onBlacklistPage={vi.fn()}
       onTrackSelected={vi.fn()} onBlacklistSelected={vi.fn()} isEffectivelySensitive={() => false}
       onUpdatePageConfig={vi.fn()} onDeletePageConfigKey={vi.fn()} onPreviewPage={vi.fn()}

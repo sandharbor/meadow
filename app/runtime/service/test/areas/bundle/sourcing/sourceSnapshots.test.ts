@@ -404,15 +404,14 @@ describe('source snapshots with the shared big graph', () => {
     await expect(acceptSourceSnapshot(bundle, { candidateId: review.accepted.id, reviewToken: review.reviewToken, resolutions: {}, orphanRemovals: [removable[0].bundleNodeId] })).rejects.toThrow('stale');
   });
 
-  it('keeps only explicitly retained orphan entries and removes them on a later default acceptance', async () => {
+  it('cleans every eligible orphan even when a legacy caller names only one removal', async () => {
     const review = await sourcingReview(bundle);
-    const kept = review.orphans.find(item => !item.removalBlockedReason)!;
-    const accepted = await acceptSourceSnapshot(bundle, { candidateId: review.accepted.id, reviewToken: review.reviewToken, resolutions: {}, orphanKeeps: [kept.bundleNodeId] });
-    expect(accepted.orphans.map(item => item.bundleNodeId)).toEqual([kept.bundleNodeId]);
-    expect(loadSourceNodeConfigs(bundle).some(item => item.bundleNodeId === kept.bundleNodeId)).toBe(true);
-    const cleaned = await acceptSourceSnapshot(bundle, { candidateId: accepted.accepted.id, reviewToken: accepted.reviewToken, resolutions: {} });
-    expect(cleaned.orphans).toHaveLength(0);
-    expect(cleaned.history).toHaveLength(1);
+    const removable = review.orphans.filter(item => !item.removalBlockedReason);
+    expect(removable.length).toBeGreaterThan(1);
+    const accepted = await acceptSourceSnapshot(bundle, { candidateId: review.accepted.id, reviewToken: review.reviewToken, resolutions: {}, orphanRemovals: [removable[0].bundleNodeId] });
+    expect(accepted.orphans).toHaveLength(0);
+    expect(loadSourceNodeConfigs(bundle).some(item => removable.some(orphan => orphan.bundleNodeId === item.bundleNodeId))).toBe(false);
+    expect(accepted.history).toHaveLength(1);
   });
 
   it('shows a candidate orphan before acceptance and applies its removal with the snapshot', async () => {

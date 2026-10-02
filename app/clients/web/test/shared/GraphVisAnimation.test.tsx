@@ -17,15 +17,15 @@ limitations under the License.
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Graph } from '../../../../contracts/types/graph';
-import type { DisplayGraph } from '../../src/areas/bundle/curation/types/displayGraph';
+import type { DisplayGraph } from '../../src/areas/bundle/shared-sourcing-curation/types/displayGraph';
 
-vi.mock('../../src/areas/bundle/curation/components/DepthCallout', () => ({
+vi.mock('../../src/areas/bundle/shared-sourcing-curation/components/DepthCallout', () => ({
   default: () => null,
   useDepthCalloutDismissal: () => ({ calloutDismissed: true, handleDismissCallout: vi.fn() }),
   useHasFrontierOutlinks: () => false,
 }));
 
-import GraphVis from '../../src/areas/bundle/curation/components/GraphVis';
+import GraphVis from '../../src/areas/bundle/shared-sourcing-curation/components/GraphVis';
 
 const graph = {
   getAllNodes: () => [],

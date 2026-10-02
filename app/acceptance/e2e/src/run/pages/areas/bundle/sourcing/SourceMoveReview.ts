@@ -1,36 +1,16 @@
 /* Copyright 2026 Sand Harbor Software, LLC. Licensed under the Apache License, Version 2.0. */
 
-import type { Locator, Expect } from '@playwright/test';
+import type { Locator, Expect, Page } from '@playwright/test';
 
 /** A single proposed identity match within source review. */
 export class SourceMoveReview {
-  constructor(private row: Locator, private expect: Expect) {}
-
-  async expectDetailsCollapsed() {
-    await this.expect(this.row.locator('details').first()).not.toHaveAttribute('open', '');
-    await this.expect(this.row.getByRole('radio')).not.toBeVisible();
-    await this.expect(this.row.getByText('Identical file contents', { exact: false })).not.toBeVisible();
-    await this.expect(this.row.getByRole('button', { name: /^Compare content/ })).not.toBeVisible();
-  }
-
-  async expandDetails(activation: 'click' | 'keyboard' = 'click') {
-    const disclosure = this.row.locator('summary').first();
-    if (activation === 'keyboard') await disclosure.press('Enter');
-    else await disclosure.click();
-    await this.expect(this.row.getByRole('group', { name: 'Page identity', exact: true })).toBeVisible();
-  }
-
-  async collapseDetails() {
-    await this.row.locator('summary').first().click();
-    await this.expectDetailsCollapsed();
-  }
+  constructor(private row: Locator, private expect: Expect, private page: Page) {}
 
   async expectSamePageSelected() {
     await this.expect(this.row.getByRole('radio', { name: /Same page/ })).toBeChecked();
   }
 
   async expectUnresolved(destinations: string[]) {
-    await this.expect(this.row.getByText('Choose page identity', { exact: true })).toBeVisible();
     await this.expect(this.row.getByRole('radio', { checked: true })).toHaveCount(0);
     const choices = this.row.getByRole('radio', { name: /Same page/ });
     await this.expect(choices).toHaveCount(destinations.length);
@@ -38,13 +18,15 @@ export class SourceMoveReview {
   }
 
   async keepSeparate() {
-    await this.row.getByRole('radio', { name: /Different pages/ }).check();
+    await Promise.all([
+      this.page.waitForResponse(response => response.url().endsWith('/sourcing/proposal/identities') && response.ok()),
+      this.row.getByRole('radio', { name: /Different pages/ }).click(),
+    ]);
     await this.expectSeparateSelected();
   }
 
   async expectSeparateSelected() {
     await this.expect(this.row.getByRole('radio', { name: /Different pages/ })).toBeChecked();
-    await this.expect(this.row.getByText('Separate pages', { exact: true })).toBeVisible();
   }
 
   async expectPreviousRoute(path: string) {
@@ -54,11 +36,11 @@ export class SourceMoveReview {
 
   async compareContent() {
     await this.row.getByRole('button', { name: 'Compare content', exact: true }).click();
-    await this.expect(this.row.getByRole('region', { name: 'Source content comparison' })).toBeVisible();
+    await this.expect(this.page.getByRole('dialog', { name: 'Captured source comparison', exact: true }).getByRole('region', { name: 'Source content comparison' })).toBeVisible();
   }
 
   async expectContentEdit(before: string, after: string) {
-    const diff = this.row.getByRole('region', { name: 'Source content comparison' });
+    const diff = this.page.getByRole('dialog', { name: 'Captured source comparison', exact: true }).getByRole('region', { name: 'Source content comparison' });
     await this.expect(diff.getByRole('row').filter({ hasText: before })).toHaveAttribute('data-change', 'removed');
     await this.expect(diff.getByRole('row').filter({ hasText: after })).toHaveAttribute('data-change', 'added');
   }

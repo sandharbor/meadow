@@ -37,7 +37,7 @@ import {
   getBundleRawDirectory,
   getConfigDirectory,
 } from '../bundle-config/bundleConfigPaths.js';
-import { snapshotSourceRoot, initializeSourcing, discoverSourceSnapshot, loadSourceSnapshot, loadSourcingState } from '../source-snapshot/sourceSnapshots.js';
+import { snapshotSourceRoot, initializeSourcing, discoverSourceSnapshot, loadSourceSnapshot, loadSourcingState, hydrateSnapshotNodeContents } from '../source-snapshot/sourceSnapshots.js';
 import { liveSourceLinks } from '../source-snapshot/sourceDiscovery.js';
 import { withPinnedSourceTree } from '../source-snapshot/sourceGit.js';
 import type { SourceSnapshot } from '../source-snapshot/sourceSnapshots.js';
@@ -55,6 +55,7 @@ interface RustLinkResolvedInfo {
 }
 
 interface RustNode {
+  body?: string;
   sourceId?: string;
   sourceFile?: { path: string; digest: string; size: number };
   bundleNodeKey: EncodedBundleNodeKey;
@@ -164,6 +165,7 @@ function serializeNodes(output: WorkingGraphRustOutput): IBundleNode[] {
       ...(node.bundleNodeId && { bundleNodeId: node.bundleNodeId as IBundleNode['bundleNodeId'] }),
       label: node.bundleNodeName,
       bundleNodeName: node.bundleNodeName,
+      ...(node.body !== undefined && { body: node.body }),
       depth: node.depth,
       remaining_depth: node.remaining_depth,
       remaining_inlinks_depth: node.remaining_inlinks_depth,
@@ -398,6 +400,7 @@ async function loadWorkingGraphUnlocked(options: {
     const links = (map: Record<EncodedBundleNodeKey, EncodedBundleNodeKey[]>) => Object.fromEntries(Object.entries(map).filter(([key]) => included.has(encodedBundleNodeKey(key))).map(([key, values]) => [encodedBundleNodeKey(key), values]));
     output = { ...output, allInlinkSources: links(discovered.allInlinkSources), allOutlinkTargets: links(discovered.allOutlinkTargets) };
   }
+  hydrateSnapshotNodeContents(capturedRoot, snapshot, output.nodes);
   const serialized = serializeWorkingGraphOutput(output);
   return {
     bundleConfig,

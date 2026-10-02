@@ -36,6 +36,7 @@ export enum Fixture {
   Minimal = "home_fixture_minimal",
   Empty = "empty",
   Example = "home_fixture_example",
+  SourcingReview = "home_fixture_sourcing_review",
 }
 
 /** Bundle names available in fixtures. */

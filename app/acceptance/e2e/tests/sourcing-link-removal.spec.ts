@@ -11,10 +11,6 @@ test.use({ bundleMode: "single-file" });
 /*
  * Remove a source link and review the broken route. The accepted bundle should stay
  * unchanged until the user accepts the proposed change.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing accepts a shared link deletion only when requested and explains its broken route', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---
@@ -43,7 +39,7 @@ test('Sourcing accepts a shared link deletion only when requested and explains i
   // Inspect the resulting orphan.
   await review.collapseDetails(modifiedPath);
   await review.expandDetails(modifiedPath, 'keyboard');
-  await review.expectNoMissingEntry('t001/deeper/t001 ---- child 2.md');
+  await review.expectNoLongerIncluded('t001/deeper/t001 ---- child 2.md');
   const orphans = await review.reviewOrphans();
   await orphans.showExplanation('t001 ---- child 2');
   await orphans.expectExplanation('t001 ---- child 2', 'no longer links to');

@@ -23,10 +23,6 @@ test.use({ bundleMode: "single-file" });
  * Apply a shared source change from Dev Tools to the open saved state, which is
  * this scenario's own running home. The application should review the same move
  * used by the automated test, and fixture menus that share the graph agree.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing dev controls apply the same shared move to the running application', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---

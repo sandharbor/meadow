@@ -18,7 +18,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import BundleNodeContextMenu from '../../../../../src/areas/bundle/curation/components/BundleNodeContextMenu';
+import BundleNodeContextMenu from '../../../../../src/areas/bundle/shared-sourcing-curation/components/BundleNodeContextMenu';
 import { Graph } from '../../../../../../../contracts/types/graph';
 import type { IBundleNode } from '../../../../../../../contracts/types/IBundleNode';
 import type { BundleNodeId } from '../../../../../../../contracts/types/bundleNodeConfig';

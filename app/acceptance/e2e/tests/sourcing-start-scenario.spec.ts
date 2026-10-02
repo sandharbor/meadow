@@ -29,10 +29,6 @@ async function stopRuntime(home: string): Promise<void> {
  * change's designated fixture in a fresh home with Local services, accepts the
  * baseline, applies the change, and hands over directly in source review. The
  * developer's real home is never touched.
- *
- * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
- * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing Start scenario opens a fresh home and hands over directly in source review', async ({ page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }, testInfo) => {
   // --- Setup ---
@@ -87,7 +83,7 @@ test('Sourcing Start scenario opens a fresh home and hands over directly in sour
     // Inspect the source review handoff.
     await page.goto(second.destination);
     const editor = new BundleEditorPage(page, expect);
-    await expect(page.getByRole('dialog', { name: 'Source changes', exact: true })).toBeVisible();
+    await expect(page.getByTestId('sourcing-workspace')).toBeVisible();
     await editor.expectSourceOrphanCount(1);
     const orphans = await editor.sourceReview.reviewOrphans();
     await orphans.showExplanation('t003 ---- page with section to link to');

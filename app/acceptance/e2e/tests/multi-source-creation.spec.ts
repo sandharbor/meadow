@@ -12,10 +12,6 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Create a bundle from ordered page and folder selections across sources. The initial
  * capture should preserve that order without asking for another acceptance step.
- *
- * Project impact (planned): Preserve initial capture and required-root behavior as regression baselines
- * while integrating the new sourcing lifecycle.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source initial creation captures ordered mixed selections without an extra acceptance step', async ({ page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

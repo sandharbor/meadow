@@ -41,10 +41,6 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Set the starting page's incoming-link depth to zero. Its depth-one outgoing media should
  * remain visible.
- *
- * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
- * proposal lifecycle.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible", async ({
   page,
@@ -117,6 +113,8 @@ test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media vis
   await addKeyFrame(images);
   await addKeyFrame(excalidraw);
   await checkpoint("depth-1 outlink media still present in list view");
+  await editor.sourceReview.accept();
+  await checkpoint("accepted incoming-depth change preserves the outgoing media");
 
   void customBundle;
 

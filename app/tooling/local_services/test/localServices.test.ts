@@ -127,11 +127,20 @@ test("a checkpoint restores the whole home, its repository, and each part partit
       ...(fingerprint && { sourceProposal: { sources, baseConfigFingerprint: fingerprint } }) }));
   }
 
+  const proposalConfiguration = { bundle: { sources, sourceDirectory: `${home}/source_graphs/notes` }, nodes: [] };
+  fs.writeFileSync(path.join(bundle, 'raw/sourcing/proposal.json'), JSON.stringify({
+    original: proposalConfiguration, proposed: proposalConfiguration,
+    resolutions: [{ path: ['bundle', 'sources', 'source000001'], original: sources[0], saved: { ...sources[0], directory: '/Users/someone/notes' }, proposed: sources[0] }],
+  }));
+  const editorView = { version: 1 as const,
+    local: { 'meadow.editor-view.v1:demo:curation:activeView': '"list"', 'meadow.editor-view.v1:demo:sourcing:selection': '{"selected":["file:a.md"],"collapsed":true}' },
+    session: { 'sourceProposalPendingEdit:demo': JSON.stringify(proposalConfiguration) },
+  };
   const repo = path.join(root, "checkpoint-state-repo");
   const common = {
     repo, homeDirectory: home, parts: [part], containers: { files: container }, partition: "e2e-w0",
     codeRevision: "abc123", uncommittedCode: true, ports: { webServer: 4321 }, fixtureHome: "home_fixture_minimal", scenario: "demo",
-    sharedObjectsDirectory: path.join(root, "checkpoint-objects"),
+    sharedObjectsDirectory: path.join(root, "checkpoint-objects"), editorView,
   };
   await captureCheckpoint({ ...common, message: "the setup is established" });
   fs.writeFileSync(path.join(home, "bundles/demo/raw/generated.json"), "{\"changed\":true}\n");
@@ -146,6 +155,15 @@ test("a checkpoint restores the whole home, its repository, and each part partit
   await restoreCheckpoint({ repo, index: 1, homeDirectory: restoredHome, parts: [part], containers: { files: container }, partition: "fork-1" });
   assert.equal(fs.readFileSync(path.join(restoredHome, "bundles/demo/raw/generated.json"), "utf8"), "{}\n");
   const restoredBundle = path.join(restoredHome, "bundles/demo");
+  const restoredView = JSON.parse(fs.readFileSync(path.join(restoredHome, 'cache/editor-view/checkpoint.json'), 'utf8'));
+  assert.deepEqual(restoredView.view.local, editorView.local, 'the two modes retain their independent views');
+  assert.equal(JSON.parse(restoredView.view.session['sourceProposalPendingEdit:demo']).bundle.sources[0].directory, `${restoredHome}/source_graphs/notes`);
+  const proposal = JSON.parse(fs.readFileSync(path.join(restoredBundle, 'raw/sourcing/proposal.json'), 'utf8'));
+  assert.equal(proposal.original.bundle.sourceDirectory, `${restoredHome}/source_graphs/notes`);
+  assert.equal(proposal.proposed.bundle.sources[0].directory, `${restoredHome}/source_graphs/notes`);
+  assert.equal(proposal.resolutions[0].original.directory, `${restoredHome}/source_graphs/notes`);
+  assert.equal(proposal.resolutions[0].saved.directory, '/Users/someone/notes');
+  assert.equal(editorView.session['sourceProposalPendingEdit:demo'], JSON.stringify(proposalConfiguration), 'restoration does not mutate the checkpoint metadata');
   for (const id of ["accepted", "pending", "stale"]) {
     const snapshot = JSON.parse(fs.readFileSync(path.join(restoredBundle, "raw/sourcing/snapshots", id, "snapshot.json"), "utf8"));
     assert.equal(snapshot.sources[0].directory, `${restoredHome}/source_graphs/notes`);

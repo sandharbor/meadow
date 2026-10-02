@@ -32,10 +32,6 @@ async function stopRuntime(home: string): Promise<void> {
  * it: the whole home and its object storage are restored into a fresh home and
  * partition, Hosted Development is refused because local storage holds state,
  * and the forked app shows the same pending move on current code.
- *
- * Project impact (planned): Update source-review entry and checkpoint restoration for mode state,
- * identity gates, dialogs, and active tabs.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Dev Tools forks a scenario checkpoint into a fresh home with Local services', async ({ page, testServer, sourceChanges, minioS3, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---
@@ -104,7 +100,7 @@ test('Dev Tools forks a scenario checkpoint into a fresh home with Local service
     // Review the move in the forked application.
     await page.goto(destination);
     const review = new BundleEditorPage(page, expect).sourceReview;
-    await expect(page.getByRole('dialog', { name: 'Source changes', exact: true })).toBeVisible();
+    await expect(page.getByTestId('sourcing-workspace')).toBeVisible();
     await review.open();
     // The move happened after the scenario's last source check, exactly as in
     // the captured home, so the fork discovers it on its first check.

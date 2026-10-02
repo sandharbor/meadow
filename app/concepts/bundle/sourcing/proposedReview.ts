@@ -3,13 +3,13 @@
 import { coreConceptIds as id } from '../../ids.js';
 import { conceptLink as link, conceptText as text, defineMeadowConcept as define } from '../../language.js';
 
-// Proposed design. Implementation participation and executable evidence follow
-// when the corresponding production behavior and scenario bodies are written.
+// Source review concepts connect the durable proposal lifecycle to its shared editor.
 
 export const pendingSourceProposal = define({
   id: id.pendingSourceProposal, name: 'Pending Source Proposal', kind: 'artifact', searchFacet: true,
   appAreaIds: [id.bundleSourcing],
-  definition: text`Proposed: one durable working set containing captured candidate material, proposed sourcing settings, and staged curation and filter decisions, awaiting acceptance or discard.`,
+  implementationRoles: ['begin-proposal', 'save-proposal'],
+  definition: text`one durable working set containing captured candidate material, proposed sourcing settings, and staged curation and filter decisions, awaiting acceptance or discard.`,
   mechanics: [
     text`Curation and generation continue from accepted material and saved configuration. Sourcing edits autosave into the proposal instead of requiring Save followed by Refresh sources. The proposal accumulates edits; individual tweaks do not need separate historical versions.`,
     text`Later preserves the proposal across navigation and restart while permitting further accepted curation work. Discard removes draft settings, decisions, and candidate state without modifying external source files or reverting unrelated accepted edits. Later source checks can rediscover those external changes.`,
@@ -21,9 +21,10 @@ export const pendingSourceProposal = define({
 });
 
 export const proposalConfigurationDraft = define({
+  implementationRoles: ['stage-configuration', 'summarize-draft'],
   id: id.proposalConfigurationDraft, name: 'Proposal Configuration Draft', kind: 'artifact', searchFacet: true,
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: proposed configuration changes isolated from accepted node, bundle-filter, and global-filter settings until the source proposal is accepted.`,
+  definition: text`proposed configuration changes isolated from accepted node, bundle-filter, and global-filter settings until the source proposal is accepted.`,
   mechanics: [
     text`Reuse the existing separate node-configuration draft pattern rather than applying accepted edits and attempting to reverse them. Each configuration type keeps its own validation; the proposal coordinates preservation, discard, merging, and atomic application.`,
     text`Retain the original value and the proposed value for each edited setting or filter so later accepted changes can be compared. Additions, deletions, enablement, and changes of filter scope participate too; do not replace an entire global-filter document and lose unrelated edits.`,
@@ -34,9 +35,10 @@ export const proposalConfigurationDraft = define({
 });
 
 export const pendingProposalRevalidation = define({
+  implementationRoles: ['review-proposal'],
   id: id.pendingProposalRevalidation, name: 'Pending Proposal Revalidation', kind: 'process', searchFacet: true,
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: when relevant state outside a pending proposal changes, reassess whether its staged decisions remain applicable before carrying them forward or accepting them.`,
+  definition: text`when relevant state outside a pending proposal changes, reassess whether its staged decisions remain applicable before carrying them forward or accepting them.`,
   mechanics: [
     text`Newer live material and newer accepted curation decisions are distinct causes. Detecting live changes preserves the reviewed candidate until an explicit update; reopening a deferred proposal uses current accepted curation and sensitivity policy while retaining its captured source material.`,
     text`Preserve compatible decisions and unrelated changes automatically. Surface changed targets, conflicting settings, mutually exclusive inclusion decisions, and newly sensitive tracking choices. Unresolved decisions block acceptance, and a final validation prevents changes made after review from being silently overwritten.`,
@@ -49,7 +51,8 @@ export const pendingProposalRevalidation = define({
 export const sourceReviewConfigurationMerge = define({
   id: id.sourceReviewConfigurationMerge, name: 'Proposal Configuration Merge', kind: 'behavioral-rule', searchFacet: false,
   parentId: id.pendingProposalRevalidation, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: merge a proposal against its original and current saved values without silently overwriting subsequent configuration changes.`,
+  implementationRoles: ['merge-configuration'],
+  definition: text`merge a proposal against its original and current saved values without silently overwriting subsequent configuration changes.`,
   mechanics: [
     text`If current equals original, apply the proposed value. If current already equals proposed, no conflict exists. Preserve independent edits, including separate fields of the same page or filter. Divergent changes to the same setting, deletions versus edits, and semantically incompatible decisions require an explicit choice.`,
     text`Recheck against current saved state at acceptance. Conflict resolution shows the original, saved, and proposed alternatives and does not silently make a fresh external edit disappear.`,
@@ -58,9 +61,10 @@ export const sourceReviewConfigurationMerge = define({
 });
 
 export const sourceReviewTrigger = define({
+  implementationRoles: ['route-blacklist-edit'],
   id: id.sourceReviewTrigger, name: 'Sourcing Review Trigger', kind: 'behavioral-rule', searchFacet: false,
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: reviewing source changes or making a boundary edit requiring review enters sourcing with an isolated pending proposal.`,
+  definition: text`reviewing source changes or making a boundary edit requiring review enters sourcing with an isolated pending proposal.`,
   mechanics: [
     text`Review source changes replaces the existing source-changes modal as the main review entry. Depth and traversal edits, and blacklisting or unblacklisting with wider graph effects, stage their effects and enter sourcing. A compact transition explanation makes the mode change explicit.`,
     text`For page and folder blacklist shortcuts in curation, calculate actual full-graph consequences rather than infer them from visible descendants or an apparent leaf. When only the selected item changes and no other pages enter or leave scope, apply immediately with Undo. Otherwise stage the edit. Independent routes can retain pages, while a folder or page stop can remove pages outside its subtree.`,
@@ -70,9 +74,10 @@ export const sourceReviewTrigger = define({
 });
 
 export const sourceReviewIdentity = define({
+  implementationRoles: ['choose-identities'],
   id: id.sourceReviewIdentity, name: 'Source Review Identity', kind: 'process', searchFacet: true,
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing],
-  definition: text`Proposed: resolve whether proposed source matches preserve page identity before entering the sourcing comparison graph.`,
+  definition: text`resolve whether proposed source matches preserve page identity before entering the sourcing comparison graph.`,
   mechanics: [
     text`A required modal shows potential renames and moves with existing matching evidence and choices to preserve identity or treat files as separate pages. Continue to graph stores resolved decisions in the proposal without accepting sources. Later or closing returns to curation and preserves partial decisions; unresolved identity prevents entry into sourcing.`,
     text`Offer an explicit bulk confirmation of all unambiguous suggestions, with counts and evidence available. Ambiguous matches require individual choices. A confirmed match appears as one comparison node with old and new locations and routes. Rejected matches become separate additions and departures.`,
@@ -84,7 +89,8 @@ export const sourceReviewIdentity = define({
 export const sourceReviewAcceptance = define({
   id: id.sourceReviewAcceptance, name: 'Proposal Acceptance', kind: 'behavioral-rule', searchFacet: false,
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing],
-  definition: text`Proposed: accept exactly the reviewed source capture and resolved proposal configuration as one recoverable transaction.`,
+  implementationRoles: ['apply-transaction', 'recover-transaction'],
+  definition: text`accept exactly the reviewed source capture and resolved proposal configuration as one recoverable transaction.`,
   mechanics: [
     text`Accept applies all additions, modifications, departures, proposed settings, staged tracking and filter edits, and required cleanup together. It is not a separate approval of each ordinary source change. View filters neither select changes for acceptance nor erase pending decisions.`,
     text`Newer live material does not prevent accepting the currently reviewed capture, and acceptance never rereads newer file bytes. Source tracking and sensitivity assessment use the same reviewed capture and resolved policy. An admitted page can remain untracked after acceptance.`,
@@ -95,9 +101,10 @@ export const sourceReviewAcceptance = define({
 });
 
 export const sourceReviewCleanup = define({
+  implementationRoles: ['clean-accepted-scope'],
   id: id.sourceReviewCleanup, name: 'Accepted Scope Cleanup', kind: 'behavioral-rule', searchFacet: false,
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: retain excluded pages' configuration while a proposal is pending and remove unreachable configuration when it is accepted.`,
+  definition: text`retain excluded pages' configuration while a proposal is pending and remove unreachable configuration when it is accepted.`,
   mechanics: [
     text`Reversing a draft blacklist or depth reduction restores excluded pages with their configuration, including across Later and restart. These provisional exclusions are not permanent cleanup.`,
     text`Acceptance requires cleanup for both intentional scope exclusions and external-source orphans. Remove Keep in config exceptions. Retain causal blacklist and traversal controls; cleanup must not undo the boundary itself. Required starting and traversal entries block acceptance until repaired rather than being removed implicitly. Source files remain untouched.`,
@@ -107,9 +114,10 @@ export const sourceReviewCleanup = define({
 });
 
 export const sourceReviewWorkspace = define({
+  implementationRoles: ['render-workspace', 'compare-captures'],
   id: id.sourceReviewWorkspace, name: 'Source Review Workspace', kind: 'capability', searchFacet: true,
   parentId: id.pendingSourceProposal, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: sourcing is an explicitly marked mode of the full graph editor, combining candidate exploration and accepted-versus-proposed comparison.`,
+  definition: text`sourcing is an explicitly marked mode of the full graph editor, combining candidate exploration and accepted-versus-proposed comparison.`,
   mechanics: [
     text`Keep the full canvas, graph and list views, existing selection/sidebar machinery, and complete filtering, solo, hide, labels, and inspection tools. A persistent sourcing header with Accept, Later, and Discard and a cohesive sourcing accent distinguish the mode. Start with ordinary filter groups visible below the prominent Source changes group; refine colors and layout through a prototype.`,
     text`The comparison includes candidate nodes plus departing accepted nodes and their previous connections. Departures remain clearly marked and inspectable rather than disappearing or fading into unchanged context. Confirmed moves use one identity with before and after locations.`,
@@ -122,9 +130,10 @@ export const sourceReviewWorkspace = define({
 });
 
 export const sourceReviewFiltering = define({
+  implementationRoles: ['define-change-filters'],
   id: id.sourceReviewFiltering, name: 'Source Review Filtering', kind: 'behavioral-rule', searchFacet: false,
   parentId: id.sourceReviewWorkspace, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: source-change filters change presentation only and combine with existing graph filters without changing the accepted proposal.`,
+  definition: text`source-change filters change presentation only and combine with existing graph filters without changing the accepted proposal.`,
   mechanics: [
     text`Hide, solo, highlight, category toggles, and fade never reject source changes, undo tracking choices, or omit changes from acceptance. Source categories remain combinable with folders and ordinary filters. Unchanged defaults to Fade; changed categories have distinguishable treatments with readable explanations.`,
     text`Soloing a group brings matching nodes to full visibility even when they match Fade. Leaving solo restores the underlying fade setting instead of rewriting it. Faded context remains available for selection and inspection.`,
@@ -133,9 +142,10 @@ export const sourceReviewFiltering = define({
 });
 
 export const graphFade = define({
+  implementationRoles: ['apply-filter-presentation'],
   id: id.graphFade, name: 'Graph Fade', kind: 'mechanism', searchFacet: true,
   appAreaIds: [id.bundleCuration, id.bundleSourcing],
-  definition: text`Proposed: a reusable graph-filter action that reduces the prominence of matching context without hiding it or changing business state.`,
+  definition: text`a reusable graph-filter action that reduces the prominence of matching context without hiding it or changing business state.`,
   mechanics: [
     text`Fade is a general filter action alongside highlighting, not a hard-coded sourcing-only opacity rule. In sourcing, the Unchanged subfilter uses it by default. Opacity, color, and optional marker patterns are prototype choices; labels and selection remain usable.`,
     text`Solo temporarily brings its targets into focus while retaining the remembered fade configuration. Fade and its current effective presentation are included in restorable per-mode view state.`,
@@ -144,9 +154,10 @@ export const graphFade = define({
 });
 
 export const sourceReviewViewState = define({
+  implementationRoles: ['remember-mode-view'],
   id: id.sourceReviewViewState, name: 'Mode View State', kind: 'state', searchFacet: true,
   parentId: id.sourceReviewWorkspace, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: independently remembered, serializable presentation state for sourcing and curation in the same graph editor.`,
+  definition: text`independently remembered, serializable presentation state for sourcing and curation in the same graph editor.`,
   mechanics: [
     text`Each mode remembers filters and filter mix, group expansion, highlight and fade, solo and hidden sets, labels and titles, selection, graph/list view, and graph pan and zoom. The first sourcing view shows the full comparison with unchanged faded rather than inheriting a curation solo that hides additions.`,
     text`Mode transitions restore the target mode's view. Successful acceptance returns to the remembered curation view of the accepted graph. Sensitivity and persistent filter definitions remain policy, not duplicated per-mode settings.`,
@@ -158,7 +169,8 @@ export const sourceReviewViewState = define({
 export const sourceReviewSensitivity = define({
   id: id.sourceReviewSensitivity, name: 'Proposal Tracking Sensitivity', kind: 'behavioral-rule', searchFacet: false,
   parentId: id.pendingProposalRevalidation, appAreaIds: [id.bundleSourcing, id.bundleCuration],
-  definition: text`Proposed: provisional tracking uses effective sensitivity and requires renewed approval when an explicit tracking choice becomes sensitive.`,
+  implementationRoles: ['revalidate-tracking'],
+  definition: text`provisional tracking uses effective sensitivity and requires renewed approval when an explicit tracking choice becomes sensitive.`,
   mechanics: [
     text`Retain the saved Track non-sensitive added pages preference, display its provisional effects, and allow individual opt-outs. Effective sensitivity includes source markings and enabled bundle or global Mark Sensitive filters. Sensitive additions are admitted to candidate material but are not automatically tracked.`,
     text`Refreshing source material or reopening after accepted policy changes reassesses provisional tracking. Newly sensitive automatic choices become untracked. Explicit choices that became sensitive must be confirmed again or untracked before acceptance.`,

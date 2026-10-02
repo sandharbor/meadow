@@ -31,10 +31,6 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 /*
  * Generate a bundle assembled from several folders. The preview should preserve the
  * collection's home page, folder order, and contents.
- *
- * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
- * generated-material steps accordingly.
- * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("previews a configured multiple-folder collection bundle", async ({
   page,

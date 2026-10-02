@@ -16,9 +16,9 @@ limitations under the License.
 
 import { describe, expect, it } from 'vitest';
 import { Graph, IBundleNode } from '../../../../../../../contracts/types/graph';
-import { DisplayGraph } from '../../../../../src/areas/bundle/curation/types/displayGraph';
-import { FilterExpression } from '../../../../../src/areas/bundle/curation/types/filterExpression';
-import { IFilter } from '../../../../../src/areas/bundle/curation/types/filters';
+import { DisplayGraph } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/displayGraph';
+import { FilterExpression } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filterExpression';
+import { IFilter } from '../../../../../src/areas/bundle/shared-sourcing-curation/types/filters';
 
 function createGraph(): Graph {
   const graph = new Graph();
@@ -57,6 +57,23 @@ function createFilter(id: string, pages: string[], mode: 'solo' | 'hide'): IFilt
 }
 
 describe('DisplayGraph filter expressions', () => {
+  it('restores Fade after a solo ends without hiding or changing tracked nodes', () => {
+    const graph = createGraph();
+    const faded = { ...createFilter('context', ['1', '2'], 'solo'), isSolo: false, actions: [{ type: 'fade' as const }] };
+    const solo = createFilter('focus', ['1'], 'solo');
+    const context = new DisplayGraph(graph);
+    context.setFilters([faded]);
+    expect(context.getDisplayNode(testKey('1'))?.isFaded).toBe(true);
+    expect(context.getDisplayNode(testKey('1'))?.isVisible).toBe(true);
+    const focused = new DisplayGraph(graph);
+    focused.setFilters([faded, solo]);
+    expect(focused.getDisplayNode(testKey('1'))?.isFaded).toBe(false);
+    expect(faded.actions).toEqual([{ type: 'fade' }]);
+    const restored = new DisplayGraph(graph);
+    restored.setFilters([faded, { ...solo, isSolo: false }]);
+    expect(restored.getDisplayNode(testKey('1'))?.isFaded).toBe(true);
+    expect(graph.getAllNodes().every(node => node.tracked)).toBe(true);
+  });
   it('uses the default solo union when no custom expression is supplied', () => {
     const displayGraph = new DisplayGraph(createGraph());
     displayGraph.setFilters([

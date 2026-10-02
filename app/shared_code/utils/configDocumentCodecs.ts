@@ -161,7 +161,7 @@ function validateSelector(value: unknown): value is CustomBundleNodeSelectorConf
 }
 
 function validateAction(value: unknown): value is CustomFilterAction {
-  if (!isPlainObject(value) || !['highlight', 'mark_sensitive'].includes(String(value.type))) return false;
+  if (!isPlainObject(value) || !['highlight', 'mark_sensitive', 'fade'].includes(String(value.type))) return false;
   return (
     (value.color === undefined || typeof value.color === 'string') &&
     (value.isDashed === undefined || typeof value.isDashed === 'boolean')
