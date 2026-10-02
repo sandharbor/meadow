@@ -6,7 +6,7 @@ import path from 'node:path';
 import { test, expect } from '@playwright/test';
 import { ensurePublishFlowArtifact } from '../fixtures/publish-flow-fixture.js';
 
-test('ticks position command markers under multiline calls and distinguish repeated executions', async ({ page }) => {
+test('ticks position command markers beside multiline calls without moving code and distinguish repeated executions', async ({ page }) => {
   const base = ensurePublishFlowArtifact();
   const runDirectory = fs.mkdtempSync(path.join(os.homedir(), 'meadow-e2e-artifacts/current/rv-source-marker-'));
   const directory = path.join(runDirectory, 'source-marker');
@@ -42,17 +42,20 @@ test('ticks position command markers under multiline calls and distinguish repea
     const commandLine = page.locator('[data-source-line="2"]');
     await expect(commandLine).toContainText('await sourcing.updateSources(');
     await expect(commandLine).not.toContainText('sourceCommand');
-    const indicator = commandLine.getByTestId('source-capture-indicator');
-    await expect(indicator).toHaveAttribute('title', /record its source position at each tick/);
     await page.getByRole('checkbox', { name: 'Show capture code' }).check();
     await expect(commandLine).toContainText('sourceCommand(() =>');
-    await expect(indicator).toHaveCount(0);
     await page.getByRole('checkbox', { name: 'Show capture code' }).uncheck();
     await expect(commandLine).not.toContainText('sourceCommand');
     await commandLine.click();
     await expect(marker).toHaveAttribute('data-command-status', 'running');
+    await expect(commandLine.getByTestId('source-ticks-indicator')).toHaveCount(0);
+    await expect(commandLine.getByTestId('source-checkpoints-indicator')).toHaveCount(0);
     await expect(marker).toHaveAttribute('data-command-id', '0');
-    await expect(marker.locator('..').locator('[data-source-line]')).toHaveAttribute('data-source-line', '4');
+    await expect(marker.locator('..')).toHaveAttribute('data-source-line', '2');
+    await expect(marker).toHaveText('T 1');
+    await expect(commandLine).toHaveAttribute('title', /Tick 1 · running/);
+    const followingLine = page.locator('[data-source-line="5"]');
+    const lineOffset = await followingLine.evaluate(element => element.parentElement!.offsetTop);
     await expect(page.locator('.code-line[data-source-highlighted="true"]')).toHaveAttribute('data-source-line', '2');
     await expect(commandLine).toHaveClass(/bg-purple-50/);
     await expect(marker).toHaveClass(/text-purple-700/);
@@ -61,6 +64,8 @@ test('ticks position command markers under multiline calls and distinguish repea
       await expect(marker).toHaveAttribute('data-command-id', id);
       await expect(marker).toHaveAttribute('data-command-status', status);
       const checkpoint = id === '0';
+      await expect(marker).toContainText(checkpoint ? 'CP' : 'T');
+      await expect.poll(() => followingLine.evaluate(element => element.parentElement!.offsetTop)).toBe(lineOffset);
       await expect(commandLine).toHaveClass(checkpoint ? /bg-orange-50/ : /bg-purple-50/);
       await expect(marker).toHaveClass(checkpoint ? /text-orange-700/ : /text-purple-700/);
     }

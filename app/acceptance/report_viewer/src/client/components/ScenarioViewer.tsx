@@ -1054,6 +1054,22 @@ export default function ScenarioViewer() {
   const selectedSourceCommand = ticks[currentTickIndex]?.sourceCommand
   const sourceHighlightBackground = ticks[currentTickIndex]?.isCheckpoint === false ? 'bg-purple-50' : 'bg-orange-50'
   const sourceMarkerColors = ticks[currentTickIndex]?.isCheckpoint ? 'border-orange-200 text-orange-700' : 'border-purple-200 text-purple-700'
+  const sourceTimelineMarkers = useMemo(() => {
+    const markers = new Map<number, { ticks: number[]; checkpoints: number[] }>()
+    const occurrences = new Map<string, number>()
+    ticks.forEach((tick, index) => {
+      const message = tick.checkpointMessage ?? ''
+      const occurrence = occurrences.get(message) ?? 0
+      if (tick.isCheckpoint) occurrences.set(message, occurrence + 1)
+      const matches = sourceLocations.checkpoints.filter(location => location.message === message)
+      const line = tick.sourceCommand?.line ?? (tick.isCheckpoint ? matches[Math.min(occurrence, matches.length - 1)]?.line : undefined)
+      if (line === undefined) return
+      const events = markers.get(line) ?? { ticks: [], checkpoints: [] }
+      events[tick.isCheckpoint ? 'checkpoints' : 'ticks'].push(index + 1)
+      markers.set(line, events)
+    })
+    return markers
+  }, [ticks, sourceLocations])
 
   // Command locations follow ticks; older runs retain checkpoint highlighting.
   const highlightedSourceLine = useMemo(() => {
@@ -2552,16 +2568,34 @@ export default function ScenarioViewer() {
                         <div
                           data-source-line={i + 1}
                           data-source-highlighted={highlightedSourceLine === i + 1 ? true : undefined}
-                          className={`code-line relative px-3 font-mono ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : ''}`}
+                          title={highlightedSourceLine === i + 1 && selectedSourceCommand ? `Tick ${currentTickIndex + 1} · ${selectedSourceCommand.status}\n${selectedSourceCommand.text}` : undefined}
+                          className={`code-line relative pl-[46px] pr-3 font-mono ${highlightedSourceLine === i + 1 ? sourceHighlightBackground : ''}`}
                         >
-                          {!showCaptureCode && sourceDisplay?.commandLines.includes(i + 1) && (
+                          {highlightedSourceLine === i + 1 && currentTickIndex >= 0 && (
                             <span
-                              title="This command is wrapped in sourceCommand(...) in the original test to record its source position at each tick. Enable Show capture code to see the wrapper."
-                              aria-label="Source position capture"
-                              data-testid="source-capture-indicator"
-                              className="absolute left-0.5 cursor-help select-none text-[9px] text-neutral-400"
-                            >✓</span>
+                              data-testid="source-command-marker"
+                              data-command-id={selectedSourceCommand?.id}
+                              data-command-status={selectedSourceCommand?.status}
+                              data-command-line={selectedSourceCommand?.line}
+                              className={`absolute left-2 top-0 flex h-full w-11 items-center gap-0.5 font-sans text-[10px] ${sourceMarkerColors}`}
+                            >
+                              <span>T {currentTickIndex + 1}</span>
+                              {ticks[currentTickIndex]?.isCheckpoint && <span className="rounded bg-orange-100 px-1 font-bold">CP</span>}
+                            </span>
                           )}
+                          {highlightedSourceLine !== i + 1 && <span className="absolute left-2 top-0 flex h-full items-center gap-0.5">
+                            {(['ticks', 'checkpoints'] as const).map(kind => {
+                              const numbers = sourceTimelineMarkers.get(i + 1)?.[kind] ?? []
+                              if (!numbers.length) return null
+                              const label = `${kind === 'ticks' ? 'Ticks' : 'Checkpoints at ticks'} ${numbers.join(', ')}`
+                              return <span key={kind} title={label} aria-label={label}
+                                data-testid={`source-${kind}-indicator`}
+                                style={{ backgroundColor: kind === 'ticks'
+                                  ? 'color-mix(in srgb, #f3e8ff 70%, #7e22ce 30%)'
+                                  : 'color-mix(in srgb, #ffedd5 70%, #c2410c 30%)' }}
+                                className="h-[7px] w-[7px] cursor-help rounded-full" />
+                            })}
+                          </span>}
                           <span dangerouslySetInnerHTML={{ __html: lineHtml || '&nbsp;' }} />
                           {(testSourceChangesByLine.get(i) ?? []).map((change, index) => (
                             <button key={`${change.id}:${index}`} type="button"
@@ -2571,19 +2605,6 @@ export default function ScenarioViewer() {
                               className="ml-2 inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-sky-400 bg-sky-50 align-middle font-sans text-[11px] font-bold text-sky-700 hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-600">?</button>
                           ))}
                         </div>
-                        {selectedSourceCommand?.endLine === i + 1 && (
-                          <div
-                            title={selectedSourceCommand.text}
-                            data-testid="source-command-marker"
-                            data-command-id={selectedSourceCommand.id}
-                            data-command-status={selectedSourceCommand.status}
-                            data-command-line={selectedSourceCommand.line}
-                            className={`mx-3 my-1 flex items-center gap-2 whitespace-normal border-t-2 font-sans text-[10px] ${sourceMarkerColors}`}
-                          >
-                            <span aria-hidden="true">▲</span>
-                            Tick {currentTickIndex + 1} · {selectedSourceCommand.status}
-                          </div>
-                        )}
                         {fixtureReferences.map((fixture) => (
                           <button
                             key={fixture.name}
