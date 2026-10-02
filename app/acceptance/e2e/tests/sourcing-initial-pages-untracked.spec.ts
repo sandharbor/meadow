@@ -4,7 +4,7 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Fixture } from '../src/run/workflows.js';
 import { BundleListPage, BundleEditorPage, CreateAndEditBundleModal, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Minimal });
@@ -12,6 +12,10 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Capture a source for the first time. Candidate pages should be visible without being
  * automatically tracked.
+ *
+ * Project impact (planned): Preserve initial capture and required-root behavior as regression baselines
+ * while integrating the new sourcing lifecycle.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing initial capture leaves candidate pages untracked', async ({ page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

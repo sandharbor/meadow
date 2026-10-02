@@ -7,7 +7,7 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { startDevTools } from '../src/run/devTools.js';
 import { BundleListPage, BundleEditorPage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { checkpoint as checkpointConcept, bundleSource, startingSelection } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, checkpoint as checkpointConcept, bundleSource, startingSelection } from '../../../concepts/index.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../runtime/supervisor/src/runtimeClient.js';
@@ -19,6 +19,10 @@ test.use({ fixtureHome: 'home_fixture_multi_source', executionSurfaces: ['dev-to
  * Restore an accepted page-and-folder collection into a new Dev Tools home.
  * Refreshing the relocated sources must leave the accepted snapshot alone;
  * a real edit after restoration must still produce a readable source review.
+ *
+ * Project impact (planned): Update source-review entry and checkpoint restoration for mode state,
+ * identity gates, dialogs, and active tabs.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Dev Tools restores accepted multi-source starts without inventing source changes', async ({ page, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---

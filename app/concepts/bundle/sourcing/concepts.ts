@@ -55,4 +55,19 @@ export const orphan = define({
   interplay: text`${link(id.bundleSourcing, 'Sourcing')} owns orphan review together with ${link(id.sourceMove, 'Source Move')} decisions. ${link(id.bundleCuration, 'Curation')} continues to use the accepted graph until the review is applied.`,
 });
 
-export const sourcingConcepts = [bundleSource, sourceSnapshot, sourceMove, sourceChange, orphan] as const;
+export const sourceChangesDuringReview = define({
+  id: id.sourceChangesDuringReview, name: 'Source Changes During Review', kind: 'process', searchFacet: true,
+  appAreaIds: [id.bundleSourcing], parentId: id.pendingProposalRevalidation,
+  definition: text`Proposed: live source material can change after a pending proposal has been captured. The captured material being reviewed and the newer live material are distinct, and incorporating the latter requires an explicit user decision.`,
+  mechanics: [
+    text`Design status: planned sourcing-mode behavior. The following requirements guide implementation and acceptance scenarios; registering this concept does not establish that every requirement is implemented.`,
+    text`During review, background detection reports New source changes available without replacing the captured proposal or its staged decisions. Update proposal explicitly captures newer material, preserves applicable staged decisions, and surfaces conflicts or decisions that no longer apply. A failed update leaves the previous proposal intact.`,
+    text`Acceptance can proceed while newer source changes are available. It applies the exact captured material, proposed settings, and resolved decisions displayed for review, without rereading live files. Newer live changes remain available for a subsequent proposal.`,
+    text`A depth or boundary edit that requires discovery must not combine previously captured links with newly read destinations. If rebuilding would incorporate newer material beyond the reviewed proposal, ask before applying the edit. Confirmation updates the proposal and applies the edit together; cancellation preserves the previous candidate, depth, and staged decisions.`,
+    text`Updating the proposal reassesses direct and filter-derived sensitivity. An automatically tracked addition that becomes sensitive becomes untracked. An explicitly tracked page that becomes sensitive requires renewed confirmation or untracking, and acceptance remains blocked until that choice is resolved.`,
+    text`Required E2E examples: newer live changes produce an indicator while the reviewed candidate stays stable; acceptance promotes reviewed version B while live version C waits for the next proposal; a depth edit with newer sources exercises both confirmation and cancellation; proposal refresh preserves applicable decisions and exposes conflicts; newly sensitive pages exercise both explicit-track reconfirmation and automatic untracking. These scenarios reference this concept, with sensitivity scenarios also referencing Node Sensitivity and Filter Sensitivity. Restorable checkpoints include the depth confirmation and the unresolved sensitivity review.`,
+  ],
+  interplay: text`A ${link(id.sourceSnapshot, 'Source Snapshot')} supplies the immutable reviewed material. ${link(id.pendingProposalRevalidation, 'Pending Proposal Revalidation')} also covers newer accepted curation decisions and filter policy. ${link(id.sensitive, 'Node Sensitivity')} and ${link(id.filterSensitivity, 'Filter Sensitivity')} govern refreshed tracking choices. ${link(id.checkpoint, 'Checkpoints')} preserve review interactions for manual testing.`,
+});
+
+export const sourcingConcepts = [bundleSource, sourceSnapshot, sourceMove, sourceChange, orphan, sourceChangesDuringReview] as const;

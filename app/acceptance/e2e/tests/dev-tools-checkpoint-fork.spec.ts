@@ -8,7 +8,7 @@ import { startDevTools } from '../src/run/devTools.js';
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { checkpoint as checkpointConcept, localServices, serviceTarget } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, checkpoint as checkpointConcept, localServices, serviceTarget } from '../../../concepts/index.js';
 import { minioBucketName } from '../../../tooling/local_services/src/index.js';
 import { MinioS3 } from '../src/run/utils/MinioS3.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';
@@ -32,6 +32,10 @@ async function stopRuntime(home: string): Promise<void> {
  * it: the whole home and its object storage are restored into a fresh home and
  * partition, Hosted Development is refused because local storage holds state,
  * and the forked app shows the same pending move on current code.
+ *
+ * Project impact (planned): Update source-review entry and checkpoint restoration for mode state,
+ * identity gates, dialogs, and active tabs.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Dev Tools forks a scenario checkpoint into a fresh home with Local services', async ({ page, testServer, sourceChanges, minioS3, artifactDir, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }, testInfo) => {
   // --- Setup ---

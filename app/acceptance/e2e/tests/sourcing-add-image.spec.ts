@@ -3,13 +3,17 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
 /*
  * Add a reachable image and inspect its proposed inclusion route. Acceptance should track
  * the new image without changing the accepted graph beforehand.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing previews an added image and its inclusion route before tracking it on acceptance', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

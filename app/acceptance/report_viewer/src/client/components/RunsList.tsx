@@ -129,6 +129,8 @@ export default function RunsList() {
             run.scenarios,
             (s) => s.status === 'failed',
             (s) => s.hasIssues,
+            undefined,
+            (s) => s.status === 'skipped',
           )
           return (
             <div key={run.runId} className="flex items-center gap-2">

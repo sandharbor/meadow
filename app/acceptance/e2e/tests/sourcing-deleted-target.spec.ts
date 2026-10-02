@@ -6,13 +6,17 @@ import path from 'node:path';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { prepareSourceScenario } from '../../../shared_code/shared_dev/sourceScenario.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { orphan } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, orphan } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
 /*
  * Delete a file while leaving a section link that points to it. Review should identify the
  * missing file and optionally show the previously accepted route.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing explains a surviving section link to a deleted file with file pills and an optional previous route', async ({ page, meadowCli, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

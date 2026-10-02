@@ -2,13 +2,17 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { ActionButton, BundleEditorPage, FilterPanelComponent, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { frontierEmbeddedAssets } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, frontierEmbeddedAssets } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
 /*
  * Add a plain link to an image beyond the traversal boundary. The live frontier should
  * show it without allowing it to be tracked there.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('a plain link to an image beyond the boundary stays untrackable in the live frontier', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

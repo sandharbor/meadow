@@ -21,7 +21,7 @@ import type {
   MutateBundleNodeCliResult,
 } from "../../../contracts/types/cliOperations.js";
 import { materializeCreateSafeBundleSource } from "../src/agent-evals/scenarios/createSafeBundle.js";
-import { bundles } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, bundles } from "../../../concepts/index.js";
 import { cli } from "../../../concepts/index.js";
 import { expect, test } from "../src/run/test-fixtures.js";
 
@@ -34,6 +34,10 @@ test.use({ recordVideo: false });
  * Inspect and curate individual pages through the CLI using paths and stable IDs. Check
  * tracking, concurrent edits, depth overrides, blacklisting, sensitivity, and cross-bundle
  * lookup.
+ *
+ * Project impact (planned): Audit CLI depth and blacklist mutations against accepted versus proposed
+ * configuration while preserving unrelated curation operations.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("CLI supports every single-node inspection and curation operation by path or ID", async ({
   assertMeadowHomeState,

@@ -23,6 +23,7 @@ import {
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
 import {
+  sourcingReviewRedesign,
   bundleConfig,
   overrides,
 } from "../../../concepts/index.js";
@@ -35,6 +36,10 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Add a depth override to a child page. Unlike simple tracking changes, the override
  * should remain pending until explicitly saved.
+ *
+ * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
+ * proposal lifecycle.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("adding a depth override on a child page requires an explicit save", async ({
   page,

@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage } from "../src/run/pages/index.js";
-import { blacklist, folderBundles } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, blacklist, folderBundles } from "../../../concepts/index.js";
 import { Bundle, Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "multiple-folders" });
@@ -25,6 +25,10 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 /*
  * Blacklist one folder in a collection and inspect the reduced graph. Removing the
  * blacklist should restore its descendants and reachable pages.
+ *
+ * Project impact (planned): Review the blacklist impact shortcut, staged wider exclusions, and
+ * configuration cleanup at acceptance.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("a collection member folder can be blacklisted and restored", async ({
   page,

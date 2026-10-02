@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { orphan, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, orphan, sourceSnapshot } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -11,6 +11,10 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Delete a captured leaf page and review why it is missing. Accepting the change should
  * remove its orphaned configuration.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing reviews a deleted leaf as missing and removes its orphaned configuration on acceptance', async ({ page, testServer, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

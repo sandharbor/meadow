@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { orphan, sourceSnapshot } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, orphan, sourceSnapshot } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 const EXPECTED_ORPHAN_COUNT = 13;
@@ -29,6 +29,10 @@ test.use({ bundleMode: "single-file" });
 /*
  * Remove a link that leaves previously captured pages orphaned. Review the existing and
  * proposed orphans, then confirm that acceptance removes the chosen configuration.
+ *
+ * Project impact (planned): Migrate orphan and sensitivity review interactions into the workspace;
+ * reconcile cleanup and provisional tracking with the proposed concepts.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("Sourcing reviews existing and candidate orphans with removal on acceptance", async ({
   page,

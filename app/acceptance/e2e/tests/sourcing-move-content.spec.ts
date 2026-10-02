@@ -3,13 +3,17 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { prepareSourceScenario } from '../../../shared_code/shared_dev/sourceScenario.js';
-import { sourceMove } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceMove } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
 /*
  * Move and edit a page at the same time. Review should compare the content and show the
  * unchanged leading part of its route only once.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing compares edited content for a move while showing its unchanged leading route once', async ({ page, meadowCli, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

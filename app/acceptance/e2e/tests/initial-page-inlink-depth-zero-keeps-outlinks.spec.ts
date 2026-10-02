@@ -23,7 +23,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { excalidraw, images, initialPage } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, excalidraw, images, initialPage } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -41,6 +41,10 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Set the starting page's incoming-link depth to zero. Its depth-one outgoing media should
  * remain visible.
+ *
+ * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
+ * proposal lifecycle.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("setting initial-page inlink depth to 0 keeps the depth-1 outlink media visible", async ({
   page,

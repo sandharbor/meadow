@@ -21,7 +21,7 @@ import {
   BundleListPage,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { folderBundles, htmlGeneration, tracking } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, folderBundles, htmlGeneration, tracking } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "multiple-folders" });
@@ -31,6 +31,10 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 /*
  * Generate a bundle assembled from several folders. The preview should preserve the
  * collection's home page, folder order, and contents.
+ *
+ * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
+ * generated-material steps accordingly.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("previews a configured multiple-folder collection bundle", async ({
   page,

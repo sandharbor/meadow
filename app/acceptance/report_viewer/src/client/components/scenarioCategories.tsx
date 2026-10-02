@@ -25,6 +25,7 @@ export const SECTION_DEFS = [
   { key: 'failing', label: 'Failing', color: 'text-red-700' },
   { key: 'passing-issues', label: 'Passing with Issues', color: 'text-yellow-700' },
   { key: 'passing', label: 'Passing', color: 'text-green-700' },
+  { key: 'not-run', label: 'Not run', color: 'text-neutral-600' },
 ] as const
 
 export const HIGHLIGHTED_SECTION_DEF = {
@@ -38,17 +39,20 @@ export function categorizeScenarios<T>(
   isFailing: (item: T) => boolean,
   hasIssues: (item: T) => boolean,
   isHighlighted?: (item: T) => boolean,
+  isNotRun: (item: T) => boolean = () => false,
 ): ScenarioSection<T>[] {
   const highlighted = isHighlighted ? items.filter((s) => isHighlighted(s)) : []
   const rest = isHighlighted ? items.filter((s) => !isHighlighted(s)) : items
 
-  const failing = rest.filter((s) => isFailing(s))
-  const passingWithIssues = rest.filter((s) => !isFailing(s) && hasIssues(s))
-  const passing = rest.filter((s) => !isFailing(s) && !hasIssues(s))
+  const evaluated = rest.filter((s) => !isNotRun(s))
+  const failing = evaluated.filter((s) => isFailing(s))
+  const passingWithIssues = evaluated.filter((s) => !isFailing(s) && hasIssues(s))
+  const passing = evaluated.filter((s) => !isFailing(s) && !hasIssues(s))
+  const notRun = rest.filter(isNotRun)
 
   const standard: ScenarioSection<T>[] = SECTION_DEFS.map((def, i) => ({
     ...def,
-    items: [failing, passingWithIssues, passing][i],
+    items: [failing, passingWithIssues, passing, notRun][i],
   }))
 
   if (highlighted.length > 0) {
@@ -83,7 +87,7 @@ export function StatusBadge({ status, hasIssues }: { status: string; hasIssues?:
   }
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
-      ???
+      {status === 'skipped' ? 'NOT RUN' : '???'}
     </span>
   )
 }

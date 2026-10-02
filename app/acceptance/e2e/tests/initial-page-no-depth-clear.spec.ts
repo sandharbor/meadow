@@ -18,7 +18,7 @@ import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage } from "../src/run/pages/index.js";
 import { SelectedPageDetailComponent } from "../src/run/pages/areas/bundle/curation/SelectedPageDetailComponent.js";
 import { Fixture } from "../src/run/workflows.js";
-import { initialPage, bundleConfig } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, initialPage, bundleConfig } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -28,6 +28,10 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Select the starting page and inspect its depth controls. Its required traversal depths
  * should not be removable.
+ *
+ * Project impact (planned): Preserve initial capture and required-root behavior as regression baselines
+ * while integrating the new sourcing lifecycle.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("a publisher should not be able to remove the depth on the initial page", async ({
   page, checkpoint, assertMeadowHomeState, addKeyFrame,

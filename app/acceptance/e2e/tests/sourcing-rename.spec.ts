@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourceSnapshot, sourceMove, sourceChange } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot, sourceMove, sourceChange } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 const slug = 'meadow-test-bundle-big';
@@ -15,6 +15,10 @@ test.use({ bundleMode: "single-file" });
 /*
  * Rename a source page that already has curation settings. Review should preserve those
  * settings and retain the page's identity after acceptance.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing reviews a shared rename without disrupting curation and preserves page identity', async ({ page, sourceChanges, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

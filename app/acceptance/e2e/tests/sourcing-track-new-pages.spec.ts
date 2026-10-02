@@ -3,13 +3,17 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
 /*
  * Add reachable pages and accept the source changes with the default settings. The newly
  * accepted pages should become tracked.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing acceptance tracks new pages by default', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

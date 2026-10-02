@@ -2,13 +2,17 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, FilterPanelComponent } from '../src/run/pages/index.js';
-import { frontier, frontierPendingSources, frontierDismissal, frontierLiveDiscovery } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, frontier, frontierPendingSources, frontierDismissal, frontierLiveDiscovery } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 
 /*
  * Leave source changes awaiting review and inspect the frontier notice. The frontier
  * should stay hidden; acknowledging the notice should only turn off its filter.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('pending source changes hide the frontier and acknowledging the notice only disables its filter', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

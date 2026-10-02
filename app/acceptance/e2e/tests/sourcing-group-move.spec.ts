@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { sourceMove, sourceSnapshot, sourceChange } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceMove, sourceSnapshot, sourceChange } from '../../../concepts/index.js';
 import { MeadowHomeBundleConfig } from '../src/run/utils/index.js';
 
 test.use({ bundleMode: 'single-file' });
@@ -11,6 +11,10 @@ test.use({ bundleMode: 'single-file' });
 /*
  * Rename a linked group of pages and review it. Meadow should classify the group once and
  * avoid treating its members as unrelated orphans.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing classifies a renamed linked group once and keeps its pages out of orphan cleanup', async ({ page, sourceChanges, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

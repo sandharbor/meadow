@@ -3,7 +3,7 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { orphan } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, orphan } from '../../../concepts/index.js';
 
 const originalTitle = 't003 ---- page with section to link to';
 
@@ -12,6 +12,10 @@ test.use({ bundleMode: "single-file" });
 /*
  * Reject a proposed rename by keeping the old and new files separate. Acceptance should
  * remove the old configuration instead of transferring its identity.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing treats a rejected rename as different pages and removes the old configuration on acceptance', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

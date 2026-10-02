@@ -3,13 +3,17 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { Bundle, Workflows } from '../src/run/workflows.js';
 import { BundleEditorPage, BundleListPage, Pill, SelectedPageDetailComponent } from '../src/run/pages/index.js';
-import { sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
 /*
  * Turn off automatic tracking for newly accepted pages. A later source review should
  * remember that preference for the bundle.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing remembers the bundle preference to leave new pages untracked', async ({ page, sourceChanges, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { frontier, filters } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, frontier, filters } from "../../../concepts/index.js";
 import { exampleBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -27,6 +27,10 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Open the example bundle and enable the frontier filter. Check that pages beyond the
  * normal traversal boundary appear in the graph.
+ *
+ * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
+ * generated-material steps accordingly.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("example bundle frontier pages show in graph view with frontier filter", async ({
   page, checkpoint, assertMeadowHomeState, addKeyFrame,

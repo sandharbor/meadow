@@ -2,7 +2,7 @@
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { checkPlaceLinks, placeExamples, placesFor } from "../src/run/placeLinkCheck.js";
-import { appPlace } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, appPlace } from "../../../concepts/index.js";
 
 test.use({ bundleMode: "single-file" });
 
@@ -10,6 +10,10 @@ test.use({ bundleMode: "single-file" });
  * Open every bundle editor surface declared under contracts/places from its link,
  * one fresh load each, and require the app to report reaching exactly that
  * place with no shortfall callout.
+ *
+ * Project impact (planned): Update source-review entry and checkpoint restoration for mode state,
+ * identity gates, dialogs, and active tabs.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("Every bundle editor surface opens from its link", async ({ page, testServer, checkpoint, addKeyFrame, skipMeadowHomeStateCheck }) => {
   // --- Test start ---

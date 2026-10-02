@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill, ActionButton } from "../src/run/pages/index.js";
-import { frontier } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, frontier } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -24,6 +24,10 @@ test.use({ bundleMode: "single-file" });
 /*
  * Inspect pages beyond the traversal boundary and change the traversal depth. The frontier
  * should update as pages enter or leave the working graph.
+ *
+ * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
+ * generated-material steps accordingly.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("frontier nodes show filtered pages and respond to depth changes", async ({ page, checkpoint, assertMeadowHomeState, addKeyFrame }) => {
   // --- Setup ---

@@ -107,6 +107,20 @@ export const bundleSharing = defineMeadowConcept({
   interplay: conceptText`It receives approved output from ${conceptLink(coreConceptIds.bundleReview, "Bundle Review")} and artifacts from ${conceptLink(coreConceptIds.bundleGeneration, "Bundle Generation")} without taking ownership of their creation.`,
 });
 
+export const sharedSourcingCuration = defineMeadowConcept({
+  id: coreConceptIds.sharedSourcingCuration,
+  name: "Shared Sourcing and Curation",
+  kind: "app-area",
+  parentId: coreConceptIds.bundle,
+  definition: conceptText`Proposed: a restricted shared application area for editor behavior used by sourcing and curation.`,
+  mechanics: [
+    conceptText`It owns common graph presentation, filtering and view-state machinery, selection, and reusable sidebar pieces. Sourcing keeps ownership of discovery, capture, proposals, and acceptance; curation keeps ownership of tracking and presentation policy. This definition records the intended boundary; no shared editor implementation has moved yet.`,
+    conceptText`Only sourcing and curation consume its narrow named exported interface. Generation, review, sharing, general shared code, and the application shell cannot import it directly. The shell composes area-owned facades. It cannot import sourcing or curation implementations: mode-specific data and actions enter through explicit inputs.`,
+    conceptText`The same export-count, file-length, and private-import checks apply, together with negative boundary tests for disallowed consumers and reverse dependencies. Adding code here requires a common editor responsibility rather than convenience.`,
+  ],
+  interplay: conceptText`It supports the proposed ${conceptLink(coreConceptIds.sourceReviewWorkspace, "Source Review Workspace")} while preserving the ownership of ${conceptLink(coreConceptIds.bundleSourcing, "Sourcing")} and ${conceptLink(coreConceptIds.bundleCuration, "Curation")}.`,
+});
+
 export const appAreaConcepts = [
   bundle,
   bundles,
@@ -115,6 +129,7 @@ export const appAreaConcepts = [
   bundleGeneration,
   bundleReview,
   bundleSharing,
+  sharedSourcingCuration,
 ] as const;
 
 /** App areas exposed as acceptance filters; `bundle` is their grouping root. */

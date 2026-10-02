@@ -24,7 +24,7 @@ import {
   SelectedPageDetailComponent,
 } from "../src/run/pages/index.js";
 import { Fixture, Bundle } from "../src/run/workflows.js";
-import { frontier, htmlGeneration, tracking } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, frontier, htmlGeneration, tracking } from "../../../concepts/index.js";
 import { customBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-folder" });
@@ -33,6 +33,10 @@ test.use({ fixtureHome: Fixture.FolderStructureSingle });
 /*
  * Find an image beyond a folder bundle's normal traversal boundary and track it. The
  * tracked image should become part of the generated bundle.
+ *
+ * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
+ * generated-material steps accordingly.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("tracks a depth-three frontier image in a folder-derived bundle", async ({
   page,

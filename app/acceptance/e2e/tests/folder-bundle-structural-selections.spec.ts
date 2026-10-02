@@ -16,7 +16,7 @@ limitations under the License.
 
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, BundleListPage } from "../src/run/pages/index.js";
-import { folderBundles, paths } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, folderBundles, paths } from "../../../concepts/index.js";
 import { Bundle, Fixture } from "../src/run/workflows.js";
 
 test.use({ bundleMode: "multiple-folders" });
@@ -25,6 +25,10 @@ test.use({ fixtureHome: Fixture.FolderStructureMultiple });
 /*
  * Select a folder's direct children, then its deeper paths. Confirm that structural
  * descendants and linked pages are selected in the list and graph.
+ *
+ * Project impact (planned): Move frontier exploration into sourcing and update the view, selection, and
+ * generated-material steps accordingly.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("folder context selections include structural children and deeper paths", async ({
   page,

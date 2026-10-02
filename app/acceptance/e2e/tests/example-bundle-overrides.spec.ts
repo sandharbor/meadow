@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleListPage, BundleEditorPage, FilterPanelComponent } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
-import { filters, overrides, initialPage } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, filters, overrides, initialPage } from "../../../concepts/index.js";
 import { exampleBundle, exampleBundleInitialPageTitle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -27,6 +27,10 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Apply the Overrides filter to the example bundle. The initial page's required depths
  * should not count as a custom override.
+ *
+ * Project impact (planned): Preserve initial capture and required-root behavior as regression baselines
+ * while integrating the new sourcing lifecycle.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("overrides filter on example bundle does not include the initial page", async ({
   page, checkpoint, assertMeadowHomeState, addKeyFrame,

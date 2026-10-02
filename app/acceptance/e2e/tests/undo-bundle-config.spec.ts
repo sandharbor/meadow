@@ -17,7 +17,7 @@ limitations under the License.
 import { test, expect } from "../src/run/test-fixtures.js";
 import { BundleEditorPage, SelectedPageDetailComponent } from "../src/run/pages/index.js";
 import { Workflows } from "../src/run/workflows.js";
-import { bundleConfig } from "../../../concepts/index.js";
+import { sourcingReviewRedesign, bundleConfig } from "../../../concepts/index.js";
 import { bigBundle } from "../src/bundle-docs/index.js";
 
 test.use({ bundleMode: "single-file" });
@@ -25,6 +25,10 @@ test.use({ bundleMode: "single-file" });
 /*
  * Change page configuration within a bundle, then use Undo. The editor should restore the
  * saved configuration without leaving the bundle.
+ *
+ * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
+ * proposal lifecycle.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("Undo reverts bundle page config changes without leaving the bundle", async ({
   page,

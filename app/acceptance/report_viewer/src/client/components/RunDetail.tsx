@@ -230,6 +230,8 @@ export default function RunDetail() {
   const [data, setData] = useState<RunData | null>(null)
   const [healthMap, setHealthMap] = useState<Record<string, HealthSummary>>({})
   const [docs, setDocs] = useState<ConceptView[]>([])
+  const [conceptsExpanded, setConceptsExpanded] = useState(false)
+  const conceptsPanelId = useId()
   const [bundleDocs, setBundleDocs] = useState<BundleDoc[]>([])
   const [appAreas, setAppAreas] = useState<AppAreaView[]>([])
   const [loading, setLoading] = useState(true)
@@ -261,6 +263,8 @@ export default function RunDetail() {
     (data?.scenarios ?? []).flatMap((s) => s.appAreaDocIds)
   )
   const facetDocs = docs.filter(doc => doc.searchFacet)
+  const detailedDocs = docs.filter(doc => !doc.searchFacet)
+  const selectedDetailedDocIds = selectedDocs.filter(doc => !doc.searchFacet).map(doc => doc.id)
   const isPartialRun = facetDocs.some(doc => !presentDocIds.has(doc.id))
   const isPartialAreaRun = appAreas.length > 0 && presentAreaIds.size < appAreas.length
   const targetedDocIds = new Set(data?.targetedConceptIds ?? [])
@@ -408,7 +412,10 @@ export default function RunDetail() {
   const availableAreaIds = new Set(areaMatches.flatMap(s => s.appAreaDocIds))
   // Tags show what co-occurs in the displayed scenarios, including selected tags.
   const availableDocIds = new Set(filteredScenarios.flatMap(s => s.conceptIds))
-  const visibleFacetDocIds = new Set(facetDocs.filter(doc => availableDocIds.has(doc.id)).map(doc => doc.id))
+  const visibleFacetDocIds = new Set([
+    ...facetDocs,
+    ...(conceptsExpanded ? detailedDocs : []),
+  ].filter(doc => availableDocIds.has(doc.id)).map(doc => doc.id))
   const rootAreas = appAreas.filter(area => !area.parentId || area.id === 'bundles')
   const bundleAreas = appAreas.filter(area => area.parentId === 'bundle' && area.id !== 'bundles')
   const visibleAreaIds = new Set([...rootAreas, ...bundleAreas].filter(area => availableAreaIds.has(area.id)).map(area => area.id))
@@ -418,6 +425,7 @@ export default function RunDetail() {
     (s) => s.status === 'failed',
     (s) => s.hasIssues,
     (s) => !!(s.testBasename && highlightedBasenames.has(s.testBasename)),
+    (s) => s.status === 'skipped',
   ).filter(section => section.items.length > 0 || section.key === 'passing')
 
   const mediaSizeClass = ['h-32', 'h-64', 'h-96', 'h-[512px]'][mediaSize]
@@ -643,8 +651,8 @@ export default function RunDetail() {
         const baseDocs = facetDocs.filter((d) => !d.isContribution)
         const extensionDocs = facetDocs.filter((d) => d.isContribution)
         const extensionDocIds = extensionDocs.map((d) => d.id)
-        const selectedBaseDocIds = selectedDocs.filter(doc => !doc.isContribution).map(doc => doc.id)
-        const selectedExtensionDocIds = selectedDocs.filter(doc => doc.isContribution).map(doc => doc.id)
+        const selectedBaseDocIds = selectedDocs.filter(doc => doc.searchFacet && !doc.isContribution).map(doc => doc.id)
+        const selectedExtensionDocIds = selectedDocs.filter(doc => doc.searchFacet && doc.isContribution).map(doc => doc.id)
 
         const renderDocPill = (doc: ConceptView, available: boolean) => {
           const isSelected = selectedDocIds.includes(doc.id)
@@ -689,7 +697,7 @@ export default function RunDetail() {
                   <button
                     className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
                     aria-pressed={selectedBaseDocIds.length === 0}
-                    onClick={() => setFilters({ docIds: selectedExtensionDocIds })}
+                    onClick={() => setFilters({ docIds: [...selectedExtensionDocIds, ...selectedDetailedDocIds] })}
                   >
                     All
                   </button>
@@ -708,7 +716,7 @@ export default function RunDetail() {
                       className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
                       title="Clear contributed tag selections"
                       aria-pressed={selectedExtensionDocIds.length === 0}
-                      onClick={() => setFilters({ docIds: selectedBaseDocIds })}
+                      onClick={() => setFilters({ docIds: [...selectedBaseDocIds, ...selectedDetailedDocIds] })}
                     >
                       All
                     </button>
@@ -717,6 +725,31 @@ export default function RunDetail() {
                 </FilterOptions>
               </div>
             )}
+
+            {detailedDocs.length > 0 && <div className="filter-section mb-1 w-full rounded-md px-3 py-1.5">
+              <button
+                type="button"
+                className="flex items-center gap-2 text-xs font-medium text-neutral-600"
+                aria-expanded={conceptsExpanded}
+                aria-controls={conceptsPanelId}
+                onClick={() => setConceptsExpanded(expanded => !expanded)}
+              >
+                <span aria-hidden="true">{conceptsExpanded ? '▾' : '▸'}</span>
+                Concepts
+                {selectedDetailedDocIds.length > 0 && <span className="rounded-full bg-brand-100 px-2 py-0.5 text-brand-700">{selectedDetailedDocIds.length} selected</span>}
+              </button>
+              <div id={conceptsPanelId} hidden={!conceptsExpanded} className={conceptsExpanded ? 'filter-row mt-2' : 'hidden'} role="group" aria-label="Detailed concept filters">
+                <span className="filter-label text-xs text-neutral-400 font-medium">Concepts:</span>
+                <FilterOptions preferenceId="concepts" options={detailedDocs} availableIds={availableDocIds} selectedIds={selectedDocIds}
+                  allOption={<button
+                    className="filter-default text-neutral-600 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                    aria-pressed={selectedDetailedDocIds.length === 0}
+                    onClick={() => setFilters({ docIds: [...selectedBaseDocIds, ...selectedExtensionDocIds] })}
+                  >All</button>}>
+                  {renderDocPill}
+                </FilterOptions>
+              </div>
+            </div>}
 
             {selectedDocs.length === 1 && (
               <div className="mt-2 space-y-2 text-xs text-neutral-500">

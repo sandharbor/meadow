@@ -7,7 +7,7 @@ import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, PreviewPublishModal, PublishToS3Tab, PublishedBundlePage } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
 import { GeneratedBundleVersions } from '../src/run/utils/index.js';
-import { bundleSource, versioning, publicationRevision } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, versioning, publicationRevision } from '../../../concepts/index.js';
 
 test.use({ bundleMode: 'single-file' });
 test.use({ fixtureHome: 'home_fixture_multi_source' });
@@ -15,6 +15,10 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Publish a multi-source bundle, rename a source, and publish a successor. Previously
  * published pages should remain available and link to their corresponding new pages.
+ *
+ * Project impact (planned): Review source-registration, repair, and naming flows against the proposal
+ * transaction and required-entry rules; preserve source identity and publication guarantees.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source publication retains old pages and connects their stable identities through a source rename', async ({ page, testServer, minioS3, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

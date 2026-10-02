@@ -3,13 +3,17 @@
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
 import { Workflows } from '../src/run/workflows.js';
-import { sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, sourceSnapshot } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 
 /*
  * Open a bundle, request source checks, and introduce a change. The toolbar should briefly
  * report no changes when appropriate and retain access to pending review.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing toolbar checks on entry and request, briefly shows no changes, and retains the review action', async ({ page, sourceChanges, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

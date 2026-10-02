@@ -6,7 +6,7 @@ import YAML from 'yaml';
 import { test, expect } from '../src/run/test-fixtures.js';
 import { BundleListPage, BundleEditorPage, FilterPanelComponent, SelectedPageDetailComponent, Pill } from '../src/run/pages/index.js';
 import { SourcesControl } from '../src/run/pages/areas/bundle/sourcing/SourcesControl.js';
-import { bundleSource, frontier, sourceSnapshot } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, bundleSource, frontier, sourceSnapshot } from '../../../concepts/index.js';
 import type { BundleConfig } from '../../../contracts/types/bundleConfig.js';
 
 test.use({ bundleMode: "single-file" });
@@ -15,6 +15,10 @@ test.use({ fixtureHome: 'home_fixture_multi_source' });
 /*
  * Register another source containing a frontier reference. That page should enter the
  * bundle only when normal traversal reaches it within the configured boundary.
+ *
+ * Project impact (planned): Review source-registration, repair, and naming flows against the proposal
+ * transaction and required-entry rules; preserve source identity and publication guarantees.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Multi-source registration admits a frontier reference only after its page enters the normal boundary', async ({ page, testServer, addKeyFrame, checkpoint, skipMeadowHomeStateCheck }) => {
   // --- Setup ---

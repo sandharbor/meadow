@@ -8,7 +8,7 @@ import { startDevTools } from '../src/run/devTools.js';
 import { DevSourceChangesControl } from '../src/run/pages/dev-tools/SourceChangesControl.js';
 import { DevSavedStatesPage } from '../src/run/pages/dev-tools/SavedStatesPage.js';
 import { BundleEditorPage } from '../src/run/pages/index.js';
-import { savedState, sourceChange } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, savedState, sourceChange } from '../../../concepts/index.js';
 import { getRuntimePaths } from '../../../runtime/supervisor/src/runtimePaths.js';
 import { readRuntimeSessionDescriptor } from '../../../runtime/supervisor/src/sessionDescriptor.js';
 import { postRuntimeControl, waitForRuntimeHomeRelease } from '../../../runtime/supervisor/src/runtimeClient.js';
@@ -29,6 +29,10 @@ async function stopRuntime(home: string): Promise<void> {
  * change's designated fixture in a fresh home with Local services, accepts the
  * baseline, applies the change, and hands over directly in source review. The
  * developer's real home is never touched.
+ *
+ * Project impact (planned): Replace source-review modal interactions with the sourcing workspace and
+ * identity gate; preserve the scenario's underlying source, identity, or tracking guarantee.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Sourcing Start scenario opens a fresh home and hands over directly in source review', async ({ page, addKeyFrame, skipMeadowHomeStateCheck, checkpoint }, testInfo) => {
   // --- Setup ---

@@ -51,6 +51,7 @@ import {
   packSharedObjectStore,
 } from "../run/stateRepoCompaction.ts";
 import { compactManifest, contentBlobGitDir, expandManifest } from "./manifestEncoding.ts";
+import { declaredScenarioOptions } from "./declaredScenarioOptions.js";
 import {
   collectReferencedCliFixtures,
   type TestSourceFixture,
@@ -1327,9 +1328,10 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
     }
   });
 
+  const declaredOptions = status === "skipped" ? declaredScenarioOptions(testSource) : {};
   const bundleMode = measured(assemblySteps, "read bundle mode", () => {
     const bundleModePath = path.join(testDir, "bundle-mode.txt");
-    if (!existsSync(bundleModePath)) return null;
+    if (!existsSync(bundleModePath)) return declaredOptions.bundleMode ?? null;
     const value = readFileSync(bundleModePath, "utf8").trim();
     if (!isBundleMode(value)) {
       throw new Error(`Invalid bundle mode in ${bundleModePath}: ${JSON.stringify(value)}`);
@@ -1339,7 +1341,7 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
 
   const executionSurface = measured(assemblySteps, "read execution surface", () => {
     const executionSurfacePath = path.join(testDir, "execution-surface.txt");
-    if (!existsSync(executionSurfacePath)) return "browser";
+    if (!existsSync(executionSurfacePath)) return declaredOptions.executionSurface ?? "browser";
     const value = readFileSync(executionSurfacePath, "utf8").trim();
     if (!isExecutionSurface(value)) {
       throw new Error(
@@ -1351,7 +1353,7 @@ export function assembleTestArtifacts(testDir: string, options: { dropTickLog?: 
 
   const executionSurfacesPath = path.join(testDir, "execution-surfaces.json");
   const executionSurfaces = executionSurfacesFor({ executionSurface,
-    executionSurfaces: existsSync(executionSurfacesPath) ? JSON.parse(readFileSync(executionSurfacesPath, "utf8")) : undefined });
+    executionSurfaces: existsSync(executionSurfacesPath) ? JSON.parse(readFileSync(executionSurfacesPath, "utf8")) : declaredOptions.executionSurfaces });
 
   // Extract concept, app-area, and bundle-doc IDs from test source imports.
   const { conceptIds, bundleDocIds, appAreaDocIds } = measured(assemblySteps, "extract doc ids", () => {

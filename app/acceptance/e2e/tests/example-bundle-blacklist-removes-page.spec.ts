@@ -22,6 +22,7 @@ import {
 } from "../src/run/pages/index.js";
 import { Fixture } from "../src/run/workflows.js";
 import {
+  sourcingReviewRedesign,
   blacklist,
   bundleConfig,
 } from "../../../concepts/index.js";
@@ -34,6 +35,10 @@ test.use({ fixtureHome: Fixture.Minimal });
 /*
  * Blacklist a page in the example bundle and regenerate it. The rendered bundle should
  * omit that page.
+ *
+ * Project impact (planned): Review the blacklist impact shortcut, staged wider exclusions, and
+ * configuration cleanup at acceptance.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test("blacklisting a single page removes it from the rendered preview", async ({
   page,

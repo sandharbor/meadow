@@ -5,7 +5,7 @@ import { Bundle, Fixture } from '../src/run/workflows.js';
 import {
   BundleEditorPage, BundleListPage, FilterPanelComponent, Pill, SelectedPageDetailComponent,
 } from '../src/run/pages/index.js';
-import { overrides, sourceSnapshot, bundleNodeKey } from '../../../concepts/index.js';
+import { sourcingReviewRedesign, overrides, sourceSnapshot, bundleNodeKey } from '../../../concepts/index.js';
 
 test.use({ bundleMode: "single-file" });
 test.use({ fixtureHome: Fixture.Example });
@@ -13,6 +13,10 @@ test.use({ fixtureHome: Fixture.Example });
 /*
  * Remove the example bundle's zero-depth override and accept the three pages newly
  * reached by its inherited depth. Acceptance should track them without a recovery notice.
+ *
+ * Project impact (planned): Migrate traversal edits and Save/Undo expectations to the isolated sourcing
+ * proposal lifecycle.
+ * Keep this current-behavior baseline executable until its implementation changes.
  */
 test('Removing the example depth override tracks newly accepted pages', async ({
   page, checkpoint, addKeyFrame, assertMeadowHomeState,
