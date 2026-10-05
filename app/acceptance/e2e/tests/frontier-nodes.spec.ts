@@ -53,18 +53,13 @@ test("frontier nodes show filtered pages and respond to depth changes", { annota
 
   // Inspect the nearby frontier pages.
   await sourceCommand(() => editor.switchToListView());
-  await sourceCommand(() => page.waitForTimeout(250));
-  const countAtDepth1 = await sourceCommand(() => editor.getListViewPageCount());
-  expect(countAtDepth1).toBe(7);
+  await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(7));
   await sourceCommand(() => checkpoint("list view with 7 frontier pages at depth 1"));
 
   // Extend the frontier depth.
   // Increase frontier depth to 2 and verify 10 bundle pages
-  // Wait longer than the 300ms debounce in FilterPanel + API fetch time
   await sourceCommand(() => filterPanel.setFilterThresholdValue("Frontier", 2));
-  await sourceCommand(() => page.waitForTimeout(1000));
-  const countAtDepth2 = await sourceCommand(() => editor.getListViewPageCount());
-  expect(countAtDepth2).toBe(10);
+  await sourceCommand(() => expect.poll(() => editor.getListViewPageCount()).toBe(10));
   await sourceCommand(() => checkpoint("list view with 10 frontier pages at depth 2"));
 
   // Inspect a distant frontier page.

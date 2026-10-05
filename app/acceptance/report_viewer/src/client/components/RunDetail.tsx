@@ -26,6 +26,7 @@ import {
   scenarioDisplayName,
 } from '../helpers.ts'
 import HealthGraph from './HealthGraph.tsx'
+import ConceptExplorer from './ConceptExplorer.tsx'
 import { useScenarioReviews, ScenarioReviewMenu, ReviewLog } from './ScenarioReview.tsx'
 import { findReview } from '../../scenarioReviews.js'
 import { CopyReferenceButton } from './CopyReferenceButton.tsx'
@@ -241,7 +242,9 @@ export default function RunDetail() {
   }
   const [healthMap, setHealthMap] = useState<Record<string, HealthSummary>>({})
   const [docs, setDocs] = useState<ConceptView[]>([])
+  const [conceptCatalog, setConceptCatalog] = useState<ConceptView[]>([])
   const [conceptsExpanded, setConceptsExpanded] = useState(false)
+  const [conceptSidebarWidth, setConceptSidebarWidth] = useState(0)
   const conceptsPanelId = useId()
   const [bundleDocs, setBundleDocs] = useState<BundleDoc[]>([])
   const [appAreas, setAppAreas] = useState<AppAreaView[]>([])
@@ -260,21 +263,35 @@ export default function RunDetail() {
   const selectedAreaIds = searchParams.getAll('area')
   const selectedAreas = appAreas.filter((d) => selectedAreaIds.includes(d.id))
   const selectedDocIds = searchParams.getAll('doc')
-  const selectedDocs = docs.filter((d) => selectedDocIds.includes(d.id))
+  const selectedDocs = [...docs, ...conceptCatalog.filter(concept => !docs.some(doc => doc.id === concept.id))]
+    .filter((d) => selectedDocIds.includes(d.id))
   const selectedBundleIds = searchParams.getAll('bundle')
   const selectedBundles = bundleDocs.filter((d) => selectedBundleIds.includes(d.id))
   const selectedBundleModes = searchParams.getAll('mode').filter(isBundleMode)
   const selectedExecutionSurfaces = searchParams.getAll('surface').filter(isExecutionSurface)
 
+  const scenarioConceptIds = (scenario: Scenario) => new Set([
+    ...scenario.conceptIds,
+    ...scenario.appAreaDocIds.flatMap(id => {
+      const ids: string[] = []
+      let area = appAreas.find(area => area.id === id)
+      while (area && !ids.includes(area.id)) {
+        ids.push(area.id)
+        area = appAreas.find(parent => parent.id === area?.parentId)
+      }
+      return ids
+    }),
+  ])
+
   // Track which acceptance concept IDs appear in this run's data.
   const presentDocIds = new Set(
-    (data?.scenarios ?? []).flatMap((s) => s.conceptIds)
+    (data?.scenarios ?? []).flatMap((s) => [...scenarioConceptIds(s)])
   )
   const presentAreaIds = new Set(
     (data?.scenarios ?? []).flatMap((s) => s.appAreaDocIds)
   )
   const facetDocs = docs.filter(doc => doc.searchFacet)
-  const detailedDocs = docs.filter(doc => !doc.searchFacet)
+  const detailedDocs = [...docs.filter(doc => !doc.searchFacet), ...selectedDocs.filter(concept => !docs.some(doc => doc.id === concept.id))]
   const selectedDetailedDocIds = selectedDocs.filter(doc => !doc.searchFacet).map(doc => doc.id)
   const isPartialRun = facetDocs.some(doc => !presentDocIds.has(doc.id))
   const isPartialAreaRun = appAreas.length > 0 && presentAreaIds.size < appAreas.length
@@ -346,6 +363,10 @@ export default function RunDetail() {
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setDocs([...d].sort((a, b) => a.name.localeCompare(b.name))))
       .catch(() => {})
+    fetch('/api/concepts?all=true')
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => setConceptCatalog(d))
+      .catch(() => {})
     fetch('/api/bundle-docs')
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setBundleDocs(d))
@@ -415,7 +436,7 @@ export default function RunDetail() {
     && (except === 'bundle' || selectedBundles.length === 0 || selectedBundles.some(bundle => scenario.bundleDocIds.includes(bundle.id)))
     && (except === 'mode' || selectedBundleModes.length === 0 || !!scenario.bundleMode && selectedBundleModes.includes(scenario.bundleMode))
     && (except === 'area' || selectedAreas.length === 0 || selectedAreas.some(area => scenario.appAreaDocIds.includes(area.id)))
-    && (selectedDocs.length === 0 || selectedDocs.some(doc => scenario.conceptIds.includes(doc.id)))
+    && (selectedDocIds.length === 0 || selectedDocIds.some(id => scenarioConceptIds(scenario).has(id)))
 
   const matchesReview = (scenario: Scenario) => !reviewMode || reviewMode === 'logs'
     || findReview(reviews.data, scenario)?.status === (reviewMode === 'incomplete' ? 'TOREVIEW' : 'REVIEWED')
@@ -431,7 +452,7 @@ export default function RunDetail() {
   const availableModeIds = new Set(modeMatches.flatMap(s => s.bundleMode ? [s.bundleMode] : []))
   const availableAreaIds = new Set(areaMatches.flatMap(s => s.appAreaDocIds))
   // Tags show what co-occurs in the displayed scenarios, including selected tags.
-  const availableDocIds = new Set(filteredScenarios.flatMap(s => s.conceptIds))
+  const availableDocIds = new Set(filteredScenarios.flatMap(s => [...scenarioConceptIds(s)]))
   const visibleFacetDocIds = new Set([
     ...facetDocs,
     ...(conceptsExpanded ? detailedDocs : []),
@@ -485,7 +506,7 @@ export default function RunDetail() {
   }
 
   return (
-    <div className="mx-auto px-6 py-3 max-w-[90vw]">
+    <div className="mx-auto px-6 py-3 max-w-[90vw]" style={conceptSidebarWidth ? { marginRight: conceptSidebarWidth, maxWidth: 'none' } : undefined}>
       {(reviews.data.reviews.length > 0 || reviewMode) && <section aria-label="To review" className="mb-2 flex flex-wrap items-center gap-2 rounded-md bg-violet-50 px-3 py-2 text-xs">
         <span className="font-semibold text-neutral-600">To review:</span>
         {(['', 'incomplete', 'completed', 'logs'] as const).map(mode => <button key={mode} aria-pressed={(reviewMode ?? '') === mode}
@@ -784,16 +805,14 @@ export default function RunDetail() {
               </div>
             </div>}
 
-            {selectedDocs.length === 1 && (
-              <div className="mt-2 space-y-2 text-xs text-neutral-500">
-                {!selectedDocs[0].searchFacet && <h2 className="font-semibold text-neutral-800">{selectedDocs[0].name}</h2>}
-                <p className="whitespace-pre-line">{selectedDocs[0].description}</p>
-                <Link className="inline-block text-brand-600 underline" to={`/concepts/${encodeURIComponent(selectedDocs[0].id)}`}>Concept details and implementation</Link>
-                {selectedDocs[0].parentId && <button className="text-brand-600 underline" onClick={() => setFilters({ docIds: [selectedDocs[0].parentId!] })}>Back to {docs.find(doc => doc.id === selectedDocs[0].parentId)?.name ?? 'concept'}</button>}
-                {docs.filter(doc => doc.parentId === selectedDocs[0].id && doc.kind === 'behavioral-rule').map(rule => <button key={rule.id} className="block text-brand-600 underline" onClick={() => setFilters({ docIds: [rule.id] })}>{rule.name}</button>)}
-                {selectedDocs[0].kind === 'behavioral-rule' && <p>Screenshots below are evidence from this run; open the scenario to inspect its result, revision, and recording.</p>}
-              </div>
-            )}
+            <ConceptExplorer concept={selectedDocs.length === 1 ? selectedDocs[0] : null} selectedConceptIds={selectedDocIds}
+              onSelectConcept={(id, add) => {
+                const next = createSearchParams(searchParams)
+                next.delete('doc')
+                const ids = add ? [...new Set([...selectedDocIds, id])] : [id]
+                ids.forEach(conceptId => next.append('doc', conceptId))
+                setSearchParams(next)
+              }} onSidebarWidth={setConceptSidebarWidth} />
           </div>
         )
       })()}

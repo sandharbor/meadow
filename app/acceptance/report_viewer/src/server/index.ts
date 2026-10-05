@@ -369,8 +369,8 @@ app.use(
 
 // Return the acceptance projection of canonical concepts. Each contribution is
 // tagged so the client can group it without owning another prose registry.
-app.get("/api/concepts", (_req, res) => {
-  const core = acceptanceConcepts.map(concept => ({
+app.get("/api/concepts", (req, res) => {
+  const core = (req.query.all === 'true' ? allCoreConcepts : acceptanceConcepts).map(concept => ({
     ...acceptanceConceptView(concept),
     isContribution: false,
   }));

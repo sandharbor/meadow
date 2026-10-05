@@ -81,8 +81,13 @@ test('run filters use explicit category facets while rules remain directly navig
   await expect(conceptsToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(conceptsToggle).toContainText('1 selected');
   await expect(page.getByRole('heading', { name: 'Newer source material pauses frontier exploration', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to Frontier Bundle Page', exact: true }).click();
-  await expect(page).toHaveURL(/doc=frontier(?:&|$)/);
+  await page.getByRole('button', { name: 'Show concept details', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Related concepts', exact: true }).getByRole('link', { name: 'Frontier Bundle Page', exact: true }).click();
+  await expect(page).toHaveURL(filteredUrl);
+  await expect(page.getByRole('heading', { name: 'Frontier Bundle Page', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Return to Newer source material pauses frontier exploration', exact: true }).click();
+  await expect(page).toHaveURL(filteredUrl);
+  await expect(page.getByRole('heading', { name: 'Frontier Bundle Page', exact: true })).not.toBeVisible();
 });
 
 test('detailed concepts follow matching scenarios and retain visible counts for hidden selections', async ({ page }) => {
